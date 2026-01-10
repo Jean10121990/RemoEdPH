@@ -1,7 +1,7 @@
 {
   "name": "online-distance-learning",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js",
     "start:backend": "node server/index.js",
