@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+  <title>Admin Login - RemoEdPH</title>
+  <link rel="stylesheet" href="modern-styles.css">
+  <style>
+        body {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      margin: 0;
+      padding: 20px;
+      min-height: 100vh;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      position: relative;
+      overflow-x: hidden;
+      overflow-y: auto;
+    }
+    
+    /* Password input container */
+    .password-input-container {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    
+    .password-input-container input {
+      padding-right: 50px;
+    }
+    
+    .password-toggle {
+      position: absolute;
+      right: 12px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 6px;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .password-toggle:hover {
+      background: rgba(102, 126, 234, 0.1);
+      transform: scale(1.1);
+    }
+    
+    .password-toggle:active {
+      transform: scale(0.95);
+    }
+    
+    .eye-icon {
+      font-size: 1.2rem;
+      color: #667eea;
+      transition: all 0.3s ease;
+    }
+    
+    .password-toggle.show-password .eye-icon {
+      color: #764ba2;
+    }
+  </style>
+</head>
+<body>
+  <div class="remoed-form" style="margin: 50px auto; max-width: 400px; width: 90%;">
+    <div class="remoed-logo" style="justify-content: center; margin-bottom: 1.5rem;">
+      <img src="remoed-logo.png" alt="RemoEdPH Logo">
+      <span class="remoed-title">RemoEdPH</span>
+    </div>
+    <h2 class="remoed-form-title">Admin Login</h2>
+    <div id="admin-login-error" class="remoed-status error" style="display: none;"></div>
+    <form id="admin-login-form">
+      <div class="remoed-form-group">
+        <label for="admin-username" class="remoed-form-label">Username</label>
+        <input type="text" id="admin-username" class="remoed-form-input" placeholder="Enter your username" required autocomplete="on">
+      </div>
+      <div class="remoed-form-group">
+        <label for="admin-password" class="remoed-form-label">Password</label>
+        <div class="password-input-container">
+          <input type="password" id="admin-password" class="remoed-form-input" placeholder="Enter your password" required autocomplete="on">
+          <button type="button" class="password-toggle" id="admin-password-toggle" onclick="togglePassword()">
+            <span class="eye-icon">👁️</span>
+          </button>
+        </div>
+      </div>
+      <button type="submit" class="remoed-btn remoed-btn-primary" style="width: 100%;">Login</button>
+    </form>
+    <div style="text-align: center; margin-top: 1.5rem;">
+      <a href="index.html" style="color: #2563eb; text-decoration: none; font-size: 0.875rem;">&larr; Back to Home</a>
+    </div>
+  </div>
+  <script>
+    document.getElementById('admin-login-form').onsubmit = async function(e) {
+      e.preventDefault();
+      const username = document.getElementById('admin-username').value.trim();
+      const password = document.getElementById('admin-password').value.trim();
+      const errorDiv = document.getElementById('admin-login-error');
+      errorDiv.style.display = 'none';
+      
+      const response = await fetch('/api/auth/admin-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      
+      // Handle suspended account specifically
+      if (response.status === 403) {
+        const data = await response.json();
+        errorDiv.textContent = data.message || 'Your account has been suspended. Please contact the system administrator.';
+        errorDiv.style.display = 'block';
+        errorDiv.style.background = '#fff3cd';
+        errorDiv.style.borderColor = '#ffeaa7';
+        errorDiv.style.color = '#856404';
+        return;
+      }
+      
+      const data = await response.json();
+      if (data.success && data.token) {
+        localStorage.setItem('adminToken', data.token);
+        localStorage.setItem('adminUsername', data.username);
+        localStorage.setItem('userType', 'admin'); // Add this line to set user type
+        window.location.href = 'admin-dashboard.html';
+      } else {
+        errorDiv.textContent = data.message || 'Invalid credentials.';
+        errorDiv.style.display = 'block';
+      }
+    };
+    
+    // Password toggle functionality
+    function togglePassword() {
+      const passwordInput = document.getElementById('admin-password');
+      const toggleBtn = document.getElementById('admin-password-toggle');
+      const eyeIcon = toggleBtn.querySelector('.eye-icon');
+      
+      if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        toggleBtn.classList.add('show-password');
+        eyeIcon.textContent = '🙈';
+      } else {
+        passwordInput.type = 'password';
+        toggleBtn.classList.remove('show-password');
+        eyeIcon.textContent = '👁️';
+      }
+    }
+  </script>
+</body>
+</html> 

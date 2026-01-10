@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Announcements - RemoEdPH Admin</title>
+    <link rel="stylesheet" href="modern-styles.css">
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f6fbff; }
+        .remoed-main { display: flex; min-height: calc(100vh - 70px); }
+        .remoed-sidebar { width: 220px; background: #fff; box-shadow: 2px 0 8px rgba(0,0,0,0.05); padding: 32px 0 0 0; display: flex; flex-direction: column; }
+        .remoed-logo { display: flex; align-items: center; gap: 14px; }
+        .remoed-logo img { height: 48px; }
+        .remoed-title { font-size: 1.7rem; font-weight: 700; color: #667eea; letter-spacing: 1px; }
+        .remoed-user { display: flex; align-items: center; gap: 10px; }
+        .remoed-avatar { width: 72px; height: 72px; border-radius: 50%; background: #667eea; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 2.2rem; }
+        .remoed-username { color: #667eea; font-weight: 600; }
+        .remoed-menu { list-style: none; padding: 0; margin: 0; }
+        .remoed-menu li { padding: 14px 32px; color: #667eea; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 12px; border-left: 4px solid transparent; transition: all 0.2s; }
+        .remoed-menu li.active, .remoed-menu li:hover { background: linear-gradient(90deg, #667eea 0%, #5a67d8 100%); border-left: 4px solid #667eea; color: white; transform: translateX(4px); }
+        .remoed-menu svg { width: 20px; height: 20px; }
+        .remoed-content { flex: 1; padding: 12px 16px; }
+        .remoed-section { background: #fff; border-radius: 12px; box-shadow: 0 4px 24px rgba(28,167,231,0.07); padding: 12px; margin-bottom: 12px; }
+        .remoed-section-title { font-size: 1rem; font-weight: 700; color: #1ca7e7; margin-bottom: 10px; letter-spacing: 0.5px; }
+        .form-group { margin-bottom: 12px; }
+        .form-group label { display: block; margin-bottom: 6px; font-weight: 600; color: #333; font-size: 0.85rem; }
+        .form-group textarea, .form-group select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.85rem; }
+        .form-group textarea { min-height: 80px; resize: vertical; }
+        .btn { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; }
+        .btn-primary { background: #1ca7e7; color: #fff; }
+        .btn-primary:hover { background: #168fc1; }
+        .announcement-list { margin-top: 12px; }
+        .announcement-item { background: #f8f9fa; border-radius: 6px; padding: 10px; margin-bottom: 8px; border-left: 4px solid #1ca7e7; }
+        .announcement-content { margin-bottom: 6px; font-size: 0.85rem; }
+        .announcement-meta { font-size: 0.75rem; color: #666; }
+        @media (max-width: 900px) {
+            .remoed-main { flex-direction: column; }
+            .remoed-sidebar { width: 100%; flex-direction: row; box-shadow: none; border-bottom: 1px solid #e0e6ed; }
+            .remoed-menu li { padding: 12px 10px; font-size: 0.97rem; }
+            .remoed-content { padding: 18px 6px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="remoed-main">
+        <nav class="remoed-sidebar">
+            <div class="remoed-logo" style="height:100px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding-top:5px;">
+                <img src="remoed-logo.png" alt="RemoEdPH Logo" style="height:40px; width:auto; display:inline-block; vertical-align:middle;">
+                <span class="remoed-title" style="font-size:1.3rem; font-weight:700; color:#667eea; letter-spacing:1px;">RemoEdPH</span>
+            </div>
+            <div class="remoed-user" style="display:flex; flex-direction:column; align-items:center; margin-bottom:24px;">
+                <div class="remoed-avatar" id="remoed-avatar">
+                    <span id="avatar-text">A</span>
+                </div>
+                <span class="remoed-username" id="remoed-username">Admin</span>
+            </div>
+            <ul class="remoed-menu">
+                <li onclick="window.location.href='admin-dashboard.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/></svg>Dashboard</li>
+                <li onclick="window.location.href='admin-users.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"/></svg>User Management</li>
+                <li class="active"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg>Announcements</li>
+                <li onclick="window.location.href='admin-payroll.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 10c-4.41 0-8-1.79-8-4V6c0-2.21 3.59-4 8-4s8 1.79 8 4v8c0 2.21-3.59 4-8 4z"/></svg>Payroll Management</li>
+                <li onclick="window.location.href='admin-reports.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>Reports</li>
+                <li onclick="window.location.href='admin-issue-management.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Issue Management</li>
+                <li onclick="window.location.href='admin-lessons-library.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>Lesson Library</li>
+                <li onclick="window.location.href='admin-settings.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Settings</li>
+                <li id="logout-nav" style="margin-top:auto; color:#e74c3c; cursor:pointer;"><svg fill="none" stroke="#e74c3c" stroke-width="2" viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7"/><path d="M3 12a9 9 0 0118 0 9 9 0 01-18 0z"/></svg>Logout</li>
+            </ul>
+        </nav>
+        <div class="remoed-content">
+            <div class="remoed-section">
+                <div class="remoed-section-title">Create Announcement</div>
+                
+                <form id="announcement-form">
+                    <div class="form-group">
+                        <label for="announcement-content">Announcement Message</label>
+                        <textarea id="announcement-content" placeholder="Enter your announcement message here..." required></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="announcement-audience">Target Audience</label>
+                        <select id="announcement-audience" required>
+                            <option value="all">All Users</option>
+                            <option value="teachers">Teachers Only</option>
+                            <option value="students">Students Only</option>
+                        </select>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">📢 Post Announcement</button>
+                </form>
+                
+                <div class="announcement-list">
+                    <h3 style="color: #1ca7e7; margin-bottom: 20px;">Recent Announcements</h3>
+                    <div id="announcements-container">
+                        <!-- Announcements will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Role-based access control
+        const userType = localStorage.getItem('userType');
+        if (userType !== 'admin') {
+            alert('Access denied. This page is for administrators only.');
+            window.location.href = 'index.html';
+        }
+
+        let editingAnnouncementId = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const username = localStorage.getItem('adminUsername');
+            
+            if (username) {
+                document.getElementById('remoed-username').textContent = username;
+                document.getElementById('avatar-text').textContent = username[0].toUpperCase();
+            }
+            
+            // Load existing announcements
+            loadAnnouncements();
+        });
+
+        document.getElementById('logout-nav').onclick = function() {
+            localStorage.clear();
+            window.location.href = 'admin-login.html';
+        };
+
+        document.getElementById('announcement-form').onsubmit = async function(e) {
+            e.preventDefault();
+            
+            const content = document.getElementById('announcement-content').value.trim();
+            const audience = document.getElementById('announcement-audience').value;
+            
+            if (!content) {
+                alert('Please enter an announcement message.');
+                return;
+            }
+            
+            try {
+                const isEditing = !!editingAnnouncementId;
+                const url = isEditing ? `/api/announcement/${editingAnnouncementId}` : '/api/announcement';
+                const method = isEditing ? 'PUT' : 'POST';
+
+                const response = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content, audience })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(isEditing ? 'Announcement updated successfully!' : 'Announcement posted successfully!');
+                    document.getElementById('announcement-content').value = '';
+                    document.getElementById('announcement-audience').value = 'all';
+                    editingAnnouncementId = null;
+                    loadAnnouncements(); // Reload the list
+                } else {
+                    alert(data.message || 'Failed to save announcement.');
+                }
+            } catch (error) {
+                console.error('Error saving announcement:', error);
+                alert('Error saving announcement. Please try again.');
+            }
+        };
+
+        async function loadAnnouncements() {
+            try {
+                const response = await fetch('/api/announcement');
+                const announcements = await response.json();
+                
+                // Cache announcements globally so we can edit by ID without embedding content in onclick
+                window.adminAnnouncements = announcements;
+
+                const container = document.getElementById('announcements-container');
+                
+                if (!announcements.length) {
+                    container.innerHTML = '<p style="color: #888; text-align: center;">No announcements yet.</p>';
+                    return;
+                }
+                
+                container.innerHTML = announcements.map(announcement => `
+                    <div class="announcement-item">
+                        <div class="announcement-content">${announcement.content}</div>
+                        <div class="announcement-meta">
+                            <strong>Audience:</strong> ${announcement.audience.charAt(0).toUpperCase() + announcement.audience.slice(1)} | 
+                            <strong>Posted:</strong> ${new Date(announcement.updatedAt).toLocaleString()}
+                        </div>
+                        <div style="margin-top: 10px; display: flex; gap: 8px;">
+                            <button class="btn" style="background:#3498db; color:#fff; padding:6px 12px; font-size:12px;" onclick="startEditAnnouncement('${announcement._id}')">Edit</button>
+                            <button class="btn" style="background:#e74c3c; color:#fff; padding:6px 12px; font-size:12px;" onclick="deleteAnnouncement('${announcement._id}')">Delete</button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading announcements:', error);
+                document.getElementById('announcements-container').innerHTML = '<p style="color: #e74c3c; text-align: center;">Error loading announcements.</p>';
+            }
+        }
+
+        // Start editing an announcement: load into the form
+        function startEditAnnouncement(id) {
+            const announcements = window.adminAnnouncements || [];
+            const ann = announcements.find(a => a._id === id);
+            if (!ann) {
+                console.warn('Announcement not found for editing:', id);
+                return;
+            }
+
+            editingAnnouncementId = id;
+            document.getElementById('announcement-content').value = ann.content || '';
+            document.getElementById('announcement-audience').value = ann.audience || 'all';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Delete an announcement
+        async function deleteAnnouncement(id) {
+            if (!confirm('Are you sure you want to delete this announcement?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/announcement/delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('Announcement deleted successfully!');
+                    // If we were editing this one, reset the form
+                    if (editingAnnouncementId === id) {
+                        editingAnnouncementId = null;
+                        document.getElementById('announcement-content').value = '';
+                        document.getElementById('announcement-audience').value = 'all';
+                    }
+                    loadAnnouncements();
+                } else {
+                    alert(data.message || 'Failed to delete announcement.');
+                }
+            } catch (error) {
+                console.error('Error deleting announcement:', error);
+                alert('Error deleting announcement. Please try again.');
+            }
+        }
+    </script>
+</body>
+</html> 

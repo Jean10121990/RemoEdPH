@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test New Waiting Room System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 10px 5px;
+            font-size: 16px;
+        }
+        .test-btn:hover {
+            background: #45a049;
+        }
+        .test-btn.teacher {
+            background: #2196F3;
+        }
+        .test-btn.student {
+            background: #FF9800;
+        }
+        .test-btn.danger {
+            background: #f44336;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test New Waiting Room System</h1>
+    
+    <div class="test-section">
+        <h2>📋 How the New System Works</h2>
+        <p><strong>New Flow:</strong></p>
+        <ol>
+            <li><strong>Student tries to access live classroom</strong> → System checks if teacher is present</li>
+            <li><strong>If no teacher</strong> → Student is redirected to <code>waiting-room.html</code></li>
+            <li><strong>Waiting room</strong> → Continuously checks for teacher presence</li>
+            <li><strong>When teacher joins</strong> → Student is automatically redirected to live classroom</li>
+            <li><strong>If teacher is already present</strong> → Student goes directly to live classroom</li>
+        </ol>
+    </div>
+
+    <div class="test-section">
+        <h2>🔑 Test Room Setup</h2>
+        <p>Test room ID: <strong id="test-room">test-new-waiting-20241201</strong></p>
+        <button class="test-btn" onclick="generateNewRoom()">🔄 Generate New Room</button>
+    </div>
+
+    <div class="test-section">
+        <h2>👨‍🏫 Teacher Test</h2>
+        <p>Test teacher joining the room:</p>
+        <button class="test-btn teacher" onclick="joinAsTeacher()">🚀 Join as Teacher</button>
+        <button class="test-btn" onclick="signalTeacherPresence()">👨‍🏫 Signal Presence</button>
+        <div id="teacher-status"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>🎓 Student Test</h2>
+        <p>Test student access to live classroom:</p>
+        <button class="test-btn student" onclick="testStudentAccess()">🚀 Test Student Access</button>
+        <button class="test-btn" onclick="openWaitingRoom()">📱 Open Waiting Room Directly</button>
+        <div id="student-status"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>🔍 Room Status Check</h2>
+        <p>Check current room status:</p>
+        <button class="test-btn" onclick="checkRoomStatus()">🔍 Check Status</button>
+        <div id="room-status"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>🔧 Manual Controls</h2>
+        <p>Manual controls for testing:</p>
+        <button class="test-btn" onclick="forceTeacherPresence()">👨‍🏫 Force Teacher Presence</button>
+        <button class="test-btn" onclick="clearRoomData()">🗑️ Clear Room Data</button>
+        <button class="test-btn danger" onclick="resetAll()">🔄 Reset All</button>
+    </div>
+
+    <div class="test-section">
+        <h2>📊 Test Logs</h2>
+        <div id="test-logs" class="log"></div>
+        <button class="test-btn" onclick="clearLogs()">🗑️ Clear Logs</button>
+    </div>
+
+    <script>
+        let socket = null;
+        let currentRoom = 'test-new-waiting-20241201';
+
+        // Log function
+        function log(message) {
+            const logs = document.getElementById('test-logs');
+            const timestamp = new Date().toLocaleTimeString();
+            logs.innerHTML += `[${timestamp}] ${message}\n`;
+            logs.scrollTop = logs.scrollHeight;
+            console.log(message);
+        }
+
+        // Clear logs
+        function clearLogs() {
+            document.getElementById('test-logs').innerHTML = '';
+        }
+
+        // Generate new room
+        function generateNewRoom() {
+            const now = new Date();
+            const dateStr = now.getFullYear().toString() + 
+                           (now.getMonth() + 1).toString().padStart(2, '0') + 
+                           now.getDate().toString().padStart(2, '0');
+            const timeStr = now.getHours().toString().padStart(2, '0') + 
+                           now.getMinutes().toString().padStart(2, '0');
+            currentRoom = `test-new-waiting-${dateStr}${timeStr}`;
+            document.getElementById('test-room').textContent = currentRoom;
+            log(`Generated new test room: ${currentRoom}`);
+        }
+
+        // Join as teacher
+        function joinAsTeacher() {
+            if (socket) {
+                socket.disconnect();
+            }
+
+            const serverUrl = window.location.protocol + '//' + window.location.hostname + 
+                             (window.location.port ? ':' + window.location.port : '');
+            
+            socket = io(serverUrl);
+            
+            socket.on('connect', () => {
+                log('✅ Teacher connected to server');
+                
+                // Set teacher data
+                localStorage.setItem('teacherId', 'TKBF7202500001');
+                localStorage.setItem('remoedUsername', 'Test Teacher');
+                
+                // Join room
+                socket.emit('join', { 
+                    room: currentRoom, 
+                    userType: 'teacher', 
+                    userId: 'TKBF7202500001', 
+                    username: 'Test Teacher' 
+                });
+                
+                log(`👨‍🏫 Teacher joining room: ${currentRoom}`);
+            });
+            
+            socket.on('joined', () => {
+                log('✅ Teacher joined room successfully');
+                showStatus('teacher-status', 'Teacher joined room successfully!', 'success');
+            });
+            
+            socket.on('disconnect', () => {
+                log('❌ Teacher disconnected');
+            });
+        }
+
+        // Test student access to live classroom
+        function testStudentAccess() {
+            log('🎓 Testing student access to live classroom...');
+            
+            // Set student data
+            localStorage.setItem('studentId', 'test-student-456');
+            localStorage.setItem('remoedUsername', 'Test Student');
+            
+            // Try to access live classroom
+            const liveClassroomUrl = `live-classroom.html?bookingId=test-booking-123&room=${currentRoom}`;
+            log(`🔗 Opening: ${liveClassroomUrl}`);
+            
+            // Open in new tab
+            window.open(liveClassroomUrl, '_blank');
+            
+            showStatus('student-status', 'Opened live classroom. Check if student is redirected to waiting room.', 'info');
+        }
+
+        // Open waiting room directly
+        function openWaitingRoom() {
+            log('📱 Opening waiting room directly...');
+            
+            // Set student data
+            localStorage.setItem('studentId', 'test-student-456');
+            localStorage.setItem('remoedUsername', 'Test Student');
+            
+            const waitingRoomUrl = `waiting-room.html?bookingId=test-booking-123&room=${currentRoom}&userType=student`;
+            log(`🔗 Opening: ${waitingRoomUrl}`);
+            
+            window.open(waitingRoomUrl, '_blank');
+            
+            showStatus('student-status', 'Opened waiting room directly.', 'info');
+        }
+
+        // Signal teacher presence
+        async function signalTeacherPresence() {
+            try {
+                const response = await fetch('/api/signaling/teacher-present', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        room: currentRoom,
+                        teacherId: 'TKBF7202500001',
+                        username: 'Test Teacher'
+                    })
+                });
+                
+                if (response.ok) {
+                    log('✅ Teacher presence signaled successfully');
+                    showStatus('teacher-status', 'Teacher presence signaled!', 'success');
+                } else {
+                    log('❌ Failed to signal teacher presence');
+                    showStatus('teacher-status', 'Failed to signal presence', 'error');
+                }
+            } catch (error) {
+                log(`❌ Error signaling teacher presence: ${error.message}`);
+                showStatus('teacher-status', 'Error signaling presence', 'error');
+            }
+        }
+
+        // Check room status
+        async function checkRoomStatus() {
+            try {
+                const response = await fetch(`/api/signaling/room-status?room=${currentRoom}`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log(`🔍 Room status for ${currentRoom}:`);
+                    log(`  - Teacher Present: ${data.teacherPresent}`);
+                    log(`  - Room Exists: ${data.roomExists}`);
+                    log(`  - Client Count: ${data.clientCount}`);
+                    
+                    const statusHtml = `
+                        <div class="status info">
+                            <strong>Room Status for ${currentRoom}:</strong><br>
+                            Teacher Present: ${data.teacherPresent ? '✅ Yes' : '❌ No'}<br>
+                            Room Exists: ${data.roomExists ? '✅ Yes' : '❌ No'}<br>
+                            Client Count: ${data.clientCount}<br>
+                            Last Activity: ${data.lastActivity ? new Date(data.lastActivity).toLocaleString() : 'None'}
+                        </div>
+                    `;
+                    document.getElementById('room-status').innerHTML = statusHtml;
+                } else {
+                    log(`❌ Failed to check room status: ${response.status}`);
+                    showStatus('room-status', 'Failed to check room status', 'error');
+                }
+            } catch (error) {
+                log(`❌ Error checking room status: ${error.message}`);
+                showStatus('room-status', 'Error checking room status', 'error');
+            }
+        }
+
+        // Force teacher presence
+        async function forceTeacherPresence() {
+            try {
+                // First signal presence
+                await signalTeacherPresence();
+                
+                // Then join as teacher
+                setTimeout(() => {
+                    joinAsTeacher();
+                }, 1000);
+                
+                log('🔧 Forced teacher presence');
+            } catch (error) {
+                log(`❌ Error forcing teacher presence: ${error.message}`);
+            }
+        }
+
+        // Clear room data
+        async function clearRoomData() {
+            try {
+                const response = await fetch('/api/signaling/clear-room', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ room: currentRoom })
+                });
+                
+                if (response.ok) {
+                    log('✅ Room data cleared');
+                    showStatus('room-status', 'Room data cleared', 'success');
+                } else {
+                    log('❌ Failed to clear room data');
+                    showStatus('room-status', 'Failed to clear room data', 'error');
+                }
+            } catch (error) {
+                log(`❌ Error clearing room data: ${error.message}`);
+                showStatus('room-status', 'Error clearing room data', 'error');
+            }
+        }
+
+        // Reset all
+        function resetAll() {
+            if (socket) {
+                socket.disconnect();
+            }
+            localStorage.clear();
+            clearLogs();
+            log('🔄 Reset all data');
+            showStatus('room-status', 'All data reset', 'info');
+        }
+
+        // Show status message
+        function showStatus(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="status ${type}">${message}</div>`;
+            setTimeout(() => {
+                element.innerHTML = '';
+            }, 5000);
+        }
+
+        // Auto-check room status every 5 seconds
+        setInterval(checkRoomStatus, 5000);
+
+        // Initialize
+        log('🧪 Test New Waiting Room System initialized');
+        log(`Current room: ${currentRoom}`);
+        log('Use this page to test the new waiting room system');
+        log('');
+        log('📋 Test Instructions:');
+        log('1. Click "Join as Teacher" to have a teacher in the room');
+        log('2. Click "Test Student Access" to see if student gets redirected to waiting room');
+        log('3. Or click "Open Waiting Room Directly" to test the waiting room');
+        log('4. Use "Check Status" to monitor room status');
+    </script>
+</body>
+</html>

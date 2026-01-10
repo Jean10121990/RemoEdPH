@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+  <title>Student Registration - RemoEdPH</title>
+  <link rel="stylesheet" href="modern-styles.css">
+  <style>
+    body { 
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      margin: 0;
+      padding: 20px;
+      min-height: 100vh;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      position: relative;
+      overflow-x: hidden;
+      overflow-y: auto;
+    }
+    
+    /* Floating educational elements */
+    .floating-elements {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1;
+    }
+    
+    .floating-element {
+      position: absolute;
+      font-size: 2rem;
+      animation: float 6s ease-in-out infinite;
+      opacity: 0.2;
+    }
+    
+    .floating-element:nth-child(1) { top: 10%; left: 10%; animation-delay: 0s; }
+    .floating-element:nth-child(2) { top: 20%; right: 15%; animation-delay: 1s; }
+    .floating-element:nth-child(3) { bottom: 30%; left: 20%; animation-delay: 2s; }
+    .floating-element:nth-child(4) { bottom: 20%; right: 10%; animation-delay: 3s; }
+    .floating-element:nth-child(5) { top: 50%; left: 5%; animation-delay: 4s; }
+    .floating-element:nth-child(6) { top: 60%; right: 5%; animation-delay: 5s; }
+    
+    @keyframes float {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      50% { transform: translateY(-20px) rotate(10deg); }
+    }
+    
+    .register-container {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 20px;
+      padding: 2.5rem;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+      backdrop-filter: blur(10px);
+      border: 2px solid #667eea;
+      position: relative;
+      z-index: 2;
+      max-width: 450px;
+      width: 90%;
+      margin: 50px auto;
+      animation: slideIn 0.8s ease-out;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    
+    @keyframes slideIn {
+      0% { transform: translateY(30px); opacity: 0; }
+      100% { transform: translateY(0); opacity: 1; }
+    }
+    
+    .remoed-logo {
+      justify-content: center;
+      margin-bottom: 1.5rem;
+      animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+    
+    .remoed-title {
+      color: #667eea !important;
+      font-size: 1.8rem !important;
+      font-weight: bold !important;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .register-title {
+      color: #667eea !important;
+      font-size: 1.8rem !important;
+      font-weight: bold !important;
+      text-align: center;
+      margin-bottom: 1.5rem;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .welcome-message {
+      text-align: center;
+      color: #667eea;
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+    }
+    
+    .register-form {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-bottom: 10px;
+    }
+    
+    .form-group {
+      position: relative;
+    }
+    
+    .form-group label {
+      color: #667eea !important;
+      font-weight: 600 !important;
+      font-size: 1rem !important;
+      margin-bottom: 0.5rem !important;
+      display: block;
+    }
+    
+    .form-group input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid #e1e8ed;
+      border-radius: 12px;
+      font-size: 1rem;
+      transition: all 0.3s ease;
+      background: rgba(255, 255, 255, 0.9);
+      box-sizing: border-box;
+    }
+    
+    .form-group input:focus {
+      border-color: #667eea;
+      box-shadow: 0 0 15px rgba(102, 126, 234, 0.3);
+      transform: scale(1.02);
+      outline: none;
+    }
+    
+    /* Password input container */
+    .password-input-container {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    
+    .password-input-container input {
+      padding-right: 50px;
+    }
+    
+    .password-toggle {
+      position: absolute;
+      right: 12px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 6px;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .password-toggle:hover {
+      background: rgba(102, 126, 234, 0.1);
+      transform: scale(1.1);
+    }
+    
+    .password-toggle:active {
+      transform: scale(0.95);
+    }
+    
+    .eye-icon {
+      font-size: 1.2rem;
+      color: #667eea;
+      transition: all 0.3s ease;
+    }
+    
+    .password-toggle.show-password .eye-icon {
+      color: #764ba2;
+    }
+    
+    /* Password requirements */
+    .password-requirements {
+      margin-top: 8px;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.8);
+      border-radius: 8px;
+      border: 1px solid rgba(102, 126, 234, 0.2);
+      font-size: 0.85rem;
+    }
+    
+    .requirement {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+      color: #666;
+      transition: all 0.3s ease;
+    }
+    
+    .requirement:last-child {
+      margin-bottom: 0;
+    }
+    
+    .requirement-icon {
+      font-size: 0.9rem;
+      transition: all 0.3s ease;
+    }
+    
+    .requirement.met {
+      color: #16a34a;
+    }
+    
+    .requirement.met .requirement-icon {
+      color: #16a34a;
+    }
+    
+    .register-btn {
+      background: linear-gradient(45deg, #667eea, #764ba2);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      padding: 14px 30px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+      letter-spacing: 0.5px;
+      width: 100%;
+      display: block !important;
+      margin-top: 10px;
+    }
+    
+    .register-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 25px rgba(102, 126, 234, 0.4);
+      background: linear-gradient(45deg, #764ba2, #667eea);
+    }
+    
+    .register-btn:active {
+      transform: translateY(0);
+    }
+    
+    .register-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    .register-error {
+      font-size: 1rem;
+      margin-top: 8px;
+      text-align: center;
+      display: none;
+      width: 100%;
+      padding: 12px;
+      border-radius: 12px;
+      font-weight: 500;
+      background: #fef2f2;
+      border: 2px solid #fecaca;
+      color: #dc2626;
+    }
+    
+    .register-success {
+      background: #f0fdf4;
+      border: 2px solid #bbf7d0;
+      color: #16a34a;
+    }
+    
+    .links-container {
+      margin-top: 2rem;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      padding: 1rem;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 15px;
+      border: 1px solid rgba(102, 126, 234, 0.2);
+    }
+    
+    .links-container a {
+      color: #667eea;
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      padding: 0.75rem 1rem;
+      border-radius: 10px;
+      border: 2px solid transparent;
+      background: rgba(102, 126, 234, 0.05);
+      display: block;
+      margin: 0.25rem 0;
+      text-align: center;
+      box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+    }
+    
+    .links-container a:hover {
+      background: rgba(102, 126, 234, 0.15);
+      transform: translateY(-2px);
+      text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+      border-color: rgba(102, 126, 234, 0.3);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+    }
+    
+    .links-container a:active {
+      transform: translateY(0);
+    }
+    
+    /* Responsive design for different screen sizes and zoom levels */
+    @media (max-width: 768px) {
+      body {
+        padding: 10px;
+      }
+      
+      .register-container {
+        margin: 20px auto;
+        padding: 1.5rem;
+        max-width: 95%;
+      }
+      
+      .remoed-title {
+        font-size: 1.5rem !important;
+      }
+      
+      .register-title {
+        font-size: 1.5rem !important;
+      }
+    }
+    
+    @media (max-width: 480px) {
+      .register-container {
+        margin: 10px auto;
+        padding: 1rem;
+      }
+      
+      .remoed-title {
+        font-size: 1.3rem !important;
+      }
+      
+      .register-title {
+        font-size: 1.3rem !important;
+      }
+      
+      .links-container {
+        padding: 0.75rem;
+        gap: 0.5rem;
+      }
+      
+      .links-container a {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.8rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Floating educational elements -->
+  <div class="floating-elements">
+    <div class="floating-element">📚</div>
+    <div class="floating-element">✏️</div>
+    <div class="floating-element">🎨</div>
+    <div class="floating-element">🔢</div>
+    <div class="floating-element">🌍</div>
+    <div class="floating-element">⭐</div>
+  </div>
+
+  <div class="register-container">
+    <div class="remoed-logo">
+      <img src="remoed-logo.png" alt="RemoEdPH Logo" style="height: 50px;">
+      <span class="remoed-title">RemoEdPH</span>
+    </div>
+    
+    <div class="welcome-message">
+      📝 Join Our Learning Community 📝
+    </div>
+    
+    <div class="register-title">Student Registration</div>
+    <form class="register-form" id="student-register-form">
+      <div class="form-group">
+        <label for="student-register-username">👤 Username</label>
+        <input type="text" id="student-register-username" placeholder="Enter your username" required autocomplete="on">
+      </div>
+      <div class="form-group">
+        <label for="student-register-email">📧 Email Address</label>
+        <input type="email" id="student-register-email" placeholder="Enter your email address" required autocomplete="on">
+      </div>
+      <div class="form-group">
+        <label for="student-register-password">🔐 Password</label>
+        <div class="password-input-container">
+          <input type="password" id="student-register-password" placeholder="Enter your password" required autocomplete="on">
+          <button type="button" class="password-toggle" id="password-toggle" onclick="togglePassword()">
+            <span class="eye-icon">👁️</span>
+          </button>
+        </div>
+        <div class="password-requirements" id="password-requirements">
+          <div class="requirement" id="req-length">
+            <span class="requirement-icon">❌</span>
+            <span>At least 8 characters</span>
+          </div>
+          <div class="requirement" id="req-uppercase">
+            <span class="requirement-icon">❌</span>
+            <span>One uppercase letter</span>
+          </div>
+          <div class="requirement" id="req-lowercase">
+            <span class="requirement-icon">❌</span>
+            <span>One lowercase letter</span>
+          </div>
+          <div class="requirement" id="req-number">
+            <span class="requirement-icon">❌</span>
+            <span>One number</span>
+          </div>
+        </div>
+      </div>
+      <button type="submit" class="register-btn" id="register-btn">
+        📝 Create Account
+      </button>
+    </form>
+    <div class="register-error" id="student-register-error"></div>
+    
+    <div class="links-container">
+      <div style="margin-bottom: 0.5rem; font-weight: 600; color: #667eea; font-size: 0.9rem;">📋 Quick Navigation</div>
+      <a href="student-login.html">👈 Back to Student Login</a>
+      <a href="student-forgot-password.html">🔑 Forgot Password?</a>
+      <a href="index.html">🏠 Back to Home</a>
+    </div>
+  </div>
+  
+  <script>
+    // Password toggle functionality
+    function togglePassword() {
+      const passwordInput = document.getElementById('student-register-password');
+      const toggleBtn = document.getElementById('password-toggle');
+      const eyeIcon = toggleBtn.querySelector('.eye-icon');
+      
+      if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        toggleBtn.classList.add('show-password');
+        eyeIcon.textContent = '🙈';
+      } else {
+        passwordInput.type = 'password';
+        toggleBtn.classList.remove('show-password');
+        eyeIcon.textContent = '👁️';
+      }
+    }
+    
+    // Password validation
+    function validatePassword(password) {
+      const requirements = {
+        length: password.length >= 8,
+        uppercase: /[A-Z]/.test(password),
+        lowercase: /[a-z]/.test(password),
+        number: /\d/.test(password)
+      };
+      
+      // Update requirement indicators
+      document.getElementById('req-length').classList.toggle('met', requirements.length);
+      document.getElementById('req-uppercase').classList.toggle('met', requirements.uppercase);
+      document.getElementById('req-lowercase').classList.toggle('met', requirements.lowercase);
+      document.getElementById('req-number').classList.toggle('met', requirements.number);
+      
+      // Update icons
+      document.getElementById('req-length').querySelector('.requirement-icon').textContent = requirements.length ? '✅' : '❌';
+      document.getElementById('req-uppercase').querySelector('.requirement-icon').textContent = requirements.uppercase ? '✅' : '❌';
+      document.getElementById('req-lowercase').querySelector('.requirement-icon').textContent = requirements.lowercase ? '✅' : '❌';
+      document.getElementById('req-number').querySelector('.requirement-icon').textContent = requirements.number ? '✅' : '❌';
+      
+      return Object.values(requirements).every(req => req);
+    }
+    
+    // Add password input event listener
+    document.getElementById('student-register-password').addEventListener('input', function(e) {
+      validatePassword(e.target.value);
+    });
+    
+    document.getElementById('student-register-form').onsubmit = async function(e) {
+      e.preventDefault();
+      const username = document.getElementById('student-register-username').value.trim();
+      const email = document.getElementById('student-register-email').value.trim();
+      const password = document.getElementById('student-register-password').value.trim();
+      const errorDiv = document.getElementById('student-register-error');
+      const submitBtn = document.getElementById('register-btn');
+      
+      // Clear previous messages
+      errorDiv.style.display = 'none';
+      
+      // Validate password requirements
+      const isPasswordValid = validatePassword(password);
+      if (!isPasswordValid) {
+        errorDiv.textContent = 'Please ensure your password meets all requirements.';
+        errorDiv.className = 'register-error';
+        errorDiv.style.display = 'block';
+        return;
+      }
+      
+      // Show loading state
+      submitBtn.textContent = '🔄 Creating Account...';
+      submitBtn.disabled = true;
+      
+      try {
+        const response = await fetch('/api/auth/student-register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, email, password })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          errorDiv.textContent = '✅ Registration successful! Redirecting to login...';
+          errorDiv.className = 'register-error register-success';
+          errorDiv.style.display = 'block';
+          submitBtn.textContent = '✅ Success!';
+          
+          // Redirect after a short delay
+          setTimeout(() => {
+            window.location.href = 'student-login.html';
+          }, 2000);
+        } else {
+          errorDiv.textContent = data.message || 'Registration failed. Please try again.';
+          errorDiv.className = 'register-error';
+          errorDiv.style.display = 'block';
+          submitBtn.textContent = '📝 Create Account';
+          submitBtn.disabled = false;
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        errorDiv.textContent = 'An error occurred. Please try again.';
+        errorDiv.className = 'register-error';
+        errorDiv.style.display = 'block';
+        submitBtn.textContent = '📝 Create Account';
+        submitBtn.disabled = false;
+      }
+    };
+  </script>
+</body>
+</html> 

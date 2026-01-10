@@ -1,0 +1,1901 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Open/Close Class Slots - RemoEdPH</title>
+    <link rel="stylesheet" href="modern-styles.css?v=4">
+    <style>
+      
+            body { 
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+      background: linear-gradient(135deg, #f6fbff 0%, #e8f4fd 100%); 
+      margin: 0;
+      padding: 0;
+    }
+        .remoed-main {
+            display: flex;
+            min-height: 100vh;
+            flex-direction: row;
+            align-items: stretch;
+            justify-content: flex-start;
+            max-width: 100vw;
+            overflow-x: hidden;
+        }
+            .remoed-sidebar {
+      width: 260px;
+      min-width: 220px;
+      max-width: 280px;
+      background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+      box-shadow: 4px 0 20px rgba(102, 126, 234, 0.1);
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      height: 100vh;
+      position: fixed;
+      z-index: 100;
+      border-right: 1px solid rgba(102, 126, 234, 0.1);
+    }
+        .remoed-logo { 
+            display: flex; 
+            align-items: center; 
+            gap: 14px; 
+        }
+        .remoed-logo img { 
+            height: 48px; 
+        }
+        .remoed-title { 
+            font-size: 1.7rem; 
+            font-weight: 700; 
+            color: #667eea; 
+            letter-spacing: 1px; 
+        }
+        .remoed-user { 
+            display: flex; 
+            align-items: center; 
+            gap: 10px; 
+        }
+        .remoed-avatar { 
+            width: 72px; 
+            height: 72px; 
+            border-radius: 50%; 
+            background: #667eea; 
+            color: #fff; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-weight: bold; 
+            font-size: 2.2rem; 
+        }
+        .remoed-username { 
+            color: #667eea; 
+            font-weight: 600; 
+        }
+        .remoed-menu { 
+            list-style: none; 
+            padding: 0; 
+            margin: 0; 
+        }
+        .remoed-menu li { 
+            padding: 14px 32px; 
+            color: #667eea; 
+            font-weight: 500; 
+            cursor: pointer; 
+            display: flex; 
+            align-items: center; 
+            gap: 12px; 
+            border-left: 4px solid transparent; 
+            transition: background 0.2s, border-color 0.2s; 
+        }
+            .remoed-menu li.active, .remoed-menu li:hover { 
+      background: linear-gradient(90deg, #667eea 0%, #5a67d8 100%); 
+      border-left: 4px solid #667eea; 
+      color: white; 
+      transform: translateX(4px);
+      transition: all 0.3s ease;
+    }
+        .remoed-menu svg { 
+            width: 20px; 
+            height: 20px; 
+            stroke: currentColor; 
+        }
+        .remoed-content {
+            flex: 1;
+            padding: 40px 32px 40px 32px;
+            min-width: 0;
+            background: #f6fbff;
+            min-height: 100vh;
+            box-sizing: border-box;
+            margin-left: 260px;
+            max-width: calc(100vw - 260px);
+        }
+        
+        .header-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+        }
+        
+        .week-navigation {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        
+            .nav-btn {
+      background: linear-gradient(135deg, #ffe85a, #f4d03f);
+      color: #333;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 8px rgba(255, 232, 90, 0.3);
+      height: 40px;
+      min-width: 120px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .nav-btn:hover {
+      background: linear-gradient(135deg, #f4d03f, #f1c40f);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(255, 232, 90, 0.4);
+    }
+        
+        .nav-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .week-display {
+            font-weight: 600;
+            color: #333;
+            min-width: 120px;
+            text-align: center;
+        }
+        
+            .current-week-btn {
+      background: linear-gradient(135deg, #28a745, #1e7e34) !important;
+      color: white;
+      box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3) !important;
+    }
+    
+    .current-week-btn:hover {
+      background: linear-gradient(135deg, #1e7e34, #155724) !important;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4) !important;
+    }
+        
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+        }
+        
+            .submit-btn {
+      background: linear-gradient(135deg, #667eea, #5a67d8);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 24px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+      height: 40px;
+      min-width: 120px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .submit-btn:hover {
+      background: linear-gradient(135deg, #5a67d8, #4c51bf);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+        
+        .back-btn {
+            background: #667eea;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 24px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            height: 40px;
+            min-width: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .back-btn:hover {
+            background: #5a67d8;
+        }
+        
+        .legend {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            border: 1px solid #e0e6ed;
+        }
+        
+            .weekly-grid {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(28, 167, 231, 0.1);
+      overflow: auto;
+      max-height: calc(100vh - 200px);
+      max-width: 100%;
+      box-sizing: border-box;
+      border: 1px solid rgba(28, 167, 231, 0.1);
+    }
+        
+        .schedule-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            margin: 0;
+            min-width: 800px;
+        }
+        
+        .schedule-table th,
+        .schedule-table td {
+            border: 1px solid #e0e6ed;
+            padding: 12px 8px;
+            text-align: center;
+            vertical-align: middle;
+        }
+        
+            .schedule-table th {
+      background: linear-gradient(135deg, #667eea, #5a67d8);
+      font-weight: 600;
+      color: white;
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+        
+        .time-column {
+            width: 80px;
+            position: sticky;
+            left: 0;
+            background: #f8f9fa;
+            z-index: 3;
+        }
+        
+        .day-column {
+            width: calc((100% - 80px) / 7);
+            line-height: 1.2;
+            padding: 8px 4px;
+        }
+        
+        .day-column br {
+            margin: 2px 0;
+        }
+        
+        .time-slot {
+            font-size: 0.9rem;
+            color: #666;
+            min-height: 40px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .time-slot:hover:not(.already-opened):not(.unavailable) {
+            background: #e3f2fd;
+        }
+        
+        .time-slot.selected {
+            background: #ffffff;
+            color: #333;
+            font-weight: 600;
+        }
+        
+        .time-slot.already-opened {
+            background: #e8f5e8;
+            color: #2d5a2d;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        
+        .time-slot.unavailable {
+            background: #f8f9fa;
+            color: #6c757d;
+            cursor: not-allowed;
+        }
+        
+        .notification {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-weight: 600;
+        }
+        
+        @media (max-width: 1200px) {
+            .remoed-sidebar {
+                width: 260px;
+                min-width: 260px;
+            }
+            .remoed-content {
+                margin-left: 260px;
+                max-width: calc(100vw - 260px);
+            }
+        }
+        
+        @media (max-width: 900px) {
+            .remoed-main {
+                flex-direction: column;
+            }
+            .remoed-sidebar {
+                width: 100%;
+                position: relative;
+                height: auto;
+            }
+            .remoed-content {
+                margin-left: 0;
+                max-width: 100vw;
+                padding: 20px 10px;
+            }
+            .weekly-grid {
+                max-height: 60vh;
+            }
+            .schedule-table {
+                min-width: 600px;
+            }
+        }
+    </style>
+</head>
+<body>
+  <div class="remoed-main">
+    <nav class="remoed-sidebar">
+      <div class="remoed-logo" style="height:100px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding-top:24px;">
+        <img src="remoed-logo.png" alt="RemoEdPH Logo" style="height:40px; width:auto; display:inline-block; vertical-align:middle;">
+        <span class="remoed-title" style="font-size:1.3rem; font-weight:700; color:#667eea; letter-spacing:1px;">RemoEdPH</span>
+      </div>
+      <div class="remoed-user" style="display:flex; flex-direction:column; align-items:center; margin-bottom:24px;">
+                        <div class="remoed-avatar" id="sidebar-avatar">
+                    <img id="profile-image" src="" alt="Profile" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: none;">
+                    <span id="avatar-text">K</span>
+                </div>
+        <span class="remoed-username" id="sidebar-email"></span>
+      </div>
+      <ul class="remoed-menu">
+        <li onclick="window.location.href='teacher-dashboard.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/></svg>Dashboard</li>
+        <li onclick="window.location.href='teacher-class-table.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M16 3v4M8 3v4"/></svg>Class Schedule</li>
+        <li class="active"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>Class Configuration</li>
+        <li onclick="window.location.href='device-check.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>Device Check</li>
+        <li onclick="window.location.href='teacher-service-fee.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 10c-4.41 0-8-1.79-8-4V6c0-2.21 3.59-4 8-4s8 1.79 8 4v8c0 2.21-3.59 4-8 4z"/></svg>Teaching Fee</li>
+        <li onclick="window.location.href='teacher-profile.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>Profile</li>
+        <li id="logout-nav" style="margin-top:auto; color:#e74c3c; cursor:pointer;"><svg fill="none" stroke="#e74c3c" stroke-width="2" viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7"/><path d="M3 12a9 9 0 0118 0 9 9 0 01-18 0z"/></svg>Logout</li>
+      </ul>
+    </nav>
+
+  <div class="remoed-content">
+    <div class="header">
+      <h1>Class Configuration</h1>
+    </div>
+
+    <div class="header-info">
+      <div class="info-item">
+        <span class="quota" id="available-slots-count">Calculating available slots...</span>
+      </div>
+      
+      <!-- Combined Navigation and Action Buttons Row -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+        <!-- Week Navigation -->
+        <div class="week-navigation" style="display: flex; align-items: center; gap: 12px;">
+          <button class="nav-btn" id="prev-week">← Previous Week</button>
+          <span class="week-display" id="week-display"></span>
+          <button class="nav-btn" id="next-week">Next Week →</button>
+          <button class="nav-btn today-btn" id="current-week" style="background: #28a745; color: white;">Today</button>
+        </div>
+        
+        <!-- Action Buttons -->
+        <div class="action-buttons" style="display: flex; gap: 8px;">
+          <button class="submit-btn" id="open-slots-btn" onclick="openSelectedSlots()" style="background: #28a745; color: white; padding: 8px 16px; font-size: 0.9rem;">🟢 Open Selected</button>
+          <button class="submit-btn" id="close-slots-btn" onclick="closeSelectedSlots()" style="background: #6c757d; color: white; padding: 8px 16px; font-size: 0.9rem;">⬜ Close Selected</button>
+          <button id="back-to-schedule-btn" class="back-btn" style="padding: 8px 16px; font-size: 0.9rem;">Back to Schedule</button>
+
+        </div>
+      </div>
+    </div>
+
+    <div style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 16px; border-radius: 12px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid rgba(0,0,0,0.08);">
+      <h4 style="margin: 0 0 12px 0; color: #495057; font-size: 1rem; font-weight: 600; display: flex; align-items: center; gap: 6px;">
+        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+        </svg>
+        Slot Legend
+      </h4>
+      <div style="display: flex; flex-wrap: nowrap; gap: 8px; font-size: 0.75rem; overflow-x: auto; padding-bottom: 4px;">
+        <div style="display: flex; align-items: center; gap: 4px; padding: 4px 6px; background: rgba(255,255,255,0.7); border-radius: 4px; border: 1px solid rgba(0,0,0,0.05); white-space: nowrap; min-width: fit-content;">
+          <div style="width: 14px; height: 14px; background: linear-gradient(135deg, #e8f5e8 0%, #d4edda 100%); border-radius: 3px; border: 1px solid #28a745; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #28a745; font-size: 8px;">✓</div>
+          <span style="font-weight: 500; color: #495057;">Open</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 4px; padding: 4px 6px; background: rgba(255,255,255,0.7); border-radius: 4px; border: 1px solid rgba(0,0,0,0.05); white-space: nowrap; min-width: fit-content;">
+          <div style="width: 14px; height: 14px; background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%); border-radius: 3px; border: 1px solid #6c757d; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #6c757d; font-size: 8px;">+</div>
+          <span style="font-weight: 500; color: #495057;">Available</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 4px; padding: 4px 6px; background: rgba(255,255,255,0.7); border-radius: 4px; border: 1px solid rgba(0,0,0,0.05); white-space: nowrap; min-width: fit-content;">
+          <div style="width: 14px; height: 14px; background: linear-gradient(135deg, #ff6b6b 0%, #dc3545 100%); border-radius: 3px; border: 1px solid #dc3545; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; font-size: 6px;">🔒</div>
+          <span style="font-weight: 500; color: #495057;">Booked</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 4px; padding: 4px 6px; background: rgba(255,255,255,0.7); border-radius: 4px; border: 1px solid rgba(0,0,0,0.05); white-space: nowrap; min-width: fit-content;">
+          <div style="width: 14px; height: 14px; background: linear-gradient(135deg, #6c757d 0%, #495057 100%); border-radius: 3px; border: 1px solid #495057; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; font-size: 6px;">⏰</div>
+          <span style="font-weight: 500; color: #495057;">Past</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 4px; padding: 4px 6px; background: rgba(255,255,255,0.7); border-radius: 4px; border: 1px solid rgba(0,0,0,0.05); white-space: nowrap; min-width: fit-content;">
+          <div style="width: 14px; height: 14px; background: linear-gradient(135deg, #17a2b8 0%, #138496 100%); border-radius: 3px; border: 1px solid #138496; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; font-size: 8px;">F</div>
+          <span style="font-weight: 500; color: #495057;">Finished</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 4px; padding: 4px 6px; background: rgba(255,255,255,0.7); border-radius: 4px; border: 1px solid rgba(0,0,0,0.05); white-space: nowrap; min-width: fit-content;">
+          <div style="width: 14px; height: 14px; background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%); border-radius: 3px; border: 1px solid #1e7e34; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; font-size: 8px;">R</div>
+          <span style="font-weight: 500; color: #495057;">Resolved</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 4px; padding: 4px 6px; background: rgba(255,255,255,0.7); border-radius: 4px; border: 1px solid rgba(0,0,0,0.05); white-space: nowrap; min-width: fit-content;">
+          <div style="width: 14px; height: 14px; background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%); border-radius: 3px; border: 1px solid #e0a800; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; font-size: 8px;">A</div>
+          <span style="font-weight: 500; color: #495057;">Absent</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 4px; padding: 4px 6px; background: rgba(255,255,255,0.7); border-radius: 4px; border: 1px solid rgba(0,0,0,0.05); white-space: nowrap; min-width: fit-content;">
+          <div style="width: 14px; height: 14px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 3px; border: 1px solid #6c757d; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #6c757d; font-size: 8px;">U</div>
+          <span style="font-weight: 500; color: #495057;">Unbooked</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="weekly-grid">
+      <table class="schedule-table">
+        <thead>
+          <tr id="day-headers-row">
+            <th class="time-column">Time</th>
+          </tr>
+        </thead>
+        <tbody id="time-slots-grid">
+        </tbody>
+      </table>
+      
+
+    </div>
+  </div>
+  <script src="avatar-helper.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+
+    // Timezone alignment utility
+    function getLocalDateString(date) {
+      // Ensure we get the date in the user's local timezone
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+    
+    function getWeekStartDate(date) {
+      // Get Monday of the week containing the given date
+      const dayOfWeek = date.getDay();
+      const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Sunday = 0, Monday = 1, etc.
+      const monday = new Date(date);
+      monday.setDate(date.getDate() - daysToMonday);
+      return monday;
+    }
+    
+    // Role-based access control
+    const userType = localStorage.getItem('userType');
+    if (userType !== 'teacher') {
+      alert('Access denied. This page is for teachers only.');
+      window.location.href = 'index.html';
+    }
+    
+    // Get user info from localStorage
+    const username = localStorage.getItem('remoedUsername') || 'Teacher';
+    const teacherId = localStorage.getItem('teacherId');
+    
+    console.log('=== TEACHER INFO ===');
+    console.log('Username:', username);
+    console.log('Teacher ID:', teacherId);
+    console.log('=== END TEACHER INFO ===');
+    
+  // Initialize avatar fallback (initials) and sidebar email
+  setAvatar({ imageUrl: '', displayName: username, imgSelector: '#profile-image', textSelector: '#avatar-text' });
+  document.getElementById('sidebar-email').textContent = 'Loading...';
+    
+  // Load profile picture if available (will call setAvatar on success)
+  if (teacherId) {
+    loadProfilePicture(teacherId);
+  }
+    
+    // Logout functionality
+    document.getElementById('logout-nav').onclick = function() {
+      localStorage.clear();
+      window.location.href = 'teacher-login.html';
+    };
+
+    let selectedSlots = new Set();
+    // Use current date instead of hardcoded date
+    let currentWeek = new Date();
+
+    // Count available slots (only slots marked as "Open")
+    function updateAvailableSlotsCount() {
+      const availableSlots = document.querySelectorAll('.time-slot.already-opened');
+      const count = availableSlots.length;
+      const countElement = document.getElementById('available-slots-count');
+      countElement.textContent = `${count} available slots for this week`;
+    }
+    
+
+
+    // Initialize the weekly grid
+    async function initializeWeeklyGrid() {
+      console.log('Initializing weekly grid...');
+      generateDayHeaders();
+      await loadExistingSlots(); // Load data first
+      generateTimeSlots(); // Then generate slots with the data
+      
+      // Add a small delay to ensure DOM is ready
+      setTimeout(() => {
+        applyExistingSlots(); // Apply the loaded data to the generated slots
+      updateAvailableSlotsCount();
+        console.log('Weekly grid initialization complete');
+      }, 100);
+    }
+
+    // Generate day headers for the current week
+    function generateDayHeaders() {
+      const dayHeadersRow = document.getElementById('day-headers-row');
+              const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']; // Monday first
+      const monthNames = ["January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+      ];
+      
+      // Clear existing day headers, but keep the 'Time' th
+      while (dayHeadersRow.children.length > 1) {
+        dayHeadersRow.removeChild(dayHeadersRow.lastChild);
+      }
+      
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(currentWeek);
+          // Calculate Monday as the start of the week (Monday = 1, Sunday = 0)
+        const dayOfWeek = currentWeek.getDay();
+          const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // If Sunday, go back 6 days; if Monday, go back 0 days, etc.
+          date.setDate(currentWeek.getDate() - daysToMonday + i);
+        
+        const dayTh = document.createElement('th');
+        dayTh.className = 'day-column';
+        dayTh.innerHTML = `${days[i]}<br>${monthNames[date.getMonth()]} ${date.getDate()}`;
+        dayTh.dataset.date = getLocalDateString(date);
+        
+        dayHeadersRow.appendChild(dayTh);
+      }
+    }
+
+    // Generate time slots (30-minute intervals from 01:00 to 24:00) - 24-hour format
+    function generateTimeSlots() {
+      console.log('Generating time slots...');
+      console.log('Current week for time slots:', currentWeek.toISOString());
+      const gridBody = document.getElementById('time-slots-grid');
+      if (!gridBody) {
+        console.error('time-slots-grid element not found!');
+        return;
+      }
+      gridBody.innerHTML = '';
+      
+      const startHour = 1;
+      const endHour = 24;
+      
+      for (let hour = startHour; hour < endHour; hour++) {
+        for (let minute = 0; minute < 60; minute += 30) {
+          const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+          
+          const timeRow = document.createElement('tr');
+          
+          // Time column
+          const timeColumn = document.createElement('td');
+          timeColumn.className = 'time-slot';
+          timeColumn.textContent = formatTime24Hour(timeString);
+          timeRow.appendChild(timeColumn);
+          
+                    // Day columns
+                  for (let day = 0; day < 7; day++) {
+          const date = new Date(currentWeek);
+          // Calculate Monday as the start of the week (Monday = 1, Sunday = 0)
+          const dayOfWeek = currentWeek.getDay();
+          const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // If Sunday, go back 6 days; if Monday, go back 0 days, etc.
+          date.setDate(currentWeek.getDate() - daysToMonday + day);
+            const dateString = getLocalDateString(date);
+            
+            const slot = document.createElement('td');
+            slot.className = 'time-slot';
+            slot.dataset.date = dateString;
+            slot.dataset.time = timeString;
+            
+            // Debug: Log slot creation for August 6
+            if (dateString === '2025-08-06' && (timeString === '09:00' || timeString === '09:30' || timeString === '10:00')) {
+              console.log('Created slot element for:', dateString, timeString);
+            }
+            
+            // Check if slot is in the past or unavailable
+            const slotDateTime = new Date(`${dateString}T${timeString}:00`);
+            const now = new Date();
+            
+            // Check if the specific time has passed today
+            const currentDate = now.toISOString().split('T')[0];
+            const currentTime = now.toTimeString().split(' ')[0].substring(0, 5); // HH:MM format
+            
+            let isTimePassed = false;
+            if (dateString === currentDate) {
+                // If it's today, check if the time has passed
+                isTimePassed = timeString <= currentTime;
+            }
+            
+            // Check if this slot is booked (will be marked by loadExistingSlots)
+            const slotId = `${dateString}-${timeString}`;
+            if (window.bookedSlots && window.bookedSlots.has(slotId)) {
+              // Check if the booked slot's time has passed
+              if (isTimePassed) {
+                // If time has passed, show as "Past" instead of "BOOKED"
+                slot.innerHTML = 'Past';
+                slot.style.background = '#f8f9fa';
+                slot.style.color = '#6c757d';
+                slot.style.fontWeight = 'normal';
+                slot.style.fontSize = '0.8rem';
+                slot.title = 'Past slot - time has passed';
+                slot.style.cursor = 'not-allowed';
+                slot.onclick = null;
+              } else {
+                // If time hasn't passed, show as "BOOKED"
+                slot.innerHTML = 'BOOKED';
+                slot.style.background = '#ff6b6b';
+                slot.style.color = 'white';
+                slot.style.fontWeight = 'bold';
+                slot.style.fontSize = '0.8rem';
+                slot.title = 'This slot is booked';
+                slot.style.cursor = 'not-allowed';
+                slot.onclick = null;
+              }
+            } else {
+              // Check if slot is strictly in the past (not current day) or time has passed today
+              const slotDate = new Date(dateString);
+              const today = new Date();
+              today.setHours(0, 0, 0, 0); // Start of today
+              
+              if (slotDate < today || isTimePassed) {
+                // Mark as unavailable if the slot is strictly in the past or time has passed today
+                slot.classList.add('unavailable');
+                slot.style.background = '#d3d3d3';
+                slot.style.color = 'white';
+                slot.style.fontWeight = 'bold';
+                slot.style.fontSize = '0.8rem';
+                slot.title = isTimePassed ? 'Past slot - time has passed' : 'Past slot - not available';
+                slot.style.cursor = 'not-allowed';
+                slot.onclick = null; // Make past slots non-clickable
+              }
+            }
+            
+            // Check if there's a past class (finished/absent/resolved) to show - regardless of time
+            if (window.pastClasses && window.pastClasses.has(slotId)) {
+              const pastClass = window.pastClasses.get(slotId);
+              
+              // Check for resolved issue first (highest priority)
+              if (pastClass.hasResolvedIssue) {
+                slot.innerHTML = 'R';
+                slot.title = 'Resolved Issue (Locked)';
+                slot.style.fontWeight = 'bold';
+                slot.style.fontSize = '0.9rem';
+                slot.style.background = '#28a745'; // Green for resolved issue
+                slot.style.color = 'white';
+                slot.style.cursor = 'not-allowed';
+                slot.onclick = null; // Resolved issue classes cannot be changed
+              } else if (pastClass.status === 'completed') {
+                slot.innerHTML = 'F';
+                slot.title = 'Class Finished (Locked)';
+                slot.style.fontWeight = 'bold';
+                slot.style.fontSize = '0.9rem';
+                slot.style.background = '#28a745'; // Green for finished
+                slot.style.color = 'white';
+                slot.style.cursor = 'not-allowed';
+                slot.onclick = null; // Finished classes cannot be changed
+              } else {
+                // Absent classes (gray, can be clicked to change to finished)
+                slot.innerHTML = 'A';
+                slot.title = 'Student Absent';
+                slot.style.fontWeight = 'bold';
+                slot.style.fontSize = '0.9rem';
+                slot.style.background = '#d3d3d3';
+                slot.style.color = 'white';
+                slot.style.cursor = 'pointer';
+                // Click handler will be added later in renderPastClasses
+              }
+            } else if (slotDateTime > now) {
+              // Add click listener for all future slots (both available and already opened)
+              // loadExistingSlots will mark already opened slots, but they should still be clickable
+              slot.onclick = () => {
+                console.log('🔍 Direct onclick triggered for slot:', `${dateString}-${timeString}`);
+                toggleSlot(slot);
+              };
+            }
+            
+            timeRow.appendChild(slot);
+          }
+          
+          gridBody.appendChild(timeRow);
+        }
+      }
+    }
+
+    function formatTime24Hour(timeString) {
+      const [hourStr, minuteStr] = timeString.split(':');
+      const hour = parseInt(hourStr, 10);
+      const minute = minuteStr.padStart(2, '0');
+      return `${hour.toString().padStart(2, '0')}:${minute}`;
+    }
+
+    // Toggle slot selection
+    function toggleSlot(slot) {
+      console.log('🔍 toggleSlot function called!');
+      console.log('🔍 Slot element:', slot);
+      console.log('🔍 Slot dataset:', slot.dataset);
+      
+      if (!slot || !slot.dataset || !slot.dataset.date || !slot.dataset.time) {
+        console.error('❌ Invalid slot element or missing dataset');
+        return;
+      }
+      
+      const slotKey = `${slot.dataset.date}-${slot.dataset.time}`;
+      
+      console.log('=== TOGGLE SLOT DEBUG ===');
+      console.log('Toggling slot:', slotKey);
+      console.log('Current selectedSlots before:', Array.from(selectedSlots));
+      console.log('Slot element:', slot);
+      console.log('Slot dataset:', slot.dataset);
+      
+      // Check if this slot is in the past - if so, don't allow toggling
+      const slotDate = new Date(slot.dataset.date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Start of today
+      
+      // Check if the specific time has passed today
+      const now = new Date();
+      const currentDate = now.toISOString().split('T')[0];
+      const currentTime = now.toTimeString().split(' ')[0].substring(0, 5); // HH:MM format
+      
+      let isTimePassed = false;
+      if (slot.dataset.date === currentDate) {
+          // If it's today, check if the time has passed
+          isTimePassed = slot.dataset.time <= currentTime;
+      }
+      
+      if (slotDate < today || isTimePassed) {
+        console.log('Cannot toggle past slot:', slotKey, 'isTimePassed:', isTimePassed);
+        return;
+      }
+      
+      // Check if this slot is booked - if so, don't allow toggling
+      if (window.bookedSlots && window.bookedSlots.has(slotKey)) {
+        console.log('Cannot toggle booked slot:', slotKey);
+        return;
+      }
+      
+      // Check if this is a super light green "Open" slot (already opened) - be more aggressive
+      const isAlreadyOpened = slot.classList.contains('already-opened') || 
+                             slot.textContent === 'Open' ||
+                             slot.textContent.trim() === 'Open' ||
+                             (slot.style.background === 'rgb(232, 245, 232)' || slot.style.background === '#e8f5e8') ||
+                             slot.style.background.includes('232, 245, 232') ||
+                             slot.style.background.includes('e8f5e8') ||
+                             slot.style.background.includes('e8f5e8');
+      
+      console.log('Slot background check:', {
+        background: slot.style.background,
+        includesE8F5E8: slot.style.background.includes('e8f5e8'),
+        isAlreadyOpened: isAlreadyOpened
+      });
+      
+      console.log('Slot check:', {
+        slotKey: slotKey,
+        hasAlreadyOpenedClass: slot.classList.contains('already-opened'),
+        textContent: slot.textContent,
+        background: slot.style.background,
+        isAlreadyOpened: isAlreadyOpened,
+        hasSelectedClass: slot.classList.contains('selected')
+      });
+      
+      if (isAlreadyOpened) {
+        // This is a super light green "Open" slot being clicked - select it for closing
+        console.log('Selecting already opened slot for closing:', slotKey);
+        selectedSlots.add(slotKey);
+        slot.classList.add('selected');
+        
+        // Add visual feedback to show it's selected (light blue background)
+        slot.style.background = '#e3f2fd';
+        slot.style.color = '#1976d2';
+        slot.style.fontWeight = 'bold';
+        slot.textContent = 'Selected';
+        
+        console.log('Selected slots after adding opened slot:', Array.from(selectedSlots));
+      } else if (selectedSlots.has(slotKey)) {
+        // Unselect a slot that was previously selected
+        console.log('Unselecting slot:', slotKey);
+        selectedSlots.delete(slotKey);
+        slot.classList.remove('selected');
+        
+        // Restore original state
+        if (slot.classList.contains('already-opened')) {
+          // Restore to opened state
+          slot.style.background = '#e8f5e8';
+          slot.style.color = '#2d5a2d';
+          slot.style.fontWeight = 'bold';
+          slot.textContent = 'Open';
+      } else {
+          // Restore to available state
+          slot.style.background = '';
+          slot.style.color = '';
+          slot.style.fontWeight = '';
+          slot.textContent = '';
+        }
+      } else {
+        // Select a white slot for opening
+        console.log('Selecting available slot for opening:', slotKey);
+        console.log('Slot data:', {
+          date: slot.dataset.date,
+          time: slot.dataset.time,
+          slotKey: slotKey
+        });
+        selectedSlots.add(slotKey);
+        slot.classList.add('selected');
+        
+        // Add visual feedback to show it's selected (light blue background)
+        slot.style.background = '#e3f2fd';
+        slot.style.color = '#1976d2';
+        slot.style.fontWeight = 'bold';
+        slot.textContent = 'Selected';
+        
+        console.log('Selected slots after adding available slot:', Array.from(selectedSlots));
+      }
+      
+      console.log('Final selectedSlots:', Array.from(selectedSlots));
+      console.log('Selected slots count:', selectedSlots.size);
+      console.log('=== END TOGGLE SLOT DEBUG ===');
+      
+      updateSubmitButton();
+      updateAvailableSlotsCount(); // Update count when slots are toggled
+    }
+
+    // Update button states
+    function updateSubmitButton() {
+      const openBtn = document.getElementById('open-slots-btn');
+      const closeBtn = document.getElementById('close-slots-btn');
+      
+      // Enable/disable buttons based on selection
+      openBtn.disabled = selectedSlots.size === 0;
+      closeBtn.disabled = selectedSlots.size === 0;
+    }
+
+    // Toggle class status (A to F only) for past classes
+    // Note: Finished (F/completed) classes cannot be changed
+    async function toggleClassStatus(slot, slotId, pastClass) {
+      try {
+        // Prevent changing finished (completed) classes
+        if (pastClass.status === 'completed') {
+          console.log('⚠️ Cannot change finished class status');
+          return; // Exit early - finished classes are locked
+        }
+        
+        const lastDashIndex = slotId.lastIndexOf('-');
+        const date = slotId.substring(0, lastDashIndex);
+        const time = slotId.substring(lastDashIndex + 1);
+        
+        // Only allow changing from 'absent' to 'completed'
+        // This should not happen for finished classes, but adding safety check
+        if (pastClass.status !== 'absent') {
+          console.log('⚠️ Can only toggle absent classes');
+          return;
+        }
+        
+        const newStatus = 'completed';
+        const newDisplay = 'F';
+        const newTitle = 'Class Finished';
+        
+        // Update the display immediately
+        slot.innerHTML = newDisplay;
+        slot.title = newTitle;
+        
+        // Update styling for finished class (green background)
+        slot.style.background = '#28a745';
+        slot.style.color = 'white';
+        slot.style.cursor = 'not-allowed';
+        
+        // Update the stored data
+        window.pastClasses.set(slotId, {
+          ...pastClass,
+          status: newStatus
+        });
+        
+        // Update in database
+        const token = localStorage.getItem('token');
+        const response = await fetch('/api/teacher/update-class-status', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            date: date,
+            time: time,
+            status: newStatus
+          })
+        });
+        
+        if (response.ok) {
+          console.log(`Updated class status to ${newStatus} for ${date} ${time}`);
+          // Remove click handler since it's now finished and locked
+          slot.onclick = null;
+          // Trigger a refresh of the service fee page if it's open
+          if (window.opener && window.opener.refreshCompletedClasses) {
+            window.opener.refreshCompletedClasses();
+          }
+        } else {
+          console.error('Failed to update class status');
+          // Revert the display if update failed
+          slot.innerHTML = 'A';
+          slot.title = 'Student Absent';
+          slot.style.background = '#d3d3d3';
+          window.pastClasses.set(slotId, pastClass);
+        }
+      } catch (error) {
+        console.error('Error toggling class status:', error);
+        // Revert the display if error occurred
+        slot.innerHTML = pastClass.status === 'completed' ? 'F' : 'A';
+        slot.title = pastClass.status === 'completed' ? 'Class Finished' : 'Student Absent';
+        window.pastClasses.set(slotId, pastClass);
+      }
+    }
+
+    // Load existing slots and booked slots from backend - ALWAYS FRESH FROM DATABASE
+    async function loadExistingSlots() {
+      if (!teacherId) {
+        console.error('No teacherId available');
+        return;
+      }
+      
+      try {
+        const weekStart = getWeekStartDate(currentWeek);
+        const weekString = getLocalDateString(weekStart);
+        
+        console.log('🔄 Loading FRESH slots for week:', weekString, 'teacherId:', teacherId);
+        console.log('🔄 Current week object:', currentWeek.toISOString());
+        console.log('🔄 Week start date:', weekStart.toISOString());
+        
+        // Force fresh data with ULTRA AGGRESSIVE cache-busting parameters
+        const timestamp = Date.now();
+        const random = Math.random();
+        const cacheBuster = `t=${timestamp}&v=${random}&fresh=true&nocache=${timestamp}&force=${timestamp}&clear=${random}&update=${Date.now()}&refresh=${Math.random()}&buster=${Math.random()}&time=${Date.now()}`;
+        
+        console.log('🔄 Loading slots for week:', weekString);
+        console.log('🔄 Teacher ID:', teacherId);
+        console.log('🔄 Cache buster:', cacheBuster);
+        
+        // Load all slots (both available and unavailable) for teacher management
+        const response = await fetch(`/api/teacher/slots?teacherId=${teacherId}&week=${weekString}&allSlots=true&${cacheBuster}`, {
+          method: 'GET',
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-Cache-Buster': timestamp.toString(),
+            'X-Force-Refresh': 'true'
+          }
+        });
+        console.log('🔄 Slots response status:', response.status);
+        
+        if (!response.ok) {
+          console.error('❌ Fetch request failed with status:', response.status);
+          const errorText = await response.text();
+          console.error('❌ Error response:', errorText);
+          alert('Error loading slots: Server returned status ' + response.status);
+          return;
+        }
+        
+        const data = await response.json();
+        console.log('🔄 Loaded FRESH slots data:', data);
+        
+        // Store existing slots for later application - SEPARATE AVAILABLE AND UNAVAILABLE
+        window.existingSlots = new Set();
+        window.availableSlots = new Set();
+        window.unavailableSlots = new Set();
+        
+        if (data.slots) {
+          console.log('🔄 Found', data.slots.length, 'existing slots from database');
+          data.slots.forEach(slot => {
+            const slotKey = `${slot.date}-${slot.time}`;
+            window.existingSlots.add(slotKey);
+            
+            // Separate available and unavailable slots
+            if (slot.available === true) {
+              window.availableSlots.add(slotKey);
+            } else {
+              window.unavailableSlots.add(slotKey);
+            }
+          });
+          
+          console.log('🔄 Available slots count:', window.availableSlots.size);
+          console.log('🔄 Unavailable slots count:', window.unavailableSlots.size);
+        } else {
+          console.log('🔄 No slots data found in database');
+        }
+        
+        // Load booked slots with ULTRA AGGRESSIVE cache-busting
+        const bookingsResponse = await fetch(`/api/teacher/classes?teacherId=${teacherId}&week=${weekString}&${cacheBuster}`, {
+          method: 'GET',
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-Cache-Buster': timestamp.toString(),
+            'X-Force-Refresh': 'true'
+          }
+        });
+        console.log('🔄 Bookings response status:', bookingsResponse.status);
+        
+        if (!bookingsResponse.ok) {
+          console.error('❌ Fetch bookings request failed with status:', bookingsResponse.status);
+          const errorText = await bookingsResponse.text();
+          console.error('❌ Error response:', errorText);
+          // Don't return here, just log the error and continue with empty bookings
+          window.bookedSlots = new Set();
+          window.pastClasses = new Map();
+          return;
+        }
+        
+        const bookingsData = await bookingsResponse.json();
+        
+        // Store booked slots and past classes for display
+        window.bookedSlots = new Set();
+        window.pastClasses = new Map();
+        
+        // Handle both 'bookings' and 'classes' response formats
+        const bookings = bookingsData.bookings || bookingsData.classes || [];
+        
+        if (bookings && bookings.length > 0) {
+          bookings.forEach(booking => {
+            const slotId = booking.date + '-' + booking.time;
+            
+            // Check if this is a past class (finished or absent)
+            const bookingDateTime = new Date(`${booking.date}T${booking.time}:00`);
+            const now = new Date();
+            
+            if (bookingDateTime <= now && (booking.status === 'completed' || booking.status === 'absent')) {
+              // Store past class information
+              window.pastClasses.set(slotId, {
+                status: booking.status,
+                studentName: booking.studentName || booking.studentId?.firstName || booking.studentId?.username || 'Unknown',
+                hasResolvedIssue: booking.hasResolvedIssue || false
+              });
+            } else if (booking.status === 'confirmed' || booking.status === 'pending') {
+              // Store as booked slot
+              window.bookedSlots.add(slotId);
+            }
+          });
+        }
+        
+        console.log('🔄 Loaded existing slots from database:', Array.from(window.existingSlots || []));
+        console.log('🔄 Loaded booked slots from database:', Array.from(window.bookedSlots || []));
+        console.log('🔄 Loaded past classes from database:', Array.from(window.pastClasses || []));
+        
+      } catch (error) {
+        console.error('❌ Error loading existing slots:', error);
+        alert('Error loading slots: ' + error.message);
+      }
+    }
+
+            // Apply existing slots data to the generated slots
+        function applyExistingSlots() {
+          console.log('🔄 applyExistingSlots called');
+          console.log('🔄 window.existingSlots exists:', !!window.existingSlots);
+          console.log('🔄 window.availableSlots exists:', !!window.availableSlots);
+          console.log('🔄 window.unavailableSlots exists:', !!window.unavailableSlots);
+          
+          if (!window.existingSlots) {
+            console.log('No existing slots to apply');
+            return;
+          }
+      
+      console.log('Applying existing slots to DOM elements...');
+      console.log('Current week:', currentWeek.toISOString());
+      console.log('Available slots to apply:', Array.from(window.availableSlots || []));
+      console.log('Unavailable slots to apply:', Array.from(window.unavailableSlots || []));
+      
+      let availableAppliedCount = 0;
+      let unavailableAppliedCount = 0;
+      
+              // Apply AVAILABLE slots (mark as "Open")
+        if (window.availableSlots) {
+          window.availableSlots.forEach(slotKey => {
+          const lastDashIndex = slotKey.lastIndexOf('-');
+          const date = slotKey.substring(0, lastDashIndex);
+          const time = slotKey.substring(lastDashIndex + 1);
+          
+          // Use a more direct approach to find the slot element
+          const slotElement = document.querySelector(`td[data-date="${date}"][data-time="${time}"]`);
+          
+          if (!slotElement) {
+            console.log('❌ Slot element not found for:', date, time);
+            console.log('🔍 Available slots in DOM:', document.querySelectorAll('td[data-date][data-time]').length);
+            // Log a few available slots for debugging
+            const availableSlots = document.querySelectorAll('td[data-date][data-time]');
+            for (let i = 0; i < Math.min(5, availableSlots.length); i++) {
+              console.log('🔍 Available slot:', availableSlots[i].dataset.date, availableSlots[i].dataset.time);
+            }
+            return; // Use return instead of continue since we're in a forEach callback
+          }
+              
+          if (slotElement) {
+            // Check if this slot is in the past (strictly past dates, not current day)
+            const slotDate = new Date(date);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0); // Start of today
+            
+            console.log(`🔍 Date comparison for ${date}: slotDate=${slotDate.toISOString()}, today=${today.toISOString()}, isPast=${slotDate < today}`);
+            
+            // Check if the specific time has passed today
+            const now = new Date();
+            const currentDate = now.toISOString().split('T')[0];
+            const currentTime = now.toTimeString().split(' ')[0].substring(0, 5); // HH:MM format
+            
+            let isTimePassed = false;
+            if (date === currentDate) {
+                // If it's today, check if the time has passed
+                isTimePassed = time <= currentTime;
+            }
+            
+            if (slotDate < today || isTimePassed) {
+              // Mark past open slots as "Unbooked" instead of "Open"
+              slotElement.classList.add('unbooked');
+              slotElement.style.background = '#f8f9fa';
+              slotElement.style.color = '#6c757d';
+              slotElement.style.fontWeight = 'normal';
+              slotElement.textContent = isTimePassed ? 'Past' : 'Unbooked';
+              slotElement.title = isTimePassed ? 'Past slot - time has passed' : 'Past slot - no longer available for booking';
+              slotElement.style.cursor = 'default';
+              slotElement.onclick = null; // Make past slots non-clickable
+              console.log('✅ Applied unbooked slot (past):', date, time);
+            } else {
+              // Mark as already opened (super light green) for current/future dates
+              slotElement.classList.add('already-opened');
+              slotElement.style.background = '#e8f5e8';
+              slotElement.style.color = '#2d5a2d';
+              slotElement.style.fontWeight = 'bold';
+              slotElement.textContent = 'Open';
+              // Remove any existing click listeners and add new one
+              slotElement.onclick = () => {
+                console.log('🔍 Open slot onclick triggered for:', date, time);
+                toggleSlot(slotElement);
+              };
+              console.log('✅ Applied open slot:', date, time, 'Background:', slotElement.style.background);
+            }
+            availableAppliedCount++;
+          } else {
+            console.log('❌ Slot element not found for:', date, time);
+          }
+        });
+      }
+      
+      // Apply UNAVAILABLE slots (mark as "Closed" - white background)
+      if (window.unavailableSlots) {
+        window.unavailableSlots.forEach(slotKey => {
+          const lastDashIndex = slotKey.lastIndexOf('-');
+          const date = slotKey.substring(0, lastDashIndex);
+          const time = slotKey.substring(lastDashIndex + 1);
+          
+          // Use a more direct approach to find the slot element
+          const slotElement = document.querySelector(`td[data-date="${date}"][data-time="${time}"]`);
+          
+          if (!slotElement) {
+            console.log('❌ Unavailable slot element not found for:', date, time);
+            return; // Use return instead of continue since we're in a forEach callback
+          }
+          
+          if (slotElement) {
+            // Mark as closed (white background) - available to open
+            slotElement.classList.add('closed-slot');
+            slotElement.style.background = '#ffffff';
+            slotElement.style.color = '#333333';
+            slotElement.style.fontWeight = 'normal';
+            slotElement.textContent = '';
+            // Remove any existing click listeners and add new one
+            slotElement.onclick = () => {
+              console.log('🔍 Closed slot onclick triggered for:', date, time);
+              toggleSlot(slotElement);
+            };
+            unavailableAppliedCount++;
+          }
+        });
+      }
+      
+      // Also apply booked slots and past classes
+      applyBookedAndPastSlots();
+      
+      // Ensure all future slots have click handlers
+      ensureAllFutureSlotsHaveClickHandlers();
+        
+        updateSubmitButton();
+      updateAvailableSlotsCount();
+    }
+    
+    // Ensure all future slots have click handlers
+    function ensureAllFutureSlotsHaveClickHandlers() {
+      console.log('🔍 Ensuring all future slots have click handlers...');
+      
+      const allSlots = document.querySelectorAll('td[data-date][data-time]');
+      const now = new Date();
+      
+      allSlots.forEach(slot => {
+        const slotDateTime = new Date(`${slot.dataset.date}T${slot.dataset.time}:00`);
+        
+        // Add click handlers to future slots that don't already have them
+        // Allow current day slots too (within 24 hours)
+        const isCurrentOrFuture = slotDateTime >= new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        if (isCurrentOrFuture && !slot.onclick && !slot.hasAttribute('data-click-handler')) {
+          // Check if slot is not booked, not past class, and not unavailable
+          const slotKey = `${slot.dataset.date}-${slot.dataset.time}`;
+          const isBooked = window.bookedSlots && window.bookedSlots.has(slotKey);
+          const isPastClass = window.pastClasses && window.pastClasses.has(slotKey);
+          const isUnavailable = slot.classList.contains('unavailable');
+          
+          if (!isBooked && !isPastClass && !isUnavailable) {
+            slot.onclick = () => {
+              console.log('🔍 Future slot onclick triggered for:', slotKey);
+              toggleSlot(slot);
+            };
+            slot.setAttribute('data-click-handler', 'true');
+            console.log('✅ Added click handler to slot:', slotKey);
+          }
+        }
+      });
+    }
+    
+    // Apply booked slots and past classes to the DOM
+    function applyBookedAndPastSlots() {
+      
+      // Apply booked slots (red)
+      if (window.bookedSlots) {
+        window.bookedSlots.forEach(slotKey => {
+          const lastDashIndex = slotKey.lastIndexOf('-');
+          const date = slotKey.substring(0, lastDashIndex);
+          const time = slotKey.substring(lastDashIndex + 1);
+          
+          // Use a more direct approach to find the slot element
+          const slotElement = document.querySelector(`td[data-date="${date}"][data-time="${time}"]`);
+          
+          if (!slotElement) {
+            console.log('❌ Booked slot element not found for:', date, time);
+            return; // Use return instead of continue since we're in a forEach callback
+          }
+          
+          if (slotElement) {
+            console.log('Found booked slot element:', date, time);
+            
+            // Check if the specific time has passed today
+            const now = new Date();
+            const currentDate = now.toISOString().split('T')[0];
+            const currentTime = now.toTimeString().split(' ')[0].substring(0, 5); // HH:MM format
+            
+            let isTimePassed = false;
+            if (date === currentDate) {
+                // If it's today, check if the time has passed
+                isTimePassed = time <= currentTime;
+            }
+            
+            if (isTimePassed) {
+              // If time has passed, show as "Past" instead of "BOOKED"
+              slotElement.innerHTML = 'Past';
+              slotElement.style.background = '#f8f9fa';
+              slotElement.style.color = '#6c757d';
+              slotElement.style.fontWeight = 'normal';
+              slotElement.style.fontSize = '0.8rem';
+              slotElement.title = 'Past slot - time has passed';
+              slotElement.style.cursor = 'not-allowed';
+              slotElement.onclick = null;
+              console.log('✅ Applied past slot (time passed):', date, time);
+            } else {
+              // If time hasn't passed, show as "BOOKED"
+              slotElement.innerHTML = 'BOOKED';
+              slotElement.style.background = '#ff6b6b';
+              slotElement.style.color = 'white';
+              slotElement.style.fontWeight = 'bold';
+              slotElement.style.fontSize = '0.8rem';
+              slotElement.title = 'This slot is booked';
+              slotElement.style.cursor = 'not-allowed';
+              slotElement.onclick = null;
+              console.log('✅ Applied booked slot:', date, time);
+            }
+          }
+        });
+      }
+      
+      // Apply past classes (F/A)
+      if (window.pastClasses) {
+        window.pastClasses.forEach((pastClass, slotKey) => {
+          const lastDashIndex = slotKey.lastIndexOf('-');
+          const date = slotKey.substring(0, lastDashIndex);
+          const time = slotKey.substring(lastDashIndex + 1);
+          
+          // Use a more direct approach to find the slot element
+          const slotElement = document.querySelector(`td[data-date="${date}"][data-time="${time}"]`);
+          
+          if (!slotElement) {
+            console.log('❌ Past class element not found for:', date, time);
+            return; // Use return instead of continue since we're in a forEach callback
+          }
+          
+          if (slotElement) {
+            console.log('Found past class element:', date, time, pastClass.status, 'hasResolvedIssue:', pastClass.hasResolvedIssue);
+            
+            // Check for resolved issue first (highest priority)
+            if (pastClass.hasResolvedIssue) {
+              slotElement.innerHTML = 'R';
+              slotElement.title = 'Resolved Issue (Locked)';
+              slotElement.style.fontWeight = 'bold';
+              slotElement.style.fontSize = '0.9rem';
+              slotElement.style.background = '#28a745'; // Green for resolved issue
+              slotElement.style.color = 'white';
+              slotElement.style.cursor = 'not-allowed';
+              slotElement.onclick = null; // Resolved issue classes cannot be changed
+            } else if (pastClass.status === 'completed') {
+              slotElement.innerHTML = 'F';
+              slotElement.title = 'Class Finished (Locked)';
+              slotElement.style.fontWeight = 'bold';
+              slotElement.style.fontSize = '0.9rem';
+              slotElement.style.background = '#28a745'; // Green for finished
+              slotElement.style.color = 'white';
+              slotElement.style.cursor = 'not-allowed';
+              slotElement.onclick = null; // Finished classes cannot be changed
+            } else {
+              // Absent classes (gray, can be clicked to change to finished)
+              slotElement.innerHTML = 'A';
+              slotElement.title = 'Student Absent';
+              slotElement.style.fontWeight = 'bold';
+              slotElement.style.fontSize = '0.9rem';
+              slotElement.style.background = '#d3d3d3';
+              slotElement.style.color = 'white';
+              slotElement.style.cursor = 'pointer';
+              // Only add click handler for absent classes (not finished)
+              slotElement.addEventListener('click', () => toggleClassStatus(slotElement, slotKey, pastClass));
+            }
+          }
+        });
+      }
+    }
+
+    // Open selected slots to backend
+    async function openSelectedSlots() {
+      if (!teacherId) return;
+      
+      console.log('=== OPEN SELECTED SLOTS DEBUG ===');
+      console.log('Selected slots count:', selectedSlots.size);
+      console.log('Selected slots:', Array.from(selectedSlots));
+      
+      const openBtn = document.getElementById('open-slots-btn');
+      openBtn.disabled = true;
+      openBtn.textContent = 'Opening...';
+      
+      try {
+        if (selectedSlots.size === 0) {
+          console.log('No slots selected - showing error');
+          alert('Please select slots to open first!');
+          return;
+        }
+        
+        // Get current week
+        const weekStart = getWeekStartDate(currentWeek);
+        const weekString = getLocalDateString(weekStart);
+        
+        // Convert selected slots to array
+        const selectedSlotsArray = Array.from(selectedSlots).map(slotKey => {
+          const lastDashIndex = slotKey.lastIndexOf('-');
+          const date = slotKey.substring(0, lastDashIndex);
+          const time = slotKey.substring(lastDashIndex + 1);
+          return { date, time };
+        });
+        
+        console.log('=== OPENING SLOTS ===');
+        console.log('Selected slots to open:', selectedSlotsArray);
+        console.log('Teacher ID:', teacherId);
+        
+        // Get existing slots to combine with new ones - ULTRA AGGRESSIVE CACHE BUSTING
+        const timestamp = Date.now();
+        const random = Math.random();
+        const cacheBuster = `t=${timestamp}&v=${random}&fresh=true&nocache=${timestamp}&update=${Date.now()}&refresh=${Math.random()}&clear=${Math.random()}&force=${Date.now()}`;
+        const existingResponse = await fetch(`/api/teacher/slots?teacherId=${teacherId}&week=${weekString}&allSlots=true&${cacheBuster}`, {
+          method: 'GET',
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-Cache-Buster': timestamp.toString()
+          }
+        });
+        const existingData = await existingResponse.json();
+        const existingSlots = existingData.slots || [];
+        
+        // Combine existing slots with new selected slots
+        const allSlotsToKeep = [...existingSlots, ...selectedSlotsArray];
+        
+        // Remove duplicates
+        const uniqueSlots = allSlotsToKeep.filter((slot, index, self) => 
+          index === self.findIndex(s => s.date === slot.date && s.time === slot.time)
+        );
+        
+        console.log('All slots to keep (existing + new):', uniqueSlots);
+        
+        // Send to backend with cache-busting headers
+        const response = await fetch('/api/teacher/open-slot', {
+            method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-Cache-Buster': Date.now().toString()
+          },
+          body: JSON.stringify({ teacherId, slots: uniqueSlots })
+        });
+        const data = await response.json();
+        
+        if (!data.success) {
+          throw new Error('Failed to open slots: ' + (data.error || 'Unknown error'));
+        }
+        
+        alert(`✅ Successfully opened ${selectedSlotsArray.length} slot(s)!`);
+        
+        // Clear cache and refresh
+        clearCacheAndRefresh();
+        
+        // Clear selected slots
+        selectedSlots.clear();
+        updateSubmitButton();
+        updateAvailableSlotsCount();
+        
+      } catch (error) {
+        console.error('Open slots error:', error);
+        alert('Error opening slots: ' + error.message);
+      } finally {
+        openBtn.disabled = false;
+        openBtn.textContent = '🟢 Open Selected Slots';
+      }
+    }
+
+    // Close selected slots from backend
+    async function closeSelectedSlots() {
+      if (!teacherId) return;
+      
+      console.log('=== CLOSE SELECTED SLOTS DEBUG ===');
+      console.log('Selected slots count:', selectedSlots.size);
+      console.log('Selected slots:', Array.from(selectedSlots));
+      
+      const closeBtn = document.getElementById('close-slots-btn');
+      closeBtn.disabled = true;
+      closeBtn.textContent = 'Closing...';
+      
+      try {
+        // Get current week
+        const weekStart = getWeekStartDate(currentWeek);
+        const weekString = getLocalDateString(weekStart);
+        
+        // Get existing slots - ULTRA AGGRESSIVE CACHE BUSTING
+        const timestamp = Date.now();
+        const random = Math.random();
+        const cacheBuster = `t=${timestamp}&v=${random}&fresh=true&nocache=${timestamp}&update=${Date.now()}&refresh=${Math.random()}&clear=${Math.random()}&force=${Date.now()}`;
+        const existingResponse = await fetch(`/api/teacher/slots?teacherId=${teacherId}&week=${weekString}&allSlots=true&${cacheBuster}`, {
+          method: 'GET',
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-Cache-Buster': timestamp.toString()
+          }
+        });
+        const existingData = await existingResponse.json();
+        const existingSlots = existingData.slots || [];
+        
+        // Find slots to close (existing slots that are selected)
+        const slotsToClose = existingSlots.filter(existing => {
+          const slotKey = `${existing.date}-${existing.time}`;
+          const isSelected = selectedSlots.has(slotKey);
+          console.log(`Checking slot ${existing.date} ${existing.time}: selected = ${isSelected}, slotKey = ${slotKey}`);
+          return isSelected;
+        });
+        
+        console.log('Slots to close found:', slotsToClose);
+        console.log('Slots to close count:', slotsToClose.length);
+        
+        if (slotsToClose.length === 0) {
+          console.log('No slots to close found - showing error');
+          alert('Please select open slots to close first!');
+          return;
+        }
+        
+        console.log('=== CLOSING SLOTS ===');
+        console.log('Slots to close:', slotsToClose);
+        console.log('Teacher ID:', teacherId);
+        
+        // Find slots to keep (existing slots that are NOT selected)
+        const slotsToKeep = existingSlots.filter(existing => {
+          const slotKey = `${existing.date}-${existing.time}`;
+          return !selectedSlots.has(slotKey);
+        });
+        
+        console.log('Slots to keep:', slotsToKeep);
+        
+        // Send slots to close to the dedicated close endpoint
+        const response = await fetch('/api/teacher/close-slot', {
+            method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-Cache-Buster': Date.now().toString()
+          },
+          body: JSON.stringify({ teacherId, slots: slotsToClose })
+        });
+        const data = await response.json();
+        
+        if (!data.success) {
+          throw new Error('Failed to close slots: ' + (data.error || 'Unknown error'));
+        }
+        
+        alert(`✅ Successfully closed ${slotsToClose.length} slot(s)!`);
+        
+        // Clear cache and refresh
+        clearCacheAndRefresh();
+        
+        // Clear selected slots
+        selectedSlots.clear();
+        updateSubmitButton();
+        updateAvailableSlotsCount();
+        
+      } catch (error) {
+        console.error('Close slots error:', error);
+        alert('Error closing slots: ' + error.message);
+      } finally {
+        closeBtn.disabled = false;
+        closeBtn.textContent = '⬜ Close Selected Slots';
+      }
+    }
+
+    // Helper function to clear cache and refresh
+    function clearCacheAndRefresh() {
+      console.log('🔄 Starting cache clearing...');
+      
+      // Clear only slot-related cache, preserve login and time log data
+      localStorage.removeItem('last_slot_update');
+      localStorage.removeItem('schedule_cache');
+      localStorage.removeItem('slots_cache');
+      localStorage.removeItem('bookings_cache');
+      localStorage.removeItem('teacher_slots_cache');
+      localStorage.removeItem('teacher_bookings_cache');
+      
+      // Set timestamp for slot update to trigger refresh in teacher-class-table.html
+      localStorage.setItem('last_slot_update', Date.now().toString());
+      
+      // Clear selected slots but keep existing slots data
+      selectedSlots.clear();
+      
+      console.log('🔄 Cache cleared after successful operation');
+      
+      // Set save timestamp to prevent auto-refresh from reloading removed slots
+      localStorage.setItem('last_save_time', Date.now().toString());
+      
+      // Send a custom event to all open windows to force refresh
+      try {
+        window.dispatchEvent(new CustomEvent('slotsUpdated', { 
+          detail: { timestamp: Date.now() } 
+        }));
+        console.log('🔄 Dispatched slotsUpdated event');
+      } catch (e) {
+        console.log('🔄 Could not dispatch slotsUpdated event:', e);
+      }
+      
+      // Refresh the grid data without reloading the page
+      setTimeout(async () => {
+        console.log('🔄 Refreshing grid data...');
+        await loadExistingSlots();
+        applyExistingSlots();
+        updateAvailableSlotsCount();
+      }, 500);
+    }
+
+    // Week navigation functionality
+    document.getElementById('prev-week').addEventListener('click', async () => {
+      currentWeek.setDate(currentWeek.getDate() - 7);
+      updateWeekDisplay();
+      await initializeWeeklyGrid();
+    });
+
+    document.getElementById('next-week').addEventListener('click', async () => {
+      currentWeek.setDate(currentWeek.getDate() + 7);
+      updateWeekDisplay();
+      await initializeWeeklyGrid();
+    });
+
+    document.getElementById('current-week').addEventListener('click', async () => {
+      currentWeek = new Date();
+      updateWeekDisplay();
+      await initializeWeeklyGrid();
+    });
+
+    // Update week display
+    function updateWeekDisplay() {
+      const weekStart = getWeekStartDate(currentWeek);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6);
+      
+      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+      ];
+      
+      const weekDisplay = document.getElementById('week-display');
+      weekDisplay.textContent = `${monthNames[weekStart.getMonth()]} ${weekStart.getDate()} - ${monthNames[weekEnd.getMonth()]} ${weekEnd.getDate()}, ${weekStart.getFullYear()}`;
+      
+      // Disable previous week button if we're in the past
+      const prevBtn = document.getElementById('prev-week');
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      prevBtn.disabled = weekStart <= today;
+    }
+
+
+
+
+
+    // Realtime updates via Socket.IO
+    (function initRealtime(){
+      try {
+        const socket = io();
+        socket.on('slotsUpdated', (payload) => {
+          const myId = localStorage.getItem('teacherId');
+          if (payload && (payload.teacherId === myId || String(payload.teacherId) === String(myId))) {
+            console.log('🔔 Realtime slotsUpdated received (open-class), refreshing grid...', payload);
+            // Use a small delay to ensure the server has processed the update
+            setTimeout(async () => {
+              await loadExistingSlots();
+              applyExistingSlots();
+              updateAvailableSlotsCount();
+            }, 1000);
+          }
+        });
+        socket.on('bookingsUpdated', (payload) => {
+          const myId = localStorage.getItem('teacherId');
+          if (payload && (payload.teacherId === myId || String(payload.teacherId) === String(myId))) {
+            console.log('🔔 Realtime bookingsUpdated received (open-class), refreshing grid...', payload);
+            // Use a small delay to ensure the server has processed the update
+            setTimeout(async () => {
+              await loadExistingSlots();
+              applyExistingSlots();
+              updateAvailableSlotsCount();
+            }, 1000);
+          }
+        });
+      } catch (e) { console.log('Socket init failed', e); }
+    })();
+
+    // Initialize when page loads
+    document.addEventListener('DOMContentLoaded', async () => {
+      console.log('🔄 Page loaded - Loading fresh data');
+      
+      // Add global click handler for debugging
+      document.addEventListener('click', (e) => {
+        if (e.target.classList.contains('time-slot')) {
+          console.log('🔍 Global click detected on time-slot:', e.target);
+          console.log('🔍 Click target dataset:', e.target.dataset);
+          console.log('🔍 Click target onclick:', e.target.onclick);
+          console.log('🔍 Click target event listeners:', e.target.onclick ? 'Has onclick' : 'No onclick');
+        }
+      });
+      
+      // Clear only slot-related cache, preserve login and time log data
+      localStorage.removeItem('last_slot_update');
+      localStorage.removeItem('schedule_cache');
+      localStorage.removeItem('slots_cache');
+      localStorage.removeItem('bookings_cache');
+      localStorage.removeItem('teacher_slots_cache');
+      localStorage.removeItem('teacher_bookings_cache');
+      
+      // Clear selected slots
+      selectedSlots.clear();
+      
+      // Check if teacher is logged in
+      if (!teacherId) {
+        alert('Please log in as a teacher to access this page.');
+        window.location.href = 'teacher-login.html';
+        return;
+      }
+      
+      updateWeekDisplay();
+      await initializeWeeklyGrid();
+      
+      // Always set the back-to-schedule button handler
+      const backBtn = document.getElementById('back-to-schedule-btn');
+      if (backBtn) {
+        backBtn.onclick = function() {
+          window.location.href = 'teacher-class-table.html';
+        };
+      }
+      
+      // Set up periodic refresh every 60 seconds to ensure data stays fresh
+      setInterval(() => {
+        console.log('🔄 Auto-refresh: Loading fresh data from database...');
+        // Only auto-refresh if we haven't just saved (to prevent reloading removed slots)
+        const lastSaveTime = localStorage.getItem('last_save_time');
+        const currentTime = Date.now();
+        if (!lastSaveTime || (currentTime - parseInt(lastSaveTime)) > 15000) { // 15 second cooldown
+          loadExistingSlots().then(() => {
+            applyExistingSlots();
+            updateAvailableSlotsCount();
+          });
+        } else {
+          console.log('🔄 Skipping auto-refresh - too soon after save');
+        }
+      }, 60000); // 60 seconds
+      
+      console.log('🔄 Page loaded at:', new Date().toISOString());
+    });
+    
+    // Debug function to check slots
+    async function debugSlots() {
+      console.log('=== DEBUG SLOTS ===');
+      console.log('Current week:', currentWeek.toISOString());
+      console.log('Existing slots:', window.existingSlots ? Array.from(window.existingSlots) : 'Not loaded');
+      console.log('Booked slots:', window.bookedSlots ? Array.from(window.bookedSlots) : 'Not loaded');
+      console.log('Past classes:', window.pastClasses ? Array.from(window.pastClasses.entries()) : 'Not loaded');
+      
+      // Check for specific August 6 slots
+      const august6SlotElements = document.querySelectorAll('[data-date="2025-08-06"]');
+      console.log('August 6 slot elements found:', august6SlotElements.length);
+      august6SlotElements.forEach((slot, index) => {
+        console.log(`Slot ${index}:`, slot.dataset.time, slot.textContent, slot.style.background);
+      });
+      
+      // Force reload slots
+      await loadExistingSlots();
+      applyExistingSlots();
+      
+      // Also try to manually apply the August 6 slots
+      const august6SlotKeys = ['2025-08-06-09:00', '2025-08-06-09:30', '2025-08-06-10:00'];
+      august6SlotKeys.forEach(slotKey => {
+        const lastDashIndex = slotKey.lastIndexOf('-');
+        const date = slotKey.substring(0, lastDashIndex);
+        const time = slotKey.substring(lastDashIndex + 1);
+        const slotElement = document.querySelector(`[data-date="${date}"][data-time="${time}"]`);
+        if (slotElement) {
+          console.log('Manually applying slot:', slotKey);
+          slotElement.classList.add('already-opened');
+          slotElement.style.background = '#e8f5e8';
+          slotElement.style.color = '#2d5a2d';
+          slotElement.style.fontWeight = 'bold';
+          slotElement.textContent = 'Open';
+          selectedSlots.add(slotKey);
+          slotElement.onclick = null;
+        }
+      });
+      
+      // Also manually apply August 9 slot (F- Juan)
+      const august9SlotKey = '2025-08-09-09:00';
+      const lastDashIndex = august9SlotKey.lastIndexOf('-');
+      const date = august9SlotKey.substring(0, lastDashIndex);
+      const time = august9SlotKey.substring(lastDashIndex + 1);
+      const slotElement = document.querySelector(`[data-date="${date}"][data-time="${time}"]`);
+      if (slotElement) {
+        console.log('Manually applying August 9 slot:', august9SlotKey);
+        slotElement.innerHTML = 'F';
+        slotElement.title = 'Class Finished';
+        slotElement.style.fontWeight = 'bold';
+        slotElement.style.fontSize = '0.9rem';
+        slotElement.style.background = '#d3d3d3';
+        slotElement.style.color = 'white';
+      }
+    }
+    
+    // Load profile picture and update sidebar from backend
+    async function loadProfilePicture(teacherId) {
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                console.log('No token found for profile picture');
+                return;
+            }
+            
+            const response = await fetch(`/api/teacher/profile`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            
+              if (response.ok) {
+                const data = await response.json();
+
+                if (data.profile) {
+                  const sidebarElement = document.getElementById('sidebar-email');
+                  if (sidebarElement) {
+                    const name = data.profile.firstName || username;
+                    sidebarElement.textContent = `Hi, ${name}`;
+                    console.log('✅ Sidebar updated with first name:', name);
+                  }
+
+                  // Use centralized avatar helper to set image or fallback
+                  setAvatar({
+                    imageUrl: data.profile.profilePicture || '',
+                    displayName: data.profile.firstName || username,
+                    imgSelector: '#profile-image',
+                    textSelector: '#avatar-text'
+                  });
+                }
+            }
+        } catch (error) {
+            console.error('Error loading profile picture:', error);
+        }
+    }
+    
+    // Test function to manually trigger slot click
+    function testSlotClick() {
+      console.log('🔍 Test slot click function called');
+      
+      // Find the first available slot
+      const firstSlot = document.querySelector('td[data-date][data-time]');
+      if (firstSlot) {
+        console.log('🔍 Found first slot:', firstSlot);
+        console.log('🔍 Slot dataset:', firstSlot.dataset);
+        console.log('🔍 Slot onclick:', firstSlot.onclick);
+        
+        // Manually trigger the click
+        if (firstSlot.onclick) {
+          console.log('🔍 Manually triggering onclick for first slot');
+          firstSlot.onclick();
+        } else {
+          console.log('❌ No onclick handler found on first slot');
+        }
+      } else {
+        console.log('❌ No slots found');
+      }
+    }
+  </script>
+</body>
+</html> 

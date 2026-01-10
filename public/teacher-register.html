@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Registration</title>
+    <link rel="stylesheet" href="modern-styles.css">
+</head>
+<body>
+    <div class="login-container">
+        <h2>Teacher Registration</h2>
+        <div id="error-message" class="error-message"></div>
+        <div id="success-message" class="success-message" style="display:none;"></div>
+        <form id="register-form" autocomplete="off">
+            <div class="form-group">
+                <label for="password">Password</label>
+                <div class="password-group">
+                    <input type="password" id="password" name="password" required autofocus>
+                    <button type="button" id="toggle-password" aria-label="Show password" style="position:absolute; right:5px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; font-size:1.1rem; color:#3a7afe;">
+                        <svg id="eye-icon" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                    </button>
+                </div>
+            </div>
+            <button type="submit" class="login-btn">Register</button>
+        </form>
+        <div style="text-align:center; margin-top:1rem;">
+            <a href="teacher-login.html">Already have an account? Login</a>
+        </div>
+    </div>
+    <script src="teacher-register.js"></script>
+    <script src="script.js"></script>
+</body>
+</html> 

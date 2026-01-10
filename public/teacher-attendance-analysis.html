@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance Analysis - RemoEdPH</title>
+    <link rel="stylesheet" href="modern-styles.css">
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: #f8fafc; 
+            color: #1a202c;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .remoed-main {
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        .remoed-sidebar {
+            width: 260px;
+            min-width: 260px;
+            background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+            box-shadow: 4px 0 20px rgba(102, 126, 234, 0.1);
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            z-index: 100;
+        }
+        
+        .remoed-content {
+            flex: 1;
+            padding: 36px 40px;
+            margin-left: 260px;
+            max-width: calc(100vw - 260px);
+        }
+        
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+        }
+        
+        .page-header h1 {
+            color: #667eea;
+            font-size: 2rem;
+            font-weight: 700;
+            margin: 0;
+        }
+        
+        .period-selector {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        
+        .period-btn {
+            padding: 8px 16px;
+            border: 2px solid #667eea;
+            background: white;
+            color: #667eea;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .period-btn.active {
+            background: #667eea;
+            color: white;
+        }
+        
+        .period-btn:hover {
+            background: #667eea;
+            color: white;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border-left: 4px solid;
+        }
+        
+        .stat-card.completed { border-left-color: #28a745; }
+        .stat-card.absent { border-left-color: #dc3545; }
+        .stat-card.cancelled { border-left-color: #ffc107; }
+        .stat-card.late { border-left-color: #fd7e14; }
+        .stat-card.system-issue { border-left-color: #6f42c1; }
+        .stat-card.teacher-issue { border-left-color: #e83e8c; }
+        .stat-card.student-issue { border-left-color: #20c997; }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1a202c;
+        }
+        
+        .metrics-section {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 32px;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 24px;
+        }
+        
+        .metric-item {
+            text-align: center;
+        }
+        
+        .metric-label {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 8px;
+        }
+        
+        .metric-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #667eea;
+        }
+        
+        .breakdown-section {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 24px;
+        }
+        
+        .breakdown-header {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #1a202c;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        
+        .breakdown-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .breakdown-item {
+            padding: 12px;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .breakdown-item:last-child {
+            border-bottom: none;
+        }
+        
+        .breakdown-date {
+            font-weight: 600;
+            color: #1a202c;
+        }
+        
+        .breakdown-time {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 16px;
+            border-radius: 8px;
+            margin: 16px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="remoed-main">
+        <!-- Sidebar will be loaded via JavaScript -->
+        <div class="remoed-sidebar" id="sidebar"></div>
+        
+        <div class="remoed-content">
+            <div class="page-header">
+                <h1>Attendance Analysis</h1>
+                <div class="period-selector">
+                    <button class="period-btn active" data-period="weekly">This Week</button>
+                    <button class="period-btn" data-period="monthly">This Month</button>
+                    <button class="period-btn" data-period="custom">Custom Range</button>
+                </div>
+            </div>
+            
+            <div id="loading" class="loading">Loading attendance analysis...</div>
+            <div id="error" class="error" style="display: none;"></div>
+            
+            <div id="content" style="display: none;">
+                <!-- Stats Grid -->
+                <div class="stats-grid" id="stats-grid"></div>
+                
+                <!-- Metrics Section -->
+                <div class="metrics-section">
+                    <h2 style="margin-top: 0; color: #667eea;">Performance Metrics</h2>
+                    <div class="metrics-grid" id="metrics-grid"></div>
+                </div>
+                
+                <!-- Breakdown Sections -->
+                <div id="breakdown-sections"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Load sidebar
+        fetch('teacher-dashboard.html')
+            .then(r => r.text())
+            .then(html => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const sidebar = doc.querySelector('.remoed-sidebar');
+                if (sidebar) {
+                    document.getElementById('sidebar').innerHTML = sidebar.innerHTML;
+                    // Update active menu item
+                    const menuItems = document.querySelectorAll('.remoed-menu li');
+                    menuItems.forEach(item => {
+                        if (item.textContent.includes('Attendance')) {
+                            item.classList.add('active');
+                        }
+                    });
+                }
+            });
+        
+        let currentPeriod = 'weekly';
+        
+        // Period selector
+        document.querySelectorAll('.period-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentPeriod = btn.dataset.period;
+                
+                if (currentPeriod === 'custom') {
+                    const startDate = prompt('Enter start date (YYYY-MM-DD):');
+                    const endDate = prompt('Enter end date (YYYY-MM-DD):');
+                    if (startDate && endDate) {
+                        loadAnalysis({ startDate, endDate });
+                    }
+                } else {
+                    loadAnalysis({ periodType: currentPeriod });
+                }
+            });
+        });
+        
+        async function loadAnalysis(params = {}) {
+            const loading = document.getElementById('loading');
+            const error = document.getElementById('error');
+            const content = document.getElementById('content');
+            
+            loading.style.display = 'block';
+            error.style.display = 'none';
+            content.style.display = 'none';
+            
+            try {
+                const teacherId = localStorage.getItem('teacherId');
+                const token = localStorage.getItem('token');
+                
+                if (!teacherId || !token) {
+                    throw new Error('Please log in to view attendance analysis');
+                }
+                
+                const queryParams = new URLSearchParams({
+                    teacherId,
+                    ...params
+                });
+                
+                const response = await fetch(`/api/teacher/attendance-analysis?${queryParams}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to load analysis');
+                }
+                
+                const data = await response.json();
+                if (data.success && data.analysis) {
+                    displayAnalysis(data.analysis);
+                } else {
+                    throw new Error('Invalid response from server');
+                }
+            } catch (err) {
+                error.textContent = err.message;
+                error.style.display = 'block';
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+        
+        function displayAnalysis(analysis) {
+            const content = document.getElementById('content');
+            content.style.display = 'block';
+            
+            // Display stats
+            const statsGrid = document.getElementById('stats-grid');
+            statsGrid.innerHTML = `
+                <div class="stat-card completed">
+                    <div class="stat-label">Completed Classes</div>
+                    <div class="stat-value">${analysis.completedClasses}</div>
+                </div>
+                <div class="stat-card absent">
+                    <div class="stat-label">Teacher Absences</div>
+                    <div class="stat-value">${analysis.teacherAbsences}</div>
+                </div>
+                <div class="stat-card absent">
+                    <div class="stat-label">Student Absences</div>
+                    <div class="stat-value">${analysis.studentAbsences}</div>
+                </div>
+                <div class="stat-card cancelled">
+                    <div class="stat-label">Cancellations</div>
+                    <div class="stat-value">${analysis.cancellations}</div>
+                </div>
+                <div class="stat-card late">
+                    <div class="stat-label">Late Arrivals</div>
+                    <div class="stat-value">${analysis.lateArrivals}</div>
+                </div>
+                <div class="stat-card system-issue">
+                    <div class="stat-label">System Issues</div>
+                    <div class="stat-value">${analysis.systemIssues}</div>
+                </div>
+                <div class="stat-card teacher-issue">
+                    <div class="stat-label">Teacher Issues</div>
+                    <div class="stat-value">${analysis.teacherIssues}</div>
+                </div>
+                <div class="stat-card student-issue">
+                    <div class="stat-label">Student Issues</div>
+                    <div class="stat-value">${analysis.studentIssues}</div>
+                </div>
+            `;
+            
+            // Display metrics
+            const metricsGrid = document.getElementById('metrics-grid');
+            metricsGrid.innerHTML = `
+                <div class="metric-item">
+                    <div class="metric-label">Total Scheduled</div>
+                    <div class="metric-value">${analysis.totalScheduled}</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-label">Attendance Rate</div>
+                    <div class="metric-value">${analysis.attendanceRate}%</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-label">Punctuality Rate</div>
+                    <div class="metric-value">${analysis.punctualityRate}%</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-label">Total Late Minutes</div>
+                    <div class="metric-value">${analysis.totalLateMinutes}</div>
+                </div>
+            `;
+            
+            // Display breakdowns
+            const breakdownSections = document.getElementById('breakdown-sections');
+            breakdownSections.innerHTML = '';
+            
+            // Helper function to create breakdown section
+            function createBreakdownSection(title, items, className) {
+                if (items.length === 0) return '';
+                
+                return `
+                    <div class="breakdown-section">
+                        <div class="breakdown-header">${title} (${items.length})</div>
+                        <div class="breakdown-list">
+                            ${items.map(item => {
+                                const date = new Date(item.date);
+                                const dateStr = date.toLocaleDateString('en-US', { 
+                                    weekday: 'short', 
+                                    year: 'numeric', 
+                                    month: 'short', 
+                                    day: 'numeric' 
+                                });
+                                return `
+                                    <div class="breakdown-item">
+                                        <div>
+                                            <div class="breakdown-date">${dateStr}</div>
+                                            <div class="breakdown-time">${item.time || ''} ${item.lateMinutes ? `(${item.lateMinutes} min late)` : ''} ${item.reason ? `- ${item.reason}` : ''}</div>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            breakdownSections.innerHTML = 
+                createBreakdownSection('Completed Classes', analysis.breakdown.completed, 'completed') +
+                createBreakdownSection('Teacher Absences', analysis.breakdown.teacherAbsent, 'absent') +
+                createBreakdownSection('Student Absences', analysis.breakdown.studentAbsent, 'absent') +
+                createBreakdownSection('Cancellations', analysis.breakdown.cancelled, 'cancelled') +
+                createBreakdownSection('Late Arrivals', analysis.breakdown.late, 'late') +
+                createBreakdownSection('System Issues', analysis.breakdown.systemIssues, 'system-issue') +
+                createBreakdownSection('Teacher Issues', analysis.breakdown.teacherIssues, 'teacher-issue') +
+                createBreakdownSection('Student Issues', analysis.breakdown.studentIssues, 'student-issue');
+        }
+        
+        // Load initial analysis
+        loadAnalysis({ periodType: 'weekly' });
+    </script>
+</body>
+</html>
+

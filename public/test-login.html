@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Login - Chrome Debug</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px; 
+            background-color: #f5f5f5;
+        }
+        .test-form {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none; 
+            border-radius: 4px;
+            cursor: pointer; 
+            width: 100%;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-form">
+        <h2>Chrome Login Test</h2>
+        <p>This page helps debug login issues in Chrome.</p>
+        
+        <form id="test-form">
+            <div class="form-group">
+                <label for="username">Username:</label>
+                <input type="text" id="username" name="username" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password:</label>
+                <input type="password" id="password" name="password" required>
+        </div>
+            <button type="submit" id="submit-btn">Test Login</button>
+        </form>
+        
+        <div id="result" class="result" style="display: none;"></div>
+        
+        <div style="margin-top: 20px;">
+            <h3>Test Results:</h3>
+            <div id="test-results"></div>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('test-form');
+        const result = document.getElementById('result');
+        const testResults = document.getElementById('test-results');
+        const submitBtn = document.getElementById('submit-btn');
+
+        function showResult(message, type = 'info') {
+            result.textContent = message;
+            result.className = `result ${type}`;
+            result.style.display = 'block';
+        }
+
+        function addTestResult(test, status, details = '') {
+            const div = document.createElement('div');
+            div.innerHTML = `<strong>${test}:</strong> <span style="color: ${status === 'PASS' ? 'green' : 'red'}">${status}</span>${details ? ` - ${details}` : ''}`;
+            testResults.appendChild(div);
+        }
+
+        // Test server connectivity
+        async function testServerConnectivity() {
+            try {
+                const response = await fetch('/api/health');
+                addTestResult('Server Connectivity', 'PASS', `Status: ${response.status}`);
+                return true;
+            } catch (error) {
+                addTestResult('Server Connectivity', 'FAIL', error.message);
+                return false;
+            }
+        }
+
+        // Test fetch API
+        async function testFetchAPI() {
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: 'test', password: 'test' })
+                });
+                addTestResult('Fetch API', 'PASS', `Status: ${response.status}`);
+                return true;
+            } catch (error) {
+                addTestResult('Fetch API', 'FAIL', error.message);
+                return false;
+            }
+        }
+
+        // Test localStorage
+        function testLocalStorage() {
+            try {
+                localStorage.setItem('test', 'value');
+                const value = localStorage.getItem('test');
+                localStorage.removeItem('test');
+                if (value === 'value') {
+                    addTestResult('LocalStorage', 'PASS');
+                    return true;
+                } else {
+                    addTestResult('LocalStorage', 'FAIL', 'Value not stored correctly');
+                    return false;
+                }
+            } catch (error) {
+                addTestResult('LocalStorage', 'FAIL', error.message);
+                return false;
+            }
+        }
+
+        // Run all tests
+        async function runTests() {
+            testResults.innerHTML = '';
+            addTestResult('Browser', 'INFO', navigator.userAgent);
+            
+            await testServerConnectivity();
+            await testFetchAPI();
+            testLocalStorage();
+        }
+
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Testing...';
+            
+            showResult('Testing login...', 'info');
+            
+            try {
+                console.log('Testing login with:', { username, password });
+                
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+                
+                const data = await response.json();
+                console.log('Response data:', data);
+                
+                if (data.success) {
+                    showResult(`Login successful!\nToken: ${data.token.substring(0, 20)}...\nTeacher ID: ${data.teacherId}`, 'success');
+                } else {
+                    showResult(`Login failed: ${data.message}`, 'error');
+                }
+                
+            } catch (error) {
+                console.error('Login error:', error);
+                showResult(`Error: ${error.message}`, 'error');
+            }
+            
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Test Login';
+        });
+
+        // Run tests on page load
+        document.addEventListener('DOMContentLoaded', runTests);
+    </script>
+</body>
+</html> 

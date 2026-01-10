@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Upload - RemoEdPH</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .debug-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; }
+        .error { color: red; }
+        .success { color: green; }
+        .info { color: blue; }
+        button { padding: 10px; margin: 5px; }
+        input[type="file"] { margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>Debug Upload Functionality</h1>
+    
+    <div class="debug-section">
+        <h3>Authentication Status</h3>
+        <div id="auth-status"></div>
+        <button onclick="checkAuth()">Check Authentication</button>
+    </div>
+    
+    <div class="debug-section">
+        <h3>Test Document Upload</h3>
+        <input type="file" id="test-file" accept=".jpg,.jpeg,.png,.pdf">
+        <button onclick="testUpload()">Test Upload</button>
+        <div id="upload-result"></div>
+    </div>
+    
+    <div class="debug-section">
+        <h3>Test Profile Save</h3>
+        <button onclick="testProfileSave()">Test Profile Save</button>
+        <div id="profile-result"></div>
+    </div>
+    
+    <div class="debug-section">
+        <h3>Console Logs</h3>
+        <div id="console-logs"></div>
+        <button onclick="clearLogs()">Clear Logs</button>
+    </div>
+
+    <script>
+        // Override console.log to capture logs
+        const originalLog = console.log;
+        const originalError = console.error;
+        const logContainer = document.getElementById('console-logs');
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            logContainer.innerHTML += '<div class="info">LOG: ' + args.join(' ') + '</div>';
+        };
+        
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            logContainer.innerHTML += '<div class="error">ERROR: ' + args.join(' ') + '</div>';
+        };
+        
+        function checkAuth() {
+            const token = localStorage.getItem('token');
+            const userType = localStorage.getItem('userType');
+            const teacherId = localStorage.getItem('teacherId');
+            
+            const status = document.getElementById('auth-status');
+            status.innerHTML = `
+                <div class="info">Token: ${token ? 'Present' : 'Missing'}</div>
+                <div class="info">User Type: ${userType || 'Not set'}</div>
+                <div class="info">Teacher ID: ${teacherId || 'Not set'}</div>
+            `;
+            
+            if (!token) {
+                status.innerHTML += '<div class="error">No authentication token found!</div>';
+                return;
+            }
+            
+            // Test API connectivity
+            fetch('/api/teacher/profile', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            .then(response => {
+                status.innerHTML += `<div class="info">API Response Status: ${response.status}</div>`;
+                return response.json();
+            })
+            .then(data => {
+                status.innerHTML += `<div class="info">API Response: ${JSON.stringify(data)}</div>`;
+            })
+            .catch(error => {
+                status.innerHTML += `<div class="error">API Error: ${error.message}</div>`;
+            });
+        }
+        
+        function testUpload() {
+            const fileInput = document.getElementById('test-file');
+            const file = fileInput.files[0];
+            const result = document.getElementById('upload-result');
+            
+            if (!file) {
+                result.innerHTML = '<div class="error">Please select a file first</div>';
+                return;
+            }
+            
+            const token = localStorage.getItem('token');
+            if (!token) {
+                result.innerHTML = '<div class="error">No authentication token found</div>';
+                return;
+            }
+            
+            result.innerHTML = '<div class="info">Starting upload test...</div>';
+            
+            // Read file as data URL
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const fileData = e.target.result;
+                
+                fetch('/api/teacher/upload-document', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        documentType: 'validId',
+                        fileData: fileData
+                    })
+                })
+                .then(response => {
+                    result.innerHTML += `<div class="info">Upload Response Status: ${response.status}</div>`;
+                    return response.json();
+                })
+                .then(data => {
+                    result.innerHTML += `<div class="success">Upload Response: ${JSON.stringify(data)}</div>`;
+                })
+                .catch(error => {
+                    result.innerHTML += `<div class="error">Upload Error: ${error.message}</div>`;
+                });
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        function testProfileSave() {
+            const token = localStorage.getItem('token');
+            const result = document.getElementById('profile-result');
+            
+            if (!token) {
+                result.innerHTML = '<div class="error">No authentication token found</div>';
+                return;
+            }
+            
+            result.innerHTML = '<div class="info">Starting profile save test...</div>';
+            
+            const testData = {
+                firstName: 'Test',
+                lastName: 'Teacher',
+                email: 'test@example.com',
+                documents: {
+                    validId: null
+                }
+            };
+            
+            fetch('/api/teacher/profile', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(testData)
+            })
+            .then(response => {
+                result.innerHTML += `<div class="info">Profile Save Response Status: ${response.status}</div>`;
+                return response.json();
+            })
+            .then(data => {
+                result.innerHTML += `<div class="success">Profile Save Response: ${JSON.stringify(data)}</div>`;
+            })
+            .catch(error => {
+                result.innerHTML += `<div class="error">Profile Save Error: ${error.message}</div>`;
+            });
+        }
+        
+        function clearLogs() {
+            logContainer.innerHTML = '';
+        }
+        
+        // Auto-check auth on load
+        window.onload = function() {
+            checkAuth();
+        };
+    </script>
+</body>
+</html> 

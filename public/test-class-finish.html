@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Class Finish Functionality</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 10px 5px;
+            font-size: 16px;
+        }
+        .test-btn:hover {
+            background: #45a049;
+        }
+        .test-btn.teacher {
+            background: #2196F3;
+        }
+        .test-btn.student {
+            background: #FF9800;
+        }
+        .test-btn.danger {
+            background: #f44336;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Class Finish Functionality</h1>
+    
+    <div class="test-section">
+        <h2>📋 How the Class Finish System Works</h2>
+        <p><strong>New Features:</strong></p>
+        <ol>
+            <li><strong>Teacher clicks "Finish Class"</strong> → System emits `class-finished` event</li>
+            <li><strong>All students receive notification</strong> → "Teacher has finished the class"</li>
+            <li><strong>Students are automatically redirected</strong> → To student dashboard after 3 seconds</li>
+            <li><strong>Teacher leaves/disconnects</strong> → Students also get redirected</li>
+        </ol>
+    </div>
+
+    <div class="test-section">
+        <h2>🔑 Test Room Setup</h2>
+        <p>Test room ID: <strong id="test-room">test-class-finish-20241201</strong></p>
+        <button class="test-btn" onclick="generateNewRoom()">🔄 Generate New Room</button>
+    </div>
+
+    <div class="test-section">
+        <h2>👨‍🏫 Teacher Test</h2>
+        <p>Test teacher in the classroom:</p>
+        <button class="test-btn teacher" onclick="joinAsTeacher()">🚀 Join as Teacher</button>
+        <button class="test-btn danger" onclick="finishClass()">🏁 Finish Class</button>
+        <button class="test-btn" onclick="disconnectTeacher()">🔌 Disconnect Teacher</button>
+        <div id="teacher-status"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>🎓 Student Test</h2>
+        <p>Test student in the classroom:</p>
+        <button class="test-btn student" onclick="joinAsStudent()">🚀 Join as Student</button>
+        <button class="test-btn" onclick="openStudentClassroom()">📱 Open Student Classroom</button>
+        <div id="student-status"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>🔍 Room Status Check</h2>
+        <p>Check current room status:</p>
+        <button class="test-btn" onclick="checkRoomStatus()">🔍 Check Status</button>
+        <div id="room-status"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>📊 Test Logs</h2>
+        <div id="test-logs" class="log"></div>
+        <button class="test-btn" onclick="clearLogs()">🗑️ Clear Logs</button>
+    </div>
+
+    <script>
+        let socket = null;
+        let currentRoom = 'test-class-finish-20241201';
+        let currentUserType = null;
+
+        // Log function
+        function log(message) {
+            const logs = document.getElementById('test-logs');
+            const timestamp = new Date().toLocaleTimeString();
+            logs.innerHTML += `[${timestamp}] ${message}\n`;
+            logs.scrollTop = logs.scrollHeight;
+            console.log(message);
+        }
+
+        // Clear logs
+        function clearLogs() {
+            document.getElementById('test-logs').innerHTML = '';
+        }
+
+        // Generate new room
+        function generateNewRoom() {
+            const now = new Date();
+            const dateStr = now.getFullYear().toString() + 
+                           (now.getMonth() + 1).toString().padStart(2, '0') + 
+                           now.getDate().toString().padStart(2, '0');
+            const timeStr = now.getHours().toString().padStart(2, '0') + 
+                           now.getMinutes().toString().padStart(2, '0');
+            currentRoom = `test-class-finish-${dateStr}${timeStr}`;
+            document.getElementById('test-room').textContent = currentRoom;
+            log(`Generated new test room: ${currentRoom}`);
+        }
+
+        // Join as teacher
+        function joinAsTeacher() {
+            if (socket) {
+                socket.disconnect();
+            }
+
+            const serverUrl = window.location.protocol + '//' + window.location.hostname + 
+                             (window.location.port ? ':' + window.location.port : '');
+            
+            socket = io(serverUrl);
+            currentUserType = 'teacher';
+            
+            socket.on('connect', () => {
+                log('✅ Teacher connected to server');
+                
+                // Set teacher data
+                localStorage.setItem('teacherId', 'TKBF7202500001');
+                localStorage.setItem('remoedUsername', 'Test Teacher');
+                
+                // Join room
+                socket.emit('join', { 
+                    room: currentRoom, 
+                    userType: 'teacher', 
+                    userId: 'TKBF7202500001', 
+                    username: 'Test Teacher' 
+                });
+                
+                log(`👨‍🏫 Teacher joining room: ${currentRoom}`);
+            });
+            
+            socket.on('joined', () => {
+                log('✅ Teacher joined room successfully');
+                showStatus('teacher-status', 'Teacher joined room successfully!', 'success');
+            });
+            
+            socket.on('disconnect', () => {
+                log('❌ Teacher disconnected');
+            });
+
+            socket.on('user-joined', (data) => {
+                log(`👥 User joined: ${data.userType} ${data.username}`);
+            });
+
+            socket.on('user-left', (data) => {
+                log(`👋 User left: ${data.userType} ${data.username}`);
+            });
+        }
+
+        // Join as student
+        function joinAsStudent() {
+            if (socket) {
+                socket.disconnect();
+            }
+
+            const serverUrl = window.location.protocol + '//' + window.location.hostname + 
+                             (window.location.port ? ':' + window.location.port : '');
+            
+            socket = io(serverUrl);
+            currentUserType = 'student';
+            
+            socket.on('connect', () => {
+                log('✅ Student connected to server');
+                
+                // Set student data
+                localStorage.setItem('studentId', 'test-student-456');
+                localStorage.setItem('remoedUsername', 'Test Student');
+                
+                // Join room
+                socket.emit('join', { 
+                    room: currentRoom, 
+                    userType: 'student', 
+                    userId: 'test-student-456', 
+                    username: 'Test Student' 
+                });
+                
+                log(`🎓 Student joining room: ${currentRoom}`);
+            });
+            
+            socket.on('joined', () => {
+                log('✅ Student joined room successfully');
+                showStatus('student-status', 'Student joined room successfully!', 'success');
+            });
+            
+            socket.on('disconnect', () => {
+                log('❌ Student disconnected');
+            });
+
+            socket.on('user-joined', (data) => {
+                log(`👥 User joined: ${data.userType} ${data.username}`);
+            });
+
+            socket.on('user-left', (data) => {
+                log(`👋 User left: ${data.userType} ${data.username}`);
+            });
+
+            socket.on('class-finished', (data) => {
+                log(`🏁 Class finished by ${data.userType}!`);
+                showStatus('student-status', 'Class finished by teacher! Student should be redirected.', 'info');
+            });
+        }
+
+        // Finish class (teacher only)
+        function finishClass() {
+            if (currentUserType !== 'teacher') {
+                showStatus('teacher-status', 'Only teachers can finish class', 'error');
+                return;
+            }
+
+            if (socket) {
+                log('🏁 Teacher finishing class...');
+                socket.emit('class-finished', { 
+                    room: currentRoom, 
+                    userType: 'teacher', 
+                    teacherId: 'TKBF7202500001' 
+                });
+                showStatus('teacher-status', 'Class finished signal sent!', 'success');
+            } else {
+                showStatus('teacher-status', 'Not connected to server', 'error');
+            }
+        }
+
+        // Disconnect teacher
+        function disconnectTeacher() {
+            if (socket) {
+                log('🔌 Disconnecting teacher...');
+                socket.disconnect();
+                showStatus('teacher-status', 'Teacher disconnected', 'info');
+            }
+        }
+
+        // Open student classroom
+        function openStudentClassroom() {
+            log('📱 Opening student classroom...');
+            
+            // Set student data
+            localStorage.setItem('studentId', 'test-student-456');
+            localStorage.setItem('remoedUsername', 'Test Student');
+            
+            const classroomUrl = `live-classroom.html?bookingId=test-booking-123&room=${currentRoom}`;
+            log(`🔗 Opening: ${classroomUrl}`);
+            
+            window.open(classroomUrl, '_blank');
+            
+            showStatus('student-status', 'Opened student classroom. Watch for redirect when teacher finishes class.', 'info');
+        }
+
+        // Check room status
+        async function checkRoomStatus() {
+            try {
+                const response = await fetch(`/api/signaling/room-status?room=${currentRoom}`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log(`🔍 Room status for ${currentRoom}:`);
+                    log(`  - Teacher Present: ${data.teacherPresent}`);
+                    log(`  - Room Exists: ${data.roomExists}`);
+                    log(`  - Client Count: ${data.clientCount}`);
+                    
+                    const statusHtml = `
+                        <div class="status info">
+                            <strong>Room Status for ${currentRoom}:</strong><br>
+                            Teacher Present: ${data.teacherPresent ? '✅ Yes' : '❌ No'}<br>
+                            Room Exists: ${data.roomExists ? '✅ Yes' : '❌ No'}<br>
+                            Client Count: ${data.clientCount}<br>
+                            Last Activity: ${data.lastActivity ? new Date(data.lastActivity).toLocaleString() : 'None'}
+                        </div>
+                    `;
+                    document.getElementById('room-status').innerHTML = statusHtml;
+                } else {
+                    log(`❌ Failed to check room status: ${response.status}`);
+                    showStatus('room-status', 'Failed to check room status', 'error');
+                }
+            } catch (error) {
+                log(`❌ Error checking room status: ${error.message}`);
+                showStatus('room-status', 'Error checking room status', 'error');
+            }
+        }
+
+        // Show status message
+        function showStatus(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="status ${type}">${message}</div>`;
+            setTimeout(() => {
+                element.innerHTML = '';
+            }, 5000);
+        }
+
+        // Auto-check room status every 5 seconds
+        setInterval(checkRoomStatus, 5000);
+
+        // Initialize
+        log('🧪 Test Class Finish Functionality initialized');
+        log(`Current room: ${currentRoom}`);
+        log('Use this page to test the class finish functionality');
+        log('');
+        log('📋 Test Instructions:');
+        log('1. Click "Join as Teacher" to have a teacher in the room');
+        log('2. Click "Join as Student" to have a student in the room');
+        log('3. Click "Finish Class" to test the finish functionality');
+        log('4. Or click "Disconnect Teacher" to test disconnect behavior');
+        log('5. Use "Open Student Classroom" to test in actual classroom');
+    </script>
+</body>
+</html>

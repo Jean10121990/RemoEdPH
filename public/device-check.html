@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Device Check - RemoEdPH</title>
+    <link rel="stylesheet" href="modern-styles.css">
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: #f6fbff; 
+            margin: 0;
+            padding: 0;
+        }
+        .remoed-main { 
+            display: flex; 
+            min-height: 100vh; 
+        }
+        .remoed-sidebar { 
+            width: 260px; 
+            min-width: 260px;
+            background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%); 
+            box-shadow: 4px 0 20px rgba(102, 126, 234, 0.1);
+            padding: 0; 
+            display: flex; 
+            flex-direction: column;
+            align-items: stretch;
+            position: fixed;
+            height: 100vh;
+            z-index: 100;
+            border-right: 1px solid rgba(102, 126, 234, 0.1);
+        }
+        .remoed-logo { 
+            display: flex; 
+            align-items: center; 
+            gap: 14px; 
+        }
+        .remoed-logo img { 
+            height: 48px; 
+        }
+        .remoed-title { 
+            font-size: 1.7rem; 
+            font-weight: 700; 
+            color: #667eea; 
+            letter-spacing: 1px; 
+        }
+        .remoed-user { 
+            display: flex; 
+            align-items: center; 
+            gap: 10px; 
+        }
+        .remoed-avatar { 
+            width: 72px; 
+            height: 72px; 
+            border-radius: 50%; 
+            background: #667eea; 
+            color: #fff; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-weight: bold; 
+            font-size: 2.2rem; 
+        }
+        .remoed-username { 
+            color: #667eea; 
+            font-weight: 600; 
+        }
+        .remoed-menu { 
+            list-style: none; 
+            padding: 0; 
+            margin: 0; 
+        }
+        .remoed-menu li { 
+            padding: 14px 32px; 
+            color: #667eea; 
+            font-weight: 500; 
+            cursor: pointer; 
+            display: flex; 
+            align-items: center; 
+            gap: 12px; 
+            border-left: 4px solid transparent; 
+            transition: background 0.2s, border-color 0.2s; 
+        }
+        .remoed-menu li.active, .remoed-menu li:hover { 
+            background: linear-gradient(90deg, #667eea 0%, #5a67d8 100%); 
+            border-left: 4px solid #667eea; 
+            color: white; 
+            transform: translateX(4px);
+            transition: all 0.3s ease;
+        }
+        .remoed-menu svg { 
+            width: 20px; 
+            height: 20px; 
+            stroke: currentColor; 
+        }
+        .remoed-content { 
+            flex: 1; 
+            padding: 20px; 
+            margin-left: 260px;
+            max-width: calc(100vw - 260px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
+        }
+        .device-check-card { 
+            background: #fff; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 24px rgba(0,0,0,0.08); 
+            padding: 2rem; 
+            width: 100%; 
+            max-width: 1200px; 
+            display: flex; 
+            flex-direction: row; 
+            gap: 2rem;
+            align-items: flex-start; 
+        }
+        
+        @media (max-width: 768px) {
+            .device-check-card {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            .video-section {
+                width: 100%;
+            }
+            .controls-section {
+                width: 100%;
+            }
+            #video-preview {
+                max-width: 100%;
+                height: 240px;
+            }
+        }
+        .device-title { 
+            font-size: 1.5rem; 
+            font-weight: 600; 
+            color: #333; 
+            margin-bottom: 1.2rem; 
+            text-align: left; 
+        }
+        .video-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        #video-preview { 
+            width: 100%; 
+            max-width: 480px; 
+            height: 360px; 
+            background: #222; 
+            border-radius: 8px; 
+            margin-bottom: 20px; 
+        }
+        #mic-level { 
+            width: 100%; 
+            height: 10px; 
+            background: #eee; 
+            border-radius: 5px; 
+            margin-bottom: 20px; 
+        }
+        #mic-bar { 
+            height: 100%; 
+            background: #3a7afe; 
+            border-radius: 5px; 
+            width: 0; 
+            transition: width 0.1s; 
+        }
+        .proceed-btn { 
+            padding: 0.8rem 2rem; 
+            background: #3a7afe; 
+            color: #fff; 
+            border: none; 
+            border-radius: 5px; 
+            font-size: 1.1rem; 
+            cursor: pointer; 
+            transition: background 0.2s; 
+            margin-top: 1.5rem; 
+            width: 100%;
+        }
+        .proceed-btn:hover { 
+            background: #255ed6; 
+        }
+        .back-btn { 
+            margin-top: 12px; 
+            background: #f4f6fb; 
+            color: #1ca7e7; 
+            border: 1px solid #1ca7e7; 
+            border-radius: 5px; 
+            padding: 0.7rem 2rem; 
+            font-size: 1.1rem; 
+            cursor: pointer; 
+            width: 100%;
+        }
+        .back-btn:hover { 
+            background: #eaf7ff; 
+        }
+        .controls-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .audio-controls {
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        .control-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .control-label {
+            font-size: 0.98rem;
+            color: #333;
+            min-width: 80px;
+        }
+        .volume-slider {
+            flex: 1;
+        }
+        .mute-btn {
+            padding: 6px 12px;
+            background: #e74c3c;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .mute-btn.unmuted {
+            background: #27ae60;
+        }
+        .mute-btn:hover {
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="remoed-main">
+        <nav class="remoed-sidebar">
+            <div class="remoed-logo" style="height:100px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding-top:24px;">
+                <img src="remoed-logo.png" alt="RemoEdPH Logo" style="height:40px; width:auto; display:inline-block; vertical-align:middle;">
+                <span class="remoed-title" style="font-size:1.3rem; font-weight:700; color:#1ca7e7; letter-spacing:1px;">RemoEdPH</span>
+            </div>
+            <div class="remoed-user" style="display:flex; flex-direction:column; align-items:center; margin-bottom:24px;">
+                <div class="remoed-avatar" id="sidebar-avatar">
+                    <img id="profile-image" src="" alt="Profile" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: none;">
+                    <span id="avatar-text">K</span>
+                </div>
+                <span class="remoed-username" id="sidebar-email">kjbflores@remoedph.com</span>
+            </div>
+            <ul class="remoed-menu">
+                <li onclick="window.location.href='teacher-dashboard.html'">
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <rect x="3" y="3" width="18" height="18" rx="4"/>
+                    </svg>Dashboard
+                </li>
+                <li onclick="window.location.href='teacher-class-table.html'">
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <rect x="3" y="7" width="18" height="13" rx="2"/>
+                        <path d="M16 3v4M8 3v4"/>
+                    </svg>Class Schedule
+                </li>
+                <li class="active" onclick="window.location.href='device-check.html'">
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M8 12h8M12 8v8"/>
+                    </svg>Device Check
+                </li>
+                
+                <li onclick="window.location.href='teacher-service-fee.html'">
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 10c-4.41 0-8-1.79-8-4V6c0-2.21 3.59-4 8-4s8 1.79 8 4v8c0 2.21-3.59 4-8 4z"/>
+                    </svg>Teaching Fee
+                </li>
+                <li onclick="window.location.href='teacher-profile.html'">
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                    </svg>Profile
+                </li>
+                <li id="logout-nav" style="margin-top:auto; color:#e74c3c; cursor:pointer;">
+                    <svg fill="none" stroke="#e74c3c" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M17 16l4-4m0 0l-4-4m4 4H7"/>
+                        <path d="M3 12a9 9 0 0118 0 9 9 0 01-18 0z"/>
+                    </svg>Logout
+                </li>
+            </ul>
+        </nav>
+    <div class="remoed-content">
+        <div class="device-check-card">
+            <div class="video-section">
+                <div class="device-title">Check Your Camera & Microphone</div>
+                <video id="video-preview" autoplay playsinline muted></video>
+            </div>
+            
+            <div class="controls-section">
+                <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+                  <label for="brightness-slider" style="font-size:0.98rem; color:#333; min-width:80px;">Brightness</label>
+                  <input type="range" id="brightness-slider" min="0.5" max="2" step="0.01" value="1" style="flex:1;">
+                </div>
+                <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+                  <label for="whiteness-slider" style="font-size:0.98rem; color:#333; min-width:80px;">Whiteness</label>
+                  <input type="range" id="whiteness-slider" min="0.5" max="2" step="0.01" value="1" style="flex:1;">
+                </div>
+                <div style="display:flex; align-items:center; gap:10px; margin-bottom:18px;">
+                  <label for="beautify-slider" style="font-size:0.98rem; color:#333; min-width:80px;">Beautify</label>
+                  <input type="range" id="beautify-slider" min="0" max="100" step="1" value="0" style="flex:1;">
+                  <span id="beautify-value" style="font-size:0.9rem; color:#666; min-width:30px;">0%</span>
+                </div>
+                
+                <!-- Audio Controls -->
+                <div class="audio-controls">
+                  <div class="control-row">
+                    <label class="control-label">Volume</label>
+                    <input type="range" id="volume-slider" class="volume-slider" min="0" max="100" step="1" value="50">
+                    <span id="volume-value" style="font-size:0.9rem; color:#666; min-width:30px;">50%</span>
+                  </div>
+                  <div class="control-row">
+                    <label class="control-label">Microphone</label>
+                    <button id="mute-btn" class="mute-btn unmuted">Unmuted</button>
+                  </div>
+                  <div class="control-row">
+                    <label class="control-label">Audio Feedback</label>
+                    <button id="feedback-btn" class="mute-btn" style="background: #6c757d;">Off</button>
+                  </div>
+                </div>
+                <div id="mic-level"><div id="mic-bar"></div></div>
+                <div id="status-message" style="color:#333; margin-bottom:10px;">Checking devices...</div>
+                <div style="font-size:0.9rem; color:#666; margin-bottom:15px; line-height:1.4;">
+                    💡 <strong>Tip:</strong> Enable "Audio Feedback" to hear yourself speak and test your microphone quality
+                </div>
+                <button class="proceed-btn" id="proceed-btn">Proceed to Practice Room</button>
+                <button class="back-btn" id="back-dashboard-btn">Back to Dashboard</button>
+            </div>
+        </div>
+        
+        
+        </div>
+    </div>
+        <script src="avatar-helper.js"></script>
+        <script>
+                // Set sidebar avatar and email
+                (function(){
+                    const username = localStorage.getItem('remoedUsername') || 'User';
+                    const teacherId = localStorage.getItem('teacherId');
+
+                    const displayName = username.split('@')[0] || username;
+                    document.getElementById('sidebar-email').textContent = 'Loading...';
+
+                    if (window.setAvatar) {
+                        setAvatar({ displayName: displayName, imgSelector: '#profile-image', textSelector: '#avatar-text' });
+                    } else {
+                        document.getElementById('avatar-text').textContent = displayName[0].toUpperCase();
+                    }
+
+                    // Load profile picture if available
+                    if (teacherId) {
+                        loadProfilePicture(teacherId);
+                    }
+                })();
+        
+        // Logout functionality
+        document.getElementById('logout-nav').onclick = function() {
+            localStorage.clear();
+            window.location.href = 'teacher-login.html';
+        };
+        
+        // Back to dashboard button
+        document.getElementById('back-dashboard-btn').onclick = function() {
+            window.location.href = 'teacher-dashboard.html';
+        };
+
+        // Device check variables
+        const statusMsg = document.getElementById('status-message');
+        const video = document.getElementById('video-preview');
+        const micBar = document.getElementById('mic-bar');
+        const volumeSlider = document.getElementById('volume-slider');
+        const volumeValue = document.getElementById('volume-value');
+        const muteBtn = document.getElementById('mute-btn');
+        const feedbackBtn = document.getElementById('feedback-btn');
+        let stream;
+        let audioTrack;
+        let isMuted = false;
+        let audioContext;
+        let audioDestination;
+        let isAudioFeedbackEnabled = false;
+        
+        
+
+        // Camera and microphone check
+        async function startMediaCheck() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                video.srcObject = stream;
+                
+                // Get audio track for volume and mute control
+                audioTrack = stream.getAudioTracks()[0];
+                
+                statusMsg.textContent = 'Camera and microphone detected!';
+                
+                // Set up audio context for microphone level and feedback
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const source = audioContext.createMediaStreamSource(stream);
+                const analyser = audioContext.createAnalyser();
+                audioDestination = audioContext.destination;
+                
+                // Connect to analyser for microphone level
+                source.connect(analyser);
+                analyser.fftSize = 256;
+                const dataArray = new Uint8Array(analyser.frequencyBinCount);
+                
+                function updateMicLevel() {
+                    if (!isMuted) {
+                        analyser.getByteTimeDomainData(dataArray);
+                        let sum = 0;
+                        for (let i = 0; i < dataArray.length; i++) {
+                            const val = (dataArray[i] - 128) / 128;
+                            sum += val * val;
+                        }
+                        const rms = Math.sqrt(sum / dataArray.length);
+                        micBar.style.width = Math.min(100, rms * 400) + '%';
+                    } else {
+                        micBar.style.width = '0%';
+                    }
+                    requestAnimationFrame(updateMicLevel);
+                }
+                updateMicLevel();
+            } catch (err) {
+                statusMsg.textContent = 'Could not access camera or microphone. Please check your permissions.';
+            }
+        }
+        
+        startMediaCheck();
+        
+        // Brightness, whiteness, and beautify slider functionality
+        const brightnessSlider = document.getElementById('brightness-slider');
+        const whitenessSlider = document.getElementById('whiteness-slider');
+        const beautifySlider = document.getElementById('beautify-slider');
+        const beautifyValue = document.getElementById('beautify-value');
+        
+        function updateVideoFilter() {
+            const brightness = brightnessSlider.value;
+            const whiteness = whitenessSlider.value;
+            const beautify = beautifySlider.value;
+            
+            // Beautify effects: blur for skin smoothing, contrast adjustment, and saturation
+            const blurAmount = beautify > 0 ? (beautify / 100) * 0.5 : 0; // Max 0.5px blur
+            const contrastAdjust = beautify > 0 ? 1 + (beautify / 100) * 0.3 : 1; // Increase contrast up to 30%
+            const saturationAdjust = beautify > 0 ? 1 + (beautify / 100) * 0.2 : 1; // Increase saturation up to 20%
+            
+            // Apply filters with beautify effects
+            video.style.filter = `
+                brightness(${brightness}) 
+                contrast(${whiteness * contrastAdjust}) 
+                saturate(${saturationAdjust}) 
+                blur(${blurAmount}px)
+            `;
+            
+            // Update beautify value display
+            beautifyValue.textContent = beautify + '%';
+        }
+        
+        brightnessSlider.addEventListener('input', updateVideoFilter);
+        whitenessSlider.addEventListener('input', updateVideoFilter);
+        beautifySlider.addEventListener('input', updateVideoFilter);
+        
+        // Volume control
+        volumeSlider.addEventListener('input', function() {
+            const volume = this.value;
+            volumeValue.textContent = volume + '%';
+            
+            // Set video volume (for any audio in the video stream)
+            if (video) {
+                video.volume = volume / 100;
+            }
+            
+            // Update audio feedback volume if enabled
+            if (isAudioFeedbackEnabled && audioContext) {
+                // The gain node will be updated when audio feedback is re-enabled
+                // For now, we'll just update the status message
+                if (volume < 20) {
+                    statusMsg.textContent = 'Audio feedback enabled! Speak to hear yourself. (Volume is low)';
+                } else {
+                    statusMsg.textContent = 'Audio feedback enabled! Speak to hear yourself.';
+                }
+            }
+        });
+        
+        // Mute button functionality
+        muteBtn.addEventListener('click', function() {
+            if (audioTrack) {
+                isMuted = !isMuted;
+                audioTrack.enabled = !isMuted;
+                
+                if (isMuted) {
+                    this.textContent = 'Muted';
+                    this.classList.remove('unmuted');
+                    this.style.background = '#e74c3c';
+                } else {
+                    this.textContent = 'Unmuted';
+                    this.classList.add('unmuted');
+                    this.style.background = '#27ae60';
+                }
+            }
+        });
+        
+        // Audio feedback button functionality
+        feedbackBtn.addEventListener('click', function() {
+            if (!audioContext || !audioDestination) {
+                alert('Audio context not available. Please refresh the page.');
+                return;
+            }
+            
+            isAudioFeedbackEnabled = !isAudioFeedbackEnabled;
+            
+            if (isAudioFeedbackEnabled) {
+                // Enable audio feedback - connect microphone to speakers
+                const source = audioContext.createMediaStreamSource(stream);
+                const gainNode = audioContext.createGain();
+                gainNode.gain.value = 0.8; // Increased volume for better audio feedback
+                
+                source.connect(gainNode);
+                gainNode.connect(audioDestination);
+                
+                this.textContent = 'On';
+                this.style.background = '#28a745';
+                statusMsg.textContent = 'Audio feedback enabled! Speak to hear yourself.';
+            } else {
+                // Disable audio feedback
+                this.textContent = 'Off';
+                this.style.background = '#6c757d';
+                statusMsg.textContent = 'Camera and microphone detected!';
+            }
+        });
+        
+        // Proceed to class button
+        document.getElementById('proceed-btn').addEventListener('click', function() {
+            // Check if user is a teacher
+            const teacherId = localStorage.getItem('teacherId');
+            const token = localStorage.getItem('token');
+            
+            if (!teacherId || !token) {
+                alert('Please log in as a teacher to access the classroom.');
+                window.location.href = 'teacher-login.html';
+                return;
+            }
+            
+            // Generate a random 8-character room ID
+            function generateRoomId() {
+                return Math.random().toString(36).substr(2, 8);
+            }
+            const roomId = generateRoomId();
+            
+            // Store room ID and redirect to practice room
+            localStorage.setItem('roomId', roomId);
+            window.location.href = 'practice-room.html';
+        });
+
+        
+        
+        // Load profile picture and update sidebar from backend
+        async function loadProfilePicture(teacherId) {
+            try {
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    console.log('No token found for profile picture');
+                    return;
+                }
+                
+                const response = await fetch(`/api/teacher/profile`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                        if (response.ok) {
+                            const data = await response.json();
+                            // Update sidebar with first name
+                            if (data.profile && data.profile.firstName) {
+                                const sidebarElement = document.getElementById('sidebar-email');
+                                if (sidebarElement) sidebarElement.textContent = `Hi, ${data.profile.firstName}`;
+                            }
+
+                            if (window.setAvatar) {
+                                setAvatar({ imageUrl: data.profile && data.profile.profilePicture || '', displayName: (data.profile && data.profile.firstName) || username, imgSelector: '#profile-image', textSelector: '#avatar-text' });
+                            } else if (data.profile && data.profile.profilePicture) {
+                                const profileImage = document.getElementById('profile-image');
+                                const avatarText = document.getElementById('avatar-text');
+                                profileImage.src = data.profile.profilePicture;
+                                profileImage.style.display = 'block';
+                                avatarText.style.display = 'none';
+                            }
+                        }
+            } catch (error) {
+                console.error('Error loading profile picture:', error);
+            }
+        }
+    </script>
+</body>
+</html> 

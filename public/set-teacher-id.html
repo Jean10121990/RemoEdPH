@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Set Teacher ID</title>
+</head>
+<body>
+    <h1>Set Teacher ID</h1>
+    <p>Click the button below to set your teacher ID in localStorage:</p>
+    <button onclick="setTeacherId()">Set Teacher ID</button>
+    <button onclick="checkTeacherId()">Check Teacher ID</button>
+    <div id="result"></div>
+
+    <script>
+        function setTeacherId() {
+            localStorage.setItem('teacherId', '688382e923e4e94a26d1564c');
+            localStorage.setItem('remoedUsername', 'kjbflores@remoedph.com');
+            localStorage.setItem('userType', 'teacher');
+            document.getElementById('result').innerHTML = 'Teacher ID set successfully!';
+        }
+
+        function checkTeacherId() {
+            const teacherId = localStorage.getItem('teacherId');
+            const username = localStorage.getItem('remoedUsername');
+            const userType = localStorage.getItem('userType');
+            
+            document.getElementById('result').innerHTML = `
+                <p>Teacher ID: ${teacherId}</p>
+                <p>Username: ${username}</p>
+                <p>User Type: ${userType}</p>
+            `;
+        }
+
+        // Check on page load
+        checkTeacherId();
+    </script>
+</body>
+</html> 

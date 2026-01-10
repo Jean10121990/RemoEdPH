@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Token Test - RemoEdPH</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .section {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .token-info {
+            background: #e3f2fd;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+        .test-result {
+            background: #f3e5f5;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #5a67d8;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            border: 1px solid #ffcdd2;
+        }
+        .success {
+            background: #e8f5e8;
+            color: #2e7d32;
+            border: 1px solid #c8e6c9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Token Authentication Test</h1>
+        
+        <div class="section">
+            <h2>Current Token Information</h2>
+            <div class="token-info">
+                <p><strong>Token exists:</strong> <span id="token-exists"></span></p>
+                <p><strong>User Type:</strong> <span id="user-type"></span></p>
+                <p><strong>Username:</strong> <span id="username"></span></p>
+                <p><strong>User ID:</strong> <span id="user-id"></span></p>
+                <p><strong>Token Preview:</strong> <span id="token-preview"></span></p>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Authentication Tests</h2>
+            <div class="test-result">
+                <p><strong>Test Results:</strong></p>
+                <pre id="test-results">Click "Test Authentication" to see results</pre>
+            </div>
+            <button onclick="testAuthentication()">Test Authentication</button>
+            <button onclick="testStudentProfile()">Test Student Profile</button>
+            <button onclick="clearToken()">Clear Token</button>
+        </div>
+    </div>
+
+    <script>
+        function updateTokenInfo() {
+            const token = localStorage.getItem('token');
+            const userType = localStorage.getItem('userType');
+            const username = localStorage.getItem('remoedUsername');
+            const userId = localStorage.getItem('studentId') || localStorage.getItem('teacherId');
+            
+            document.getElementById('token-exists').textContent = token ? 'Yes' : 'No';
+            document.getElementById('user-type').textContent = userType || 'None';
+            document.getElementById('username').textContent = username || 'None';
+            document.getElementById('user-id').textContent = userId || 'None';
+            document.getElementById('token-preview').textContent = token ? token.substring(0, 20) + '...' : 'None';
+        }
+
+        async function testAuthentication() {
+            const token = localStorage.getItem('token');
+            const results = [];
+            
+            results.push('=== TOKEN TEST ===');
+            results.push(`Token exists: ${token ? 'Yes' : 'No'}`);
+            
+            if (token) {
+                results.push(`Token length: ${token.length}`);
+                results.push(`Token preview: ${token.substring(0, 50)}...`);
+                
+                // Test health endpoint
+                try {
+                    const healthResponse = await fetch('/api/health');
+                    const healthData = await healthResponse.json();
+                    results.push('✅ Health endpoint: OK');
+                    results.push(`Server status: ${healthData.status}`);
+                } catch (error) {
+                    results.push('❌ Health endpoint: Failed');
+                    results.push(`Error: ${error.message}`);
+                }
+                
+                // Test with token
+                try {
+                    const response = await fetch('/api/student/profile', {
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        results.push('✅ Student profile: OK');
+                        results.push(`Profile data: ${JSON.stringify(data, null, 2)}`);
+                    } else {
+                        const errorData = await response.text();
+                        results.push(`❌ Student profile: ${response.status} ${response.statusText}`);
+                        results.push(`Error: ${errorData}`);
+                    }
+                } catch (error) {
+                    results.push('❌ Student profile: Network error');
+                    results.push(`Error: ${error.message}`);
+                }
+            } else {
+                results.push('❌ No token found in localStorage');
+            }
+            
+            document.getElementById('test-results').textContent = results.join('\n');
+        }
+
+        async function testStudentProfile() {
+            const token = localStorage.getItem('token');
+            const results = [];
+            
+            results.push('=== STUDENT PROFILE TEST ===');
+            
+            if (!token) {
+                results.push('❌ No token found');
+                document.getElementById('test-results').textContent = results.join('\n');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/student/profile', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                        'Cache-Control': 'no-cache',
+                        'Pragma': 'no-cache'
+                    }
+                });
+                
+                results.push(`Response status: ${response.status} ${response.statusText}`);
+                results.push(`Response headers: ${JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2)}`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    results.push('✅ Profile loaded successfully');
+                    results.push(`Profile data: ${JSON.stringify(data, null, 2)}`);
+                } else {
+                    const errorText = await response.text();
+                    results.push('❌ Profile load failed');
+                    results.push(`Error response: ${errorText}`);
+                }
+            } catch (error) {
+                results.push('❌ Network error');
+                results.push(`Error: ${error.message}`);
+            }
+            
+            document.getElementById('test-results').textContent = results.join('\n');
+        }
+
+        function clearToken() {
+            localStorage.clear();
+            updateTokenInfo();
+            document.getElementById('test-results').textContent = 'Token cleared. Please log in again.';
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            updateTokenInfo();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clear Authentication Token</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-align: center;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .status {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Authentication Token Reset</h1>
+        <p>This will clear your current authentication token and redirect you to login.</p>
+        
+        <div class="status" id="status">
+            Checking current token status...
+        </div>
+        
+        <button onclick="clearToken()">🗑️ Clear Token & Redirect to Login</button>
+        <button onclick="checkToken()">🔍 Check Current Token</button>
+        <button onclick="goToLogin()">➡️ Go to Login Page</button>
+    </div>
+
+    <script>
+        // Check token status on page load
+        window.onload = function() {
+            checkToken();
+        };
+
+        function checkToken() {
+            const token = localStorage.getItem('token');
+            const statusDiv = document.getElementById('status');
+            
+            if (!token) {
+                statusDiv.innerHTML = '❌ No token found in localStorage';
+                statusDiv.style.background = 'rgba(255, 0, 0, 0.2)';
+                return;
+            }
+
+            try {
+                const tokenPayload = JSON.parse(atob(token.split('.')[1]));
+                const currentTime = Math.floor(Date.now() / 1000);
+                const isExpired = currentTime > tokenPayload.exp;
+                
+                statusDiv.innerHTML = `
+                    ✅ Token found<br>
+                    📅 Expires: ${new Date(tokenPayload.exp * 1000).toLocaleString()}<br>
+                    ⏰ Current time: ${new Date(currentTime * 1000).toLocaleString()}<br>
+                    ${isExpired ? '❌ Token is EXPIRED' : '✅ Token is VALID'}
+                `;
+                statusDiv.style.background = isExpired ? 'rgba(255, 0, 0, 0.2)' : 'rgba(0, 255, 0, 0.2)';
+            } catch (e) {
+                statusDiv.innerHTML = '❌ Invalid token format';
+                statusDiv.style.background = 'rgba(255, 0, 0, 0.2)';
+            }
+        }
+
+        function clearToken() {
+            // Clear all authentication data
+            localStorage.removeItem('token');
+            localStorage.removeItem('userType');
+            localStorage.removeItem('userId');
+            localStorage.removeItem('username');
+            
+            sessionStorage.clear();
+            
+            // Clear cookies
+            document.cookie.split(";").forEach(function(c) { 
+                document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+            });
+            
+            alert('✅ Token cleared! Redirecting to login page...');
+            
+            // Redirect to login page
+            setTimeout(() => {
+                window.location.href = '/teacher-login.html';
+            }, 1000);
+        }
+
+        function goToLogin() {
+            window.location.href = '/teacher-login.html';
+        }
+    </script>
+</body>
+</html>

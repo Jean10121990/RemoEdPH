@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Waiting Room</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .debug-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .debug-btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 10px 5px;
+            font-size: 16px;
+        }
+        .debug-btn:hover {
+            background: #45a049;
+        }
+        .debug-btn.teacher {
+            background: #2196F3;
+        }
+        .debug-btn.student {
+            background: #FF9800;
+        }
+        .debug-btn.danger {
+            background: #f44336;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .room-info {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>🐛 Debug Waiting Room Issues</h1>
+    
+    <div class="debug-section">
+        <h2>🔍 Current Issue Analysis</h2>
+        <p>From the logs, I can see:</p>
+        <ul>
+            <li>Student joined room: <code>202508190900student116</code></li>
+            <li>Student was first user in room</li>
+            <li>Student disconnected immediately</li>
+            <li>Waiting room detection not working</li>
+        </ul>
+    </div>
+
+    <div class="debug-section">
+        <h2>🔑 Test Room Setup</h2>
+        <p>Test room ID: <strong id="test-room">202508190900student116</strong></p>
+        <button class="debug-btn" onclick="generateTestRoom()">🔄 Generate Test Room</button>
+        <button class="debug-btn" onclick="useRealRoom()">📋 Use Real Room from Logs</button>
+    </div>
+
+    <div class="debug-section">
+        <h2>👨‍🏫 Teacher Test</h2>
+        <p>Test teacher joining the room:</p>
+        <button class="debug-btn teacher" onclick="joinAsTeacher()">🚀 Join as Teacher</button>
+        <button class="debug-btn" onclick="signalTeacherPresence()">👨‍🏫 Signal Presence</button>
+        <div id="teacher-status"></div>
+    </div>
+
+    <div class="debug-section">
+        <h2>🎓 Student Test</h2>
+        <p>Test student waiting room:</p>
+        <button class="debug-btn student" onclick="joinAsStudent()">🚀 Join as Student</button>
+        <button class="debug-btn" onclick="openStudentWaitingRoom()">📱 Open Waiting Room</button>
+        <div id="student-status"></div>
+    </div>
+
+    <div class="debug-section">
+        <h2>🔍 Room Status Check</h2>
+        <p>Check current room status:</p>
+        <button class="debug-btn" onclick="checkRoomStatus()">🔍 Check Status</button>
+        <button class="debug-btn" onclick="checkAllRooms()">🔍 Check All Rooms</button>
+        <div id="room-status"></div>
+    </div>
+
+    <div class="debug-section">
+        <h2>🔧 Manual Fixes</h2>
+        <p>Manual fixes for testing:</p>
+        <button class="debug-btn" onclick="forceTeacherPresence()">👨‍🏫 Force Teacher Presence</button>
+        <button class="debug-btn" onclick="clearRoomData()">🗑️ Clear Room Data</button>
+        <button class="debug-btn danger" onclick="resetAll()">🔄 Reset All</button>
+    </div>
+
+    <div class="debug-section">
+        <h2>📊 Debug Logs</h2>
+        <div id="debug-logs" class="log"></div>
+        <button class="debug-btn" onclick="clearLogs()">🗑️ Clear Logs</button>
+    </div>
+
+    <script>
+        let socket = null;
+        let currentRoom = '202508190900student116';
+
+        // Log function
+        function log(message) {
+            const logs = document.getElementById('debug-logs');
+            const timestamp = new Date().toLocaleTimeString();
+            logs.innerHTML += `[${timestamp}] ${message}\n`;
+            logs.scrollTop = logs.scrollHeight;
+            console.log(message);
+        }
+
+        // Clear logs
+        function clearLogs() {
+            document.getElementById('debug-logs').innerHTML = '';
+        }
+
+        // Generate test room
+        function generateTestRoom() {
+            const now = new Date();
+            const dateStr = now.getFullYear().toString() + 
+                           (now.getMonth() + 1).toString().padStart(2, '0') + 
+                           now.getDate().toString().padStart(2, '0');
+            const timeStr = now.getHours().toString().padStart(2, '0') + 
+                           now.getMinutes().toString().padStart(2, '0');
+            currentRoom = `${dateStr}${timeStr}student116`;
+            document.getElementById('test-room').textContent = currentRoom;
+            log(`Generated test room: ${currentRoom}`);
+        }
+
+        // Use real room from logs
+        function useRealRoom() {
+            currentRoom = '202508190900student116';
+            document.getElementById('test-room').textContent = currentRoom;
+            log(`Using real room from logs: ${currentRoom}`);
+        }
+
+        // Join as teacher
+        function joinAsTeacher() {
+            if (socket) {
+                socket.disconnect();
+            }
+
+            const serverUrl = window.location.protocol + '//' + window.location.hostname + 
+                             (window.location.port ? ':' + window.location.port : '');
+            
+            socket = io(serverUrl);
+            
+            socket.on('connect', () => {
+                log('✅ Teacher connected to server');
+                
+                // Set teacher data
+                localStorage.setItem('teacherId', 'TKBF7202500001');
+                localStorage.setItem('remoedUsername', 'Test Teacher');
+                
+                // Join room
+                socket.emit('join', { 
+                    room: currentRoom, 
+                    userType: 'teacher', 
+                    userId: 'TKBF7202500001', 
+                    username: 'Test Teacher' 
+                });
+                
+                log(`👨‍🏫 Teacher joining room: ${currentRoom}`);
+            });
+            
+            socket.on('joined', () => {
+                log('✅ Teacher joined room successfully');
+                showStatus('teacher-status', 'Teacher joined room successfully!', 'success');
+            });
+            
+            socket.on('disconnect', () => {
+                log('❌ Teacher disconnected');
+            });
+        }
+
+        // Join as student
+        function joinAsStudent() {
+            if (socket) {
+                socket.disconnect();
+            }
+
+            const serverUrl = window.location.protocol + '//' + window.location.hostname + 
+                             (window.location.port ? ':' + window.location.port : '');
+            
+            socket = io(serverUrl);
+            
+            socket.on('connect', () => {
+                log('✅ Student connected to server');
+                
+                // Set student data
+                localStorage.setItem('studentId', 'test-student-456');
+                localStorage.setItem('remoedUsername', 'Test Student');
+                
+                // Join room
+                socket.emit('join', { 
+                    room: currentRoom, 
+                    userType: 'student', 
+                    userId: 'test-student-456', 
+                    username: 'Test Student' 
+                });
+                
+                log(`🎓 Student joining room: ${currentRoom}`);
+            });
+            
+            socket.on('joined', () => {
+                log('✅ Student joined room successfully');
+                showStatus('student-status', 'Student joined room successfully!', 'success');
+            });
+            
+            socket.on('disconnect', () => {
+                log('❌ Student disconnected');
+            });
+        }
+
+        // Signal teacher presence
+        async function signalTeacherPresence() {
+            try {
+                const response = await fetch('/api/signaling/teacher-present', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        room: currentRoom,
+                        teacherId: 'TKBF7202500001',
+                        username: 'Test Teacher'
+                    })
+                });
+                
+                if (response.ok) {
+                    log('✅ Teacher presence signaled successfully');
+                    showStatus('teacher-status', 'Teacher presence signaled!', 'success');
+                } else {
+                    log('❌ Failed to signal teacher presence');
+                    showStatus('teacher-status', 'Failed to signal presence', 'error');
+                }
+            } catch (error) {
+                log(`❌ Error signaling teacher presence: ${error.message}`);
+                showStatus('teacher-status', 'Error signaling presence', 'error');
+            }
+        }
+
+        // Open student waiting room
+        function openStudentWaitingRoom() {
+            const url = `student-waiting-room.html?room=${currentRoom}`;
+            window.open(url, '_blank');
+            log(`📱 Opened student waiting room: ${url}`);
+        }
+
+        // Check room status
+        async function checkRoomStatus() {
+            try {
+                const response = await fetch(`/api/signaling/room-status?room=${currentRoom}`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log(`🔍 Room status for ${currentRoom}:`);
+                    log(`  - Teacher Present: ${data.teacherPresent}`);
+                    log(`  - Teacher Message Present: ${data.teacherMessagePresent}`);
+                    log(`  - Teacher Socket Present: ${data.teacherSocketPresent}`);
+                    log(`  - Room Exists: ${data.roomExists}`);
+                    log(`  - Client Count: ${data.clientCount}`);
+                    
+                    const statusHtml = `
+                        <div class="status info">
+                            <strong>Room Status for ${currentRoom}:</strong><br>
+                            Teacher Present: ${data.teacherPresent ? '✅ Yes' : '❌ No'}<br>
+                            Teacher Message Present: ${data.teacherMessagePresent ? '✅ Yes' : '❌ No'}<br>
+                            Teacher Socket Present: ${data.teacherSocketPresent ? '✅ Yes' : '❌ No'}<br>
+                            Room Exists: ${data.roomExists ? '✅ Yes' : '❌ No'}<br>
+                            Client Count: ${data.clientCount}<br>
+                            Last Activity: ${data.lastActivity ? new Date(data.lastActivity).toLocaleString() : 'None'}
+                        </div>
+                    `;
+                    document.getElementById('room-status').innerHTML = statusHtml;
+                } else {
+                    log(`❌ Failed to check room status: ${response.status}`);
+                    showStatus('room-status', 'Failed to check room status', 'error');
+                }
+            } catch (error) {
+                log(`❌ Error checking room status: ${error.message}`);
+                showStatus('room-status', 'Error checking room status', 'error');
+            }
+        }
+
+        // Check all rooms
+        async function checkAllRooms() {
+            try {
+                const response = await fetch('/api/signaling/all-rooms');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log(`🔍 All rooms: ${JSON.stringify(data, null, 2)}`);
+                } else {
+                    log(`❌ Failed to check all rooms: ${response.status}`);
+                }
+            } catch (error) {
+                log(`❌ Error checking all rooms: ${error.message}`);
+            }
+        }
+
+        // Force teacher presence
+        async function forceTeacherPresence() {
+            try {
+                // First signal presence
+                await signalTeacherPresence();
+                
+                // Then join as teacher
+                setTimeout(() => {
+                    joinAsTeacher();
+                }, 1000);
+                
+                log('🔧 Forced teacher presence');
+            } catch (error) {
+                log(`❌ Error forcing teacher presence: ${error.message}`);
+            }
+        }
+
+        // Clear room data
+        async function clearRoomData() {
+            try {
+                const response = await fetch('/api/signaling/clear-room', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ room: currentRoom })
+                });
+                
+                if (response.ok) {
+                    log('✅ Room data cleared');
+                    showStatus('room-status', 'Room data cleared', 'success');
+                } else {
+                    log('❌ Failed to clear room data');
+                    showStatus('room-status', 'Failed to clear room data', 'error');
+                }
+            } catch (error) {
+                log(`❌ Error clearing room data: ${error.message}`);
+                showStatus('room-status', 'Error clearing room data', 'error');
+            }
+        }
+
+        // Reset all
+        function resetAll() {
+            if (socket) {
+                socket.disconnect();
+            }
+            localStorage.clear();
+            clearLogs();
+            log('🔄 Reset all data');
+            showStatus('room-status', 'All data reset', 'info');
+        }
+
+        // Show status message
+        function showStatus(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="status ${type}">${message}</div>`;
+            setTimeout(() => {
+                element.innerHTML = '';
+            }, 5000);
+        }
+
+        // Auto-check room status every 3 seconds
+        setInterval(checkRoomStatus, 3000);
+
+        // Initialize
+        log('🐛 Debug Waiting Room initialized');
+        log(`Current room: ${currentRoom}`);
+        log('Use this page to debug waiting room issues');
+    </script>
+</body>
+</html>

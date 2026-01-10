@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Waiting Room - Online Distance Learning</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #333;
+        }
+
+        .waiting-container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 600px;
+            width: 90%;
+            text-align: center;
+        }
+
+        .waiting-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+
+        .waiting-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .waiting-subtitle {
+            font-size: 1.2rem;
+            color: #666;
+            margin-bottom: 30px;
+            line-height: 1.5;
+        }
+
+        .waiting-spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(102,126,234,0.3);
+            border-top: 5px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 30px;
+        }
+
+        .status-message {
+            font-size: 1.1rem;
+            color: #667eea;
+            font-weight: 600;
+            margin-bottom: 30px;
+        }
+
+        .room-info {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 25px 0;
+            text-align: left;
+        }
+
+        .room-info h3 {
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            text-align: center;
+            color: #333;
+        }
+
+        .room-detail {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .room-detail:last-child {
+            border-bottom: none;
+        }
+
+        .room-label {
+            font-weight: 500;
+            color: #333;
+        }
+
+        .room-value {
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .class-info {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 25px 0;
+        }
+
+        .class-info h3 {
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+        }
+
+        .class-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .class-detail {
+            text-align: center;
+        }
+
+        .class-detail-label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            margin-bottom: 5px;
+        }
+
+        .class-detail-value {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(40,167,69,0.3);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(108,117,125,0.3);
+        }
+
+        .btn-warning {
+            background: #ffc107;
+            color: #212529;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .btn-warning:hover {
+            background: #e0a800;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255,193,7,0.3);
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(220,53,69,0.3);
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            border-radius: 8px;
+            padding: 15px 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 1000;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.success {
+            border-left: 4px solid #28a745;
+        }
+
+        .notification.error {
+            border-left: 4px solid #dc3545;
+        }
+
+        .notification.warning {
+            border-left: 4px solid #ffc107;
+        }
+
+        .notification.info {
+            border-left: 4px solid #17a2b8;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            color: white;
+            font-size: 1.2rem;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255,255,255,0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 15px;
+        }
+
+        
+    </style>
+</head>
+<body>
+    <div class="waiting-container">
+        <div class="waiting-icon">⏳</div>
+        <h1 class="waiting-title">Waiting for Teacher</h1>
+        <p class="waiting-subtitle">Please wait while your teacher joins the classroom. We'll automatically connect you when they arrive.</p>
+        
+        <div class="waiting-spinner"></div>
+        <div class="status-message" id="status-message">Checking for teacher...</div>
+
+        <div class="room-info">
+            <h3>Room Information</h3>
+            <div class="room-detail">
+                <span class="room-label">Room ID:</span>
+                <span class="room-value" id="room-id">-</span>
+            </div>
+            <div class="room-detail">
+                <span class="room-label">Booking ID:</span>
+                <span class="room-value" id="booking-id">-</span>
+            </div>
+            <div class="room-detail">
+                <span class="room-label">User Type:</span>
+                <span class="room-value" id="user-type">-</span>
+            </div>
+            <div class="room-detail">
+                <span class="room-label">Status:</span>
+                <span class="room-value" id="connection-status">Checking...</span>
+            </div>
+        </div>
+
+        <div class="class-info" id="class-info" style="display: none;">
+            <h3>Class Information</h3>
+            <div class="class-details">
+                <div class="class-detail">
+                    <div class="class-detail-label">Date</div>
+                    <div class="class-detail-value" id="class-date">-</div>
+                </div>
+                <div class="class-detail">
+                    <div class="class-detail-label">Time</div>
+                    <div class="class-detail-value" id="class-time">-</div>
+                </div>
+                <div class="class-detail">
+                    <div class="class-detail-label">Duration</div>
+                    <div class="class-detail-value">25 minutes</div>
+                </div>
+                <div class="class-detail">
+                    <div class="class-detail-label">Status</div>
+                    <div class="class-detail-value" id="class-status">Waiting</div>
+                </div>
+            </div>
+        </div>
+
+                 <div class="action-buttons">
+             <button class="btn btn-primary" id="refresh-btn" onclick="refreshCheck()">🔄 Refresh Check</button>
+             <a href="/student-dashboard.html" class="btn btn-secondary">🏠 Back to Dashboard</a>
+         </div>
+
+        
+    </div>
+
+    <div class="loading-overlay" id="loading-overlay" style="display: none;">
+        <div class="loading-spinner"></div>
+        <span>Connecting to classroom...</span>
+    </div>
+
+    <script>
+        // Get URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const bookingId = urlParams.get('bookingId');
+        const room = urlParams.get('room') || urlParams.get('classroomId');
+        const userType = urlParams.get('userType') || 'student';
+
+        // Update room information display
+        document.getElementById('room-id').textContent = room || 'Not specified';
+        document.getElementById('booking-id').textContent = bookingId || 'Not specified';
+        document.getElementById('user-type').textContent = userType;
+
+        // Initialize the waiting room
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('⏳ Waiting room initialized');
+            console.log('📋 Booking ID:', bookingId);
+            console.log('🏠 Room:', room);
+            console.log('👤 User Type:', userType);
+            
+            // Load class information
+            loadClassInformation();
+            
+                         // Start checking for teacher
+             startTeacherCheck();
+        });
+
+        // Load class information
+        async function loadClassInformation() {
+            if (!bookingId) return;
+
+            try {
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    showNotification('Please log in to view class information', 'error');
+                    return;
+                }
+
+                const response = await fetch(`/api/student/booking/${bookingId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const booking = await response.json();
+                    
+                    document.getElementById('class-date').textContent = new Date(booking.date).toLocaleDateString();
+                    document.getElementById('class-time').textContent = booking.time;
+                    document.getElementById('class-info').style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Error loading class information:', error);
+            }
+        }
+
+        // Start checking for teacher
+        function startTeacherCheck() {
+            if (!room) {
+                console.error('❌ No room parameter found');
+                showNotification('Missing room information', 'error');
+                document.getElementById('connection-status').textContent = 'Error: No room';
+                return;
+            }
+
+            console.log('👨‍🏫 Starting teacher check for room:', room);
+            
+            const checkInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(`/api/signaling/room-status?room=${room}`);
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        console.log('👨‍🏫 Room status check:', data);
+                        
+                        // Update connection status
+                        document.getElementById('connection-status').textContent = 
+                            data.teacherPresent ? 'Teacher Found!' : 'Waiting...';
+                        
+                        if (data.teacherPresent) {
+                            console.log('👨‍🏫 Teacher found! Redirecting to classroom...');
+                            clearInterval(checkInterval);
+                            
+                            // Show loading overlay
+                            document.getElementById('loading-overlay').style.display = 'flex';
+                            
+                            // Update status message
+                            document.getElementById('status-message').textContent = 'Teacher joined! Connecting to classroom...';
+                            
+                            // Redirect to live classroom
+                            setTimeout(() => {
+                                const redirectUrl = `/live-classroom.html?bookingId=${bookingId}&room=${room}`;
+                                console.log('🔄 Redirecting to:', redirectUrl);
+                                window.location.href = redirectUrl;
+                            }, 2000);
+                            
+                            return;
+                        } else {
+                            // Update status message
+                            document.getElementById('status-message').textContent = 'Waiting for teacher to join the classroom...';
+                        }
+                    } else {
+                        console.error('❌ Failed to check room status:', response.status);
+                        document.getElementById('connection-status').textContent = 'Error checking';
+                    }
+                } catch (error) {
+                    console.error('❌ Error checking for teacher:', error);
+                    document.getElementById('connection-status').textContent = 'Connection error';
+                }
+            }, 3000); // Check every 3 seconds
+            
+            // Also check immediately
+            setTimeout(() => {
+                const event = new Event('checkTeacher');
+                window.dispatchEvent(event);
+            }, 1000);
+        }
+
+        // Refresh check
+        function refreshCheck() {
+            console.log('🔄 Refreshing teacher check...');
+            document.getElementById('status-message').textContent = 'Refreshing check...';
+            document.getElementById('connection-status').textContent = 'Checking...';
+            
+            // Restart the check
+            startTeacherCheck();
+            
+            showNotification('Check refreshed', 'success');
+        }
+
+        
+
+        // Show notification
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            // Show notification
+            setTimeout(() => {
+                notification.classList.add('show');
+            }, 100);
+            
+            // Hide notification after 5 seconds
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => {
+                    if (notification.parentElement) {
+                        notification.remove();
+                    }
+                }, 300);
+            }, 5000);
+        }
+
+        
+
+                 // Instructions for testing
+         console.log('⏳ Waiting Room - Instructions:');
+         console.log('1. This page waits for a teacher to join the room');
+         console.log('2. Use "Refresh Check" to restart the teacher detection');
+         console.log('3. Students will be automatically redirected when teacher joins');
+    </script>
+</body>
+</html>

@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Practice Room - RemoEdPH</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .practice-info {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+        
+        .practice-timer {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: bold;
+        }
+        
+        .back-btn {
+            background: #f44336;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+        
+        .back-btn:hover {
+            background: #d32f2f;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            height: calc(100vh - 200px);
+        }
+        
+        .video-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
+        .video-grid {
+            display: grid;
+            grid-template-rows: 1fr;
+            gap: 20px;
+            height: 60%;
+        }
+        
+        .video-container {
+            position: relative;
+            background: #000;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .video-container video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .video-label {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        
+        .controls {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+        }
+        
+        .control-btn {
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .control-btn:hover {
+            background: rgba(0, 0, 0, 0.9);
+        }
+        
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .controls-section, .tools-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
+        .control-group {
+            margin-bottom: 20px;
+        }
+        
+        .control-group h3 {
+            margin-bottom: 15px;
+            color: #333;
+            font-size: 1.1rem;
+        }
+        
+        .control-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .control-label {
+            min-width: 100px;
+            font-weight: 500;
+            color: #555;
+        }
+        
+        .control-input {
+            flex: 1;
+            max-width: 150px;
+        }
+        
+        .control-value {
+            min-width: 50px;
+            text-align: right;
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary {
+            background: #1ca7e7;
+            color: #fff;
+        }
+        
+        .btn-primary:hover {
+            background: #1694d1;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: #fff;
+        }
+        
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        
+        .btn-danger {
+            background: #e74c3c;
+            color: #fff;
+        }
+        
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+        
+        .btn-success {
+            background: #27ae60;
+            color: #fff;
+        }
+        
+        .btn-success:hover {
+            background: #229954;
+        }
+        
+        .mic-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .mic-bar {
+            width: 100px;
+            height: 8px;
+            background: #eee;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .mic-level {
+            height: 100%;
+            background: #27ae60;
+            width: 0%;
+            transition: width 0.1s;
+        }
+        
+        .status-message {
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-weight: 500;
+        }
+        
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .status-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .tab-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .tab-buttons {
+            display: flex;
+            background: #f8f9fa;
+            border-radius: 15px 15px 0 0;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .tab-button {
+            flex: 1;
+            padding: 12px 16px;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            color: #6c757d;
+            transition: all 0.3s;
+            border-radius: 15px 15px 0 0;
+        }
+        
+        .tab-button.active {
+            background: white;
+            color: #1ca7e7;
+            border-bottom: 2px solid #1ca7e7;
+        }
+        
+        .tab-button:hover {
+            background: rgba(28, 167, 231, 0.1);
+            color: #1ca7e7;
+        }
+        
+        .tab-content {
+            flex: 1;
+            padding: 20px;
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .tools-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .tool-btn {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+        
+        .tool-btn:hover {
+            background: #1976D2;
+        }
+        
+        .whiteboard-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            height: 100%;
+        }
+        
+        #whiteboard {
+            width: 100%;
+            height: 400px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            cursor: crosshair;
+            background: white;
+            max-width: 100%;
+        }
+        
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: bold;
+            z-index: 10000;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        .notification.success { background: #4CAF50; }
+        .notification.error { background: #f44336; }
+        .notification.warning { background: #ff9800; }
+        .notification.info { background: #2196F3; }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="practice-info">
+                <h1>🎯 Practice Room</h1>
+                <div class="practice-timer" id="practice-timer">Practice Time: 00:00</div>
+            </div>
+            <button class="back-btn" id="back-dashboard-btn">Back to Dashboard</button>
+        </div>
+        
+        <div class="main-content">
+            <div class="video-section">
+                <div class="video-grid">
+                    <div class="video-container">
+                        <video id="local-video" autoplay playsinline muted></video>
+                        <div class="video-label">Your Camera Preview</div>
+                        <div class="controls">
+                            <button class="control-btn" id="toggle-camera">📹</button>
+                            <button class="control-btn" id="toggle-mic">🎤</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="sidebar">
+                <div class="tab-container">
+                    <div class="tab-buttons">
+                        <button class="tab-button active" data-tab="controls">🎛️ Controls</button>
+                        <button class="tab-button" data-tab="tools">🛠️ Tools</button>
+                        <button class="tab-button" data-tab="whiteboard">📝 Whiteboard</button>
+                        <button class="tab-button" data-tab="info">📋 Info</button>
+                    </div>
+                    
+                    <!-- Controls Tab -->
+                    <div class="tab-content active" id="controls-tab">
+                        <div class="control-group">
+                            <h3>🎨 Camera Controls</h3>
+                            <div class="control-row">
+                                <label class="control-label">Brightness:</label>
+                                <input type="range" id="brightness-slider" class="control-input" min="0.5" max="2" step="0.01" value="1">
+                                <span id="brightness-value" class="control-value">100%</span>
+                            </div>
+                            <div class="control-row">
+                                <label class="control-label">Contrast:</label>
+                                <input type="range" id="contrast-slider" class="control-input" min="0.5" max="2" step="0.01" value="1">
+                                <span id="contrast-value" class="control-value">100%</span>
+                            </div>
+                            <div class="control-row">
+                                <label class="control-label">Beautify:</label>
+                                <input type="range" id="beautify-slider" class="control-input" min="0" max="100" step="1" value="0">
+                                <span id="beautify-value" class="control-value">0%</span>
+                            </div>
+                        </div>
+                        
+                        <div class="control-group">
+                            <h3>🎤 Audio Controls</h3>
+                            <div class="control-row">
+                                <label class="control-label">Volume:</label>
+                                <input type="range" id="volume-slider" class="control-input" min="0" max="100" step="1" value="50">
+                                <span id="volume-value" class="control-value">50%</span>
+                            </div>
+                            <div class="control-row">
+                                <label class="control-label">Microphone:</label>
+                                <button id="mute-btn" class="btn btn-success">Unmuted</button>
+                            </div>
+                            <div class="control-row">
+                                <label class="control-label">Audio Feedback:</label>
+                                <button id="feedback-btn" class="btn btn-secondary">Off</button>
+                            </div>
+                            <div class="control-row" id="feedback-quality-row" style="display: none;">
+                                <label class="control-label">Feedback Quality:</label>
+                                <input type="range" id="feedback-quality-slider" class="control-input" min="0" max="100" step="1" value="80">
+                                <span id="feedback-quality-value" class="control-value">80%</span>
+                            </div>
+                            <div class="control-row">
+                                <label class="control-label">Mic Level:</label>
+                                <div class="mic-indicator">
+                                    <div class="mic-bar">
+                                        <div id="mic-level" class="mic-level"></div>
+                                    </div>
+                                    <span id="mic-status">No audio detected</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Tools Tab -->
+                    <div class="tab-content" id="tools-tab">
+                        <h3>🛠️ Tools</h3>
+                        <div class="tools-grid">
+                            <button class="tool-btn" id="screen-share-btn">Share Screen</button>
+                            <button class="tool-btn" id="file-upload-btn">Upload File</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Whiteboard Tab -->
+                    <div class="tab-content" id="whiteboard-tab">
+                        <h3>📝 Whiteboard</h3>
+                        <canvas id="whiteboard" width="400" height="400"></canvas>
+                        <div style="margin-top: 10px;">
+                            <button class="tool-btn" id="clear-whiteboard">Clear</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Info Tab -->
+                    <div class="tab-content" id="info-tab">
+                        <h3>📋 Practice Room Info</h3>
+                        <div class="status-message status-info">
+                            <strong>Practice Room Instructions:</strong><br>
+                            • This is a practice room for testing your devices<br>
+                            • No other participants will join<br>
+                            • Use the controls to adjust your settings<br>
+                            • Audio feedback uses simple mode for stability<br>
+                            • When satisfied, return to dashboard
+                        </div>
+                        <div class="control-row">
+                            <button id="back-device-check-btn" class="btn btn-secondary">← Back to Device Check</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize variables
+        let stream;
+        let audioContext;
+        let audioDestination;
+        let isMuted = false;
+        let isAudioFeedbackEnabled = false;
+        let audioSource;
+        let audioGainNode;
+        let practiceStartTime = new Date();
+
+        // DOM elements
+        const localVideo = document.getElementById('local-video');
+        const statusMessage = document.getElementById('status-message');
+        const micLevel = document.getElementById('mic-level');
+        const micStatus = document.getElementById('mic-status');
+
+        // Simple notification system
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease-in';
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 300);
+            }, 4000);
+        }
+
+        // Resume audio context if suspended
+        async function resumeAudioContext() {
+            if (audioContext && audioContext.state === 'suspended') {
+                await audioContext.resume();
+                console.log('Audio context resumed');
+            }
+        }
+        
+        // Initialize practice room
+        async function initializePracticeRoom() {
+            try {
+                // Get user media
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: true, 
+                    audio: true 
+                });
+                
+                localVideo.srcObject = stream;
+                showNotification('Camera and microphone connected successfully!', 'success');
+
+                // Set up audio context with minimal settings for stability
+                audioContext = new (window.AudioContext || window.webkitAudioContext)({
+                    sampleRate: 22050, // Lower sample rate for less processing
+                    latencyHint: 'playback' // Optimize for playback over low latency
+                });
+                audioDestination = audioContext.destination;
+                
+                // Start microphone level monitoring
+                startMicMonitoring();
+                
+                // Start practice timer
+                startPracticeTimer();
+
+            } catch (error) {
+                console.error('Error initializing practice room:', error);
+                showNotification('Failed to access camera or microphone. Please check permissions.', 'warning');
+            }
+        }
+
+        function startMicMonitoring() {
+            if (!stream || !audioContext) return;
+
+            const source = audioContext.createMediaStreamSource(stream);
+            const analyser = audioContext.createAnalyser();
+            source.connect(analyser);
+            
+            // Basic analyser settings for stability
+            analyser.fftSize = 256; // Smaller FFT size for less processing
+            analyser.smoothingTimeConstant = 0.8; // Moderate smoothing
+            analyser.minDecibels = -90;
+            analyser.maxDecibels = -10;
+            
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+            function updateMicLevel() {
+                analyser.getByteTimeDomainData(dataArray);
+                let sum = 0;
+                let count = 0;
+                
+                // Use RMS calculation with better averaging
+                for (let i = 0; i < dataArray.length; i++) {
+                    const val = (dataArray[i] - 128) / 128;
+                    sum += val * val;
+                    count++;
+                }
+                
+                const rms = Math.sqrt(sum / count);
+                
+                // Simple level calculation
+                const level = Math.min(100, Math.max(0, rms * 200));
+                
+                // Direct level display without smoothing
+                micLevel.style.width = level + '%';
+                
+                if (level > 5) {
+                    micStatus.textContent = 'Audio detected';
+                    micStatus.style.color = '#27ae60';
+                } else {
+                    micStatus.textContent = 'No audio detected';
+                    micStatus.style.color = '#666';
+                }
+                
+                requestAnimationFrame(updateMicLevel);
+            }
+            updateMicLevel();
+        }
+
+        function startPracticeTimer() {
+            const timerElement = document.getElementById('practice-timer');
+            if (!timerElement) return;
+            
+            function updateTimer() {
+                const now = new Date();
+                const elapsed = now - practiceStartTime;
+                const elapsedMinutes = Math.floor(elapsed / 60000);
+                const elapsedSeconds = Math.floor((elapsed % 60000) / 1000);
+                
+                timerElement.textContent = `Practice Time: ${elapsedMinutes.toString().padStart(2, '0')}:${elapsedSeconds.toString().padStart(2, '0')}`;
+            }
+            
+            updateTimer();
+            setInterval(updateTimer, 1000);
+        }
+
+        // Camera controls
+        const brightnessSlider = document.getElementById('brightness-slider');
+        const contrastSlider = document.getElementById('contrast-slider');
+        const beautifySlider = document.getElementById('beautify-slider');
+        const brightnessValue = document.getElementById('brightness-value');
+        const contrastValue = document.getElementById('contrast-value');
+        const beautifyValue = document.getElementById('beautify-value');
+
+        function updateVideoFilters() {
+            const brightness = brightnessSlider.value;
+            const contrast = contrastSlider.value;
+            const beautify = beautifySlider.value;
+
+            // Beautify effects
+            const blurAmount = beautify > 0 ? (beautify / 100) * 0.5 : 0;
+            const saturationAdjust = beautify > 0 ? 1 + (beautify / 100) * 0.2 : 1;
+
+            localVideo.style.filter = `
+                brightness(${brightness}) 
+                contrast(${contrast}) 
+                saturate(${saturationAdjust}) 
+                blur(${blurAmount}px)
+            `;
+
+            brightnessValue.textContent = Math.round(brightness * 100) + '%';
+            contrastValue.textContent = Math.round(contrast * 100) + '%';
+            beautifyValue.textContent = beautify + '%';
+        }
+
+        brightnessSlider.addEventListener('input', updateVideoFilters);
+        contrastSlider.addEventListener('input', updateVideoFilters);
+        beautifySlider.addEventListener('input', updateVideoFilters);
+
+        // Audio controls
+        const volumeSlider = document.getElementById('volume-slider');
+        const volumeValue = document.getElementById('volume-value');
+        const muteBtn = document.getElementById('mute-btn');
+        const feedbackBtn = document.getElementById('feedback-btn');
+        const feedbackQualitySlider = document.getElementById('feedback-quality-slider');
+        const feedbackQualityValue = document.getElementById('feedback-quality-value');
+        const feedbackQualityRow = document.getElementById('feedback-quality-row');
+
+        volumeSlider.addEventListener('input', function() {
+            const volume = this.value;
+            volumeValue.textContent = volume + '%';
+            localVideo.volume = volume / 100;
+        });
+
+        muteBtn.addEventListener('click', function() {
+            if (!stream) return;
+
+            const audioTrack = stream.getAudioTracks()[0];
+            if (audioTrack) {
+                isMuted = !isMuted;
+                audioTrack.enabled = !isMuted;
+
+                if (isMuted) {
+                    this.textContent = 'Muted';
+                    this.className = 'btn btn-danger';
+                } else {
+                    this.textContent = 'Unmuted';
+                    this.className = 'btn btn-success';
+                }
+            }
+        });
+
+        feedbackBtn.addEventListener('click', async function() {
+            if (!audioContext || !audioDestination) {
+                showNotification('Audio context not available. Please refresh the page.', 'warning');
+                return;
+            }
+            
+            // Resume audio context if suspended
+            await resumeAudioContext();
+
+            isAudioFeedbackEnabled = !isAudioFeedbackEnabled;
+
+            if (isAudioFeedbackEnabled) {
+                // Ultra-simple audio feedback - direct connection only
+                try {
+                    audioSource = audioContext.createMediaStreamSource(stream);
+                    audioGainNode = audioContext.createGain();
+                    audioGainNode.gain.value = 0.2; // Very low gain to prevent feedback
+                    
+                    // Direct connection: source -> gain -> destination (no processing)
+                    audioSource.connect(audioGainNode);
+                    audioGainNode.connect(audioDestination);
+
+                    this.textContent = 'On';
+                    this.className = 'btn btn-success';
+                    feedbackQualityRow.style.display = 'flex';
+                    showNotification('Audio feedback enabled (ultra-simple mode)!', 'success');
+                } catch (error) {
+                    console.error('Audio feedback error:', error);
+                    showNotification('Failed to enable audio feedback. Please try again.', 'error');
+                    isAudioFeedbackEnabled = false;
+                }
+            } else {
+                // Disable audio feedback and clean up nodes
+                if (audioGainNode) {
+                    audioGainNode.disconnect();
+                }
+                if (audioSource) {
+                    audioSource.disconnect();
+                }
+
+                this.textContent = 'Off';
+                this.className = 'btn btn-secondary';
+                feedbackQualityRow.style.display = 'none';
+                showNotification('Audio feedback disabled.', 'info');
+            }
+        });
+        
+        // Feedback quality control
+        feedbackQualitySlider.addEventListener('input', function() {
+            const quality = this.value;
+            feedbackQualityValue.textContent = quality + '%';
+            
+            if (isAudioFeedbackEnabled && audioGainNode) {
+                // Very conservative gain adjustment
+                const baseGain = 0.1; // Very low base gain
+                const qualityMultiplier = quality / 100;
+                audioGainNode.gain.value = baseGain + (qualityMultiplier * 0.2);
+            }
+        });
+
+        // Video control buttons
+        const toggleCameraBtn = document.getElementById('toggle-camera');
+        const toggleMicBtn = document.getElementById('toggle-mic');
+
+        let isCameraOn = true;
+        let isMicOn = true;
+
+        // Toggle camera
+        if (toggleCameraBtn) {
+            toggleCameraBtn.addEventListener('click', () => {
+                if (stream) {
+                    const videoTrack = stream.getVideoTracks()[0];
+                    if (videoTrack) {
+                        if (isCameraOn) {
+                            videoTrack.enabled = false;
+                            toggleCameraBtn.textContent = '📹❌';
+                            toggleCameraBtn.style.background = '#f44336';
+                            showNotification('Camera turned off', 'info');
+                        } else {
+                            videoTrack.enabled = true;
+                            toggleCameraBtn.textContent = '📹';
+                            toggleCameraBtn.style.background = '#4CAF50';
+                            showNotification('Camera turned on', 'info');
+                        }
+                        isCameraOn = !isCameraOn;
+                    }
+                }
+            });
+        }
+
+        // Toggle microphone
+        if (toggleMicBtn) {
+            toggleMicBtn.addEventListener('click', () => {
+                if (stream) {
+                    const audioTrack = stream.getAudioTracks()[0];
+                    if (audioTrack) {
+                        if (isMicOn) {
+                            audioTrack.enabled = false;
+                            toggleMicBtn.textContent = '🎤❌';
+                            toggleMicBtn.style.background = '#f44336';
+                            showNotification('Microphone muted', 'info');
+                        } else {
+                            audioTrack.enabled = true;
+                            toggleMicBtn.textContent = '🎤';
+                            toggleMicBtn.style.background = '#4CAF50';
+                            showNotification('Microphone unmuted', 'info');
+                        }
+                        isMicOn = !isMicOn;
+                    }
+                }
+            });
+        }
+
+        // Whiteboard functionality
+        function setupWhiteboard() {
+            const canvas = document.getElementById('whiteboard');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            let isDrawing = false;
+            let lastX = 0;
+            let lastY = 0;
+            
+            // Set canvas size to match container
+            function resizeCanvas() {
+                const container = canvas.parentElement;
+                canvas.width = container.clientWidth - 40; // Account for padding
+                canvas.height = 400;
+            }
+            
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseout', stopDrawing);
+            
+            function startDrawing(e) {
+                isDrawing = true;
+                [lastX, lastY] = [e.offsetX, e.offsetY];
+            }
+            
+            function draw(e) {
+                if (!isDrawing) return;
+                
+                ctx.beginPath();
+                ctx.moveTo(lastX, lastY);
+                ctx.lineTo(e.offsetX, e.offsetY);
+                ctx.stroke();
+                
+                [lastX, lastY] = [e.offsetX, e.offsetY];
+            }
+            
+            function stopDrawing() {
+                isDrawing = false;
+            }
+            
+            // Clear whiteboard
+            const clearBtn = document.getElementById('clear-whiteboard');
+            if (clearBtn) {
+                clearBtn.addEventListener('click', () => {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    showNotification('Whiteboard cleared', 'info');
+                });
+            }
+        }
+        
+        // Tab functionality
+        function setupTabs() {
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const tabContents = document.querySelectorAll('.tab-content');
+            
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const targetTab = button.getAttribute('data-tab');
+                    
+                    // Remove active class from all buttons and contents
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    tabContents.forEach(content => content.classList.remove('active'));
+                    
+                    // Add active class to clicked button and corresponding content
+                    button.classList.add('active');
+                    document.getElementById(targetTab + '-tab').classList.add('active');
+                });
+            });
+        }
+        
+        // Screen sharing functionality
+        function setupScreenSharing() {
+            const screenShareBtn = document.getElementById('screen-share-btn');
+            let isScreenSharing = false;
+            let screenStream = null;
+            
+            if (screenShareBtn) {
+                screenShareBtn.addEventListener('click', async () => {
+                    try {
+                        if (!isScreenSharing) {
+                            // Start screen sharing
+                            screenStream = await navigator.mediaDevices.getDisplayMedia({ 
+                                video: { 
+                                    cursor: "always" 
+                                }, 
+                                audio: false 
+                            });
+                            
+                            const localVideo = document.getElementById('local-video');
+                            if (localVideo) {
+                                localVideo.srcObject = screenStream;
+                            }
+                            
+                            screenShareBtn.textContent = 'Stop Sharing';
+                            screenShareBtn.style.background = '#f44336';
+                            isScreenSharing = true;
+                            showNotification('Screen sharing started', 'success');
+                            
+                            // Stop screen sharing when user clicks "Stop sharing"
+                            screenStream.getVideoTracks()[0].onended = () => {
+                                stopScreenSharing();
+                            };
+                        } else {
+                            stopScreenSharing();
+                        }
+                    } catch (error) {
+                        console.error('Screen sharing error:', error);
+                        showNotification('Screen sharing failed: ' + error.message, 'error');
+                    }
+                });
+            }
+            
+            function stopScreenSharing() {
+                if (screenStream) {
+                    screenStream.getTracks().forEach(track => track.stop());
+                    screenStream = null;
+                }
+                
+                // Restore camera stream
+                if (stream) {
+                    const localVideo = document.getElementById('local-video');
+                    if (localVideo) {
+                        localVideo.srcObject = stream;
+                    }
+                }
+                
+                screenShareBtn.textContent = 'Share Screen';
+                screenShareBtn.style.background = '#2196F3';
+                isScreenSharing = false;
+                showNotification('Screen sharing stopped', 'info');
+            }
+        }
+        
+        // File upload functionality
+        function setupFileUpload() {
+            const fileUploadBtn = document.getElementById('file-upload-btn');
+            
+            if (fileUploadBtn) {
+                fileUploadBtn.addEventListener('click', () => {
+                    // Create a hidden file input
+                    const fileInput = document.createElement('input');
+                    fileInput.type = 'file';
+                    fileInput.accept = 'image/*,.pdf,.doc,.docx,.txt';
+                    fileInput.style.display = 'none';
+                    
+                    fileInput.addEventListener('change', (e) => {
+                        const file = e.target.files[0];
+                        if (file) {
+                            handleFileUpload(file);
+                        }
+                    });
+                    
+                    document.body.appendChild(fileInput);
+                    fileInput.click();
+                    document.body.removeChild(fileInput);
+                });
+            }
+        }
+        
+        function handleFileUpload(file) {
+            const maxSize = 10 * 1024 * 1024; // 10MB limit
+            const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'];
+            
+            if (file.size > maxSize) {
+                showNotification('File too large. Maximum size is 10MB.', 'error');
+                return;
+            }
+            
+            if (!allowedTypes.includes(file.type)) {
+                showNotification('File type not supported. Please upload images, PDFs, or text files.', 'error');
+                return;
+            }
+            
+            // For practice room, we'll just show a notification
+            // In a real classroom, you might want to display the file or share it
+            showNotification(`File "${file.name}" uploaded successfully (${(file.size / 1024 / 1024).toFixed(2)}MB)`, 'success');
+            
+            // If it's an image, you could display it on the whiteboard
+            if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        const canvas = document.getElementById('whiteboard');
+                        if (canvas) {
+                            const ctx = canvas.getContext('2d');
+                            // Scale image to fit canvas
+                            const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
+                            const x = (canvas.width - img.width * scale) / 2;
+                            const y = (canvas.height - img.height * scale) / 2;
+                            ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+                            showNotification('Image added to whiteboard', 'success');
+                        }
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+        
+        // Navigation buttons
+        document.getElementById('back-device-check-btn').addEventListener('click', function() {
+            window.location.href = 'device-check.html';
+        });
+
+        document.getElementById('back-dashboard-btn').addEventListener('click', function() {
+            window.location.href = 'teacher-dashboard.html';
+        });
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            initializePracticeRoom();
+            
+            // Setup additional tools
+            setupWhiteboard();
+            setupTabs();
+            setupScreenSharing();
+            setupFileUpload();
+        });
+
+        // Clean up when leaving page
+        window.addEventListener('beforeunload', function() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+            if (audioContext) {
+                audioContext.close();
+            }
+        });
+    </script>
+</body>
+</html>

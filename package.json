@@ -1,0 +1,37 @@
+{
+  "name": "online-distance-learning",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start:backend": "node server/index.js",
+    "start:frontend": "echo Frontend is served by Express on port 5000",
+    "start:all": "npm run start:backend"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "adm-zip": "^0.5.16",
+    "axios": "^1.11.0",
+    "bcrypt": "^6.0.0",
+    "body-parser": "^2.2.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.1",
+    "express": "^4.18.2",
+    "form-data": "^4.0.5",
+    "googleapis": "^154.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "libreoffice-convert": "^1.6.1",
+    "mongoose": "^8.16.4",
+    "multer": "^2.0.2",
+    "nodemailer": "^7.0.5",
+    "office-to-pdf": "^4.0.0",
+    "pdf-poppler": "^0.2.1",
+    "pdf2pic": "^3.2.0",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "npm-run-all": "^4.1.5"
+  }
+}
