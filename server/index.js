@@ -39,7 +39,8 @@ const io = new Server(http, {
   pingInterval: 25000,
   pingTimeout: 60000
 });
-const PORT = process.env.PORT || 5000;
+// Do NOT hardcode 5000 or 3000
+const PORT = process.env.PORT || 8080;
 
 // Store chat history for each room
 const chatHistory = new Map();
@@ -2375,8 +2376,9 @@ const startServer = async () => {
       console.warn(`⚠️  Cloudmersive API key not configured. PPTX conversion will fail. Set CLOUDMERSIVE_API_KEY in .env file.`);
     }
 
+    // You MUST listen on 0.0.0.0 (not localhost or 127.0.0.1)
     http.listen(PORT, '0.0.0.0', () => {
-      console.log(`🚀 Server running on 0.0.0.0:${PORT}`);
+      console.log(`🚀 Server is live on port ${PORT}`);
       console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
       console.log(`🔗 API base: http://localhost:${PORT}/api`);
       console.log(`🌐 Frontend: http://localhost:${PORT}`);
