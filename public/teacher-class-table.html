@@ -1,0 +1,3292 @@
+  <script>
+    // Defer DOM operations until DOM is ready and guard element access to avoid errors.
+    document.addEventListener('DOMContentLoaded', function () {
+    const userType = localStorage.getItem('userType');
+    if (userType !== 'teacher') {
+      alert('Access denied. This page is for teachers only.');
+      window.location.href = 'index.html';
+        return;
+    }
+    
+    const username = localStorage.getItem('remoedUsername') || 'Teacher';
+    const teacherId = localStorage.getItem('teacherId');
+    
+      const avatarTextEl = document.getElementById('avatar-text');
+      if (avatarTextEl) avatarTextEl.textContent = username[0].toUpperCase();
+
+      const sidebarEmailEl = document.getElementById('sidebar-email');
+      if (sidebarEmailEl) sidebarEmailEl.textContent = 'Loading...';
+
+      if (teacherId && typeof loadProfilePicture === 'function') {
+        try { loadProfilePicture(teacherId); } catch (e) { /* ignore */ }
+      }
+
+      const openClassBtn = document.getElementById('open-class-btn');
+      if (openClassBtn) openClassBtn.onclick = function () { window.location.href = 'teacher-open-class.html'; };
+
+      const logoutNav = document.getElementById('logout-nav');
+      if (logoutNav) {
+        logoutNav.onclick = function() { localStorage.clear(); window.location.href = 'teacher-login.html'; };
+      }
+    });
+  </script>
+  <style>
+    /* Base font for consistency */
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    
+    /* Layout for main app shell */
+    .remoed-main {
+      display: flex;
+    }
+
+    .remoed-sidebar {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      height: 100vh;
+      position: fixed;
+      z-index: 100;
+      border-right: 1px solid rgba(102, 126, 234, 0.1);
+    }
+    
+    .remoed-logo { 
+      display: flex; 
+      align-items: center; 
+      gap: 14px; 
+    }
+    
+    .remoed-logo img { 
+      height: 48px; 
+    }
+    
+    .remoed-title { 
+      font-size: 1.7rem; 
+      font-weight: 700; 
+      color: #667eea; 
+      letter-spacing: 1px; 
+    }
+    
+    .remoed-user { 
+      display: flex; 
+      align-items: center; 
+      gap: 10px; 
+    }
+    
+    .remoed-avatar { 
+      width: 72px; 
+      height: 72px; 
+      border-radius: 50%; 
+      background: #667eea; 
+      color: #fff; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      font-weight: bold; 
+      font-size: 2.2rem; 
+    }
+    
+    .remoed-username { 
+      color: #667eea; 
+      font-weight: 600; 
+    }
+    
+    .remoed-menu { 
+      list-style: none; 
+      padding: 0; 
+      margin: 0; 
+    }
+    
+    .remoed-menu li { 
+      padding: 14px 32px; 
+      color: #667eea; 
+      font-weight: 500; 
+      cursor: pointer; 
+      display: flex; 
+      align-items: center; 
+      gap: 12px; 
+      border-left: 4px solid transparent; 
+      transition: background 0.2s, border-color 0.2s; 
+    }
+    
+    .remoed-menu li.active, .remoed-menu li:hover { 
+      background: linear-gradient(90deg, #667eea 0%, #5a67d8 100%); 
+      border-left: 4px solid #667eea; 
+      color: white; 
+      transform: translateX(4px);
+      transition: all 0.3s ease;
+    }
+    
+    .remoed-menu svg { 
+      width: 20px; 
+      height: 20px; 
+      stroke: currentColor; 
+    }
+    
+    .remoed-content {
+      flex: 1;
+      padding: 16px 20px;
+      min-width: 0;
+      background: #f6fbff;
+      min-height: 100vh;
+      box-sizing: border-box;
+      margin-left: 260px;
+      max-width: calc(100vw - 260px);
+      overflow-x: auto;
+    }
+    
+    /* Modern Header Styles */
+    .remoed-header {
+      background: #fff;
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 12px rgba(28, 167, 231, 0.08);
+      border: 1px solid rgba(28, 167, 231, 0.1);
+    }
+    
+    .remoed-header h1 {
+      color: #667eea;
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin: 0 0 12px 0;
+      letter-spacing: -0.5px;
+    }
+    
+    .remoed-header-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    
+    .remoed-week-navigation {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    
+    .remoed-nav-btn {
+      background: linear-gradient(135deg, #667eea, #5a67d8);
+      color: white;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+    }
+    
+    .remoed-nav-btn:hover {
+      background: linear-gradient(135deg, #5a67d8, #4c51bf);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+    }
+    
+    .remoed-nav-btn:disabled {
+      background: #e2e8f0;
+      color: #94a3b8;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+    
+    .remoed-week-display {
+      font-weight: 600;
+      color: #374151;
+      min-width: 140px;
+      text-align: center;
+      font-size: 1rem;
+    }
+    
+    .remoed-current-week-btn {
+      background: linear-gradient(135deg, #28a745, #1e7e34) !important;
+      color: white;
+      box-shadow: 0 4px 16px rgba(40, 167, 69, 0.3) !important;
+    }
+    
+    .remoed-current-week-btn:hover {
+      background: linear-gradient(135deg, #1e7e34, #155724) !important;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(40, 167, 69, 0.4) !important;
+    }
+    
+    .remoed-action-buttons {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    
+    .remoed-action-btn {
+      background: linear-gradient(135deg, #1ca7e7, #0d8bd9);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 14px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      box-shadow: 0 2px 8px rgba(28, 167, 231, 0.3);
+      transition: all 0.3s ease;
+    }
+    
+    .remoed-action-btn:hover {
+      background: linear-gradient(135deg, #0d8bd9, #0b7bc7);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(28, 167, 231, 0.4);
+    }
+    
+    .remoed-refresh-btn {
+      background: linear-gradient(135deg, #28a745, #1e7e34);
+      box-shadow: 0 4px 16px rgba(40, 167, 69, 0.3);
+    }
+    
+    .remoed-refresh-btn:hover {
+      background: linear-gradient(135deg, #1e7e34, #155724);
+      box-shadow: 0 8px 24px rgba(40, 167, 69, 0.4);
+    }
+    
+    /* Modern Legend Styles */
+    .remoed-legend {
+      background: #fff;
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 12px rgba(28, 167, 231, 0.08);
+      border: 1px solid rgba(28, 167, 231, 0.1);
+    }
+    
+    .remoed-legend h3 {
+      color: #667eea;
+      font-size: 1rem;
+      font-weight: 600;
+      margin: 0 0 12px 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .remoed-legend-grid {
+      display: flex;
+      flex-wrap: nowrap;
+      gap: 8px;
+      align-items: center;
+      overflow-x: auto;
+    }
+    
+    .remoed-legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      background: #f8fafc;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    
+    .remoed-legend-item:hover {
+      background: #f1f5f9;
+      transform: translateY(-1px);
+    }
+    
+    .remoed-legend-color {
+      width: 20px;
+      height: 20px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 0.75rem;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      flex-shrink: 0;
+    }
+    
+    .remoed-legend-text {
+      font-size: 0.85rem;
+      color: #374151;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    
+    /* Modern Schedule Grid */
+    .remoed-schedule-container {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(28, 167, 231, 0.1);
+      overflow: hidden;
+      border: 1px solid rgba(28, 167, 231, 0.1);
+    }
+    
+    .remoed-schedule-table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      margin: 0;
+      min-width: 800px;
+    }
+    
+    .remoed-schedule-table th,
+    .remoed-schedule-table td {
+      border: 1px solid #e2e8f0;
+      padding: 10px 8px;
+      text-align: center;
+      vertical-align: middle;
+    }
+    
+    .remoed-schedule-table th {
+      background: linear-gradient(135deg, #667eea, #5a67d8);
+      font-weight: 600;
+      color: white;
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+      font-size: 0.8rem;
+    }
+    
+    .remoed-time-column {
+      width: 100px;
+      position: sticky;
+      left: 0;
+      background: #f8fafc;
+      z-index: 3;
+      font-weight: 600;
+      color: #374151;
+    }
+    
+    .remoed-day-column {
+      width: calc((100% - 100px) / 7);
+      line-height: 1.3;
+      padding: 12px 8px;
+      font-size: 0.85rem;
+    }
+    
+    .remoed-day-column br {
+      margin: 4px 0;
+    }
+    
+    .remoed-time-slot {
+      font-size: 0.8rem;
+      color: #6b7280;
+      min-height: 40px;
+      transition: all 0.2s ease;
+      cursor: pointer;
+        position: relative;
+    }
+    
+    /* Status-based styling */
+    .status-completed {
+      background: linear-gradient(135deg, #10b981, #059669) !important;
+      color: white !important;
+      font-weight: 600 !important;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.2) !important;
+      border: 2px solid #047857 !important;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3) !important;
+      background-color: #10b981 !important;
+    }
+    
+    .status-completed::after {
+      content: '✓';
+      position: absolute;
+      top: 2px;
+      right: 4px;
+      font-size: 12px;
+      font-weight: bold;
+      color: white;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      width: 16px;
+      height: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .status-absent {
+      background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+      color: white !important;
+      font-weight: 600 !important;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.2) !important;
+      border: 2px solid #b91c1c !important;
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3) !important;
+    }
+    
+    .status-absent::after {
+      content: '✗';
+      position: absolute;
+      top: 2px;
+      right: 4px;
+      font-size: 12px;
+      font-weight: bold;
+      color: white;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      width: 16px;
+      height: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .status-past {
+      background: #9ca3af !important;
+      color: white !important;
+      font-weight: 600 !important;
+      opacity: 0.7 !important;
+    }
+    
+    .remoed-time-slot.open {
+      background: #dcfce7;
+      color: #166534;
+      font-weight: 600;
+      border: 2px solid #22c55e;
+    }
+    
+    .remoed-time-slot.open:hover {
+      background: #bbf7d0;
+      transform: scale(1.02);
+    }
+    
+    .remoed-time-slot.booked {
+      background: #fef3c7 !important;
+      color: #92400e !important;
+      font-weight: 600;
+      border: 2px solid #f59e0b;
+    }
+    
+    .remoed-time-slot.booked:hover {
+      background: #fde68a !important;
+      transform: scale(1.02);
+    }
+    
+    .remoed-time-slot.finished {
+      background: #dbeafe !important;
+      color: #1e40af !important;
+      font-weight: 600;
+      border: 2px solid #3b82f6;
+    }
+    
+    .remoed-time-slot.absent {
+      background: #fecaca;
+      color: #991b1b;
+      font-weight: 600;
+      border: 2px solid #ef4444;
+    }
+    
+    .remoed-time-slot.student-absent {
+      background: #fed7aa;
+      color: #9a3412;
+      font-weight: 600;
+      border: 2px solid #f97316;
+    }
+    
+    .remoed-time-slot.unavailable {
+      background: #f8fafc;
+      color: #64748b;
+      cursor: default;
+    }
+    
+    .remoed-time-slot.unbooked {
+      background: #f8fafc;
+      color: #64748b;
+      font-weight: normal;
+      cursor: default;
+    }
+    
+    .remoed-time-slot.past {
+      background: #f1f5f9 !important;
+      color: #475569 !important;
+      font-weight: 600;
+      cursor: pointer;
+      border: 2px solid #64748b;
+      position: relative;
+    }
+    
+    .remoed-time-slot.past:hover {
+      background: #e2e8f0 !important;
+      color: #334155 !important;
+      border-color: #475569;
+      transform: scale(1.02);
+    }
+    
+    .remoed-time-slot.past::after {
+      content: '📝';
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      font-size: 0.7em;
+    }
+    
+    /* Modern Modal Styles */
+    .remoed-modal {
+      display: none;
+      position: fixed;
+      z-index: 2000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .remoed-modal.show {
+      display: flex;
+    }
+    
+    .remoed-modal-content {
+      background: #ffffff;
+      border-radius: 1rem;
+      width: 90%;
+      max-width: 600px;
+      max-height: 90vh;
+      overflow: hidden;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+      animation: remoedModalFadeIn 0.3s ease-out;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    @keyframes remoedModalFadeIn {
+      from { 
+        transform: scale(0.95) translateY(-10px); 
+        opacity: 0; 
+      }
+      to { 
+        transform: scale(1) translateY(0); 
+        opacity: 1; 
+      }
+    }
+    
+    .remoed-modal-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-radius: 1rem 1rem 0 0;
+    }
+    
+    .remoed-modal-title {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+    
+    .remoed-modal-close {
+      background: rgba(255, 255, 255, 0.2);
+      border: none;
+      color: white;
+      width: 2rem;
+      height: 2rem;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+    
+    .remoed-modal-close:hover {
+      background: rgba(255, 255, 255, 0.3);
+      transform: scale(1.05);
+    }
+    
+    .remoed-modal-body {
+      padding: 1.5rem;
+      overflow-y: auto;
+      flex: 1;
+    }
+    
+    .remoed-modal-footer {
+      padding: 1.5rem;
+      border-top: 1px solid #e2e8f0;
+      display: flex;
+      gap: 0.75rem;
+      justify-content: flex-end;
+      background: #f8fafc;
+    }
+    
+    /* Modern Button Styles */
+    .remoed-btn {
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 0.5rem;
+      font-weight: 600;
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .remoed-btn-primary {
+      background: linear-gradient(135deg, #667eea, #5a67d8);
+      color: white;
+    }
+    
+    .remoed-btn-primary:hover {
+      background: linear-gradient(135deg, #5a67d8, #4c51bf);
+      transform: translateY(-1px);
+    }
+    
+    .remoed-btn-secondary {
+      background: #6b7280;
+      color: white;
+    }
+    
+    .remoed-btn-secondary:hover {
+      background: #4b5563;
+    }
+    
+    .remoed-btn-success {
+      background: linear-gradient(135deg, #28a745, #1e7e34);
+      color: white;
+    }
+    
+    .remoed-btn-success:hover {
+      background: linear-gradient(135deg, #1e7e34, #155724);
+    }
+    
+    .remoed-btn-warning {
+      background: linear-gradient(135deg, #ffc107, #e0a800);
+      color: #212529;
+    }
+    
+    .remoed-btn-warning:hover {
+      background: linear-gradient(135deg, #e0a800, #d39e00);
+    }
+    
+    .remoed-btn-danger {
+      background: linear-gradient(135deg, #dc3545, #c82333);
+      color: white;
+    }
+    
+    .remoed-btn-danger:hover {
+      background: linear-gradient(135deg, #c82333, #bd2130);
+    }
+    
+    /* Responsive Design */
+    @media (max-width: 1200px) {
+      .remoed-sidebar {
+        width: 260px;
+        min-width: 260px;
+      }
+      .remoed-content {
+        margin-left: 260px;
+        max-width: calc(100vw - 260px);
+        padding: 24px 20px;
+      }
+      .remoed-legend-grid {
+        gap: 6px;
+      }
+      
+      .remoed-legend-item {
+        padding: 4px 8px;
+      }
+      
+      .remoed-legend-text {
+        font-size: 0.8rem;
+      }
+    }
+    
+    @media (max-width: 900px) {
+      .remoed-main {
+        flex-direction: column;
+      }
+      .remoed-sidebar {
+        width: 100%;
+        position: relative;
+        height: auto;
+      }
+      .remoed-content {
+        margin-left: 0;
+        max-width: 100vw;
+        padding: 20px 16px;
+      }
+      .remoed-schedule-container {
+        max-height: 60vh;
+        overflow: auto;
+      }
+      .remoed-schedule-table {
+        min-width: 600px;
+      }
+      .remoed-header-controls {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .remoed-week-navigation {
+        justify-content: center;
+      }
+      .remoed-action-buttons {
+        justify-content: center;
+      }
+    }
+    
+    /* Legacy compatibility styles */
+    .modal { display: none; }
+    .modal.show { display: flex; }
+    /* Alias legacy modal classes to the modern remoed modal classes */
+  .modal-content { background: #ffffff; border-radius: 1rem; width: 90%; max-width: 600px; max-height: 90vh; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); display: flex; flex-direction: column; }
+  .modal-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1.5rem; display: flex; justify-content: space-between; align-items: center; border-radius: 1rem 1rem 0 0; }
+  .modal-body { padding: 1.5rem; overflow-y: auto; flex: 1; }
+  .modal-footer { padding: 1.5rem; border-top: 1px solid #e2e8f0; display: flex; gap: 0.75rem; justify-content: flex-end; background: #f8fafc; }
+
+    /* Alias legacy button classes to the modern remoed button classes */
+    .btn-join, .btn-secondary, .btn-danger, .btn-success, .btn-warning {
+      /* copy of .remoed-btn */
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 0.5rem;
+      font-weight: 600;
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-join { /* primary */ background: linear-gradient(135deg, #667eea, #5a67d8); color: white; }
+    .btn-secondary { background: #6b7280; color: white; }
+    .btn-danger { background: linear-gradient(135deg, #dc3545, #c82333); color: white; }
+    .btn-success { background: linear-gradient(135deg, #28a745, #1e7e34); color: white; }
+    .btn-warning { background: linear-gradient(135deg, #ffc107, #e0a800); color: #212529; }
+    
+    /* Star Rating Styles */
+    .star-rating {
+      display: flex;
+      gap: 5px;
+      margin: 10px 0;
+    }
+    
+    .star-rating .star {
+      font-size: 24px;
+      color: #ddd;
+      cursor: pointer;
+      transition: color 0.2s ease;
+    }
+    
+    .star-rating .star:hover,
+    .star-rating .star.active {
+      color: #ffd700;
+    }
+    
+    .star-rating .star:hover ~ .star {
+      color: #ddd;
+    }
+    
+    /* Form Styles */
+    .form-group {
+      margin-bottom: 1rem;
+    }
+    
+    .form-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+      color: #374151;
+    }
+    
+    .form-group textarea,
+    .form-group select,
+    .form-group input[type="file"] {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid #d1d5db;
+      border-radius: 0.5rem;
+      box-sizing: border-box;
+      font-size: 0.875rem;
+      transition: border-color 0.2s ease;
+    }
+    
+    .form-group textarea:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    
+    .char-count {
+      margin-top: 0.5rem;
+      font-size: 0.75rem;
+      color: #6b7280;
+      text-align: right;
+    }
+  </style>
+</head>
+<body>
+  <div class="remoed-main">
+    <nav class="remoed-sidebar">
+      <div class="remoed-logo" style="height:100px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding-top:5px;">
+        <img src="remoed-logo.png" alt="RemoEdPH Logo" style="height:40px; width:auto; display:inline-block; vertical-align:middle;">
+        <span class="remoed-title" style="font-size:1.3rem; font-weight:700; color:#667eea; letter-spacing:1px;">RemoEdPH</span>
+      </div>
+      <div class="remoed-user" style="display:flex; flex-direction:column; align-items:center; margin-bottom:24px;">
+        <div class="remoed-avatar" id="sidebar-avatar">
+          <img id="profile-image" src="" alt="Profile" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: none;">
+          <span id="avatar-text">K</span>
+        </div>
+        <span class="remoed-username" id="sidebar-email"></span>
+      </div>
+      <ul class="remoed-menu">
+        <li onclick="window.location.href='teacher-dashboard.html'">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <rect x="3" y="3" width="18" height="18" rx="4"/>
+          </svg>Dashboard
+        </li>
+        <li class="active">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <rect x="3" y="7" width="18" height="13" rx="2"/>
+            <path d="M16 3v4M8 3v4"/>
+          </svg>Class Schedule
+        </li>
+        <li onclick="window.location.href='teacher-open-class.html'">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M8 12h8M12 8v8"/>
+          </svg>Class Configuration
+        </li>
+        <li onclick="window.location.href='device-check.html'">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M8 12h8M12 8v8"/>
+          </svg>Device Check
+        </li>
+        <li onclick="window.location.href='teacher-service-fee.html'">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 10c-4.41 0-8-1.79-8-4V6c0-2.21 3.59-4 8-4s8 1.79 8 4v8c0 2.21-3.59 4-8 4z"/>
+          </svg>Teaching Fee
+        </li>
+        <li onclick="window.location.href='teacher-profile.html'">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+          </svg>Profile
+        </li>
+        <li id="logout-nav" style="margin-top:auto; color:#e74c3c; cursor:pointer;">
+          <svg fill="none" stroke="#e74c3c" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M17 16l4-4m0 0l-4-4m4 4H7"/>
+            <path d="M3 12a9 9 0 0118 0 9 9 0 01-18 0z"/>
+          </svg>Logout
+        </li>
+      </ul>
+    </nav>
+
+    <div class="remoed-content">
+      <!-- Modern Header -->
+      <div class="remoed-header">
+        <h1>Class Schedule</h1>
+        <div class="remoed-header-controls">
+          <div class="remoed-week-navigation">
+            <button id="prev-week" class="remoed-nav-btn">← Previous Week</button>
+            <span id="week-display" class="remoed-week-display">Current Week</span>
+            <button id="next-week" class="remoed-nav-btn">Next Week →</button>
+            <button id="current-week" class="remoed-nav-btn remoed-current-week-btn">Today</button>
+          </div>
+          <div class="remoed-action-buttons">
+            <button class="remoed-action-btn" id="open-class-btn" onclick="window.location.href='teacher-open-class.html'">
+              📝 Edit Slots
+            </button>
+            <button class="remoed-action-btn remoed-refresh-btn" id="refresh-btn" onclick="forceRefreshSchedule()">
+              🔄 Refresh
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modern Legend -->
+      <div class="remoed-legend">
+        <h3>📊 Booking Indicators</h3>
+        <div class="remoed-legend-grid">
+          <div class="remoed-legend-item">
+            <div class="remoed-legend-color" style="background: #fef3c7; color: #92400e;">N</div>
+            <span class="remoed-legend-text">Nursery</span>
+          </div>
+          <div class="remoed-legend-item">
+            <div class="remoed-legend-color" style="background: #fef3c7; color: #92400e;">K</div>
+            <span class="remoed-legend-text">Kinder</span>
+          </div>
+          <div class="remoed-legend-item">
+            <div class="remoed-legend-color" style="background: #fef3c7; color: #92400e;">P</div>
+            <span class="remoed-legend-text">Preparatory</span>
+          </div>
+          <div class="remoed-legend-item">
+            <div class="remoed-legend-color" style="background: #fecaca; color: #991b1b;">T</div>
+            <span class="remoed-legend-text">Teacher Absent</span>
+          </div>
+          <div class="remoed-legend-item">
+            <div class="remoed-legend-color" style="background: #fed7aa; color: #9a3412;">S</div>
+            <span class="remoed-legend-text">Student Absent</span>
+          </div>
+          <div class="remoed-legend-item">
+            <div class="remoed-legend-color" style="background: #dbeafe; color: #014534;">F</div>
+            <span class="remoed-legend-text">Finished</span>
+          </div>
+          <div class="remoed-legend-item">
+            <div class="remoed-legend-color" style="background: #28a745; color: white;">R</div>
+            <span class="remoed-legend-text">Resolved</span>
+          </div>
+          <div class="remoed-legend-item">
+            <div class="remoed-legend-color" style="background: #f8fafc; color: #64748b;">U</div>
+            <span class="remoed-legend-text">Unbooked</span>
+          </div>
+          <div class="remoed-legend-item">
+            <div class="remoed-legend-color" style="background: #28a745; color: white;">R</div>
+            <span class="remoed-legend-text">Resolved Issue</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modern Schedule Container -->
+      <div class="remoed-schedule-container">
+        <table class="remoed-schedule-table">
+          <thead>
+            <tr id="day-headers-row">
+              <th class="remoed-time-column">Time</th>
+              <!-- Day headers will be dynamically added here by JavaScript -->
+            </tr>
+          </thead>
+          <tbody id="time-slots-grid">
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Class Info Modal -->
+  <div id="class-info-modal" class="remoed-modal">
+    <div class="remoed-modal-content">
+      <div class="remoed-modal-header">
+        <h2 class="remoed-modal-title">Class Information</h2>
+        <button class="remoed-modal-close" onclick="closeClassInfo()">&times;</button>
+      </div>
+      <div class="remoed-modal-body">
+        <!-- Compact Class Details Grid -->
+        <div class="class-details" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px 15px; font-size: 0.85rem; margin-bottom: 12px;">
+          <div class="detail-row" style="margin: 0; display: flex; align-items: center; gap: 8px;">
+            <label style="font-weight: bold; color: #000; font-size: 0.8rem; min-width: 70px;">Date:</label>
+            <span id="class-date" style="color: #000; font-weight: bold; flex: 1;"></span>
+          </div>
+          <div class="detail-row" style="margin: 0; display: flex; align-items: center; gap: 8px;">
+            <label style="font-weight: bold; color: #000; font-size: 0.8rem; min-width: 70px;">Time:</label>
+            <span id="class-time" style="color: #000; font-weight: bold; flex: 1;"></span>
+          </div>
+          <div class="detail-row" style="margin: 0; display: flex; align-items: center; gap: 8px;">
+            <label style="font-weight: bold; color: #000; font-size: 0.8rem; min-width: 70px;">Student:</label>
+            <span id="class-student" style="color: #000; font-weight: bold; flex: 1;"></span>
+          </div>
+          <div class="detail-row" style="margin: 0; display: flex; align-items: center; gap: 8px;">
+            <label style="font-weight: bold; color: #000; font-size: 0.8rem; min-width: 70px;">Level:</label>
+            <span id="class-level" style="color: #000; font-weight: bold; flex: 1;"></span>
+          </div>
+          <div class="detail-row" style="margin: 0; display: flex; align-items: center; gap: 8px;">
+            <label style="font-weight: bold; color: #000; font-size: 0.8rem; min-width: 70px;">Lesson:</label>
+            <span id="class-lesson" style="color: #000; font-weight: bold; flex: 1;"></span>
+          </div>
+          <div class="detail-row" style="margin: 0; display: flex; align-items: center; gap: 8px;">
+            <label style="font-weight: bold; color: #000; font-size: 0.8rem; min-width: 70px;">Classroom ID:</label>
+            <span id="classroom-id" style="font-weight: bold; color: #1ca7e7; font-size: 0.75rem; flex: 1;"></span>
+          </div>
+        </div>
+        
+        <!-- Join Classroom / Preview Lesson Button -->
+        <div style="margin: 10px 0; text-align: center;">
+          <button class="remoed-btn remoed-btn-primary" id="join-classroom-btn" onclick="joinClassroom()">Enter Live Classroom</button>
+        </div>
+        
+        <!-- Actions Section -->
+        <div style="margin: 10px 0;">
+          <label style="font-weight: 600; color: #333; display: block; margin-bottom: 6px; font-size: 0.85rem;">Actions:</label>
+          <!-- Compact Cancellation Penalty Notice -->
+          <div style="padding: 3px 6px; background: #fff3cd; border-radius: 3px; border: 1px solid #ffeaa7; margin-bottom: 5px;">
+            <div style="font-size: 0.65rem; color: #856404; font-weight: 600; text-align: center; line-height: 1.2;">
+              ⚠️ Cancellation Penalty: <span style="color: #28a745;">>72h: 0%</span> | <span style="color: #20c997;">48-72h: 12.5%</span> | <span style="color: #ffc107;">24-48h: 25%</span> | <span style="color: #fd7e14;">3-24h: 100%</span> | <span style="color: #dc3545;">&lt;3h: 300%</span>
+            </div>
+          </div>
+          <button class="remoed-btn remoed-btn-danger" onclick="toggleCancellationForm()" id="cancel-btn">Request Cancellation</button>
+        </div>
+        
+        <!-- Class Management Buttons -->
+        <div id="class-management-buttons" style="display: none; margin: 10px 0;">
+          <label style="font-weight: 600; color: #333; display: block; margin-bottom: 6px; font-size: 0.85rem;">Class Management:</label>
+          <div style="display: grid; grid-template-columns: 1fr; gap: 4px;">
+            <button class="remoed-btn remoed-btn-warning" onclick="markStudentAbsent()" id="student-absent-btn">
+              👤 Student Absent
+            </button>
+            <button class="remoed-btn remoed-btn-success" onclick="completeClass()" id="complete-class-btn">
+              ✅ Complete Class & Feedback
+            </button>
+            <button class="remoed-btn remoed-btn-danger" onclick="reportClassIssue().catch(console.error)" id="class-issue-btn">
+              ⚠️ Class Issue
+            </button>
+          </div>
+        </div>
+          
+        <!-- Cancellation Form (initially hidden) -->
+        <div id="cancellation-form" style="display: none; margin-top: 8px; padding: 10px; background: #f8f9fa; border-radius: 4px; border: 1px solid #e0e6ed;">
+          <h4 style="margin: 0 0 6px 0; color: #dc3545; font-size: 0.9rem;">Cancellation Request</h4>
+          <div class="form-group">
+            <label for="cancellation-reason" style="display: block; margin-bottom: 3px; font-weight: 600; color: #333; font-size: 0.8rem;">Reason for Cancellation:</label>
+            <textarea id="cancellation-reason" placeholder="Please provide a detailed reason for cancellation (minimum 10 characters)..." rows="2" maxlength="500" style="width: 100%; padding: 5px; border: 1px solid #ddd; border-radius: 3px; box-sizing: border-box; font-size: 0.8rem;"></textarea>
+            <div class="char-count" style="margin-top: 2px; font-size: 0.7rem; color: #666;">
+              <span id="char-count">0</span>/500 characters
+            </div>
+          </div>
+          <div style="display: flex; gap: 6px; margin-top: 6px;">
+            <button class="remoed-btn remoed-btn-secondary" onclick="hideCancellationForm()" style="padding: 5px 10px; font-size: 0.8rem;">Cancel</button>
+            <button class="remoed-btn remoed-btn-danger" onclick="submitCancellationRequest()" style="padding: 5px 10px; font-size: 0.8rem;">Submit Request</button>
+          </div>
+        </div>
+      </div>
+      <div class="remoed-modal-footer">
+        <button class="remoed-btn remoed-btn-secondary" onclick="closeClassInfo()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Class Feedback Modal -->
+  <div id="class-feedback-modal" class="remoed-modal">
+    <div class="remoed-modal-content">
+      <div class="remoed-modal-header">
+        <h2 class="remoed-modal-title">Complete Class & Provide Feedback</h2>
+        <button class="remoed-modal-close" onclick="closeClassFeedbackModal()">&times;</button>
+      </div>
+      <div class="remoed-modal-body">
+        <div class="feedback-details">
+          <p><strong>Class:</strong> <span id="feedback-class-info"></span></p>
+          <p><strong>Student:</strong> <span id="feedback-student-info"></span></p>
+          <p style="color: #666; font-style: italic; margin-bottom: 15px;">Please provide feedback before completing this class.</p>
+        
+          <div class="form-group">
+            <label for="feedback-rating">Student Rating:</label>
+            <div class="star-rating" id="feedback-star-rating">
+              <span class="star" data-rating="1">★</span>
+              <span class="star" data-rating="2">★</span>
+              <span class="star" data-rating="3">★</span>
+              <span class="star" data-rating="4">★</span>
+              <span class="star" data-rating="5">★</span>
+            </div>
+            <div id="feedback-rating-text" style="margin-top: 5px; font-size: 0.9rem; color: #666;"></div>
+          </div>
+          
+          <div class="form-group">
+            <label for="feedback-comment">Teacher Comments:</label>
+            <textarea id="feedback-comment" placeholder="Please provide feedback about the student's performance..." rows="4" maxlength="1000"></textarea>
+            <div class="char-count">
+              <span id="feedback-char-count">0</span>/1000 characters
+            </div>
+          </div>
+        </div>
+        <div class="remoed-modal-footer">
+          <button class="remoed-btn remoed-btn-secondary" onclick="closeClassFeedbackModal()">Cancel</button>
+          <button class="remoed-btn remoed-btn-success" onclick="submitClassFeedback().catch(console.error)">Complete Class & Submit Feedback</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Class Issue Modal -->
+  <div id="class-issue-modal" class="remoed-modal">
+    <div class="remoed-modal-content">
+      <div class="remoed-modal-header">
+        <h2 class="remoed-modal-title">Report Class Issue</h2>
+        <button class="remoed-modal-close" onclick="closeClassIssueModal()">&times;</button>
+      </div>
+      <div class="remoed-modal-body">
+        <div class="issue-details">
+          <p><strong>Class:</strong> <span id="issue-class-info"></span></p>
+          <p><strong>Student:</strong> <span id="issue-student-info"></span></p>
+          
+          <div class="form-group">
+            <label for="issue-type">Issue Type:</label>
+            <select id="issue-type" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 10px;">
+              <option value="">Select issue type...</option>
+              <option value="Lesson Issue (Cannot preview lesson)">Lesson Issue (Cannot preview lesson)</option>
+              <option value="Technical Issue (Audio/Video problems)">Technical Issue (Audio/Video problems)</option>
+              <option value="Student Behavior Issue">Student Behavior Issue</option>
+              <option value="Payment Issue">Payment Issue</option>
+              <option value="Schedule Conflict">Schedule Conflict</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          
+
+          
+          <div class="form-group">
+            <label for="issue-description">Issue Description:</label>
+            <textarea id="issue-description" placeholder="Please describe the issue in detail..." rows="4" maxlength="1000"></textarea>
+            <div class="char-count">
+              <span id="issue-char-count">0</span>/1000 characters
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label for="issue-screenshot">Upload Screenshot (Proof):</label>
+            <input type="file" id="issue-screenshot" accept="image/*" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+            <small style="color: #666;">Please upload a screenshot as proof of the issue</small>
+          </div>
+        </div>
+        <div class="remoed-modal-footer">
+          <button class="remoed-btn remoed-btn-secondary" onclick="closeClassIssueModal()">Cancel</button>
+          <button class="remoed-btn remoed-btn-danger" onclick="submitClassIssue()">Submit Issue Report</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cancellation Reason Modal -->
+  <div id="cancellation-modal" class="remoed-modal">
+    <div class="remoed-modal-content">
+      <div class="remoed-modal-header">
+        <h2 class="remoed-modal-title">Request Cancellation</h2>
+        <button class="remoed-modal-close" onclick="closeCancellationModal()">&times;</button>
+      </div>
+      <div class="remoed-modal-body">
+        <div class="cancellation-details">
+          <p><strong>Class:</strong> <span id="cancel-class-info"></span></p>
+          <p><strong>Student:</strong> <span id="cancel-student-info"></span></p>
+          <div class="form-group">
+            <label for="cancellation-reason">Reason for Cancellation:</label>
+            <textarea id="cancellation-reason" placeholder="Please provide a detailed reason for cancellation (minimum 10 characters)..." rows="4" maxlength="500"></textarea>
+            <div class="char-count">
+              <span id="char-count">0</span>/500 characters
+            </div>
+          </div>
+        </div>
+        <div class="remoed-modal-footer">
+          <button class="remoed-btn remoed-btn-secondary" onclick="closeCancellationModal()">Cancel</button>
+          <button class="remoed-btn remoed-btn-danger" onclick="submitCancellationRequest()">Submit Request</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="avatar-helper.js"></script>
+  <script>
+
+    // Weekly grid variables - use current date
+    let currentWeek = new Date();
+    let slotsData = [];
+    let bookingsData = [];
+    const teacherId = localStorage.getItem('teacherId');
+
+    // Initialize the weekly grid
+    function initializeWeeklyGrid() {
+      generateDayHeaders();
+      generateTimeSlots();
+      
+
+      
+      loadScheduleData();
+    }
+
+    // Generate day headers
+    function generateDayHeaders() {
+      const dayHeadersRow = document.getElementById('day-headers-row');
+              const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']; // Monday first
+      const monthNames = ["January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+      ];
+
+      // Clear existing day headers, but keep the 'Time' th
+      while (dayHeadersRow.children.length > 1) {
+        dayHeadersRow.removeChild(dayHeadersRow.lastChild);
+      }
+
+              for (let i = 0; i < 7; i++) {
+          const date = new Date(currentWeek);
+          // Calculate Monday as the start of the week (Monday = 1, Sunday = 0)
+          const dayOfWeek = currentWeek.getDay();
+          const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // If Sunday, go back 6 days; if Monday, go back 0 days, etc.
+          date.setDate(currentWeek.getDate() - daysToMonday + i);
+
+        const dayTh = document.createElement('th');
+        dayTh.className = 'remoed-day-column';
+        dayTh.innerHTML = `${days[i]}<br>${monthNames[date.getMonth()]} ${date.getDate()}`;
+        dayTh.dataset.date = date.toISOString().split('T')[0];
+
+        dayHeadersRow.appendChild(dayTh);
+      }
+    }
+
+    // Generate time slots (30-minute intervals from 01:00 to 24:00) - 24-hour format
+    function generateTimeSlots() {
+      const gridBody = document.getElementById('time-slots-grid');
+      gridBody.innerHTML = '';
+      
+      console.log('🔍 Generating time slots for currentWeek:', currentWeek.toISOString());
+      
+      const startHour = 1;
+      const endHour = 24;
+      
+      for (let hour = startHour; hour < endHour; hour++) {
+        for (let minute = 0; minute < 60; minute += 30) {
+          const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+          
+          const timeRow = document.createElement('tr');
+          
+          // Time column
+          const timeColumn = document.createElement('td');
+          timeColumn.className = 'remoed-time-column';
+          timeColumn.textContent = timeString;
+          timeRow.appendChild(timeColumn);
+          
+          // Day columns
+                  for (let day = 0; day < 7; day++) {
+          const date = new Date(currentWeek);
+          // Calculate Monday as the start of the week (Monday = 1, Sunday = 0)
+          const dayOfWeek = currentWeek.getDay();
+          const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // If Sunday, go back 6 days; if Monday, go back 0 days, etc.
+          date.setDate(currentWeek.getDate() - daysToMonday + day);
+            const dateString = date.toISOString().split('T')[0];
+            
+            // Debug: Log the first few slots to see what dates are being generated
+            if (timeString === '09:00' && day < 3) {
+              console.log(`🔍 Generated slot for day ${day}: ${dateString} ${timeString}`);
+            }
+            
+            const slot = document.createElement('td');
+            slot.className = 'remoed-time-slot';
+            slot.dataset.date = dateString;
+            slot.dataset.time = timeString;
+            
+                            // Check if slot is in the past (but don't mark as unavailable - let the data determine the status)
+                const slotDateTime = new Date(`${dateString}T${timeString}:00`);
+                const gridNow = new Date();
+                
+                // Check if the specific time has passed today
+                const currentDate = gridNow.toISOString().split('T')[0];
+                const currentTime = gridNow.toTimeString().split(' ')[0].substring(0, 5); // HH:MM format
+                
+                let isTimePassed = false;
+                if (dateString === currentDate) {
+                    // If it's today, check if the time has passed
+                    isTimePassed = timeString <= currentTime;
+                }
+                
+                // Only mark as unavailable if it's in the past AND not booked
+                if (slotDateTime <= gridNow && isTimePassed) {
+                  slot.classList.add('unavailable');
+                }
+            
+            // Append the slot to the timeRow
+            timeRow.appendChild(slot);
+          }
+          
+          gridBody.appendChild(timeRow);
+        }
+      }
+    }
+
+    // Load schedule data from backend - ALWAYS FRESH FROM DATABASE
+    async function loadScheduleData() {
+      const teacherId = localStorage.getItem('teacherId');
+      if (!teacherId) return;
+      
+      try {
+              const weekStart = new Date(currentWeek);
+      // Calculate Monday as the start of the week (Monday = 1, Sunday = 0)
+      const dayOfWeek = currentWeek.getDay();
+      const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // If Sunday, go back 6 days; if Monday, go back 0 days, etc.
+      weekStart.setDate(currentWeek.getDate() - daysToMonday);
+      const weekString = weekStart.toISOString().split('T')[0];
+        
+        console.log('🔄 Loading FRESH schedule data for week:', weekString, 'teacherId:', teacherId);
+        console.log('🔄 Current time:', new Date().toISOString());
+        
+        // Clear any existing cache first
+        localStorage.removeItem('teacher_slots_cache');
+        localStorage.removeItem('teacher_bookings_cache');
+        
+        // Force fresh data with multiple cache-busting parameters
+        const timestamp = Date.now();
+        const random = Math.random();
+        const url = `/api/teacher/slots?teacherId=${teacherId}&week=${weekString}&allSlots=true&t=${timestamp}&v=${random}&fresh=true&nocache=${timestamp}&force=${timestamp}&clear=${random}&update=${Date.now()}&refresh=${Math.random()}`;
+        console.log('🔍 Making fetch request to:', url);
+        
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+            'X-Requested-With': 'XMLHttpRequest'
+          }
+        });
+        
+        console.log('🔍 Response status:', response.status);
+        console.log('🔍 Response ok:', response.ok);
+        
+        if (!response.ok) {
+          console.error('❌ Fetch request failed with status:', response.status);
+          const errorText = await response.text();
+          console.error('❌ Error response:', errorText);
+          return;
+        }
+        
+        const data = await response.json();
+        console.log('🔍 Raw response data:', data);
+        
+        // Check if there's an error in the response
+        if (data.error) {
+          console.error('❌ API returned error:', data.error);
+          return;
+        }
+        
+        console.log('🔄 FRESH Schedule data received:', data);
+        console.log('🔄 Slots count:', data.slots ? data.slots.length : 0);
+        console.log('🔄 Bookings count:', data.bookings ? data.bookings.length : 0);
+        console.log('🔄 Raw slots data:', JSON.stringify(data.slots, null, 2));
+        console.log('🔄 Raw bookings data:', JSON.stringify(data.bookings, null, 2));
+        
+        // Check if we're getting the right teacher's data
+        console.log('🔄 Current teacher ID from localStorage:', teacherId);
+        console.log('🔄 Week being requested:', weekString);
+        
+        // ALWAYS clear existing data first
+        slotsData = [];
+        bookingsData = [];
+        
+        // Set new data from database
+        slotsData = data.slots || [];
+        bookingsData = data.bookings || [];
+        
+        console.log('🔄 Updated slotsData (from database):', slotsData);
+        console.log('🔄 Updated bookingsData (from database):', bookingsData);
+        
+        // Force re-render with fresh data
+        renderScheduleData();
+        
+      } catch (error) {
+        console.error('❌ Error loading schedule data:', error);
+      }
+    }
+
+    // Render the schedule data on the grid
+    function renderScheduleData() {
+      console.log('🔄 Rendering schedule data...');
+      console.log('🔄 slotsData:', slotsData);
+      console.log('🔄 bookingsData:', bookingsData);
+      
+      // Force clear all existing data first
+      console.log('🔄 Force clearing all existing slot data...');
+      
+      // Clear all existing classes
+      const allSlots = document.querySelectorAll('.remoed-time-slot[data-date]');
+      console.log('Found', allSlots.length, 'slots to clear');
+      
+      // Create a set of booked slots to check against
+      const bookedSlots = new Set();
+      bookingsData.forEach(booking => {
+        bookedSlots.add(`${booking.date}-${booking.time}`);
+      });
+      
+      allSlots.forEach(slot => {
+        slot.classList.remove('open', 'booked', 'unavailable', 'finished', 'absent', 'unbooked', 'student-absent', 'status-completed', 'status-absent', 'status-past');
+        slot.textContent = '';
+        slot.style.background = '';
+        slot.style.color = '';
+        slot.style.fontWeight = '';
+        slot.style.cursor = '';
+        slot.onclick = null;
+        
+        // Check if slot is in the past AND has no booking data
+        const slotKey = `${slot.dataset.date}-${slot.dataset.time}`;
+        
+        // Mark past open slots as "Unbooked" instead of unavailable
+        // Only mark as unbooked if it's strictly in the past (not current day)
+        const slotDate = new Date(slot.dataset.date);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Start of today
+        
+        // Only mark as unbooked if it's strictly in the past (not current day)
+        // Open slots should always show as "Open" regardless of time
+        if (slotDate < today && !bookedSlots.has(slotKey)) {
+          slot.classList.add('unbooked');
+          slot.textContent = 'Unbooked';
+          slot.style.background = '#f8f9fa';
+          slot.style.color = '#6c757d';
+          slot.style.fontWeight = 'normal';
+          slot.style.cursor = 'default';
+          slot.title = 'Past slot - no longer available for booking';
+        }
+      });
+
+      // Use the bookedSlots set that was created earlier
+      
+      // Render open slots (but skip those that are booked)
+      console.log('🔄 Rendering open slots...');
+      console.log('🔄 slotsData to render:', JSON.stringify(slotsData, null, 2));
+      console.log('🔄 slotsData length:', slotsData.length);
+      
+      if (slotsData.length === 0) {
+        console.log('❌ No slots data found - this might be the issue!');
+      }
+      
+      slotsData.forEach(slot => {
+        const slotKey = `${slot.date}-${slot.time}`;
+        
+        // Skip if this slot is booked
+        if (bookedSlots.has(slotKey)) {
+          console.log('🔄 Skipping open slot (already booked):', slot.date, slot.time);
+          return;
+        }
+        
+        // Check if the class duration has passed (25 minutes after start time)
+        const currentNow = new Date();
+        const currentDate = currentNow.toISOString().split('T')[0];
+        const currentTime = currentNow.toTimeString().split(' ')[0].substring(0, 5); // HH:MM format
+        
+        let isClassDurationPassed = false;
+        if (slot.date === currentDate) {
+            // If it's today, check if the class duration has passed (25 minutes after start)
+            const [startHour, startMinute] = slot.time.split(':').map(Number);
+            const endTime = new Date();
+            endTime.setHours(startHour, startMinute + 25, 0, 0); // 25 minutes after start
+            
+            const currentDateTime = new Date();
+            isClassDurationPassed = currentDateTime > endTime;
+        }
+        
+        // For open slots, we should always show them as "Open" regardless of time
+        // Only skip if they are actually booked
+        console.log('🔄 Processing open slot:', slot.date, slot.time);
+        
+        // Check if slot is in the past (strictly past dates, not current day)
+        const slotDate = new Date(slot.date);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Start of today
+        
+        console.log('🔄 Processing open slot:', slot.date, slot.time);
+        const slotElement = document.querySelector(`[data-date="${slot.date}"][data-time="${slot.time}"]`);
+        if (slotElement) {
+          console.log('✅ Found slot element for:', slot.date, slot.time);
+          
+          // Check if slot is in the past (strictly past dates, not current day)
+          const slotDate = new Date(slot.date);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0); // Start of today
+          
+                      // Check if the class duration has passed (25 minutes after start time)
+            const slotNow = new Date();
+            const currentDate = slotNow.toISOString().split('T')[0];
+            const currentTime = slotNow.toTimeString().split(' ')[0].substring(0, 5); // HH:MM format
+            
+            let isClassDurationPassed = false;
+            if (slot.date === currentDate) {
+                // If it's today, check if the class duration has passed (25 minutes after start)
+                const [startHour, startMinute] = slot.time.split(':').map(Number);
+                const endTime = new Date();
+                endTime.setHours(startHour, startMinute + 25, 0, 0); // 25 minutes after start
+                
+                const currentDateTime = new Date();
+                isClassDurationPassed = currentDateTime > endTime;
+            }
+            
+            // For open slots, always show as "Open" regardless of time
+            // Only mark as "Unbooked" if it's strictly in the past (not current day)
+            if (slotDate < today) {
+              slotElement.classList.remove('unavailable', 'open');
+              slotElement.classList.add('unbooked');
+              slotElement.textContent = 'Unbooked';
+              slotElement.style.background = '#f8f9fa';
+              slotElement.style.color = '#6c757d';
+              slotElement.style.fontWeight = 'normal';
+              slotElement.style.cursor = 'default';
+              slotElement.title = 'Past slot - no longer available for booking';
+              console.log('✅ Marked past slot as Unbooked:', slot.date, slot.time);
+            } else {
+            slotElement.classList.remove('unavailable', 'unbooked'); // Remove unavailable/unbooked class if slot is open
+            slotElement.classList.add('open');
+            slotElement.textContent = 'Open';
+            slotElement.style.background = '#90EE90'; // Light green
+            slotElement.style.color = '#333';
+            slotElement.style.fontWeight = 'bold';
+            slotElement.style.cursor = 'pointer';
+            slotElement.title = 'Open slot - Click to book';
+            console.log('✅ Successfully rendered open slot:', slot.date, slot.time);
+          }
+        } else {
+          console.log('❌ Slot element NOT found for:', slot.date, slot.time);
+          // Try alternative selector
+          const alternativeElement = document.querySelector(`td[data-date="${slot.date}"][data-time="${slot.time}"]`);
+          if (alternativeElement) {
+            console.log('✅ Found slot element with alternative selector for:', slot.date, slot.time);
+            
+            // Check if slot is in the past (strictly past dates, not current day)
+            const slotDate = new Date(slot.date);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0); // Start of today
+            
+            // Check if the class duration has passed (25 minutes after start time)
+            const altNow = new Date();
+            const currentDate = altNow.toISOString().split('T')[0];
+            const currentTime = altNow.toTimeString().split(' ')[0].substring(0, 5); // HH:MM format
+            
+            let isClassDurationPassed = false;
+            if (slot.date === currentDate) {
+                // If it's today, check if the class duration has passed (25 minutes after start)
+                const [startHour, startMinute] = slot.time.split(':').map(Number);
+                const endTime = new Date();
+                endTime.setHours(startHour, startMinute + 25, 0, 0); // 25 minutes after start
+                
+                const currentDateTime = new Date();
+                isClassDurationPassed = currentDateTime > endTime;
+            }
+            
+            // For open slots, always show as "Open" regardless of time
+            // Only mark as "Unbooked" if it's strictly in the past (not current day)
+            if (slotDate < today) {
+              alternativeElement.classList.remove('unavailable', 'open');
+              alternativeElement.classList.add('unbooked');
+              alternativeElement.textContent = 'Unbooked';
+              alternativeElement.style.background = '#f8f9fa';
+              alternativeElement.style.color = '#6c757d';
+              alternativeElement.style.fontWeight = 'normal';
+              alternativeElement.style.cursor = 'default';
+              alternativeElement.title = 'Past slot - no longer available for booking';
+              console.log('✅ Marked past slot as Unbooked (alternative selector):', slot.date, slot.time);
+            } else {
+              alternativeElement.classList.remove('unavailable', 'unbooked');
+              alternativeElement.classList.add('open');
+              alternativeElement.textContent = 'Open';
+              alternativeElement.style.background = '#90EE90';
+              alternativeElement.style.color = '#333';
+              alternativeElement.style.fontWeight = 'bold';
+              alternativeElement.style.cursor = 'pointer';
+              alternativeElement.title = 'Open slot - Click to book';
+            }
+          } else {
+            console.log('❌ Slot element NOT found with alternative selector for:', slot.date, slot.time);
+            console.log('🔍 Available slot elements:');
+            const allSlots = document.querySelectorAll('[data-date][data-time]');
+            console.log('🔍 Total slot elements found:', allSlots.length);
+            allSlots.forEach(el => {
+              if (el.dataset.date === slot.date) {
+                console.log(`  - Date: ${el.dataset.date}, Time: ${el.dataset.time}`);
+              }
+            });
+            
+            // Also check for the specific time
+            const timeSlots = document.querySelectorAll(`[data-time="${slot.time}"]`);
+            console.log(`🔍 Slots with time ${slot.time}:`, timeSlots.length);
+            timeSlots.forEach(el => {
+              console.log(`  - Date: ${el.dataset.date}, Time: ${el.dataset.time}`);
+            });
+          }
+        }
+      });
+
+      // Render booked classes with indicators
+      console.log('🔄 Rendering booked classes...');
+      console.log('🔄 bookingsData to render:', JSON.stringify(bookingsData, null, 2));
+      console.log('🔄 bookingsData length:', bookingsData.length);
+      
+      if (bookingsData.length === 0) {
+        console.log('❌ No bookings data found - this might be the issue!');
+      }
+      
+      bookingsData.forEach(booking => {
+        console.log('🔄 Processing booking:', booking.date, booking.time, 'Status:', booking.status, 'Student:', booking.studentId?.firstName || booking.studentId?.username);
+        console.log('🔄 Full booking object:', JSON.stringify(booking, null, 2));
+        console.log('🔄 Booking details:', {
+          finishedAt: booking.finishedAt,
+          studentLevel: booking.studentLevel,
+          studentTechnicalIssues: booking.studentTechnicalIssues,
+          attendance: booking.attendance
+        });
+        
+        // Initialize indicator variable at the beginning
+        let indicator = 'P'; // Default to Primary
+        
+        const slotElement = document.querySelector(`[data-date="${booking.date}"][data-time="${booking.time}"]`);
+        if (slotElement) {
+          slotElement.classList.remove('unavailable'); // Remove unavailable class if slot is booked
+          
+          // Check if the class duration has passed (25 minutes after start time)
+          const bookingNow = new Date();
+          const currentDate = bookingNow.toISOString().split('T')[0];
+          const currentTime = bookingNow.toTimeString().split(' ')[0].substring(0, 5); // HH:MM format
+          
+          let isClassDurationPassed = false;
+          if (booking.date === currentDate) {
+              // If it's today, check if the class duration has passed (25 minutes after start)
+              const [startHour, startMinute] = booking.time.split(':').map(Number);
+              const endTime = new Date();
+              endTime.setHours(startHour, startMinute + 25, 0, 0); // 25 minutes after start
+              
+              const currentDateTime = new Date();
+              isClassDurationPassed = currentDateTime > endTime;
+          }
+          
+          // Only mark as completed if the teacher manually completed it
+          if (booking.status === 'completed') {
+            console.log('✅ Marking as finished (manually completed by teacher)');
+            slotElement.classList.add('status-completed');
+            indicator = 'F';
+            
+            slotElement.style.cursor = 'pointer';
+            slotElement.style.fontWeight = 'bold';
+            slotElement.style.fontSize = '1.1em';
+            slotElement.onclick = (ev) => showClassInfo(booking, ev);
+            
+            // Add special styling for classes with technical issues
+            if (booking.studentTechnicalIssues) {
+              slotElement.style.border = '2px solid #ffc107';
+              slotElement.style.boxShadow = '0 0 8px rgba(255, 193, 7, 0.5)';
+            }
+            // Skip the rest of the logic for completed classes
+          } else if (booking.absentMarkedAt) {
+            // Check if student was marked as absent by teacher
+            console.log('✅ Marking as student absent (marked by teacher):', booking.date, booking.time);
+            slotElement.classList.add('status-absent');
+            indicator = 'S';
+            slotElement.style.cursor = 'pointer';
+            slotElement.style.fontWeight = 'bold';
+            slotElement.style.fontSize = '1.1em';
+            slotElement.onclick = (ev) => showClassInfo(booking, ev);
+            // Skip the rest of the logic for absent classes
+          } else if (booking.status === 'absent') {
+          
+          // DISABLED: Automatic "Past" marking - teachers must manually complete classes
+          // Teachers are responsible for manually completing classes or marking students absent
+          // This ensures proper feedback submission and service fee calculation
+          // Only check for "Past" status if the class is not completed and not marked as absent
+          // if (isClassDurationPassed && booking.status !== 'completed' && !booking.absentMarkedAt) {
+          //   console.log('✅ Marking booked slot as Past (class duration passed):', booking.date, booking.time);
+          //   slotElement.classList.remove('booked', 'finished', 'absent', 'student-absent');
+          //   slotElement.classList.add('past');
+          //   slotElement.textContent = 'Past';
+          //   slotElement.style.background = '#f8f9fa';
+          //   slotElement.style.color = '#6c757d';
+          //   slotElement.style.fontWeight = 'normal';
+          //   slotElement.style.cursor = 'pointer';
+          //   slotElement.onclick = (ev) => showClassInfo(booking, ev);
+          //   slotElement.title = 'Click to complete class and provide feedback';
+          //   return; // Skip the rest of the booking processing
+          // }
+          
+          } else if (booking.status === 'absent') {
+            // Check if teacher entered the classroom to determine who was absent
+            const teacherEntered = booking.attendance?.teacherEntered || false;
+            const studentEntered = booking.attendance?.studentEntered || false;
+            
+            if (!teacherEntered && !studentEntered) {
+              // Neither teacher nor student entered - mark as teacher absent
+              console.log('✅ Marking as teacher absent (neither entered)');
+              slotElement.classList.add('status-absent');
+              indicator = 'T';
+            } else if (teacherEntered && !studentEntered) {
+              // Teacher entered but student didn't - mark as student absent
+              console.log('✅ Marking as student absent (teacher present)');
+              slotElement.classList.add('status-absent');
+              indicator = 'S';
+            } else if (!teacherEntered && studentEntered) {
+              // Student entered but teacher didn't - mark as teacher absent
+              console.log('✅ Marking as teacher absent (student present)');
+              slotElement.classList.add('status-absent');
+              indicator = 'T';
+                         } else {
+               // Both entered but still marked as absent - this shouldn't happen
+               console.log('⚠️ Both entered but marked as absent - showing as student absent');
+               slotElement.classList.add('status-absent');
+               indicator = 'S';
+             }
+                    } else {
+            // Default case - show as booked (teacher must manually complete or mark absent)
+            console.log('📋 Marking as booked (waiting for teacher action)');
+            // Default indicator based on student level
+            const level = booking.studentLevel?.toLowerCase() || '';
+            if (level.includes('nursery')) {
+              slotElement.classList.add('N');
+              indicator = 'N';
+            } else if (level.includes('kindergarten') || level.includes('kinder')) {
+              slotElement.classList.add('K');
+              indicator = 'K';
+            } else if (level.includes('primary') || level.includes('preparatory')) {
+              slotElement.classList.add('P');
+              indicator = 'P';
+            } else {
+              // If no level specified, default to Preparatory
+              slotElement.classList.add('P');
+              indicator = 'P';
+            }
+            slotElement.classList.add('booked');
+            // Only apply yellow background and blue text for booked slots that are NOT completed or absent
+            if (booking.status !== 'completed' && !booking.absentMarkedAt && booking.status !== 'absent') {
+              slotElement.style.background = '#ffe85a';
+              slotElement.style.color = '#1ca7e7';
+            }
+          }
+          
+          // Set text content for all slots (indicator + student name)
+          const studentFirstName = booking.studentId?.firstName || booking.studentId?.username || 'Unknown';
+          slotElement.textContent = `${indicator}- ${studentFirstName}`;
+                      let statusText = '';
+          if (booking.status === 'absent') {
+            // Check if teacher entered the classroom to determine who was absent
+            const teacherEntered = booking.attendance?.teacherEntered || false;
+            const studentEntered = booking.attendance?.studentEntered || false;
+            
+            if (!teacherEntered && !studentEntered) {
+              statusText = 'Teacher Absent (Neither entered)';
+            } else if (teacherEntered && !studentEntered) {
+              statusText = 'Student Absent (Teacher Present)';
+            } else if (!teacherEntered && studentEntered) {
+              statusText = 'Teacher Absent (Student Present)';
+            } else {
+              statusText = 'Absent (Both entered)';
+            }
+          } else if (booking.status === 'completed') {
+            statusText = booking.studentTechnicalIssues ? 'Class Completed (Student had technical issues)' : 'Class Completed';
+          } else if (booking.absentMarkedAt) {
+            statusText = 'Student Absent (Marked by teacher)';
+          } else {
+            statusText = 'Booked Class';
+          }
+          slotElement.title = `${statusText} - ${booking.studentId?.firstName || booking.studentId?.username || 'Unknown Student'}`;
+          slotElement.style.cursor = 'pointer';
+          slotElement.style.fontWeight = 'bold';
+          slotElement.style.fontSize = '1.1em';
+          slotElement.onclick = (ev) => showClassInfo(booking, ev);
+          
+          // Ensure CSS classes take precedence over inline styles for status-based styling
+          if (booking.status === 'completed' || booking.absentMarkedAt || booking.status === 'absent') {
+            // Remove any inline background and color styles to let CSS classes work
+            slotElement.style.removeProperty('background');
+            slotElement.style.removeProperty('color');
+          }
+        }
+      });
+    }
+
+
+    
+    // Check if a class meets the duration requirement (15-25 minutes)
+    function hasCompletedDuration(booking) {
+      if (!booking.date || !booking.time) {
+        console.log('❌ Missing date or time for duration check:', {
+          date: booking.date,
+          time: booking.time
+        });
+        return false;
+      }
+      
+      console.log('🔍 Checking duration for booking:', {
+        date: booking.date,
+        time: booking.time,
+        status: booking.status,
+        attendance: booking.attendance,
+        finishedAt: booking.finishedAt
+      });
+      
+      // Prefer explicit attendance flag if available
+      if (booking.attendance && typeof booking.attendance.classCompleted === 'boolean') {
+        console.log('🔎 Using attendance.classCompleted flag:', booking.attendance.classCompleted);
+        return booking.attendance.classCompleted === true;
+      }
+
+      console.log('⚠️ No attendance.classCompleted flag found, falling back to finishedAt calculation');
+
+      const classDate = new Date(booking.date);
+      const [hours, minutes] = booking.time.split(':').map(Number);
+      
+      // Set class start time
+      const classStartTime = new Date(classDate);
+      classStartTime.setHours(hours, minutes, 0, 0);
+      
+      let durationMinutes;
+      
+      if (booking.finishedAt) {
+        // Use actual finishedAt timestamp
+        const classFinishTime = new Date(booking.finishedAt);
+        durationMinutes = (classFinishTime - classStartTime) / (1000 * 60);
+        
+        console.log('🔍 Duration check for booking (with finishedAt):', {
+          date: booking.date,
+          time: booking.time,
+          startTime: classStartTime.toISOString(),
+          finishTime: classFinishTime.toISOString(),
+          durationMinutes: durationMinutes.toFixed(2),
+          meetsRequirement: durationMinutes >= 15 && durationMinutes <= 25
+        });
+      } else {
+        // No finishedAt timestamp found - cannot determine duration, so mark as incomplete
+        console.log('⚠️ No finishedAt timestamp found, cannot determine duration - marking as incomplete');
+        durationMinutes = 0;
+        
+        console.log('🔍 Duration check for booking (no finishedAt):', {
+          date: booking.date,
+          time: booking.time,
+          startTime: classStartTime.toISOString(),
+          durationMinutes: durationMinutes,
+          meetsRequirement: false,
+          note: 'No finishedAt timestamp - cannot verify duration'
+        });
+      }
+      
+      // Class meets requirement if duration is between 15-25 minutes
+      const result = durationMinutes >= 15 && durationMinutes <= 25;
+      console.log(`✅ Duration check result: ${result} (${durationMinutes.toFixed(2)} minutes)`);
+      return result;
+    }
+
+    // Week navigation functionality
+    document.getElementById('prev-week').addEventListener('click', () => {
+      console.log('Previous week button clicked');
+      
+      // Add visual feedback
+      const prevBtn = document.getElementById('prev-week');
+      prevBtn.style.background = '#f4d03f';
+      setTimeout(() => {
+        prevBtn.style.background = '#ffe85a';
+      }, 200);
+      
+      currentWeek.setDate(currentWeek.getDate() - 7);
+      console.log('New currentWeek:', currentWeek.toISOString());
+      updateWeekDisplay();
+      initializeWeeklyGrid();
+    });
+
+    document.getElementById('next-week').addEventListener('click', () => {
+      console.log('Next week button clicked');
+      
+      // Add visual feedback
+      const nextBtn = document.getElementById('next-week');
+      nextBtn.style.background = '#f4d03f';
+      setTimeout(() => {
+        nextBtn.style.background = '#ffe85a';
+      }, 200);
+      
+      currentWeek.setDate(currentWeek.getDate() + 7);
+      console.log('New currentWeek:', currentWeek.toISOString());
+      updateWeekDisplay();
+      initializeWeeklyGrid();
+    });
+
+    document.getElementById('current-week').addEventListener('click', () => {
+      currentWeek = new Date();
+      updateWeekDisplay();
+      initializeWeeklyGrid();
+    });
+
+    // Update week display
+    function updateWeekDisplay() {
+      const weekStart = new Date(currentWeek);
+      // Calculate Monday as the start of the week (Monday = 1, Sunday = 0)
+      const dayOfWeek = currentWeek.getDay();
+      const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // If Sunday, go back 6 days; if Monday, go back 0 days, etc.
+      weekStart.setDate(currentWeek.getDate() - daysToMonday);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6);
+      
+      const display = document.getElementById('week-display');
+      display.textContent = `${weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+      
+      // Allow navigation to previous weeks (remove the restriction)
+      const prevBtn = document.getElementById('prev-week');
+      prevBtn.disabled = false; // Always allow previous week navigation
+      
+      // Add debug info to console
+      console.log('Current week display:', {
+        currentWeek: currentWeek.toISOString(),
+        weekStart: weekStart.toISOString(),
+        weekEnd: weekEnd.toISOString(),
+        displayText: display.textContent
+      });
+    }
+
+    // Class Info Modal Functions
+    let currentBooking = null;
+    let selectedRating = 0;
+
+    async function showClassInfo(booking, ev) {
+      currentBooking = booking;
+      
+      // Fetch fresh booking data to ensure we have the latest recording information
+      try {
+        const token = localStorage.getItem('token');
+        if (token && booking._id) {
+          // Fetch both booking details and recording status
+          const [freshBookingResp, recordingStatusResp] = await Promise.all([
+            fetch(`/api/teacher/booking/${booking._id}`, {
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            }),
+            fetch(`/api/recording/status/${booking._id}`, {
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            }).catch(() => null) // Don't fail if recording status endpoint fails
+          ]);
+          
+          if (freshBookingResp.ok) {
+            const freshData = await freshBookingResp.json();
+            // Merge fresh booking data (especially recording field)
+            if (freshData.booking) {
+              booking = { ...booking, ...freshData.booking };
+              currentBooking = booking;
+            }
+          }
+          
+          // Also check recording status endpoint as fallback
+          if (recordingStatusResp && recordingStatusResp.ok) {
+            const recordingData = await recordingStatusResp.json();
+            if (recordingData.success && recordingData.recording) {
+              // Ensure recording field exists in booking
+              if (!booking.recording) {
+                booking.recording = {};
+              }
+              // Merge recording data
+              booking.recording = {
+                ...booking.recording,
+                ...recordingData.recording
+              };
+              currentBooking.recording = booking.recording;
+              console.log('✅ Updated booking with recording status:', booking.recording);
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Could not fetch fresh booking data:', e);
+        // Continue with existing booking data
+      }
+      
+              // Check if class has a resolved issue
+        const hasResolvedIssue = await checkClassIssueStatus(booking.bookingId);
+        if (hasResolvedIssue) {
+          showNotification('💡 Tip: Class issue resolved! This class issue has been marked as resolved by admin. Check your service fee page for payment details.', 'info');
+          return;
+        }
+        
+        // Add visual indicator for resolved issues
+        const cell = (ev && ev.target ? ev.target : window.event?.target)?.closest ? (ev.target.closest('td')) : null;
+        if (cell && hasResolvedIssue) {
+          cell.style.position = 'relative';
+          const existingIndicator = cell.querySelector('.resolved-indicator');
+          if (!existingIndicator) {
+            const indicator = document.createElement('div');
+            indicator.className = 'resolved-indicator';
+            indicator.style.cssText = 'position: absolute; top: 2px; right: 2px; background: #28a745; color: white; font-size: 10px; padding: 2px 4px; border-radius: 3px; z-index: 10;';
+            indicator.title = 'Class issue marked as resolved by admin';
+            indicator.textContent = 'Resolved';
+            cell.appendChild(indicator);
+          }
+        }
+      
+      // Informative tips for status, but still allow viewing details
+      if (booking.status === 'completed') {
+        showNotification('💡 Tip: This class has already been completed. You can still view its details here.', 'info');
+      } else if (booking.status === 'absent' || booking.absentMarkedAt) {
+        showNotification('💡 Tip: This class was marked as student absent. You received 50% payment for this session.', 'info');
+      }
+      
+      // Format date
+      const date = new Date(booking.date);
+      const formattedDate = date.toLocaleDateString('en-US', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      });
+      
+      // Populate modal with booking data
+      document.getElementById('class-date').textContent = formattedDate;
+      // Format time as 24-hour format
+      let formattedTime = booking.time;
+      if (booking.time) {
+        const [hour, minute] = booking.time.split(':');
+        formattedTime = `${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`;
+      }
+      document.getElementById('class-time').textContent = formattedTime;
+      document.getElementById('class-student').textContent = booking.studentId?.firstName || booking.studentId?.username || 'Unknown Student';
+      document.getElementById('class-level').textContent = booking.studentLevel || 'Not specified';
+      document.getElementById('class-lesson').textContent = booking.lesson || 'Not specified';
+      document.getElementById('classroom-id').textContent = booking.classroomId || 'Not set';
+      
+      // Check if class management buttons should be shown
+      const classManagementButtons = document.getElementById('class-management-buttons');
+      
+      // Parse date and time correctly (handle timezone)
+      const [year, month, day] = booking.date.split('-').map(Number);
+      const [hour, minute] = booking.time.split(':').map(Number);
+      const startTime = new Date(year, month - 1, day, hour, minute, 0, 0);
+      const buttonNow = new Date();
+      const buttonElapsedMinutes = Math.floor((buttonNow - startTime) / 1000 / 60);
+      const buttonElapsedHours = buttonElapsedMinutes / 60;
+      
+      // Debug logging
+      console.log('🔍 Button check for booking:', booking._id);
+      console.log('  - Full booking object:', JSON.stringify(booking, null, 2));
+      console.log('  - Class start time:', startTime.toISOString());
+      console.log('  - Current time:', buttonNow.toISOString());
+      console.log('  - Elapsed minutes:', buttonElapsedMinutes);
+      console.log('  - Elapsed hours:', buttonElapsedHours.toFixed(2));
+      console.log('  - Has recording field:', 'recording' in booking);
+      console.log('  - Recording value:', booking.recording);
+      console.log('  - Has videoPath:', !!(booking.recording && booking.recording.videoPath));
+      if (booking.recording) {
+        console.log('  - Recording details:', {
+          isRecording: booking.recording.isRecording,
+          videoPath: booking.recording.videoPath,
+          videoGeneratedAt: booking.recording.videoGeneratedAt,
+          duration: booking.recording.duration
+        });
+      }
+      
+      // Function to update button
+      const updateButton = async () => { // Made async to allow fetching recording status
+        const joinBtn = document.getElementById('join-classroom-btn');
+        if (!joinBtn) return;
+        
+        // Check for test mode (bypass 1-hour wait for testing)
+        const testMode = localStorage.getItem('recordingTestMode') === 'true' || 
+                        new URLSearchParams(window.location.search).get('testRecording') === 'true';
+        
+        // Recalculate time in case it's been updated
+        const [year2, month2, day2] = booking.date.split('-').map(Number);
+        const [hour2, minute2] = booking.time.split(':').map(Number);
+        const startTime2 = new Date(year2, month2 - 1, day2, hour2, minute2, 0, 0);
+        const buttonNow2 = new Date();
+        const buttonElapsedHours2 = (buttonNow2 - startTime2) / (1000 * 60 * 60);
+        
+        let hasVideo = booking.recording && booking.recording.videoPath;
+        
+        // Always check the API for video status if we don't have a videoPath yet
+        // This ensures we catch videos that were just generated
+        if (!hasVideo && booking._id) {
+          try {
+            const token = localStorage.getItem('token');
+            const recordingStatusResp = await fetch(`/api/recording/status/${booking._id}`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (recordingStatusResp.ok) {
+              const statusData = await recordingStatusResp.json();
+              if (statusData.success && statusData.recording && statusData.recording.videoPath) {
+                hasVideo = true;
+                booking.recording = statusData.recording;
+                currentBooking = booking;
+                if (testMode) {
+                  console.log('🧪 [TEST MODE] Found video via API check:', statusData.recording);
+                } else {
+                  console.log('✅ Found video via API check:', statusData.recording);
+                }
+              } else if (statusData.success && statusData.recording) {
+                // Update booking with recording data even if no videoPath yet
+                if (!booking.recording) {
+                  booking.recording = {};
+                }
+                booking.recording = {
+                  ...booking.recording,
+                  ...statusData.recording
+                };
+                currentBooking.recording = booking.recording;
+                console.log('📹 Recording status updated (no video yet):', statusData.recording);
+              }
+            }
+          } catch (e) {
+            console.warn('Could not fetch recording status:', e);
+          }
+        }
+        
+        // In test mode, bypass the 1-hour wait - only check if video exists
+        const oneHourPassed = testMode ? true : (buttonElapsedHours2 >= 1);
+        
+        console.log('🔄 Updating button - One hour passed:', oneHourPassed, 'Has video:', hasVideo, 'Test mode:', testMode);
+        
+        if (oneHourPassed && hasVideo) {
+          // After 1 hour (or in test mode) and video is available, show Preview Video and auto-download
+          joinBtn.textContent = 'Preview Video';
+          joinBtn.onclick = () => previewLesson(booking._id, true); // true = auto-download
+          if (testMode) {
+            console.log('🧪 [TEST MODE] Button changed to Preview Video (bypassing 1-hour wait)');
+          } else {
+            console.log('✅ Button changed to Preview Video (auto-download)');
+          }
+        } else {
+          // Before 1 hour or no video, show Enter Live Classroom
+          joinBtn.textContent = 'Enter Live Classroom';
+          joinBtn.onclick = () => joinClassroom();
+          if (!oneHourPassed && !testMode) {
+            const remainingMinutes = Math.ceil((1 - buttonElapsedHours2) * 60);
+            console.log(`⏰ Button shows Enter Live Classroom - ${remainingMinutes} minutes until preview available`);
+          } else if (!hasVideo) {
+            if (testMode) {
+              console.log('🧪 [TEST MODE] No video available yet - recording may still be processing');
+            } else {
+              console.log('⚠️ Button shows Enter Live Classroom - no video available (recording may still be processing)');
+            }
+          }
+        }
+      };
+      
+      // Update button immediately
+      await updateButton();
+      
+      // Set up periodic check to update button if conditions change (every 30 seconds)
+      // Clear any existing interval
+      if (window.classInfoButtonInterval) {
+        clearInterval(window.classInfoButtonInterval);
+      }
+      
+      // Set up new interval to check and update button
+      window.classInfoButtonInterval = setInterval(async () => {
+        // Try to fetch fresh booking data and recording status
+        try {
+          const token = localStorage.getItem('token');
+          if (token && booking._id) {
+            const [freshBookingResp, recordingStatusResp] = await Promise.all([
+              fetch(`/api/teacher/booking/${booking._id}`, {
+                headers: {
+                  'Authorization': `Bearer ${token}`
+                }
+              }),
+              fetch(`/api/recording/status/${booking._id}`, {
+                headers: {
+                  'Authorization': `Bearer ${token}`
+                }
+              }).catch(() => null)
+            ]);
+            
+            if (freshBookingResp.ok) {
+              const freshData = await freshBookingResp.json();
+              if (freshData.booking) {
+                booking = { ...booking, ...freshData.booking };
+                currentBooking = booking;
+              }
+            }
+            
+            // Also check recording status endpoint
+            if (recordingStatusResp && recordingStatusResp.ok) {
+              const recordingData = await recordingStatusResp.json();
+              if (recordingData.success && recordingData.recording) {
+                if (!booking.recording) {
+                  booking.recording = {};
+                }
+                booking.recording = {
+                  ...booking.recording,
+                  ...recordingData.recording
+                };
+                currentBooking.recording = booking.recording;
+                console.log('🔄 Updated booking with recording status in interval:', booking.recording);
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('Could not fetch fresh booking data in interval:', e);
+        }
+        
+        // Update button with current data
+        await updateButton();
+      }, 30000); // Check every 30 seconds
+      
+      // Show class management buttons for classes that have started (15+ minutes) or are completed/absent
+      // Removed 'past' status since we disabled automatic past marking
+      if (buttonElapsedMinutes >= 15 || booking.status === 'completed' || booking.status === 'absent') {
+        // Show class management buttons
+        classManagementButtons.style.display = 'block';
+        
+        // Enable/disable buttons based on time and status
+        const studentAbsentBtn = document.getElementById('student-absent-btn');
+        const completeClassBtn = document.getElementById('complete-class-btn');
+        
+        // Enable student absent button if class has passed 15 minutes or is completed
+        // Removed 'past' status since we disabled automatic past marking
+        if (buttonElapsedMinutes >= 15 || booking.status === 'completed' || booking.absentMarkedAt) {
+          studentAbsentBtn.disabled = false;
+          studentAbsentBtn.style.opacity = '1';
+        } else {
+          studentAbsentBtn.disabled = true;
+          studentAbsentBtn.style.opacity = '0.5';
+        }
+        
+        // Enable complete class button for teachers to manually complete classes
+        // Allow completion if class has started (buttonElapsedMinutes >= 0) or is completed
+        // Removed 'past' status since we disabled automatic past marking
+        const canComplete = buttonElapsedMinutes >= 0 || booking.status === 'completed' || booking.absentMarkedAt;
+        console.log('🔘 Complete button state:', {
+          buttonElapsedMinutes,
+          bookingStatus: booking.status,
+          absentMarkedAt: booking.absentMarkedAt,
+          canComplete
+        });
+        
+        if (canComplete) {
+          completeClassBtn.disabled = false;
+          completeClassBtn.style.opacity = '1';
+        } else {
+          completeClassBtn.disabled = true;
+          completeClassBtn.style.opacity = '0.5';
+        }
+      } else {
+        classManagementButtons.style.display = 'none';
+      }
+      
+      // Show modal
+      document.getElementById('class-info-modal').classList.add('show');
+    }
+
+    function closeClassInfo() {
+      document.getElementById('class-info-modal').classList.remove('show');
+      currentBooking = null;
+      
+      // Clear the interval when modal is closed
+      if (window.classInfoButtonInterval) {
+        clearInterval(window.classInfoButtonInterval);
+        window.classInfoButtonInterval = null;
+        console.log('🧹 Cleared class info button update interval');
+      }
+    }
+
+    async function joinClassroom() {
+      if (!currentBooking) return;
+      const classroomId = currentBooking.classroomId;
+      if (!classroomId) {
+        alert('No classroom ID set for this booking.');
+        return;
+      }
+      const slotTime = currentBooking.time || '';
+      const roomUrl = `live-classroom.html?room=${classroomId}&type=teacher&bookingId=${currentBooking._id}&slot=${encodeURIComponent(slotTime)}`;
+      window.open(roomUrl, '_blank');
+    }
+    
+    async function previewLesson(bookingId, autoDownload = true) {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          alert('Please log in to preview the lesson.');
+          return;
+        }
+        
+        // Show loading message
+        if (autoDownload) {
+          const notification = document.createElement('div');
+          notification.textContent = '📥 Downloading lesson video...';
+          notification.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #667eea; color: white; padding: 12px 20px; border-radius: 8px; z-index: 10000; box-shadow: 0 4px 6px rgba(0,0,0,0.1);';
+          document.body.appendChild(notification);
+          setTimeout(() => notification.remove(), 3000);
+        }
+        
+        // Download the video
+        const response = await fetch(`/api/recording/video/${bookingId}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (!response.ok) {
+          const error = await response.json();
+          alert('Failed to load video: ' + (error.error || 'Unknown error'));
+          return;
+        }
+        
+        // Create blob and automatically download
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `lesson-recording-${bookingId}-${new Date().toISOString().split('T')[0]}.webm`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+        if (autoDownload) {
+          const successNotification = document.createElement('div');
+          successNotification.textContent = '✅ Video downloaded successfully!';
+          successNotification.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #28a745; color: white; padding: 12px 20px; border-radius: 8px; z-index: 10000; box-shadow: 0 4px 6px rgba(0,0,0,0.1);';
+          document.body.appendChild(successNotification);
+          setTimeout(() => successNotification.remove(), 3000);
+        }
+      } catch (error) {
+        console.error('Error previewing lesson:', error);
+        alert('Failed to download video: ' + error.message);
+      }
+    }
+
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+      const modal = document.getElementById('class-info-modal');
+      if (event.target === modal) {
+        closeClassInfo();
+      }
+      
+      const cancellationModal = document.getElementById('cancellation-modal');
+      if (event.target === cancellationModal) {
+        closeCancellationModal();
+      }
+      
+      const classFeedbackModal = document.getElementById('class-feedback-modal');
+      if (event.target === classFeedbackModal) {
+        closeClassFeedbackModal();
+      }
+      
+      const classIssueModal = document.getElementById('class-issue-modal');
+      if (event.target === classIssueModal) {
+        closeClassIssueModal();
+      }
+    }
+
+    // Add event listener for character count
+    document.addEventListener('DOMContentLoaded', function() {
+      const reasonTextarea = document.getElementById('cancellation-reason');
+      if (reasonTextarea) {
+        reasonTextarea.addEventListener('input', updateCharCount);
+      }
+    });
+
+    // Cancellation Form Functions
+    function toggleCancellationForm() {
+      if (!currentBooking) return;
+      
+      // Check if class has already started
+      const classDateTime = new Date(`${currentBooking.date}T${currentBooking.time}:00`);
+      const cancelNow = new Date();
+      
+              if (classDateTime <= cancelNow) {
+        alert('Cannot cancel a class that has already started.');
+        return;
+      }
+      
+      const form = document.getElementById('cancellation-form');
+      const isVisible = form.style.display !== 'none';
+      
+      if (isVisible) {
+        hideCancellationForm();
+      } else {
+        showCancellationForm();
+      }
+    }
+    
+    function showCancellationForm() {
+      document.getElementById('cancellation-form').style.display = 'block';
+      document.getElementById('cancellation-reason').value = ''; // Clear previous reason
+      document.getElementById('char-count').textContent = '0';
+      document.getElementById('cancellation-reason').focus();
+      
+      // Add character count listener
+      document.getElementById('cancellation-reason').addEventListener('input', function() {
+        const count = this.value.length;
+        document.getElementById('char-count').textContent = count;
+      });
+    }
+    
+    function hideCancellationForm() {
+      document.getElementById('cancellation-form').style.display = 'none';
+      document.getElementById('cancellation-reason').value = '';
+      document.getElementById('char-count').textContent = '0';
+    }
+
+    function updateCharCount() {
+      const reason = document.getElementById('cancellation-reason').value;
+      document.getElementById('char-count').textContent = reason.length;
+    }
+
+    async function submitCancellationRequest() {
+      const reason = document.getElementById('cancellation-reason').value.trim();
+      
+      if (reason.length < 10) {
+        alert('Cancellation reason must be at least 10 characters long.');
+        return;
+      }
+
+      if (!currentBooking) return;
+
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          alert('Authentication required for cancellation.');
+          window.location.href = 'teacher-login.html';
+          return;
+        }
+
+        const response = await fetch('/api/teacher/request-cancellation', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            bookingId: currentBooking._id,
+            reason: reason
+          })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          alert('Cancellation request submitted successfully! It will be reviewed by admin.');
+          hideCancellationForm();
+          closeClassInfo();
+          loadScheduleData(); // Refresh schedule
+        } else {
+          alert(`Cancellation failed: ${data.error || response.statusText}`);
+        }
+      } catch (error) {
+        console.error('Error submitting cancellation request:', error);
+        alert('An error occurred while submitting the cancellation request.');
+      }
+    }
+
+    // Realtime updates via Socket.IO
+    (function initRealtime(){
+      try {
+        const socket = io();
+        socket.on('slotsUpdated', (payload) => {
+          if (!payload || !payload.teacherId) return;
+          const myId = localStorage.getItem('teacherId');
+          if (payload.teacherId === myId || String(payload.teacherId) === String(myId)) {
+            console.log('🔔 Realtime slotsUpdated received, refreshing schedule...', payload);
+            loadScheduleData();
+          }
+        });
+        socket.on('bookingsUpdated', (payload) => {
+          const myId = localStorage.getItem('teacherId');
+          if (payload && (payload.teacherId === myId || String(payload.teacherId) === String(myId))) {
+            console.log('🔔 Realtime bookingsUpdated received, refreshing schedule...', payload);
+            loadScheduleData();
+          }
+        });
+      } catch (e) { console.log('Socket init failed', e); }
+    })();
+
+    // Initialize when page loads
+    document.addEventListener('DOMContentLoaded', () => {
+      console.log('🔄 Page loaded - Loading fresh data');
+      
+      // Check for test mode (bypass 1-hour wait for video preview)
+      const testMode = new URLSearchParams(window.location.search).get('testRecording') === 'true';
+      if (testMode) {
+        localStorage.setItem('recordingTestMode', 'true');
+        console.log('🧪 TEST MODE ENABLED: Video preview button will appear immediately if video exists (bypassing 1-hour wait)');
+        console.log('🧪 To disable test mode, add ?testRecording=false to URL or run: localStorage.removeItem("recordingTestMode")');
+      } else if (new URLSearchParams(window.location.search).get('testRecording') === 'false') {
+        localStorage.removeItem('recordingTestMode');
+        console.log('🧪 TEST MODE DISABLED');
+      }
+      
+      // Show test mode status in console
+      if (localStorage.getItem('recordingTestMode') === 'true') {
+        console.log('🧪 RECORDING TEST MODE IS ACTIVE - Preview button will show immediately if video exists');
+      }
+      
+      // Clear only slot-related cache, preserve login and time log data
+      localStorage.removeItem('last_slot_update');
+      localStorage.removeItem('schedule_cache');
+      localStorage.removeItem('slots_cache');
+      localStorage.removeItem('bookings_cache');
+      localStorage.removeItem('teacher_slots_cache');
+      localStorage.removeItem('teacher_bookings_cache');
+      localStorage.removeItem('last_page_load');
+      localStorage.removeItem('last_auto_refresh');
+      
+      // Clear data arrays
+      slotsData = [];
+      bookingsData = [];
+      
+      updateWeekDisplay();
+      initializeWeeklyGrid();
+      
+      // Listen for class completion events
+      window.addEventListener('classFinished', () => {
+        console.log('Class finished event received, refreshing schedule...');
+        loadScheduleData();
+      });
+      
+      // Listen for slot update events from teacher-open-class.html
+      window.addEventListener('slotsUpdated', (event) => {
+        console.log('Slots updated event received, refreshing schedule...', event.detail);
+        setTimeout(() => {
+          loadScheduleData();
+        }, 500); // Small delay to ensure backend has processed the update
+      });
+      
+      // Check for immediate class completion notifications
+      const lastNotification = localStorage.getItem('class_completion_notification');
+      if (lastNotification) {
+        const notificationTime = parseInt(lastNotification);
+        const currentTime = Date.now();
+        
+        // If notification is less than 5 minutes old, refresh immediately
+        if (currentTime - notificationTime < 300000) {
+          console.log('Recent class completion detected, refreshing immediately...');
+          loadScheduleData();
+        }
+      }
+      
+      // Check if we need to refresh data (e.g., coming back from teacher-open-class.html)
+      const lastSlotUpdate = localStorage.getItem('last_slot_update');
+      if (lastSlotUpdate) {
+        const updateTime = parseInt(lastSlotUpdate);
+        const currentTime = Date.now();
+        
+        // If slot update was less than 30 seconds ago, refresh data
+        if (currentTime - updateTime < 30000) {
+          console.log('Recent slot update detected, refreshing schedule...');
+          setTimeout(() => {
+            loadScheduleData();
+          }, 1000); // Small delay to ensure backend has processed the update
+        }
+      }
+      
+      // Force cache refresh
+      console.log('🔄 Page loaded at:', new Date().toISOString());
+      
+      // Show notification about past classes being clickable
+      setTimeout(() => {
+                        showNotification('💡 Tip: Make sure to complete classes and provide feedback for accurate records', 'info');
+      }, 2000);
+      
+      // Add resolved issue indicators after schedule loads
+      setTimeout(addResolvedIssueIndicators, 3000);
+      
+      // Set up periodic refresh every 30 seconds to ensure data stays fresh
+      setInterval(() => {
+        // Check if there was a recent slot update
+        const lastSlotUpdate = localStorage.getItem('last_slot_update');
+        const lastRefresh = localStorage.getItem('last_auto_refresh');
+        
+        if (lastSlotUpdate && (!lastRefresh || parseInt(lastSlotUpdate) > parseInt(lastRefresh))) {
+          console.log('🔄 Auto-refresh triggered due to slot update');
+          localStorage.setItem('last_auto_refresh', Date.now().toString());
+        } else {
+          console.log('🔄 Regular auto-refresh');
+        }
+        
+        loadScheduleData();
+      }, 30000); // 30 seconds
+    });
+    
+    // Force refresh schedule data
+    async function forceRefreshSchedule() {
+        console.log('🔄 Manual refresh triggered');
+        const refreshBtn = document.getElementById('refresh-btn');
+        refreshBtn.disabled = true;
+        refreshBtn.textContent = '🔄 Refreshing...';
+        
+        try {
+            // Clear all cache
+            localStorage.removeItem('teacher_slots_cache');
+            localStorage.removeItem('teacher_bookings_cache');
+            localStorage.removeItem('last_slot_update');
+            localStorage.removeItem('schedule_cache');
+            
+            // Force fresh data load
+            await loadScheduleData();
+            
+            // Show success message
+            showNotification('Schedule refreshed successfully!', 'success');
+        } catch (error) {
+            console.error('Error refreshing schedule:', error);
+            showNotification('Error refreshing schedule: ' + error.message, 'error');
+        } finally {
+            refreshBtn.disabled = false;
+            refreshBtn.textContent = '🔄 Refresh';
+        }
+    }
+    
+    // Debug function to check slot data
+    function debugSlotData() {
+        console.log('=== DEBUG SLOT DATA ===');
+        console.log('Current week:', currentWeek.toISOString());
+        console.log('Slots data:', slotsData);
+        console.log('Bookings data:', bookingsData);
+        
+        // Check DOM elements
+        const allSlots = document.querySelectorAll('[data-date][data-time]');
+        console.log('Total slot elements in DOM:', allSlots.length);
+        
+        // Check for specific dates
+        const today = new Date().toISOString().split('T')[0];
+        const todaySlots = document.querySelectorAll(`[data-date="${today}"]`);
+        console.log('Today slots:', todaySlots.length);
+        
+        // Check for open slots
+        const openSlots = document.querySelectorAll('.open');
+        console.log('Open slots in DOM:', openSlots.length);
+        
+        // Check for unavailable slots
+        const unavailableSlots = document.querySelectorAll('.unavailable');
+        console.log('Unavailable slots in DOM:', unavailableSlots.length);
+        
+        console.log('=== END DEBUG ===');
+    }
+    
+
+    
+    // Show notification to user
+    function showNotification(message, type) {
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            z-index: 10000;
+            background: ${type === 'success' ? '#28a745' : '#dc3545'};
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        `;
+        notification.textContent = message;
+        
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 3000);
+    }
+    
+  // Load profile picture and update sidebar from backend (uses setAvatar)
+  async function loadProfilePicture(teacherId) {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 7000);
+
+      const response = await fetch('/api/teacher/profile', {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${token}` },
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        console.log('❌ Failed to load profile, status:', response.status);
+        try { setAvatar({ imageUrl: '', displayName: localStorage.getItem('remoedUsername') || 'T', imgSelector: '#profile-image', textSelector: '#avatar-text' }); } catch(e){}
+        return;
+      }
+
+      const data = await response.json();
+      if (data.profile && data.profile.firstName) {
+        const sidebarElement = document.getElementById('sidebar-email');
+        if (sidebarElement) sidebarElement.textContent = `Hi, ${data.profile.firstName}`;
+      }
+
+      const profilePic = data.profile && data.profile.profilePicture ? data.profile.profilePicture : '';
+      try {
+        setAvatar({ imageUrl: profilePic, displayName: data.profile && data.profile.firstName ? data.profile.firstName : (localStorage.getItem('remoedUsername') || 'T'), imgSelector: '#profile-image', textSelector: '#avatar-text' });
+      } catch (e) {
+        console.error('setAvatar error', e);
+      }
+    } catch (error) {
+      console.error('Error loading profile picture:', error);
+      try { setAvatar({ imageUrl: '', displayName: localStorage.getItem('remoedUsername') || 'T', imgSelector: '#profile-image', textSelector: '#avatar-text' }); } catch(e){}
+    }
+  }
+    
+
+    
+    // Mark student as absent
+    async function markStudentAbsent() {
+        if (!currentBooking) {
+            showNotification('No class selected', 'error');
+            return;
+        }
+        
+        if (!confirm('Are you sure you want to mark the student as absent? This will result in 50% pay deduction.')) {
+            return;
+        }
+        
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                showNotification('Authentication required', 'error');
+                return;
+            }
+            
+            const response = await fetch(`/api/booking/${currentBooking._id}/mark-student-absent`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            
+            if (response.ok) {
+                showNotification('Student marked as absent successfully', 'success');
+                closeClassInfo();
+                loadScheduleData(); // Refresh schedule
+            } else {
+                const errorData = await response.json();
+                showNotification(`Failed to mark student absent: ${errorData.error || 'Unknown error'}`, 'error');
+            }
+        } catch (error) {
+            console.error('Error marking student absent:', error);
+            showNotification('Error marking student absent', 'error');
+        }
+    }
+    
+    // Complete class - now shows feedback form first
+    async function completeClass() {
+        if (!currentBooking) {
+            showNotification('No class selected', 'error');
+            return;
+        }
+        
+        // Refresh booking data to get latest status
+        try {
+            const token = localStorage.getItem('token');
+            if (token) {
+                const response = await fetch(`/api/teacher/bookings/${currentBooking._id}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const updatedBooking = await response.json();
+                    currentBooking = updatedBooking;
+                    console.log('🔄 Updated booking data:', currentBooking);
+                }
+            }
+        } catch (error) {
+            console.log('Could not refresh booking data:', error);
+        }
+        
+        // Show feedback form instead of directly completing
+        showClassFeedback().catch(console.error);
+    }
+    
+    // Show class feedback modal (now part of class completion)
+    async function showClassFeedback() {
+        if (!currentBooking) {
+            showNotification('No class selected', 'error');
+            return;
+        }
+        
+        // Check if class is already completed
+        if (currentBooking.status === 'completed') {
+            showNotification('This class has already been completed', 'info');
+            closeClassInfo();
+            loadScheduleData(); // Refresh to show updated status
+            return;
+        }
+        
+        // Check if feedback already exists for this booking
+        try {
+            const token = localStorage.getItem('token');
+            if (token) {
+                const response = await fetch(`/api/feedback/check/${currentBooking._id}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const feedbackExists = await response.json();
+                    if (feedbackExists.exists) {
+                        showNotification('Feedback already submitted for this class', 'info');
+                        closeClassInfo();
+                        loadScheduleData(); // Refresh to show updated status
+                        return;
+                    }
+                }
+            }
+        } catch (error) {
+            console.log('Could not check existing feedback:', error);
+        }
+        
+        // Set class info in feedback modal
+        document.getElementById('feedback-class-info').textContent = `${new Date(currentBooking.date).toLocaleDateString()} at ${currentBooking.time}`;
+        document.getElementById('feedback-student-info').textContent = currentBooking.studentName || 'Unknown Student';
+        
+        // Reset star rating
+        selectedRating = 0;
+        const stars = document.querySelectorAll('#feedback-star-rating .star');
+        stars.forEach(star => {
+            star.classList.remove('active');
+            star.style.color = '#ddd';
+        });
+        document.getElementById('feedback-rating-text').textContent = '';
+        
+        // Clear comment
+        document.getElementById('feedback-comment').value = '';
+        document.getElementById('feedback-char-count').textContent = '0';
+        
+        // Setup star rating functionality
+        setupStarRating();
+        
+        // Setup character count
+        setupCharacterCount('feedback-comment', 'feedback-char-count');
+        
+        // Show modal
+        document.getElementById('class-feedback-modal').classList.add('show');
+    }
+    
+    // Setup star rating functionality
+    function setupStarRating() {
+        const stars = document.querySelectorAll('#feedback-star-rating .star');
+        const ratingText = document.getElementById('feedback-rating-text');
+        
+        stars.forEach(star => {
+            star.addEventListener('click', () => {
+                const rating = parseInt(star.dataset.rating);
+                selectedRating = rating;
+                
+                // Update star display
+                stars.forEach((s, index) => {
+                    if (index < rating) {
+                        s.classList.add('active');
+                        s.style.color = '#ffd700';
+                    } else {
+                        s.classList.remove('active');
+                        s.style.color = '#ddd';
+                    }
+                });
+                
+                // Update rating text
+                const ratingDescriptions = {
+                    1: 'Poor - Needs significant improvement',
+                    2: 'Fair - Room for improvement',
+                    3: 'Good - Satisfactory performance',
+                    4: 'Very Good - Above average performance',
+                    5: 'Excellent - Outstanding performance'
+                };
+                ratingText.textContent = ratingDescriptions[rating];
+            });
+            
+            // Hover effects
+            star.addEventListener('mouseenter', () => {
+                const rating = parseInt(star.dataset.rating);
+                stars.forEach((s, index) => {
+                    if (index < rating) {
+                        s.style.color = '#ffd700';
+                    }
+                });
+            });
+            
+            star.addEventListener('mouseleave', () => {
+                stars.forEach((s, index) => {
+                    if (index < selectedRating) {
+                        s.style.color = '#ffd700';
+                    } else {
+                        s.style.color = '#ddd';
+                    }
+                });
+            });
+        });
+    }
+    
+    // Setup character count
+    function setupCharacterCount(textareaId, countId) {
+        const textarea = document.getElementById(textareaId);
+        const countElement = document.getElementById(countId);
+        
+        if (textarea && countElement) {
+            textarea.addEventListener('input', () => {
+                countElement.textContent = textarea.value.length;
+            });
+        }
+    }
+    
+    // Submit class feedback and complete class
+    async function submitClassFeedback() {
+        if (!currentBooking) {
+            showNotification('No class selected', 'error');
+            return;
+        }
+        
+        // Check if class is already completed
+        if (currentBooking.status === 'completed') {
+            showNotification('This class has already been completed', 'info');
+            closeClassFeedbackModal();
+            closeClassInfo();
+            loadScheduleData(); // Refresh to show updated status
+            return;
+        }
+        
+        // Check if feedback already exists for this booking
+        try {
+            const token = localStorage.getItem('token');
+            if (token) {
+                const response = await fetch(`/api/feedback/check/${currentBooking._id}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const feedbackExists = await response.json();
+                    if (feedbackExists.exists) {
+                        showNotification('Feedback already submitted for this class', 'info');
+                        closeClassFeedbackModal();
+                        closeClassInfo();
+                        loadScheduleData(); // Refresh to show updated status
+                        return;
+                    }
+                }
+            }
+        } catch (error) {
+            console.log('Could not check existing feedback:', error);
+        }
+        
+        if (selectedRating === 0) {
+            showNotification('Please select a rating', 'error');
+            return;
+        }
+        
+        const comment = document.getElementById('feedback-comment').value.trim();
+        
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                showNotification('Authentication required', 'error');
+                return;
+            }
+            
+            // First, submit the feedback
+            // Fix studentId - ensure it's a string, not an object
+            let studentId = currentBooking.studentId;
+            if (typeof studentId === 'object' && studentId !== null) {
+                // If studentId is an object, extract the actual ID
+                studentId = studentId._id || studentId.id || studentId.username || 'unknown';
+            }
+            
+            const feedbackData = {
+                bookingId: currentBooking._id,
+                teacherId: currentBooking.teacherId,
+                studentId: studentId,
+                rating: selectedRating,
+                comment: comment,
+                submittedAt: new Date().toISOString()
+            };
+            
+            const feedbackResponse = await fetch('/api/feedback/submit', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(feedbackData)
+            });
+            
+            if (!feedbackResponse.ok) {
+                const errorData = await feedbackResponse.json();
+                showNotification(`Failed to submit feedback: ${errorData.error || 'Unknown error'}`, 'error');
+                return;
+            }
+            
+            // Then, complete the class
+            console.log('🔄 Completing class:', currentBooking._id);
+            const completeResponse = await fetch(`/api/booking/${currentBooking._id}/complete`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            
+            console.log('📡 Complete class response status:', completeResponse.status);
+            
+            if (completeResponse.ok) {
+                const completeData = await completeResponse.json();
+                console.log('✅ Class completion successful:', completeData);
+                showNotification('Class completed and feedback submitted successfully', 'success');
+                closeClassFeedbackModal();
+                closeClassInfo();
+                loadScheduleData(); // Refresh schedule
+                
+                // Update currentBooking status to prevent further attempts
+                if (currentBooking) {
+                    currentBooking.status = 'completed';
+                }
+            } else {
+                const errorData = await completeResponse.json();
+                console.error('❌ Class completion failed:', errorData);
+                showNotification(`Feedback submitted but failed to complete class: ${errorData.error || 'Unknown error'}`, 'warning');
+                
+                // Add retry button
+                const retryBtn = document.createElement('button');
+                retryBtn.textContent = 'Retry Class Completion';
+                retryBtn.className = 'remoed-btn remoed-btn-warning';
+                retryBtn.style.marginTop = '10px';
+                retryBtn.onclick = async () => {
+                    try {
+                        const retryResponse = await fetch(`/api/booking/${currentBooking._id}/complete`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${token}`
+                            }
+                        });
+                        
+                        if (retryResponse.ok) {
+                            showNotification('Class completed successfully on retry!', 'success');
+                            closeClassFeedbackModal();
+                            closeClassInfo();
+                            loadScheduleData();
+                        } else {
+                            const retryError = await retryResponse.json();
+                            showNotification(`Retry failed: ${retryError.error || 'Unknown error'}`, 'error');
+                        }
+                    } catch (retryError) {
+                        showNotification('Retry failed: ' + retryError.message, 'error');
+                    }
+                };
+                
+                // Add retry button to modal
+                const modalBody = document.querySelector('#class-feedback-modal .remoed-modal-body');
+                if (modalBody) {
+                    modalBody.appendChild(retryBtn);
+                }
+            }
+        } catch (error) {
+            console.error('Error submitting feedback and completing class:', error);
+            showNotification('Error submitting feedback and completing class', 'error');
+        }
+    }
+    
+    // Close class feedback modal
+    function closeClassFeedbackModal() {
+        document.getElementById('class-feedback-modal').classList.remove('show');
+    }
+    
+    // Report class issue
+    async function reportClassIssue() {
+        if (!currentBooking) {
+            showNotification('No class selected', 'error');
+            return;
+        }
+        
+        // Set class info in issue modal
+        document.getElementById('issue-class-info').textContent = `${new Date(currentBooking.date).toLocaleDateString()} at ${currentBooking.time}`;
+        document.getElementById('issue-student-info').textContent = currentBooking.studentName || 'Unknown Student';
+        
+        // Clear form
+        document.getElementById('issue-type').value = '';
+        document.getElementById('issue-description').value = '';
+        document.getElementById('issue-screenshot').value = '';
+        document.getElementById('issue-char-count').textContent = '0';
+        
+        // Setup character count
+        setupCharacterCount('issue-description', 'issue-char-count');
+        
+        // Show modal
+        document.getElementById('class-issue-modal').classList.add('show');
+    }
+    
+    // Submit class issue
+    async function submitClassIssue() {
+        if (!currentBooking) {
+            showNotification('No class selected', 'error');
+            return;
+        }
+        
+        const issueType = document.getElementById('issue-type').value;
+        const description = document.getElementById('issue-description').value.trim();
+        const screenshot = document.getElementById('issue-screenshot').files[0];
+        
+        if (!issueType) {
+            showNotification('Please select an issue type', 'error');
+            return;
+        }
+        
+        if (!description) {
+            showNotification('Please provide a description', 'error');
+            return;
+        }
+        
+        if (!screenshot) {
+            showNotification('Please upload a screenshot as proof', 'error');
+            return;
+        }
+        
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                showNotification('Authentication required. Please log in again.', 'error');
+                setTimeout(() => {
+                    localStorage.clear();
+                    window.location.href = 'teacher-login.html';
+                }, 2000);
+                return;
+            }
+            
+            // Fix studentId - ensure it's a string, not an object
+            let studentId = currentBooking.studentId;
+            if (typeof studentId === 'object' && studentId !== null) {
+                // If studentId is an object, extract the actual ID
+                studentId = studentId._id || studentId.id || studentId.username || 'unknown';
+            }
+            
+            const formData = new FormData();
+            formData.append('bookingId', currentBooking._id);
+            formData.append('teacherId', currentBooking.teacherId);
+            formData.append('studentId', studentId);
+            formData.append('issueType', issueType);
+            formData.append('description', description);
+            formData.append('screenshot', screenshot);
+            formData.append('submittedAt', new Date().toISOString());
+            
+            const response = await fetch('/api/teacher/report-issue', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
+                body: formData
+            });
+            
+            if (response.ok) {
+                showNotification('Issue report submitted successfully. Admin will review it.', 'success');
+                closeClassIssueModal();
+                loadScheduleData(); // Refresh schedule
+            } else if (response.status === 401) {
+                // Token is invalid or expired
+                showNotification('Session expired. Please log in again.', 'error');
+                setTimeout(() => {
+                    localStorage.clear();
+                    window.location.href = 'teacher-login.html';
+                }, 2000);
+            } else {
+                const errorData = await response.json();
+                showNotification(`Failed to submit issue report: ${errorData.error || 'Unknown error'}`, 'error');
+            }
+        } catch (error) {
+            console.error('Error submitting issue report:', error);
+            showNotification('Error submitting issue report', 'error');
+        }
+    }
+    
+    // Check if a class has a resolved issue
+    async function checkClassIssueStatus(bookingId) {
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                console.log('No teacher token found for issue check');
+                return false;
+            }
+            
+            console.log('🔍 Checking resolved issues for booking:', bookingId);
+            
+            const response = await fetch(`/api/teacher/check-class-issues?bookingId=${bookingId}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                console.log('🔍 Issue check response:', data);
+                
+                // Check if there's a resolved issue for this booking
+                const hasResolved = data.issues && data.issues.some(issue => issue.status === 'resolved');
+                console.log('🔍 Has resolved issues:', hasResolved);
+                
+                if (hasResolved) {
+                    console.log('🔍 Found resolved issues for booking:', bookingId);
+                }
+                
+                return hasResolved;
+            } else {
+                console.error('❌ Issue check failed with status:', response.status);
+                return false;
+            }
+            
+        } catch (error) {
+            console.error('Error checking class issue status:', error);
+            return false;
+        }
+    }
+
+    // Add visual indicators for resolved issues on page load
+    async function addResolvedIssueIndicators() {
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) return;
+            
+            console.log('🔍 Adding resolved issue indicators...');
+            
+            // Get all booking cells
+            const bookingCells = document.querySelectorAll('td[data-booking-id]');
+            console.log('🔍 Found', bookingCells.length, 'booking cells to check');
+            
+            for (const cell of bookingCells) {
+                const bookingId = cell.getAttribute('data-booking-id');
+                if (bookingId) {
+                    console.log('🔍 Checking booking:', bookingId);
+                    const hasResolvedIssue = await checkClassIssueStatus(bookingId);
+                    if (hasResolvedIssue) {
+                        console.log('🔍 Adding resolved indicator for booking:', bookingId);
+                        cell.style.position = 'relative';
+                        const existingIndicator = cell.querySelector('.resolved-indicator');
+                        if (!existingIndicator) {
+                            const indicator = document.createElement('div');
+                            indicator.className = 'resolved-indicator';
+                            indicator.style.cssText = 'position: absolute; top: 2px; right: 2px; background: #28a745; color: white; font-size: 10px; padding: 2px 4px; border-radius: 3px; z-index: 10;';
+                            indicator.title = 'Class issue marked as resolved by admin';
+                            indicator.textContent = 'Resolved';
+                            cell.appendChild(indicator);
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error adding resolved issue indicators:', error);
+        }
+    }
+    
+    // Close class issue modal
+    function closeClassIssueModal() {
+        document.getElementById('class-issue-modal').classList.remove('show');
+        document.getElementById('issue-type').value = '';
+    }
+    
+    // Manual test function for resolved issues (can be called from browser console)
+    window.testResolvedIssues = async function() {
+        console.log('🧪 Testing resolved issue detection...');
+        const bookingCells = document.querySelectorAll('td[data-booking-id]');
+        console.log('🧪 Found', bookingCells.length, 'booking cells');
+        
+        for (const cell of bookingCells) {
+            const bookingId = cell.getAttribute('data-booking-id');
+            if (bookingId) {
+                console.log('🧪 Testing booking:', bookingId);
+                const hasResolved = await checkClassIssueStatus(bookingId);
+                console.log('🧪 Has resolved issues:', hasResolved);
+                
+                if (hasResolved) {
+                    console.log('🧪 ✅ Found resolved issues for booking:', bookingId);
+                    // Add visual indicator
+                    cell.style.position = 'relative';
+                    const existingIndicator = cell.querySelector('.resolved-indicator');
+                    if (!existingIndicator) {
+                        const indicator = document.createElement('div');
+                        indicator.className = 'resolved-indicator';
+                        indicator.style.cssText = 'position: absolute; top: 2px; right: 2px; background: #28a745; color: white; font-size: 10px; padding: 2px 4px; border-radius: 3px; z-index: 10;';
+                        indicator.title = 'Class issue marked as resolved by admin';
+                        indicator.textContent = 'Resolved';
+                        cell.appendChild(indicator);
+                    }
+                }
+            }
+        }
+    };
+    
+
+    
+  </script>
+</body>
+</html> 

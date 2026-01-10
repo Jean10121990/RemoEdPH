@@ -1,0 +1,3101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RemoEdPH Dashboard</title>
+    <link rel="stylesheet" href="modern-styles.css">
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: #f8fafc; 
+            color: #1a202c;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+        }
+        
+        /* Navigation Header */
+        .nav-header {
+            position: fixed;
+            top: 0;
+            left: 260px;
+            right: 0;
+            height: 50px;
+            background: #ffffff;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 1.5rem;
+            z-index: 50;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .nav-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .nav-icon {
+            position: relative;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #f8f9fa;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid #e9ecef;
+        }
+        
+        .nav-icon:hover {
+            background: #e9ecef;
+            transform: translateY(-1px);
+        }
+        
+        .nav-icon svg {
+            width: 20px;
+            height: 20px;
+            color: #667eea;
+        }
+        
+        .nav-icon.primary svg {
+            color: #8b5cf6;
+        }
+        
+        .nav-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #8b5cf6;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+        
+        .nav-dropdown {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            min-width: 350px;
+            max-height: 600px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+        }
+        
+        .nav-dropdown.show {
+            display: block;
+        }
+        
+        .nav-dropdown-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid #e2e8f0;
+            font-weight: 600;
+            color: #1a202c;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .nav-dropdown-content {
+            padding: 8px 0;
+        }
+        
+        .nav-dropdown-item {
+            padding: 8px 16px;
+            border-bottom: 1px solid #f1f5f9;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        
+        .nav-dropdown-item:hover {
+            background: #f8f9fa;
+            transform: translateX(2px);
+        }
+        
+        .nav-dropdown-item:last-child {
+            border-bottom: none;
+        }
+        
+        .nav-dropdown-item.read {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+        
+        .nav-dropdown-item.read:hover {
+            transform: none;
+            background: transparent;
+        }
+        
+        /* Time tracking minimized */
+        .time-tracking-mini {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: #f8f9fa;
+            border-radius: 20px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .time-status-mini {
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        
+        .time-status-mini.clocked-in {
+            color: #28a745;
+        }
+        
+        .time-status-mini.not-clocked {
+            color: #dc3545;
+        }
+        
+        .time-btn-mini {
+            padding: 4px 8px;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .time-btn-mini.clock-in {
+            background: #28a745;
+            color: white;
+        }
+        
+        .time-btn-mini.clock-in.primary {
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+            color: white;
+        }
+        
+        .time-btn-mini.clock-in.primary:hover {
+            background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+        }
+        
+        .time-btn-mini.clock-out {
+            background: #dc3545;
+            color: white;
+        }
+        
+        /* Charts */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+        
+        .charts-grid-secondary {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+        
+        @media (max-width: 1400px) {
+            .charts-grid-secondary {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .charts-grid,
+            .charts-grid-secondary {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .chart-card {
+            background: white;
+            border-radius: 8px;
+            padding: 0.75rem;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+            border: 1px solid #e0e6ed;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        .chart-card.primary {
+            border-left: 4px solid #8b5cf6;
+        }
+        
+        .chart-card:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+        }
+        
+        .chart-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+        }
+        
+        .chart-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .chart-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .chart-icon.primary {
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+            color: white;
+        }
+        
+        .chart-icon svg {
+            width: 16px;
+            height: 16px;
+        }
+        
+        .chart-value {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 0.2rem;
+        }
+        
+        .chart-value.primary {
+            color: #8b5cf6;
+        }
+        
+        .chart-change {
+            font-size: 0.7rem;
+            display: flex;
+            align-items: center;
+            gap: 0.2rem;
+        }
+        
+        .chart-change.positive {
+            color: #10b981;
+        }
+        
+        .chart-change.negative {
+            color: #ef4444;
+        }
+        
+        /* Main content adjustment */
+        .remoed-content {
+            margin-top: 50px;
+        }
+        .remoed-header {
+            background: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-left: 1.25rem;
+            padding-right: 1.25rem;
+            height: 4rem;
+            border-bottom: 1px solid #e2e8f0;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+        }
+        .remoed-logo { display: flex; align-items: center; gap: 0.75rem; }
+        .remoed-logo img { height: 2.5rem; }
+        .remoed-title { font-size: 1.5rem; font-weight: 700; color: #667eea; }
+        .remoed-user { display: flex; align-items: center; gap: 0.75rem; }
+        .remoed-avatar { 
+            width: 72px; 
+            height: 72px; 
+            border-radius: 50%; 
+            background: #667eea; 
+            color: #fff; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-weight: bold; 
+            font-size: 2.2rem; 
+        }
+        .remoed-username { color: #667eea; font-weight: 600; }
+        .remoed-main { 
+            display: flex; 
+            min-height: 100vh; 
+            max-width: 100vw;
+            overflow-x: hidden;
+        }
+        .remoed-sidebar { 
+            width: 260px; 
+            min-width: 260px;
+            background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%); 
+            box-shadow: 4px 0 20px rgba(102, 126, 234, 0.1);
+            padding: 0; 
+            display: flex; 
+            flex-direction: column;
+            align-items: stretch;
+            position: fixed;
+            height: 100vh;
+            z-index: 100;
+            border-right: 1px solid rgba(102, 126, 234, 0.1);
+        }
+        .remoed-menu { list-style: none; padding: 0; margin: 0; }
+        .remoed-menu li { 
+            padding: 14px 32px; 
+            color: #667eea; 
+            font-weight: 500; 
+            cursor: pointer; 
+            display: flex; 
+            align-items: center; 
+            gap: 12px; 
+            border-left: 4px solid transparent; 
+            transition: background 0.2s, border-color 0.2s; 
+        }
+        .remoed-menu li.active, .remoed-menu li:hover { 
+            background: linear-gradient(90deg, #667eea 0%, #5a67d8 100%); 
+            border-left: 4px solid #667eea; 
+            color: white; 
+            transform: translateX(4px);
+            transition: all 0.3s ease;
+        }
+        .remoed-menu svg { width: 20px; height: 20px; stroke: currentColor; }
+        .remoed-content { 
+            flex: 1; 
+            padding: 0.75rem 1rem; 
+            margin-left: 260px;
+            max-width: calc(100vw - 260px);
+            box-sizing: border-box;
+        }
+        .remoed-grid { 
+            display: grid; 
+            grid-template-columns: 2fr 1fr; 
+            gap: 0.75rem; 
+            max-width: 100%;
+        }
+        .remoed-section { 
+            background: #ffffff; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05); 
+            padding: 12px; 
+            margin-bottom: 12px; 
+            border: 1px solid #e0e6ed;
+            max-width: 100%;
+            box-sizing: border-box;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .remoed-section:hover { 
+            transform: translateY(-1px); 
+            box-shadow: 0 3px 10px rgba(0,0,0,0.08); 
+        }
+        .remoed-section-title { 
+            font-size: 0.95rem; 
+            font-weight: 600; 
+            color: #1a202c; 
+            margin-bottom: 0.75rem; 
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        /* Notification and Upcoming Classes Container */
+        .notification-container {
+            max-height: 250px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            border: 1px solid #e0e6ed;
+            border-radius: 8px;
+            background: #f8f9fa;
+            padding: 12px;
+        }
+        
+        .upcoming-classes-container {
+            max-height: 200px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            border: 1px solid #e0e6ed;
+            border-radius: 8px;
+            background: #f8f9fa;
+            padding: 12px;
+        }
+        
+        .notification-list, .upcoming-classes-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .notification-item, .upcoming-class-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid #e0e6ed;
+            background: #ffffff;
+            margin: 6px 0;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            transition: background-color 0.2s ease;
+        }
+        .notification-item:hover, .upcoming-class-item:hover {
+            background: #f8f9fa;
+        }
+        
+        .notification-item:last-child, .upcoming-class-item:last-child {
+            border-bottom: none;
+        }
+        
+        /* Fix class schedule table overlap */
+        .remoed-class-table-preview { 
+            background: #f8fafc; 
+            border-radius: 0.5rem; 
+            padding: 1rem; 
+            margin-bottom: 1rem; 
+            max-width: 100%;
+            overflow-x: auto;
+        }
+        .remoed-class-table-grid { 
+            display: grid; 
+            grid-template-columns: repeat(7, 1fr); 
+            gap: 0.25rem; 
+            font-size: 0.75rem; 
+            min-width: 600px;
+        }
+        .remoed-class-table-header { 
+            background: #667eea; 
+            color: #fff; 
+            padding: 0.5rem; 
+            text-align: center; 
+            border-radius: 0.25rem; 
+            font-weight: 600; 
+            font-size: 0.75rem;
+        }
+        .remoed-class-table-cell { 
+            background: #fff; 
+            padding: 0.5rem; 
+            text-align: center; 
+            border-radius: 0.25rem; 
+            border: 1px solid #e2e8f0; 
+            font-size: 0.75rem;
+            word-wrap: break-word;
+            overflow: hidden;
+        }
+        .remoed-class-table-cell.booked { 
+            background: #fef3c7; 
+            color: #d97706; 
+            font-weight: 600; 
+        }
+        .remoed-action-buttons { display: flex; gap: 0.75rem; margin-top: 1rem; }
+        .remoed-btn { 
+            padding: 0.75rem 1.5rem; 
+            border: none; 
+            border-radius: 0.5rem; 
+            cursor: pointer; 
+            font-weight: 500; 
+            font-size: 0.875rem; 
+            transition: all 0.2s ease; 
+        }
+        .remoed-btn-primary { background: #667eea; color: #fff; }
+        .remoed-btn-primary:hover { background: #5a67d8; }
+        .remoed-btn-yellow { background: #f59e0b; color: #fff; }
+        .remoed-btn-yellow:hover { background: #d97706; }
+        .remoed-upcoming-list { list-style: none; padding: 0; margin: 0; }
+        .remoed-upcoming-item { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            padding: 0.75rem 0; 
+            border-bottom: 1px solid #e2e8f0; 
+        }
+        .remoed-upcoming-item:last-child { border-bottom: none; }
+        .remoed-upcoming-time { color: #667eea; font-weight: 600; }
+        .remoed-upcoming-student { color: #64748b; }
+        .remoed-fee-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+        .remoed-fee-stat { text-align: center; padding: 1rem; background: #f8fafc; border-radius: 0.5rem; border: 1px solid #e2e8f0; }
+        .remoed-fee-amount { font-size: 1.25rem; font-weight: 700; color: #667eea; }
+        .remoed-fee-label { color: #64748b; font-size: 0.875rem; margin-top: 0.25rem; }
+        .remoed-announcement { background: #fef3c7; border: 1px solid #f59e0b; border-radius: 0.5rem; padding: 1rem; margin-bottom: 1rem; }
+        .remoed-announcement-title { font-weight: 600; color: #d97706; margin-bottom: 0.5rem; }
+        .remoed-announcement-content { color: #92400e; font-size: 0.875rem; line-height: 1.5; }
+        .remoed-training-card { background: #2563eb; color: #fff; border-radius: 0.5rem; padding: 1.5rem; margin-bottom: 1rem; }
+        .remoed-training-title { font-weight: 600; margin-bottom: 0.5rem; }
+        .remoed-training-desc { opacity: 0.9; font-size: 0.875rem; margin-bottom: 1rem; }
+        .remoed-training-btn { 
+            background: rgba(255,255,255,0.2); 
+            border: 1px solid rgba(255,255,255,0.3); 
+            color: #fff; 
+            padding: 0.5rem 1rem; 
+            border-radius: 0.375rem; 
+            cursor: pointer; 
+            transition: background 0.2s; 
+            font-weight: 500; 
+            font-size: 0.875rem;
+        }
+        .remoed-training-btn:hover { background: rgba(255,255,255,0.3); }
+        
+        /* Time tracking specific styles */
+        #time-in-btn, #time-out-btn, #view-log-btn {
+            background: #667eea;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            margin-right: 0.75rem;
+            margin-bottom: 0.75rem;
+            font-size: 0.875rem;
+        }
+        
+        #time-in-btn:hover, #time-out-btn:hover, #view-log-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        #time-in-btn:hover { background: #218838; }
+        #time-out-btn:hover { background: #c82333; }
+        #view-log-btn:hover { background: #5a67d8; }
+        
+        #time-in-btn:disabled {
+            background: #cbd5e1;
+            color: #64748b;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        #time-status-message {
+            margin-top: 1rem;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        
+        #time-status-message.error {
+            background: #fef2f2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+        }
+        
+        #time-status-message.success {
+            background: #f0fdf4;
+            color: #16a34a;
+            border: 1px solid #bbf7d0;
+        }
+        
+        #time-status-message.warning {
+            background: #fffbeb;
+            color: #d97706;
+            border: 1px solid #fed7aa;
+        }
+        
+        @media (max-width: 900px) {
+            .remoed-main { flex-direction: column; }
+            .remoed-sidebar { 
+                width: 100%; 
+                flex-direction: row; 
+                border-bottom: 1px solid rgba(102, 126, 234, 0.1); 
+                position: relative;
+                height: auto;
+            }
+            .remoed-content {
+                margin-left: 0;
+                max-width: 100vw;
+                margin-top: 0;
+            }
+            .remoed-menu li { padding: 14px 16px; font-size: 0.875rem; }
+            .remoed-content { padding: 1rem; }
+            .remoed-grid { grid-template-columns: 1fr; gap: 1rem; }
+            
+            /* Navigation header adjustments for mobile */
+            .nav-header {
+                left: 0;
+                padding: 0 1rem;
+            }
+            
+            .nav-left h1 {
+                font-size: 1.2rem;
+            }
+            
+            .time-tracking-mini {
+                padding: 0.25rem 0.5rem;
+                font-size: 0.8rem;
+            }
+            
+            .nav-icon {
+                width: 35px;
+                height: 35px;
+            }
+            
+            .nav-icon svg {
+                width: 18px;
+                height: 18px;
+            }
+            
+            /* Charts grid adjustments for mobile */
+            .charts-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 1rem;
+            }
+            
+            .chart-card {
+                padding: 1rem;
+            }
+            
+            .chart-value {
+                font-size: 1.5rem;
+            }
+            
+            .chart-title {
+                font-size: 0.8rem;
+            }
+        }
+        
+        @media (max-width: 600px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .nav-right {
+                gap: 0.5rem;
+            }
+            
+            .time-tracking-mini {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Main Layout: Sidebar + Content -->
+    <div class="remoed-main">
+        <!-- Navigation Header -->
+        <div class="nav-header">
+            <div class="nav-left">
+                <h1 style="margin: 0; font-size: 1.25rem; color: #1a202c;">Dashboard</h1>
+            </div>
+            <div class="nav-right">
+                <!-- Time Tracking Mini -->
+                <div class="time-tracking-mini">
+                    <span class="time-status-mini not-clocked" id="time-status-mini">Not Clocked In</span>
+                    <button class="time-btn-mini clock-in primary" id="time-btn-mini">Time In</button>
+                </div>
+                
+                <!-- Notifications Icon -->
+                <div class="nav-icon primary" id="notifications-icon">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/>
+                    </svg>
+                    <div class="nav-badge" id="notifications-badge">0</div>
+                    <div class="nav-dropdown" id="notifications-dropdown">
+                        <div class="nav-dropdown-header">
+                            <span>Notifications</span>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <button onclick="markAllNotificationsAsRead()" style="background: none; border: none; cursor: pointer; color: #667eea; font-size: 12px; padding: 4px 8px; border-radius: 4px; transition: all 0.2s;" title="Mark all as read" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='none'">
+                                    Mark All Read
+                                </button>
+                                <button onclick="refreshNotifications()" style="background: none; border: none; cursor: pointer; color: #667eea;">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="nav-dropdown-content" id="notifications-dropdown-content">
+                            <!-- Notifications will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Upcoming Classes Icon -->
+                <div class="nav-icon" id="upcoming-classes-icon">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
+                    </svg>
+                    <div class="nav-badge" id="upcoming-classes-badge">0</div>
+                    <div class="nav-dropdown" id="upcoming-classes-dropdown">
+                        <div class="nav-dropdown-header">
+                            <span>Upcoming Classes</span>
+                        </div>
+                        <div class="nav-dropdown-content" id="upcoming-classes-dropdown-content">
+                            <!-- Upcoming classes will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <nav class="remoed-sidebar">
+            <div class="remoed-logo" style="height:100px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding-top:5px;">
+                <img src="remoed-logo.png" alt="RemoEdPH Logo" style="height:40px; width:auto; display:inline-block; vertical-align:middle;">
+                <span class="remoed-title" style="font-size:1.3rem; font-weight:700; color:#667eea; letter-spacing:1px;">RemoEdPH</span>
+            </div>
+            <div class="remoed-user" style="display:flex; flex-direction:column; align-items:center; margin-bottom:24px;">
+                <div class="remoed-avatar" id="remoed-avatar" onclick="window.location.href='teacher-profile.html'" style="cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+                    <img id="profile-image" src="" alt="Profile" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: none;">
+                    <span id="avatar-text">K</span>
+                </div>
+                <span class="remoed-username" id="remoed-username"></span>
+            </div>
+            <ul class="remoed-menu">
+                <li class="active"><svg fill="none" stroke="#667eea" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/></svg>Dashboard</li>
+                <li onclick="window.location.href='teacher-class-table.html'"><svg fill="none" stroke="#667eea" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M16 3v4M8 3v4"/></svg>Class Schedule</li>
+                <li onclick="window.location.href='teacher-open-class.html'"><svg fill="none" stroke="#667eea" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>Class Configuration</li>
+                <li onclick="window.location.href='device-check.html'"><svg fill="none" stroke="#667eea" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>Device Check</li>
+                <li onclick="window.location.href='teacher-service-fee.html'"><svg fill="none" stroke="#667eea" stroke-width="2" viewBox="0 0 24 24"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 10c-4.41 0-8-1.79-8-4V6c0-2.21 3.59-4 8-4s8 1.79 8 4v8c0 2.21-3.59 4-8 4z"/></svg>Teaching Fee</li>
+                <li onclick="window.location.href='teacher-profile.html'"><svg fill="none" stroke="#667eea" stroke-width="2" viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>Profile</li>
+                <li id="logout-nav" style="margin-top:auto; color:#e74c3c; cursor:pointer;"><svg fill="none" stroke="#e74c3c" stroke-width="2" viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7"/><path d="M3 12a9 9 0 0118 0 9 9 0 01-18 0z"/></svg>Logout</li>
+            </ul>
+        </nav>
+        <div class="remoed-content">
+            <!-- Primary Charts Grid (Time Tracking) -->
+            <div class="charts-grid">
+                <!-- Time Tracking Section -->
+                <div class="remoed-section" style="grid-column: 1 / -1; margin-bottom: 0.75rem;">
+                    <div class="remoed-section-title" style="display: flex; align-items: center; gap: 10px;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="color: #667eea;">
+                            <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"/>
+                            <path d="M12.5 7H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
+                        </svg>
+                        Time Tracking
+                    </div>
+                    <div style="background: #f8f9fa; border: 1px solid #e0e6ed; border-radius: 8px; padding: 12px;" id="time-tracking-card">
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="color: #667eea;">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                            </svg>
+                            <div style="font-size: 1rem; font-weight: 600; color: #333;">Teacher Time Log</div>
+                        </div>
+                        <div style="color: #666; margin-bottom: 12px; font-size: 0.85rem;">Track your working hours and view weekly time logs.</div>
+                        
+                        <div style="display: flex; gap: 16px; align-items: flex-start;">
+                            <div style="flex: 1; background: #fff; border: 1px solid #e9ecef; border-radius: 6px; padding: 10px;">
+                                <div id="time-status" style="margin-bottom: 6px; font-weight: 600; font-size: 0.9rem; color: #333;">
+                                    Status: <span id="current-status" style="color: #dc3545;">Not Clocked In</span>
+                                </div>
+                                <div id="current-time" style="margin-bottom: 6px; font-size: 1rem; font-weight: bold; color: #333;">
+                                    Current Time: <span id="time-display">--:--:--</span>
+                                </div>
+                                <div id="session-time" style="margin-bottom: 6px; font-size: 0.85rem; display: none; color: #333;">
+                                    Session Duration: <span id="duration-display">00:00:00</span>
+                                </div>
+                            </div>
+                            
+                            <div style="display: flex; flex-direction: column; gap: 8px; flex-shrink: 0;">
+                                <button id="time-in-btn" style="background: #28a745; color: white; padding: 8px 14px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: all 0.2s ease; white-space: nowrap;">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 6px; vertical-align: middle;">
+                                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                                    </svg>
+                                    Time In
+                                </button>
+                                <button class="remoed-training-btn" id="time-out-btn" style="background: #dc3545; color: white; padding: 8px 14px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: all 0.2s ease; display: none; white-space: nowrap;">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 6px; vertical-align: middle;">
+                                        <path d="M19 13H5v-2h14v2z"/>
+                                    </svg>
+                                    Time Out
+                                </button>
+                                <button class="remoed-training-btn" id="view-log-btn" style="background: #667eea; color: white; padding: 8px 14px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: all 0.2s ease; white-space: nowrap;">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 6px; vertical-align: middle;">
+                                        <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
+                                    </svg>
+                                    View Logs
+                                </button>
+                            </div>
+                        </div>
+                        <div id="time-status-message" style="margin-top: 10px; font-size: 0.8rem; color: #666; display: none; padding: 8px; border-radius: 4px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Secondary Charts Grid (Other Metrics) -->
+            <div class="charts-grid-secondary">
+                <!-- Total Classes Booked Chart -->
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <span class="chart-title">Classes Booked</span>
+                        <div class="chart-icon" style="background: linear-gradient(135deg, #3b82f6, #2563eb);">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+                                <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="chart-value" id="total-classes">0</div>
+                    <div class="chart-change positive">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M7 14l5-5 5 5z"/>
+                        </svg>
+                        <span id="classes-change">+0%</span>
+                    </div>
+                </div>
+                
+                <!-- Total Cancellations Chart -->
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <span class="chart-title">Cancellations</span>
+                        <div class="chart-icon" style="background: linear-gradient(135deg, #ef4444, #dc2626);">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+                                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="chart-value" id="total-cancellations">0</div>
+                    <div class="chart-change negative">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M7 10l5 5 5-5z"/>
+                        </svg>
+                        <span id="cancellations-change">-0%</span>
+                    </div>
+                </div>
+                
+                <!-- Total Stars Received Chart -->
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <span class="chart-title">Stars Received</span>
+                        <div class="chart-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+                                <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="chart-value" id="total-stars">0</div>
+                    <div class="chart-change positive">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M7 14l5-5 5 5z"/>
+                        </svg>
+                        <span id="stars-change">+0%</span>
+                    </div>
+                </div>
+
+                <!-- Average Rating Chart -->
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <span class="chart-title">Average Rating</span>
+                        <div class="chart-icon" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="chart-value" id="average-rating">0.0</div>
+                    <div class="chart-change positive">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M7 14l5-5 5 5z"/>
+                        </svg>
+                        <span>⭐</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Main Content Grid -->
+            <div class="remoed-grid">
+                <div>
+                    <!-- Attendance Analysis Section -->
+                    <div class="remoed-section">
+                        <div class="remoed-section-title" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; padding-bottom: 0.5rem;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="color: #667eea;">
+                                    <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
+                                </svg>
+                                <span>Attendance Analysis (This Week)</span>
+                            </div>
+                            <a href="teacher-attendance-analysis.html" style="color: #667eea; text-decoration: none; font-size: 0.8rem; font-weight: 600;">View Full →</a>
+                        </div>
+                        <!-- Pie Chart Container -->
+                        <div style="display: flex; align-items: center; justify-content: center; padding: 20px;">
+                            <div id="attendance-pie-chart" style="position: relative; width: 280px; height: 280px;">
+                                <!-- Pie chart will be generated here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <!-- Announcements -->
+                    <div class="remoed-section">
+                        <div class="remoed-section-title" style="display: flex; align-items: center; gap: 10px;">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="color: #667eea;">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                            </svg>
+                            Announcements and Upcoming Trainings
+                        </div>
+                        <div id="announcement-content" style="background: #fafdff; border-radius: 8px; padding: 10px; margin-bottom: 8px; max-height: 300px; overflow-y: auto;">
+                            <!-- Announcements will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Time Log Modal -->
+    <div id="time-log-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000;">
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 12px; padding: 24px; max-width: 900px; width: 90%; max-height: 80vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="color: #1ca7e7; margin: 0;" id="time-log-modal-title">Teacher Time Logs</h2>
+                <button id="close-time-log" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #666;">&times;</button>
+            </div>
+            
+            <!-- Filter Controls -->
+            <div style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
+                <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <label for="filter-type" style="font-weight: 600; color: #495057;">Filter by:</label>
+                        <select id="filter-type" style="padding: 8px 12px; border: 1px solid #ced4da; border-radius: 4px; background: white;">
+                            <option value="week">This Week</option>
+                            <option value="last-week">Last Week</option>
+                            <option value="month">This Month</option>
+                            <option value="last-month">Last Month</option>
+                            <option value="custom">Custom Date Range</option>
+                            <option value="all">All Time</option>
+                        </select>
+                    </div>
+                    
+                    <div id="custom-date-controls" style="display: none; display: flex; align-items: center; gap: 8px;">
+                        <label for="start-date" style="font-weight: 600; color: #495057;">From:</label>
+                        <input type="date" id="start-date" style="padding: 8px 12px; border: 1px solid #ced4da; border-radius: 4px; background: white;">
+                        
+                        <label for="end-date" style="font-weight: 600; color: #495057;">To:</label>
+                        <input type="date" id="end-date" style="padding: 8px 12px; border: 1px solid #ced4da; border-radius: 4px; background: white;">
+                    </div>
+                    
+                    <button id="apply-filter" style="padding: 8px 16px; background: #1ca7e7; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">Apply Filter</button>
+                    <button id="refresh-time-logs" style="padding: 8px 16px; background: #27ae60; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; margin-left: 8px;">🔄 Refresh</button>
+                </div>
+            </div>
+            
+            <div id="time-log-content">
+                <!-- Time log entries will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+  <script src="avatar-helper.js"></script>
+  <script>
+        // Dropdown functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            // Notifications dropdown
+            const notificationsIcon = document.getElementById('notifications-icon');
+            const notificationsDropdown = document.getElementById('notifications-dropdown');
+            
+            notificationsIcon.addEventListener('click', function(e) {
+                e.stopPropagation();
+                notificationsDropdown.classList.toggle('show');
+                // Hide other dropdowns
+                document.getElementById('upcoming-classes-dropdown').classList.remove('show');
+            });
+            
+            // Upcoming classes dropdown
+            const upcomingClassesIcon = document.getElementById('upcoming-classes-icon');
+            const upcomingClassesDropdown = document.getElementById('upcoming-classes-dropdown');
+            
+            upcomingClassesIcon.addEventListener('click', function(e) {
+                e.stopPropagation();
+                upcomingClassesDropdown.classList.toggle('show');
+                // Hide other dropdowns
+                document.getElementById('notifications-dropdown').classList.remove('show');
+            });
+            
+            // Close dropdowns when clicking outside
+            document.addEventListener('click', function() {
+                notificationsDropdown.classList.remove('show');
+                upcomingClassesDropdown.classList.remove('show');
+            });
+            
+            // Prevent dropdown from closing when clicking inside
+            notificationsDropdown.addEventListener('click', function(e) {
+                e.stopPropagation();
+            });
+            
+            upcomingClassesDropdown.addEventListener('click', function(e) {
+                e.stopPropagation();
+            });
+            
+            // Add event listeners for time tracking buttons
+            const timeInBtn = document.getElementById('time-in-btn');
+            const timeBtnMini = document.getElementById('time-btn-mini');
+            
+            if (timeInBtn) {
+                timeInBtn.addEventListener('click', function() {
+                    console.log('Time In clicked via event listener!');
+                    if (typeof timeIn === 'function') {
+                        timeIn();
+                    } else {
+                        console.error('timeIn function not defined yet');
+                    }
+                });
+            }
+            
+            if (timeBtnMini) {
+                timeBtnMini.addEventListener('click', function() {
+                    console.log('Time In mini clicked via event listener!');
+                    if (typeof timeIn === 'function') {
+                        timeIn();
+                    } else {
+                        console.error('timeIn function not defined yet');
+                    }
+                });
+            }
+        });
+        
+        // Load attendance analysis
+        async function loadAttendanceAnalysis() {
+            try {
+                const teacherId = localStorage.getItem('teacherId');
+                const token = localStorage.getItem('token');
+                if (!teacherId || !token) return;
+                
+                const response = await fetch(`/api/teacher/attendance-analysis?teacherId=${teacherId}&periodType=weekly`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success && data.analysis) {
+                        const analysis = data.analysis;
+                        const totalScheduled = analysis.totalScheduled || 1; // Avoid division by zero
+                        
+                        // Generate bar chart (all info is displayed in the chart)
+                        generateBarChart(analysis, totalScheduled);
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading attendance analysis:', error);
+            }
+        }
+        
+        // Generate pie chart for attendance analysis
+        function generateBarChart(analysis, totalScheduled) {
+            const chartContainer = document.getElementById('attendance-pie-chart');
+            if (!chartContainer) return;
+            
+            const metrics = [
+                { label: 'Completed Classes', value: analysis.completedClasses || 0, color: '#28a745', max: totalScheduled },
+                { label: 'Teacher Absences', value: analysis.teacherAbsences || 0, color: '#dc3545', max: totalScheduled },
+                { label: 'Cancellations', value: analysis.cancellations || 0, color: '#ffc107', max: totalScheduled },
+                { label: 'Late Arrivals', value: analysis.lateArrivals || 0, color: '#fd7e14', max: analysis.completedClasses || 1 },
+                { label: 'System Issues', value: analysis.systemIssues || 0, color: '#6f42c1', max: totalScheduled },
+                { label: 'Teacher Issues', value: analysis.teacherIssues || 0, color: '#e83e8c', max: totalScheduled },
+                { label: 'Student Issues', value: analysis.studentIssues || 0, color: '#20c997', max: totalScheduled }
+            ];
+            
+            // Filter out metrics with zero values for cleaner pie chart
+            const nonZeroMetrics = metrics.filter(m => m.value > 0);
+            
+            if (nonZeroMetrics.length === 0) {
+                chartContainer.innerHTML = `
+                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #888;">
+                        <div style="font-size: 1.2rem; margin-bottom: 8px;">📊</div>
+                        <div style="font-size: 0.9rem; text-align: center;">No data available</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Calculate total for pie chart
+            const total = nonZeroMetrics.reduce((sum, m) => sum + m.value, 0);
+            
+            // Generate SVG pie chart
+            let currentAngle = -90; // Start at top
+            const radius = 120;
+            const centerX = 140;
+            const centerY = 140;
+            
+            let pieSlices = '';
+            let legend = '';
+            
+            nonZeroMetrics.forEach((metric, index) => {
+                const percentage = (metric.value / total) * 100;
+                const angle = (metric.value / total) * 360;
+                
+                // Calculate arc path
+                const startAngle = currentAngle;
+                const endAngle = currentAngle + angle;
+                
+                const startAngleRad = (startAngle * Math.PI) / 180;
+                const endAngleRad = (endAngle * Math.PI) / 180;
+                
+                const x1 = centerX + radius * Math.cos(startAngleRad);
+                const y1 = centerY + radius * Math.sin(startAngleRad);
+                const x2 = centerX + radius * Math.cos(endAngleRad);
+                const y2 = centerY + radius * Math.sin(endAngleRad);
+                
+                const largeArcFlag = angle > 180 ? 1 : 0;
+                
+                const pathData = `M ${centerX} ${centerY} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2} Z`;
+                
+                pieSlices += `
+                    <path d="${pathData}" fill="${metric.color}" stroke="#fff" stroke-width="2" 
+                          style="cursor: pointer; transition: opacity 0.2s;" 
+                          onmouseover="this.style.opacity='0.8'" 
+                          onmouseout="this.style.opacity='1'"
+                          title="${metric.label}: ${metric.value} (${percentage.toFixed(1)}%)">
+                    </path>
+                `;
+                
+                // Add label in center if slice is large enough
+                if (angle > 15) {
+                    const labelAngle = (startAngle + endAngle) / 2;
+                    const labelAngleRad = (labelAngle * Math.PI) / 180;
+                    const labelRadius = radius * 0.6;
+                    const labelX = centerX + labelRadius * Math.cos(labelAngleRad);
+                    const labelY = centerY + labelRadius * Math.sin(labelAngleRad);
+                    
+                    pieSlices += `
+                        <text x="${labelX}" y="${labelY}" text-anchor="middle" dominant-baseline="middle" 
+                              fill="white" font-size="12" font-weight="700" style="pointer-events: none; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">
+                            ${metric.value}
+                        </text>
+                    `;
+                }
+                
+                // Build legend
+                legend += `
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                        <div style="width: 16px; height: 16px; background: ${metric.color}; border-radius: 3px; flex-shrink: 0;"></div>
+                        <div style="flex: 1; font-size: 0.8rem; color: #333;">
+                            <span style="font-weight: 600;">${metric.label}:</span> 
+                            <span style="color: #666;">${metric.value} (${percentage.toFixed(1)}%)</span>
+                        </div>
+                    </div>
+                `;
+                
+                currentAngle += angle;
+            });
+            
+            chartContainer.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap; justify-content: center;">
+                    <svg width="280" height="280" viewBox="0 0 280 280" style="flex-shrink: 0;">
+                        ${pieSlices}
+                    </svg>
+                    <div style="flex: 1; min-width: 200px; max-width: 300px;">
+                        <div style="font-size: 0.85rem; font-weight: 600; color: #333; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #e0e6ed;">Legend</div>
+                        ${legend}
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Load chart data
+        async function loadChartData() {
+            try {
+                const teacherId = localStorage.getItem('teacherId');
+                if (!teacherId) return;
+                
+                // Load dashboard statistics
+                const response = await fetch(`/api/teacher/dashboard-stats?teacherId=${teacherId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    // Update chart values with null checks
+                    const totalClassesEl = document.getElementById('total-classes');
+                    const totalCancellationsEl = document.getElementById('total-cancellations');
+                    const totalStarsEl = document.getElementById('total-stars');
+                    const averageRatingEl = document.getElementById('average-rating');
+                    const classesChangeEl = document.getElementById('classes-change');
+                    const cancellationsChangeEl = document.getElementById('cancellations-change');
+                    const starsChangeEl = document.getElementById('stars-change');
+                    
+                    // Removed total revenue - now showing attendance analysis in that space
+                    if (totalClassesEl) totalClassesEl.textContent = data.totalClasses || 0;
+                    if (totalCancellationsEl) totalCancellationsEl.textContent = data.totalCancellations || 0;
+                    if (totalStarsEl) totalStarsEl.textContent = data.totalStars || 0;
+                    if (averageRatingEl) averageRatingEl.textContent = data.averageRating || 0.0;
+                    if (classesChangeEl) classesChangeEl.textContent = `${data.classesChange || 0}%`;
+                    if (cancellationsChangeEl) cancellationsChangeEl.textContent = `${data.cancellationsChange || 0}%`;
+                    if (starsChangeEl) starsChangeEl.textContent = `${data.starsChange || 0}%`;
+                }
+            } catch (error) {
+                console.error('Error loading chart data:', error);
+            }
+        }
+        
+        // Load notifications for dropdown
+        async function loadNotificationsDropdown() {
+            try {
+                const teacherId = localStorage.getItem('teacherId');
+                if (!teacherId) return;
+                
+                const response = await fetch(`/api/teacher/notifications?teacherId=${teacherId}`);
+                const notifications = await response.json();
+                
+                console.log('🔔 Loaded notifications:', notifications);
+                
+                const dropdownContent = document.getElementById('notifications-dropdown-content');
+                const badge = document.getElementById('notifications-badge');
+                
+                // Check if elements exist before updating
+                if (!dropdownContent || !badge) {
+                    console.warn('Notifications dropdown elements not found');
+                    return;
+                }
+                
+                // Update badge count
+                const unreadCount = notifications.filter(n => !n.read).length;
+                badge.textContent = unreadCount;
+                badge.style.display = unreadCount > 0 ? 'flex' : 'none';
+                
+                if (notifications.length === 0) {
+                    dropdownContent.innerHTML = '<div class="nav-dropdown-item">No notifications</div>';
+                } else {
+                    const latest = notifications.slice(0, 10); // Show more notifications
+                    let notificationsHTML = latest.map((n, index) => {
+                        const time = n.createdAt ? new Date(n.createdAt).toLocaleTimeString('en-US', { 
+                            hour: '2-digit', 
+                            minute: '2-digit',
+                            hour12: true 
+                        }) : '';
+                        
+                        const readClass = n.read ? 'read' : '';
+                        
+                        console.log('🔔 Creating notification item:', n._id, 'read:', n.read);
+                        
+                        return `<div class="nav-dropdown-item ${readClass}" data-notification-id="${n._id}" data-notification-index="${index}" onclick="markNotificationAsRead('${n._id}', ${index})">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span>${getNotifIcon(n.type)}</span>
+                                <div style="flex: 1;">
+                                    <div style="font-size: 0.9rem;">${n.message}</div>
+                                    <div style="font-size: 0.8rem; color: #666;">${time}</div>
+                                </div>
+                            </div>
+                        </div>`;
+                    }).join('');
+                    
+                    // Add "View All" option if there are more notifications
+                    if (notifications.length > 10) {
+                        notificationsHTML += `<div class="nav-dropdown-item" style="text-align: center; color: #667eea; font-weight: 500; border-top: 1px solid #e2e8f0; margin-top: 8px; padding-top: 12px; cursor: pointer;" onclick="viewAllNotifications()">
+                            View All ${notifications.length} Notifications
+                        </div>`;
+                    }
+                    
+                    dropdownContent.innerHTML = notificationsHTML;
+                }
+            } catch (error) {
+                console.error('Error loading notifications dropdown:', error);
+            }
+        }
+        
+        // Mark notification as read
+        async function markNotificationAsRead(notificationId, index) {
+            try {
+                console.log('🔔 Marking notification as read:', notificationId, 'index:', index);
+                
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    console.error('❌ No token found');
+                    return;
+                }
+                
+                console.log('🔔 Making API request to mark notification as read...');
+                
+                // Mark as read in backend
+                const teacherId = localStorage.getItem('teacherId');
+                const response = await fetch(`/api/teacher/notifications/${notificationId}/mark-read?teacherId=${teacherId}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                console.log('🔔 API Response status:', response.status);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('🔔 API Response data:', data);
+                    
+                    // Update the notification item visually
+                    const notificationItem = document.querySelector(`[data-notification-id="${notificationId}"]`);
+                    console.log('🔔 Found notification item:', !!notificationItem);
+                    
+                    if (notificationItem) {
+                        // Add the read class for visual feedback
+                        notificationItem.classList.add('read');
+                        console.log('🔔 Added read class to notification item');
+                        
+                        // Add a subtle animation
+                        notificationItem.style.transition = 'opacity 0.3s ease';
+                    }
+                    
+                    // Refresh the notifications to update badge count
+                    setTimeout(() => {
+                        console.log('🔔 Refreshing notifications dropdown...');
+                        loadNotificationsDropdown();
+                    }, 500);
+                    
+                    console.log('✅ Notification marked as read successfully:', notificationId);
+                } else {
+                    const errorData = await response.text();
+                    console.error('❌ API Error:', response.status, errorData);
+                }
+            } catch (error) {
+                console.error('❌ Error marking notification as read:', error);
+            }
+        }
+        
+        // Mark all notifications as read
+        async function markAllNotificationsAsRead() {
+            try {
+                console.log('🔔 Marking all notifications as read...');
+                
+                const token = localStorage.getItem('token');
+                const teacherId = localStorage.getItem('teacherId');
+                
+                if (!token || !teacherId) {
+                    console.error('❌ No token or teacherId found');
+                    return;
+                }
+                
+                // Mark all as read in backend
+                const response = await fetch(`/api/teacher/notifications/mark-read`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ teacherId: teacherId })
+                });
+                
+                console.log('🔔 Mark all as read API Response status:', response.status);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('🔔 Mark all as read API Response data:', data);
+                    
+                    // Update all notification items visually
+                    const notificationItems = document.querySelectorAll('[data-notification-id]');
+                    notificationItems.forEach(item => {
+                        item.classList.add('read');
+                        item.style.transition = 'opacity 0.3s ease';
+                    });
+                    
+                    // Refresh the notifications to update badge count
+                    setTimeout(() => {
+                        console.log('🔔 Refreshing notifications dropdown after mark all as read...');
+                        loadNotificationsDropdown();
+                    }, 500);
+                    
+                    console.log('✅ All notifications marked as read successfully');
+                } else {
+                    const errorData = await response.text();
+                    console.error('❌ API Error marking all as read:', response.status, errorData);
+                }
+            } catch (error) {
+                console.error('❌ Error marking all notifications as read:', error);
+            }
+        }
+        
+        // View all notifications
+        function viewAllNotifications() {
+            try {
+                console.log('🔔 Opening all notifications view...');
+                
+                // Create a modal to show all notifications
+                const modal = document.createElement('div');
+                modal.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.8);
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    z-index: 10000;
+                `;
+                
+                const modalContent = document.createElement('div');
+                modalContent.style.cssText = `
+                    background: white;
+                    border-radius: 15px;
+                    padding: 30px;
+                    max-width: 600px;
+                    width: 90%;
+                    max-height: 80vh;
+                    overflow-y: auto;
+                    position: relative;
+                `;
+                
+                modalContent.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h2 style="margin: 0; color: #333;">All Notifications</h2>
+                        <button onclick="this.closest('.modal').remove()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #666;">×</button>
+                    </div>
+                    <div id="all-notifications-list" style="max-height: 60vh; overflow-y: auto;">
+                        <div style="text-align: center; color: #666;">Loading notifications...</div>
+                    </div>
+                `;
+                
+                modal.className = 'modal';
+                modal.appendChild(modalContent);
+                document.body.appendChild(modal);
+                
+                // Load all notifications
+                loadAllNotifications();
+                
+                // Close modal when clicking outside
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) {
+                        modal.remove();
+                    }
+                });
+                
+            } catch (error) {
+                console.error('❌ Error opening notifications view:', error);
+            }
+        }
+        
+        // Load all notifications for the modal
+        async function loadAllNotifications() {
+            try {
+                const teacherId = localStorage.getItem('teacherId');
+                if (!teacherId) return;
+                
+                const response = await fetch(`/api/teacher/notifications?teacherId=${teacherId}`);
+                const notifications = await response.json();
+                
+                const notificationsList = document.getElementById('all-notifications-list');
+                if (!notificationsList) return;
+                
+                if (notifications.length === 0) {
+                    notificationsList.innerHTML = '<div style="text-align: center; color: #666; padding: 40px;">No notifications found</div>';
+                } else {
+                    const notificationsHTML = notifications.map((n, index) => {
+                        const time = n.createdAt ? new Date(n.createdAt).toLocaleString('en-US', { 
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit', 
+                            minute: '2-digit',
+                            hour12: true 
+                        }) : '';
+                        
+                        const readClass = n.read ? 'read' : '';
+                        
+                        return `<div class="nav-dropdown-item ${readClass}" data-notification-id="${n._id}" data-notification-index="${index}" onclick="markNotificationAsRead('${n._id}', ${index})" style="margin-bottom: 10px; border: 1px solid #e2e8f0; border-radius: 8px;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span>${getNotifIcon(n.type)}</span>
+                                <div style="flex: 1;">
+                                    <div style="font-size: 0.9rem;">${n.message}</div>
+                                    <div style="font-size: 0.8rem; color: #666;">${time}</div>
+                                </div>
+                                ${!n.read ? '<span style="background: #667eea; color: white; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem;">New</span>' : ''}
+                            </div>
+                        </div>`;
+                    }).join('');
+                    
+                    notificationsList.innerHTML = notificationsHTML;
+                }
+            } catch (error) {
+                console.error('❌ Error loading all notifications:', error);
+                const notificationsList = document.getElementById('all-notifications-list');
+                if (notificationsList) {
+                    notificationsList.innerHTML = '<div style="text-align: center; color: #dc3545; padding: 40px;">Error loading notifications</div>';
+                }
+            }
+        }
+        
+        // Load upcoming classes for dropdown
+        async function loadUpcomingClassesDropdown() {
+            try {
+                const teacherId = localStorage.getItem('teacherId');
+                if (!teacherId) return;
+                
+                // Get current week bookings
+                const today = new Date();
+                const monday = new Date(today);
+                monday.setDate(today.getDate() - today.getDay() + 1);
+                const weekStart = monday.toISOString().split('T')[0];
+                
+                const response = await fetch(`/api/teacher/slots?teacherId=${teacherId}&week=${weekStart}`);
+                const data = await response.json();
+                const bookings = data.bookings || [];
+                
+                const dropdownContent = document.getElementById('upcoming-classes-dropdown-content');
+                const badge = document.getElementById('upcoming-classes-badge');
+                
+                // Check if elements exist before updating
+                if (!dropdownContent || !badge) {
+                    console.warn('Upcoming classes dropdown elements not found');
+                    return;
+                }
+                
+                // Filter future bookings
+                const now = new Date();
+                const futureBookings = bookings.filter(booking => {
+                    const bookingDateTime = new Date(`${booking.date}T${booking.time}`);
+                    return bookingDateTime > now;
+                });
+                
+                // Update badge count
+                badge.textContent = futureBookings.length;
+                badge.style.display = futureBookings.length > 0 ? 'flex' : 'none';
+                
+                if (futureBookings.length === 0) {
+                    dropdownContent.innerHTML = '<div class="nav-dropdown-item">No upcoming classes</div>';
+                } else {
+                    const upcoming = futureBookings.slice(0, 5);
+                    dropdownContent.innerHTML = upcoming.map(booking => {
+                        const classDate = new Date(`${booking.date}T${booking.time}`);
+                        const isToday = booking.date === now.toISOString().split('T')[0];
+                        const isTomorrow = booking.date === new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+                        
+                        let timeDisplay;
+                        if (isToday) {
+                            timeDisplay = `Today, ${booking.time}`;
+                        } else if (isTomorrow) {
+                            timeDisplay = `Tomorrow, ${booking.time}`;
+                        } else {
+                            const options = { weekday: 'short', month: 'short', day: 'numeric' };
+                            timeDisplay = `${classDate.toLocaleDateString('en-US', options)}, ${booking.time}`;
+                        }
+                        
+                        return `<div class="nav-dropdown-item">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <div style="font-size: 0.9rem; font-weight: 500;">${timeDisplay}</div>
+                                    <div style="font-size: 0.8rem; color: #666;">${booking.studentId?.firstName || booking.studentId?.username || 'Unknown'}</div>
+                                </div>
+                                <button onclick="window.location.href='live-classroom.html?room=${booking.classroomId}&type=teacher&bookingId=${booking._id}'" 
+                                        style="background: #667eea; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; cursor: pointer;">
+                                    Join
+                                </button>
+                            </div>
+                        </div>`;
+                    }).join('');
+                }
+            } catch (error) {
+                console.error('Error loading upcoming classes dropdown:', error);
+            }
+        }
+        
+        // Update time tracking mini
+        function updateTimeTrackingMini() {
+            const statusMini = document.getElementById('time-status-mini');
+            const btnMini = document.getElementById('time-btn-mini');
+            
+            // Check if elements exist before updating
+            if (!statusMini || !btnMini) {
+                console.warn('Time tracking mini elements not found');
+                return;
+            }
+            
+            if (isClockedIn) {
+                statusMini.textContent = 'Clocked In';
+                statusMini.className = 'time-status-mini clocked-in';
+                btnMini.textContent = 'Time Out';
+                btnMini.className = 'time-btn-mini clock-out';
+                // Remove existing event listeners and add new one
+                btnMini.replaceWith(btnMini.cloneNode(true));
+                const newBtnMini = document.getElementById('time-btn-mini');
+                if (newBtnMini) {
+                    newBtnMini.addEventListener('click', function() {
+                        if (typeof timeOut === 'function') {
+                            timeOut();
+                        }
+                    });
+                }
+            } else {
+                statusMini.textContent = 'Not Clocked In';
+                statusMini.className = 'time-status-mini not-clocked';
+                btnMini.textContent = 'Time In';
+                btnMini.className = 'time-btn-mini clock-in';
+                // Remove existing event listeners and add new one
+                btnMini.replaceWith(btnMini.cloneNode(true));
+                const newBtnMini = document.getElementById('time-btn-mini');
+                if (newBtnMini) {
+                    newBtnMini.addEventListener('click', function() {
+                        if (typeof timeIn === 'function') {
+                            timeIn();
+                        }
+                    });
+                }
+            }
+        }
+        
+        // Note: timeIn and timeOut functions are defined later in the script
+        // They will call updateTimeTrackingMini() at the end of their execution
+        
+        // Load all data on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            try {
+                loadChartData();
+                loadAttendanceAnalysis();
+                loadNotificationsDropdown();
+                loadUpcomingClassesDropdown();
+                
+                // Refresh data every 5 minutes
+                setInterval(() => {
+                    try {
+                        loadChartData();
+                        loadAttendanceAnalysis();
+                        loadNotificationsDropdown();
+                        loadUpcomingClassesDropdown();
+                    } catch (error) {
+                        console.error('Error in data refresh interval:', error);
+                    }
+                }, 5 * 60 * 1000);
+            } catch (error) {
+                console.error('Error in initial data load:', error);
+            }
+        });
+        
+    </script>
+    <script>
+    // Test if JavaScript is loading
+    console.log('=== TEACHER DASHBOARD LOADING ===');
+    
+    // Add error handling to catch any JavaScript errors
+    window.addEventListener('error', function(e) {
+      console.error('JavaScript Error:', e.error);
+      alert('JavaScript Error: ' + e.error.message);
+    });
+    
+    window.addEventListener('unhandledrejection', function(e) {
+      console.error('Unhandled Promise Rejection:', e.reason);
+      alert('Unhandled Promise Rejection: ' + e.reason);
+    });
+    
+    // Test DOM elements
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('DOM Content Loaded!');
+      const timeInBtn = document.getElementById('time-in-btn');
+      console.log('Time In button found:', !!timeInBtn);
+      if (timeInBtn) {
+        console.log('Time In button text:', timeInBtn.textContent);
+        console.log('Time In button onclick:', timeInBtn.onclick);
+        console.log('Time In button disabled:', timeInBtn.disabled);
+        console.log('Time In button style pointer-events:', timeInBtn.style.pointerEvents);
+        console.log('Time In button computed style pointer-events:', window.getComputedStyle(timeInBtn).pointerEvents);
+        
+        // Test if button is clickable by programmatically clicking it
+        setTimeout(() => {
+          console.log('Testing programmatic click...');
+          timeInBtn.click();
+        }, 2000);
+        
+        // Test if the test button works
+        setTimeout(() => {
+          console.log('Testing test button click...');
+          const testBtn = document.getElementById('test-btn');
+          if (testBtn) {
+            testBtn.click();
+          }
+        }, 3000);
+        
+        // Check for overlapping elements
+        const buttonRect = timeInBtn.getBoundingClientRect();
+        console.log('Button position:', buttonRect);
+        
+        // Check what elements are at the button's position
+        const elementsAtPoint = document.elementsFromPoint(
+          buttonRect.left + buttonRect.width / 2,
+          buttonRect.top + buttonRect.height / 2
+        );
+        console.log('Elements at button center:', elementsAtPoint);
+        
+        // Check if any parent elements have pointer-events: none
+        let parent = timeInBtn.parentElement;
+        let level = 0;
+        while (parent && level < 5) {
+          const pointerEvents = window.getComputedStyle(parent).pointerEvents;
+          console.log(`Parent level ${level} pointer-events:`, pointerEvents);
+          if (pointerEvents === 'none') {
+            console.log(`WARNING: Parent level ${level} has pointer-events: none!`);
+          }
+          parent = parent.parentElement;
+          level++;
+        }
+      }
+    });
+    
+    // Role-based access control
+    const userType = localStorage.getItem('userType');
+    if (userType !== 'teacher') {
+      alert('Access denied. This page is for teachers only.');
+      window.location.href = 'index.html';
+    }
+    
+    // Define all functions first before using them
+    let lastTokenValidation = 0;
+    const TOKEN_VALIDATION_COOLDOWN = 5 * 60 * 1000; // 5 minutes
+
+    // Add token validation function with cooldown
+    async function validateToken() {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.log('No token found, redirecting to login');
+        localStorage.clear();
+        window.location.href = 'teacher-login.html';
+        return false;
+      }
+
+      // Check cooldown to prevent too frequent validation
+      const now = Date.now();
+      if (now - lastTokenValidation < TOKEN_VALIDATION_COOLDOWN) {
+        return true; // Assume token is still valid if we checked recently
+      }
+
+      try {
+        // Test the token by making a simple API call
+        const response = await fetch('/api/teacher/time-tracking/status', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        lastTokenValidation = now;
+
+        if (response.status === 401) {
+          console.log('Token is invalid, redirecting to login');
+          localStorage.clear();
+          window.location.href = 'teacher-login.html';
+          return false;
+        }
+
+        return true;
+      } catch (error) {
+        console.error('Error validating token:', error);
+        // Don't redirect on network errors, only on actual auth failures
+        // Just return false and let the calling function handle it
+        return false;
+      }
+    }
+
+    async function initializeDashboardAsync() {
+      console.log('Initializing dashboard...');
+      try {
+        // Validate token on page load
+        console.log('Validating token...');
+        const isTokenValid = await validateToken();
+        if (!isTokenValid) {
+          console.log('Token validation failed');
+          return;
+        }
+        console.log('Token validation successful');
+
+        const username = localStorage.getItem('remoedUsername');
+        const teacherId = localStorage.getItem('teacherId');
+        
+        // Set username immediately (will be updated with first name later)
+        if (username) {
+          const usernameElement = document.getElementById('remoed-username');
+          const avatarElement = document.getElementById('avatar-text');
+          if (usernameElement) {
+            usernameElement.textContent = 'Loading...';
+          }
+          if (avatarElement) avatarElement.textContent = username[0].toUpperCase();
+        }
+        
+        // Set a timeout to update sidebar if profile loading takes too long
+        setTimeout(() => {
+          const usernameElement = document.getElementById('remoed-username');
+          if (usernameElement && usernameElement.textContent === 'Loading...') {
+            console.log('⚠️ Profile loading timeout, checking localStorage for updated firstName');
+            
+            // Check if there's an updated firstName in localStorage
+            const updatedFirstName = localStorage.getItem('updatedFirstName');
+            if (updatedFirstName) {
+              usernameElement.textContent = `Hi, ${updatedFirstName}`;
+              console.log('✅ Using updated firstName from localStorage:', updatedFirstName);
+              // Clear the localStorage flag
+              localStorage.removeItem('updatedFirstName');
+            } else {
+              usernameElement.textContent = `Hi, ${username}`;
+              console.log('⚠️ No updated firstName found, using username fallback');
+            }
+          }
+        }, 5000); // 5 second timeout
+        
+        // Initialize time tracking first
+        await initTimeTracking();
+        
+        // Load other components
+        try {
+          console.log('🔍 Loading profile picture for teacherId:', teacherId);
+          await loadProfilePicture(teacherId);
+        } catch (error) {
+          console.error('Error loading profile picture:', error);
+        }
+        
+        try {
+          await loadAnnouncements();
+        } catch (error) {
+          console.error('Error loading announcements:', error);
+        }
+        
+        try {
+          await loadNotifications();
+        } catch (error) {
+          console.error('Error loading notifications:', error);
+        }
+        
+        // Set up intervals after initialization
+        setupIntervals();
+        
+        // Check for updated firstName in localStorage periodically
+        setInterval(() => {
+          const usernameElement = document.getElementById('remoed-username');
+          if (usernameElement && usernameElement.textContent === 'Loading...') {
+            const updatedFirstName = localStorage.getItem('updatedFirstName');
+            if (updatedFirstName) {
+              usernameElement.textContent = `Hi, ${updatedFirstName}`;
+              console.log('✅ Updated sidebar with firstName from localStorage:', updatedFirstName);
+              localStorage.removeItem('updatedFirstName');
+            }
+          }
+        }, 2000); // Check every 2 seconds
+        
+        // Check for daily notification reset
+        checkAndResetDailyNotifications();
+        
+      } catch (error) {
+        console.error('Error initializing dashboard:', error);
+      }
+    }
+    
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('DOM Content Loaded - Starting dashboard initialization');
+      // Initialize the dashboard asynchronously
+      initializeDashboardAsync();
+    });
+    
+    // Helper function to load announcements
+    async function loadAnnouncements() {
+      try {
+        console.log('🔄 Loading announcements...');
+        const response = await fetch('/api/announcement?role=teacher');
+        console.log('📡 Announcement API response status:', response.status);
+        
+        const list = await response.json();
+        console.log('📋 Announcements received:', list);
+        
+        const listDiv = document.getElementById('announcement-content');
+        if (!list.length) {
+          console.log('📭 No announcements found');
+          listDiv.innerHTML = '<div style="color:#888;">No announcements at this time.</div>';
+          return;
+        }
+        
+        console.log(`📢 Displaying ${list.length} announcements`);
+        listDiv.innerHTML = list.map(a => `
+          <div style='background:#fafdff;border-radius:8px;padding:14px 18px;margin-bottom:10px;'>
+            <div style='font-weight:500;white-space:pre-line;'>${a.content}</div>
+            <div style='font-size:0.97rem;color:#888;margin-top:4px;'>${a.updatedAt ? new Date(a.updatedAt).toLocaleString() : ''}</div>
+          </div>
+        `).join('');
+      } catch (error) {
+        console.error('❌ Error loading announcements:', error);
+        const listDiv = document.getElementById('announcement-content');
+        listDiv.innerHTML = '<div style="color:#888;">Unable to load announcements</div>';
+      }
+    }
+    
+    // Helper function to set up intervals
+    function setupIntervals() {
+      // Set up automatic notification refresh every 5 minutes
+      setInterval(loadNotifications, 5 * 60 * 1000); // Refresh every 5 minutes
+      
+      // Set up retry mechanism for database connection issues (every 30 seconds)
+      setInterval(function() {
+        const statusElement = document.getElementById('notification-status');
+        if (statusElement && statusElement.textContent.includes('Connection issue')) {
+          console.log('🔄 Retrying database connection...');
+          loadNotifications();
+        }
+      }, 30 * 1000); // Retry every 30 seconds
+      
+      // Set up daily notification reset check (every hour)
+      setInterval(checkAndResetDailyNotifications, 60 * 60 * 1000); // Check every hour
+      
+      // Refresh notifications when page becomes visible (user returns to tab)
+      document.addEventListener('visibilitychange', function() {
+        if (!document.hidden) {
+          console.log('🔄 Page became visible, refreshing notifications...');
+          loadNotifications();
+        }
+      });
+      
+      // Refresh notifications on user interaction (click, keypress, etc.)
+      let lastInteractionTime = Date.now();
+      const interactionTimeout = 5 * 60 * 1000; // 5 minutes
+      
+      document.addEventListener('click', function() {
+        const now = Date.now();
+        if (now - lastInteractionTime > interactionTimeout) {
+          console.log('🔄 User interaction detected, refreshing notifications...');
+          loadNotifications();
+        }
+        lastInteractionTime = now;
+      });
+      
+      // Load upcoming classes
+      loadUpcomingClasses();
+      
+      // Add refresh button event listener
+      const refreshBtn = document.getElementById('refresh-notifications-btn');
+      if (refreshBtn) {
+        refreshBtn.addEventListener('click', function() {
+          console.log('🔄 Manual refresh requested...');
+          loadNotifications();
+        });
+      }
+    }
+  
+  document.getElementById('logout-nav').onclick = function() {
+  localStorage.clear();
+  window.location.href = 'teacher-login.html';
+};
+  function loadAnnouncement() {
+    fetch('/api/announcement')
+      .then(r => r.json())
+      .then(data => {
+        currentContent = data.content;
+        currentUpdated = data.updatedAt ? new Date(data.updatedAt).toLocaleString() : '';
+        announcementContent.textContent = currentContent;
+        updatedDiv.textContent = currentUpdated ? 'Last updated: ' + currentUpdated : '';
+        // Only show edit button if admin is logged in
+        const isAdmin = localStorage.getItem('adminToken') && localStorage.getItem('adminUsername');
+        if (isAdmin) {
+          editBtn.style.display = '';
+        } else {
+          editBtn.style.display = 'none';
+        }
+        announcementContent.style.display = '';
+        announcementEdit.style.display = 'none';
+        actionsDiv.style.display = 'none';
+      });
+  }
+
+  // Load upcoming classes for the teacher
+  async function loadUpcomingClasses() {
+    const teacherId = localStorage.getItem('teacherId');
+    if (!teacherId) {
+      console.log('No teacher ID found');
+      return;
+    }
+
+    console.log('Loading upcoming classes for teacherId:', teacherId);
+
+    try {
+      // Get today's date
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Fetch bookings for the next few weeks to get upcoming classes
+      const upcomingBookings = [];
+      
+      // Get current week and next 2 weeks
+      const weekPromises = [];
+      
+      for (let weekOffset = 0; weekOffset < 3; weekOffset++) {
+        const weekDate = new Date();
+        weekDate.setDate(weekDate.getDate() + (weekOffset * 7));
+        const monday = new Date(weekDate);
+        monday.setDate(weekDate.getDate() - weekDate.getDay() + 1); // Monday is 1
+        const weekStart = monday.toISOString().split('T')[0];
+        
+        weekPromises.push(
+          fetch(`/api/teacher/slots?teacherId=${teacherId}&week=${weekStart}`)
+            .then(response => response.json())
+            .then(data => data.bookings || [])
+        );
+      }
+      
+      // Wait for all API calls to complete in parallel
+      const results = await Promise.all(weekPromises);
+      
+      // Combine all bookings
+      results.forEach(bookings => {
+        upcomingBookings.push(...bookings);
+      });
+      
+      const upcomingList = document.getElementById('upcoming-classes-list');
+      
+      // Check if upcoming list exists (it might not in the new design)
+      if (!upcomingList) {
+        console.log('📅 Upcoming classes list element not found - skipping update');
+        return;
+      }
+      
+      console.log('Total bookings found:', upcomingBookings.length);
+      
+      if (upcomingBookings.length === 0) {
+        upcomingList.innerHTML = '<li class="remoed-upcoming-item"><div style="color:#888;">No upcoming classes</div></li>';
+        return;
+      }
+
+      // Filter for future bookings only
+      const now = new Date();
+      const futureBookings = upcomingBookings.filter(booking => {
+        const bookingDateTime = new Date(`${booking.date}T${booking.time}`);
+        return bookingDateTime > now;
+      });
+
+      // Sort bookings by date and time
+      const sortedBookings = futureBookings.sort((a, b) => {
+        const dateA = new Date(`${a.date}T${a.time}`);
+        const dateB = new Date(`${b.date}T${b.time}`);
+        return dateA - dateB;
+      });
+
+      // Take only the next 3 upcoming classes
+      const upcomingClasses = sortedBookings.slice(0, 3);
+      
+      console.log('Upcoming classes to display:', upcomingClasses.length);
+
+      upcomingList.innerHTML = upcomingClasses.map(booking => {
+        const classDate = new Date(`${booking.date}T${booking.time}`);
+        const now = new Date();
+        const timeDiff = classDate - now;
+        const timeDiffHours = timeDiff / (1000 * 60 * 60);
+
+        // Format the display time
+        const isToday = booking.date === now.toISOString().split('T')[0];
+        const isTomorrow = booking.date === new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        
+        let timeDisplay;
+        if (isToday) {
+          timeDisplay = `Today, ${booking.time}`;
+        } else if (isTomorrow) {
+          timeDisplay = `Tomorrow, ${booking.time}`;
+        } else {
+          const options = { weekday: 'short', month: 'short', day: 'numeric' };
+          timeDisplay = `${classDate.toLocaleDateString('en-US', options)}, ${booking.time}`;
+        }
+
+        // Determine button type and action
+        let buttonClass = 'remoed-btn-primary';
+        let buttonText = 'Join';
+        let buttonAction = `window.location.href='live-classroom.html?room=${booking.classroomId}&type=teacher&bookingId=${booking._id}'`;
+
+        if (timeDiffHours > 2) {
+          buttonClass = 'remoed-btn-yellow';
+          buttonText = 'Remind';
+          buttonAction = `sendReminder('${booking._id}')`;
+        }
+
+        return `
+          <li class="remoed-upcoming-item">
+            <div>
+              <div class="remoed-upcoming-time">${timeDisplay}</div>
+              <div class="remoed-upcoming-student">Student: ${booking.studentId?.firstName || booking.studentId?.username || booking.studentEmail || 'Unknown'}</div>
+            </div>
+            <button class="remoed-btn ${buttonClass}" onclick="${buttonAction}">${buttonText}</button>
+          </li>
+        `;
+      }).join('');
+    } catch (error) {
+      console.error('Error loading upcoming classes:', error);
+      const upcomingList = document.getElementById('upcoming-classes-list');
+      upcomingList.innerHTML = '<li class="remoed-upcoming-item"><div style="color:#888;">Error loading classes</div></li>';
+    }
+  }
+
+  // Send reminder function (placeholder)
+  function sendReminder(bookingId) {
+    alert('Reminder sent!');
+    // TODO: Implement actual reminder functionality
+  }
+
+  // Notification panel logic (dynamic)
+  async function loadNotifications() {
+    const teacherId = localStorage.getItem('teacherId');
+    if (!teacherId) return;
+    
+    // Show refreshing status
+    const statusElement = document.getElementById('notification-status');
+    if (statusElement) {
+      statusElement.textContent = 'Refreshing...';
+      statusElement.style.color = '#1ca7e7';
+    }
+    
+    // Check if it's a new day and reset notifications
+    await checkAndResetDailyNotifications();
+    
+    try {
+      const response = await fetch(`/api/teacher/notifications?teacherId=${teacherId}`, {
+        signal: AbortSignal.timeout(5000) // 5 second timeout
+      });
+      const notifications = await response.json();
+      console.log('🔔 Loaded notifications:', notifications);
+      
+      const notificationList = document.getElementById('notification-list');
+      // Check if notification list exists (it might not in the new design)
+      if (!notificationList) {
+        console.log('🔔 Notification list element not found - skipping update');
+        return;
+      }
+      
+      if (!notifications.length) {
+        notificationList.innerHTML = '<li style="color:#888;">No notifications</li>';
+        return;
+      }
+      // Sort by createdAt descending (latest first)
+      notifications.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      // Show only the 5 most recent
+      const latest = notifications.slice(0, 5);
+      notificationList.innerHTML = latest.map(n => {
+        let notifTime = '';
+        if (n.createdAt) {
+          const d = new Date(n.createdAt);
+          const hour = d.getHours();
+          const minute = d.getMinutes();
+          if (hour === 12 && minute === 0) {
+            notifTime = '12:00 NN';
+          } else {
+            notifTime = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+          }
+        }
+        return `<li style=\"margin-bottom:7px;display:flex;align-items:center;gap:8px;\">
+          <span style=\"font-size:1.1em;\">${getNotifIcon(n.type)}</span>
+          <span>${n.message}</span>
+          <span style=\"color:#888; font-size:0.95em; margin-left:8px;\">${notifTime}</span>
+        </li>`;
+      }).join('');
+      console.log('🔔 Notifications loaded successfully');
+      
+      // Update status to show last refresh time
+      if (statusElement) {
+        const now = new Date();
+        statusElement.textContent = `Last updated: ${now.toLocaleTimeString()}`;
+        statusElement.style.color = '#27ae60';
+      }
+    } catch (e) {
+      console.error('❌ Error loading notifications:', e);
+      const notificationList = document.getElementById('notification-list');
+      if (notificationList) {
+        if (e.message && e.message.includes('ECONNREFUSED')) {
+          notificationList.innerHTML = '<li style="color:#888;">Database connection issue - notifications will appear when connection is restored</li>';
+        } else {
+          notificationList.innerHTML = '<li style="color:#888;">Unable to load notifications at this time</li>';
+        }
+      }
+      
+      // Update status to show error
+      if (statusElement) {
+        statusElement.textContent = 'Connection issue - will retry';
+        statusElement.style.color = '#e74c3c';
+      }
+    }
+  }
+  
+  // Check if it's a new day and reset notifications to 0
+  async function checkAndResetDailyNotifications() {
+    const today = new Date().toDateString();
+    const lastResetDate = localStorage.getItem('notification_last_reset_date');
+    
+    console.log('📅 Daily reset check - Today:', today, 'Last reset:', lastResetDate);
+    
+    // If it's a new day, reset notifications
+    if (lastResetDate !== today) {
+      console.log('🔄 New day detected, resetting notification count to 0');
+      
+      // Mark all notifications as read for the current day
+      const teacherId = localStorage.getItem('teacherId');
+      if (teacherId) {
+        try {
+          const token = localStorage.getItem('token');
+          await fetch('/api/teacher/notifications/mark-read', {
+            method: 'PATCH',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ teacherId }),
+            signal: AbortSignal.timeout(5000)
+          });
+          console.log('✅ All notifications marked as read for new day');
+        } catch (error) {
+          console.error('❌ Error marking notifications as read:', error);
+        }
+      }
+      
+      // Update the last reset date
+      localStorage.setItem('notification_last_reset_date', today);
+      
+      // Refresh notifications to show updated status
+      loadNotifications();
+    }
+  }
+  
+  // Test function to manually reset notifications (for testing purposes)
+  function testDailyReset() {
+    console.log('🧪 Testing daily notification reset...');
+    localStorage.removeItem('notification_last_reset_date');
+    checkAndResetDailyNotifications();
+  }
+  
+  // Function to manually refresh notifications
+  function refreshNotifications() {
+    console.log('🔄 Manually refreshing notifications...');
+    loadNotifications();
+  }
+  
+  // Add test functions to global scope for easy testing
+  window.testDailyReset = testDailyReset;
+  window.refreshNotifications = refreshNotifications;
+  console.log('🔔 Notification system loaded. To test daily reset, run: testDailyReset(). To refresh notifications, run: refreshNotifications()');
+
+  // Time Tracking System
+  let timeInSession = null;
+  let sessionTimer = null;
+  let isClockedIn = false;
+
+  // Initialize time tracking
+  async function initTimeTracking() {
+    console.log('Initializing time tracking...');
+    updateCurrentTime();
+    // Update time every 5 seconds instead of every second to reduce performance impact
+    setInterval(updateCurrentTime, 5000);
+    
+    // Load current time tracking status from database
+    console.log('Loading time tracking status...');
+    await loadTimeTrackingStatus();
+
+    // Add event listeners
+    const timeInBtn = document.getElementById('time-in-btn');
+    const timeOutBtn = document.getElementById('time-out-btn');
+    const viewLogBtn = document.getElementById('view-log-btn');
+    const closeTimeLogBtn = document.getElementById('close-time-log');
+    
+    console.log('Time In button found:', !!timeInBtn);
+    console.log('Time Out button found:', !!timeOutBtn);
+    console.log('View Log button found:', !!viewLogBtn);
+    console.log('Close Time Log button found:', !!closeTimeLogBtn);
+    
+    if (timeInBtn) {
+      console.log('Time In button found, using simple onclick approach');
+    }
+    
+    if (timeOutBtn) {
+      timeOutBtn.addEventListener('click', timeOut);
+    }
+    
+    if (viewLogBtn) {
+      viewLogBtn.addEventListener('click', showTimeLog);
+    }
+    
+    if (closeTimeLogBtn) {
+      closeTimeLogBtn.addEventListener('click', hideTimeLog);
+    }
+    
+
+    
+    // Add filter event listeners
+    const filterType = document.getElementById('filter-type');
+    const applyFilterBtn = document.getElementById('apply-filter');
+    
+    if (filterType) {
+      filterType.addEventListener('change', handleFilterTypeChange);
+    }
+    
+    if (applyFilterBtn) {
+      applyFilterBtn.addEventListener('click', applyFilter);
+    }
+    
+    const refreshTimeLogsBtn = document.getElementById('refresh-time-logs');
+    if (refreshTimeLogsBtn) {
+      refreshTimeLogsBtn.addEventListener('click', async () => {
+        await loadTimeLogsWithFilter();
+      });
+    }
+    
+    // Check status every 5 minutes to handle daily reset (less frequent to avoid token issues)
+    setInterval(async () => {
+      try {
+        await loadTimeTrackingStatus();
+      } catch (error) {
+        console.error('Error in time tracking status check:', error);
+        // Don't redirect on errors, just log them
+      }
+    }, 5 * 60 * 1000); // Check every 5 minutes instead of every minute
+    
+    console.log('Time tracking initialization complete');
+  }
+
+  // Load current time tracking status from database
+  async function loadTimeTrackingStatus() {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.log('No token found for time tracking');
+        return;
+      }
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+      const response = await fetch('/api/teacher/time-tracking/status', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (response.ok) {
+        const data = await response.json();
+        isClockedIn = data.isClockedIn;
+        
+        if (data.isClockedIn && data.currentLog) {
+          // Restore session from database
+          timeInSession = new Date(data.currentLog.clockIn.timestamp);
+          startSessionTimer();
+        }
+        
+        // Store the status data for UI updates
+        window.timeTrackingStatus = data;
+        updateTimeTrackingUI();
+      } else if (response.status === 401) {
+        // Only redirect on actual auth failure
+        console.error('Token expired, redirecting to login');
+        localStorage.clear();
+        window.location.href = 'teacher-login.html';
+      } else {
+        console.error('Failed to load time tracking status:', response.status);
+      }
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        console.error('Request timeout for time tracking status');
+      } else {
+        console.error('Error loading time tracking status:', error);
+        // Don't redirect on network errors, just log them
+      }
+    }
+  }
+
+  function updateCurrentTime() {
+    const now = new Date();
+    const timeDisplay = document.getElementById('time-display');
+    const hour = now.getHours();
+    const minute = now.getMinutes();
+    const second = now.getSeconds();
+    
+    let timeString;
+    if (hour === 12 && minute === 0 && second === 0) {
+      timeString = '12:00:00 NN';
+    } else {
+      timeString = now.toLocaleTimeString('en-US', { 
+        hour: '2-digit', 
+        minute: '2-digit', 
+        second: '2-digit', 
+        hour12: true 
+      });
+    }
+    
+    timeDisplay.textContent = timeString;
+  }
+
+  async function timeIn() {
+    console.log('Time In button clicked!');
+    console.log('Current status:', window.timeTrackingStatus);
+    console.log('isClockedIn:', isClockedIn);
+    
+    try {
+      // Check if current time is beyond 07:00PM (19:00) - TEMPORARILY DISABLED FOR TESTING
+      const now = new Date();
+      const currentHour = now.getHours();
+      const currentMinute = now.getMinutes();
+      
+      // TEMPORARY: Allow time-in for testing purposes
+      if (currentHour >= 19) {
+        console.log('Time in attempted after 07:00PM - ALLOWING FOR TESTING');
+        // alert('You cannot time in after 07:00PM. Please try again tomorrow.');
+        // showTimeMessage('You cannot time in after 07:00PM. Please try again tomorrow.', 'warning');
+        // return;
+      }
+      
+      // Check if daily log is already completed
+      const status = window.timeTrackingStatus || {};
+      console.log('Checking daily completion status:', status.dailyCompleted);
+      if (status.dailyCompleted) {
+        console.log('Daily log completed, showing warning message');
+        alert('You cannot time in. Daily time log is already completed. It will refresh at 9 AM Philippine time.');
+        showTimeMessage('You cannot time in. Daily time log is already completed. It will refresh at 9 AM Philippine time.', 'warning');
+        return;
+      }
+      
+      // Validate token first
+      const isTokenValid = await validateToken();
+      if (!isTokenValid) {
+        console.log('Token validation failed');
+        showTimeMessage('Session expired. Please log in again.', 'error');
+        return;
+      }
+
+      const token = localStorage.getItem('token');
+      console.log('Token found:', !!token);
+
+      console.log('Making clock-in request...');
+      const response = await fetch('/api/teacher/time-tracking/clock-in', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      console.log('Response status:', response.status);
+      const data = await response.json();
+      console.log('Response data:', data);
+
+      if (response.ok && data.success) {
+        const now = new Date();
+        timeInSession = now;
+        isClockedIn = true;
+        
+        // Refresh status from backend
+        await loadTimeTrackingStatus();
+        
+        showTimeMessage('Successfully clocked in!', 'success');
+        
+        // Refresh notifications after action
+        loadNotifications();
+        
+        // Update mini time tracking
+        updateTimeTrackingMini();
+      } else if (response.status === 401) {
+        showTimeMessage('Session expired. Please log in again.', 'error');
+        setTimeout(() => {
+          localStorage.clear();
+          window.location.href = 'teacher-login.html';
+        }, 2000);
+      } else {
+        showTimeMessage(data.error || 'Failed to clock in', 'error');
+      }
+    } catch (error) {
+      console.error('Error clocking in:', error);
+      showTimeMessage('Error clocking in. Please try again.', 'error');
+    }
+  }
+
+  async function timeOut() {
+    try {
+      // Validate token first
+      const isTokenValid = await validateToken();
+      if (!isTokenValid) {
+        showTimeMessage('Session expired. Please log in again.', 'error');
+        return;
+      }
+
+      const token = localStorage.getItem('token');
+
+      const response = await fetch('/api/teacher/time-tracking/clock-out', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        // Clear session
+        timeInSession = null;
+        isClockedIn = false;
+        
+        if (sessionTimer) {
+          clearInterval(sessionTimer);
+          sessionTimer = null;
+        }
+        
+        // Refresh status from backend
+        await loadTimeTrackingStatus();
+        
+        // Show success message with duration
+        const hours = data.timeLog.totalHours;
+        showTimeMessage(`Clocked out! Session duration: ${hours} hours`, 'success');
+        
+        // Refresh notifications after action
+        loadNotifications();
+        
+        // Update mini time tracking
+        updateTimeTrackingMini();
+      } else if (response.status === 401) {
+        showTimeMessage('Session expired. Please log in again.', 'error');
+        setTimeout(() => {
+          localStorage.clear();
+          window.location.href = 'teacher-login.html';
+        }, 2000);
+      } else {
+        showTimeMessage(data.error || 'Failed to clock out', 'error');
+      }
+    } catch (error) {
+      console.error('Error clocking out:', error);
+      showTimeMessage('Error clocking out. Please try again.', 'error');
+    }
+  }
+
+  function updateTimeTrackingUI() {
+    const statusSpan = document.getElementById('current-status');
+    const timeInBtn = document.getElementById('time-in-btn');
+    const timeOutBtn = document.getElementById('time-out-btn');
+    const sessionTimeDiv = document.getElementById('session-time');
+    const statusMessage = document.getElementById('time-status-message');
+    
+    // Get the current status from the backend
+    const status = window.timeTrackingStatus || {};
+    
+    if (isClockedIn) {
+      statusSpan.textContent = 'Clocked In';
+      statusSpan.style.color = '#4CAF50';
+      timeInBtn.style.display = 'none';
+      timeOutBtn.style.display = 'inline-block';
+      timeOutBtn.disabled = !status.canTimeOut;
+      timeOutBtn.style.background = '#dc3545';
+      timeOutBtn.style.color = 'white';
+      timeOutBtn.style.border = 'none';
+      sessionTimeDiv.style.display = 'block';
+      statusMessage.style.display = 'none';
+    } else if (status.dailyCompleted) {
+      statusSpan.textContent = 'Daily Time Log Completed';
+      statusSpan.style.color = '#f44336';
+      timeInBtn.style.display = 'inline-block';
+      timeInBtn.disabled = true;
+      timeInBtn.textContent = 'Time In (Daily Completed)';
+      timeInBtn.style.background = 'rgba(158, 158, 158, 0.6)';
+      timeInBtn.style.color = 'rgba(255, 255, 255, 0.7)';
+      timeInBtn.style.cursor = 'not-allowed';
+      timeInBtn.style.border = '1px solid rgba(158, 158, 158, 0.8)';
+      timeOutBtn.style.display = 'none';
+      sessionTimeDiv.style.display = 'none';
+      
+      // Show status message
+      statusMessage.innerHTML = '<strong>You have already completed your time log for today.</strong> New time logs will be available tomorrow at 9 AM Philippine time.';
+      statusMessage.style.display = 'block';
+      statusMessage.style.color = '#f44336';
+      statusMessage.style.background = '#ffebee';
+      statusMessage.style.border = '1px solid #fecaca';
+    } else {
+      statusSpan.textContent = 'Not Clocked In';
+      statusSpan.style.color = '#FF5722';
+      timeInBtn.style.display = 'inline-block';
+      timeInBtn.disabled = !status.canTimeIn;
+      timeInBtn.textContent = 'Time In';
+      timeInBtn.style.background = '#28a745';
+      timeInBtn.style.color = 'white';
+      timeInBtn.style.cursor = 'pointer';
+      timeInBtn.style.border = 'none';
+      timeOutBtn.style.display = 'none';
+      sessionTimeDiv.style.display = 'none';
+      statusMessage.style.display = 'none';
+    }
+    
+    // Also update the mini time tracking
+    updateTimeTrackingMini();
+  }
+
+  function startSessionTimer() {
+    if (sessionTimer) clearInterval(sessionTimer);
+    
+    sessionTimer = setInterval(() => {
+      if (timeInSession) {
+        const now = new Date();
+        const duration = now - timeInSession;
+        const hours = Math.floor(duration / (1000 * 60 * 60));
+        const minutes = Math.floor((duration % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((duration % (1000 * 60)) / 1000);
+        
+        const durationDisplay = document.getElementById('duration-display');
+        durationDisplay.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      }
+    }, 2000); // Update every 2 seconds instead of every second to reduce performance impact
+  }
+
+  function logTimeEntry(type, time, duration = null) {
+    const teacherId = localStorage.getItem('teacherId');
+    const username = localStorage.getItem('remoedUsername');
+    
+    const logEntry = {
+      teacherId: teacherId,
+      username: username,
+      type: type, // 'IN' or 'OUT'
+      timestamp: time.toISOString(),
+      date: time.toISOString().split('T')[0],
+      time: time.toLocaleTimeString('en-US', { 
+        hour: '2-digit', 
+        minute: '2-digit', 
+        hour12: true 
+      }),
+      duration: duration ? Math.floor(duration / (1000 * 60)) : null // duration in minutes
+    };
+    
+    // Save to localStorage for now (can be sent to backend later)
+    const timeLog = JSON.parse(localStorage.getItem('teacherTimeLog') || '[]');
+    timeLog.push(logEntry);
+    localStorage.setItem('teacherTimeLog', JSON.stringify(timeLog));
+    
+    console.log('Time log entry:', logEntry);
+  }
+
+  function showTimeMessage(message, type = 'info') {
+    // Create temporary message element
+    const messageDiv = document.createElement('div');
+    let backgroundColor = '#2196F3'; // default blue
+    if (type === 'success') backgroundColor = '#4CAF50'; // green
+    if (type === 'error') backgroundColor = '#f44336'; // red
+    
+    messageDiv.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: ${backgroundColor};
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      z-index: 1000;
+      font-weight: 600;
+      max-width: 300px;
+    `;
+    messageDiv.textContent = message;
+    
+    document.body.appendChild(messageDiv);
+    
+    // Remove after 3 seconds
+    setTimeout(() => {
+      if (messageDiv.parentNode) {
+        messageDiv.parentNode.removeChild(messageDiv);
+      }
+    }, 3000);
+  }
+
+  async function showTimeLog() {
+    const modal = document.getElementById('time-log-modal');
+    const content = document.getElementById('time-log-content');
+    const modalTitle = document.getElementById('time-log-modal-title');
+    
+    try {
+      // Validate token first
+      const isTokenValid = await validateToken();
+      if (!isTokenValid) {
+        return;
+      }
+
+      const token = localStorage.getItem('token');
+      const username = localStorage.getItem('remoedUsername');
+      
+      if (!token) {
+        content.innerHTML = '<div style="text-align: center; color: #888; padding: 40px;">Please log in to view time logs.</div>';
+        modal.style.display = 'block';
+        return;
+      }
+
+      // Show modal and set default filter to current week
+      modal.style.display = 'block';
+      document.getElementById('filter-type').value = 'week';
+      handleFilterTypeChange();
+      
+      // Load initial data with current week
+      await loadTimeLogsWithFilter();
+    } catch (error) {
+      console.error('Error opening time log modal:', error);
+      content.innerHTML = '<div style="text-align: center; color: #888; padding: 40px;">Error opening time logs.</div>';
+    }
+  }
+
+  function handleFilterTypeChange() {
+    const filterType = document.getElementById('filter-type').value;
+    const customControls = document.getElementById('custom-date-controls');
+    
+    if (filterType === 'custom') {
+      customControls.style.display = 'flex';
+      // Set default dates (last 7 days)
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(endDate.getDate() - 7);
+      
+      document.getElementById('start-date').value = startDate.toISOString().split('T')[0];
+      document.getElementById('end-date').value = endDate.toISOString().split('T')[0];
+    } else {
+      customControls.style.display = 'none';
+    }
+  }
+
+  async function applyFilter() {
+    await loadTimeLogsWithFilter();
+  }
+
+  async function loadTimeLogsWithFilter() {
+    const content = document.getElementById('time-log-content');
+    const modalTitle = document.getElementById('time-log-modal-title');
+    const filterType = document.getElementById('filter-type').value;
+    const username = localStorage.getItem('remoedUsername');
+    
+    try {
+      // Validate token first
+      const isTokenValid = await validateToken();
+      if (!isTokenValid) {
+        return;
+      }
+
+      const token = localStorage.getItem('token');
+      
+      // Load edit request statuses first
+      await loadEditRequestStatuses();
+      
+      // Calculate date range based on filter type
+      let startDate, endDate, filterText;
+      
+      switch (filterType) {
+        case 'week':
+          // Current week (Monday to Sunday)
+          const now = new Date();
+          const monday = new Date(now);
+          monday.setDate(now.getDate() - now.getDay() + 1);
+          const sunday = new Date(monday);
+          sunday.setDate(monday.getDate() + 6);
+          startDate = monday.toISOString().split('T')[0];
+          endDate = sunday.toISOString().split('T')[0];
+          filterText = `This Week (${startDate} to ${endDate})`;
+          break;
+          
+        case 'last-week':
+          // Last week
+          const lastMonday = new Date();
+          lastMonday.setDate(lastMonday.getDate() - lastMonday.getDay() - 6);
+          const lastSunday = new Date(lastMonday);
+          lastSunday.setDate(lastMonday.getDate() + 6);
+          startDate = lastMonday.toISOString().split('T')[0];
+          endDate = lastSunday.toISOString().split('T')[0];
+          filterText = `Last Week (${startDate} to ${endDate})`;
+          break;
+          
+        case 'month':
+          // Current month
+          const currentMonth = new Date();
+          startDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1).toISOString().split('T')[0];
+          endDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).toISOString().split('T')[0];
+          filterText = `This Month (${startDate} to ${endDate})`;
+          break;
+          
+        case 'last-month':
+          // Last month
+          const lastMonth = new Date();
+          lastMonth.setMonth(lastMonth.getMonth() - 1);
+          startDate = new Date(lastMonth.getFullYear(), lastMonth.getMonth(), 1).toISOString().split('T')[0];
+          endDate = new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0).toISOString().split('T')[0];
+          filterText = `Last Month (${startDate} to ${endDate})`;
+          break;
+          
+        case 'custom':
+          startDate = document.getElementById('start-date').value;
+          endDate = document.getElementById('end-date').value;
+          filterText = `Custom Range (${startDate} to ${endDate})`;
+          break;
+          
+        case 'all':
+          startDate = null;
+          endDate = null;
+          filterText = 'All Time';
+          break;
+      }
+      
+      // Update modal title
+      modalTitle.textContent = `Time Logs - ${username || 'Unknown User'} (${filterText})`;
+      
+      // Show loading
+      content.innerHTML = '<div style="text-align: center; color: #888; padding: 40px;">Loading time logs...</div>';
+
+      // Build API URL
+      let apiUrl = '/api/teacher/time-tracking/history';
+      if (startDate && endDate) {
+        apiUrl += `?startDate=${startDate}&endDate=${endDate}`;
+      }
+
+      const response = await fetch(apiUrl, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const timeLogs = data.timeLogs;
+        
+        if (timeLogs.length === 0) {
+          content.innerHTML = `<div style="text-align: center; color: #888; padding: 40px;">
+            <div style="margin-bottom: 15px;">No time log entries found for this period.</div>
+            <div style="font-size: 0.9rem; color: #666;">${filterText}</div>
+          </div>`;
+        } else {
+          // Calculate total hours
+          let totalHours = 0;
+          timeLogs.forEach(log => {
+            if (log.totalHours) {
+              totalHours += log.totalHours;
+            }
+          });
+          
+          // Add username header with summary
+          let html = `<div style="margin-bottom: 20px; text-align: center; padding: 15px; background: #e6f0fa; border-radius: 8px; border: 2px solid #1ca7e7;">
+            <h2 style="color: #1ca7e7; margin: 0; font-size: 1.3rem;">Teacher: ${username || 'Unknown User'}</h2>
+            <div style="margin-top: 10px; padding: 10px; background: #fff; border-radius: 6px; border: 1px solid #1ca7e7;">
+              <span style="color: #1ca7e7; font-weight: 600; font-size: 1.1rem;">Total Hours: ${totalHours.toFixed(2)} hours</span>
+            </div>
+          </div>`;
+          
+          // Group entries by date
+          const groupedEntries = {};
+          timeLogs.forEach(log => {
+            if (!groupedEntries[log.date]) {
+              groupedEntries[log.date] = [];
+            }
+            groupedEntries[log.date].push(log);
+          });
+          
+          // Sort dates in descending order
+          const sortedDates = Object.keys(groupedEntries).sort((a, b) => new Date(b) - new Date(a));
+          
+          sortedDates.forEach(date => {
+            const entries = groupedEntries[date];
+            const dateObj = new Date(date);
+            const formattedDate = dateObj.toLocaleDateString('en-US', { 
+              weekday: 'long', 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric' 
+            });
+            
+            // Calculate daily total
+            let dailyTotal = 0;
+            entries.forEach(log => {
+              if (log.totalHours) {
+                dailyTotal += log.totalHours;
+              }
+            });
+            
+            html += `<div style="margin-bottom: 20px;">
+              <h3 style="color: #1ca7e7; border-bottom: 2px solid #e6f0fa; padding-bottom: 8px;">
+                ${formattedDate} 
+                <span style="float: right; font-size: 0.9rem; color: #666;">Daily Total: ${dailyTotal.toFixed(2)} hours</span>
+              </h3>
+              <div style="background: #f6fbff; border-radius: 8px; padding: 12px;">`;
+            
+            entries.forEach(log => {
+              const clockInTime = log.clockIn.time;
+              const clockOutTime = log.clockOut ? log.clockOut.time : 'Not clocked out';
+              const totalHours = log.totalHours || 0;
+              
+              // Check if there's a pending edit request for this log
+              const hasPendingRequest = window.pendingEditRequests && window.pendingEditRequests.includes(log._id);
+              const hasApprovedRequest = window.approvedEditRequests && window.approvedEditRequests.includes(log._id);
+              const hasRejectedRequest = window.rejectedEditRequests && window.rejectedEditRequests.includes(log._id);
+              
+              let buttonHtml = '';
+              if (hasPendingRequest) {
+                buttonHtml = `<span style="background: #ffc107; color: #333; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: 500;">⏳ Pending Approval</span>`;
+              } else if (hasApprovedRequest) {
+                buttonHtml = `<span style="background: #27ae60; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: 500;">✅ Approved</span>`;
+              } else if (hasRejectedRequest) {
+                buttonHtml = `<span style="background: #e74c3c; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: 500;">❌ Rejected</span>`;
+              } else {
+                buttonHtml = `<button onclick="requestAdminEdit('${log._id}', '${date}')" style="background: #ffc107; color: #333; border: none; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; cursor: pointer; font-weight: 500;">Request Admin Edit</button>`;
+              }
+              
+              html += `<div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #e0e6ed;">
+                <div>
+                  <span style="color: #4CAF50; font-weight: 600;">Time In:</span>
+                  <span style="color: #666; margin-left: 8px;">${clockInTime}</span>
+                </div>
+                <div>
+                  <span style="color: #FF5722; font-weight: 600;">Time Out:</span>
+                  <span style="color: #666; margin-left: 8px;">${clockOutTime}</span>
+                </div>
+                <div>
+                  <span style="color: #1ca7e7; font-weight: 600;">Total:</span>
+                  <span style="color: #666; margin-left: 8px;">${totalHours.toFixed(2)} hours</span>
+                </div>
+                <div>
+                  ${buttonHtml}
+                </div>
+              </div>`;
+            });
+            
+            html += '</div></div>';
+          });
+          
+          content.innerHTML = html;
+        }
+      } else {
+        content.innerHTML = '<div style="text-align: center; color: #888; padding: 40px;">Failed to load time logs.</div>';
+      }
+    } catch (error) {
+      console.error('Error loading time logs:', error);
+      content.innerHTML = '<div style="text-align: center; color: #888; padding: 40px;">Error loading time logs.</div>';
+    }
+  }
+
+  function hideTimeLog() {
+    const modal = document.getElementById('time-log-modal');
+    modal.style.display = 'none';
+  }
+
+  // Load edit request statuses for time logs
+  async function loadEditRequestStatuses() {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const response = await fetch('/api/teacher/time-edit-requests', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        
+        // Initialize arrays to store request statuses
+        window.pendingEditRequests = [];
+        window.approvedEditRequests = [];
+        window.rejectedEditRequests = [];
+        
+        data.forEach(request => {
+          if (request.status === 'pending') {
+            window.pendingEditRequests.push(request.logId);
+          } else if (request.status === 'approved') {
+            window.approvedEditRequests.push(request.logId);
+          } else if (request.status === 'rejected') {
+            window.rejectedEditRequests.push(request.logId);
+          }
+        });
+        
+        console.log('Edit request statuses loaded:', {
+          pending: window.pendingEditRequests,
+          approved: window.approvedEditRequests,
+          rejected: window.rejectedEditRequests
+        });
+      }
+    } catch (error) {
+      console.error('Error loading edit request statuses:', error);
+    }
+  }
+
+  async function requestAdminEdit(logId, date) {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        alert('Please log in to request admin edit.');
+        return;
+      }
+
+      const response = await fetch('/api/teacher/request-time-edit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          logId: logId,
+          date: date,
+          reason: 'Teacher requested admin edit for time log'
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert('Admin edit request submitted successfully! An admin will review your request.');
+        // Refresh the time logs to show the updated status
+        await loadTimeLogsWithFilter();
+      } else {
+        alert(`Failed to submit request: ${data.error || response.statusText}`);
+      }
+    } catch (error) {
+      console.error('Error requesting admin edit:', error);
+      alert('An error occurred while submitting the request.');
+    }
+  }
+  function setNotifBadge(count) {
+    const badge = document.getElementById('notif-badge');
+    badge.textContent = count > 0 ? count : '';
+    badge.style.display = count > 0 ? 'inline-block' : 'none';
+  }
+  function getNotifIcon(type) {
+    switch(type) {
+      case 'booking': return '📅';
+      case 'cancel': return '❌';
+      case 'salary': return '💰';
+      case 'absent': return '🚫';
+      case 'announcement': return '📢';
+      default: return '🔔';
+    }
+  }
+  
+  // Load profile picture and update sidebar from backend (uses setAvatar)
+  async function loadProfilePicture(teacherId) {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.log('❌ No token found for profile picture');
+        return;
+      }
+
+      console.log('🔍 Loading profile for teacherId:', teacherId);
+
+      // Add a short timeout to avoid hanging
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 7000);
+
+      const response = await fetch('/api/teacher/profile', {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${token}` },
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        console.log('❌ API request failed with status:', response.status);
+        try { setAvatar({ imageUrl: '', displayName: localStorage.getItem('remoedUsername') || 'T', imgSelector: '#profile-image', textSelector: '#avatar-text' }); } catch(e){}
+        return;
+      }
+
+      const data = await response.json();
+      // Update sidebar name if available
+      if (data.profile && data.profile.firstName) {
+        const usernameElement = document.getElementById('remoed-username');
+        if (usernameElement) usernameElement.textContent = `Hi, ${data.profile.firstName}`;
+      }
+
+      const profilePic = data.profile && data.profile.profilePicture ? data.profile.profilePicture : '';
+      try {
+        setAvatar({ imageUrl: profilePic, displayName: data.profile && data.profile.firstName ? data.profile.firstName : (localStorage.getItem('remoedUsername') || 'T'), imgSelector: '#profile-image', textSelector: '#avatar-text' });
+      } catch (e) {
+        console.error('setAvatar error', e);
+      }
+    } catch (error) {
+      console.error('❌ Error loading profile picture:', error);
+      try { setAvatar({ imageUrl: '', displayName: localStorage.getItem('remoedUsername') || 'T', imgSelector: '#profile-image', textSelector: '#avatar-text' }); } catch(e){}
+    }
+  }
+
+</script>
+</body>
+</html>
+ 
+ 

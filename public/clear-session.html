@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clear Session - RemoEdPH</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: #f4f7fb; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            min-height: 100vh; 
+            margin: 0; 
+        }
+        .container { 
+            background: #fff; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 24px rgba(0,0,0,0.08); 
+            padding: 32px; 
+            text-align: center; 
+            max-width: 400px; 
+        }
+        .title { 
+            color: #1ca7e7; 
+            font-size: 1.5rem; 
+            font-weight: 700; 
+            margin-bottom: 16px; 
+        }
+        .info { 
+            color: #666; 
+            margin-bottom: 24px; 
+        }
+        .btn { 
+            background: #1ca7e7; 
+            color: #fff; 
+            border: none; 
+            border-radius: 6px; 
+            padding: 12px 24px; 
+            font-size: 1rem; 
+            cursor: pointer; 
+            margin: 8px; 
+        }
+        .btn:hover { 
+            background: #1694d1; 
+        }
+        .current-info { 
+            background: #f8f9fa; 
+            border-radius: 8px; 
+            padding: 16px; 
+            margin: 16px 0; 
+            text-align: left; 
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="title">Session Management</div>
+        <div class="info">Manage your current login session</div>
+        
+        <div class="current-info">
+            <strong>Current Session:</strong><br>
+            <span id="current-info">Loading...</span>
+        </div>
+        
+        <button class="btn" onclick="clearSession()">Clear Session & Go Home</button>
+        <button class="btn" onclick="goHome()">Go Home (Keep Session)</button>
+    </div>
+
+    <script>
+        // Display current session info
+        function showCurrentInfo() {
+            const username = localStorage.getItem('remoedUsername');
+            const userType = localStorage.getItem('userType');
+            const teacherId = localStorage.getItem('teacherId');
+            const studentId = localStorage.getItem('studentId');
+            
+            let info = '';
+            if (username) {
+                info += `Username: ${username}<br>`;
+                info += `User Type: ${userType || 'Not set'}<br>`;
+                if (teacherId) info += `Teacher ID: ${teacherId}<br>`;
+                if (studentId) info += `Student ID: ${studentId}<br>`;
+            } else {
+                info = 'No active session';
+            }
+            
+            document.getElementById('current-info').innerHTML = info;
+        }
+        
+        // Clear session and redirect
+        function clearSession() {
+            localStorage.clear();
+            alert('Session cleared! Redirecting to home page.');
+            window.location.href = 'index.html';
+        }
+        
+        // Go home without clearing session
+        function goHome() {
+            window.location.href = 'index.html';
+        }
+        
+        // Show info on page load
+        showCurrentInfo();
+    </script>
+</body>
+</html> 

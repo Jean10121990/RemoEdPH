@@ -1,0 +1,1601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Online Classroom</title>
+    <link rel="stylesheet" href="modern-styles.css">
+    <!-- PDF.js library for custom PDF viewer -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
+    <style>
+        body { margin: 0; background: #f4f6fb; height: 100vh; }
+        .classroom-layout { display: flex; height: 100vh; width: 100vw; overflow: hidden; }
+        .toolbar { width: 64px; background: #23272f; display: flex; flex-direction: column; align-items: center; padding: 16px 0; gap: 24px; box-shadow: 2px 0 8px rgba(0,0,0,0.04); }
+        .toolbar-btn { background: none; border: none; cursor: pointer; margin: 0; padding: 0; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 8px; transition: background 0.2s, box-shadow 0.2s; position: relative; }
+        .toolbar-btn:hover, .toolbar-btn:focus { background: #3a7afe; box-shadow: 0 2px 8px rgba(58,122,254,0.08); }
+        .toolbar-btn svg { width: 28px; height: 28px; color: #fff; }
+        .toolbar-btn .custom-tooltip { display: none; position: absolute; left: 48px; top: 50%; transform: translateY(-50%); background: #222; color: #fff; padding: 4px 12px; border-radius: 4px; font-size: 0.95rem; white-space: nowrap; z-index: 10; box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
+        .toolbar-btn:hover .custom-tooltip, .toolbar-btn:focus .custom-tooltip { display: block; }
+        .center-panel { flex: 2.5; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 32px 0 0 0; height: 100vh; overflow-y: auto; }
+        .class-timer { font-size: 1.2rem; color: #3a7afe; font-weight: 600; margin-bottom: 18px; letter-spacing: 1px; }
+        .tab-container { width: 100%; max-width: 1100px; margin-bottom: 16px; }
+        .tab-buttons { display: flex; gap: 4px; margin-bottom: 8px; }
+        .tab-btn { background: #f4f6fb; border: none; border-radius: 8px 8px 0 0; padding: 12px 24px; font-size: 1rem; cursor: pointer; color: #666; transition: all 0.2s; position: relative; z-index: 10; }
+        .tab-btn.active { background: #fff; color: #3a7afe; font-weight: 600; box-shadow: 0 -2px 8px rgba(0,0,0,0.05); }
+        .tab-btn:hover { background: #e0e6ed; }
+        .tab-btn:active { transform: translateY(1px); }
+        .tab-content { background: #fff; border-radius: 0 12px 12px 12px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); min-height: 480px; max-height: 700px; padding: 24px; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: auto; border: 1px solid #e0e6ed; }
+        .lesson-viewer { width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .whiteboard-tab { width: 100%; height: 100%; display: flex; flex-direction: column; }
+        .whiteboard-controls { display: flex; gap: 12px; margin-bottom: 16px; justify-content: center; align-items: center; }
+        .wb-control-btn { background: #f4f6fb; border: none; border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 0.9rem; transition: background 0.2s; }
+        .wb-control-btn.active { background: #3a7afe; color: white; }
+        .wb-control-btn:hover { background: #e0e6ed; }
+        .wb-control-btn.active:hover { background: #255ed6; }
+        .wb-color-picker { width: 40px; height: 32px; border: none; border-radius: 4px; cursor: pointer; }
+        .wb-brush-size { width: 60px; padding: 4px; border: 1px solid #ccc; border-radius: 4px; }
+        .whiteboard-canvas { flex: 1; background: white; border: 1px solid #e0e6ed; border-radius: 8px; cursor: crosshair; min-height: 400px; }
+        .files-tab { width: 100%; display: flex; flex-direction: column; align-items: center; }
+        .lesson-nav { margin-top: 12px; display: flex; gap: 8px; justify-content: center; }
+        .lesson-nav-btn { background: #3a7afe; color: #fff; border: none; border-radius: 5px; padding: 0.5rem 1.2rem; font-size: 1rem; cursor: pointer; transition: background 0.2s; }
+        .lesson-nav-btn:hover { background: #255ed6; }
+        .whiteboard { width: 800px; height: 220px; background: #fff; border-radius: 12px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); margin: 20px 0; cursor: crosshair; display: none; border: 1px solid #e0e6ed; }
+        .file-upload-form { display: none; margin-top: 12px; }
+        .file-list { width: 100%; max-width: 800px; margin-bottom: 20px; /* display: none; */ }
+        .right-panel { flex: 1.2; background: #fff; border-left: 1px solid #eee; display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; min-width: 340px; height: 100vh; box-shadow: -2px 0 8px rgba(0,0,0,0.04); }
+        .video-feeds {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          justify-content: flex-start;
+          align-items: center;
+          padding: 18px 0 8px 0;
+        }
+        .video-feed { width: 160px; height: 120px; background: #111; border-radius: 8px; object-fit: cover; border: 2px solid #3a7afe; box-shadow: 0 2px 8px rgba(58,122,254,0.08); }
+        .chat-header { font-weight: 600; color: #3a7afe; padding: 0 0 8px 0; text-align: center; letter-spacing: 1px; }
+        .chat-messages { flex: 1; min-height: 0; overflow-y: auto; background: #f4f6fb; border-radius: 8px; padding: 10px; margin: 0 16px 8px 16px; font-size: 1rem; border: 1px solid #e0e6ed; }
+        .chat-form { display: flex; gap: 8px; padding: 0 16px 16px 16px; }
+        .chat-input { flex: 1; padding: 0.5rem; border-radius: 5px; border: 1px solid #ccc; font-size: 1rem; }
+        @media (max-width: 1200px) {
+            .center-panel, .lesson-viewer, .whiteboard, .file-list { max-width: 95vw; }
+            .video-feed, .whiteboard { width: 90vw; max-width: 160px; }
+        }
+        @media (max-width: 900px) {
+            .classroom-layout { flex-direction: column; }
+            .toolbar, .right-panel { min-width: 0; width: 100vw; height: auto; }
+            .center-panel { height: auto; }
+        }
+        
+        /* Loading animation for PDF viewer */
+        @keyframes loading {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+        .remoed-header {
+            background: #fafdff;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-left: 32px;
+            padding-right: 32px;
+            height: 56px;
+            min-height: 40px;
+            max-height: 64px;
+            box-shadow: 0 2px 8px rgba(28,167,231,0.06), 0 1px 0 #e6f0fa;
+            border-bottom: 1px solid #e6f0fa;
+        }
+        .remoed-logo {
+            height:100%; display:flex; align-items:center; gap:10px;
+        }
+        .remoed-logo img {
+            height:36px; width:auto; display:inline-block; vertical-align:middle;
+        }
+        .remoed-title {
+            font-size:1.3rem; font-weight:700; color:#1ca7e7; letter-spacing:1px;
+        }
+        .remoed-user {
+            display:flex; align-items:center; gap:10px;
+        }
+        .remoed-avatar {
+            width:32px; height:32px; background:#1ca7e7; color:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1rem; font-weight:bold;
+        }
+        .remoed-username {
+            font-size:1rem; color:#333; font-weight:600;
+        }
+        #local-video {
+          filter: brightness(1.2) contrast(1.1) saturate(1.1) drop-shadow(0 0 8px #fff8);
+          background: #fff;
+          border-radius: 8px;
+        }
+        #clear-whiteboard { background: #ff6b6b; color: white; }
+        #clear-whiteboard:hover { background: #ff5252; }
+    </style>
+</head>
+<body>
+    <script>
+(function() {
+  const params = new URLSearchParams(window.location.search);
+  if (!params.has('room')) {
+    // Generate a random room ID
+    const room = Math.random().toString(36).substr(2, 8);
+    window.location.href = window.location.pathname + '?room=' + encodeURIComponent(room);
+  }
+})();
+</script>
+    <div class="classroom-layout">
+        <!-- Toolbar -->
+        <div class="toolbar">
+            <button class="toolbar-btn" id="toolbar-whiteboard" title="Whiteboard">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 6h8M6 8v8M18 8v8"/></svg>
+                <span class="custom-tooltip">Whiteboard</span>
+            </button>
+            <button class="toolbar-btn" id="toolbar-upload" title="Upload File">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/><polyline points="7 9 12 4 17 9"/><line x1="12" y1="4" x2="12" y2="16"/></svg>
+                <span class="custom-tooltip">Upload File</span>
+            </button>
+            <button class="toolbar-btn" id="toolbar-screen" title="Share Screen">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+                <span class="custom-tooltip">Share Screen</span>
+            </button>
+            <button class="toolbar-btn" id="toolbar-storage" title="Select from Storage" style="margin-top:16px;">
+                <svg width="24" height="24" fill="none" stroke="#1ca7e7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                    <rect x="3" y="7" width="18" height="13" rx="2"/>
+                    <path d="M8 3v4M16 3v4"/>
+                    <path d="M12 12v4"/>
+                    <path d="M10 16h4"/>
+                </svg>
+                <span class="custom-tooltip">Select from Storage</span>
+            </button>
+            <button class="toolbar-btn" id="exit-dashboard-btn" title="Exit to Dashboard" style="margin-top:16px;">
+                <svg width="24" height="24" fill="none" stroke="#1ca7e7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                    <polyline points="16 17 21 12 16 7"/>
+                    <line x1="21" y1="12" x2="9" y2="12"/>
+                </svg>
+                <span class="custom-tooltip">Exit to Dashboard</span>
+            </button>
+        </div>
+        <!-- Center Panel -->
+        <div class="center-panel">
+            <div class="class-timer" id="class-timer">Class Time: 00:00</div>
+            <div class="tab-container">
+                <div class="tab-buttons">
+                    <button class="tab-btn active" data-tab="lesson-content">Lesson Content</button>
+                    <button class="tab-btn" data-tab="whiteboard">Whiteboard</button>
+                    <button class="tab-btn" data-tab="files">Files</button>
+                </div>
+                <!-- Tab Contents -->
+                <div class="tab-content" id="lesson-content-tab">
+                    <div class="lesson-viewer">
+                        <div style="color:#888; font-size:1.2rem;">Lesson Content Viewer (PDF/PPT/Video)</div>
+                        <div id="lesson-file-picker-container" style="margin: 18px 0 12px 0; text-align:center;"></div>
+                        <div id="lesson-file-viewer" style="width:100%; max-width:800px; min-height:320px; margin:0 auto;"></div>
+                    </div>
+                </div>
+                <div class="tab-content" id="whiteboard-tab" style="display:none;">
+                    <div class="whiteboard-tab">
+                        <div class="whiteboard-controls">
+                            <button class="wb-control-btn active" data-action="pen">Pen</button>
+                            <button class="wb-control-btn" data-action="text">Text</button>
+                            <button class="wb-control-btn" data-action="eraser">Eraser</button>
+                            <input type="color" class="wb-color-picker" value="#1ca7e7">
+                            <input type="range" class="wb-brush-size" min="1" max="20" value="5">
+                            <button class="wb-control-btn" id="clear-whiteboard">Clear</button>
+                        </div>
+                        <canvas id="whiteboard" class="whiteboard-canvas"></canvas>
+                    </div>
+                </div>
+                <div class="tab-content" id="files-tab" style="display:none;">
+                    <div class="files-tab">
+                        <div style="text-align: center; margin-bottom: 24px;">
+                            <h3 style="color: #1ca7e7; margin-bottom: 16px;">Upload Files</h3>
+                            <p style="color: #666; margin-bottom: 20px;">Share documents, images, or other files with the class</p>
+                        </div>
+                        <div style="background: #f8f9fa; border: 2px dashed #1ca7e7; border-radius: 12px; padding: 32px; text-align: center; margin-bottom: 24px;">
+                            <input type="file" id="file-input" multiple accept=".pdf,.doc,.docx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.txt" style="display: none;" />
+                            <button type="button" id="upload-btn" class="lesson-nav-btn" style="padding: 12px 24px; font-size: 1.1rem; background: #1ca7e7; margin-bottom: 12px;">
+                                📁 Choose Files
+                            </button>
+                            <p style="color: #666; font-size: 0.9rem; margin: 0;">Supported: PDF, DOC, PPT, Images, Text files</p>
+                        </div>
+                        <div id="file-list" class="file-list" style="width: 100%; max-width: 600px; margin: 0 auto;">
+                            <h4 style="color: #333; margin-bottom: 16px; text-align: center;">Uploaded Files</h4>
+                            <div id="files-container" style="display: flex; flex-direction: column; gap: 8px; min-height: 100px; border: 1px dashed #ccc; border-radius: 8px; padding: 16px; background: #f9f9f9;">
+                                <div style="text-align: center; color: #999; font-style: italic;">
+                                    No files uploaded yet
+                                    <br>
+                                    <button onclick="loadFilesForRoom()" style="background: #1ca7e7; color: white; border: none; border-radius: 4px; padding: 6px 12px; margin-top: 8px; cursor: pointer; font-size: 0.85rem;">🔄 Refresh Files</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Right Panel -->
+        <div class="right-panel">
+            <div class="video-feeds">
+                <div style="position: relative; display: inline-block;">
+                    <video id="local-video" class="video-feed" autoplay muted playsinline></video>
+                    <!-- Gear Settings Button -->
+                    <button id="gear-settings-btn" style="position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.7); border: none; border-radius: 50%; width: 32px; height: 32px; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Settings">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 8 19.4a1.65 1.65 0 0 0-1.82.33l-.06-.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 5 15.4a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 5 8.6a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 8 4.6V4a2 2 0 0 1 4 0v.09c0 .66.39 1.25 1 1.51a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.66 0 1.25.39 1.51 1H21a2 2 0 0 1 0 4h-.09c-.66 0-1.25.39-1.51 1z"></path>
+                        </svg>
+                    </button>
+                    <!-- Mute Button -->
+                    <button id="mute-audio-btn" style="position: absolute; top: 8px; left: 8px; background: rgba(0,0,0,0.7); border: none; border-radius: 50%; width: 32px; height: 32px; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Mute Audio">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M11 5L6 9H2v6h4l5 4V5z"></path>
+                            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div id="camera-settings-modal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center; backdrop-filter:blur(2px);">
+                  <div style="background:#fff; border-radius:12px; box-shadow:0 8px 32px rgba(0,0,0,0.3); padding:28px 32px; min-width:280px; display:flex; flex-direction:column; align-items:center; position:relative; max-width:90vw; max-height:90vh; overflow-y:auto;">
+                    <button id="close-settings-modal" style="position:absolute; top:12px; right:12px; background:#f8f9fa; border:1px solid #e0e6ed; border-radius:50%; font-size:1.5rem; color:#666; cursor:pointer; width:32px; height:32px; display:flex; align-items:center; justify-content:center; transition:all 0.2s; z-index:10000;" title="Close">&times;</button>
+                    <div style="font-size:1.15rem; font-weight:600; color:#1ca7e7; margin-bottom:18px;">Camera Settings</div>
+                    <div style="width:180px; display:flex; align-items:center; gap:10px; margin-bottom:16px;">
+                      <label for="local-brightness-slider" style="font-size:0.98rem; color:#333;">Brightness</label>
+                      <input type="range" id="local-brightness-slider" min="0.5" max="2" step="0.01" value="1" style="flex:1;">
+                    </div>
+                    <div style="width:180px; display:flex; align-items:center; gap:10px; margin-bottom:16px;">
+                      <label for="local-whiteness-slider" style="font-size:0.98rem; color:#333;">Whiteness</label>
+                      <input type="range" id="local-whiteness-slider" min="0.5" max="2" step="0.01" value="1" style="flex:1;">
+                    </div>
+                    <div style="width:180px; display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+                      <label for="local-beautify-slider" style="font-size:0.98rem; color:#333;">Beautify</label>
+                      <input type="range" id="local-beautify-slider" min="0" max="100" step="1" value="0" style="flex:1;">
+                      <span id="local-beautify-value" style="font-size:0.9rem; color:#666; min-width:30px;">0%</span>
+                    </div>
+                    <button id="toggle-camera-btn" style="margin-top:18px; background:#1ca7e7; color:#fff; border:none; border-radius:6px; padding:8px 18px; font-size:1rem; cursor:pointer; display:flex; align-items:center; gap:8px;">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                      </svg>
+                      Hide Camera
+                    </button>
+                    <button id="emergency-close-btn" style="margin-top:12px; background:#dc3545; color:#fff; border:none; border-radius:6px; padding:6px 12px; font-size:0.9rem; cursor:pointer;" title="Emergency Close">Close Modal</button>
+                  </div>
+                </div>
+                <video id="remote-video" class="video-feed" autoplay playsinline></video>
+            </div>
+            <div class="chat-header">Class Chat</div>
+            <div id="chat-messages" class="chat-messages"></div>
+            <form id="chat-form" class="chat-form">
+                <input type="text" id="chat-input" class="chat-input" placeholder="Type a message...">
+                <button type="submit" class="lesson-nav-btn">Send</button>
+            </form>
+        </div>
+    </div>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script>
+    // --- Setup ---
+    const SIGNALING_SERVER_URL = 'http://localhost:4000';
+    const socket = io(SIGNALING_SERVER_URL);
+    const localVideo = document.getElementById('local-video');
+    const remoteVideo = document.getElementById('remote-video');
+    const chatMessages = document.getElementById('chat-messages');
+    const chatForm = document.getElementById('chat-form');
+    const chatInput = document.getElementById('chat-input');
+    const classTimer = document.getElementById('class-timer');
+    const toolbarWhiteboard = document.getElementById('toolbar-whiteboard');
+    const toolbarUpload = document.getElementById('toolbar-upload');
+    const toolbarScreen = document.getElementById('toolbar-screen');
+    const toolbarStorage = document.getElementById('toolbar-storage');
+    const exitDashboardBtn = document.getElementById('exit-dashboard-btn');
+
+    // --- File list for lesson content ---
+    let uploadedFiles = [];
+
+    // --- Room logic ---
+    function getQueryParam(name) {
+        const url = new URL(window.location.href);
+        return url.searchParams.get(name);
+    }
+    const room = getQueryParam('room');
+    if (!room) {
+        alert('No room specified. Please go back and enter a room.');
+        window.location.href = 'device-check.html';
+    }
+
+    // --- Video/WebRTC logic ---
+    let localStream, peerConnection;
+    const config = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+
+    document.addEventListener('DOMContentLoaded', async function() {
+        try {
+            localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            localVideo.srcObject = localStream;
+            socket.emit('join', room);
+            
+            // Load initial files from server
+            await loadFilesForRoom();
+            
+            // Initialize tab functionality
+            initializeTabs();
+            
+            // Initialize whiteboard
+            initializeWhiteboard();
+            
+            // Setup file upload listeners
+            setupFileUploadListeners();
+            
+            // Setup toolbar event handlers
+            setupToolbarHandlers();
+            
+            // Setup chat functionality
+            setupChat();
+            
+            // Start class timer
+            startClassTimer();
+            
+            // Camera settings modal logic
+            const cameraSettingsBtn = document.getElementById('camera-settings-btn');
+            const cameraSettingsModal = document.getElementById('camera-settings-modal');
+            const closeSettingsModal = document.getElementById('close-settings-modal');
+            const localBrightnessSlider = document.getElementById('local-brightness-slider');
+            const localWhitenessSlider = document.getElementById('local-whiteness-slider');
+            const localBeautifySlider = document.getElementById('local-beautify-slider');
+            const localBeautifyValue = document.getElementById('local-beautify-value');
+            const toggleCameraBtn = document.getElementById('toggle-camera-btn');
+            let cameraHidden = false;
+            let originalStream = null;
+            
+            cameraSettingsBtn.onclick = function() {
+                console.log('Opening camera settings modal...');
+                cameraSettingsModal.style.display = 'flex';
+                // Force modal to be on top
+                cameraSettingsModal.style.zIndex = '9999';
+            };
+            
+            closeSettingsModal.onclick = function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Closing camera settings modal...');
+                cameraSettingsModal.style.display = 'none';
+            };
+            
+            // Add hover effects to close button
+            closeSettingsModal.onmouseenter = function() {
+                this.style.background = '#e9ecef';
+                this.style.color = '#495057';
+            };
+            
+            closeSettingsModal.onmouseleave = function() {
+                this.style.background = '#f8f9fa';
+                this.style.color = '#666';
+            };
+            
+            // Also close modal when clicking outside
+            cameraSettingsModal.onclick = function(e) {
+                if (e.target === cameraSettingsModal) {
+                    console.log('Closing modal by clicking outside...');
+                    cameraSettingsModal.style.display = 'none';
+                }
+            };
+            
+            // Close modal with Escape key
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && cameraSettingsModal.style.display === 'flex') {
+                    console.log('Closing modal with Escape key...');
+                    cameraSettingsModal.style.display = 'none';
+                }
+            });
+            
+            // Emergency close button
+            const emergencyCloseBtn = document.getElementById('emergency-close-btn');
+            if (emergencyCloseBtn) {
+                emergencyCloseBtn.onclick = function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Emergency close button clicked...');
+                    cameraSettingsModal.style.display = 'none';
+                };
+            }
+            
+            function updateLocalVideoFilter() {
+                const brightness = localBrightnessSlider.value;
+                const whiteness = localWhitenessSlider.value;
+                const beautify = localBeautifySlider.value;
+                
+                // Beautify effects: blur for skin smoothing, contrast adjustment, and saturation
+                const blurAmount = beautify > 0 ? (beautify / 100) * 0.5 : 0; // Max 0.5px blur
+                const contrastAdjust = beautify > 0 ? 1 + (beautify / 100) * 0.3 : 1; // Increase contrast up to 30%
+                const saturationAdjust = beautify > 0 ? 1 + (beautify / 100) * 0.2 : 1; // Increase saturation up to 20%
+                
+                // Apply filters with beautify effects
+                localVideo.style.filter = `
+                    brightness(${brightness}) 
+                    contrast(${whiteness * contrastAdjust}) 
+                    saturate(${saturationAdjust}) 
+                    blur(${blurAmount}px)
+                `;
+                
+                // Update beautify value display
+                localBeautifyValue.textContent = beautify + '%';
+            }
+            
+            localBrightnessSlider.oninput = updateLocalVideoFilter;
+            localWhitenessSlider.oninput = updateLocalVideoFilter;
+            localBeautifySlider.oninput = updateLocalVideoFilter;
+            toggleCameraBtn.onclick = async function() {
+                if (!cameraHidden) {
+                    // Turn OFF camera
+                    if (localStream) {
+                        localStream.getTracks().forEach(track => track.stop());
+                        localVideo.srcObject = null;
+                    }
+                    cameraHidden = true;
+                    toggleCameraBtn.innerHTML = `
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                      </svg>
+                      Turn ON Camera
+                    `;
+                    toggleCameraBtn.style.background = '#28a745';
+                } else {
+                    // Turn ON camera
+                    try {
+                        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                        localVideo.srcObject = localStream;
+                        cameraHidden = false;
+                        toggleCameraBtn.innerHTML = `
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                            <line x1="1" y1="1" x2="23" y2="23"/>
+                          </svg>
+                          Turn OFF Camera
+                        `;
+                        toggleCameraBtn.style.background = '#e74c3c';
+                    } catch (error) {
+                        console.error('Error turning on camera:', error);
+                        alert('Failed to turn on camera. Please check permissions.');
+                    }
+                }
+                cameraSettingsModal.style.display = 'none';
+            };
+            
+        } catch (error) {
+            console.error('Error accessing camera/microphone:', error);
+            alert('Unable to access camera/microphone. Please check permissions.');
+        }
+    });
+
+    socket.on('joined', () => {
+        createPeerConnection();
+        if (peerConnection) {
+            peerConnection.addStream(localStream);
+        }
+    });
+
+    socket.on('ready', () => {
+        if (peerConnection) {
+            peerConnection.createOffer().then(offer => {
+                peerConnection.setLocalDescription(offer);
+                socket.emit('offer', { room, offer });
+            });
+        }
+    });
+
+    socket.on('offer', ({ offer }) => {
+        if (peerConnection) {
+            peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+            peerConnection.createAnswer().then(answer => {
+                peerConnection.setLocalDescription(answer);
+                socket.emit('answer', { room, answer });
+            });
+        }
+    });
+
+    socket.on('answer', ({ answer }) => {
+        if (peerConnection) {
+            peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+        }
+    });
+
+    socket.on('ice-candidate', ({ candidate }) => {
+        if (peerConnection && candidate) {
+            peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+        }
+    });
+
+    function createPeerConnection() {
+        peerConnection = new RTCPeerConnection(config);
+        peerConnection.onicecandidate = event => {
+            if (event.candidate) {
+                socket.emit('ice-candidate', { room, candidate: event.candidate });
+            }
+        };
+        peerConnection.ontrack = event => {
+            remoteVideo.srcObject = event.streams[0];
+        };
+        if (localStream) {
+            localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+        }
+    }
+
+    // --- Tab switching functionality ---
+    function initializeTabs() {
+        const tabButtons = document.querySelectorAll('.tab-btn');
+        
+        tabButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const tabName = btn.getAttribute('data-tab');
+                switchTab(tabName);
+            });
+        });
+        
+        // Initialize with lesson content tab
+        switchTab('lesson-content');
+    }
+    
+    function switchTab(tabName) {
+        console.log('Switching to tab:', tabName);
+        
+        // Hide all tab content
+        const tabContents = document.querySelectorAll('.tab-content');
+        tabContents.forEach(content => {
+            content.style.display = 'none';
+        });
+        
+        // Remove active class from all tab buttons
+        const tabButtons = document.querySelectorAll('.tab-btn');
+        tabButtons.forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        // Show selected tab content
+        const selectedTab = document.getElementById(tabName + '-tab');
+        if (selectedTab) {
+            selectedTab.style.display = 'block';
+        }
+        
+        // Add active class to selected tab button
+        const selectedButton = document.querySelector(`[data-tab="${tabName}"]`);
+        if (selectedButton) {
+            selectedButton.classList.add('active');
+        }
+        
+        // Initialize whiteboard if switching to whiteboard tab
+        if (tabName === 'whiteboard') {
+            setTimeout(() => {
+                initializeWhiteboard();
+            }, 100);
+        }
+        
+        // Load files if switching to files tab
+        if (tabName === 'files') {
+            loadFilesForRoom();
+        }
+    }
+
+    // --- Toolbar event handlers ---
+    function setupToolbarHandlers() {
+        toolbarWhiteboard.addEventListener('click', () => {
+            switchTab('whiteboard');
+        });
+        
+        toolbarUpload.addEventListener('click', () => {
+            switchTab('files');
+        });
+        
+        toolbarScreen.addEventListener('click', async () => {
+            if (!peerConnection) {
+                alert('You need at least one other participant in the room to share your screen.');
+                return;
+            }
+            try {
+                const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+                const screenTrack = screenStream.getVideoTracks()[0];
+                const sender = peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
+                if (sender) {
+                    sender.replaceTrack(screenTrack);
+                    console.log('Screen track replaced in peer connection.');
+                } else {
+                    alert('No video sender found in peer connection.');
+                }
+                localVideo.srcObject = screenStream;
+                screenTrack.onended = async () => {
+                    if (localStream) {
+                        const camTrack = localStream.getVideoTracks()[0];
+                        if (sender) sender.replaceTrack(camTrack);
+                        localVideo.srcObject = localStream;
+                    }
+                };
+            } catch (err) {
+                alert('Screen sharing failed or was cancelled.');
+                console.error('Screen sharing error:', err);
+            }
+        });
+
+        toolbarStorage.addEventListener('click', () => {
+            showFileStoragePicker();
+        });
+
+        exitDashboardBtn.addEventListener('click', () => {
+            window.location.href = 'teacher-dashboard.html';
+        });
+    }
+
+    // --- Chat functionality ---
+    function setupChat() {
+        chatForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const message = chatInput.value.trim();
+            if (message) {
+                const username = localStorage.getItem('remoedUsername') || 'Anonymous';
+                const messageData = {
+                    room,
+                    message,
+                    username,
+                    timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+                };
+                
+                // Send to server
+                socket.emit('chat-message', messageData);
+                
+                // Add to local chat
+                addChatMessage(messageData);
+                
+                chatInput.value = '';
+            }
+        });
+
+        // Listen for chat messages from other participants
+        socket.on('chat-message', (messageData) => {
+            addChatMessage(messageData);
+        });
+    }
+
+    function addChatMessage(messageData) {
+        const messageDiv = document.createElement('div');
+        messageDiv.style.cssText = `
+            margin-bottom: 8px;
+            padding: 8px 12px;
+            background: #fff;
+            border-radius: 8px;
+            border-left: 3px solid #1ca7e7;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        `;
+        
+        const usernameSpan = document.createElement('div');
+        usernameSpan.style.cssText = `
+            font-weight: 600;
+            color: #1ca7e7;
+            font-size: 0.9rem;
+            margin-bottom: 4px;
+        `;
+        usernameSpan.textContent = messageData.username;
+        
+        const messageText = document.createElement('div');
+        messageText.style.cssText = `
+            color: #333;
+            word-wrap: break-word;
+        `;
+        messageText.textContent = messageData.message;
+        
+        const timeSpan = document.createElement('div');
+        timeSpan.style.cssText = `
+            font-size: 0.8rem;
+            color: #999;
+            margin-top: 4px;
+        `;
+        timeSpan.textContent = messageData.timestamp;
+        
+        messageDiv.appendChild(usernameSpan);
+        messageDiv.appendChild(messageText);
+        messageDiv.appendChild(timeSpan);
+        
+        chatMessages.appendChild(messageDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    // --- Whiteboard functionality ---
+    function initializeWhiteboard() {
+        const canvas = document.getElementById('whiteboard');
+        if (!canvas) return;
+        
+        const ctx = canvas.getContext('2d');
+        const colorPicker = document.querySelector('.wb-color-picker');
+        const brushSize = document.querySelector('.wb-brush-size');
+        const controlBtns = document.querySelectorAll('.wb-control-btn');
+        
+        // Set canvas size
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth - 48;
+            canvas.height = container.clientHeight - 80;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+        
+        // Drawing state
+        let isDrawing = false;
+        let points = [];
+        let currentTool = 'pen';
+        let pathHistory = [];
+        let textMode = false;
+        
+        // Initialize canvas
+        ctx.strokeStyle = colorPicker.value;
+        ctx.lineWidth = brushSize.value;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        
+        // Smooth drawing with interpolation
+        function drawSmoothPath(points) {
+            if (points.length < 2) return;
+            
+            ctx.beginPath();
+            ctx.moveTo(points[0].x, points[0].y);
+            
+            if (points.length === 2) {
+                ctx.lineTo(points[1].x, points[1].y);
+            } else {
+                for (let i = 1; i < points.length - 1; i++) {
+                    const prev = points[i - 1];
+                    const curr = points[i];
+                    const next = points[i + 1];
+                    
+                    const cpX = curr.x;
+                    const cpY = curr.y;
+                    
+                    ctx.quadraticCurveTo(cpX, cpY, next.x, next.y);
+                }
+            }
+            
+            ctx.stroke();
+        }
+        
+        // Clear whiteboard function
+        function clearWhiteboard() {
+            if (confirm('Clear the entire whiteboard? This will clear for all participants.')) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                pathHistory = [];
+                if (room) {
+                    socket.emit('whiteboard-clear', { room });
+                }
+            }
+        }
+        
+        // Clear button event
+        document.getElementById('clear-whiteboard').addEventListener('click', clearWhiteboard);
+        
+        // Tool selection
+        controlBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                controlBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentTool = btn.getAttribute('data-action');
+                textMode = (currentTool === 'text');
+                if (currentTool === 'eraser') {
+                    ctx.globalCompositeOperation = 'destination-out';
+                } else {
+                    ctx.globalCompositeOperation = 'source-over';
+                }
+            });
+        });
+        
+        // Color and brush size
+        colorPicker.addEventListener('change', (e) => {
+            ctx.strokeStyle = e.target.value;
+        });
+        
+        brushSize.addEventListener('change', (e) => {
+            ctx.lineWidth = e.target.value;
+        });
+        
+        // Drawing events
+        canvas.addEventListener('mousedown', (e) => {
+            if (textMode) return; // Don't draw if in text mode
+            isDrawing = true;
+            points = [];
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            points.push({ x, y });
+            
+            if (currentTool === 'eraser') {
+                ctx.globalCompositeOperation = 'destination-out';
+                ctx.strokeStyle = 'rgba(0,0,0,1)';
+            } else {
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.strokeStyle = colorPicker.value;
+            }
+        });
+        
+        canvas.addEventListener('mousemove', (e) => {
+            if (!isDrawing || textMode) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            points.push({ x, y });
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            pathHistory.forEach(path => {
+                const originalColor = ctx.strokeStyle;
+                const originalWidth = ctx.lineWidth;
+                const originalComposite = ctx.globalCompositeOperation;
+                
+                ctx.strokeStyle = path.color;
+                ctx.lineWidth = path.width;
+                ctx.globalCompositeOperation = path.tool === 'eraser' ? 'destination-out' : 'source-over';
+                drawSmoothPath(path.points);
+                
+                ctx.strokeStyle = originalColor;
+                ctx.lineWidth = originalWidth;
+                ctx.globalCompositeOperation = originalComposite;
+            });
+            
+            if (currentTool === 'eraser') {
+                ctx.globalCompositeOperation = 'destination-out';
+                ctx.strokeStyle = 'rgba(0,0,0,1)';
+            } else {
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.strokeStyle = colorPicker.value;
+            }
+            
+            drawSmoothPath(points);
+        });
+        
+        canvas.addEventListener('mouseup', () => {
+            if (isDrawing && points.length > 1 && !textMode) {
+                pathHistory.push({
+                    points: [...points],
+                    color: ctx.strokeStyle,
+                    width: ctx.lineWidth,
+                    tool: currentTool
+                });
+                
+                if (room) {
+                    socket.emit('whiteboard-path', {
+                        room,
+                        points: points,
+                        color: ctx.strokeStyle,
+                        width: ctx.lineWidth,
+                        tool: currentTool
+                    });
+                }
+            }
+            isDrawing = false;
+            points = [];
+        });
+        
+        // Listen for whiteboard events from other participants
+        socket.on('whiteboard-path', (data) => {
+            const path = {
+                points: data.points,
+                color: data.color,
+                width: data.width,
+                tool: data.tool
+            };
+            pathHistory.push(path);
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            pathHistory.forEach(p => {
+                const originalColor = ctx.strokeStyle;
+                const originalWidth = ctx.lineWidth;
+                const originalComposite = ctx.globalCompositeOperation;
+                
+                ctx.strokeStyle = p.color;
+                ctx.lineWidth = p.width;
+                ctx.globalCompositeOperation = p.tool === 'eraser' ? 'destination-out' : 'source-over';
+                drawSmoothPath(p.points);
+                
+                ctx.strokeStyle = originalColor;
+                ctx.lineWidth = originalWidth;
+                ctx.globalCompositeOperation = originalComposite;
+            });
+        });
+        
+        socket.on('whiteboard-clear', () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            pathHistory = [];
+        });
+
+        // Text tool functionality
+        canvas.addEventListener('click', (e) => {
+            if (!textMode) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const text = prompt('Enter text:');
+            if (text) {
+                ctx.font = `${ctx.lineWidth * 3}px Arial`;
+                ctx.fillStyle = ctx.strokeStyle;
+                ctx.fillText(text, x, y);
+                // Emit text to other participants
+                if (room) {
+                    socket.emit('whiteboard-text', {
+                        room,
+                        x, y, text,
+                        color: ctx.strokeStyle,
+                        size: ctx.lineWidth * 3
+                    });
+                }
+            }
+        });
+        // Listen for whiteboard text events from other participants
+        socket.on('whiteboard-text', (data) => {
+            ctx.font = `${data.size}px Arial`;
+            ctx.fillStyle = data.color;
+            ctx.fillText(data.text, data.x, data.y);
+        });
+    }
+
+    // --- File upload functionality ---
+    function setupFileUploadListeners() {
+        const uploadBtn = document.getElementById('upload-btn');
+        const fileInput = document.getElementById('file-input');
+        
+        if (uploadBtn && fileInput) {
+            uploadBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                fileInput.click();
+            });
+            
+            fileInput.addEventListener('change', async (e) => {
+                const files = Array.from(e.target.files);
+                if (files.length > 0) {
+                    await uploadFilesToServer(files);
+                }
+            });
+        }
+    }
+
+    async function uploadFilesToServer(files) {
+        const room = getQueryParam('room');
+        const uploader = localStorage.getItem('remoedUsername') || 'Anonymous';
+        const filesContainer = document.getElementById('files-container');
+        
+        const loadingDiv = document.createElement('div');
+        loadingDiv.id = 'upload-loading';
+        loadingDiv.innerHTML = `
+            <div style="text-align: center; padding: 20px; color: #1ca7e7;">
+                <div style="font-size: 1.2rem; margin-bottom: 10px;">📤 Uploading files...</div>
+                <div style="font-size: 0.9rem; color: #666;">Please wait while your files are being processed</div>
+            </div>
+        `;
+        filesContainer.appendChild(loadingDiv);
+        
+        try {
+            for (const file of files) {
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('room', room);
+                formData.append('uploader', uploader);
+                
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Upload failed for ${file.name}`);
+                }
+            }
+            
+            await loadFilesForRoom();
+            updateLessonFilePicker();
+            
+        } catch (error) {
+            console.error('Upload error:', error);
+            alert('Upload failed: ' + error.message);
+        } finally {
+            const loadingDiv = document.getElementById('upload-loading');
+            if (loadingDiv) loadingDiv.remove();
+            
+            const fileInput = document.getElementById('file-input');
+            if (fileInput) fileInput.value = '';
+        }
+    }
+
+    async function loadFilesForRoom() {
+        const room = getQueryParam('room');
+        const filesContainer = document.getElementById('files-container');
+        
+        if (!room) {
+            filesContainer.innerHTML = '<div style="text-align: center; color: #999; font-style: italic;">No room ID found</div>';
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/api/files/${room}`);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const data = await response.json();
+            
+            if (!data.files || !Array.isArray(data.files)) {
+                uploadedFiles = [];
+            } else {
+                uploadedFiles = data.files.map(file => ({
+                    id: file.id,
+                    name: file.originalName,
+                    type: file.mimeType,
+                    size: file.fileSize,
+                    url: `/api/download/${file.id}`,
+                    previewUrl: `/api/preview/${file.id}`,
+                    uploader: file.uploader,
+                    uploadDate: file.uploadDate
+                }));
+            }
+            
+            renderFileList();
+            updateLessonFilePicker();
+            
+        } catch (error) {
+            console.error('Error loading files:', error);
+            filesContainer.innerHTML = `<div style="text-align: center; color: #999; font-style: italic;">Error loading files: ${error.message}</div>`;
+        }
+    }
+
+    function renderFileList() {
+        const filesContainer = document.getElementById('files-container');
+        
+        if (uploadedFiles.length === 0) {
+            filesContainer.innerHTML = '<div style="text-align: center; color: #999; font-style: italic;">No files uploaded yet</div>';
+            return;
+        }
+        
+        filesContainer.innerHTML = '';
+        
+        uploadedFiles.forEach(file => {
+            const fileElement = document.createElement('div');
+            fileElement.style.cssText = `
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 12px 16px;
+                background: #fff;
+                border: 1px solid #e0e6ed;
+                border-radius: 8px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+                margin-bottom: 8px;
+            `;
+            
+            const fileInfo = document.createElement('div');
+            fileInfo.style.cssText = `
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                flex: 1;
+            `;
+            
+            const fileIcon = document.createElement('span');
+            fileIcon.style.cssText = `
+                font-size: 1.5rem;
+                color: #1ca7e7;
+            `;
+            
+            if (file.type.includes('pdf')) {
+                fileIcon.textContent = '📄';
+            } else if (file.type.includes('image')) {
+                fileIcon.textContent = '🖼️';
+            } else if (file.type.includes('document') || file.name.includes('.doc')) {
+                fileIcon.textContent = '📝';
+            } else if (file.type.includes('presentation') || file.name.includes('.ppt')) {
+                fileIcon.textContent = '📊';
+            } else {
+                fileIcon.textContent = '📁';
+            }
+            
+            const fileDetails = document.createElement('div');
+            fileDetails.innerHTML = `
+                <div style="font-weight: 600; color: #333; margin-bottom: 4px;">${file.name}</div>
+                <div style="font-size: 0.85rem; color: #666;">${formatFileSize(file.size)} • ${file.uploader}</div>
+            `;
+            
+            fileInfo.appendChild(fileIcon);
+            fileInfo.appendChild(fileDetails);
+            
+            const actions = document.createElement('div');
+            actions.style.cssText = `
+                display: flex;
+                gap: 8px;
+            `;
+            
+            const downloadBtn = document.createElement('button');
+            downloadBtn.textContent = '⬇️';
+            downloadBtn.title = 'Download';
+            downloadBtn.style.cssText = `
+                background: #1ca7e7;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 6px 10px;
+                cursor: pointer;
+                font-size: 1rem;
+            `;
+            downloadBtn.addEventListener('click', () => {
+                window.open(file.url, '_blank');
+            });
+            
+            const deleteBtn = document.createElement('button');
+            deleteBtn.textContent = '🗑️';
+            deleteBtn.title = 'Delete';
+            deleteBtn.style.cssText = `
+                background: #ff6b6b;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 6px 10px;
+                cursor: pointer;
+                font-size: 1rem;
+            `;
+            deleteBtn.addEventListener('click', async () => {
+                if (confirm('Delete this file?')) {
+                    await deleteFile(file.id);
+                }
+            });
+            
+            actions.appendChild(downloadBtn);
+            actions.appendChild(deleteBtn);
+            
+            fileElement.appendChild(fileInfo);
+            fileElement.appendChild(actions);
+            
+            filesContainer.appendChild(fileElement);
+        });
+    }
+
+    async function deleteFile(fileId) {
+        try {
+            const response = await fetch(`/api/files/${fileId}`, {
+                method: 'DELETE'
+            });
+            
+            if (!response.ok) throw new Error('Delete failed');
+            
+            uploadedFiles = uploadedFiles.filter(file => file.id !== fileId);
+            renderFileList();
+            updateLessonFilePicker();
+            
+        } catch (error) {
+            console.error('Delete error:', error);
+            alert('Failed to delete file');
+        }
+    }
+
+    function updateLessonFilePicker() {
+        const pickerContainer = document.getElementById('lesson-file-picker-container');
+        const viewer = document.getElementById('lesson-file-viewer');
+        if (!pickerContainer) return;
+        
+        pickerContainer.innerHTML = '';
+        
+        if (uploadedFiles.length === 0) {
+            pickerContainer.innerHTML = '<span style="color:#aaa;">No files uploaded yet.</span>';
+            if (viewer) viewer.innerHTML = '';
+            return;
+        }
+        
+        const select = document.createElement('select');
+        select.style.cssText = `
+            padding: 8px 16px;
+            font-size: 1rem;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            margin-right: 12px;
+        `;
+        select.innerHTML = '<option value="">Select a file to view...</option>' +
+            uploadedFiles.map((f, i) => `<option value="${i}">${f.name}</option>`).join('');
+        
+        pickerContainer.appendChild(select);
+        
+        select.addEventListener('change', function() {
+            if (this.value === '') {
+                if (viewer) viewer.innerHTML = '';
+                return;
+            }
+            const file = uploadedFiles[parseInt(this.value)];
+            showLessonFile(file);
+        });
+    }
+
+    function showLessonFile(file) {
+        const viewer = document.getElementById('lesson-file-viewer');
+        if (!viewer) return;
+        
+        viewer.innerHTML = '';
+        const previewUrl = file.previewUrl || file.url;
+        
+        if (file.type.includes('pdf')) {
+            const iframe = document.createElement('iframe');
+            iframe.src = previewUrl;
+            iframe.style.cssText = `
+                width: 100%;
+                height: 600px;
+                border: none;
+                border-radius: 8px;
+            `;
+            viewer.appendChild(iframe);
+        } else if (file.type.includes('image')) {
+            const img = document.createElement('img');
+            img.src = previewUrl;
+            img.style.cssText = `
+                max-width: 100%;
+                max-height: 600px;
+                border-radius: 8px;
+            `;
+            img.alt = file.name;
+            viewer.appendChild(img);
+        } else if (file.type.includes('video')) {
+            const video = document.createElement('video');
+            video.src = previewUrl;
+            video.controls = true;
+            video.style.cssText = `
+                max-width: 100%;
+                max-height: 600px;
+                border-radius: 8px;
+            `;
+            viewer.appendChild(video);
+        } else {
+            const previewCard = document.createElement('div');
+            previewCard.style.cssText = `
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                padding: 40px 20px;
+                background: #f8f9fa;
+                border: 2px dashed #e0e6ed;
+                border-radius: 12px;
+                text-align: center;
+            `;
+            
+            const fileIcon = document.createElement('div');
+            fileIcon.style.cssText = `
+                font-size: 3rem;
+                margin-bottom: 16px;
+                color: #1ca7e7;
+            `;
+            
+            if (file.type.includes('document') || file.name.includes('.doc')) {
+                fileIcon.textContent = '📝';
+            } else if (file.type.includes('presentation') || file.name.includes('.ppt')) {
+                fileIcon.textContent = '📊';
+            } else {
+                fileIcon.textContent = '📁';
+            }
+            
+            const fileName = document.createElement('h3');
+            fileName.textContent = file.name;
+            fileName.style.cssText = `
+                margin: 0 0 8px 0;
+                color: #333;
+                font-size: 1.1rem;
+            `;
+            
+            const fileSize = document.createElement('p');
+            fileSize.textContent = formatFileSize(file.size);
+            fileSize.style.cssText = `
+                margin: 0 0 16px 0;
+                color: #666;
+                font-size: 0.9rem;
+            `;
+            
+            const downloadBtn = document.createElement('a');
+            downloadBtn.href = previewUrl;
+            downloadBtn.target = '_blank';
+            downloadBtn.textContent = '⬇️ Download File';
+            downloadBtn.style.cssText = `
+                background: #1ca7e7;
+                color: white;
+                text-decoration: none;
+                padding: 10px 20px;
+                border-radius: 6px;
+                font-weight: 600;
+                transition: background 0.2s;
+            `;
+            downloadBtn.onmouseenter = () => downloadBtn.style.background = '#1691d1';
+            downloadBtn.onmouseleave = () => downloadBtn.style.background = '#1ca7e7';
+            
+            previewCard.appendChild(fileIcon);
+            previewCard.appendChild(fileName);
+            previewCard.appendChild(fileSize);
+            previewCard.appendChild(downloadBtn);
+            viewer.appendChild(previewCard);
+        }
+    }
+
+    // --- File storage picker ---
+    function showFileStoragePicker() {
+        const existingModal = document.getElementById('file-storage-modal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+        
+        const modal = document.createElement('div');
+        modal.id = 'file-storage-modal';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        `;
+        
+        const modalContent = document.createElement('div');
+        modalContent.style.cssText = `
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            padding: 24px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        `;
+        
+        const header = document.createElement('div');
+        header.style.cssText = `
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #eee;
+        `;
+        
+        const title = document.createElement('h3');
+        title.textContent = '📁 File Storage';
+        title.style.cssText = `
+            margin: 0;
+            color: #1ca7e7;
+            font-size: 1.3rem;
+        `;
+        
+        const closeBtn = document.createElement('button');
+        closeBtn.textContent = '×';
+        closeBtn.style.cssText = `
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: #999;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        `;
+        closeBtn.onclick = () => modal.remove();
+        
+        header.appendChild(title);
+        header.appendChild(closeBtn);
+        
+        const fileList = document.createElement('div');
+        fileList.style.cssText = `
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        `;
+        
+        if (uploadedFiles && uploadedFiles.length > 0) {
+            uploadedFiles.forEach(file => {
+                const fileItem = document.createElement('div');
+                fileItem.style.cssText = `
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    padding: 12px 16px;
+                    background: #f8f9fa;
+                    border: 1px solid #e0e6ed;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    transition: background 0.2s;
+                `;
+                
+                fileItem.onmouseenter = () => {
+                    fileItem.style.background = '#e3f2fd';
+                };
+                
+                fileItem.onmouseleave = () => {
+                    fileItem.style.background = '#f8f9fa';
+                };
+                
+                const fileInfo = document.createElement('div');
+                fileInfo.style.cssText = `
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    flex: 1;
+                `;
+                
+                const fileIcon = document.createElement('span');
+                fileIcon.style.cssText = `
+                    font-size: 1.5rem;
+                    color: #1ca7e7;
+                `;
+                
+                if (file.type.includes('pdf')) {
+                    fileIcon.textContent = '📄';
+                } else if (file.type.includes('image')) {
+                    fileIcon.textContent = '🖼️';
+                } else if (file.type.includes('document') || file.name.includes('.doc')) {
+                    fileIcon.textContent = '📝';
+                } else if (file.type.includes('presentation') || file.name.includes('.ppt')) {
+                    fileIcon.textContent = '📊';
+                } else {
+                    fileIcon.textContent = '📁';
+                }
+                
+                const fileDetails = document.createElement('div');
+                fileDetails.innerHTML = `
+                    <div style="font-weight: 600; color: #333; margin-bottom: 4px;">${file.name}</div>
+                    <div style="font-size: 0.85rem; color: #666;">${formatFileSize(file.size)} • ${file.uploader || 'Unknown'}</div>
+                `;
+                
+                fileInfo.appendChild(fileIcon);
+                fileInfo.appendChild(fileDetails);
+                
+                const actions = document.createElement('div');
+                actions.style.cssText = `
+                    display: flex;
+                    gap: 8px;
+                `;
+                
+                const viewBtn = document.createElement('button');
+                viewBtn.textContent = '👁️';
+                viewBtn.title = 'View in Lesson Content';
+                viewBtn.style.cssText = `
+                    background: #1ca7e7;
+                    color: white;
+                    border: none;
+                    border-radius: 4px;
+                    padding: 6px 10px;
+                    cursor: pointer;
+                    font-size: 1rem;
+                `;
+                viewBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    switchTab('lesson-content');
+                    showLessonFile(file);
+                    modal.remove();
+                };
+                
+                const downloadBtn = document.createElement('button');
+                downloadBtn.textContent = '⬇️';
+                downloadBtn.title = 'Download';
+                downloadBtn.style.cssText = `
+                    background: #28a745;
+                    color: white;
+                    border: none;
+                    border-radius: 4px;
+                    padding: 6px 10px;
+                    cursor: pointer;
+                    font-size: 1rem;
+                `;
+                downloadBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    window.open(file.url, '_blank');
+                };
+                
+                actions.appendChild(viewBtn);
+                actions.appendChild(downloadBtn);
+                
+                fileItem.appendChild(fileInfo);
+                fileItem.appendChild(actions);
+                
+                fileList.appendChild(fileItem);
+            });
+        } else {
+            const noFiles = document.createElement('div');
+            noFiles.style.cssText = `
+                text-align: center;
+                padding: 40px 20px;
+                color: #999;
+                font-style: italic;
+            `;
+            noFiles.textContent = 'No files in storage. Upload files first.';
+            fileList.appendChild(noFiles);
+        }
+        
+        modalContent.appendChild(header);
+        modalContent.appendChild(fileList);
+        modal.appendChild(modalContent);
+        
+        modal.onclick = (e) => {
+            if (e.target === modal) {
+                modal.remove();
+            }
+        };
+        
+        document.body.appendChild(modal);
+    }
+
+    // --- Class timer ---
+    function startClassTimer() {
+        let startTime = Date.now();
+        
+        setInterval(() => {
+            const elapsed = Date.now() - startTime;
+            const minutes = Math.floor(elapsed / 60000);
+            const seconds = Math.floor((elapsed % 60000) / 1000);
+            classTimer.textContent = `Class Time: ${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }, 1000);
+    }
+
+    // --- Helper functions ---
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    // --- Socket event listeners ---
+    socket.on('connect', () => {
+        console.log('Connected to signaling server');
+    });
+
+    socket.on('disconnect', () => {
+        console.log('Disconnected from signaling server');
+    });
+
+    socket.on('error', (error) => {
+        console.error('Socket error:', error);
+    });
+
+    // --- Mute Audio Functionality ---
+    let isAudioMuted = false;
+    const muteAudioBtn = document.getElementById('mute-audio-btn');
+    const muteIcon = document.getElementById('mute-icon');
+    const unmuteIcon = document.getElementById('unmute-icon');
+    const gearSettingsBtn = document.getElementById('gear-settings-btn');
+
+    if (muteAudioBtn) {
+        muteAudioBtn.addEventListener('click', () => {
+            if (localStream) {
+                const audioTrack = localStream.getAudioTracks()[0];
+                if (audioTrack) {
+                    if (isAudioMuted) {
+                        // Unmute
+                        audioTrack.enabled = true;
+                        muteIcon.style.display = 'block';
+                        unmuteIcon.style.display = 'none';
+                        isAudioMuted = false;
+                        muteAudioBtn.title = 'Mute Audio';
+                    } else {
+                        // Mute
+                        audioTrack.enabled = false;
+                        muteIcon.style.display = 'none';
+                        unmuteIcon.style.display = 'block';
+                        isAudioMuted = true;
+                        muteAudioBtn.title = 'Unmute Audio';
+                    }
+                }
+            }
+        });
+    }
+
+    if (gearSettingsBtn) {
+        gearSettingsBtn.addEventListener('click', () => {
+            // Open the existing camera settings modal
+            const settingsModal = document.getElementById('camera-settings-modal');
+            if (settingsModal) {
+                settingsModal.style.display = 'flex';
+            }
+        });
+    }
+    </script>
+</body>
+</html> 

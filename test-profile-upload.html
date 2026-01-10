@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile Upload Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .result { margin: 10px 0; padding: 10px; border-radius: 3px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+        input[type="file"] { margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>Profile Upload Debug Test</h1>
+    
+    <div class="test-section">
+        <h3>1. Test Server Connectivity</h3>
+        <button onclick="testServerConnectivity()">Test Server</button>
+        <div id="server-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>2. Test Teacher Login</h3>
+        <input type="text" id="teacher-username" placeholder="Teacher Username" value="teacher1">
+        <input type="password" id="teacher-password" placeholder="Password" value="password123">
+        <button onclick="testTeacherLogin()">Login</button>
+        <div id="login-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>3. Test Document Upload</h3>
+        <input type="file" id="test-document" accept="image/*">
+        <button onclick="testDocumentUpload()">Upload Document</button>
+        <div id="document-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>4. Test Profile Save</h3>
+        <button onclick="testProfileSave()">Save Profile</button>
+        <div id="profile-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>5. Test Valid ID Upload</h3>
+        <input type="file" id="valid-id-file" accept="image/*">
+        <button onclick="testValidIdUpload()">Upload Valid ID</button>
+        <div id="valid-id-result"></div>
+    </div>
+
+    <script>
+        let authToken = '';
+        
+        function showResult(elementId, message, isSuccess) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = message;
+            element.className = isSuccess ? 'result success' : 'result error';
+        }
+        
+        async function testServerConnectivity() {
+            try {
+                const response = await fetch('/api/teacher/test');
+                const data = await response.json();
+                showResult('server-result', `Server Response: ${JSON.stringify(data)}`, true);
+            } catch (error) {
+                showResult('server-result', `Server Error: ${error.message}`, false);
+            }
+        }
+        
+        async function testTeacherLogin() {
+            try {
+                const username = document.getElementById('teacher-username').value;
+                const password = document.getElementById('teacher-password').value;
+                
+                const response = await fetch('/api/auth/teacher-login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    authToken = data.token;
+                    showResult('login-result', `Login Success! Token: ${authToken.substring(0, 20)}...`, true);
+                } else {
+                    showResult('login-result', `Login Failed: ${data.error}`, false);
+                }
+            } catch (error) {
+                showResult('login-result', `Login Error: ${error.message}`, false);
+            }
+        }
+        
+        async function testDocumentUpload() {
+            if (!authToken) {
+                showResult('document-result', 'Please login first', false);
+                return;
+            }
+            
+            const fileInput = document.getElementById('test-document');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                showResult('document-result', 'Please select a file first', false);
+                return;
+            }
+            
+            try {
+                const reader = new FileReader();
+                reader.onload = async function(e) {
+                    const fileData = e.target.result;
+                    
+                    const response = await fetch('/api/teacher/upload-document', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${authToken}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            documentType: 'validId',
+                            fileData: fileData
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        showResult('document-result', 'Document uploaded successfully!', true);
+                    } else {
+                        showResult('document-result', `Upload failed: ${data.error}`, false);
+                    }
+                };
+                
+                reader.readAsDataURL(file);
+            } catch (error) {
+                showResult('document-result', `Upload error: ${error.message}`, false);
+            }
+        }
+        
+        async function testProfileSave() {
+            if (!authToken) {
+                showResult('profile-result', 'Please login first', false);
+                return;
+            }
+            
+            try {
+                const profileData = {
+                    firstName: 'Test',
+                    middleName: 'Teacher',
+                    lastName: 'User',
+                    fullname: 'Test Teacher User',
+                    birthday: '1990-01-01',
+                    gender: 'Male',
+                    language: 'English',
+                    hobbies: 'Reading, Teaching',
+                    address: 'Test Address',
+                    contact: '1234567890',
+                    email: 'test@example.com',
+                    emergencyContact: '0987654321',
+                    introduction: 'Test introduction',
+                    experience: '5 years',
+                    education: [],
+                    workExperience: [],
+                    documents: {
+                        diploma: null,
+                        certifications: [],
+                        validId: null
+                    }
+                };
+                
+                const response = await fetch('/api/teacher/profile', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(profileData)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showResult('profile-result', 'Profile saved successfully!', true);
+                } else {
+                    showResult('profile-result', `Profile save failed: ${data.error}`, false);
+                }
+            } catch (error) {
+                showResult('profile-result', `Profile save error: ${error.message}`, false);
+            }
+        }
+        
+        async function testValidIdUpload() {
+            if (!authToken) {
+                showResult('valid-id-result', 'Please login first', false);
+                return;
+            }
+            
+            const fileInput = document.getElementById('valid-id-file');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                showResult('valid-id-result', 'Please select a file first', false);
+                return;
+            }
+            
+            try {
+                console.log('Starting valid ID upload test...');
+                console.log('File size:', file.size, 'bytes');
+                console.log('File type:', file.type);
+                
+                const reader = new FileReader();
+                reader.onload = async function(e) {
+                    const fileData = e.target.result;
+                    console.log('File data length:', fileData.length);
+                    
+                    const response = await fetch('/api/teacher/upload-document', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${authToken}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            documentType: 'validId',
+                            fileData: fileData
+                        })
+                    });
+                    
+                    console.log('Response status:', response.status);
+                    const data = await response.json();
+                    console.log('Response data:', data);
+                    
+                    if (data.success) {
+                        showResult('valid-id-result', 'Valid ID uploaded successfully!', true);
+                    } else {
+                        showResult('valid-id-result', `Valid ID upload failed: ${data.error}`, false);
+                    }
+                };
+                
+                reader.onerror = function(error) {
+                    console.error('FileReader error:', error);
+                    showResult('valid-id-result', `File reading error: ${error}`, false);
+                };
+                
+                reader.readAsDataURL(file);
+            } catch (error) {
+                console.error('Valid ID upload error:', error);
+                showResult('valid-id-result', `Valid ID upload error: ${error.message}`, false);
+            }
+        }
+    </script>
+</body>
+</html> 

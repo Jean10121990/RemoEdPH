@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Issue Management - RemoEdPH Admin</title>
+    <link rel="stylesheet" href="modern-styles.css">
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f6fbff; }
+        .remoed-main { display: flex; min-height: calc(100vh - 70px); }
+        .remoed-sidebar { width: 220px; background: #fff; box-shadow: 2px 0 8px rgba(0,0,0,0.05); padding: 32px 0 0 0; display: flex; flex-direction: column; }
+        .remoed-logo { display: flex; align-items: center; gap: 14px; }
+        .remoed-logo img { height: 48px; }
+        .remoed-title { font-size: 1.7rem; font-weight: 700; color: #667eea; letter-spacing: 1px; }
+        .remoed-user { display: flex; align-items: center; gap: 10px; }
+        .remoed-avatar { width: 72px; height: 72px; border-radius: 50%; background: #667eea; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 2.2rem; }
+        .remoed-username { color: #667eea; font-weight: 600; }
+        .remoed-menu { list-style: none; padding: 0; margin: 0; }
+        .remoed-menu li { padding: 14px 32px; color: #667eea; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 12px; border-left: 4px solid transparent; transition: all 0.2s; }
+        .remoed-menu li.active, .remoed-menu li:hover { background: linear-gradient(90deg, #667eea 0%, #5a67d8 100%); border-left: 4px solid #667eea; color: white; transform: translateX(4px); }
+        .remoed-menu svg { width: 20px; height: 20px; }
+        .remoed-content { flex: 1; padding: 12px 16px; }
+        .remoed-section { background: #fff; border-radius: 12px; box-shadow: 0 4px 24px rgba(28,167,231,0.07); padding: 12px; margin-bottom: 12px; }
+        .remoed-section-title { font-size: 1rem; font-weight: 700; color: #1ca7e7; margin-bottom: 10px; letter-spacing: 0.5px; }
+        
+        /* Issue Management Styles */
+        .issue-filters { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+        .filter-group { display: flex; flex-direction: column; gap: 4px; }
+        .filter-group label { font-size: 0.8rem; font-weight: 600; color: #374151; }
+        .filter-group select, .filter-group input { padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.8rem; }
+        
+        .issue-card { background: #f8f9fa; border-radius: 8px; padding: 10px; margin-bottom: 8px; border-left: 4px solid #1ca7e7; }
+        .issue-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+        .issue-title { font-size: 0.95rem; font-weight: 600; color: #1ca7e7; }
+        .issue-status { padding: 3px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+        .status-pending { background: #fef3c7; color: #92400e; }
+        .status-reviewed { background: #dbeafe; color: #1e40af; }
+        .status-resolved { background: #d1fae5; color: #065f46; }
+        .status-dismissed { background: #fee2e2; color: #991b1b; }
+        
+        .issue-details { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+        .issue-detail { display: flex; flex-direction: column; gap: 4px; }
+        .issue-detail label { font-size: 0.75rem; font-weight: 600; color: #6b7280; }
+        .issue-detail span { font-size: 0.8rem; color: #374151; }
+        
+        .issue-description { background: #fff; padding: 8px; border-radius: 6px; margin-bottom: 8px; border: 1px solid #e5e7eb; }
+        .issue-description h4 { margin: 0 0 6px 0; font-size: 0.8rem; color: #374151; }
+        .issue-description p { margin: 0; font-size: 0.8rem; color: #6b7280; line-height: 1.3; }
+        
+        .issue-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+        .btn { padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.75rem; transition: all 0.2s; }
+        .btn-primary { background: #1ca7e7; color: #fff; }
+        .btn-primary:hover { background: #168fc1; }
+        .btn-success { background: #10b981; color: #fff; }
+        .btn-success:hover { background: #059669; }
+        .btn-warning { background: #f59e0b; color: #fff; }
+        .btn-warning:hover { background: #d97706; }
+        .btn-danger { background: #ef4444; color: #fff; }
+        .btn-danger:hover { background: #dc2626; }
+        .btn-secondary { background: #6b7280; color: #fff; }
+        .btn-secondary:hover { background: #4b5563; }
+        
+        .screenshot-preview { max-width: 200px; max-height: 150px; border-radius: 6px; border: 1px solid #d1d5db; }
+        
+        .review-modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
+        .review-modal-content { background-color: #fff; margin: 2% auto; padding: 16px; border-radius: 8px; width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto; }
+        .review-modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .review-modal-header h2 { margin: 0; color: #1ca7e7; font-size: 1.1rem; }
+        .close { color: #aaa; font-size: 24px; font-weight: bold; cursor: pointer; }
+        .close:hover { color: #000; }
+        .review-form { display: flex; flex-direction: column; gap: 10px; }
+        .form-group { display: flex; flex-direction: column; gap: 4px; }
+        .form-group label { font-weight: 600; color: #374151; font-size: 0.85rem; }
+        .form-group select, .form-group textarea { padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.85rem; }
+        .form-group textarea { resize: vertical; min-height: 80px; }
+        
+        .validity-badge { padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: 600; }
+        .validity-valid { background: #d1fae5; color: #065f46; }
+        .validity-invalid { background: #fee2e2; color: #991b1b; }
+        .validity-pending { background: #fef3c7; color: #92400e; }
+        
+        .reschedule-info { background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 6px; padding: 10px; margin-top: 10px; }
+        .reschedule-info h4 { margin: 0 0 5px 0; font-size: 0.9rem; color: #0c4a6e; }
+        .reschedule-info p { margin: 0; font-size: 0.8rem; color: #0369a1; }
+        
+        .resolution-options { display: flex; flex-direction: column; gap: 10px; }
+        .resolution-option { display: flex; align-items: flex-start; gap: 10px; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
+        .resolution-option:hover { border-color: #1ca7e7; background: #f8f9fa; }
+        .resolution-option input[type="radio"] { margin-top: 2px; }
+        .resolution-option input[type="radio"]:checked + .option-text { color: #1ca7e7; }
+        .resolution-option:has(input[type="radio"]:checked) { border-color: #1ca7e7; background: #eaf7ff; }
+        .option-text { flex: 1; }
+        .option-text strong { display: block; margin-bottom: 4px; }
+        .option-text small { color: #6b7280; }
+        
+        @media (max-width: 900px) {
+            .remoed-main { flex-direction: column; }
+            .remoed-sidebar { width: 100%; flex-direction: row; box-shadow: none; border-bottom: 1px solid #e0e6ed; }
+            .remoed-menu li { padding: 12px 10px; font-size: 0.97rem; }
+            .remoed-content { padding: 18px 6px; }
+            .issue-details { grid-template-columns: 1fr; }
+            .issue-actions { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <div class="remoed-main">
+        <nav class="remoed-sidebar">
+            <div class="remoed-logo" style="height:100px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding-top:5px;">
+                <img src="remoed-logo.png" alt="RemoEdPH Logo" style="height:40px; width:auto; display:inline-block; vertical-align:middle;">
+                <span class="remoed-title" style="font-size:1.3rem; font-weight:700; color:#667eea; letter-spacing:1px;">RemoEdPH</span>
+            </div>
+            <div class="remoed-user" style="display:flex; flex-direction:column; align-items:center; margin-bottom:24px;">
+                <div class="remoed-avatar" id="remoed-avatar">
+                    <span id="avatar-text">A</span>
+                </div>
+                <span class="remoed-username" id="remoed-username">Admin</span>
+            </div>
+            <ul class="remoed-menu">
+                <li onclick="window.location.href='admin-dashboard.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/></svg>Dashboard</li>
+                <li onclick="window.location.href='admin-users.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"/></svg>User Management</li>
+                <li onclick="window.location.href='admin-announcements.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg>Announcements</li>
+                <li onclick="window.location.href='admin-payroll.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 10c-4.41 0-8-1.79-8-4V6c0-2.21 3.59-4 8-4s8 1.79 8 4v8c0 2.21-3.59 4-8 4z"/></svg>Payroll Management</li>
+                <li onclick="window.location.href='admin-reports.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>Reports</li>
+                <li class="active"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Issue Management</li>
+                <li onclick="window.location.href='admin-lessons-library.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>Lesson Library</li>
+                <li onclick="window.location.href='admin-settings.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Settings</li>
+                <li id="logout-nav" style="margin-top:auto; color:#e74c3c; cursor:pointer;"><svg fill="none" stroke="#e74c3c" stroke-width="2" viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7"/><path d="M3 12a9 9 0 0118 0 9 9 0 01-18 0z"/></svg>Logout</li>
+            </ul>
+        </nav>
+        <div class="remoed-content">
+            <div class="remoed-section">
+                <div class="remoed-section-title">🔧 Class Issue Management</div>
+                
+                <!-- Filters -->
+                <div class="issue-filters">
+                    <div class="filter-group">
+                        <label>Status</label>
+                        <select id="status-filter">
+                            <option value="">All Status</option>
+                            <option value="pending">Pending</option>
+                            <option value="reviewed">Reviewed</option>
+                            <option value="resolved">Resolved</option>
+                            <option value="dismissed">Dismissed</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Validity</label>
+                        <select id="validity-filter">
+                            <option value="">All Validity</option>
+                            <option value="pending_review">Pending Review</option>
+                            <option value="valid">Valid</option>
+                            <option value="invalid">Invalid</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Issue Type</label>
+                        <select id="issue-type-filter">
+                            <option value="">All Types</option>
+                            <option value="Lesson Issue (Cannot preview lesson)">Lesson Issue</option>
+                            <option value="Technical Issue (Audio/Video problems)">Technical Issue</option>
+                            <option value="Student Behavior Issue">Student Behavior</option>
+                            <option value="Payment Issue">Payment Issue</option>
+                            <option value="Schedule Conflict">Schedule Conflict</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Date Range</label>
+                        <input type="date" id="date-filter">
+                    </div>
+                    <div class="filter-group">
+                        <button class="btn btn-primary" onclick="loadIssues()">Apply Filters</button>
+                    </div>
+                </div>
+                
+                <!-- Issues List -->
+                <div id="issues-container">
+                    <!-- Issues will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+        <!-- Review Modal -->
+    <div id="review-modal" class="review-modal">
+        <div class="review-modal-content">
+            <div class="review-modal-header">
+                <h2>Review Issue Report</h2>
+                <span class="close" onclick="closeReviewModal()">&times;</span>
+            </div>
+            <form class="review-form" id="review-form">
+                <input type="hidden" id="issue-id">
+                
+                <div class="form-group">
+                    <label>Validity Status</label>
+                    <select id="validity-status" required>
+                        <option value="valid">Valid</option>
+                        <option value="invalid">Invalid</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Review Notes</label>
+                    <textarea id="admin-notes" placeholder="Enter your review notes and decision rationale..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="allow-reschedule"> Allow Student to Reschedule (if class is incomplete due to teacher technical issues)
+                    </label>
+                </div>
+                
+                <div class="issue-actions">
+                    <button type="submit" class="btn btn-primary">Submit Review</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeReviewModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Resolve Modal -->
+    <div id="resolve-modal" class="review-modal">
+        <div class="review-modal-content">
+            <div class="review-modal-header">
+                <h2>Mark Issue as Resolved</h2>
+                <span class="close" onclick="closeResolveModal()">&times;</span>
+            </div>
+            <form class="review-form" id="resolve-form">
+                <input type="hidden" id="resolve-issue-id">
+                
+                <div class="form-group">
+                    <label>Resolution Type</label>
+                    <div class="resolution-options">
+                        <label class="resolution-option">
+                            <input type="radio" name="resolution-type" value="system-issue" onchange="toggleResolutionDetails()">
+                            <span class="option-text">
+                                <strong>System Issue</strong><br>
+                                <small>Teacher gets 10% of rate for effort, student can reschedule</small>
+                            </span>
+                        </label>
+                        
+                        <label class="resolution-option">
+                            <input type="radio" name="resolution-type" value="teacher-fault" onchange="toggleResolutionDetails()">
+                            <span class="option-text">
+                                <strong>Teacher Fault</strong><br>
+                                <small>No payment to teacher, specify reason</small>
+                            </span>
+                        </label>
+                        
+                        <label class="resolution-option">
+                            <input type="radio" name="resolution-type" value="student-issue" onchange="toggleResolutionDetails()">
+                            <span class="option-text">
+                                <strong>Student Issue</strong><br>
+                                <small>Pay teacher 50% of rate</small>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="form-group" id="teacher-fault-reason" style="display: none;">
+                    <label>Reason for Teacher Fault</label>
+                    <textarea id="teacher-fault-reason-text" placeholder="Specify the reason why this is considered teacher fault..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>Resolution Notes</label>
+                    <textarea id="resolve-notes" placeholder="Enter resolution details and any additional notes..."></textarea>
+                </div>
+                
+                <div class="issue-actions">
+                    <button type="submit" class="btn btn-success">Mark as Resolved</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeResolveModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Check authentication
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAuth();
+            loadIssues();
+        });
+
+        function checkAuth() {
+            const token = localStorage.getItem('adminToken');
+            console.log('Checking admin auth, token:', token ? 'exists' : 'missing');
+            
+            if (!token) {
+                console.log('No admin token found, redirecting to login');
+                window.location.href = 'admin-login.html';
+                return;
+            }
+            
+            // Set admin info
+            const adminData = JSON.parse(localStorage.getItem('adminData') || '{}');
+            console.log('Admin data:', adminData);
+            document.getElementById('avatar-text').textContent = adminData.username ? adminData.username.charAt(0).toUpperCase() : 'A';
+            document.getElementById('remoed-username').textContent = adminData.username || 'Admin';
+        }
+
+        function loadIssues() {
+            const token = localStorage.getItem('adminToken');
+            console.log('Loading issues with token:', token ? 'Token exists' : 'No token');
+            
+            const statusFilter = document.getElementById('status-filter').value;
+            const validityFilter = document.getElementById('validity-filter').value;
+            const issueTypeFilter = document.getElementById('issue-type-filter').value;
+            const dateFilter = document.getElementById('date-filter').value;
+            
+            let url = '/api/admin/issues';
+            const params = new URLSearchParams();
+            if (statusFilter) params.append('status', statusFilter);
+            if (validityFilter) params.append('validityStatus', validityFilter);
+            if (issueTypeFilter) params.append('issueType', issueTypeFilter);
+            if (dateFilter) params.append('date', dateFilter);
+            
+            if (params.toString()) {
+                url += '?' + params.toString();
+            }
+            
+            console.log('Fetching issues from:', url);
+            
+            fetch(url, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(response => {
+                console.log('Response status:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('Issues data:', data);
+                if (data.success) {
+                    displayIssues(data.issues);
+                } else {
+                    showNotification('Failed to load issues: ' + data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error loading issues:', error);
+                showNotification('Error loading issues', 'error');
+            });
+        }
+
+        function displayIssues(issues) {
+            const container = document.getElementById('issues-container');
+            
+            if (issues.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #6b7280; padding: 40px;">No issues found matching the current filters.</p>';
+                return;
+            }
+            
+            container.innerHTML = issues.map(issue => `
+                <div class="issue-card">
+                    <div class="issue-header">
+                        <div class="issue-title">Issue #${issue._id.slice(-6)}</div>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <span class="issue-status status-${issue.status}">${issue.status.charAt(0).toUpperCase() + issue.status.slice(1)}</span>
+                            <span class="validity-badge validity-${issue.validityStatus || 'pending'}">${(issue.validityStatus || 'pending_review').replace('_', ' ').charAt(0).toUpperCase() + (issue.validityStatus || 'pending_review').replace('_', ' ').slice(1)}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="issue-details">
+                        <div class="issue-detail">
+                            <label>Booking ID</label>
+                            <span>${issue.bookingId}</span>
+                        </div>
+                        <div class="issue-detail">
+                            <label>Issue Type</label>
+                            <span>${issue.issueType}</span>
+                        </div>
+                        <div class="issue-detail">
+                            <label>Teacher ID</label>
+                            <span>${issue.teacherId}</span>
+                        </div>
+                        <div class="issue-detail">
+                            <label>Student ID</label>
+                            <span>${issue.studentId}</span>
+                        </div>
+                        <div class="issue-detail">
+                            <label>Submitted</label>
+                            <span>${new Date(issue.submittedAt).toLocaleString()}</span>
+                        </div>
+                        <div class="issue-detail">
+                            <label>Payment Impact</label>
+                            <span>Teacher: ${issue.teacherPaymentImpact}, Student: ${issue.studentPaymentImpact}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="issue-description">
+                        <h4>Description:</h4>
+                        <p>${issue.description}</p>
+                    </div>
+                    
+                    ${issue.screenshotPath ? `
+                        <div style="margin-bottom: 15px;">
+                            <h4 style="margin: 0 0 8px 0; font-size: 0.9rem; color: #374151;">Screenshot:</h4>
+                            <img src="${issue.screenshotPath}" alt="Issue Screenshot" class="screenshot-preview" onclick="window.open('${issue.screenshotPath}', '_blank')">
+                        </div>
+                    ` : ''}
+                    
+                    ${issue.canReschedule ? `
+                        <div class="reschedule-info">
+                            <h4>Reschedule Option Available</h4>
+                            <p>Student can reschedule this class until ${new Date(issue.rescheduleDeadline).toLocaleString()}</p>
+                            ${issue.rescheduleRequested ? '<p><strong>Reschedule has been requested by student</strong></p>' : ''}
+                        </div>
+                    ` : ''}
+                    
+                    ${issue.adminReviewNotes ? `
+                        <div class="issue-description">
+                            <h4>Admin Review Notes:</h4>
+                            <p>${issue.adminReviewNotes}</p>
+                        </div>
+                    ` : ''}
+                    
+                    <div class="issue-actions">
+                        ${issue.status === 'pending' ? `
+                            <button class="btn btn-primary" onclick="openReviewModal('${issue._id}')">Review Issue</button>
+                        ` : `
+                            <button class="btn btn-secondary" onclick="openReviewModal('${issue._id}')">Update Review</button>
+                        `}
+                        <button class="btn btn-success" onclick="markResolved('${issue._id}')">Mark Resolved</button>
+                        <button class="btn btn-danger" onclick="dismissIssue('${issue._id}')">Dismiss</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function openReviewModal(issueId) {
+            document.getElementById('issue-id').value = issueId;
+            document.getElementById('review-modal').style.display = 'block';
+        }
+
+        function closeReviewModal() {
+            document.getElementById('review-modal').style.display = 'none';
+            document.getElementById('review-form').reset();
+        }
+
+        document.getElementById('review-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const issueId = document.getElementById('issue-id').value;
+            const validityStatus = document.getElementById('validity-status').value;
+            const adminNotes = document.getElementById('admin-notes').value;
+            const allowReschedule = document.getElementById('allow-reschedule').checked;
+            
+            const token = localStorage.getItem('adminToken');
+            
+            fetch('/api/admin/issues/review', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    issueId,
+                    validityStatus,
+                    adminReviewNotes: adminNotes,
+                    canReschedule: allowReschedule
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('Issue reviewed successfully', 'success');
+                    closeReviewModal();
+                    loadIssues();
+                } else {
+                    showNotification('Failed to review issue: ' + data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error reviewing issue:', error);
+                showNotification('Error reviewing issue', 'error');
+            });
+        });
+
+        function markResolved(issueId) {
+            document.getElementById('resolve-issue-id').value = issueId;
+            document.getElementById('resolve-modal').style.display = 'block';
+        }
+
+        function closeResolveModal() {
+            document.getElementById('resolve-modal').style.display = 'none';
+            document.getElementById('resolve-form').reset();
+            document.getElementById('teacher-fault-reason').style.display = 'none';
+        }
+
+        function toggleResolutionDetails() {
+            const selectedType = document.querySelector('input[name="resolution-type"]:checked');
+            const teacherFaultReason = document.getElementById('teacher-fault-reason');
+            
+            if (selectedType && selectedType.value === 'teacher-fault') {
+                teacherFaultReason.style.display = 'block';
+            } else {
+                teacherFaultReason.style.display = 'none';
+            }
+        }
+
+        function dismissIssue(issueId) {
+            if (!confirm('Are you sure you want to dismiss this issue?')) return;
+            
+            const token = localStorage.getItem('adminToken');
+            
+            fetch('/api/admin/issues/dismiss', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ issueId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('Issue dismissed', 'success');
+                    loadIssues();
+                } else {
+                    showNotification('Failed to dismiss issue: ' + data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error dismissing issue:', error);
+                showNotification('Error dismissing issue', 'error');
+            });
+        }
+
+        function showNotification(message, type) {
+            // Simple notification system
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 12px 20px;
+                border-radius: 6px;
+                color: white;
+                font-weight: 600;
+                z-index: 10000;
+                background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#1ca7e7'};
+            `;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+        // Resolve form submission
+        document.getElementById('resolve-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const issueId = document.getElementById('resolve-issue-id').value;
+            const resolutionType = document.querySelector('input[name="resolution-type"]:checked');
+            const teacherFaultReason = document.getElementById('teacher-fault-reason-text').value;
+            const resolveNotes = document.getElementById('resolve-notes').value;
+            
+            if (!resolutionType) {
+                showNotification('Please select a resolution type', 'error');
+                return;
+            }
+            
+            if (resolutionType.value === 'teacher-fault' && !teacherFaultReason.trim()) {
+                showNotification('Please specify the reason for teacher fault', 'error');
+                return;
+            }
+            
+            const token = localStorage.getItem('adminToken');
+            
+            fetch('/api/admin/issues/resolve', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    issueId,
+                    resolutionType: resolutionType.value,
+                    teacherFaultReason: teacherFaultReason,
+                    resolveNotes: resolveNotes
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('Issue marked as resolved', 'success');
+                    closeResolveModal();
+                    loadIssues();
+                } else {
+                    showNotification('Failed to resolve issue: ' + data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error resolving issue:', error);
+                showNotification('Error resolving issue', 'error');
+            });
+        });
+
+        // Logout functionality
+        document.getElementById('logout-nav').addEventListener('click', function() {
+            localStorage.removeItem('adminToken');
+            localStorage.removeItem('adminData');
+            window.location.href = 'admin-login.html';
+        });
+    </script>
+</body>
+</html>

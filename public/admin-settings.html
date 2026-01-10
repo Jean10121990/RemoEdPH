@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - RemoEdPH Admin</title>
+    <link rel="stylesheet" href="modern-styles.css">
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f6fbff; }
+        .remoed-main { display: flex; min-height: calc(100vh - 70px); }
+        .remoed-sidebar { width: 220px; background: #fff; box-shadow: 2px 0 8px rgba(0,0,0,0.05); padding: 32px 0 0 0; display: flex; flex-direction: column; }
+        .remoed-logo { display: flex; align-items: center; gap: 14px; }
+        .remoed-logo img { height: 48px; }
+        .remoed-title { font-size: 1.7rem; font-weight: 700; color: #667eea; letter-spacing: 1px; }
+        .remoed-user { display: flex; align-items: center; gap: 10px; }
+        .remoed-avatar { width: 72px; height: 72px; border-radius: 50%; background: #667eea; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 2.2rem; }
+        .remoed-username { color: #667eea; font-weight: 600; }
+        .remoed-menu { list-style: none; padding: 0; margin: 0; }
+        .remoed-menu li { padding: 14px 32px; color: #667eea; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 12px; border-left: 4px solid transparent; transition: all 0.2s; }
+        .remoed-menu li.active, .remoed-menu li:hover { background: linear-gradient(90deg, #667eea 0%, #5a67d8 100%); border-left: 4px solid #667eea; color: white; transform: translateX(4px); }
+        .remoed-menu svg { width: 20px; height: 20px; }
+        .remoed-content { flex: 1; padding: 12px 16px; }
+        .remoed-section { background: #fff; border-radius: 12px; box-shadow: 0 4px 24px rgba(28,167,231,0.07); padding: 12px; margin-bottom: 12px; }
+        .remoed-section-title { font-size: 1rem; font-weight: 700; color: #1ca7e7; margin-bottom: 10px; letter-spacing: 0.5px; }
+        .setting-card { background: #f8f9fa; border-radius: 8px; padding: 10px; margin-bottom: 8px; border-left: 4px solid #1ca7e7; }
+        .setting-title { font-size: 0.95rem; font-weight: 600; color: #1ca7e7; margin-bottom: 6px; }
+        .setting-description { color: #666; margin-bottom: 8px; font-size: 0.8rem; }
+        .form-group { margin-bottom: 12px; }
+        .form-group label { display: block; margin-bottom: 6px; font-weight: 600; color: #333; font-size: 0.85rem; }
+        .form-group input, .form-group select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.85rem; }
+        .btn { padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.8rem; }
+        .btn-primary { background: #1ca7e7; color: #fff; }
+        .btn-primary:hover { background: #168fc1; }
+        .btn-danger { background: #e74c3c; color: #fff; }
+        .btn-danger:hover { background: #c0392b; }
+        @media (max-width: 900px) {
+            .remoed-main { flex-direction: column; }
+            .remoed-sidebar { width: 100%; flex-direction: row; box-shadow: none; border-bottom: 1px solid #e0e6ed; }
+            .remoed-menu li { padding: 12px 10px; font-size: 0.97rem; }
+            .remoed-content { padding: 18px 6px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="remoed-main">
+        <nav class="remoed-sidebar">
+            <div class="remoed-logo" style="height:100px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding-top:5px;">
+                <img src="remoed-logo.png" alt="RemoEdPH Logo" style="height:40px; width:auto; display:inline-block; vertical-align:middle;">
+                <span class="remoed-title" style="font-size:1.3rem; font-weight:700; color:#667eea; letter-spacing:1px;">RemoEdPH</span>
+            </div>
+            <div class="remoed-user" style="display:flex; flex-direction:column; align-items:center; margin-bottom:24px;">
+                <div class="remoed-avatar" id="remoed-avatar">
+                    <img id="profile-image" src="" alt="Profile" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: none;">
+                    <span id="avatar-text">A</span>
+                </div>
+                <span class="remoed-username" id="remoed-username">Admin</span>
+            </div>
+            <ul class="remoed-menu">
+                <li onclick="window.location.href='admin-dashboard.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/></svg>Dashboard</li>
+                <li onclick="window.location.href='admin-users.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"/></svg>User Management</li>
+                <li onclick="window.location.href='admin-announcements.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg>Announcements</li>
+                <li onclick="window.location.href='admin-payroll.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 10c-4.41 0-8-1.79-8-4V6c0-2.21 3.59-4 8-4s8 1.79 8 4v8c0 2.21-3.59 4-8 4z"/></svg>Payroll Management</li>
+                <li onclick="window.location.href='admin-reports.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>Reports</li>
+                <li onclick="window.location.href='admin-issue-management.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Issue Management</li>
+                <li onclick="window.location.href='admin-lessons-library.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>Lesson Library</li>
+                <li class="active"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Settings</li>
+                <li id="logout-nav" style="margin-top:auto; color:#e74c3c; cursor:pointer;"><svg fill="none" stroke="#e74c3c" stroke-width="2" viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7"/><path d="M3 12a9 9 0 0118 0 9 9 0 01-18 0z"/></svg>Logout</li>
+            </ul>
+        </nav>
+        <div class="remoed-content">
+            <div class="remoed-section">
+                <div class="remoed-section-title">⚙️ System Settings</div>
+                
+                <div class="setting-card">
+                    <div class="setting-title">🔐 Security Settings</div>
+                    <div class="setting-description">Configure security settings for the platform including password policies and session management.</div>
+                    <button class="btn btn-primary" onclick="openSecuritySettings()">Configure Security</button>
+                </div>
+                
+                <div class="setting-card">
+                    <div class="setting-title">📧 Email Settings</div>
+                    <div class="setting-description">Configure email notifications and SMTP settings for system communications.</div>
+                    <button class="btn btn-primary" onclick="openEmailSettings()">Configure Email</button>
+                </div>
+                
+                <div class="setting-card">
+                    <div class="setting-title">🌐 Platform Settings</div>
+                    <div class="setting-description">Manage platform-wide settings including maintenance mode and system preferences.</div>
+                    <button class="btn btn-primary" onclick="openPlatformSettings()">Configure Platform</button>
+                </div>
+                
+                <div class="setting-card">
+                    <div class="setting-title">💾 Database Settings</div>
+                    <div class="setting-description">Manage database connections, backups, and maintenance schedules.</div>
+                    <button class="btn btn-primary" onclick="openDatabaseSettings()">Configure Database</button>
+                </div>
+                
+                <div class="setting-card">
+                    <div class="setting-title">🔄 System Maintenance</div>
+                    <div class="setting-description">Perform system maintenance tasks including cache clearing and data optimization.</div>
+                    <button class="btn btn-primary" onclick="performMaintenance()">Run Maintenance</button>
+                </div>
+                
+                <div class="setting-card">
+                    <div class="setting-title">🗑️ Data Management</div>
+                    <div class="setting-description">Manage data retention policies and perform data cleanup operations.</div>
+                    <button class="btn btn-danger" onclick="openDataManagement()">Manage Data</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Role-based access control
+        const userType = localStorage.getItem('userType');
+        if (userType !== 'admin') {
+            alert('Access denied. This page is for administrators only.');
+            window.location.href = 'index.html';
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            const username = localStorage.getItem('adminUsername') || 'Admin';
+
+            if (username) {
+                document.getElementById('remoed-username').textContent = username;
+                if (window.setAvatar) {
+                    setAvatar({ displayName: username, imgSelector: '#profile-image', textSelector: '#avatar-text' });
+                } else {
+                    document.getElementById('avatar-text').textContent = username[0].toUpperCase();
+                }
+            }
+        });
+
+        document.getElementById('logout-nav').onclick = function() {
+            localStorage.clear();
+            window.location.href = 'admin-login.html';
+        };
+
+        async function openSecuritySettings() {
+            try {
+                const response = await fetch('/api/admin/settings/security');
+                const data = await response.json();
+                
+                showSettingsModal('Security Settings', data, 'security');
+            } catch (error) {
+                console.error('Error loading security settings:', error);
+                alert('Error loading security settings. Please try again.');
+            }
+        }
+
+        async function openEmailSettings() {
+            try {
+                const response = await fetch('/api/admin/settings/email');
+                const data = await response.json();
+                
+                showSettingsModal('Email Settings', data, 'email');
+            } catch (error) {
+                console.error('Error loading email settings:', error);
+                alert('Error loading email settings. Please try again.');
+            }
+        }
+
+        async function openPlatformSettings() {
+            try {
+                const response = await fetch('/api/admin/settings/platform');
+                const data = await response.json();
+                
+                showSettingsModal('Platform Settings', data, 'platform');
+            } catch (error) {
+                console.error('Error loading platform settings:', error);
+                alert('Error loading platform settings. Please try again.');
+            }
+        }
+
+        async function openDatabaseSettings() {
+            try {
+                const response = await fetch('/api/admin/settings/database');
+                const data = await response.json();
+                
+                showSettingsModal('Database Settings', data, 'database');
+            } catch (error) {
+                console.error('Error loading database settings:', error);
+                alert('Error loading database settings. Please try again.');
+            }
+        }
+
+        async function performMaintenance() {
+            if (confirm('Are you sure you want to run system maintenance? This may temporarily affect system performance.')) {
+                try {
+                    const response = await fetch('/api/admin/maintenance', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        alert('System maintenance completed successfully!');
+                    } else {
+                        alert('Error during maintenance: ' + data.message);
+                    }
+                } catch (error) {
+                    console.error('Error performing maintenance:', error);
+                    alert('Error performing system maintenance. Please try again.');
+                }
+            }
+        }
+
+        async function openDataManagement() {
+            try {
+                const response = await fetch('/api/admin/settings/data-management');
+                const data = await response.json();
+                
+                showDataManagementModal(data);
+            } catch (error) {
+                console.error('Error loading data management settings:', error);
+                alert('Error loading data management settings. Please try again.');
+            }
+        }
+        
+        function showSettingsModal(title, data, type) {
+            const modal = document.createElement('div');
+            modal.id = 'settings-modal';
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.5);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 1000;
+            `;
+            
+            let formContent = '';
+            
+            switch(type) {
+                case 'security':
+                    formContent = `
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">Session Timeout (minutes):</label>
+                            <input type="number" id="session-timeout" value="${data.sessionTimeout || 30}" min="5" max="480" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
+                        </div>
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">Password Policy:</label>
+                            <select id="password-policy" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
+                                <option value="low" ${data.passwordPolicy === 'low' ? 'selected' : ''}>Low (6+ characters)</option>
+                                <option value="medium" ${data.passwordPolicy === 'medium' ? 'selected' : ''}>Medium (8+ characters, mixed case)</option>
+                                <option value="high" ${data.passwordPolicy === 'high' ? 'selected' : ''}>High (10+ characters, special chars)</option>
+                            </select>
+                        </div>
+                    `;
+                    break;
+                case 'email':
+                    formContent = `
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">SMTP Host:</label>
+                            <input type="text" id="smtp-host" value="${data.smtpHost || ''}" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
+                        </div>
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">SMTP Port:</label>
+                            <input type="number" id="smtp-port" value="${data.smtpPort || 587}" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
+                        </div>
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">Email Notifications:</label>
+                            <input type="checkbox" id="email-notifications" ${data.emailNotifications ? 'checked' : ''} style="margin-right: 8px;">
+                            <label for="email-notifications">Enable email notifications</label>
+                        </div>
+                    `;
+                    break;
+                case 'platform':
+                    formContent = `
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">Maintenance Mode:</label>
+                            <input type="checkbox" id="maintenance-mode" ${data.maintenanceMode ? 'checked' : ''} style="margin-right: 8px;">
+                            <label for="maintenance-mode">Enable maintenance mode</label>
+                        </div>
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">Auto Backup:</label>
+                            <input type="checkbox" id="auto-backup" ${data.autoBackup ? 'checked' : ''} style="margin-right: 8px;">
+                            <label for="auto-backup">Enable automatic backups</label>
+                        </div>
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">Backup Frequency (days):</label>
+                            <input type="number" id="backup-frequency" value="${data.backupFrequency || 7}" min="1" max="30" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
+                        </div>
+                    `;
+                    break;
+                case 'database':
+                    formContent = `
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">Connection Pool Size:</label>
+                            <input type="number" id="pool-size" value="${data.poolSize || 10}" min="5" max="50" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
+                        </div>
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">Query Timeout (seconds):</label>
+                            <input type="number" id="query-timeout" value="${data.queryTimeout || 30}" min="5" max="300" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
+                        </div>
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">Database Status:</label>
+                            <div style="padding: 10px; background: #f8f9fa; border-radius: 4px; color: #27ae60; font-weight: 600;">
+                                ${data.status || 'Connected'}
+                            </div>
+                        </div>
+                    `;
+                    break;
+            }
+            
+            modal.innerHTML = `
+                <div style="
+                    background: white;
+                    border-radius: 12px;
+                    padding: 24px;
+                    max-width: 500px;
+                    width: 90%;
+                    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+                ">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h2 style="color: #1ca7e7; margin: 0;">${title}</h2>
+                        <button onclick="closeSettingsModal()" style="
+                            background: none;
+                            border: none;
+                            font-size: 24px;
+                            cursor: pointer;
+                            color: #666;
+                        ">&times;</button>
+                    </div>
+                    
+                    <form id="settings-form">
+                        ${formContent}
+                        
+                        <div style="display: flex; gap: 10px; margin-top: 20px;">
+                            <button type="submit" style="
+                                flex: 1;
+                                padding: 12px;
+                                background: #1ca7e7;
+                                color: white;
+                                border: none;
+                                border-radius: 4px;
+                                cursor: pointer;
+                                font-weight: 600;
+                            ">Save Settings</button>
+                            <button type="button" onclick="closeSettingsModal()" style="
+                                flex: 1;
+                                padding: 12px;
+                                background: #666;
+                                color: white;
+                                border: none;
+                                border-radius: 4px;
+                                cursor: pointer;
+                            ">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Add form submit handler
+            document.getElementById('settings-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                saveSettings(type);
+            });
+        }
+        
+        function closeSettingsModal() {
+            const modal = document.getElementById('settings-modal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+        
+        async function saveSettings(type) {
+            try {
+                const formData = {};
+                
+                switch(type) {
+                    case 'security':
+                        formData.sessionTimeout = parseInt(document.getElementById('session-timeout').value);
+                        formData.passwordPolicy = document.getElementById('password-policy').value;
+                        break;
+                    case 'email':
+                        formData.smtpHost = document.getElementById('smtp-host').value;
+                        formData.smtpPort = parseInt(document.getElementById('smtp-port').value);
+                        formData.emailNotifications = document.getElementById('email-notifications').checked;
+                        break;
+                    case 'platform':
+                        formData.maintenanceMode = document.getElementById('maintenance-mode').checked;
+                        formData.autoBackup = document.getElementById('auto-backup').checked;
+                        formData.backupFrequency = parseInt(document.getElementById('backup-frequency').value);
+                        break;
+                    case 'database':
+                        formData.poolSize = parseInt(document.getElementById('pool-size').value);
+                        formData.queryTimeout = parseInt(document.getElementById('query-timeout').value);
+                        break;
+                }
+                
+                const response = await fetch(`/api/admin/settings/${type}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('Settings saved successfully!');
+                    closeSettingsModal();
+                } else {
+                    alert('Error saving settings: ' + data.message);
+                }
+                
+            } catch (error) {
+                console.error('Error saving settings:', error);
+                alert('Error saving settings. Please try again.');
+            }
+        }
+        
+        function showDataManagementModal(data) {
+            const modal = document.createElement('div');
+            modal.id = 'data-management-modal';
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.5);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 1000;
+            `;
+            
+            modal.innerHTML = `
+                <div style="
+                    background: white;
+                    border-radius: 12px;
+                    padding: 24px;
+                    max-width: 600px;
+                    width: 90%;
+                    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+                ">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h2 style="color: #1ca7e7; margin: 0;">Data Management</h2>
+                        <button onclick="closeDataManagementModal()" style="
+                            background: none;
+                            border: none;
+                            font-size: 24px;
+                            cursor: pointer;
+                            color: #666;
+                        ">&times;</button>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <h3 style="color: #333; margin-bottom: 10px;">Data Retention Policy</h3>
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">Log Retention (days):</label>
+                            <input type="number" id="log-retention" value="${data.logRetention || 90}" min="7" max="365" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
+                        </div>
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">Backup Retention (days):</label>
+                            <input type="number" id="backup-retention" value="${data.backupRetention || 30}" min="7" max="365" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <h3 style="color: #333; margin-bottom: 10px;">Data Cleanup</h3>
+                        <div style="margin-bottom: 15px;">
+                            <button onclick="cleanupOldLogs()" style="
+                                width: 100%;
+                                padding: 12px;
+                                background: #e67e22;
+                                color: white;
+                                border: none;
+                                border-radius: 4px;
+                                cursor: pointer;
+                                font-weight: 600;
+                                margin-bottom: 10px;
+                            ">🧹 Cleanup Old Logs</button>
+                            <button onclick="cleanupOldBackups()" style="
+                                width: 100%;
+                                padding: 12px;
+                                background: #e74c3c;
+                                color: white;
+                                border: none;
+                                border-radius: 4px;
+                                cursor: pointer;
+                                font-weight: 600;
+                            ">🗑️ Cleanup Old Backups</button>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px;">
+                        <button onclick="saveDataManagementSettings()" style="
+                            flex: 1;
+                            padding: 12px;
+                            background: #1ca7e7;
+                            color: white;
+                            border: none;
+                            border-radius: 4px;
+                            cursor: pointer;
+                            font-weight: 600;
+                        ">Save Settings</button>
+                        <button onclick="closeDataManagementModal()" style="
+                            flex: 1;
+                            padding: 12px;
+                            background: #666;
+                            color: white;
+                            border: none;
+                            border-radius: 4px;
+                            cursor: pointer;
+                        ">Cancel</button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+        }
+        
+        function closeDataManagementModal() {
+            const modal = document.getElementById('data-management-modal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+        
+        async function saveDataManagementSettings() {
+            try {
+                const formData = {
+                    logRetention: parseInt(document.getElementById('log-retention').value),
+                    backupRetention: parseInt(document.getElementById('backup-retention').value)
+                };
+                
+                const response = await fetch('/api/admin/settings/data-management', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('Data management settings saved successfully!');
+                    closeDataManagementModal();
+                } else {
+                    alert('Error saving settings: ' + data.message);
+                }
+                
+            } catch (error) {
+                console.error('Error saving data management settings:', error);
+                alert('Error saving settings. Please try again.');
+            }
+        }
+        
+        async function cleanupOldLogs() {
+            if (confirm('Are you sure you want to cleanup old logs? This action cannot be undone.')) {
+                try {
+                    const response = await fetch('/api/admin/cleanup/logs', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        alert(`Cleanup completed! Removed ${data.removedCount} old log entries.`);
+                    } else {
+                        alert('Error during cleanup: ' + data.message);
+                    }
+                } catch (error) {
+                    console.error('Error during log cleanup:', error);
+                    alert('Error during cleanup. Please try again.');
+                }
+            }
+        }
+        
+        async function cleanupOldBackups() {
+            if (confirm('Are you sure you want to cleanup old backups? This action cannot be undone.')) {
+                try {
+                    const response = await fetch('/api/admin/cleanup/backups', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        alert(`Cleanup completed! Removed ${data.removedCount} old backup files.`);
+                    } else {
+                        alert('Error during cleanup: ' + data.message);
+                    }
+                } catch (error) {
+                    console.error('Error during backup cleanup:', error);
+                    alert('Error during cleanup. Please try again.');
+                }
+            }
+        }
+    </script>
+</body>
+</html> 

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RemoEdPH - Home</title>
+    <link rel="stylesheet" href="modern-styles.css">
+    <style>
+        body { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh; 
+            margin: 0; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+        }
+    </style>
+</head>
+<body>
+    <div class="remoed-form">
+        <div class="remoed-logo" style="justify-content: center; margin-bottom: 1.5rem;">
+            <img src="remoed-logo.png" alt="RemoEdPH Logo">
+            <span class="remoed-title">RemoEdPH</span>
+        </div>
+        <h2 class="remoed-form-title">Welcome!</h2>
+        <p style="text-align: center; margin-bottom: 2rem; color: #64748b;">Please select your role to log in.</p>
+        <div class="remoed-form-group">
+            <label for="role-select" class="remoed-form-label">I am a:</label>
+            <select id="role-select" class="remoed-form-select">
+                <option value="" selected disabled>Select role</option>
+                <option value="teacher">Teacher</option>
+                <option value="student">Student</option>
+            </select>
+        </div>
+        <button id="proceed-btn" class="remoed-btn remoed-btn-primary" style="width: 100%;" disabled>Proceed to Login</button>
+    </div>
+    <script>
+        // Service Worker removed to prevent interference with offline page
+
+        const roleSelect = document.getElementById('role-select');
+        const proceedBtn = document.getElementById('proceed-btn');
+        roleSelect.addEventListener('change', function() {
+            proceedBtn.disabled = !roleSelect.value;
+        });
+        proceedBtn.addEventListener('click', function() {
+            if (roleSelect.value === 'teacher') {
+                window.location.href = 'teacher-login.html';
+            } else if (roleSelect.value === 'student') {
+                window.location.href = 'student-login.html';
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+<svg width="300" height="200" viewBox="0 0 300 200" xmlns="http://www.w3.org/2000/svg">
+  <rect width="300" height="200" fill="#f8f9fa" stroke="#dee2e6" stroke-width="2" rx="8"/>
+  <rect x="50" y="40" width="200" height="120" fill="#e74c3c" rx="4"/>
+  <rect x="60" y="50" width="180" height="100" fill="#c0392b" rx="2"/>
+  <text x="150" y="85" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="14" font-weight="bold">POWERPOINT</text>
+  <text x="150" y="105" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="12">PRESENTATION</text>
+  <text x="150" y="125" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="10">Click to download</text>
+  <circle cx="150" cy="145" r="8" fill="#ecf0f1"/>
+  <path d="M146 141 L154 145 L146 149 Z" fill="#2c3e50"/>
+</svg>

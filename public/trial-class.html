@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trial Class Pre-Check</title>
+    <link rel="stylesheet" href="modern-styles.css">
+    <style>
+        .preview-container { display: flex; flex-direction: column; align-items: center; margin-top: 40px; }
+        #video-preview { width: 320px; height: 240px; background: #222; border-radius: 8px; margin-bottom: 20px; }
+        #mic-level { width: 320px; height: 10px; background: #eee; border-radius: 5px; margin-bottom: 20px; }
+        #mic-bar { height: 100%; background: #3a7afe; border-radius: 5px; width: 0; transition: width 0.1s; }
+        .status { margin-bottom: 20px; color: #333; }
+        .join-btn { padding: 0.8rem 2rem; background: #3a7afe; color: #fff; border: none; border-radius: 5px; font-size: 1.1rem; cursor: pointer; transition: background 0.2s; }
+        .join-btn:hover { background: #255ed6; }
+        .remoed-header {
+            background: #fafdff;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-left: 32px;
+            padding-right: 32px;
+            height: 56px;
+            min-height: 40px;
+            max-height: 64px;
+            box-shadow: 0 2px 8px rgba(28,167,231,0.06), 0 1px 0 #e6f0fa;
+            border-bottom: 1px solid #e6f0fa;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <!-- Only the sidebar logo, title, and user info remain. -->
+    <script>
+      const username = localStorage.getItem('remoedUsername');
+      if (username) {
+        const displayName = username.split('@')[0];
+        document.getElementById('remoed-username').textContent = displayName;
+      } else {
+        document.getElementById('remoed-username').textContent = '';
+      }
+    </script>
+    <!-- Main Content -->
+    <div class="remoed-content">
+        <div class="preview-container">
+            <h2>Trial Class Pre-Check</h2>
+            <div class="status" id="status-message">Checking camera and microphone...</div>
+            <video id="video-preview" autoplay playsinline muted></video>
+            <div id="mic-level"><div id="mic-bar"></div></div>
+            <button class="join-btn" id="join-class-btn">Join Class</button>
+        </div>
+    </div>
+    <script>
+    const statusMsg = document.getElementById('status-message');
+    const video = document.getElementById('video-preview');
+    const micBar = document.getElementById('mic-bar');
+
+    async function startMediaCheck() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            // Camera preview
+            video.srcObject = stream;
+            statusMsg.textContent = 'Camera and microphone detected!';
+            // Microphone level
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const source = audioCtx.createMediaStreamSource(stream);
+            const analyser = audioCtx.createAnalyser();
+            source.connect(analyser);
+            analyser.fftSize = 256;
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+            function updateMicLevel() {
+                analyser.getByteTimeDomainData(dataArray);
+                let sum = 0;
+                for (let i = 0; i < dataArray.length; i++) {
+                    const val = (dataArray[i] - 128) / 128;
+                    sum += val * val;
+                }
+                const rms = Math.sqrt(sum / dataArray.length);
+                micBar.style.width = Math.min(100, rms * 400) + '%';
+                requestAnimationFrame(updateMicLevel);
+            }
+            updateMicLevel();
+        } catch (err) {
+            statusMsg.textContent = 'Could not access camera or microphone. Please check your permissions.';
+        }
+    }
+    startMediaCheck();
+    document.getElementById('join-class-btn').addEventListener('click', function() {
+        alert('You are ready to join the class! (Integrate with your meeting platform here)');
+    });
+    </script>
+</body>
+</html> 

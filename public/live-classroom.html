@@ -1,0 +1,4480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Live Classroom</title>
+  <link rel="stylesheet" href="live-classroom.css" />
+  <!-- PDF.js library for embedded free PDF viewer -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  </script>
+  <style>
+    .pdf-viewer-container {
+      width: 100%;
+      height: calc(100vh - 200px);
+      min-height: 600px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      overflow: auto;
+      background: #f5f5f5;
+      position: relative;
+    }
+    .pdf-viewer-controls {
+      position: sticky;
+      top: 0;
+      background: white;
+      padding: 10px;
+      border-bottom: 1px solid #ddd;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      z-index: 10;
+      flex-wrap: wrap;
+    }
+    .pdf-viewer-controls button {
+      padding: 6px 12px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: white;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    .pdf-viewer-controls button:hover {
+      background: #f0f0f0;
+    }
+    .pdf-viewer-controls button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .pdf-viewer-controls button.active {
+      background: #d4edda;
+      color: #155724;
+      border-color: #c3e6cb;
+    }
+    .pdf-page-info {
+      padding: 6px 12px;
+      font-size: 0.9rem;
+      color: #666;
+    }
+    .pdf-canvas-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      gap: 20px;
+    }
+    .pdf-page {
+      margin-bottom: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      background: white;
+    }
+    .pdf-page canvas {
+      display: block;
+    }
+    .pdf-loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      font-size: 1.1rem;
+      color: #666;
+    }
+    .pdf-error {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      padding: 40px;
+      text-align: center;
+      color: #d32f2f;
+    }
+  </style>
+</head>
+<body>
+  <div class="top-bar">
+    <span>Live Classroom</span>
+    <div class="top-buttons">
+      <button id="class-info-btn">Class Info</button>
+      <span id="connection-status" style="padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; background: #f0f0f0; white-space:nowrap; height:28px; display:flex; align-items:center;"></span>
+    </div>
+  </div>
+        
+  <div class="main-container">
+    <!-- Left Navigation Bar -->
+    <div class="left-nav-bar">
+      <div class="nav-buttons-top">
+        <button class="nav-action-btn finish-btn" id="finish-btn" title="Finish Class" style="display:none;">Finish</button>
+        <button class="nav-action-btn absent-btn" id="absent-btn" title="Mark Absent" style="display:none;">Absent</button>
+        <button class="nav-action-btn leave-btn" id="leave-btn" title="Leave Classroom" style="display:none; background:#e74c3c;">Leave</button>
+      </div>
+      <div class="nav-icons">
+        <!-- Lessons tab removed - moved to admin side -->
+      </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="center-panel">
+      <div class="action-buttons-top-right">
+        <button class="action-btn flag-btn" title="Flag">🚩</button>
+        <button class="action-btn cookie-btn" title="Cookie">🍪</button>
+      </div>
+      
+      <div class="tabs">
+        <button class="active" data-tab="lesson-content">Lesson Content</button>
+        <button data-tab="whiteboard">Whiteboard</button>
+      </div>
+      
+      <!-- Lesson Content Tab -->
+      <div class="panel-content active" id="lesson-content-panel" style="padding: 12px;">
+        <div class="lesson-viewer">
+          <h3 class="lesson-viewer-title">Lesson Content Viewer (PDF/PPT/Video)</h3>
+          <!-- Lesson content viewer dropdown removed - lesson loads automatically from booking -->
+          <!-- Presenter Mode Status and Navigation Controls -->
+          <div id="presenter-mode-controls" style="display:none; gap:8px; align-items:center; justify-content:center; margin:12px 0;">
+            <span id="presenter-status-indicator" style="padding:8px 12px; background:#17a2b8; color:#fff; border-radius:6px; font-size:0.85rem; font-weight:600;">
+              🔴 Live Sync Active
+            </span>
+            <!-- Navigation buttons for PDF (moved outside iframe) -->
+            <div id="pdf-navigation-controls" style="display:none; gap:4px; align-items:center;">
+              <button id="pdf-prev-btn" title="Previous Page" style="padding:6px 10px; background:#1ca7e7; color:#fff; border:none; border-radius:4px; cursor:pointer; font-size:1.2rem; font-weight:bold; min-width:36px; height:36px; display:flex; align-items:center; justify-content:center;">◀</button>
+              <span id="pdf-page-info" style="padding:6px 12px; background:#fff; border:1px solid #ccc; border-radius:4px; font-size:0.85rem; font-weight:600; min-width:80px; text-align:center;">Page 1</span>
+              <button id="pdf-next-btn" title="Next Page" style="padding:6px 10px; background:#1ca7e7; color:#fff; border:none; border-radius:4px; cursor:pointer; font-size:1.2rem; font-weight:bold; min-width:36px; height:36px; display:flex; align-items:center; justify-content:center;">▶</button>
+            </div>
+          </div>
+          <div id="lesson-file-viewer" class="file-viewer"></div>
+        </div>
+      </div>
+      
+      <!-- Whiteboard Tab -->
+      <div class="panel-content" id="whiteboard-panel" style="display:none;">
+        <div class="whiteboard-controls-bar">
+          <button id="wb-annotate-toggle" class="wb-control-btn">Annotate</button>
+          <input type="color" id="wb-color" value="#ff0000" class="wb-color-picker">
+          <select id="wb-size" class="wb-size-select">
+            <option value="2">2</option>
+            <option value="4">4</option>
+            <option value="8" selected>8</option>
+            <option value="16">16</option>
+          </select>
+          <button id="wb-eraser" class="wb-control-btn">Eraser</button>
+          <button id="wb-clear" class="wb-control-btn">Clear</button>
+        </div>
+        <div class="whiteboard-container">
+          <canvas id="whiteboard-canvas" class="whiteboard-canvas"></canvas>
+        </div>
+      </div>
+      
+      <!-- Lessons Tab removed - moved to admin side -->
+      
+    </div>
+                    
+    <!-- Right Sidebar -->
+    <div class="right-panel">
+      <div class="class-time-header">Class Time: <span id="class-time">00:00</span></div>
+      
+      <div class="video-container">
+        <div class="video teacher">
+          <div class="video-header">
+            <p>Teacher</p>
+          </div>
+          <video id="remote-video" autoplay playsinline muted></video>
+        </div>
+        <div class="video student">
+          <div class="video-header">
+            <p>Student (You)</p>
+          </div>
+          <video id="local-video" autoplay muted playsinline></video>
+          <div id="camera-error-message" style="display:none; padding:8px; background:#fee; color:#c33; font-size:0.85rem; text-align:center; margin:4px 0; border-radius:4px;">
+            <div style="margin-bottom:4px;">Camera/Mic not available</div>
+            <button id="retry-camera-btn" style="padding:4px 12px; background:#4f46e5; color:#fff; border:none; border-radius:4px; cursor:pointer; font-size:0.8rem;">Retry</button>
+          </div>
+          <div class="video-controls">
+            <button id="toggle-camera" class="video-control-btn" title="Toggle Camera">📷</button>
+            <button id="toggle-mic" class="video-control-btn" title="Toggle Microphone">🎤</button>
+            <button id="toggle-mute" class="video-control-btn" title="Mute Audio">🔇</button>
+          </div>
+        </div>
+      </div>
+      
+      <div class="chat-section">
+        <div class="chat-header">Class Chat</div>
+        <div id="chat-messages" class="chat-messages"></div>
+        <form id="chat-form" class="chat-form">
+          <input type="text" id="chat-input" class="chat-input" placeholder="Type your message here..." />
+          <button type="submit" class="chat-send">✈️</button>
+        </form>
+      </div>
+    </div>
+  </div>
+            
+  <!-- Annotation overlay (shared canvas for presentation annotations) -->
+  <div id="annotation-overlay" style="position:fixed;left:calc(60px + 40%);top:50px;right:0;bottom:0;pointer-events:none;z-index:50;">
+    <canvas id="annotation-canvas" style="width:100%;height:100%;"></canvas>
+  </div>
+
+  <!-- Centered Class Info Modal -->
+  <div id="class-info-modal-overlay" style="position:fixed; inset:0; background:rgba(15,23,42,0.45); display:none; align-items:center; justify-content:center; z-index:9000;">
+    <div style="background:#ffffff; border-radius:12px; padding:20px 24px; width:90%; max-width:420px; box-shadow:0 24px 55px rgba(15,23,42,0.35);">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+        <h2 style="margin:0; font-size:1.15rem; color:#111827;">Class Information</h2>
+        <button id="class-info-close" style="border:none; background:transparent; font-size:1.4rem; cursor:pointer; color:#6b7280;">&times;</button>
+      </div>
+      <div style="font-size:0.9rem; color:#374151; display:flex; flex-direction:column; gap:8px;">
+        <div style="display:flex; justify-content:space-between; gap:12px;">
+          <span style="font-weight:600;">Room ID:</span>
+          <span id="ci-room" style="text-align:right;"></span>
+        </div>
+        <div style="display:flex; justify-content:space-between; gap:12px;">
+          <span style="font-weight:600;">Booking ID:</span>
+          <span id="ci-booking" style="text-align:right;"></span>
+        </div>
+        <div style="display:flex; justify-content:space-between; gap:12px;">
+          <span style="font-weight:600;">User Type:</span>
+          <span id="ci-user-type" style="text-align:right;"></span>
+        </div>
+        <div style="display:flex; justify-content:space-between; gap:12px;">
+          <span style="font-weight:600;">Username:</span>
+          <span id="ci-username" style="text-align:right;"></span>
+        </div>
+        <div style="display:flex; justify-content:space-between; gap:12px;">
+          <span style="font-weight:600;">Class Time:</span>
+          <span id="ci-class-time" style="text-align:right;"></span>
+        </div>
+        <div style="display:flex; justify-content:space-between; gap:12px;">
+          <span style="font-weight:600;">Student Level:</span>
+          <span id="ci-student-level" style="text-align:right;"></span>
+        </div>
+      </div>
+      <div style="margin-top:16px; display:flex; justify-content:flex-end;">
+        <button id="class-info-ok" style="padding:8px 16px; border-radius:6px; border:none; background:#4f46e5; color:#fff; font-weight:600; cursor:pointer;">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Upload Lesson Files Modal -->
+  <div id="upload-files-modal-overlay" style="position:fixed; inset:0; background:rgba(15,23,42,0.45); display:none; align-items:center; justify-content:center; z-index:9000;">
+    <div style="background:#ffffff; border-radius:12px; padding:20px 24px; width:90%; max-width:500px; box-shadow:0 24px 55px rgba(15,23,42,0.35); max-height:90vh; overflow-y:auto;">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+        <h2 style="margin:0; font-size:1.15rem; color:#111827;">📤 Upload Files for <span id="upload-lesson-title"></span></h2>
+        <button id="upload-files-close" style="border:none; background:transparent; font-size:1.4rem; cursor:pointer; color:#6b7280;">&times;</button>
+      </div>
+      <div style="margin-bottom:16px;">
+        <p style="margin:0 0 12px 0; color:#6b7280; font-size:0.9rem;">Select one or more files to upload (PDF, PPT, images, videos)</p>
+        <input type="file" id="lesson-files-input" multiple accept=".pdf,.ppt,.pptx,.doc,.docx,.jpg,.jpeg,.png,.gif,.mp4,.webm" 
+          style="width:100%; padding:8px; border:2px dashed #d1d5db; border-radius:6px; cursor:pointer; background:#f9fafb;">
+        <div id="upload-files-list" style="margin-top:12px; max-height:200px; overflow-y:auto;"></div>
+      </div>
+      <div style="display:flex; gap:8px; justify-content:flex-end;">
+        <button id="upload-files-cancel" style="padding:8px 16px; border-radius:6px; border:1px solid #d1d5db; background:#fff; color:#374151; font-weight:600; cursor:pointer;">Cancel</button>
+        <button id="upload-files-submit" style="padding:8px 16px; border-radius:6px; border:none; background:#28a745; color:#fff; font-weight:600; cursor:pointer; display:none;">Upload Files</button>
+      </div>
+      <div id="upload-progress" style="display:none; margin-top:12px; padding:8px; background:#f0f9ff; border-radius:6px; font-size:0.85rem; color:#0369a1;"></div>
+    </div>
+  </div>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script>
+    // Collaborative annotation client
+    (function(){
+      // Use the current origin (includes protocol, host, and port)
+      const SIGNALING_SERVER_URL = window.location.origin || 'http://localhost:5000';
+      console.log('🔌 Connecting to Socket.IO server at:', SIGNALING_SERVER_URL);
+      const socket = io(SIGNALING_SERVER_URL, {
+        transports: ['websocket', 'polling'],
+        reconnection: true,
+        reconnectionAttempts: 10, // Increase reconnection attempts
+        reconnectionDelay: 1000, // Initial delay: 1 second
+        reconnectionDelayMax: 10000, // Max delay: 10 seconds
+        timeout: 20000, // Connection timeout: 20 seconds
+        forceNew: false, // Reuse existing connection when possible
+        // Upgrade transport automatically for better performance
+        upgrade: true,
+        // Keep connection alive with pings
+        pingTimeout: 20000,
+        pingInterval: 25000,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
+        reconnectionAttempts: 5
+      });
+      
+      // Log connection events
+      socket.on('connect', () => {
+        console.log('✅ Socket.IO connected successfully, socket ID:', socket.id);
+        // Auto-load lesson from booking if available (only if not already loaded)
+        setTimeout(() => {
+          // Check if lesson already loaded
+          if (lessonState.size === 0) {
+            console.log('📚 Loading lesson from booking after socket connection...');
+            loadLessonFromBooking();
+          } else {
+            console.log('📚 Lesson already loaded, skipping auto-load');
+          }
+        }, 500);
+        // Request materials only if lesson wasn't auto-loaded from booking
+        // This prevents redundant requests and errors
+        if (room && lessonState.size === 0) {
+          // Wait a moment to see if auto-load completes first
+          setTimeout(() => {
+            // Only request if still no materials (auto-load didn't work)
+            if (lessonState.size === 0) {
+              console.log('📚 Requesting lesson materials from server (auto-load had no materials)');
+              socket.emit('lesson-materials-request', { room });
+            } else {
+              console.log('📚 Materials already loaded via auto-load, skipping server request');
+            }
+          }, 2000); // Wait 2 seconds for auto-load to complete
+        }
+        // Set up reward animation listener early when socket connects
+        if (typeof setupRewardAnimationListener === 'function') {
+          setupRewardAnimationListener();
+        } else {
+          console.warn('⚠️ setupRewardAnimationListener not yet defined, will set up after function definition');
+        }
+      });
+      
+      socket.on('connect_error', (error) => {
+        console.error('❌ Socket.IO connection error:', error);
+        console.error('❌ Attempted URL:', SIGNALING_SERVER_URL);
+      });
+      
+      // Handle disconnects gracefully
+      socket.on('disconnect', (reason) => {
+        console.log('Disconnected:', reason);
+        if (reason === 'transport close') {
+          socket.connect(); // attempt reconnection
+        }
+        // Also handle server disconnect
+        if (reason === 'io server disconnect') {
+          // Server disconnected, will attempt to reconnect
+          console.log('🔄 Server disconnected, will attempt to reconnect...');
+        }
+      });
+
+      // Determine classroom/room id from query param or a data attribute
+      function getQueryParam(name) {
+        const url = new URL(window.location.href);
+        return url.searchParams.get(name);
+      }
+      const room = getQueryParam('room') || getQueryParam('classroomId') || 'default-room';
+
+      // Determine user type - check query param first, then localStorage
+      const typeParam = getQueryParam('type');
+      // Determine user type: URL parameter takes highest priority
+      let userType = 'student'; // default
+      
+      // Priority 1: URL parameter (most reliable)
+      if (typeParam === 'teacher') {
+        userType = 'teacher';
+      } else if (typeParam === 'student') {
+        userType = 'student';
+      }
+      // Priority 2: localStorage userType (if URL param not set)
+      else if (!typeParam) {
+        const storedUserType = localStorage.getItem('userType');
+        if (storedUserType === 'teacher' || storedUserType === 'student') {
+          userType = storedUserType;
+        }
+        // Priority 3: Check IDs (studentId takes precedence over teacherId)
+        else if (localStorage.getItem('studentId')) {
+          userType = 'student';
+        } else if (localStorage.getItem('teacherId') && !localStorage.getItem('studentId')) {
+        userType = 'teacher';
+        }
+      }
+      
+      // Ensure studentId/teacherId match userType (prevent privilege escalation)
+      if (userType === 'student' && !localStorage.getItem('studentId')) {
+        console.warn('⚠️ Student type detected but no studentId found');
+      }
+      if (userType === 'teacher' && !localStorage.getItem('teacherId')) {
+        console.warn('⚠️ Teacher type detected but no teacherId found');
+      }
+      
+      const userId = localStorage.getItem('studentId') || localStorage.getItem('teacherId') || null;
+      const username = localStorage.getItem('remoedUsername') || 'Anon';
+      
+      console.log('🔍 User Type Detection:', {
+        userType,
+        typeParam,
+        studentId: localStorage.getItem('studentId') ? 'present' : 'missing',
+        teacherId: localStorage.getItem('teacherId') ? 'present' : 'missing',
+        storedUserType: localStorage.getItem('userType')
+      });
+
+      // Update video labels so the local tile matches the current role
+      try {
+        const teacherLabelEl = document.querySelector('.video.teacher .video-header p');
+        const studentLabelEl = document.querySelector('.video.student .video-header p');
+        if (teacherLabelEl && studentLabelEl) {
+          if (userType === 'teacher') {
+            // You are the teacher: your local camera tile should say Teacher (You)
+            teacherLabelEl.textContent = 'Student';
+            studentLabelEl.textContent = 'Teacher (You)';
+          } else {
+            // You are the student: keep default labels
+            teacherLabelEl.textContent = 'Teacher';
+            studentLabelEl.textContent = 'Student (You)';
+          }
+        }
+      } catch (e) {
+        console.warn('Could not update video labels based on user type:', e);
+      }
+
+      // Tab management
+      const tabs = document.querySelectorAll('.tabs button');
+      const lessonContentPanel = document.getElementById('lesson-content-panel');
+      const whiteboardPanel = document.getElementById('whiteboard-panel');
+      // Lessons tab removed - moved to admin side
+      // Lesson file select dropdown removed - lesson loads automatically from booking
+      const lessonFileViewer = document.getElementById('lesson-file-viewer');
+      
+      const lessonState = new Map();
+      
+      // Presenter Mode State Management
+      let presenterModeActive = false;
+      let currentPdfIframe = null;
+      let currentPdfContainer = null;
+      let presenterSyncInterval = null;
+      let lastSyncState = { page: null, scrollTop: null, scrollLeft: null, zoom: null };
+      
+      // Initialize Presenter Mode UI
+      const presenterModeControls = document.getElementById('presenter-mode-controls');
+      const startPresenterBtn = document.getElementById('start-presenter-mode-btn');
+      const stopPresenterBtn = document.getElementById('stop-presenter-mode-btn');
+      const presenterStatusIndicator = document.getElementById('presenter-status-indicator');
+      
+      if (userType === 'teacher' && presenterModeControls) {
+        presenterModeControls.style.display = 'flex';
+        presenterModeControls.style.alignItems = 'center';
+        presenterModeControls.style.gap = '8px';
+      }
+
+      function escapeHtml(str = '') {
+        return str.replace(/[&<>"']/g, (char) => ({
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#39;'
+        }[char] || char));
+      }
+
+      function formatBytes(bytes = 0) {
+        if (!bytes) return '0 KB';
+        const units = ['B', 'KB', 'MB', 'GB'];
+        let idx = 0;
+        let value = bytes;
+        while (value >= 1024 && idx < units.length - 1) {
+          value /= 1024;
+          idx++;
+        }
+        return `${value.toFixed(idx === 0 ? 0 : 1)} ${units[idx]}`;
+      }
+
+      function formatTimestamp(ts) {
+        if (!ts) return '';
+        try {
+          const date = typeof ts === 'number' ? new Date(ts) : new Date(parseInt(ts, 10));
+          return date.toLocaleString();
+        } catch (err) {
+          return '';
+        }
+      }
+
+      // Lessons panel references (already defined above)
+
+      function setActiveTab(tabName = 'lesson-content') {
+        tabs.forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tabName));
+        
+        if (lessonContentPanel) {
+          lessonContentPanel.style.display = tabName === 'lesson-content' ? 'flex' : 'none';
+          lessonContentPanel.classList.toggle('active', tabName === 'lesson-content');
+        }
+        if (whiteboardPanel) {
+          whiteboardPanel.style.display = tabName === 'whiteboard' ? 'flex' : 'none';
+          whiteboardPanel.classList.toggle('active', tabName === 'whiteboard');
+          if (tabName === 'whiteboard') {
+            setTimeout(() => {
+              initWhiteboardCanvas();
+              if (wbAnnotateToggle) wbAnnotateToggle.classList.add('active');
+              // Restore whiteboard drawings when switching back to whiteboard tab
+              restoreWhiteboard();
+            }, 100);
+          }
+        }
+        // Lessons tab removed - moved to admin side
+      }
+
+      tabs.forEach(btn => {
+        btn.addEventListener('click', () => setActiveTab(btn.dataset.tab));
+      });
+
+      setActiveTab('lesson-content');
+
+      // WebRTC configuration (for teacher/student video)
+      let localStream = null;
+      let remoteStream = null;
+      let peerConnection = null;
+      let isCreatingOffer = false;
+      let isSettingRemoteDescription = false;
+      let reconnectAttempts = 0;
+      let maxReconnectAttempts = 5;
+      let reconnectTimeout = null;
+      let isPageVisible = true;
+      let connectionCheckInterval = null;
+      
+      // Queue for ICE candidates received before remote description is set
+      const queuedIceCandidates = [];
+      
+      // Video recording removed - using external software like OBS instead
+      
+      // Cross-browser compatibility for RTCPeerConnection
+      const RTCPeerConnection = window.RTCPeerConnection || window.mozRTCPeerConnection || window.webkitRTCPeerConnection;
+      const RTCSessionDescription = window.RTCSessionDescription || window.mozRTCSessionDescription;
+      const RTCIceCandidate = window.RTCIceCandidate || window.mozRTCIceCandidate;
+      
+      const rtcConfig = { 
+        iceServers: [
+          // Google STUN servers (free, public)
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:stun1.l.google.com:19302' },
+          { urls: 'stun:stun2.l.google.com:19302' },
+          { urls: 'stun:stun3.l.google.com:19302' },
+          { urls: 'stun:stun4.l.google.com:19302' },
+          // Additional STUN servers for redundancy
+          { urls: 'stun:stun.stunprotocol.org:3478' },
+          { urls: 'stun:stun.voiparound.com' },
+          { urls: 'stun:stun.voipbuster.com' },
+          { urls: 'stun:stun.voipstunt.com' }
+        ],
+        // Connection timeout settings
+        iceCandidatePoolSize: 10, // Pre-gather ICE candidates
+        // Enable bundle policy for better connection stability
+        bundlePolicy: 'max-bundle',
+        // Enable RTCP mux for better performance
+        rtcpMuxPolicy: 'require'
+      };
+
+      function ensurePeerConnection() {
+        // If peer connection exists, check if it's in a valid state
+        if (peerConnection) {
+          const state = peerConnection.connectionState;
+          const signalingState = peerConnection.signalingState;
+          
+          // If connection is closed or in an invalid state, recreate it
+          if (state === 'closed' || signalingState === 'closed') {
+            console.log('🔄 Peer connection is closed, recreating...');
+            try {
+              peerConnection.close();
+            } catch (e) {
+              console.warn('Error closing peer connection:', e);
+            }
+            peerConnection = null;
+            // Reset flags
+            isCreatingOffer = false;
+            isSettingRemoteDescription = false;
+          } else {
+            // Connection exists and is valid, just ensure tracks are added
+            if (localStream) {
+              localStream.getTracks().forEach(track => {
+                const sender = peerConnection.getSenders().find(s => s.track === track);
+                if (!sender) {
+                  peerConnection.addTrack(track, localStream);
+                  console.log('➕ Added track to existing peer connection:', track.kind);
+                }
+              });
+            }
+            return;
+          }
+        }
+        peerConnection = new RTCPeerConnection(rtcConfig);
+        peerConnection.onicecandidate = (event) => {
+          if (event.candidate) {
+            socket.emit('ice-candidate', { room, candidate: event.candidate });
+            console.log('📤 ICE candidate sent:', event.candidate.type, event.candidate.protocol);
+          } else {
+            // null candidate means gathering is complete
+            console.log('✅ ICE candidate gathering complete');
+          }
+        };
+        
+        // Force ICE gathering to start immediately
+        peerConnection.onicegatheringstatechange = () => {
+          const gatheringState = peerConnection.iceGatheringState;
+          console.log('🧊 ICE gathering state:', gatheringState, 'userType:', userType);
+          if (gatheringState === 'gathering') {
+            console.log('✅ ICE gathering started');
+          } else if (gatheringState === 'complete') {
+            console.log('✅ ICE gathering completed');
+          }
+        };
+        peerConnection.ontrack = (event) => {
+          console.log('📹 ontrack event received, userType:', userType);
+          console.log('📹 Event streams:', event.streams.length);
+          console.log('📹 Event track:', event.track ? { kind: event.track.kind, enabled: event.track.enabled, readyState: event.track.readyState } : 'null');
+          
+          // Handle both event.streams and event.track
+          let streamToUse = null;
+          if (event.streams && event.streams.length > 0) {
+            streamToUse = event.streams[0];
+          } else if (event.track) {
+            // Create a new stream from the track if no stream provided
+            streamToUse = new MediaStream([event.track]);
+            console.log('📹 Created stream from track');
+          }
+          
+          if (remoteVideo && streamToUse) {
+            remoteStream = streamToUse;
+            console.log('📹 Remote stream tracks:', remoteStream.getTracks().map(t => ({ 
+              kind: t.kind, 
+              enabled: t.enabled, 
+              readyState: t.readyState,
+              id: t.id 
+            })));
+            
+            // Always set srcObject to ensure video is displayed
+            remoteVideo.srcObject = remoteStream;
+            console.log('✅ Remote video srcObject set, stream tracks:', remoteStream.getTracks().length);
+            
+            // Ensure video element is visible and properly configured
+            remoteVideo.muted = false; // Allow audio from remote
+            remoteVideo.autoplay = true;
+            remoteVideo.playsInline = true;
+            remoteVideo.style.display = 'block';
+            remoteVideo.style.visibility = 'visible';
+            
+            // Log video element state
+            console.log('📹 Remote video element state:', {
+              hasSrcObject: !!remoteVideo.srcObject,
+              muted: remoteVideo.muted,
+              autoplay: remoteVideo.autoplay,
+              paused: remoteVideo.paused,
+              readyState: remoteVideo.readyState,
+              videoWidth: remoteVideo.videoWidth,
+              videoHeight: remoteVideo.videoHeight
+            });
+            
+            // Make sure video plays - prevent multiple simultaneous play() calls
+            if (remoteVideo.paused) {
+              const playPromise = remoteVideo.play();
+              if (playPromise !== undefined) {
+                playPromise
+                  .then(() => {
+                    console.log('✅ Remote video playing successfully');
+                  })
+                  .catch(err => {
+                    // Silently ignore AbortError - it's harmless and happens during srcObject changes
+                    if (err.name !== 'AbortError') {
+                      // Only log non-AbortError issues
+                      if (err.name !== 'NotAllowedError') {
+                        console.warn('⚠️ Remote video play issue:', err.name);
+                      }
+                      // Retry once after a delay, but only if not AbortError
+                      setTimeout(() => {
+                        if (remoteVideo.paused && remoteVideo.srcObject) {
+                          remoteVideo.play().catch(e => {
+                            // Silently ignore AbortError on retry too
+                            if (e.name !== 'AbortError' && e.name !== 'NotAllowedError') {
+                              console.warn('⚠️ Retry play issue:', e.name);
+                            }
+                          });
+                        }
+                      }, 300);
+                    }
+                  });
+              }
+            } else {
+              console.log('✅ Remote video already playing');
+            }
+            
+            // Listen for track ended events
+            event.track.onended = () => {
+              console.log('⚠️ Remote track ended:', event.track.kind);
+            };
+            
+            event.track.onmute = () => {
+              console.log('⚠️ Remote track muted:', event.track.kind);
+            };
+            
+            event.track.onunmute = () => {
+              console.log('✅ Remote track unmuted:', event.track.kind);
+            };
+          } else {
+            console.warn('⚠️ Cannot set remote video:', { 
+              hasRemoteVideo: !!remoteVideo, 
+              hasStream: !!streamToUse,
+              hasStreams: event.streams && event.streams.length > 0,
+              hasTrack: !!event.track
+            });
+          }
+        };
+        peerConnection.onconnectionstatechange = () => {
+          const state = peerConnection.connectionState;
+          console.log('🔗 Peer connection state:', state, 'userType:', userType);
+          
+          if (state === 'failed' || state === 'disconnected') {
+            console.warn('⚠️ Connection failed/disconnected');
+            attemptReconnect();
+          } else if (state === 'connected') {
+            console.log('✅ Peer connection established successfully');
+            reconnectAttempts = 0;
+            if (reconnectTimeout) {
+              clearTimeout(reconnectTimeout);
+              reconnectTimeout = null;
+            }
+            
+            // Verify tracks are active after connection
+            setTimeout(() => {
+              const senders = peerConnection.getSenders();
+              const receivers = peerConnection.getReceivers();
+              console.log('📊 Connection established - tracks:', {
+                senders: senders.length,
+                receivers: receivers.length,
+                senderTracks: senders.map(s => ({ kind: s.track?.kind, enabled: s.track?.enabled, readyState: s.track?.readyState })),
+                receiverTracks: receivers.map(r => ({ kind: r.track?.kind, enabled: r.track?.enabled, readyState: r.track?.readyState }))
+              });
+              
+              // Check if remote video has stream
+              if (remoteVideo && remoteVideo.srcObject) {
+                const remoteStream = remoteVideo.srcObject;
+                console.log('📹 Remote video stream check:', {
+                  hasStream: !!remoteStream,
+                  tracks: remoteStream.getTracks().length,
+                  videoTracks: remoteStream.getVideoTracks().length,
+                  audioTracks: remoteStream.getAudioTracks().length,
+                  trackStates: remoteStream.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled, readyState: t.readyState }))
+                });
+              } else {
+                console.warn('⚠️ Remote video has no stream after connection established');
+              }
+            }, 1000);
+          }
+        };
+        
+        peerConnection.oniceconnectionstatechange = () => {
+          const iceState = peerConnection.iceConnectionState;
+          console.log('🧊 ICE connection state:', iceState, 'userType:', userType);
+          if (iceState === 'failed' || iceState === 'disconnected') {
+            console.warn('⚠️ ICE connection failed/disconnected');
+            attemptReconnect();
+          } else if (iceState === 'connected' || iceState === 'completed') {
+            console.log('✅ ICE connection established');
+          }
+        };
+        if (localStream) {
+          localStream.getTracks().forEach(track => {
+            peerConnection.addTrack(track, localStream);
+            console.log('➕ Added local track:', track.kind, track.id, 'enabled:', track.enabled);
+          });
+          
+          // Force ICE gathering to start by creating a data channel
+          // This helps establish connection faster, especially for students
+          try {
+            if (!peerConnection.getDataChannel('init')) {
+              const dataChannel = peerConnection.createDataChannel('init', { ordered: true });
+              dataChannel.onopen = () => {
+                console.log('✅ Data channel opened - connection ready');
+              };
+              dataChannel.onerror = (err) => {
+                // Silently ignore - data channel is just for ICE gathering
+              };
+              console.log('📡 Created data channel to initiate ICE gathering');
+            }
+          } catch (e) {
+            // Data channel might already exist, ignore
+          }
+        }
+      }
+
+      socket.on('joined', () => {
+        console.log('✅ Joined room (first user), ensuring peer connection, userType:', userType);
+        ensurePeerConnection();
+        
+        // Log connection status
+        if (peerConnection) {
+          console.log('📊 Peer connection after join:', {
+            connectionState: peerConnection.connectionState,
+            iceConnectionState: peerConnection.iceConnectionState,
+            signalingState: peerConnection.signalingState,
+            senders: peerConnection.getSenders().length,
+            receivers: peerConnection.getReceivers().length
+          });
+        }
+        
+        // If we're the first user and already have a stream, we're ready
+        // The second user will trigger 'ready' event
+      });
+
+      socket.on('ready', () => {
+        console.log('✅ Room ready, userType:', userType, 'hasPeerConnection:', !!peerConnection, 'hasLocalStream:', !!localStream);
+        // Only teacher creates the offer to avoid race condition
+        // Student will wait for the offer from teacher
+        if (userType !== 'teacher') {
+          console.log('👤 Student: Waiting for offer from teacher...');
+          // Ensure peer connection is ready for when offer arrives
+          ensurePeerConnection();
+          
+          // Force ICE gathering to start even before offer arrives
+          // Create a temporary offer to trigger ICE candidate gathering immediately
+          if (peerConnection && localStream && !peerConnection.localDescription && !peerConnection.remoteDescription) {
+            // Add tracks if not already added
+            const senders = peerConnection.getSenders();
+            localStream.getTracks().forEach(track => {
+              const sender = senders.find(s => s.track === track);
+              if (!sender) {
+                peerConnection.addTrack(track, localStream);
+                console.log('➕ Student: Added track before offer:', track.kind);
+              }
+            });
+            
+            // Create a temporary offer to force ICE gathering to start
+            // This will be replaced when the real offer arrives
+            console.log('📡 Student: Creating temporary offer to force ICE gathering...');
+            peerConnection.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true })
+              .then(tempOffer => {
+                return peerConnection.setLocalDescription(tempOffer);
+              })
+              .then(() => {
+                console.log('✅ Student: Temporary offer set - ICE gathering started');
+                // Don't send this offer, it's just to trigger ICE gathering
+                // The real offer from teacher will replace it
+              })
+              .catch(err => {
+                console.warn('⚠️ Student: Could not create temporary offer:', err);
+              });
+          }
+          return;
+        }
+        console.log('👨‍🏫 Teacher: Creating offer...');
+        // Prevent duplicate offers
+        if (isCreatingOffer) {
+          console.log('⚠️ Already creating offer, skipping...');
+          return;
+        }
+        ensurePeerConnection();
+        
+        // Wait a moment to ensure tracks are added
+        setTimeout(() => {
+          if (peerConnection && localStream) {
+            // Check connection state - if disconnected/failed, reset and recreate
+            const connectionState = peerConnection.connectionState;
+            const signalingState = peerConnection.signalingState;
+            
+            if (connectionState === 'disconnected' || connectionState === 'failed' || 
+                connectionState === 'closed') {
+              console.log('🔄 Connection is disconnected/failed, resetting peer connection...');
+              // Close old connection
+              if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+              }
+              // Recreate connection
+              ensurePeerConnection();
+              // Wait a bit and retry
+              setTimeout(() => {
+                if (peerConnection && localStream) {
+                  socket.emit('ready', { room });
+                }
+              }, 500);
+              return;
+            }
+            
+            // CRITICAL: Check if we already have a local description
+            // If we do, we MUST close and recreate the connection to avoid SDP m-line order errors
+            if (peerConnection.localDescription) {
+              console.log('⚠️ Already have local description - this can cause SDP m-line order errors');
+              console.log('🔄 Closing and recreating peer connection to avoid SDP errors...');
+              
+              // Close the existing connection completely
+              try {
+                peerConnection.close();
+              } catch (e) {
+                console.warn('Error closing peer connection:', e);
+              }
+              
+              // Reset connection and flags
+              peerConnection = null;
+              isCreatingOffer = false;
+              isSettingRemoteDescription = false;
+              
+              // Recreate connection
+              ensurePeerConnection();
+              
+              // Wait a moment for connection to be ready, then retry
+              setTimeout(() => {
+                if (peerConnection && localStream) {
+                  console.log('🔄 Retrying offer creation after connection reset...');
+                  socket.emit('ready', { room });
+                }
+              }, 1000);
+              return;
+            }
+            
+            // Also check if we have a remote description (shouldn't happen for teacher creating offer)
+            if (peerConnection.remoteDescription) {
+              console.warn('⚠️ Teacher has remote description - this is unexpected, resetting...');
+              try {
+                peerConnection.close();
+              } catch (e) {
+                console.warn('Error closing peer connection:', e);
+              }
+              peerConnection = null;
+              isCreatingOffer = false;
+              isSettingRemoteDescription = false;
+              ensurePeerConnection();
+              setTimeout(() => {
+                if (peerConnection && localStream) {
+                  socket.emit('ready', { room });
+                }
+              }, 1000);
+              return;
+            }
+            
+            // Make sure all tracks are added BEFORE creating offer
+            const senders = peerConnection.getSenders();
+            const tracks = localStream.getTracks();
+            console.log('📊 Before offer - tracks:', tracks.length, 'senders:', senders.length);
+            
+            tracks.forEach(track => {
+              const sender = senders.find(s => s.track === track);
+              if (!sender) {
+                peerConnection.addTrack(track, localStream);
+                console.log('➕ Added track to peer connection:', track.kind, track.id);
+              } else {
+                console.log('✓ Track already in peer connection:', track.kind, track.id);
+              }
+            });
+            
+            // Verify tracks are added
+            const updatedSenders = peerConnection.getSenders();
+            console.log('📊 After adding tracks - senders:', updatedSenders.length);
+            updatedSenders.forEach(sender => {
+              console.log('  - Sender track:', sender.track?.kind, sender.track?.id, 'enabled:', sender.track?.enabled);
+            });
+            
+            isCreatingOffer = true;
+            
+            // Create offer with proper options - force immediate ICE gathering
+            const offerOptions = {
+              offerToReceiveAudio: true,
+              offerToReceiveVideo: true,
+              // Voice activity detection for better audio quality
+              voiceActivityDetection: true,
+              // Force ICE restart to ensure fresh candidates
+              iceRestart: false
+            };
+            
+            console.log('📤 Creating offer with ICE candidate pooling...');
+            peerConnection.createOffer(offerOptions)
+              .then(offer => {
+                console.log('📤 Offer created, setting local description...');
+                console.log('📊 Offer SDP type:', offer.type, 'SDP length:', offer.sdp?.length);
+                
+                // CRITICAL: Check if we already have a local description before setting
+                // This prevents the "m-line order" error
+                if (peerConnection.localDescription) {
+                  console.error('❌ CRITICAL: Local description already exists! Closing connection...');
+                  peerConnection.close();
+                  peerConnection = null;
+                  isCreatingOffer = false;
+                  // Retry after recreating connection
+                  ensurePeerConnection();
+                  setTimeout(() => {
+                    if (peerConnection && localStream) {
+                      socket.emit('ready', { room });
+                    }
+                  }, 1000);
+                  return Promise.reject(new Error('Local description already exists'));
+                }
+                
+                return peerConnection.setLocalDescription(offer);
+              })
+              .then(() => {
+                console.log('✅ Local description set successfully');
+                socket.emit('offer', { room, offer: peerConnection.localDescription });
+                console.log('📤 Offer sent by teacher');
+                isCreatingOffer = false;
+              })
+              .catch(err => {
+                console.error('❌ Error creating/setting offer:', err);
+                console.error('❌ Error details:', {
+                  name: err.name,
+                  message: err.message,
+                  stack: err.stack
+                });
+                
+                // If it's an SDP error, reset the connection
+                if (err.message && err.message.includes('m-lines') || 
+                    err.message && err.message.includes('order') ||
+                    err.name === 'InvalidAccessError') {
+                  console.error('❌ SDP m-line order error detected - resetting connection...');
+                  if (peerConnection) {
+                    try {
+                      peerConnection.close();
+                    } catch (e) {
+                      console.warn('Error closing peer connection:', e);
+                    }
+                    peerConnection = null;
+                  }
+                  isCreatingOffer = false;
+                  isSettingRemoteDescription = false;
+                  
+                  // Recreate and retry
+                  ensurePeerConnection();
+                  setTimeout(() => {
+                    if (peerConnection && localStream) {
+                      console.log('🔄 Retrying offer creation after SDP error...');
+                      socket.emit('ready', { room });
+                    }
+                  }, 2000);
+                } else {
+                  isCreatingOffer = false;
+                }
+              });
+          } else {
+            console.warn('⚠️ Cannot create offer: peerConnection or localStream missing', {
+              hasPeerConnection: !!peerConnection,
+              hasLocalStream: !!localStream
+            });
+            // Retry after a short delay
+            setTimeout(() => {
+              if (peerConnection && localStream) {
+                socket.emit('ready', { room });
+              }
+            }, 1000);
+          }
+        }, 300); // Small delay to ensure tracks are added
+      });
+
+      socket.on('offer', ({ offer } = {}) => {
+        if (!offer) return;
+        console.log('📨 Received offer, userType:', userType, 'current signaling state:', peerConnection ? peerConnection.signalingState : 'no peer connection');
+        ensurePeerConnection();
+        if (!peerConnection || !localStream) {
+          console.warn('⚠️ Cannot handle offer: peerConnection or localStream missing', {
+            hasPeerConnection: !!peerConnection,
+            hasLocalStream: !!localStream
+          });
+          // Wait and retry
+          setTimeout(() => {
+            if (peerConnection && localStream) {
+              socket.emit('offer', { offer });
+            }
+          }, 1000);
+          return;
+        }
+        
+        // If student has a temporary local description (from forced ICE gathering), clear it first
+        if (userType === 'student' && peerConnection.localDescription && 
+            peerConnection.signalingState === 'have-local-offer') {
+          console.log('📡 Student: Clearing temporary offer to accept real offer from teacher');
+          // We need to reset the connection to clear the temporary offer
+          try {
+            peerConnection.close();
+          } catch (e) {
+            console.warn('Error closing peer connection:', e);
+          }
+          peerConnection = null;
+          isSettingRemoteDescription = false;
+          ensurePeerConnection();
+          // Wait a moment for connection to be ready, then handle the offer
+          setTimeout(() => {
+            if (peerConnection && localStream) {
+              // Re-handle the offer
+              socket.emit('offer', { offer });
+            }
+          }, 500);
+          return;
+        }
+        
+        // Check if we already have a remote description
+        // If we do, we need to reset the connection to avoid SDP errors
+        if (peerConnection.remoteDescription) {
+          console.warn('⚠️ Already have remote description - resetting to avoid SDP errors');
+          try {
+            peerConnection.close();
+          } catch (e) {
+            console.warn('Error closing peer connection:', e);
+          }
+          peerConnection = null;
+          isSettingRemoteDescription = false;
+          ensurePeerConnection();
+          // Retry handling the offer after recreating connection
+          setTimeout(() => {
+            if (peerConnection && localStream) {
+              // Re-emit the offer event to handle it again
+              socket.emit('offer', { offer });
+            }
+          }, 1000);
+          return;
+        }
+        // Make sure all tracks are added BEFORE setting remote description
+        let tracksAdded = 0;
+        const senders = peerConnection.getSenders();
+        localStream.getTracks().forEach(track => {
+          const sender = senders.find(s => s.track === track);
+          if (!sender) {
+            peerConnection.addTrack(track, localStream);
+            tracksAdded++;
+            console.log('➕ Added track to peer connection:', track.kind, track.id, 'enabled:', track.enabled);
+          } else {
+            console.log('✓ Track already in peer connection:', track.kind, track.id);
+          }
+        });
+        console.log(`📊 Total tracks in localStream: ${localStream.getTracks().length}, senders: ${peerConnection.getSenders().length}, added: ${tracksAdded}`);
+        
+        // Verify tracks are in senders
+        const updatedSenders = peerConnection.getSenders();
+        updatedSenders.forEach(sender => {
+          console.log('  - Sender track:', sender.track?.kind, sender.track?.id);
+        });
+        
+        // Prevent concurrent remote description setting
+        if (isSettingRemoteDescription) {
+          console.log('⚠️ Already setting remote description, skipping...');
+          return;
+        }
+        isSettingRemoteDescription = true;
+        peerConnection.setRemoteDescription(new RTCSessionDescription(offer))
+          .then(() => {
+            console.log('✅ Remote description set, creating answer');
+            // Process any queued ICE candidates now that remote description is set
+            processQueuedIceCandidates();
+            return peerConnection.createAnswer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
+          })
+          .then(answer => {
+            return peerConnection.setLocalDescription(answer).then(() => {
+              socket.emit('answer', { room, answer });
+              console.log('📤 Answer sent by', userType);
+              isSettingRemoteDescription = false;
+            });
+          })
+          .catch(err => {
+            console.error('❌ Error handling offer:', err);
+            isSettingRemoteDescription = false;
+          });
+      });
+
+      socket.on('answer', ({ answer } = {}) => {
+        if (!answer) return;
+        console.log('📨 Received answer, userType:', userType, 'current signaling state:', peerConnection ? peerConnection.signalingState : 'no peer connection');
+        if (!peerConnection) {
+          console.warn('⚠️ No peer connection, cannot set remote description');
+          ensurePeerConnection();
+          // Retry after a moment
+          setTimeout(() => {
+            if (peerConnection) {
+              socket.emit('answer', { answer });
+            }
+          }, 500);
+          return;
+        }
+        // Check if we already have a remote description
+        // If we do, we might need to reset (but this is less critical for answers)
+        if (peerConnection.remoteDescription) {
+          const currentState = peerConnection.signalingState;
+          // Only ignore if we're in the right state
+          if (currentState === 'have-remote-answer' || currentState === 'stable') {
+            console.log('⚠️ Already have remote description in stable state, ignoring duplicate answer');
+            return;
+          } else {
+            console.warn('⚠️ Remote description exists but in wrong state:', currentState, '- resetting...');
+            try {
+              peerConnection.close();
+            } catch (e) {
+              console.warn('Error closing peer connection:', e);
+            }
+            peerConnection = null;
+            isSettingRemoteDescription = false;
+            ensurePeerConnection();
+            // Retry after recreating
+            setTimeout(() => {
+              if (peerConnection && localStream) {
+                socket.emit('answer', { answer });
+              }
+            }, 1000);
+            return;
+          }
+        }
+        // Check if we're in the right state (should be "have-local-offer")
+        if (peerConnection.signalingState !== 'have-local-offer') {
+          console.warn('⚠️ Wrong signaling state for answer:', peerConnection.signalingState, 'expected: have-local-offer');
+          // Try to continue anyway - sometimes the state can be different
+          console.log('⚠️ Attempting to set remote description anyway...');
+        }
+        // Prevent concurrent remote description setting
+        if (isSettingRemoteDescription) {
+          console.log('⚠️ Already setting remote description, skipping...');
+          return;
+        }
+        isSettingRemoteDescription = true;
+        peerConnection.setRemoteDescription(new RTCSessionDescription(answer))
+          .then(() => {
+            console.log('✅ Remote description (answer) set successfully by', userType);
+            isSettingRemoteDescription = false;
+            
+            // Process any queued ICE candidates now that remote description is set
+            processQueuedIceCandidates();
+            
+            // Check connection state after answer is set
+            setTimeout(() => {
+              console.log('📊 Connection state after answer:', {
+                connectionState: peerConnection.connectionState,
+                iceConnectionState: peerConnection.iceConnectionState,
+                signalingState: peerConnection.signalingState
+              });
+            }, 500);
+          })
+          .catch(err => {
+            console.error('❌ Error setting remote description:', err);
+            isSettingRemoteDescription = false;
+          });
+      });
+
+      // Function to add queued ICE candidates after remote description is set
+      function processQueuedIceCandidates() {
+        if (queuedIceCandidates.length > 0 && peerConnection && peerConnection.remoteDescription) {
+          console.log(`📨 Processing ${queuedIceCandidates.length} queued ICE candidates...`);
+          const candidates = [...queuedIceCandidates];
+          queuedIceCandidates.length = 0; // Clear queue
+          
+          candidates.forEach(candidate => {
+            peerConnection.addIceCandidate(new RTCIceCandidate(candidate))
+              .then(() => {
+                console.log('✅ Queued ICE candidate added successfully');
+              })
+              .catch(err => {
+                // Silently ignore - candidate might be invalid or connection already established
+                if (err.name !== 'OperationError' && err.name !== 'InvalidStateError') {
+                  console.warn('⚠️ Error adding queued ICE candidate:', err.name);
+                }
+              });
+          });
+        }
+      }
+      
+      socket.on('ice-candidate', ({ candidate } = {}) => {
+        if (!peerConnection || !candidate) {
+          console.warn('⚠️ Cannot add ICE candidate:', { hasPeerConnection: !!peerConnection, hasCandidate: !!candidate });
+          return;
+        }
+        
+        console.log('📨 Received ICE candidate, userType:', userType, 'candidate:', candidate.candidate ? candidate.candidate.substring(0, 50) + '...' : 'null');
+        
+        // Check if remote description is set
+        if (!peerConnection.remoteDescription) {
+          // Queue the candidate to add later
+          console.log('📦 Queueing ICE candidate (remote description not set yet)');
+          queuedIceCandidates.push(candidate);
+          return;
+        }
+        
+        // Remote description is set, add candidate immediately
+        peerConnection.addIceCandidate(new RTCIceCandidate(candidate))
+          .then(() => {
+            console.log('✅ ICE candidate added successfully');
+          })
+          .catch(err => {
+            // Silently ignore common errors
+            if (err.name === 'InvalidStateError' && err.message.includes('remote description')) {
+              // Queue it for later
+              console.log('📦 Queueing ICE candidate (remote description issue)');
+              queuedIceCandidates.push(candidate);
+            } else if (err.name !== 'OperationError') {
+              // Only log non-operation errors (operation errors are usually harmless)
+              console.warn('⚠️ Error adding ICE candidate:', err.name, err.message);
+            }
+          });
+      });
+
+
+      // updateLessonFilePicker function removed - lesson file dropdown removed
+      // Lessons now load automatically from booking
+
+      // Track currently displayed material to prevent duplicate rendering
+      let currentDisplayedMaterialId = null;
+      let isRenderingLesson = false;
+      
+      function showLessonFile(material) {
+        if (!lessonFileViewer || !material) return;
+        
+        // Prevent duplicate rendering of the same material
+        if (currentDisplayedMaterialId === material.id && isRenderingLesson) {
+          console.log('📚 Skipping duplicate showLessonFile call for:', material.id);
+          return;
+        }
+        
+        // Mark as rendering
+        isRenderingLesson = true;
+        currentDisplayedMaterialId = material.id;
+        
+        console.log('📄 [CLIENT] showLessonFile called:', {
+          name: material.name,
+          type: material.type,
+          hasData: !!material.data,
+          dataLength: material.data?.length,
+          dataStart: material.data?.substring(0, 50)
+        });
+        
+        lessonFileViewer.innerHTML = '';
+        
+        // Check file type - support both MIME type and file extension
+        const fileType = (material.type || '').toLowerCase();
+        const fileName = (material.name || '').toLowerCase();
+        const isImage = fileType.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp)$/i.test(fileName);
+        const isPDF = fileType.includes('pdf') || fileType.includes('application/pdf') || fileName.endsWith('.pdf');
+        const isVideo = fileType.includes('video') || /\.(mp4|webm|ogg)$/i.test(fileName);
+        const isPpt = fileType.includes('ppt') || /\.(ppt|pptx)$/i.test(fileName);
+        
+        if (isImage) {
+          console.log('🖼️ [CLIENT] Displaying as image');
+          const img = document.createElement('img');
+          img.src = material.data;
+          img.style.cssText = 'max-width:100%;max-height:800px;border-radius:8px;';
+          img.alt = escapeHtml(material.name || '');
+          img.onerror = () => {
+            console.error('❌ [CLIENT] Failed to load image');
+            lessonFileViewer.innerHTML = '<p style="color:red;">Failed to load image</p>';
+          };
+          lessonFileViewer.appendChild(img);
+        } else if (isPDF) {
+          console.log('📄 [CLIENT] Displaying as PDF using PDF.js embedded viewer');
+          
+          // Use PDF.js for embedded free PDF viewer
+          const pdfContainer = document.createElement('div');
+          pdfContainer.className = 'pdf-viewer-container';
+          
+          // Create controls bar
+          const controls = document.createElement('div');
+          controls.className = 'pdf-viewer-controls';
+          
+          const prevBtn = document.createElement('button');
+          prevBtn.textContent = '◀ Previous';
+          prevBtn.id = 'pdf-prev-btn-custom';
+          
+          const nextBtn = document.createElement('button');
+          nextBtn.textContent = 'Next ▶';
+          nextBtn.id = 'pdf-next-btn-custom';
+          
+          const pageInfo = document.createElement('span');
+          pageInfo.className = 'pdf-page-info';
+          pageInfo.id = 'pdf-page-info-custom';
+          pageInfo.textContent = 'Page 1 of 1';
+          
+          const zoomOutBtn = document.createElement('button');
+          zoomOutBtn.textContent = '− Zoom Out';
+          zoomOutBtn.id = 'pdf-zoom-out-btn';
+          
+          const zoomInBtn = document.createElement('button');
+          zoomInBtn.textContent = 'Zoom In +';
+          zoomInBtn.id = 'pdf-zoom-in-btn';
+          
+          const fitToViewerBtn = document.createElement('button');
+          fitToViewerBtn.textContent = 'Fit to Viewer';
+          fitToViewerBtn.id = 'pdf-fit-to-viewer-btn';
+          fitToViewerBtn.title = 'Fit PDF to viewer width';
+          
+          const canvasContainer = document.createElement('div');
+          canvasContainer.className = 'pdf-canvas-container';
+          canvasContainer.id = 'pdf-canvas-container';
+          
+          controls.appendChild(prevBtn);
+          controls.appendChild(nextBtn);
+          controls.appendChild(pageInfo);
+          controls.appendChild(document.createTextNode(' | '));
+          controls.appendChild(zoomOutBtn);
+          controls.appendChild(zoomInBtn);
+          controls.appendChild(fitToViewerBtn);
+          
+          pdfContainer.appendChild(controls);
+          pdfContainer.appendChild(canvasContainer);
+          lessonFileViewer.appendChild(pdfContainer);
+          
+          // Show loading
+          canvasContainer.innerHTML = '<div class="pdf-loading">Loading PDF...</div>';
+          
+          // Load PDF using PDF.js
+          let pdfDoc = null;
+          let pageNum = 1;
+          let pageRendering = false;
+          let pageNumPending = null;
+          let scale = 1.5;
+          let fitToViewerMode = false;
+          let allPagesRendered = false;
+          let pageCanvases = {}; // Store canvas elements for each page
+          
+          // Calculate scale to fit viewer width
+          function calculateFitToViewerScale(page) {
+            const containerWidth = canvasContainer.clientWidth - 40; // Account for padding
+            const viewport = page.getViewport({ scale: 1.0 });
+            const scaleToFit = containerWidth / viewport.width;
+            return Math.min(scaleToFit, 3.0); // Max scale of 3.0
+          }
+          
+          function renderPage(num, useFitScale = false) {
+            pageRendering = true;
+            pdfDoc.getPage(num).then(function(page) {
+              let renderScale = scale;
+              
+              // Use fit-to-viewer scale if requested
+              if (useFitScale || fitToViewerMode) {
+                renderScale = calculateFitToViewerScale(page);
+              }
+              
+              const viewport = page.getViewport({ scale: renderScale });
+              
+              // Create or get canvas for this page
+              let canvasDiv = document.getElementById(`pdf-page-${num}`);
+              if (!canvasDiv) {
+                canvasDiv = document.createElement('div');
+                canvasDiv.className = 'pdf-page';
+                canvasDiv.id = `pdf-page-${num}`;
+                canvasContainer.appendChild(canvasDiv);
+              }
+              
+              // Remove old canvas if exists
+              canvasDiv.innerHTML = '';
+              
+              const canvas = document.createElement('canvas');
+              const ctx = canvas.getContext('2d');
+              canvas.height = viewport.height;
+              canvas.width = viewport.width;
+              
+              canvasDiv.appendChild(canvas);
+              pageCanvases[num] = { canvas, canvasDiv, scale: renderScale };
+              
+              const renderContext = {
+                canvasContext: ctx,
+                viewport: viewport
+              };
+              
+              page.render(renderContext).promise.then(function() {
+                pageRendering = false;
+                if (pageNumPending !== null) {
+                  renderPage(pageNumPending, useFitScale);
+                  pageNumPending = null;
+                }
+                
+                // Update page info
+                pageInfo.textContent = `Page ${pageNum} of ${pdfDoc.numPages}`;
+                
+                // Update buttons
+                prevBtn.disabled = pageNum <= 1;
+                nextBtn.disabled = pageNum >= pdfDoc.numPages;
+                
+                // Scroll to current page
+                if (canvasDiv) {
+                  canvasDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+              });
+            });
+          }
+          
+          function renderAllPages(useFitScale = false) {
+            if (!pdfDoc) return;
+            
+            canvasContainer.innerHTML = '';
+            pageCanvases = {};
+            
+            // Render all pages
+            for (let i = 1; i <= pdfDoc.numPages; i++) {
+              pdfDoc.getPage(i).then(function(page) {
+                let renderScale = scale;
+                
+                if (useFitScale || fitToViewerMode) {
+                  renderScale = calculateFitToViewerScale(page);
+                }
+                
+                const viewport = page.getViewport({ scale: renderScale });
+                
+                const canvasDiv = document.createElement('div');
+                canvasDiv.className = 'pdf-page';
+                canvasDiv.id = `pdf-page-${i}`;
+                
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+                
+                canvasDiv.appendChild(canvas);
+                canvasContainer.appendChild(canvasDiv);
+                pageCanvases[i] = { canvas, canvasDiv, scale: renderScale };
+                
+                const renderContext = {
+                  canvasContext: ctx,
+                  viewport: viewport
+                };
+                
+                page.render(renderContext).promise.then(function() {
+                  if (i === pdfDoc.numPages) {
+                    allPagesRendered = true;
+                    pageInfo.textContent = `Page ${pageNum} of ${pdfDoc.numPages}`;
+                    prevBtn.disabled = pageNum <= 1;
+                    nextBtn.disabled = pageNum >= pdfDoc.numPages;
+                    
+                    // Scroll to first page
+                    const firstPage = document.getElementById(`pdf-page-${pageNum}`);
+                    if (firstPage) {
+                      firstPage.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                  }
+                });
+              });
+            }
+          }
+          
+          function queueRenderPage(num, useFitScale = false) {
+            if (pageRendering) {
+              pageNumPending = num;
+            } else {
+              if (allPagesRendered) {
+                // Re-render all pages with new scale
+                renderAllPages(useFitScale);
+              } else {
+                renderPage(num, useFitScale);
+              }
+            }
+          }
+          
+          function onPrevPage() {
+            if (pageNum <= 1) return;
+            pageNum--;
+            const targetPage = document.getElementById(`pdf-page-${pageNum}`);
+            if (targetPage) {
+              targetPage.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              pageInfo.textContent = `Page ${pageNum} of ${pdfDoc.numPages}`;
+              prevBtn.disabled = pageNum <= 1;
+              nextBtn.disabled = pageNum >= pdfDoc.numPages;
+            } else {
+              queueRenderPage(pageNum);
+            }
+          }
+          
+          function onNextPage() {
+            if (pageNum >= pdfDoc.numPages) return;
+            pageNum++;
+            const targetPage = document.getElementById(`pdf-page-${pageNum}`);
+            if (targetPage) {
+              targetPage.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              pageInfo.textContent = `Page ${pageNum} of ${pdfDoc.numPages}`;
+              prevBtn.disabled = pageNum <= 1;
+              nextBtn.disabled = pageNum >= pdfDoc.numPages;
+            } else {
+              queueRenderPage(pageNum);
+            }
+          }
+          
+          function onZoomIn() {
+            fitToViewerMode = false;
+            scale += 0.25;
+            renderAllPages(false);
+          }
+          
+          function onZoomOut() {
+            if (scale <= 0.5) return;
+            fitToViewerMode = false;
+            scale -= 0.25;
+            renderAllPages(false);
+          }
+          
+          function onFitToViewer() {
+            fitToViewerMode = true;
+            renderAllPages(true);
+            fitToViewerBtn.textContent = 'Fit to Viewer ✓';
+            fitToViewerBtn.style.background = '#d4edda';
+            fitToViewerBtn.style.color = '#155724';
+          }
+          
+          // Make controls work for both teacher and student
+          prevBtn.addEventListener('click', onPrevPage);
+          nextBtn.addEventListener('click', onNextPage);
+          zoomInBtn.addEventListener('click', onZoomIn);
+          zoomOutBtn.addEventListener('click', onZoomOut);
+          fitToViewerBtn.addEventListener('click', onFitToViewer);
+          
+          // Load PDF document
+          let pdfData = material.data;
+          
+          // Convert data URL to Uint8Array for PDF.js
+          if (pdfData.startsWith('data:')) {
+            const base64Data = pdfData.split(',')[1];
+            const binaryString = atob(base64Data);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+              bytes[i] = binaryString.charCodeAt(i);
+            }
+            pdfData = bytes.buffer;
+          }
+          
+          pdfjsLib.getDocument({ data: pdfData }).promise.then(function(pdf) {
+            console.log('✅ PDF loaded successfully:', pdf.numPages, 'pages');
+            pdfDoc = pdf;
+            pageNum = 1;
+            
+            // Auto-fit to viewer on load
+            fitToViewerMode = true;
+            renderAllPages(true);
+            
+            // Update fit button state
+            fitToViewerBtn.textContent = 'Fit to Viewer ✓';
+            fitToViewerBtn.style.background = '#d4edda';
+            fitToViewerBtn.style.color = '#155724';
+          }).catch(function(error) {
+            console.error('❌ Error loading PDF:', error);
+            canvasContainer.innerHTML = `
+              <div class="pdf-error">
+                <p style="font-size: 1.2rem; margin-bottom: 16px;">Failed to load PDF</p>
+                <p style="margin-bottom: 16px;">${error.message || 'Unknown error'}</p>
+                <a href="${material.data}" download style="color: #1ca7e7; text-decoration: underline;">Download PDF instead</a>
+              </div>
+            `;
+          });
+          
+          console.log('✅ PDF.js viewer initialized:', material.name);
+          
+          // Broadcast to students if teacher
+          if (socket && socket.connected && userType === 'teacher') {
+            setTimeout(() => {
+              if (material.data && material.data.length > 100) {
+                const materialToBroadcast = {
+                  id: material.id,
+                  materialId: material.id,
+                  name: material.name,
+                  type: material.type,
+                  size: material.size || material.data.length,
+                  data: material.data,
+                  uploader: material.uploader || 'Teacher'
+                };
+                console.log('📚 [TEACHER] Auto-broadcasting PDF to students:', materialToBroadcast.name);
+                socket.emit('lesson-file-select', { room, materialId: material.id, material: materialToBroadcast });
+              } else {
+                console.error('❌ [TEACHER] Cannot broadcast - material data incomplete');
+              }
+            }, 500);
+          }
+        } else if (isPpt) {
+          console.log('📽️ [CLIENT] PPTX detected - loading directly');
+          
+          // Load PPTX file using iframe with proper viewer (prevents downloads)
+          const pptContainer = document.createElement('div');
+          pptContainer.style.cssText = 'width:100%;height:calc(100vh - 200px);min-height:600px;position:relative;border-radius:8px;overflow:hidden;background:#f5f5f5;display:flex;flex-direction:column;';
+          pptContainer.id = 'ppt-container-' + material.id;
+
+          let pptUrl = material.data;
+          let blobUrl = null;
+          
+          // Show loading message
+          pptContainer.innerHTML = `
+            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:40px;text-align:center;">
+              <p style="font-size:1.2rem;margin-bottom:16px;color:#333;">📊 Loading Presentation...</p>
+              <p style="color:#666;margin-bottom:24px;">${escapeHtml(material.name || 'presentation.pptx')}</p>
+              <p style="color:#999;font-size:0.9rem;">Please wait while the presentation loads...</p>
+            </div>
+          `;
+          
+          // Convert to publicly accessible URL if needed and load in iframe
+          (async () => {
+            try {
+              let finalUrl = pptUrl;
+              
+              // If it's a data URL or relative URL, we need to make it publicly accessible
+              // For now, use Google Docs Viewer which accepts publicly accessible URLs
+              // Note: For local development, we'll need to serve files through the server
+              
+              if (pptUrl.startsWith('data:')) {
+                // For data URLs, browsers cannot preview PPTX natively
+                // Base64 data URLs need to be converted to actual file size for checking
+                // Show informative placeholder confirming file is loaded and synced
+                console.log('✅ PPTX file loaded (data URL - browsers cannot preview PPTX natively)');
+                
+                // Calculate actual file size from base64 data URL
+                const base64Data = pptUrl.split(',')[1] || '';
+                const actualSize = (base64Data.length * 3) / 4; // Base64 is ~33% larger
+                const sizeMB = (actualSize / 1024 / 1024).toFixed(2);
+                
+                pptContainer.innerHTML = `
+                  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:40px;text-align:center;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);color:#fff;border-radius:8px;">
+                    <div style="font-size:4rem;margin-bottom:20px;">📊</div>
+                    <p style="font-size:1.5rem;margin-bottom:12px;font-weight:600;">PowerPoint Presentation Loaded</p>
+                    <p style="font-size:1.1rem;margin-bottom:8px;opacity:0.9;">${escapeHtml(material.name || 'presentation.pptx')}</p>
+                    <p style="font-size:0.9rem;margin-bottom:24px;opacity:0.7;">Size: ${sizeMB} MB</p>
+                    <div style="background:rgba(255,255,255,0.2);padding:16px 24px;border-radius:8px;margin-top:16px;">
+                      <p style="margin:0;font-size:0.95rem;font-weight:600;">✅ File is synced with students</p>
+                      <p style="margin:8px 0 0 0;font-size:0.85rem;opacity:0.8;">Students will receive this presentation automatically in their classroom.</p>
+                      <p style="margin:8px 0 0 0;font-size:0.8rem;opacity:0.7;font-style:italic;">Note: PPTX files cannot be previewed in browser. Use PowerPoint or convert to PDF for preview.</p>
+                    </div>
+                  </div>
+                `;
+                
+              } else if (pptUrl.startsWith('http')) {
+                // Public URL - use Google Docs Viewer
+                const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(pptUrl)}&embedded=true`;
+                const iframe = document.createElement('iframe');
+                iframe.src = viewerUrl;
+                iframe.style.cssText = 'width:100%;height:100%;border:none;flex:1;';
+                iframe.id = 'ppt-iframe-' + material.id;
+                
+                iframe.onload = () => {
+                  console.log('✅ PPTX loaded via Google Docs Viewer');
+                };
+                
+                iframe.onerror = () => {
+                  console.warn('⚠️ Google Docs Viewer failed, trying direct URL');
+                  // Fallback to direct URL
+                  iframe.src = pptUrl;
+                };
+                
+                pptContainer.innerHTML = '';
+                pptContainer.appendChild(iframe);
+                
+              } else {
+                // Relative URL - convert to absolute
+                const baseUrl = window.location.origin;
+                finalUrl = pptUrl.startsWith('/') ? baseUrl + pptUrl : baseUrl + '/' + pptUrl;
+                
+                // Use Google Docs Viewer for absolute URLs
+                const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(finalUrl)}&embedded=true`;
+                const iframe = document.createElement('iframe');
+                iframe.src = viewerUrl;
+                iframe.style.cssText = 'width:100%;height:100%;border:none;flex:1;';
+                iframe.id = 'ppt-iframe-' + material.id;
+                
+                iframe.onload = () => {
+                  console.log('✅ PPTX loaded via Google Docs Viewer');
+                };
+                
+                iframe.onerror = () => {
+                  console.warn('⚠️ Google Docs Viewer failed, trying direct URL');
+                  iframe.src = finalUrl;
+                };
+                
+                pptContainer.innerHTML = '';
+                pptContainer.appendChild(iframe);
+              }
+              
+            } catch (e) {
+              console.error('❌ Error loading PPTX:', e);
+              pptContainer.innerHTML = `
+                <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:40px;text-align:center;">
+                  <p style="font-size:1.2rem;margin-bottom:16px;color:#333;">📊 PowerPoint Presentation</p>
+                  <p style="color:#666;margin-bottom:24px;">${escapeHtml(material.name || 'presentation.pptx')}</p>
+                  <p style="color:#999;font-size:0.9rem;">The presentation is available. Students will see it automatically.</p>
+                  <p style="color:#666;font-size:0.85rem;margin-top:12px;">Note: PPTX preview may not work in all browsers. Students will receive the file through the classroom sync.</p>
+                </div>
+              `;
+              }
+            })();
+          
+          lessonFileViewer.innerHTML = '';
+          lessonFileViewer.appendChild(pptContainer);
+
+              // Store material ID for sync
+              window.currentMaterialId = material.id;
+              window.currentPdfMaterialId = material.id; // Reuse for compatibility
+
+          // Automatically start presenter sync for teachers when lesson loads
+          if (userType === 'teacher') {
+            // Auto-start presenter mode if not already active
+            if (!presenterModeActive) {
+              presenterModeActive = true;
+              if (presenterModeControls) presenterModeControls.style.display = 'flex';
+              if (presenterStatusIndicator) presenterStatusIndicator.style.display = 'inline-block';
+              
+              // Notify server to start presenter mode
+              if (socket && socket.connected) {
+                socket.emit('presenter-mode-start', { room });
+                console.log('📺 [TEACHER] Presenter mode started automatically');
+              }
+            }
+            
+            // Store PPTX iframe reference for potential future sync improvements
+            const pptIframe = document.getElementById('ppt-iframe-' + material.id);
+            if (pptIframe) {
+              window.currentPptIframe = pptIframe;
+              console.log('✅ PPTX iframe stored for sync:', material.name);
+            }
+          }
+          
+          console.log('✅ PPTX file loaded directly:', material.name);
+        } else if (isVideo) {
+          const video = document.createElement('video');
+          video.src = material.data;
+          video.controls = true;
+          video.style.cssText = 'max-width:100%;max-height:800px;border-radius:8px;';
+          lessonFileViewer.appendChild(video);
+        } else {
+          const previewCard = document.createElement('div');
+          previewCard.style.cssText = 'text-align:center;padding:40px;color:#666;';
+          previewCard.innerHTML = `
+            <p style="font-size:1.1rem;margin-bottom:8px;">${escapeHtml(material.name || 'File')}</p>
+            <p style="font-size:0.9rem;">Preview not available for this file type</p>
+            <a href="${material.data}" download="${escapeHtml(material.name || 'file')}" class="file-download-btn" style="display:inline-block;margin-top:16px;">Download File</a>
+          `;
+          lessonFileViewer.appendChild(previewCard);
+        }
+        
+        // Mark rendering as complete (reset after a short delay to allow DOM updates)
+        setTimeout(() => {
+          isRenderingLesson = false;
+        }, 500);
+        
+        // Update presenter mode references if PDF is displayed and auto-start sync for teachers
+        if (isPDF && userType === 'teacher') {
+          currentPdfIframe = document.getElementById('pdf-iframe-' + material.id);
+          currentPdfContainer = document.getElementById('pdf-container-' + material.id);
+          
+          // Automatically start presenter mode if not already active
+          if (!presenterModeActive) {
+            presenterModeActive = true;
+            if (presenterModeControls) presenterModeControls.style.display = 'flex';
+            if (presenterStatusIndicator) presenterStatusIndicator.style.display = 'inline-block';
+            
+            // Notify server to start presenter mode
+            if (socket && socket.connected) {
+              socket.emit('presenter-mode-start', { room });
+              console.log('📺 [TEACHER] Presenter mode started automatically for PDF');
+            }
+          }
+          
+          // Ensure PDF is broadcast to students (backup in case onload doesn't fire)
+          setTimeout(() => {
+            if (socket && socket.connected && material.data && material.data.length > 100) {
+              const materialToBroadcast = {
+                id: material.id,
+                materialId: material.id,
+                name: material.name,
+                type: material.type,
+                size: material.size || material.data.length,
+                data: material.data,
+                uploader: material.uploader || 'Teacher'
+              };
+              
+              console.log('📚 [TEACHER] Ensuring PDF broadcast to students:', materialToBroadcast.name);
+              socket.emit('lesson-file-select', { room, materialId: material.id, material: materialToBroadcast });
+            }
+          }, 1000); // 1 second delay to ensure iframe has loaded
+          
+          // Start sync if we have the iframe
+          if (currentPdfIframe) {
+            startPresenterSync();
+          }
+        }
+      }
+      
+      // Presenter Mode Functions
+      function startPresenterMode() {
+        if (userType !== 'teacher') return;
+        
+        // Check if we have PDF or PPTX file loaded
+        const hasPDF = currentPdfIframe && currentPdfContainer;
+        const hasPPT = document.getElementById('ppt-iframe-' + (window.currentMaterialId || window.currentPdfMaterialId));
+        const hasSlides = window.currentSlides && window.currentSlides.length > 0;
+        
+        if (!hasPDF && !hasPPT && !hasSlides) {
+          alert('Please select a PDF or PPTX file first to start presenter mode.');
+          return;
+        }
+        
+        presenterModeActive = true;
+        if (startPresenterBtn) startPresenterBtn.style.display = 'none';
+        if (stopPresenterBtn) stopPresenterBtn.style.display = 'flex';
+        if (presenterStatusIndicator) presenterStatusIndicator.style.display = 'inline-block';
+        
+        // Notify server to start presenter mode
+        if (socket && socket.connected) {
+          socket.emit('presenter-mode-start', { room });
+          console.log('📺 [TEACHER] Presenter mode started');
+        }
+        
+        // Start sync for PDF or slides
+        // Note: PPTX files in iframes cannot be synced the same way, but presenter mode is still active
+        if (hasPDF) {
+          startPresenterSync();
+        } else if (hasSlides) {
+          startSlidesSync();
+        }
+      }
+      
+      function stopPresenterMode() {
+        if (userType !== 'teacher') return;
+        
+        presenterModeActive = false;
+        if (startPresenterBtn) startPresenterBtn.style.display = 'flex';
+        if (stopPresenterBtn) stopPresenterBtn.style.display = 'none';
+        if (presenterStatusIndicator) presenterStatusIndicator.style.display = 'none';
+        
+        // Stop sync interval
+        if (presenterSyncInterval) {
+          clearInterval(presenterSyncInterval);
+          presenterSyncInterval = null;
+        }
+        
+        // Notify server to stop presenter mode
+        if (socket && socket.connected) {
+          socket.emit('presenter-mode-stop', { room });
+          console.log('⏹️ [TEACHER] Presenter mode stopped');
+        }
+      }
+      
+      // Sync function for PPTX slides
+      function startSlidesSync() {
+        if (!presenterModeActive || !window.currentSlides || window.currentSlides.length === 0) return;
+        
+        // Clear any existing interval
+        if (presenterSyncInterval) {
+          clearInterval(presenterSyncInterval);
+        }
+        
+        // Get current slide index function
+        const getCurrentSlideIndex = () => {
+          if (window.currentSlideIndex) {
+            return window.currentSlideIndex();
+          }
+          // Try to get from page label
+          const pageLabel = document.querySelector('#lesson-file-viewer span');
+          if (pageLabel) {
+            const match = pageLabel.textContent.match(/Slide (\d+)/);
+            if (match) return parseInt(match[1]);
+          }
+          return 1;
+        };
+        
+        let lastSlideIndex = getCurrentSlideIndex();
+        
+        // Sync slide changes
+        presenterSyncInterval = setInterval(() => {
+          if (!presenterModeActive || !window.currentSlides || window.currentSlides.length === 0) {
+            if (presenterSyncInterval) {
+              clearInterval(presenterSyncInterval);
+              presenterSyncInterval = null;
+            }
+            return;
+          }
+          
+          try {
+            const currentSlide = getCurrentSlideIndex();
+            
+            if (currentSlide !== lastSlideIndex) {
+              lastSlideIndex = currentSlide;
+              
+              const syncData = {
+                room,
+                slideIndex: currentSlide,
+                totalSlides: window.currentSlides.length,
+                materialId: window.currentPdfMaterialId || window.currentMaterialId
+              };
+              
+              if (socket && socket.connected) {
+                socket.emit('presenter-sync-update', syncData);
+                console.log('📺 [TEACHER] Sending slide sync update:', syncData);
+              }
+            }
+          } catch (e) {
+            console.error('❌ [TEACHER] Error in slides sync:', e);
+          }
+        }, 100); // Check every 100ms
+      }
+      
+      function startPresenterSync() {
+        if (!presenterModeActive || !currentPdfIframe || !currentPdfContainer) return;
+        
+        // Clear any existing interval
+        if (presenterSyncInterval) {
+          clearInterval(presenterSyncInterval);
+        }
+        
+        // Sync every 100ms for smooth real-time updates
+        presenterSyncInterval = setInterval(() => {
+          if (!presenterModeActive || !currentPdfIframe || !currentPdfContainer) {
+            if (presenterSyncInterval) {
+              clearInterval(presenterSyncInterval);
+              presenterSyncInterval = null;
+            }
+            return;
+          }
+          
+          try {
+            // Get current state
+            const scrollTop = currentPdfContainer.scrollTop;
+            const scrollLeft = currentPdfContainer.scrollLeft;
+            
+            // Try to get page number from iframe src
+            let page = null;
+            const iframeSrc = currentPdfIframe.src;
+            const pageMatch = iframeSrc.match(/#page[=:](\d+)/i);
+            if (pageMatch) {
+              page = parseInt(pageMatch[1]);
+            } else {
+              // Estimate page from scroll position (fallback)
+              const estimatedPageHeight = 1100;
+              page = Math.max(1, Math.floor(scrollTop / estimatedPageHeight) + 1);
+            }
+            
+            // Try to get zoom level
+            let zoom = null;
+            const zoomMatch = iframeSrc.match(/zoom[=:](\d+)/i);
+            if (zoomMatch) {
+              zoom = parseInt(zoomMatch[1]);
+            }
+            
+            // Only send if state changed significantly
+            const stateChanged = 
+              page !== lastSyncState.page ||
+              Math.abs(scrollTop - (lastSyncState.scrollTop || 0)) > 10 ||
+              Math.abs(scrollLeft - (lastSyncState.scrollLeft || 0)) > 10 ||
+              (zoom !== null && zoom !== lastSyncState.zoom);
+            
+            if (stateChanged) {
+              lastSyncState = { page, scrollTop, scrollLeft, zoom };
+              
+              const syncData = {
+                room,
+                page,
+                scrollTop,
+                scrollLeft,
+                zoom,
+                materialId: window.currentPdfMaterialId
+              };
+              
+              if (socket && socket.connected) {
+                socket.emit('presenter-sync-update', syncData);
+                console.log('📺 [TEACHER] Sending sync update:', syncData);
+              }
+            }
+          } catch (e) {
+            console.error('❌ [TEACHER] Error in presenter sync:', e);
+          }
+        }, 100); // 100ms = 10 updates per second for smooth sync
+        
+        // Also listen to scroll events for immediate updates
+        currentPdfContainer.addEventListener('scroll', () => {
+          if (presenterModeActive && socket && socket.connected) {
+            const scrollTop = currentPdfContainer.scrollTop;
+            const scrollLeft = currentPdfContainer.scrollLeft;
+            
+            // Estimate page
+            const estimatedPageHeight = 1100;
+            const page = Math.max(1, Math.floor(scrollTop / estimatedPageHeight) + 1);
+            
+            const syncData = {
+              room,
+              page,
+              scrollTop,
+              scrollLeft,
+              materialId: window.currentPdfMaterialId
+            };
+            
+            socket.emit('presenter-sync-update', syncData);
+          }
+        }, { passive: true });
+      }
+      
+      // Presenter mode is now automatic - no button listeners needed
+      // Sync starts automatically when lesson files are loaded
+
+      // Lesson file select dropdown removed - lesson loads automatically from booking
+      // Edit/Delete file handlers removed - files are managed in lesson library
+      
+      // Delete lesson file function
+      async function deleteLessonFile(fileId, lessonId) {
+        try {
+          const token = localStorage.getItem('token');
+          if (!token) {
+            alert('Error: Not authenticated');
+            return;
+          }
+          
+          console.log(`🗑️ Deleting file ${fileId} from lesson ${lessonId}`);
+          
+          // Delete from database
+          const deleteRes = await fetch(`/api/lessons/lesson-file/${fileId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          
+          if (deleteRes.ok) {
+            // Remove from lessonState
+            lessonState.delete(fileId);
+            if (lessonFileViewer) lessonFileViewer.innerHTML = '';
+            
+            // Clear selection
+            window.currentSelectedFileId = null;
+            window.currentSelectedFile = null;
+            
+            console.log('✅ File deleted:', fileId);
+            
+            // Show success message
+            const progressEl = document.getElementById('upload-progress');
+            if (progressEl) {
+              progressEl.style.display = 'block';
+              progressEl.style.background = '#d1fae5';
+              progressEl.style.color = '#065f46';
+              progressEl.textContent = '✅ File deleted successfully';
+              setTimeout(() => {
+                progressEl.style.display = 'none';
+              }, 3000);
+            } else {
+              alert('✅ File deleted successfully');
+            }
+          } else {
+            const errorData = await deleteRes.json().catch(() => ({ error: deleteRes.statusText }));
+            throw new Error(errorData.error || `Delete failed: ${deleteRes.status}`);
+          }
+        } catch (error) {
+          console.error('❌ Error deleting file:', error);
+          alert(`Error deleting file: ${error.message}`);
+        }
+      }
+
+      // Listen for file selection from teacher
+      socket.on('lesson-file-select', ({ materialId, material } = {}) => {
+        // Only log detailed info if material is actually provided
+        if (material && material.name) {
+          console.log(`📚 [STUDENT] Received lesson file: ${material.name}`);
+        }
+        if (!materialId || !material) {
+          console.log('📚 Clearing lesson viewer');
+          // Clear the viewer
+          if (lessonFileViewer) lessonFileViewer.innerHTML = '';
+          return;
+        }
+        
+        // Validate material has required fields
+        if (!material.id || !material.data) {
+          console.error('⚠️ Invalid material received - missing id or data:', { hasId: !!material.id, hasData: !!material.data, material });
+          // Try to get from lessonState if available
+          const existingMaterial = lessonState.get(materialId);
+          if (existingMaterial && existingMaterial.data) {
+            console.log('📚 Using existing material from lessonState');
+            material = existingMaterial;
+          } else {
+            console.error('⚠️ Cannot display - material missing required data');
+            return;
+          }
+        }
+        
+        console.log('📚 Processing material:', material.name, 'ID:', material.id, 'Type:', material.type, 'Data length:', material.data?.length);
+        
+        // Check if PDF data is complete
+        if (material.type && material.type.includes('pdf')) {
+          console.log('📄 [STUDENT] PDF file detected:', {
+            name: material.name,
+            dataLength: material.data?.length,
+            dataStart: material.data?.substring(0, 100),
+            isBase64: material.data?.startsWith('data:') || material.data?.startsWith('JVBERi')
+          });
+          
+          if (!material.data || material.data.length < 100) {
+            console.error('❌ [STUDENT] PDF data is missing or too short!');
+          }
+        }
+        
+        // Ensure material.id matches materialId
+        if (material.id !== materialId) {
+          material.id = materialId;
+        }
+        
+        // Add material to lessonState if not already present
+        if (!lessonState.has(materialId)) {
+          console.log('📚 Adding new material to lessonState');
+          renderLessonMaterial(material);
+        } else {
+          console.log('📚 Material already in lessonState, updating if needed');
+          // Update if data might be newer
+          lessonState.set(materialId, material);
+        }
+        
+        // Lesson file select dropdown removed - no need to update dropdown
+        // Use the material directly (it should have all the data)
+        console.log('📚 [STUDENT] Displaying file:', material.name, 'Type:', material.type, 'Data present:', !!material.data, 'Data length:', material.data?.length);
+        
+        if (!lessonFileViewer) {
+          console.error('❌ [STUDENT] lessonFileViewer element not found!');
+          return;
+        }
+        
+        // Verify data one more time before displaying
+        if (!material.data || material.data.length < 100) {
+          console.error('❌ [STUDENT] Material data is invalid or too short. Length:', material.data?.length || 0);
+          alert('Failed to receive lesson material. Please ask the teacher to reload the file.');
+          return;
+        }
+        
+        // Show the file
+        try {
+          // Determine file type before calling showLessonFile
+          const fileType = (material.type || '').toLowerCase();
+          const fileName = (material.name || '').toLowerCase();
+          const isPDF = fileType.includes('pdf') || fileType.includes('application/pdf') || fileName.endsWith('.pdf');
+          
+          showLessonFile(material);
+          console.log('✅ [STUDENT] showLessonFile called successfully');
+        
+          // Switch to lesson content tab if not already there
+          if (userType === 'student') {
+            console.log('📚 [STUDENT] Switching to lesson-content tab');
+            setActiveTab('lesson-content');
+          }
+        
+          // PDF.js uses canvas, not iframe - verify canvas container was created instead
+          if (isPDF) {
+            setTimeout(() => {
+              const pdfCanvasContainer = document.getElementById('pdf-canvas-container');
+              if (pdfCanvasContainer) {
+                console.log('✅ [STUDENT] PDF canvas container found');
+              } else {
+                // Only warn if it's still missing after a longer delay (might be slow network)
+                setTimeout(() => {
+                  const retryCheck = document.getElementById('pdf-canvas-container');
+                  if (!retryCheck) {
+                    console.warn('⚠️ [STUDENT] PDF canvas container not found after display');
+                  }
+                }, 2000);
+              }
+            }, 300);
+          }
+        } catch (error) {
+          console.error('❌ [STUDENT] Error displaying file:', error);
+          // Don't show alert if lesson actually loaded (error might be from a race condition)
+          // Only show alert for actual failures
+          if (!lessonFileViewer || lessonFileViewer.children.length === 0) {
+            alert('Failed to display lesson material: ' + (error.message || error.toString()));
+          } else {
+            console.log('✅ Lesson material displayed despite error (likely race condition)');
+          }
+        }
+      });
+
+      function renderLessonMaterial(material = {}) {
+        if (!material.id || !material.data) {
+          console.warn('⚠️ Cannot render material: missing id or data', material);
+          return;
+        }
+        console.log('📚 Rendering lesson material:', material.name, 'ID:', material.id);
+        lessonState.set(material.id, material);
+      }
+
+      socket.on('lesson-uploaded', ({ material } = {}) => {
+        console.log('📚 [STUDENT] Received lesson-uploaded event:', material ? material.name : 'no material', 'hasData:', !!(material?.data));
+        if (material && material.id && material.data) {
+          console.log('📚 [STUDENT] Rendering material:', material.name, 'Type:', material.type, 'Data length:', material.data?.length);
+          renderLessonMaterial(material);
+          
+          // If this is the first material and we're viewing lesson content, display it automatically
+          if (!lessonState.has(material.id)) {
+            setTimeout(() => {
+              // Check if this is the first/only material - display immediately (no delay)
+              if (lessonState.size === 1) {
+                console.log('📚 [STUDENT] First material received, displaying immediately');
+                // Use requestAnimationFrame for immediate display
+                requestAnimationFrame(() => {
+                  showLessonFile(material);
+                  if (userType === 'student') {
+                    setActiveTab('lesson-content');
+                  }
+                });
+              }
+            }, 0);
+          }
+        } else {
+          console.warn('⚠️ [STUDENT] Invalid material received:', { hasId: !!material?.id, hasData: !!material?.data, material });
+          // If invalid, only request if we don't have any materials yet
+          if (lessonState.size === 0) {
+            setTimeout(() => {
+              if (socket.connected) {
+                console.log('📚 [STUDENT] Requesting materials after invalid material (no materials loaded yet)');
+                socket.emit('lesson-materials-request', { room });
+              }
+            }, 2000); // Wait longer to avoid spam
+          } else {
+            console.log('📚 [STUDENT] Invalid material but we have other materials, skipping request');
+          }
+        }
+      });
+
+      socket.on('lesson-materials-sync', ({ materials = [] } = {}) => {
+        // Only log details if we actually received materials or if we don't have any yet
+        if (materials.length > 0 || lessonState.size === 0) {
+          console.log(`📚 [STUDENT] Received ${materials.length} material(s) from server (current: ${lessonState.size})`);
+        }
+        
+        // Log full materials array for debugging
+        if (materials.length > 0) {
+          console.log('📚 [STUDENT] Materials array:', materials.map(m => ({
+            id: m?.id,
+            name: m?.name,
+            type: m?.type,
+            hasData: !!m?.data,
+            dataLength: m?.data?.length || 0
+          })));
+        } else {
+          // Only warn if we don't already have materials loaded from auto-load
+          if (lessonState.size === 0) {
+            console.log('ℹ️ [STUDENT] No materials from server yet (this is normal if lesson auto-loaded from booking)');
+            // Don't show warning if lesson was already auto-loaded
+            if (!getQueryParam('bookingId') && !getQueryParam('bookingid')) {
+              console.log('💡 [STUDENT] Materials will load when teacher shares files or lesson auto-loads');
+            }
+          } else {
+            console.log('ℹ️ [STUDENT] Materials already loaded from auto-load, ignoring empty server response');
+          }
+        }
+        
+        // Don't clear lessonState - we might have materials from lesson-file-select
+        // Only add new materials that aren't already present
+        
+        let materialsAdded = 0;
+        let materialsSkipped = 0;
+        let materialsInvalid = 0;
+        
+        // Render all materials from sync
+        materials.forEach((material, index) => {
+          // Only log details for first material or if there are issues
+          if (index === 0 || !material.data || material.data.length < 100) {
+            console.log(`📚 [STUDENT] Syncing material ${index + 1}/${materials.length}: ${material.name || 'unnamed'}`);
+          }
+          
+          // Special logging for PDFs only if there are issues
+          if (material.type && material.type.includes('pdf') && (!material.data || material.data.length < 100)) {
+            console.log('📄 [STUDENT] PDF in sync (checking):', {
+              name: material.name,
+              dataLength: material.data?.length,
+              dataStart: material.data?.substring(0, 100)
+            });
+          }
+          
+          if (material && material.id && material.data) {
+            // Check data length more carefully
+            if (material.data.length < 100) {
+              materialsInvalid++;
+              console.warn('⚠️ [STUDENT] Material data too short:', {
+                name: material.name,
+                dataLength: material.data.length
+              });
+              return;
+            }
+            
+            // Only add if not already present (to avoid overwriting materials with full data from lesson-file-select)
+            if (!lessonState.has(material.id)) {
+              renderLessonMaterial(material);
+              materialsAdded++;
+              console.log(`✅ [STUDENT] Added material: ${material.name} (${material.type})`);
+            } else {
+              // Update existing material if new one has more complete data
+              const existing = lessonState.get(material.id);
+              if (!existing.data || existing.data.length < material.data.length) {
+                console.log('📚 [STUDENT] Updating existing material with more complete data');
+                lessonState.set(material.id, material);
+                materialsAdded++;
+              } else {
+                materialsSkipped++;
+                console.log('📚 [STUDENT] Material already in lessonState, skipping sync');
+              }
+            }
+          } else {
+            materialsInvalid++;
+            console.warn('⚠️ [STUDENT] Invalid material in sync:', { 
+              hasId: !!material?.id, 
+              hasData: !!material?.data, 
+              type: material?.type,
+              name: material?.name,
+              dataLength: material?.data?.length,
+              material: material
+            });
+          }
+        });
+        
+        console.log(`✅ [STUDENT] Lesson materials sync complete. Added: ${materialsAdded}, Skipped: ${materialsSkipped}, Invalid: ${materialsInvalid}, Total: ${lessonState.size}`);
+        
+        // If no materials were received and we're a student, show a message
+        if (materials.length === 0 && userType === 'student') {
+          console.warn('⚠️ [STUDENT] No lesson materials received. Teacher may not have loaded any lessons yet.');
+          console.log('💡 [STUDENT] Tip: Teacher needs to load lesson materials into the classroom.');
+        } else if (materials.length > 0 && userType === 'student') {
+          // Display the first material automatically (whether new or existing)
+          const firstMaterial = materials.find(m => m && m.id && m.data && m.data.length > 100);
+          if (firstMaterial) {
+            // Get from lessonState if it exists there (might have been added by sync)
+            const materialToDisplay = lessonState.get(firstMaterial.id) || firstMaterial;
+            
+            // Verify material has valid data before displaying
+            if (materialToDisplay.data && materialToDisplay.data.length > 100) {
+              setTimeout(() => {
+                console.log('📚 [STUDENT] Auto-displaying material from sync:', materialToDisplay.name);
+                showLessonFile(materialToDisplay);
+                // Lesson file select dropdown removed - no need to update dropdown
+                setActiveTab('lesson-content');
+              }, 300);
+            } else {
+              console.warn('⚠️ [STUDENT] Material data is invalid or missing, cannot display');
+              console.log('Material data check:', {
+                hasData: !!materialToDisplay.data,
+                dataLength: materialToDisplay.data?.length || 0,
+                dataStart: materialToDisplay.data?.substring(0, 50)
+              });
+            }
+          } else {
+            console.warn('⚠️ [STUDENT] No valid materials found in sync (all materials missing data)');
+          }
+        } else if (materials.length > 0 && userType === 'student') {
+          // If materials exist but none are valid, log detailed info
+          console.warn('⚠️ [STUDENT] Received materials but none are valid:', materials.map(m => ({
+            name: m?.name,
+            hasId: !!m?.id,
+            hasData: !!m?.data,
+            dataLength: m?.data?.length || 0
+          })));
+        }
+      });
+
+      socket.on('lesson-upload-error', ({ message } = {}) => {
+        if (message) {
+          console.error('❌ [CLIENT] Failed to share lesson material:', message);
+          // Show a more user-friendly error message
+          const errorMsg = message.includes('too large') 
+            ? `File is too large to share. Maximum size is 10 MB. Please use a smaller file.`
+            : `Failed to share lesson material: ${message}`;
+          alert(errorMsg);
+        }
+      });
+
+      // Presenter Mode Handlers (Student Side)
+      let studentPresenterModeActive = false;
+      let studentPdfIframe = null;
+      let studentPdfContainer = null;
+      
+      socket.on('presenter-mode-start', ({ room: eventRoom } = {}) => {
+        if (userType !== 'student' || eventRoom !== room) return;
+        
+        studentPresenterModeActive = true;
+        console.log('📺 [STUDENT] Presenter mode activated - following teacher\'s view');
+        
+        // Find current PDF elements
+        studentPdfIframe = document.querySelector('#lesson-file-viewer iframe');
+        studentPdfContainer = document.querySelector('#lesson-file-viewer [id^="pdf-"]');
+        
+        // Add visual indicator
+        showStudentPresenterIndicator(true);
+        
+        // Lock all controls
+        lockStudentPdfControls(true);
+      });
+      
+      socket.on('presenter-mode-stop', ({ room: eventRoom } = {}) => {
+        if (userType !== 'student' || eventRoom !== room) return;
+        
+        studentPresenterModeActive = false;
+        console.log('⏹️ [STUDENT] Presenter mode deactivated');
+        
+        showStudentPresenterIndicator(false);
+        lockStudentPdfControls(false);
+      });
+      
+      // Handle real-time presenter sync updates
+      socket.on('presenter-sync-update', async ({ page, slideIndex, scrollTop, scrollLeft, zoom, materialId, totalSlides } = {}) => {
+        if (userType !== 'student' || !studentPresenterModeActive) return;
+        
+        // If PPT slides sync (legacy support for converted slides)
+        if (slideIndex !== undefined && window.currentSlides && window.currentSlides.length) {
+          const idx = Math.min(Math.max(slideIndex, 1), window.currentSlides.length);
+          const slideImg = document.querySelector('#lesson-file-viewer img');
+          const pageLabel = document.querySelector('#lesson-file-viewer span');
+          if (slideImg) {
+            slideImg.src = window.currentSlides[idx - 1].imageUrl;
+          }
+          if (pageLabel) {
+            pageLabel.textContent = `Slide ${idx} of ${totalSlides || window.currentSlides.length}`;
+          }
+          return;
+        }
+        
+        // Note: PPTX files loaded directly in iframes cannot be synced via slide index
+        // Students will see the PPTX file in the iframe but won't have slide-by-slide sync
+
+        // PDF fallback
+        const iframe = studentPdfIframe || document.getElementById('pdf-iframe-' + (materialId || window.currentPdfMaterialId));
+        if (!iframe) return;
+
+        if (!studentPdfIframe) studentPdfIframe = iframe;
+        if (!studentPdfContainer) {
+          studentPdfContainer = iframe.closest('[id^="pdf-"]') || iframe.parentElement;
+        }
+        
+        if (page !== undefined && page > 0) {
+          let baseUrl = iframe._pdfBaseUrl;
+          if (!baseUrl) {
+            const currentSrc = iframe.src;
+            baseUrl = currentSrc.split('#')[0].split('?')[0];
+            iframe._pdfBaseUrl = baseUrl;
+          }
+          if (baseUrl.startsWith('data:') && !iframe._blobUrl) {
+            try {
+              const response = await fetch(baseUrl);
+              const blob = await response.blob();
+              iframe._blobUrl = URL.createObjectURL(blob);
+              baseUrl = iframe._blobUrl;
+            } catch (e) {
+              console.error('❌ [STUDENT] Failed to convert data URL:', e);
+            }
+          } else if (iframe._blobUrl) {
+            baseUrl = iframe._blobUrl;
+          }
+          
+          let newUrl = baseUrl.split('#')[0];
+          newUrl += '#page=' + page;
+          // Use page-fit zoom to fit content to frame
+          newUrl += '&zoom=page-fit';
+          newUrl += '&toolbar=0&navpanes=0&scrollbar=0';
+          newUrl += `&ts=${Date.now()}`;
+          
+          if (iframe._currentPage !== page) {
+            iframe._currentPage = page;
+            iframe.src = 'about:blank';
+            setTimeout(() => { iframe.src = newUrl; }, 10);
+            
+            // Update page info (outside iframe)
+            const pageInfoEl = document.getElementById('pdf-page-info');
+            if (pageInfoEl) {
+              pageInfoEl.textContent = `Page ${page}`;
+            }
+            
+            // Legacy support for page indicator
+            const pageIndicator = iframe._pageIndicator || document.getElementById('pdf-page-indicator-' + (materialId || window.currentPdfMaterialId));
+            if (pageIndicator) pageIndicator.textContent = `Page ${page}`;
+          }
+        }
+        
+        if (scrollTop !== undefined && scrollTop !== null && studentPdfContainer) {
+          requestAnimationFrame(() => {
+            if (Math.abs(studentPdfContainer.scrollTop - scrollTop) > 5) {
+              studentPdfContainer.scrollTop = scrollTop;
+            }
+            if (scrollLeft !== undefined && scrollLeft !== null && Math.abs(studentPdfContainer.scrollLeft - scrollLeft) > 5) {
+              studentPdfContainer.scrollLeft = scrollLeft;
+            }
+          });
+        }
+      });
+      
+      function showStudentPresenterIndicator(show) {
+        let indicator = document.getElementById('student-presenter-indicator');
+        if (show) {
+          if (!indicator) {
+            indicator = document.createElement('div');
+            indicator.id = 'student-presenter-indicator';
+            indicator.style.cssText = 'position:fixed;top:80px;left:50%;transform:translateX(-50%);background:rgba(28,167,231,0.95);color:white;padding:12px 24px;border-radius:8px;font-size:0.95rem;font-weight:600;z-index:10000;box-shadow:0 4px 12px rgba(0,0,0,0.3);display:flex;align-items:center;gap:8px;';
+            indicator.innerHTML = '<span>🔴</span> <span>Following Teacher\'s View - Live Sync Active</span>';
+            document.body.appendChild(indicator);
+          }
+          indicator.style.display = 'flex';
+        } else {
+          if (indicator) {
+            indicator.style.display = 'none';
+          }
+        }
+      }
+      
+      function lockStudentPdfControls(lock) {
+        const iframe = studentPdfIframe || document.querySelector('#lesson-file-viewer iframe');
+        const container = studentPdfContainer || document.querySelector('#lesson-file-viewer [id^="pdf-"]');
+        
+        if (iframe) {
+          if (lock) {
+            iframe.style.pointerEvents = 'none';
+            iframe.setAttribute('tabindex', '-1');
+          } else {
+            iframe.style.pointerEvents = '';
+            iframe.removeAttribute('tabindex');
+          }
+        }
+        
+        if (container) {
+          if (lock) {
+            container.style.overflow = 'hidden';
+            container.style.pointerEvents = 'none';
+          } else {
+            container.style.overflow = 'auto';
+            container.style.pointerEvents = '';
+          }
+        }
+      }
+
+      // Request shared materials on initial load and after joining
+      // Track if we've already requested materials to avoid redundant requests
+      let materialsRequested = false;
+      
+      socket.on('connect', () => {
+        // Only request if we don't have materials and haven't requested yet
+        if (room && lessonState.size === 0 && !materialsRequested) {
+          // Wait a bit for auto-load to complete first
+          setTimeout(() => {
+            if (lessonState.size === 0 && socket.connected && !materialsRequested) {
+              materialsRequested = true;
+              socket.emit('lesson-materials-request', { room });
+            }
+          }, 2000);
+        }
+      });
+
+      // Also request materials when we successfully join the room
+      socket.on('joined', () => {
+        // Re-setup reward animation listener after joining room
+        if (typeof setupRewardAnimationListener === 'function') {
+          setupRewardAnimationListener();
+        }
+        // Materials request is handled in connect handler, no need to duplicate
+      });
+      
+      socket.on('ready', () => {
+        // Materials request is handled in connect handler, no need to duplicate
+      });
+
+      // Initialize webcam and start WebRTC
+      const localVideo = document.getElementById('local-video');
+      const remoteVideo = document.getElementById('remote-video');
+      
+      // Ensure video elements are properly configured
+      if (localVideo) {
+        localVideo.muted = true; // Always mute local to prevent feedback
+        localVideo.autoplay = true;
+        localVideo.playsInline = true;
+      }
+      
+      if (remoteVideo) {
+        remoteVideo.autoplay = true;
+        remoteVideo.playsInline = true;
+        remoteVideo.muted = false; // Allow audio from remote
+        console.log('✅ Remote video element configured');
+      } else {
+        console.error('❌ Remote video element not found!');
+      }
+      const toggleCameraBtn = document.getElementById('toggle-camera');
+      const toggleMicBtn = document.getElementById('toggle-mic');
+      const toggleMuteBtn = document.getElementById('toggle-mute');
+      const cameraErrorMessage = document.getElementById('camera-error-message');
+      const retryCameraBtn = document.getElementById('retry-camera-btn');
+      let isCameraOn = true;
+      let isMicOn = true;
+      let isMuted = false;
+      
+      // Manual retry button
+      if (retryCameraBtn) {
+        retryCameraBtn.addEventListener('click', () => {
+          console.log('🔄 Manual retry requested');
+          if (cameraErrorMessage) {
+            cameraErrorMessage.style.display = 'none';
+          }
+          initializeWebcam();
+        });
+      }
+
+      // Check if we're in a secure context (required for getUserMedia)
+      function isSecureContext() {
+        return window.isSecureContext || 
+               location.protocol === 'https:' || 
+               location.hostname === 'localhost' || 
+               location.hostname === '127.0.0.1' ||
+               location.hostname.endsWith('.devtunnels.ms') ||
+               location.hostname.endsWith('.ngrok.io');
+      }
+
+      // Check permissions before requesting
+      async function checkPermissions() {
+        if (!navigator.permissions || !navigator.permissions.query) {
+          return { camera: 'unknown', microphone: 'unknown' };
+        }
+        
+        try {
+          const cameraPermission = await navigator.permissions.query({ name: 'camera' });
+          const microphonePermission = await navigator.permissions.query({ name: 'microphone' });
+          return {
+            camera: cameraPermission.state,
+            microphone: microphonePermission.state
+          };
+        } catch (e) {
+          // Permissions API might not support camera/microphone in all browsers
+          return { camera: 'unknown', microphone: 'unknown' };
+        }
+      }
+
+      // Cross-browser getUserMedia compatibility
+      function getUserMedia(constraints) {
+        // Check secure context first
+        if (!isSecureContext()) {
+          return Promise.reject(new Error('SECURE_CONTEXT_REQUIRED'));
+        }
+
+        const getUserMedia = navigator.mediaDevices && navigator.mediaDevices.getUserMedia
+          ? navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices)
+          : (navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia);
+        
+        if (!getUserMedia) {
+          return Promise.reject(new Error('getUserMedia is not supported in this browser'));
+        }
+        
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+          return navigator.mediaDevices.getUserMedia(constraints);
+        } else {
+          return new Promise((resolve, reject) => {
+            getUserMedia.call(navigator, constraints, resolve, reject);
+          });
+        }
+      }
+
+      // Show permission help modal
+      function showPermissionHelp(errorType) {
+        const isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
+        const isSecure = isSecureContext();
+        
+        let helpText = '';
+        if (errorType === 'SECURE_CONTEXT_REQUIRED') {
+          helpText = '⚠️ HTTPS Required\n\nCamera and microphone access requires a secure connection (HTTPS).\n\nPlease access this page via HTTPS or use localhost.';
+        } else if (errorType === 'NotAllowedError') {
+          if (isChrome) {
+            helpText = '🔒 Permission Denied - Chrome Instructions\n\n' +
+              '1. Click the lock icon (🔒) or camera icon in the address bar\n' +
+              '2. Find "Camera" and "Microphone" permissions\n' +
+              '3. Change from "Block" to "Allow"\n' +
+              '4. Refresh the page\n\n' +
+              'OR\n\n' +
+              '1. Go to Chrome Settings (chrome://settings/content/camera)\n' +
+              '2. Make sure this site is not blocked\n' +
+              '3. Add this site to allowed sites if needed\n' +
+              '4. Refresh the page';
+          } else {
+            helpText = '🔒 Permission Denied\n\n' +
+              'Please allow camera and microphone access in your browser settings and refresh the page.';
+          }
+        } else if (errorType === 'NotFoundError') {
+          helpText = '📷 No Device Found\n\n' +
+            'No camera or microphone was detected.\n\n' +
+            'Please:\n' +
+            '1. Connect a camera/microphone device\n' +
+            '2. Make sure no other application is using the camera\n' +
+            '3. Check device manager to ensure devices are working\n' +
+            '4. Refresh the page';
+        } else {
+          helpText = '❌ Unable to Access Camera/Microphone\n\n' +
+            'Please check:\n' +
+            '1. Browser permissions are allowed\n' +
+            '2. No other app is using the camera\n' +
+            '3. Device is properly connected\n' +
+            '4. Try refreshing the page';
+        }
+        
+        const userChoice = confirm(helpText + '\n\nClick OK to retry, or Cancel to continue without camera.');
+        return userChoice;
+      }
+
+      async function initializeWebcam() {
+        try {
+          // Check secure context first
+          if (!isSecureContext()) {
+            const retry = showPermissionHelp('SECURE_CONTEXT_REQUIRED');
+            if (retry) {
+              // User wants to retry, but we can't fix HTTPS issue
+              alert('Please access this page via HTTPS. The page will continue without camera.');
+            }
+            socket.emit('join', { room, userType, userId, username });
+            return;
+          }
+
+          // Check existing permissions
+          const permissions = await checkPermissions();
+          if (permissions.camera === 'denied' || permissions.microphone === 'denied') {
+            const retry = showPermissionHelp('NotAllowedError');
+            if (retry) {
+              // User said they'll fix it, wait a moment then retry
+              setTimeout(() => {
+                initializeWebcam();
+              }, 1000);
+              return;
+            }
+            socket.emit('join', { room, userType, userId, username });
+            return;
+          }
+
+          // Try with simpler constraints first, then upgrade if needed
+          let constraints = {
+            video: true, 
+            audio: true 
+          };
+
+          // Try to get media
+          try {
+            localStream = await getUserMedia(constraints);
+          } catch (err) {
+            // If that fails, try with more specific constraints
+            console.warn('Simple constraints failed, trying with specific settings...', err);
+            constraints = {
+              video: { 
+                width: { ideal: 1280 },
+                height: { ideal: 720 },
+                facingMode: 'user'
+              }, 
+              audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true
+              }
+            };
+            localStream = await getUserMedia(constraints);
+          }
+
+          if (localVideo && localStream) {
+            console.log('📹 Setting local video stream, tracks:', localStream.getTracks().length);
+            localStream.getTracks().forEach(track => {
+              console.log('📹 Local track:', { kind: track.kind, enabled: track.enabled, readyState: track.readyState, id: track.id });
+            });
+            
+            localVideo.srcObject = localStream;
+            localVideo.muted = true; // Always mute local video to prevent feedback
+            localVideo.autoplay = true;
+            localVideo.playsInline = true;
+            
+            // Ensure video plays
+            localVideo.play().then(() => {
+              console.log('✅ Local video playing');
+            }).catch(err => {
+              // Suppress AbortError - it's harmless and happens when video src changes
+              if (err.name !== 'AbortError') {
+                console.warn('⚠️ Video play warning:', err.name);
+              }
+              // Try to play again after a short delay
+              setTimeout(() => {
+                localVideo.play().catch(e => {
+                  if (e.name !== 'AbortError') {
+                    console.warn('⚠️ Retry play warning:', e.name);
+                  }
+                });
+              }, 500);
+            });
+          } else {
+            console.error('❌ Missing localVideo element or localStream:', { hasLocalVideo: !!localVideo, hasLocalStream: !!localStream });
+          }
+          
+          // Once we have media, ensure peer connection has tracks and join room for signaling
+          // IMPORTANT: Create peer connection BEFORE joining room so tracks are ready
+          ensurePeerConnection();
+          
+          // Wait a moment to ensure tracks are added to peer connection
+          setTimeout(() => {
+            if (peerConnection && localStream) {
+              const senders = peerConnection.getSenders();
+              const tracks = localStream.getTracks();
+              console.log('📊 Peer connection check:', {
+                hasPeerConnection: !!peerConnection,
+                localTracks: tracks.length,
+                senders: senders.length,
+                tracksInSenders: senders.map(s => s.track?.kind).filter(Boolean)
+              });
+              
+              // Ensure all tracks are added
+              tracks.forEach(track => {
+                const sender = senders.find(s => s.track === track);
+                if (!sender) {
+                  console.log('➕ Adding missing track to peer connection:', track.kind);
+                  peerConnection.addTrack(track, localStream);
+                }
+              });
+            }
+          }, 200);
+          
+          // Join room AFTER webcam is initialized so peer connection has tracks
+          const joinRoom = () => {
+            if (socket && socket.connected) {
+              socket.emit('join', { room, userType, userId, username });
+              console.log('✅ Joined room after webcam init, room:', room);
+              // Set up reward listener after joining room
+              setTimeout(() => {
+                if (typeof setupRewardAnimationListener === 'function') {
+                  setupRewardAnimationListener();
+                  console.log('✅ Reward animation listener set up after joining room');
+                }
+              }, 500);
+            } else {
+              console.warn('⚠️ Socket not connected, waiting for connection...');
+              // Wait for socket to connect, with timeout
+              const connectTimeout = setTimeout(() => {
+                console.error('❌ Socket connection timeout - please check if server is running');
+                alert('Cannot connect to server. Please ensure the server is running on port 5000.');
+              }, 10000); // 10 second timeout
+              
+              socket.once('connect', () => {
+                clearTimeout(connectTimeout);
+                socket.emit('join', { room, userType, userId, username });
+                console.log('✅ Joined room after socket connection, room:', room);
+                // Set up reward listener after joining room
+                setTimeout(() => {
+                  if (typeof setupRewardAnimationListener === 'function') {
+                    setupRewardAnimationListener();
+                    console.log('✅ Reward animation listener set up after joining room');
+                  }
+                }, 500);
+              });
+            }
+          };
+          
+          joinRoom();
+          console.log('✅ Webcam initialized successfully');
+          reconnectAttempts = 0; // Reset reconnect attempts on success
+          
+          // Hide error message if it was showing
+          if (cameraErrorMessage) {
+            cameraErrorMessage.style.display = 'none';
+          }
+        } catch (error) {
+          console.error('❌ Error accessing webcam:', error);
+          
+          let errorType = error.name || error.message;
+          if (error.message === 'SECURE_CONTEXT_REQUIRED') {
+            errorType = 'SECURE_CONTEXT_REQUIRED';
+          }
+          
+          const retry = showPermissionHelp(errorType);
+          if (retry) {
+            // User wants to retry after fixing permissions
+            setTimeout(() => {
+              initializeWebcam();
+            }, 2000); // Wait 2 seconds for user to fix permissions
+          } else {
+            // User chose to continue without camera
+            console.log('⚠️ Continuing without camera/microphone');
+            // Show error message with retry button
+            if (cameraErrorMessage) {
+              cameraErrorMessage.style.display = 'block';
+            }
+            socket.emit('join', { room, userType, userId, username });
+          }
+        }
+      }
+
+      // Toggle camera
+      if (toggleCameraBtn) {
+        toggleCameraBtn.addEventListener('click', async () => {
+          if (!localStream) return;
+          const videoTrack = localStream.getVideoTracks()[0];
+          if (videoTrack) {
+            isCameraOn = !isCameraOn;
+            videoTrack.enabled = isCameraOn;
+            toggleCameraBtn.textContent = isCameraOn ? '📷' : '📷❌';
+            toggleCameraBtn.style.opacity = isCameraOn ? '1' : '0.5';
+          }
+        });
+      }
+
+      // Toggle microphone (enable/disable track)
+      if (toggleMicBtn) {
+        toggleMicBtn.addEventListener('click', async () => {
+          if (!localStream) return;
+          const audioTrack = localStream.getAudioTracks()[0];
+          if (audioTrack) {
+            isMicOn = !isMicOn;
+            audioTrack.enabled = isMicOn;
+            toggleMicBtn.textContent = isMicOn ? '🎤' : '🎤❌';
+            toggleMicBtn.style.opacity = isMicOn ? '1' : '0.5';
+            // If mic is disabled, also mute
+            if (!isMicOn) {
+              isMuted = true;
+              if (toggleMuteBtn) {
+                toggleMuteBtn.textContent = '🔇';
+                toggleMuteBtn.style.opacity = '1';
+              }
+            }
+          }
+        });
+      }
+
+      // Toggle mute (mute/unmute audio output)
+      if (toggleMuteBtn) {
+        toggleMuteBtn.addEventListener('click', () => {
+          if (!remoteVideo) return;
+          isMuted = !isMuted;
+          remoteVideo.muted = isMuted;
+          toggleMuteBtn.textContent = isMuted ? '🔇' : '🔊';
+          toggleMuteBtn.style.opacity = isMuted ? '1' : '0.5';
+          toggleMuteBtn.title = isMuted ? 'Unmute Audio' : 'Mute Audio';
+        });
+      }
+
+      // Reconnection logic
+      function attemptReconnect() {
+        if (reconnectAttempts >= maxReconnectAttempts) {
+          console.error('❌ Max reconnection attempts reached');
+          // Reset counter after a longer delay to allow retry
+          setTimeout(() => {
+            reconnectAttempts = 0;
+            console.log('🔄 Reset reconnection attempts, ready to retry');
+          }, 60000); // Reset after 60 seconds
+          return;
+        }
+        
+        if (reconnectTimeout) {
+          clearTimeout(reconnectTimeout);
+        }
+        
+        reconnectAttempts++;
+        const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000); // Exponential backoff, max 30s
+        console.log(`🔄 Attempting to reconnect (${reconnectAttempts}/${maxReconnectAttempts}) in ${delay}ms...`);
+        
+        reconnectTimeout = setTimeout(() => {
+          if (peerConnection && (peerConnection.connectionState === 'failed' || 
+              peerConnection.connectionState === 'disconnected' ||
+              peerConnection.connectionState === 'closed')) {
+            console.log('🔄 Reconnecting WebRTC...');
+            // Reinitialize peer connection
+            if (peerConnection) {
+              peerConnection.close();
+              peerConnection = null;
+            }
+            // Reset flags
+            isCreatingOffer = false;
+            isSettingRemoteDescription = false;
+            
+            // Recreate peer connection
+            ensurePeerConnection();
+            
+            // Rejoin room to trigger signaling
+            if (socket && socket.connected && localStream) {
+              setTimeout(() => {
+                socket.emit('join', { room, userType, userId, username });
+                console.log('🔄 Rejoined room after peer connection reset');
+                
+                // Trigger ready event after a moment
+                setTimeout(() => {
+                  socket.emit('ready', { room });
+                }, 1000);
+              }, 500);
+            } else if (socket && socket.connected) {
+              // If no local stream, try to reinitialize
+              console.log('🔄 No local stream, attempting to reinitialize...');
+              initializeWebcam();
+            }
+          }
+        }, delay);
+      }
+
+      // Window focus/blur handling
+      function handleVisibilityChange() {
+        if (document.hidden) {
+          isPageVisible = false;
+          console.log('👁️ Page hidden, maintaining connections...');
+        } else {
+          isPageVisible = true;
+          console.log('👁️ Page visible, checking connections...');
+          // Check and restore connections when page becomes visible
+          if (peerConnection) {
+            const state = peerConnection.connectionState;
+            if (state === 'failed' || state === 'disconnected' || state === 'closed') {
+              console.log('🔄 Restoring connection after visibility change...');
+              attemptReconnect();
+            }
+          }
+          // Ensure videos are playing
+          if (localVideo && localVideo.paused) {
+            localVideo.play().catch(err => console.warn('Local video play error:', err));
+          }
+          if (remoteVideo && remoteVideo.paused) {
+            remoteVideo.play().catch(err => console.warn('Remote video play error:', err));
+          }
+        }
+      }
+
+      // Page visibility API
+      if (typeof document.hidden !== 'undefined') {
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+      } else if (typeof document.mozHidden !== 'undefined') {
+        document.addEventListener('mozvisibilitychange', handleVisibilityChange);
+      } else if (typeof document.webkitHidden !== 'undefined') {
+        document.addEventListener('webkitvisibilitychange', handleVisibilityChange);
+      } else if (typeof document.msHidden !== 'undefined') {
+        document.addEventListener('msvisibilitychange', handleVisibilityChange);
+      }
+
+      // Window focus/blur events
+      window.addEventListener('focus', () => {
+        isPageVisible = true;
+        handleVisibilityChange();
+      });
+
+      window.addEventListener('blur', () => {
+        // Don't immediately mark as hidden on blur (user might switch tabs but still want connection)
+        // Only use visibility API for actual page hiding
+      });
+
+      // Connection health check
+      function startConnectionMonitoring() {
+        if (connectionCheckInterval) {
+          clearInterval(connectionCheckInterval);
+        }
+        
+        connectionCheckInterval = setInterval(() => {
+          if (!isPageVisible) return; // Skip checks when page is hidden
+          
+          if (peerConnection) {
+            const state = peerConnection.connectionState;
+            const iceState = peerConnection.iceConnectionState;
+            
+            const signalingState = peerConnection.signalingState;
+            const iceGatheringState = peerConnection.iceGatheringState;
+            
+            // Only log detailed state if connection is stuck or there's an issue
+            if (state === 'new' && iceState === 'new' && iceGatheringState === 'new' && localStream) {
+              console.warn('⚠️ Connection health check: Connection stuck in "new" state - forcing ICE gathering');
+              // Force ICE gathering by creating a temporary offer (for students) or ensuring tracks are added
+              // This will trigger ICE candidate gathering immediately
+              if (userType === 'student' && !peerConnection.localDescription && !peerConnection.remoteDescription) {
+                // For students, create a dummy offer to trigger ICE gathering
+                // This will be replaced when the real offer arrives
+                console.log('📡 Student: Creating temporary offer to force ICE gathering...');
+                peerConnection.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true })
+                  .then(dummyOffer => {
+                    // Set it locally to trigger ICE gathering, but don't send it
+                    return peerConnection.setLocalDescription(dummyOffer);
+                  })
+                  .then(() => {
+                    console.log('✅ Student: Temporary offer set - ICE gathering should start');
+                    // Clear the local description when real offer arrives (handled in offer handler)
+                  })
+                  .catch(err => {
+                    console.warn('⚠️ Student: Could not create temporary offer:', err);
+                  });
+              } else if (userType === 'teacher' && !peerConnection.localDescription) {
+                // For teacher, ensure tracks are added and trigger ready event
+                ensurePeerConnection();
+                if (socket && socket.connected) {
+                  socket.emit('ready', { room });
+                }
+              }
+            } else if (state !== 'new' || iceState !== 'new') {
+              // Only log if not in initial state
+              console.log('📊 Connection health check:', {
+                connectionState: state,
+                iceConnectionState: iceState,
+                iceGatheringState: iceGatheringState,
+                signalingState: signalingState,
+                senders: peerConnection.getSenders().length,
+                receivers: peerConnection.getReceivers().length
+              });
+            }
+            
+            // Check if connection is unhealthy
+            if (state === 'failed' || iceState === 'failed') {
+              console.warn('⚠️ Connection health check: Connection failed, reconnecting...');
+              attemptReconnect();
+            } else if (state === 'disconnected' || iceState === 'disconnected') {
+              console.warn('⚠️ Connection health check: Connection disconnected, reconnecting...');
+              attemptReconnect();
+            } else if (state === 'closed') {
+              console.warn('⚠️ Connection health check: Connection closed, recreating...');
+              // Reset and recreate connection
+              if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+              }
+              ensurePeerConnection();
+              // Rejoin room
+              if (socket && socket.connected && localStream) {
+                setTimeout(() => {
+                  socket.emit('join', { room, userType, userId, username });
+                  socket.emit('ready', { room });
+                }, 500);
+              }
+            } else if (state === 'connected' && iceState === 'connected') {
+              // Connection is healthy - log stats
+              const senders = peerConnection.getSenders();
+              const receivers = peerConnection.getReceivers();
+              const localStats = senders.length > 0;
+              const remoteStats = receivers.length > 0;
+              
+              if (!localStats || !remoteStats) {
+                console.warn('⚠️ Connection health check: Missing tracks', {
+                  localTracks: senders.length,
+                  remoteTracks: receivers.length
+                });
+                // Try to add missing tracks
+                if (!localStats && localStream) {
+                  ensurePeerConnection();
+                }
+              } else {
+                console.log('✅ Connection health check: All good');
+              }
+            }
+          } else if (localStream) {
+            // No peer connection but have stream - should create one
+            console.warn('⚠️ Connection health check: Missing peer connection but have stream, creating...');
+            ensurePeerConnection();
+            if (socket && socket.connected) {
+              socket.emit('join', { room, userType, userId, username });
+              socket.emit('ready', { room });
+            }
+          }
+          
+          // Check socket connection
+          if (socket) {
+            if (!socket.connected) {
+              console.warn('⚠️ Socket disconnected, reconnecting...');
+              socket.connect();
+            } else {
+              // Log socket health
+              console.log('✅ Socket health check: Connected, ID:', socket.id);
+            }
+          }
+        }, 10000); // Check every 10 seconds
+      }
+
+      // Connection status indicator
+      const connectionStatusEl = document.getElementById('connection-status');
+      function updateConnectionStatus() {
+        if (!connectionStatusEl) return;
+        if (socket && socket.connected) {
+          connectionStatusEl.textContent = '🟢 Connected';
+          connectionStatusEl.style.background = '#d4edda';
+          connectionStatusEl.style.color = '#155724';
+        } else {
+          connectionStatusEl.textContent = '🔴 Disconnected';
+          connectionStatusEl.style.background = '#f8d7da';
+          connectionStatusEl.style.color = '#721c24';
+        }
+      }
+      
+      // Update status on connection changes
+      socket.on('connect', () => {
+        updateConnectionStatus();
+      });
+      
+      // Initialize connection status on page load
+      setTimeout(() => {
+        updateConnectionStatus();
+      }, 1000);
+
+      socket.on('reconnect', () => {
+        console.log('✅ Socket reconnected, socket ID:', socket.id);
+        updateConnectionStatus();
+        // Rejoin room and request materials
+        socket.emit('join', { room, userType, userId, username });
+        
+        // Only request materials if we don't have any
+        if (room && lessonState.size === 0) {
+          setTimeout(() => {
+            if (lessonState.size === 0 && socket.connected) {
+              materialsRequested = false; // Reset flag on reconnect
+              socket.emit('lesson-materials-request', { room });
+            }
+          }, 1000);
+        }
+      });
+      
+      // Manual refresh function for lesson materials (can be called from console or button)
+      window.refreshLessonMaterials = function() {
+        if (socket && socket.connected) {
+          console.log('🔄 Manually refreshing lesson materials...');
+          socket.emit('lesson-materials-request', { room });
+          return true;
+        } else {
+          console.error('❌ Cannot refresh: Socket not connected');
+          alert('Cannot refresh lesson materials: Not connected to server. Please wait for connection or refresh the page.');
+          return false;
+        }
+      };
+      
+      // Handle reconnection attempts
+      socket.on('reconnect_attempt', (attemptNumber) => {
+        console.log(`🔄 Socket reconnection attempt ${attemptNumber}`);
+      });
+      
+      socket.on('reconnect_error', (error) => {
+        console.error('❌ Socket reconnection error:', error);
+      });
+      
+      socket.on('reconnect_failed', () => {
+        console.error('❌ Socket reconnection failed after all attempts');
+        alert('Cannot connect to server. Please refresh the page or check if the server is running.');
+      });
+
+      socket.on('connect', () => {
+        console.log('✅ Socket connected, socket ID:', socket.id);
+        reconnectAttempts = 0;
+        
+        // Ensure peer connection exists
+        ensurePeerConnection();
+        
+        // Re-initialize webcam if it failed before due to socket issues
+        if (!localStream) {
+          console.log('🔄 Re-initializing webcam after socket reconnection');
+          initializeWebcam();
+        } else {
+          // If we already have a stream, just rejoin the room
+          console.log('🔄 Rejoining room after socket reconnection');
+          socket.emit('join', { room, userType, userId, username });
+        }
+      });
+
+      // Initialize webcam on page load
+      // Wait a moment to ensure DOM is ready and socket is connecting
+      // Also initialize immediately if socket is already connected
+      if (socket && socket.connected) {
+        setTimeout(() => {
+          console.log('🎥 Initializing webcam (socket already connected)...');
+          initializeWebcam();
+        }, 100);
+      } else {
+        // Wait for socket connection
+        socket.on('connect', () => {
+          setTimeout(() => {
+            console.log('🎥 Initializing webcam after socket connection...');
+            initializeWebcam();
+          }, 100);
+        });
+      }
+      
+      // Also try to initialize after a short delay regardless
+      setTimeout(() => {
+        if (!localStream) {
+          console.log('🎥 Initializing webcam (fallback)...');
+          initializeWebcam();
+        }
+      }, 500);
+      
+      // Start connection monitoring
+      startConnectionMonitoring();
+
+      // Chat functionality
+      const chatForm = document.getElementById('chat-form');
+      const chatInput = document.getElementById('chat-input');
+      const chatMessages = document.getElementById('chat-messages');
+
+      function addChatMessage(message, sender, isOwn = false, timestamp = null) {
+        if (!chatMessages) return;
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `chat-message ${isOwn ? 'own' : ''}`;
+        
+        const time = timestamp || new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+        
+        messageDiv.innerHTML = `
+          <div class="chat-text">${escapeHtml(message)}</div>
+          <div class="chat-time">${time}</div>
+        `;
+        chatMessages.appendChild(messageDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      }
+
+      // Track sent messages to prevent duplicates - use messageId for reliable tracking
+      const sentMessageIds = new Set();
+      const displayedMessages = new Set(); // Track displayed messages to prevent UI duplicates
+      let messageIdCounter = 0;
+      
+      if (chatForm) {
+        chatForm.addEventListener('submit', (e) => {
+          e.preventDefault();
+          const message = chatInput?.value?.trim();
+          if (!message) return;
+          
+          // Create unique message ID to prevent duplicates
+          const messageId = Date.now() + '-' + (messageIdCounter++) + '-' + Math.random().toString(36).substr(2, 9);
+          const timestamp = Date.now();
+          
+          console.log('💬 Sending chat message:', { message, messageId, room, username });
+          
+          // Add message locally first for immediate feedback
+          addChatMessage(message, username, true, timestamp);
+          
+          // Mark as sent and displayed
+          sentMessageIds.add(messageId);
+          const displayKey = `${messageId}-${message}`;
+          displayedMessages.add(displayKey);
+          
+          // Send to server
+          socket.emit('chat-message', { room, message, sender: username, messageId, timestamp });
+          
+          // Clear input
+          chatInput.value = '';
+          
+          // Remove from sent set after 30 seconds (longer to prevent false duplicates)
+          setTimeout(() => {
+            sentMessageIds.delete(messageId);
+            displayedMessages.delete(displayKey);
+          }, 30000);
+        });
+      }
+
+      socket.on('chat-message', ({ message, sender, timestamp, messageId } = {}) => {
+        if (!message || !sender) {
+          console.warn('💬 Received invalid chat message:', { message, sender, timestamp, messageId });
+          return;
+        }
+        
+        console.log('💬 Received chat message:', { message, sender, timestamp, messageId, myUsername: username });
+        
+        // Check if this is our own message that we already displayed locally
+        if (messageId && sentMessageIds.has(messageId)) {
+          console.log('💬 Skipping own message (already displayed locally):', messageId);
+          return;
+        }
+        
+        // Check if we already displayed this exact message (prevent UI duplicates)
+        // Use a more lenient key that accounts for server-side timestamp differences
+        const timeWindow = timestamp ? Math.floor(new Date(timestamp).getTime() / 1000) : Math.floor(Date.now() / 1000);
+        const displayKey = messageId ? `${messageId}-${message}` : `${sender}-${message}-${timeWindow}`;
+        
+        if (displayedMessages.has(displayKey)) {
+          console.log('💬 Skipping duplicate message (already displayed):', displayKey);
+          return;
+        }
+        
+        // Mark as displayed
+        displayedMessages.add(displayKey);
+        
+        // Remove from displayed set after 30 seconds (longer to prevent false duplicates)
+        setTimeout(() => {
+          displayedMessages.delete(displayKey);
+        }, 30000);
+        
+        const isOwn = sender === username;
+        console.log('💬 Adding chat message to UI:', { message, sender, isOwn, timestamp });
+        addChatMessage(message, sender, isOwn, timestamp);
+      });
+      
+      // Also listen for chat messages with different event names (for compatibility)
+      socket.on('message', (data) => {
+        console.log('💬 Received message event:', data);
+        if (data && data.message) {
+          addChatMessage(data.message, data.sender || data.username || 'Unknown', false, data.timestamp);
+        }
+      });
+
+      // Class timer - starts from booked class time, not when user joins
+      let classStartTime = null;
+      const classTimeElement = document.getElementById('class-time');
+      
+      // Initialize timer with booked class time
+      async function initializeClassTimer() {
+        try {
+          const bookingId = getQueryParam('bookingId') || getQueryParam('bookingid');
+          const classroomId = getQueryParam('room') || getQueryParam('classroomId') || room;
+          const token = localStorage.getItem('token');
+          
+          let booking = null;
+          
+          // Try to fetch booking data
+          if (bookingId) {
+            // Try student endpoint first (works for both)
+            try {
+              const headers = {};
+              if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+              }
+              const resp = await fetch(`/api/student/booking/${bookingId}`, { headers });
+              if (resp.ok) {
+                const data = await resp.json();
+                booking = data.booking || data; // Handle both formats
+              }
+            } catch (e) {
+              console.warn('Failed to fetch booking via student endpoint:', e);
+            }
+          }
+          
+          // If no booking yet, try classroom endpoint
+          if (!booking && classroomId && classroomId !== 'default-room') {
+            try {
+              const headers = {};
+              if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+              }
+              const resp = await fetch(`/api/teacher/booking/by-classroom/${classroomId}`, { headers });
+              if (resp.ok) {
+                const data = await resp.json();
+                booking = data.booking || data;
+              }
+            } catch (e) {
+              console.warn('Failed to fetch booking via classroom endpoint:', e);
+            }
+          }
+          
+          if (booking && booking.date && booking.time) {
+            // Parse booked class date and time
+            // date format: "YYYY-MM-DD", time format: "HH:MM" or "HH:MM:SS"
+            const [year, month, day] = booking.date.split('-').map(Number);
+            const timeParts = booking.time.split(':');
+            const hour = parseInt(timeParts[0], 10);
+            const minute = parseInt(timeParts[1] || '0', 10);
+            
+            // Create Date object for booked class start time
+            classStartTime = new Date(year, month - 1, day, hour, minute, 0, 0);
+            
+            console.log('⏰ Class timer initialized with booked time:', {
+              date: booking.date,
+              time: booking.time,
+              bookedStartTime: classStartTime.toISOString(),
+              currentTime: new Date().toISOString(),
+              elapsedSeconds: Math.floor((Date.now() - classStartTime.getTime()) / 1000)
+            });
+            
+            // Auto-load lesson files if lessonId is present
+            if (booking.lessonId) {
+              console.log('📚 [AUTO-LOAD] Booking has lessonId, loading lesson files:', booking.lessonId);
+              loadLessonFilesFromBooking(booking.lessonId);
+            }
+          } else {
+            // Fallback to current time if booking not found
+            console.warn('⚠️ Could not fetch booking data, using current time as fallback');
+            classStartTime = Date.now();
+          }
+        } catch (error) {
+          console.error('❌ Error initializing class timer:', error);
+          // Fallback to current time
+          classStartTime = Date.now();
+        }
+        
+        // Start the timer update interval
+        if (classStartTime) {
+          updateClassTimer();
+          setInterval(updateClassTimer, 1000);
+        }
+      }
+      
+      function updateClassTimer() {
+        if (!classTimeElement || !classStartTime) return;
+        
+        // Calculate elapsed time from booked class start time
+        const now = Date.now();
+        const bookedTime = classStartTime instanceof Date ? classStartTime.getTime() : classStartTime;
+        const elapsed = Math.floor((now - bookedTime) / 1000);
+        
+        // If class hasn't started yet, show 00:00
+        if (elapsed < 0) {
+          classTimeElement.textContent = '00:00';
+          return;
+        }
+        
+        const minutes = Math.floor(elapsed / 60);
+        const seconds = elapsed % 60;
+        classTimeElement.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+      }
+      
+      // Auto-load lesson from booking
+      async function loadLessonFromBooking() {
+        try {
+          const bookingId = getQueryParam('bookingId') || getQueryParam('bookingid');
+          const classroomId = getQueryParam('room') || getQueryParam('classroomId') || room;
+          const token = localStorage.getItem('token');
+          
+          let booking = null;
+          
+          // Try to fetch booking data
+          if (bookingId) {
+            try {
+              const headers = {};
+              if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+              }
+              const resp = await fetch(`/api/student/booking/${bookingId}`, { headers });
+              if (resp.ok) {
+                const data = await resp.json();
+                booking = data.booking || data;
+              }
+            } catch (e) {
+              console.warn('Failed to fetch booking via student endpoint:', e);
+            }
+          }
+          
+          // If no booking yet, try classroom endpoint
+          if (!booking && classroomId && classroomId !== 'default-room') {
+            try {
+              const headers = {};
+              if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+              }
+              const resp = await fetch(`/api/teacher/booking/by-classroom/${classroomId}`, { headers });
+              if (resp.ok) {
+                const data = await resp.json();
+                booking = data.booking || data;
+              }
+            } catch (e) {
+              console.warn('Failed to fetch booking via classroom endpoint:', e);
+            }
+          }
+          
+          if (booking && booking.lessonId) {
+            console.log('📚 [AUTO-LOAD] Found booking with lessonId:', booking.lessonId);
+            loadLessonFilesFromBooking(booking.lessonId);
+          } else {
+            console.log('📚 [AUTO-LOAD] No lessonId found in booking', { 
+              hasBooking: !!booking, 
+              bookingKeys: booking ? Object.keys(booking) : [],
+              bookingId: booking?._id || booking?.id,
+              lessonId: booking?.lessonId 
+            });
+            // Try to load lesson from booking object directly if lessonId is nested
+            if (booking && booking.lesson && booking.lesson._id) {
+              console.log('📚 [AUTO-LOAD] Found lesson in nested booking.lesson:', booking.lesson._id);
+              loadLessonFilesFromBooking(booking.lesson._id);
+            }
+          }
+        } catch (error) {
+          console.error('❌ [AUTO-LOAD] Error loading lesson from booking:', error);
+        }
+      }
+      
+      // Load lesson files from booking's lessonId
+      async function loadLessonFilesFromBooking(lessonId) {
+        try {
+          console.log('📚 [AUTO-LOAD] Loading lesson files for lessonId:', lessonId);
+          const token = localStorage.getItem('token');
+          
+          const headers = {};
+          if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+          }
+          
+          // Fetch lesson files WITH data for classroom use
+          const response = await fetch(`/api/lessons/lesson/${lessonId}/files?withData=true`, { headers });
+          
+          if (!response.ok) {
+            throw new Error(`Failed to load lesson files: ${response.statusText}`);
+          }
+          
+          const files = await response.json();
+          
+          if (files.length === 0) {
+            console.log('📚 [AUTO-LOAD] No files found in lesson');
+            return;
+          }
+          
+          console.log(`📚 [AUTO-LOAD] Loading ${files.length} file(s) from lesson...`);
+          
+          // Process each file and add to lessonState
+          files.forEach((file, index) => {
+            // Convert file format to match material format expected by the UI
+            const material = {
+              id: file.id || file._id,
+              materialId: file.id || file._id,
+              name: file.name || file.fileName,
+              type: file.type || file.fileType,
+              size: file.size || file.fileSize,
+              data: file.data || file.fileData,
+              uploader: file.uploadedBy || 'System',
+              uploadedAt: file.uploadedAt ? new Date(file.uploadedAt).getTime() : Date.now()
+            };
+            
+            // Only log first file details, summarize others
+            if (index === 0) {
+              console.log(`📚 [AUTO-LOAD] Processing: ${material.name} (${files.length} file${files.length > 1 ? 's' : ''})`);
+            }
+            
+            // Add to lessonState
+            if (material.id && material.data && material.data.length > 100) {
+              renderLessonMaterial(material);
+              
+              // If this is the first file, display it immediately (no delay)
+              if (index === 0) {
+                // Use requestAnimationFrame for immediate display
+                requestAnimationFrame(() => {
+                  showLessonFile(material);
+                  if (userType === 'teacher') {
+                    // Broadcast to students
+                    socket.emit('lesson-file-select', { room, materialId: material.id, material });
+                  } else {
+                    // Switch to lesson content tab for students
+                    setActiveTab('lesson-content');
+                  }
+                });
+              }
+            } else {
+              console.warn('⚠️ [AUTO-LOAD] Invalid material data:', { hasId: !!material.id, hasData: !!material.data, dataLength: material.data?.length || 0 });
+            }
+          });
+          
+          console.log(`✅ [AUTO-LOAD] Successfully loaded ${files.length} file(s) from booking`);
+        } catch (error) {
+          console.error('❌ [AUTO-LOAD] Error loading lesson files:', error);
+        }
+      }
+      
+      // Initialize timer when page loads
+      initializeClassTimer();
+      
+      // Auto-load lesson from booking immediately on page load (no delays)
+      // This ensures lesson loads as fast as possible, even before class starts
+      // Load immediately - don't wait for socket or delays
+      loadLessonFromBooking();
+      
+      // Also load when socket connects (in case booking data needs socket)
+      if (socket && socket.connected) {
+        // Socket already connected, load immediately
+        loadLessonFromBooking();
+      } else {
+        // Wait for socket to connect, then load
+        socket.once('connect', () => {
+          loadLessonFromBooking();
+        });
+      }
+
+      // ==================== VIDEO RECORDING FUNCTIONS REMOVED ====================
+      // Recording functionality removed - using external software like OBS instead
+      // All recording functions (setupRecordingCanvas, updateRecordingCanvas, startRecording, stopRecording, uploadRecording, scheduleRecording) have been removed
+
+      // Class Info and Setting button handlers
+      const classInfoBtn = document.getElementById('class-info-btn');
+      const classInfoOverlay = document.getElementById('class-info-modal-overlay');
+      const classInfoClose = document.getElementById('class-info-close');
+      const classInfoOk = document.getElementById('class-info-ok');
+
+      async function openClassInfoModal() {
+        if (!classInfoOverlay) return;
+        const bookingId = getQueryParam('bookingId') || getQueryParam('bookingid');
+        const classroomId = getQueryParam('room') || getQueryParam('classroomId') || room;
+        const timeText = getQueryParam('slot') || (classTimeElement ? classTimeElement.textContent : '--:--');
+        const token = localStorage.getItem('token');
+
+        const setText = (id, value) => {
+          const el = document.getElementById(id);
+          if (el) el.textContent = value || '-';
+        };
+
+        setText('ci-room', room || '-');
+        setText('ci-booking', bookingId || 'N/A');
+        setText('ci-user-type', userType || '-');
+        setText('ci-username', username || '-');
+        setText('ci-class-time', timeText);
+        setText('ci-student-level', 'Loading...');
+
+        // Fetch booking data to get student level
+        let studentLevel = '-';
+        try {
+          let booking = null;
+          
+          // Try to fetch booking data
+          if (bookingId) {
+            try {
+              const headers = {};
+              if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+              }
+              const resp = await fetch(`/api/student/booking/${bookingId}`, { headers });
+              if (resp.ok) {
+                const data = await resp.json();
+                booking = data.booking || data; // Handle both formats
+              }
+            } catch (e) {
+              console.warn('Failed to fetch booking via student endpoint:', e);
+            }
+          }
+          
+          // If no booking yet, try classroom endpoint
+          if (!booking && classroomId && classroomId !== 'default-room') {
+            try {
+              const headers = {};
+              if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+              }
+              const resp = await fetch(`/api/teacher/booking/by-classroom/${classroomId}`, { headers });
+              if (resp.ok) {
+                const data = await resp.json();
+                booking = data.booking || data;
+              }
+            } catch (e) {
+              console.warn('Failed to fetch booking via classroom endpoint:', e);
+            }
+          }
+          
+          if (booking && booking.studentLevel) {
+            // Capitalize first letter and format
+            const level = booking.studentLevel.toLowerCase();
+            if (level === 'nursery') {
+              studentLevel = 'Nursery';
+            } else if (level === 'kinder' || level === 'kindergarten') {
+              studentLevel = 'Kinder';
+            } else if (level === 'preparatory' || level === 'primary') {
+              studentLevel = 'Preparatory';
+            } else {
+              studentLevel = booking.studentLevel.charAt(0).toUpperCase() + booking.studentLevel.slice(1);
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching student level:', error);
+        }
+        
+        setText('ci-student-level', studentLevel);
+
+        classInfoOverlay.style.display = 'flex';
+      }
+
+      function closeClassInfoModal() {
+        if (classInfoOverlay) {
+          classInfoOverlay.style.display = 'none';
+        }
+      }
+
+      if (classInfoBtn) {
+            classInfoBtn.addEventListener('click', openClassInfoModal);
+      }
+      if (classInfoClose) {
+        classInfoClose.addEventListener('click', closeClassInfoModal);
+      }
+      if (classInfoOk) {
+        classInfoOk.addEventListener('click', closeClassInfoModal);
+      }
+      if (classInfoOverlay) {
+        classInfoOverlay.addEventListener('click', (e) => {
+          if (e.target === classInfoOverlay) {
+            closeClassInfoModal();
+          }
+        });
+      }
+
+      // Stop recording button handler (teacher only)
+      // Recording button event listener removed - using external software like OBS instead
+
+      // Button handlers - show/hide based on user type
+      const finishBtn = document.getElementById('finish-btn');
+      const absentBtn = document.getElementById('absent-btn');
+      const leaveBtn = document.getElementById('leave-btn');
+      const flagBtn = document.querySelector('.flag-btn');
+      const cookieBtn = document.querySelector('.cookie-btn');
+      const navIconBtns = document.querySelectorAll('.nav-icon-btn');
+
+      // Show/hide buttons based on user type
+      // Make sure buttons are visible for teachers
+      if (userType === 'teacher') {
+        if (finishBtn) {
+          finishBtn.style.display = 'block';
+          finishBtn.style.visibility = 'visible';
+        }
+        if (absentBtn) {
+          absentBtn.style.display = 'block';
+          absentBtn.style.visibility = 'visible';
+        }
+        if (leaveBtn) leaveBtn.style.display = 'none';
+      } else {
+        if (finishBtn) finishBtn.style.display = 'none';
+        if (absentBtn) absentBtn.style.display = 'none';
+        if (leaveBtn) {
+          leaveBtn.style.display = 'block';
+          leaveBtn.style.visibility = 'visible';
+        }
+      }
+
+      if (finishBtn) {
+        finishBtn.addEventListener('click', async () => {
+          if (confirm('Are you sure you want to finish the class? This will close the classroom for both you and the student.')) {
+            try {
+              const bookingId = getQueryParam('bookingId') || getQueryParam('bookingid');
+              const token = localStorage.getItem('token');
+              
+              if (!bookingId) {
+                alert('Error: Could not find booking ID. Please close the window manually.');
+                return;
+              }
+
+              // Fetch booking to get date and time for status update
+              let booking = null;
+              try {
+                const bookingResp = await fetch(`/api/teacher/booking/${bookingId}`, {
+                  headers: {
+                    'Authorization': `Bearer ${token}`
+                  }
+                });
+                if (bookingResp.ok) {
+                  const bookingData = await bookingResp.json();
+                  booking = bookingData.booking || bookingData; // Handle both response formats
+                }
+              } catch (e) {
+                console.warn('Could not fetch booking details:', e);
+              }
+
+              // Mark class as completed in database
+              if (booking && booking.date && booking.time) {
+                try {
+                  const updateResp = await fetch('/api/teacher/update-class-status', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                      date: booking.date,
+                      time: booking.time,
+                      status: 'completed'
+                    })
+                  });
+                  
+                  if (!updateResp.ok) {
+                    const error = await updateResp.json();
+                    console.warn('Could not update class status:', error);
+                    // Continue anyway to close the classroom
+                  } else {
+                    console.log('✅ Class marked as completed in database');
+                  }
+                } catch (e) {
+                  console.warn('Error updating class status:', e);
+                  // Continue anyway to close the classroom
+                }
+              }
+
+              // Emit class-finished event to notify student
+              if (socket && socket.connected) {
+                socket.emit('class-finished', {
+                  room,
+                  userType: 'teacher',
+                  teacherId: userId || username
+                });
+                console.log('✅ Class finished event emitted to room:', room);
+              }
+
+              // Stop recording if active and wait for upload to complete
+              if (isRecording || mediaRecorder) {
+                console.log('🎬 Stopping and saving recording before finishing class...');
+                
+                // Hide recording indicator
+                const recordingStatusEl = document.getElementById('recording-status');
+                const stopRecordingBtn = document.getElementById('stop-recording-btn');
+                if (recordingStatusEl) recordingStatusEl.style.display = 'none';
+                if (stopRecordingBtn) stopRecordingBtn.style.display = 'none';
+                
+                // Stop the MediaRecorder first
+                if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                  console.log('🛑 Stopping MediaRecorder...');
+                  mediaRecorder.stop();
+                  isRecording = false;
+                  
+                  // Wait for onstop handler to complete upload
+                  console.log('⏳ Waiting for recording upload to complete...');
+                  let uploadComplete = false;
+                  let uploadAttempts = 0;
+                  const maxWaitTime = 60000; // 60 seconds max wait
+                  const startWait = Date.now();
+                  
+                  await new Promise(resolve => {
+                    const checkUpload = setInterval(() => {
+                      uploadAttempts++;
+                      const elapsed = Date.now() - startWait;
+                      
+                      // Check if upload is complete
+                      if (!isUploading && recordedChunks.length === 0) {
+                        uploadComplete = true;
+                        clearInterval(checkUpload);
+                        console.log(`✅ Upload completed after ${(elapsed / 1000).toFixed(1)} seconds`);
+                        resolve();
+                        return;
+                      }
+                      
+                      // Log progress every 5 seconds
+                      if (uploadAttempts % 10 === 0) {
+                        console.log(`⏳ Still uploading... (${(elapsed / 1000).toFixed(1)}s elapsed, ${recordedChunks.length} chunks remaining, isUploading: ${isUploading})`);
+                      }
+                      
+                      // Timeout after max wait time
+                      if (elapsed > maxWaitTime) {
+                        clearInterval(checkUpload);
+                        if (!uploadComplete) {
+                          console.warn(`⚠️ Upload timeout after ${(maxWaitTime / 1000).toFixed(0)} seconds - proceeding anyway`);
+                        }
+                        resolve();
+                      }
+                    }, 500);
+                  });
+                  
+                  if (uploadComplete) {
+                    console.log('✅ Recording upload completed successfully');
+                  } else {
+                    console.warn('⚠️ Upload may not have completed, but proceeding to close classroom');
+                  }
+                } else if (recordedChunks.length > 0) {
+                  // If MediaRecorder is already stopped but we have chunks, upload them
+                  console.log('📤 Uploading remaining chunks...');
+                  try {
+                    await uploadRecording(bookingId);
+                    console.log('✅ Recording upload completed');
+                  } catch (e) {
+                    console.error('❌ Upload failed:', e);
+                  }
+                }
+                
+                // Wait a bit more to ensure server has saved the recording
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                console.log('✅ Recording should be saved to server');
+              }
+
+              // Cleanup: Close peer connection and stop streams
+              if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+              }
+              if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                localStream = null;
+              }
+              if (socket) {
+                socket.disconnect();
+              }
+
+              // Close the window after a short delay to allow event to be sent
+              setTimeout(() => {
+                window.close();
+                // If window.close() doesn't work (some browsers block it), redirect instead
+                setTimeout(() => {
+                  window.location.href = 'teacher-class-table.html';
+                }, 100);
+              }, 500);
+            } catch (error) {
+              console.error('❌ Error finishing class:', error);
+              alert('Error finishing class: ' + error.message + '\nThe classroom will still close.');
+              // Close anyway
+              setTimeout(() => {
+                window.close();
+                setTimeout(() => {
+                  window.location.href = 'teacher-class-table.html';
+                }, 100);
+              }, 500);
+            }
+          }
+        });
+      }
+
+      if (absentBtn) {
+        absentBtn.addEventListener('click', () => {
+          if (confirm('Mark student as absent?')) {
+            alert('Student marked as absent.');
+            // Add your absent logic here
+          }
+        });
+      }
+
+      if (leaveBtn) {
+        leaveBtn.addEventListener('click', () => {
+          if (confirm('Are you sure you want to leave the classroom?')) {
+            // Close peer connection
+            if (peerConnection) {
+              peerConnection.close();
+              peerConnection = null;
+            }
+            // Stop local stream
+            if (localStream) {
+              localStream.getTracks().forEach(track => track.stop());
+              localStream = null;
+            }
+            // Disconnect socket
+            if (socket) {
+              socket.disconnect();
+            }
+            // Redirect back to class schedule
+            window.location.href = userType === 'student' ? 'student-class-table.html' : 'teacher-class-table.html';
+          }
+        });
+      }
+
+      // Reward animation function
+      function showRewardAnimation(type) {
+        const emoji = type === 'flag' ? '🚩' : '🍪';
+        const rewardElement = document.createElement('div');
+        rewardElement.style.cssText = `
+          position: fixed;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          font-size: 120px;
+          z-index: 10000;
+          pointer-events: none;
+          animation: rewardPop 2s ease-out forwards;
+          text-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+        `;
+        rewardElement.textContent = emoji;
+        document.body.appendChild(rewardElement);
+
+        // Remove after animation
+        setTimeout(() => {
+          rewardElement.remove();
+        }, 2000);
+      }
+
+      // Add CSS animation for reward
+      const style = document.createElement('style');
+      style.textContent = `
+        @keyframes rewardPop {
+          0% {
+            transform: translate(-50%, -50%) scale(0) rotate(0deg);
+            opacity: 0;
+          }
+          20% {
+            transform: translate(-50%, -50%) scale(1.5) rotate(15deg);
+            opacity: 1;
+          }
+          40% {
+            transform: translate(-50%, -50%) scale(1.2) rotate(-10deg);
+          }
+          60% {
+            transform: translate(-50%, -50%) scale(1.3) rotate(5deg);
+          }
+          80% {
+            transform: translate(-50%, -50%) scale(1.1) rotate(-2deg);
+          }
+          100% {
+            transform: translate(-50%, -50%) scale(1) rotate(0deg);
+            opacity: 0.8;
+          }
+        }
+      `;
+      document.head.appendChild(style);
+
+      // Set up reward animation listener function
+      function setupRewardAnimationListener() {
+        if (!socket) {
+          console.error('❌ [CLIENT] Cannot setup reward listener: socket not available');
+          return;
+        }
+        // Remove any existing listener to avoid duplicates
+        socket.off('reward-animation');
+        // Set up new listener
+        socket.on('reward-animation', (data) => {
+          console.log('🎁 [CLIENT] Received reward animation event:', data);
+          console.log('🎁 [CLIENT] Current room:', room, 'User type:', userType, 'Socket ID:', socket.id);
+          if (data && (data.type === 'flag' || data.type === 'cookie')) {
+            console.log('🎁 [CLIENT] Showing reward animation:', data.type);
+            try {
+              showRewardAnimation(data.type);
+              console.log('✅ [CLIENT] Reward animation displayed successfully');
+            } catch (error) {
+              console.error('❌ [CLIENT] Error showing reward animation:', error);
+            }
+          } else {
+            console.warn('⚠️ [CLIENT] Invalid reward animation data:', data);
+          }
+        });
+        console.log('✅ [CLIENT] Reward animation listener set up for socket:', socket.id, 'in room:', room);
+      }
+
+      // Set up listener immediately (will be set up again on connect and after joining room for safety)
+      if (socket) {
+        setupRewardAnimationListener();
+      }
+
+      // Listen for class-finished event (when teacher finishes the class)
+      socket.on('class-finished', (data) => {
+        console.log('🏁 [CLIENT] Class finished event received:', data);
+        if (data && userType === 'student') {
+          // Show notification to student
+          alert('The teacher has finished the class. The classroom will close now.');
+          
+          // Cleanup: Close peer connection and stop streams
+          if (peerConnection) {
+            peerConnection.close();
+            peerConnection = null;
+          }
+          if (localStream) {
+            localStream.getTracks().forEach(track => track.stop());
+            localStream = null;
+          }
+          if (socket) {
+            socket.disconnect();
+          }
+
+          // Close the window after a short delay
+          setTimeout(() => {
+            window.close();
+            // If window.close() doesn't work, redirect instead
+            setTimeout(() => {
+              window.location.href = 'student-class-table.html';
+            }, 100);
+          }, 500);
+        }
+      });
+
+      if (flagBtn) {
+        flagBtn.addEventListener('click', () => {
+          if (userType === 'teacher') {
+            console.log('🚩 [TEACHER] Flag button clicked, emitting reward animation');
+            // Show animation locally
+            showRewardAnimation('flag');
+            // Emit to students - ensure socket is connected
+            if (socket && socket.connected) {
+              socket.emit('reward-animation', { type: 'flag', room });
+              console.log('🚩 [TEACHER] Reward animation emitted to room:', room);
+            } else {
+              console.error('❌ [TEACHER] Socket not connected, cannot send reward animation');
+            }
+          }
+        });
+      }
+
+      if (cookieBtn) {
+        cookieBtn.addEventListener('click', () => {
+          if (userType === 'teacher') {
+            console.log('🍪 [TEACHER] Cookie button clicked, emitting reward animation');
+            // Show animation locally
+            showRewardAnimation('cookie');
+            // Emit to students - ensure socket is connected
+            if (socket && socket.connected) {
+              socket.emit('reward-animation', { type: 'cookie', room });
+              console.log('🍪 [TEACHER] Reward animation emitted to room:', room);
+            } else {
+              console.error('❌ [TEACHER] Socket not connected, cannot send reward animation');
+            }
+          }
+        });
+      }
+
+
+      // Direct handler for lessons button
+      // Lessons tab removed - moved to admin side
+
+      // Nav icon buttons: Settings
+      navIconBtns.forEach((btn, index) => {
+        btn.addEventListener('click', () => {
+            // Settings
+            alert('Settings panel - Coming soon!');
+        });
+      });
+
+      // Lessons Library functionality removed - moved to admin side
+      
+      // Helper function to convert file type to MIME type (kept for rendering materials)
+      function getMimeTypeFromFileType(fileType) {
+        const mimeTypes = {
+          'pdf': 'application/pdf',
+          'doc': 'application/msword',
+          'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'ppt': 'application/vnd.ms-powerpoint',
+          'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+          'image': 'image/jpeg',
+          'video': 'video/mp4'
+        };
+        return mimeTypes[fileType] || 'application/octet-stream';
+      }
+
+      // Whiteboard canvas in whiteboard panel
+      const whiteboardCanvas = document.getElementById('whiteboard-canvas');
+      
+      // Initialize whiteboard when whiteboard tab is shown
+      const whiteboardTab = document.querySelector('[data-tab="whiteboard"]');
+      if (whiteboardTab) {
+        whiteboardTab.addEventListener('click', () => {
+          // Initialize whiteboard when tab is clicked
+          if (whiteboardCanvas && !wbCtx) {
+            initWhiteboardCanvas();
+          }
+        });
+      }
+      
+      // Also initialize immediately if whiteboard panel is visible
+      const whiteboardPanelCheck = document.getElementById('whiteboard-panel');
+      if (whiteboardPanelCheck && whiteboardPanelCheck.classList.contains('active')) {
+        setTimeout(() => {
+          initWhiteboardCanvas();
+        }, 100);
+      }
+      const wbAnnotateToggle = document.getElementById('wb-annotate-toggle');
+      const wbColor = document.getElementById('wb-color');
+      const wbSize = document.getElementById('wb-size');
+      const wbEraser = document.getElementById('wb-eraser');
+      const wbClear = document.getElementById('wb-clear');
+      let wbCtx = null;
+      let wbDrawing = false;
+      let wbLast = [0, 0];
+      let wbTool = 'draw';
+      let wbEnabled = true;
+      let wbHistory = []; // Store all drawing segments for persistence
+
+      function initWhiteboardCanvas() {
+        if (!whiteboardCanvas) return;
+        wbCtx = whiteboardCanvas.getContext('2d');
+        
+        function resizeWhiteboard() {
+          const container = whiteboardCanvas.parentElement;
+          if (!container) return;
+          const rect = container.getBoundingClientRect();
+          // Make whiteboard fill the available space properly
+          const width = Math.max(800, rect.width - 20);
+          const height = Math.max(600, rect.height - 20);
+          whiteboardCanvas.width = width;
+          whiteboardCanvas.height = height;
+          whiteboardCanvas.style.width = width + 'px';
+          whiteboardCanvas.style.height = height + 'px';
+          
+          if (wbCtx) {
+            wbCtx.lineCap = 'round';
+            wbCtx.lineJoin = 'round';
+            wbCtx.strokeStyle = wbColor ? wbColor.value : '#ff0000';
+            wbCtx.lineWidth = wbSize ? parseInt(wbSize.value, 10) : 8;
+          }
+        }
+        
+        resizeWhiteboard();
+        const resizeObserver = new ResizeObserver(resizeWhiteboard);
+        if (whiteboardCanvas.parentElement) {
+          resizeObserver.observe(whiteboardCanvas.parentElement);
+        }
+
+        if (whiteboardCanvas && wbCtx) {
+          function getWbPos(e) {
+            const rect = whiteboardCanvas.getBoundingClientRect();
+            const scaleX = whiteboardCanvas.width / rect.width;
+            const scaleY = whiteboardCanvas.height / rect.height;
+            if (e.touches && e.touches[0]) {
+              return [(e.touches[0].clientX - rect.left) * scaleX, (e.touches[0].clientY - rect.top) * scaleY];
+            }
+            return [(e.clientX - rect.left) * scaleX, (e.clientY - rect.top) * scaleY];
+          }
+
+          whiteboardCanvas.addEventListener('pointerdown', (e) => {
+            if (!wbEnabled) return;
+            e.preventDefault();
+            wbDrawing = true;
+            wbLast = getWbPos(e);
+          });
+
+          whiteboardCanvas.addEventListener('pointermove', (e) => {
+            if (!wbDrawing || !wbCtx || !wbEnabled) return;
+            e.preventDefault();
+            const pos = getWbPos(e);
+
+            // Draw locally
+            const strokeColor = wbColor ? wbColor.value : '#ff0000';
+            const strokeWidth = wbSize ? parseInt(wbSize.value, 10) : 8;
+            
+            wbCtx.beginPath();
+            wbCtx.moveTo(wbLast[0], wbLast[1]);
+            wbCtx.lineTo(pos[0], pos[1]);
+            wbCtx.strokeStyle = strokeColor;
+            wbCtx.lineWidth = strokeWidth;
+            wbCtx.globalCompositeOperation = (wbTool === 'eraser') ? 'destination-out' : 'source-over';
+            wbCtx.stroke();
+
+            // Store segment in history for persistence
+            const seg = {
+              x0: wbLast[0] / whiteboardCanvas.width,
+              y0: wbLast[1] / whiteboardCanvas.height,
+              x1: pos[0] / whiteboardCanvas.width,
+              y1: pos[1] / whiteboardCanvas.height,
+              color: strokeColor,
+              width: strokeWidth,
+              tool: wbTool
+            };
+            wbHistory.push(seg);
+
+            // Broadcast normalized segment to other participants
+            socket.emit('whiteboard-draw', Object.assign({ room }, seg));
+
+            wbLast = pos;
+          });
+
+          ['pointerup', 'pointercancel', 'pointerout', 'pointerleave'].forEach(evt => 
+            whiteboardCanvas.addEventListener(evt, (e) => { 
+              e.preventDefault();
+              wbDrawing = false; 
+            })
+          );
+        }
+      }
+
+      // Whiteboard controls
+      if (wbAnnotateToggle) {
+        wbAnnotateToggle.addEventListener('click', () => {
+          wbEnabled = !wbEnabled;
+          wbAnnotateToggle.classList.toggle('active', wbEnabled);
+          if (whiteboardCanvas) {
+            whiteboardCanvas.style.pointerEvents = wbEnabled ? 'auto' : 'none';
+          }
+        });
+      }
+
+      if (wbEraser) {
+        wbEraser.addEventListener('click', () => {
+          wbTool = wbTool === 'eraser' ? 'draw' : 'eraser';
+          wbEraser.classList.toggle('active', wbTool === 'eraser');
+        });
+      }
+
+      if (wbColor) {
+        wbColor.addEventListener('change', () => {
+          if (wbCtx) wbCtx.strokeStyle = wbColor.value;
+        });
+      }
+
+      if (wbSize) {
+        wbSize.addEventListener('change', () => {
+          if (wbCtx) wbCtx.lineWidth = parseInt(wbSize.value, 10);
+        });
+      }
+
+      if (wbClear) {
+        wbClear.addEventListener('click', () => {
+          if (confirm('Clear whiteboard for everyone in this classroom?')) {
+            if (wbCtx && whiteboardCanvas) {
+              wbCtx.clearRect(0, 0, whiteboardCanvas.width, whiteboardCanvas.height);
+              wbHistory = []; // Clear history
+            }
+            socket.emit('whiteboard-clear', { room });
+          }
+        });
+      }
+
+      // Restore whiteboard from history
+      function restoreWhiteboard() {
+        if (!whiteboardCanvas || !wbCtx || !wbHistory.length) return;
+        
+        wbCtx.clearRect(0, 0, whiteboardCanvas.width, whiteboardCanvas.height);
+        
+        wbHistory.forEach(seg => {
+          const sx0 = seg.x0 * whiteboardCanvas.width;
+          const sy0 = seg.y0 * whiteboardCanvas.height;
+          const sx1 = seg.x1 * whiteboardCanvas.width;
+          const sy1 = seg.y1 * whiteboardCanvas.height;
+
+          wbCtx.beginPath();
+          wbCtx.moveTo(sx0, sy0);
+          wbCtx.lineTo(sx1, sy1);
+          wbCtx.strokeStyle = seg.color || '#ff0000';
+          wbCtx.lineWidth = seg.width || 8;
+          wbCtx.globalCompositeOperation = (seg.tool === 'eraser') ? 'destination-out' : 'source-over';
+          wbCtx.stroke();
+        });
+      }
+
+      // Apply remote whiteboard strokes
+      socket.on('whiteboard-draw', (data = {}) => {
+        try {
+          if (!whiteboardCanvas || !wbCtx) return;
+          const { x0, y0, x1, y1, color, width, tool } = data;
+          if (typeof x0 !== 'number' || typeof y0 !== 'number' ||
+              typeof x1 !== 'number' || typeof y1 !== 'number') {
+            return;
+          }
+          
+          // Store in history
+          wbHistory.push({ x0, y0, x1, y1, color, width, tool });
+          
+          const sx0 = x0 * whiteboardCanvas.width;
+          const sy0 = y0 * whiteboardCanvas.height;
+          const sx1 = x1 * whiteboardCanvas.width;
+          const sy1 = y1 * whiteboardCanvas.height;
+
+          wbCtx.beginPath();
+          wbCtx.moveTo(sx0, sy0);
+          wbCtx.lineTo(sx1, sy1);
+          wbCtx.strokeStyle = color || '#ff0000';
+          wbCtx.lineWidth = width || 8;
+          wbCtx.globalCompositeOperation = (tool === 'eraser') ? 'destination-out' : 'source-over';
+          wbCtx.stroke();
+        } catch (err) {
+          console.error('Error applying remote whiteboard stroke:', err);
+        }
+      });
+
+      socket.on('whiteboard-clear', () => {
+        try {
+          if (wbCtx && whiteboardCanvas) {
+            wbCtx.clearRect(0, 0, whiteboardCanvas.width, whiteboardCanvas.height);
+            wbHistory = []; // Clear history
+          }
+        } catch (err) {
+          console.error('Error applying remote whiteboard clear:', err);
+        }
+      });
+
+
+    })();
+    </script>
+</html>

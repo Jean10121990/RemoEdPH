@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Student Booking API</title>
+</head>
+<body>
+    <h1>Test Student Booking API</h1>
+    <button onclick="testAPI()">Test API Call</button>
+    <div id="result"></div>
+
+    <script>
+        async function testAPI() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Testing...';
+            
+            try {
+                // Get current week
+                const currentWeek = new Date();
+                const dayOfWeek = currentWeek.getDay();
+                const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+                const weekStart = new Date(currentWeek);
+                weekStart.setDate(currentWeek.getDate() - daysToMonday);
+                const weekString = weekStart.toISOString().split('T')[0];
+                
+                console.log('Current date:', new Date().toISOString());
+                console.log('Week start:', weekString);
+                
+                // Test API call
+                const response = await fetch(`/api/teacher/slots?week=${weekString}`, {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('API Error:', errorText);
+                    resultDiv.innerHTML = `Error: ${response.status} - ${errorText}`;
+                    return;
+                }
+                
+                const data = await response.json();
+                console.log('API Response:', data);
+                
+                resultDiv.innerHTML = `
+                    <h3>API Response:</h3>
+                    <p>Status: ${response.status}</p>
+                    <p>Slots count: ${data.slots ? data.slots.length : 0}</p>
+                    <p>Bookings count: ${data.bookings ? data.bookings.length : 0}</p>
+                    <h4>Sample Slots:</h4>
+                    <pre>${JSON.stringify(data.slots ? data.slots.slice(0, 3) : [], null, 2)}</pre>
+                `;
+                
+            } catch (error) {
+                console.error('Test error:', error);
+                resultDiv.innerHTML = `Error: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booking History - Student Dashboard</title>
+    <link rel="stylesheet" href="modern-styles.css">
+    <style>
+        .booking-history-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .booking-history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        .booking-history-title {
+            font-size: 28px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .booking-count {
+            font-size: 16px;
+            color: #666;
+            background: #f5f5f5;
+            padding: 8px 16px;
+            border-radius: 20px;
+        }
+        
+        .filter-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .filter-tab {
+            padding: 10px 20px;
+            border: 2px solid #e0e0e0;
+            background: white;
+            color: #666;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+        
+        .filter-tab:hover {
+            border-color: #667eea;
+            color: #667eea;
+        }
+        
+        .filter-tab.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+        
+        .bookings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+        }
+        
+        .booking-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .booking-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+        
+        .booking-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+        
+        .booking-date {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .booking-status {
+            padding: 6px 12px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        
+        .status-completed {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-cancelled {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .status-upcoming {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        
+        .status-past {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+        
+        .booking-details {
+            margin-bottom: 20px;
+        }
+        
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .detail-label {
+            color: #666;
+            font-weight: 500;
+        }
+        
+        .detail-value {
+            color: #333;
+            font-weight: 600;
+        }
+        
+        .teacher-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .teacher-name {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .teacher-email {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .booking-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .action-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #5a6fd8;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #c82333;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+        
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+        
+        .empty-state-title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        .empty-state-text {
+            font-size: 16px;
+            margin-bottom: 30px;
+        }
+        
+        .book-first-class-btn {
+            background: #667eea;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s ease;
+        }
+        
+        .book-first-class-btn:hover {
+            background: #5a6fd8;
+            transform: translateY(-2px);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+                 /* Override modern-styles.css sidebar styles to match teacher dashboard */
+         .remoed-menu li { 
+             padding: 14px 32px; 
+             color: #667eea; 
+             font-weight: 500; 
+             cursor: pointer; 
+             display: flex; 
+             align-items: center; 
+             gap: 12px; 
+             border-left: 4px solid transparent; 
+             transition: background 0.2s, border-color 0.2s; 
+         }
+         
+         .remoed-menu li.active, .remoed-menu li:hover { 
+             background: linear-gradient(90deg, #667eea 0%, #5a67d8 100%) !important; 
+             border-left: 4px solid #667eea !important; 
+             color: white !important; 
+             transform: translateX(4px) !important;
+             transition: all 0.3s ease !important;
+         }
+         
+         .remoed-menu svg { 
+             width: 20px; 
+             height: 20px; 
+             stroke: currentColor; 
+         }
+
+        @media (max-width: 768px) {
+            .booking-history-header {
+                flex-direction: column;
+                gap: 15px;
+                align-items: flex-start;
+            }
+            
+            .filter-tabs {
+                justify-content: center;
+            }
+            
+            .bookings-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .booking-card {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="remoed-main">
+        <nav class="remoed-sidebar">
+            <div class="remoed-logo" style="height:100px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding-top:5px;">
+                <img src="remoed-logo.png" alt="RemoEdPH Logo" style="height:40px; width:auto; display:inline-block; vertical-align:middle;">
+                <span class="remoed-title" style="font-size:1.3rem; font-weight:700; color:#667eea; letter-spacing:1px;">RemoEdPH</span>
+            </div>
+            <div class="remoed-user" style="display:flex; flex-direction:column; align-items:center; margin-bottom:24px;">
+                <div class="remoed-avatar" id="student-avatar" onclick="window.location.href='student-profile.html'" style="cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+                    <img id="profile-image" class="avatar-img" src="" alt="Profile" style="display: none;">
+                    <span id="avatar-text" class="avatar-text">S</span>
+                </div>
+                <span class="remoed-username" id="remoed-username"></span>
+            </div>
+            <ul class="remoed-menu">
+                <li onclick="window.location.href='student-dashboard.html'"><svg fill="none" stroke="#667eea" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/></svg>Dashboard</li>
+                <li onclick="window.location.href='student-class-table.html'"><svg fill="none" stroke="#667eea" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M16 3v4M8 3v4"/></svg>Class Schedule</li>
+                <li onclick="window.location.href='student-book.html'"><svg fill="none" stroke="#667eea" stroke-width="2" viewBox="0 0 24 24"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 10c-4.41 0-8-1.79-8-4V6c0-2.21 3.59-4 8-4s8 1.79 8 4v8c0 2.21-3.59 4-8 4z"/></svg>Book Class</li>
+                <li class="active"><svg fill="none" stroke="#667eea" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>Booking History</li>
+                <li onclick="window.location.href='student-profile.html'"><svg fill="none" stroke="#667eea" stroke-width="2" viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>Profile</li>
+                <li id="logout-nav" style="margin-top:auto; color:#e74c3c; cursor:pointer;"><svg fill="none" stroke="#e74c3c" stroke-width="2" viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7"/><path d="M3 12a9 9 0 0118 0 9 9 0 01-18 0z"/></svg>Logout</li>
+            </ul>
+        </nav>
+        <div class="remoed-content">
+            <div class="booking-history-container">
+                <div class="booking-history-header">
+                    <div>
+                        <h1 class="booking-history-title">Booking History</h1>
+                        <div class="booking-count" id="booking-count">Loading...</div>
+                    </div>
+                </div>
+
+                <div class="filter-tabs">
+                    <div class="filter-tab active" data-filter="all">All Bookings</div>
+                    <div class="filter-tab" data-filter="upcoming">Upcoming</div>
+                    <div class="filter-tab" data-filter="completed">Completed</div>
+                    <div class="filter-tab" data-filter="cancelled">Cancelled</div>
+                    <div class="filter-tab" data-filter="past">Past</div>
+                </div>
+
+                <div id="bookings-container">
+                    <div class="loading">
+                        <div class="loading-spinner"></div>
+                        <p>Loading your booking history...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+         <script>
+         // Role-based access control
+         const userType = localStorage.getItem('userType');
+         if (userType !== 'student') {
+           alert('Access denied. This page is for students only.');
+           window.location.href = 'index.html';
+         }
+         
+         let allBookings = [];
+         let currentFilter = 'all';
+
+         // Load booking history on page load
+         document.addEventListener('DOMContentLoaded', function() {
+             const username = localStorage.getItem('remoedUsername');
+             const studentId = localStorage.getItem('studentId');
+             
+             if (username) {
+                 document.getElementById('remoed-username').textContent = username;
+                 document.getElementById('avatar-text').textContent = username[0].toUpperCase();
+             }
+             
+             // Load profile picture if available
+             if (studentId) {
+                 loadProfilePicture(studentId);
+             }
+             
+             document.getElementById('logout-nav').onclick = function() {
+                 localStorage.clear();
+                 window.location.href = 'student-login.html';
+             };
+             
+             loadBookingHistory();
+             setupFilterTabs();
+         });
+
+        // Load booking history from API
+        async function loadBookingHistory() {
+            try {
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    console.error('No authentication token found');
+                    showError('Please log in to view your booking history');
+                    return;
+                }
+
+                // Add timeout to prevent hanging
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+                const response = await fetch('/api/student/booking-history', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                        'Cache-Control': 'no-cache',
+                        'Pragma': 'no-cache'
+                    },
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('📋 Booking history loaded:', data);
+                    allBookings = data.bookings || [];
+                    displayBookings(allBookings);
+                    updateBookingCount(allBookings.length);
+                } else if (response.status === 401) {
+                    console.error('Unauthorized - token may be expired');
+                    showError('Session expired. Please log in again.');
+                    setTimeout(() => {
+                        localStorage.clear();
+                        window.location.href = 'student-login.html';
+                    }, 2000);
+                } else if (response.status === 404) {
+                    console.log('No booking history found');
+                    allBookings = [];
+                    displayBookings(allBookings);
+                    updateBookingCount(0);
+                } else {
+                    console.error('Failed to load booking history:', response.status);
+                    showError('Failed to load booking history. Please try again.');
+                }
+            } catch (error) {
+                console.error('Error loading booking history:', error);
+                if (error.name === 'AbortError') {
+                    showError('Request timed out. Please check your connection and try again.');
+                } else {
+                    showError('Network error. Please check your connection and try again.');
+                }
+            }
+        }
+
+        // Display bookings based on current filter
+        function displayBookings(bookings) {
+            const container = document.getElementById('bookings-container');
+            
+            if (bookings.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📋</div>
+                        <div class="empty-state-title">No bookings found</div>
+                        <div class="empty-state-text">
+                            ${currentFilter === 'all' ? 
+                                'You haven\'t made any bookings yet.' : 
+                                `No ${currentFilter} bookings found.`
+                            }
+                        </div>
+                        ${currentFilter === 'all' ? 
+                            '<a href="student-book.html" class="book-first-class-btn">Book Your First Class</a>' : 
+                            ''
+                        }
+                    </div>
+                `;
+                return;
+            }
+
+            const bookingsHTML = bookings.map(booking => createBookingCard(booking)).join('');
+            container.innerHTML = `
+                <div class="bookings-grid">
+                    ${bookingsHTML}
+                </div>
+            `;
+        }
+
+        // Create booking card HTML
+        function createBookingCard(booking) {
+            const status = getBookingStatus(booking);
+            const statusClass = `status-${status.toLowerCase()}`;
+            
+            const date = new Date(booking.date);
+            const formattedDate = date.toLocaleDateString('en-US', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+            
+            const time = booking.time;
+            
+            return `
+                <div class="booking-card">
+                    <div class="booking-header">
+                        <div class="booking-date">${formattedDate}</div>
+                        <div class="booking-status ${statusClass}">${status}</div>
+                    </div>
+                    
+                    <div class="booking-details">
+                        <div class="detail-row">
+                            <span class="detail-label">Time:</span>
+                            <span class="detail-value">${time}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Duration:</span>
+                            <span class="detail-value">25 minutes</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Subject:</span>
+                            <span class="detail-value">${booking.subject || 'General'}</span>
+                        </div>
+                    </div>
+                    
+                    ${booking.teacher ? `
+                        <div class="teacher-info">
+                            <div class="teacher-name">${booking.teacher.name || 'Teacher'}</div>
+                            <div class="teacher-email">${booking.teacher.email || 'teacher@example.com'}</div>
+                        </div>
+                    ` : ''}
+                    
+                    <div class="booking-actions">
+                        ${getActionButtons(booking, status)}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Get booking status
+        function getBookingStatus(booking) {
+            const now = new Date();
+            const bookingDate = new Date(booking.date + 'T' + booking.time);
+            const endTime = new Date(bookingDate.getTime() + 25 * 60000); // 25 minutes
+            
+            if (booking.status === 'cancelled') {
+                return 'Cancelled';
+            } else if (booking.status === 'completed') {
+                return 'Completed';
+            } else if (now < bookingDate) {
+                return 'Upcoming';
+            } else if (now > endTime) {
+                return 'Past';
+            } else {
+                return 'In Progress';
+            }
+        }
+
+        // Get action buttons based on booking status
+        function getActionButtons(booking, status) {
+            const buttons = [];
+            
+            if (status === 'Upcoming') {
+                buttons.push(`
+                    <a href="live-classroom.html?bookingId=${booking._id}&room=${booking.room}&userType=student" 
+                       class="action-btn btn-primary">Join Class</a>
+                `);
+                
+                if (booking.status !== 'cancelled') {
+                    buttons.push(`
+                        <button onclick="requestCancellation('${booking._id}')" 
+                                class="action-btn btn-secondary">Request Cancellation</button>
+                    `);
+                }
+            } else if (status === 'Completed') {
+                buttons.push(`
+                    <button onclick="viewFeedback('${booking._id}')" 
+                            class="action-btn btn-primary">View Feedback</button>
+                `);
+            } else if (status === 'Past' && booking.status !== 'completed') {
+                buttons.push(`
+                    <span class="action-btn btn-secondary" style="opacity: 0.6;">Missed</span>
+                `);
+            }
+            
+            return buttons.join('');
+        }
+
+        // Setup filter tabs
+        function setupFilterTabs() {
+            const filterTabs = document.querySelectorAll('.filter-tab');
+            
+            filterTabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    // Remove active class from all tabs
+                    filterTabs.forEach(t => t.classList.remove('active'));
+                    
+                    // Add active class to clicked tab
+                    tab.classList.add('active');
+                    
+                    // Update current filter
+                    currentFilter = tab.dataset.filter;
+                    
+                    // Filter and display bookings
+                    const filteredBookings = filterBookings(allBookings, currentFilter);
+                    displayBookings(filteredBookings);
+                    updateBookingCount(filteredBookings.length);
+                });
+            });
+        }
+
+        // Filter bookings based on selected filter
+        function filterBookings(bookings, filter) {
+            if (filter === 'all') {
+                return bookings;
+            }
+            
+            return bookings.filter(booking => {
+                const status = getBookingStatus(booking);
+                return status.toLowerCase() === filter;
+            });
+        }
+
+        // Update booking count
+        function updateBookingCount(count) {
+            const countElement = document.getElementById('booking-count');
+            countElement.textContent = `${count} booking${count !== 1 ? 's' : ''}`;
+        }
+
+        // Request cancellation
+        async function requestCancellation(bookingId) {
+            if (!confirm('Are you sure you want to request cancellation for this class?')) {
+                return;
+            }
+            
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch(`/api/student/booking/${bookingId}/request-cancellation`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    showSuccess('Cancellation request submitted successfully');
+                    loadBookingHistory(); // Reload to update status
+                } else {
+                    showError('Failed to submit cancellation request');
+                }
+            } catch (error) {
+                console.error('Error requesting cancellation:', error);
+                showError('Error requesting cancellation');
+            }
+        }
+
+        // View feedback
+        function viewFeedback(bookingId) {
+            // This would open a modal or navigate to feedback page
+            alert('Feedback feature coming soon!');
+        }
+
+        // Show success message
+        function showSuccess(message) {
+            // You can implement a proper notification system here
+            alert(message);
+        }
+
+                 // Show error message
+         function showError(message) {
+             // You can implement a proper notification system here
+             alert('Error: ' + message);
+         }
+         
+         // Load profile picture from backend
+         async function loadProfilePicture(studentId) {
+             try {
+                 const token = localStorage.getItem('token');
+                 if (!token) {
+                     console.log('🔍 No token found for profile picture');
+                     return;
+                 }
+                 
+                 const username = localStorage.getItem('remoedUsername') || 'Student';
+                 console.log('🔍 Loading profile picture for studentId:', studentId);
+                 console.log('🔍 Username from localStorage:', username);
+                 
+                 // Add timeout to prevent hanging
+                 const controller = new AbortController();
+                 const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+                 
+                 const response = await fetch(`/api/student/profile`, {
+                     method: 'GET',
+                     headers: {
+                         'Authorization': `Bearer ${token}`,
+                         'Cache-Control': 'no-cache',
+                         'Pragma': 'no-cache'
+                     },
+                     signal: controller.signal
+                 });
+                 
+                 clearTimeout(timeoutId);
+                 
+                 if (response.ok) {
+                     const data = await response.json();
+                     console.log('🔍 Profile data for picture:', data);
+                    if (data.profile && data.profile.profilePicture && data.profile.profilePicture.trim() !== '') {
+                        setAvatar({
+                            imageUrl: data.profile.profilePicture,
+                            displayName: username,
+                            imgSelector: '#profile-image',
+                            textSelector: '#avatar-text'
+                        });
+                    } else {
+                        setAvatar({
+                            imageUrl: '',
+                            displayName: username,
+                            imgSelector: '#profile-image',
+                            textSelector: '#avatar-text'
+                        });
+                    }
+                 } else {
+                     console.log('❌ Failed to load profile data for picture');
+                     // Ensure avatar text is visible
+                     const profileImage = document.getElementById('profile-image');
+                     const avatarText = document.getElementById('avatar-text');
+                     if (profileImage && avatarText) {
+                         profileImage.style.display = 'none';
+                         avatarText.style.display = 'block';
+                     }
+                 }
+             } catch (error) {
+                 console.error('❌ Error loading profile picture:', error);
+                 // Ensure avatar text is visible on error
+                 const profileImage = document.getElementById('profile-image');
+                 const avatarText = document.getElementById('avatar-text');
+                 if (profileImage && avatarText) {
+                     profileImage.style.display = 'none';
+                     avatarText.style.display = 'block';
+                 }
+             }
+         }
+     </script>
+    <script src="avatar-helper.js"></script>
+</body>
+</html>

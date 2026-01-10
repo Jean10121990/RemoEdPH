@@ -1,0 +1,2137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+      <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <meta http-equiv="Last-Modified" content="Mon, 26 Aug 2025 03:00:00 GMT">
+  <title>Class Schedule - RemoEdPH</title>
+  <link rel="stylesheet" href="modern-styles.css?v=5">
+  <script>
+    // Force cache refresh
+    if (window.performance && window.performance.navigation.type === window.performance.navigation.TYPE_BACK_FORWARD) {
+      window.location.reload(true);
+    }
+    // Force reload if this is a cached version
+    if (window.location.search.indexOf('v=5') === -1) {
+      window.location.search = window.location.search + (window.location.search ? '&' : '?') + 'v=5';
+    }
+  </script>
+  <style>
+    body { 
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+      background: linear-gradient(135deg, #f6fbff 0%, #e8f4fd 100%); 
+      margin: 0;
+      padding: 0;
+    }
+    .remoed-main {
+      display: flex;
+      min-height: 100vh;
+      flex-direction: row;
+      align-items: stretch;
+      justify-content: flex-start;
+      max-width: 100vw;
+      overflow-x: hidden;
+    }
+    .remoed-sidebar {
+      width: 260px;
+      min-width: 220px;
+      max-width: 280px;
+      background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+      box-shadow: 4px 0 20px rgba(102, 126, 234, 0.1);
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      height: 100vh;
+      position: fixed;
+      z-index: 100;
+      border-right: 1px solid rgba(102, 126, 234, 0.1);
+    }
+    .remoed-logo { 
+      display: flex; 
+      align-items: center; 
+      gap: 14px; 
+    }
+    .remoed-logo img { 
+      height: 48px; 
+    }
+    .remoed-title { 
+      font-size: 1.7rem; 
+      font-weight: 700; 
+      color: #667eea; 
+      letter-spacing: 1px; 
+    }
+    .remoed-user { 
+      display: flex; 
+      align-items: center; 
+      gap: 10px; 
+    }
+    .remoed-avatar { 
+      width: 72px; 
+      height: 72px; 
+      border-radius: 50%; 
+      background: #667eea; 
+      color: #fff; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      font-weight: bold; 
+      font-size: 2.2rem; 
+    }
+    .remoed-username { 
+      color: #667eea; 
+      font-weight: 600; 
+    }
+    .remoed-menu { 
+      list-style: none; 
+      padding: 0; 
+      margin: 0; 
+    }
+    .remoed-menu li { 
+      padding: 14px 32px; 
+      color: #667eea; 
+      font-weight: 500; 
+      cursor: pointer; 
+      display: flex; 
+      align-items: center; 
+      gap: 12px; 
+      border-left: 4px solid transparent; 
+      transition: background 0.2s, border-color 0.2s; 
+    }
+    .remoed-menu li.active, .remoed-menu li:hover { 
+      background: linear-gradient(90deg, #667eea 0%, #5a67d8 100%); 
+      border-left: 4px solid #667eea; 
+      color: white; 
+      transform: translateX(4px);
+      transition: all 0.3s ease;
+    }
+    .remoed-menu svg { 
+      width: 20px; 
+      height: 20px; 
+      stroke: currentColor; 
+    }
+    .remoed-content {
+      flex: 1;
+      padding: 36px 20px 36px 20px;
+      min-width: 0;
+      background: #f6fbff;
+      min-height: 100vh;
+      box-sizing: border-box;
+      margin-left: 260px;
+      max-width: calc(100vw - 260px);
+      overflow-x: auto;
+    }
+    
+    .table-content {
+      padding: 24px;
+      max-width: 100%;
+      overflow-x: auto;
+      margin-right: 20px;
+    }
+    
+    .class-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 20px;
+      max-width: 100%;
+    }
+    
+    .header-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+    
+    .week-navigation {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    
+    .nav-btn {
+      background: linear-gradient(135deg, #ffe85a, #f4d03f);
+      color: #333;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 8px rgba(255, 232, 90, 0.3);
+    }
+    
+    .nav-btn:hover {
+      background: linear-gradient(135deg, #f4d03f, #f1c40f);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(255, 232, 90, 0.4);
+    }
+    
+    .nav-btn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    
+    .week-display {
+      font-weight: 600;
+      color: #333;
+      min-width: 120px;
+      text-align: center;
+    }
+    
+    .current-week-btn {
+      background: linear-gradient(135deg, #28a745, #1e7e34) !important;
+      color: white;
+      box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3) !important;
+    }
+    
+    .current-week-btn:hover {
+      background: linear-gradient(135deg, #1e7e34, #155724) !important;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4) !important;
+    }
+    .open-class-btn {
+      background: #667eea;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 24px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .open-class-btn:hover {
+      background: #5a67d8;
+    }
+    .class-table {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+      overflow: hidden;
+      max-width: 100%;
+    }
+    .table-header {
+      background: #f8f9fa;
+      padding: 16px 20px;
+      border-bottom: 1px solid #e0e6ed;
+    }
+    .table-header h2 {
+      color: #667eea;
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin: 0;
+    }
+    .table-content {
+      padding: 24px;
+      max-width: 100%;
+      overflow-x: auto;
+    }
+    .class-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+    }
+    .class-card {
+      background: #fff;
+      border: 1px solid #e0e6ed;
+      border-radius: 8px;
+      padding: 20px;
+      transition: box-shadow 0.2s;
+    }
+    .class-card:hover {
+      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    }
+    .class-time {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #667eea;
+      margin-bottom: 8px;
+    }
+    .class-date {
+      color: #666;
+      font-size: 0.9rem;
+      margin-bottom: 12px;
+    }
+    .class-status {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 500;
+    }
+    .status-open {
+      background: #d4edda;
+      color: #155724;
+    }
+    .status-booked {
+      background: #f8d7da;
+      color: #721c24;
+    }
+    .status-completed {
+      background: #d1ecf1;
+      color: #0c5460;
+    }
+    
+    .class-student {
+      font-size: 0.8rem;
+      color: #666;
+      margin-top: 4px;
+    }
+    
+    .weekly-grid {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(28, 167, 231, 0.1);
+      overflow: auto;
+      max-height: calc(100vh - 200px);
+      max-width: 100%;
+      box-sizing: border-box;
+      border: 1px solid rgba(28, 167, 231, 0.1);
+    }
+    
+    .schedule-table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      margin: 0;
+      min-width: 800px;
+    }
+    
+    .schedule-table th,
+    .schedule-table td {
+      border: 1px solid #e0e6ed;
+      padding: 12px 8px;
+      text-align: center;
+      vertical-align: middle;
+    }
+    
+    .schedule-table th {
+      background: linear-gradient(135deg, #667eea, #5a67d8);
+      font-weight: 600;
+      color: white;
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+    
+    .time-column {
+      width: 80px;
+      position: sticky;
+      left: 0;
+      background: #f8f9fa;
+      z-index: 3;
+    }
+    
+    .day-column {
+      width: calc((100% - 80px) / 7);
+      line-height: 1.2;
+      padding: 8px 4px;
+    }
+    
+    .day-column br {
+      margin: 2px 0;
+    }
+    
+    .time-slot {
+      font-size: 0.9rem;
+      color: #666;
+      min-height: 40px;
+    }
+    
+    .time-slot.open {
+      background: #90EE90;
+      color: #333;
+      font-weight: 600;
+    }
+    
+    .time-slot.booked {
+      background: #ffe85a !important;
+      color: #667eea !important;
+      font-weight: 600;
+    }
+    
+    .time-slot.finished {
+      background: #cce5ff !important;
+      color: #004085 !important;
+      font-weight: 600;
+    }
+    
+
+    
+    .time-slot.absent {
+      background: #ff6b6b;
+      color: white;
+      font-weight: 600;
+    }
+    
+    .time-slot.student-absent {
+      background: #ff8c42;
+      color: white;
+      font-weight: 600;
+    }
+    
+
+    
+
+    
+    .time-slot.unavailable {
+      background: #f8f9fa;
+      color: #6c757d;
+    }
+    
+    .time-slot.unbooked {
+      background: #f8f9fa;
+      color: #6c757d;
+      font-weight: normal;
+      cursor: default;
+    }
+    
+    .time-slot.past {
+      background: #f8f9fa !important;
+      color: #6c757d !important;
+      font-weight: normal;
+      cursor: not-allowed;
+    }
+    
+    .legend {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.9rem;
+    }
+    
+    .legend-color {
+      width: 20px;
+      height: 20px;
+      border-radius: 4px;
+      border: 1px solid #e0e6ed;
+    }
+    
+    @media (max-width: 1200px) {
+      .remoed-sidebar {
+        width: 260px;
+        min-width: 260px;
+      }
+      .remoed-content {
+        margin-left: 260px;
+        max-width: calc(100vw - 260px);
+      }
+    }
+    
+    @media (max-width: 900px) {
+      .remoed-main {
+        flex-direction: column;
+      }
+      .remoed-sidebar {
+        width: 100%;
+        position: relative;
+        height: auto;
+      }
+      .remoed-content {
+        margin-left: 0;
+        max-width: 100vw;
+        padding: 20px 10px;
+      }
+      .weekly-grid {
+        max-height: 60vh;
+      }
+      .schedule-table {
+        min-width: 600px;
+      }
+    }
+    
+    /* Modal Styles */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 2000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.5);
+      backdrop-filter: blur(2px);
+    }
+    
+    .modal-content {
+      background-color: #fefefe;
+      margin: 5% auto;
+      padding: 0;
+      border-radius: 12px;
+      width: 90%;
+      max-width: 500px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      animation: modalSlideIn 0.3s ease-out;
+      position: relative;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+    
+    @keyframes modalSlideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-50px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 24px 0 24px;
+      border-bottom: 1px solid #e0e6ed;
+    }
+    
+    .modal-header h2 {
+      margin: 0;
+      color: #667eea;
+      font-size: 1.5rem;
+      font-weight: 600;
+    }
+    
+    .close {
+      color: #aaa;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+      line-height: 1;
+      transition: color 0.2s;
+    }
+    
+    .close:hover {
+      color: #666;
+    }
+    
+    .modal-body {
+      padding: 24px;
+    }
+    
+    .class-details {
+      margin-bottom: 20px;
+    }
+    
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    
+    .detail-row:last-child {
+      border-bottom: none;
+    }
+    
+    .detail-row label {
+      font-weight: 600;
+      color: #333;
+      min-width: 120px;
+    }
+    
+    .detail-row span {
+      color: #666;
+      text-align: right;
+      flex: 1;
+    }
+    
+    .btn-join {
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: background 0.2s;
+    }
+    
+    .btn-join:hover {
+      background: #5a67d8;
+    }
+    
+    .btn-cancel {
+      background: #dc3545;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: background 0.2s;
+    }
+    
+    .btn-cancel:hover {
+      background: #c82333;
+    }
+    
+    .btn-secondary {
+      background: #6c757d;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: background 0.2s;
+    }
+    
+    .btn-secondary:hover {
+      background: #5a6268;
+    }
+    
+    .btn-danger {
+      background: #dc3545;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: background 0.2s;
+    }
+    
+    .btn-danger:hover {
+      background: #c82333;
+    }
+    
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      padding-top: 20px;
+      border-top: 1px solid #e0e6ed;
+    }
+  </style>
+</head>
+<body>
+  <div class="remoed-main">
+    <nav class="remoed-sidebar">
+      <div class="remoed-logo" style="height:100px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding-top:5px;">
+        <img src="remoed-logo.png" alt="RemoEdPH Logo" style="height:40px; width:auto; display:inline-block; vertical-align:middle;">
+        <span class="remoed-title" style="font-size:1.3rem; font-weight:700; color:#667eea; letter-spacing:1px;">RemoEdPH</span>
+      </div>
+      <div class="remoed-user" style="display:flex; flex-direction:column; align-items:center; margin-bottom:24px;">
+                        <div class="remoed-avatar" id="sidebar-avatar">
+                    <img id="profile-image" src="" alt="Profile" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: none;">
+                    <span id="avatar-text">K</span>
+                </div>
+        <span class="remoed-username" id="sidebar-email"></span>
+      </div>
+      <ul class="remoed-menu">
+        <li onclick="window.location.href='teacher-dashboard.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/></svg>Dashboard</li>
+        <li class="active"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M16 3v4M8 3v4"/></svg>Class Schedule</li>
+        <li onclick="window.location.href='teacher-open-class.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>Class Configuration</li>
+
+        <li onclick="window.location.href='teacher-service-fee.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 10c-4.41 0-8-1.79-8-4V6c0-2.21 3.59-4 8-4s8 1.79 8 4v8c0 2.21-3.59 4-8 4z"/></svg>Teaching Fee</li>
+        <li onclick="window.location.href='teacher-profile.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>Profile</li>
+        <li id="logout-nav" style="margin-top:auto; color:#e74c3c; cursor:pointer;"><svg fill="none" stroke="#e74c3c" stroke-width="2" viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7"/><path d="M3 12a9 9 0 0118 0 9 9 0 01-18 0z"/></svg>Logout</li>
+      </ul>
+    </nav>
+
+  <div class="remoed-content">
+    <div class="header">
+      <h1>Class Schedule</h1>
+      <div class="header-controls" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+        <div class="week-navigation" style="display: flex; align-items: center; gap: 12px;">
+          <button id="prev-week" class="nav-btn">← Previous Week</button>
+          <span id="week-display" class="week-display">Current Week</span>
+          <button id="next-week" class="nav-btn">Next Week →</button>
+          <button id="current-week" class="nav-btn current-week-btn">Today</button>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button class="open-class-btn" id="open-class-btn" style="background: linear-gradient(135deg, #1ca7e7, #0d8bd9); color: white; border: none; border-radius: 8px; padding: 8px 16px; cursor: pointer; font-size: 0.9rem; font-weight: 600; box-shadow: 0 2px 8px rgba(28, 167, 231, 0.3); transition: all 0.3s ease;">📝 Edit Slots</button>
+          <button class="refresh-btn" id="refresh-btn" onclick="forceRefreshSchedule()" style="background: linear-gradient(135deg, #28a745, #1e7e34); color: white; border: none; border-radius: 8px; padding: 8px 16px; cursor: pointer; font-size: 0.9rem; font-weight: 600; box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3); transition: all 0.3s ease;">🔄 Refresh</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Booking Indicators Legend -->
+    <div class="booking-legend" style="margin-bottom: 20px; padding: 15px; background: linear-gradient(135deg, #f8f9fa 0%, #e8f4fd 100%); border-radius: 12px; border: 1px solid rgba(28, 167, 231, 0.1); box-shadow: 0 4px 16px rgba(28, 167, 231, 0.05);">
+      <div style="display: flex; align-items: center; gap: 15px; font-size: 0.9rem;">
+        <h3 style="margin: 0; color: #1ca7e7; font-size: 1.1rem; font-weight: 600;">📊 Booking Indicators:</h3>
+        <div style="display: flex; align-items: center; gap: 5px;">
+          <span style="display: inline-block; width: 20px; height: 20px; background: #ffe85a; color: #1ca7e7; text-align: center; font-weight: bold; border-radius: 3px;">N</span>
+          <span>Nursery</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 5px;">
+          <span style="display: inline-block; width: 20px; height: 20px; background: #ffe85a; color: #1ca7e7; text-align: center; font-weight: bold; border-radius: 3px;">K</span>
+          <span>Kindergarten</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 5px;">
+          <span style="display: inline-block; width: 20px; height: 20px; background: #ffe85a; color: #1ca7e7; text-align: center; font-weight: bold; border-radius: 3px;">P</span>
+          <span>Primary</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 5px;">
+          <span style="display: inline-block; width: 20px; height: 20px; background: #ff6b6b; color: white; text-align: center; font-weight: bold; border-radius: 3px;">T</span>
+          <span>Teacher Absent</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 5px;">
+          <span style="display: inline-block; width: 20px; height: 20px; background: #ff8c42; color: white; text-align: center; font-weight: bold; border-radius: 3px;">S</span>
+          <span>Student Absent (Teacher gets 50% pay)</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 5px;">
+          <span style="display: inline-block; width: 20px; height: 20px; background: #cce5ff; color: #004085; text-align: center; font-weight: bold; border-radius: 3px;">F</span>
+          <span>Finished</span>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 5px;">
+          <span style="display: inline-block; width: 20px; height: 20px; background: #f8f9fa; color: #6c757d; text-align: center; font-weight: bold; border-radius: 3px;">U</span>
+          <span>Unbooked</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="weekly-grid">
+      <table class="schedule-table">
+        <thead>
+          <tr id="day-headers-row">
+            <th class="time-column">Time</th>
+            <!-- Day headers will be dynamically added here by JavaScript -->
+          </tr>
+        </thead>
+        <tbody id="time-slots-grid">
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Class Info Modal -->
+  <div id="class-info-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Class Information</h2>
+        <span class="close" onclick="closeClassInfo()">&times;</span>
+      </div>
+      <div class="modal-body">
+        <div class="class-details">
+          <div class="detail-row">
+            <label>Date:</label>
+            <span id="class-date"></span>
+          </div>
+          <div class="detail-row">
+            <label>Time:</label>
+            <span id="class-time"></span>
+          </div>
+          <div class="detail-row">
+            <label>Student:</label>
+            <span id="class-student"></span>
+          </div>
+          <div class="detail-row">
+            <label>Level:</label>
+            <span id="class-level"></span>
+          </div>
+          <div class="detail-row">
+            <label>Lesson:</label>
+            <span id="class-lesson"></span>
+          </div>
+          <div class="detail-row">
+            <label>Classroom ID:</label>
+            <span id="classroom-id" style="font-weight: bold; color: #1ca7e7;"></span>
+          </div>
+          <div class="detail-row">
+            <label>Join Classroom:</label>
+            <button class="btn-join" onclick="joinClassroom()">Enter Live Classroom</button>
+          </div>
+          <div class="detail-row">
+            <label>Actions:</label>
+            <button class="btn-cancel" onclick="toggleCancellationForm()" id="cancel-btn">Request Cancellation</button>
+          </div>
+          
+          <!-- Cancellation Penalty Reminder -->
+          <div style="margin-top: 10px; padding: 8px 12px; background: #fff3cd; border-radius: 6px; border: 1px solid #ffeaa7;">
+            <div style="font-size: 0.8rem; color: #856404; font-weight: 600; text-align: center;">
+              ⚠️ Cancellation Penalty: <span style="color: #28a745;">>72h: 0%</span> | <span style="color: #20c997;">48-72h: 12.5%</span> | <span style="color: #ffc107;">24-48h: 25%</span> | <span style="color: #fd7e14;">3-24h: 100%</span> | <span style="color: #dc3545;">&lt;3h: 300%</span>
+            </div>
+          </div>
+          
+          <!-- Cancellation Form (initially hidden) -->
+          <div id="cancellation-form" style="display: none; margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e0e6ed;">
+            <h4 style="margin: 0 0 10px 0; color: #dc3545;">Cancellation Request</h4>
+            <div class="form-group">
+              <label for="cancellation-reason" style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">Reason for Cancellation:</label>
+              <textarea id="cancellation-reason" placeholder="Please provide a detailed reason for cancellation (minimum 10 characters)..." rows="4" maxlength="500" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;"></textarea>
+              <div class="char-count" style="margin-top: 5px; font-size: 0.8rem; color: #666;">
+                <span id="char-count">0</span>/500 characters
+              </div>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 10px;">
+              <button class="btn-secondary" onclick="hideCancellationForm()">Cancel</button>
+              <button class="btn-danger" onclick="submitCancellationRequest()">Submit Request</button>
+            </div>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-secondary" onclick="closeClassInfo()">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cancellation Reason Modal -->
+  <div id="cancellation-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Request Cancellation</h2>
+        <span class="close" onclick="closeCancellationModal()">&times;</span>
+      </div>
+      <div class="modal-body">
+        <div class="cancellation-details">
+          <p><strong>Class:</strong> <span id="cancel-class-info"></span></p>
+          <p><strong>Student:</strong> <span id="cancel-student-info"></span></p>
+          <div class="form-group">
+            <label for="cancellation-reason">Reason for Cancellation:</label>
+            <textarea id="cancellation-reason" placeholder="Please provide a detailed reason for cancellation (minimum 10 characters)..." rows="4" maxlength="500"></textarea>
+            <div class="char-count">
+              <span id="char-count">0</span>/500 characters
+            </div>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-secondary" onclick="closeCancellationModal()">Cancel</button>
+          <button class="btn-danger" onclick="submitCancellationRequest()">Submit Request</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    // Role-based access control
+    const userType = localStorage.getItem('userType');
+    if (userType !== 'teacher') {
+      alert('Access denied. This page is for teachers only.');
+      window.location.href = 'index.html';
+    }
+    
+    // Get user info from localStorage
+    const username = localStorage.getItem('remoedUsername') || 'Teacher';
+    const teacherId = localStorage.getItem('teacherId');
+    
+    // Update sidebar with loading message (will be updated with first name later)
+    document.getElementById('avatar-text').textContent = username[0].toUpperCase();
+    document.getElementById('sidebar-email').textContent = 'Loading...';
+    
+    // Load profile picture if available
+    if (teacherId) {
+        loadProfilePicture(teacherId);
+    }
+    
+    // Open class button
+    document.getElementById('open-class-btn').onclick = () => {
+      window.location.href = 'teacher-open-class.html';
+    };
+    
+
+    
+
+    
+
+    
+    // Logout functionality
+    document.getElementById('logout-nav').onclick = function() {
+      localStorage.clear();
+      window.location.href = 'teacher-login.html';
+    };
+
+    // Weekly grid variables - use current date
+    let currentWeek = new Date();
+    let slotsData = [];
+    let bookingsData = [];
+
+    // Initialize the weekly grid
+    function initializeWeeklyGrid() {
+      generateDayHeaders();
+      generateTimeSlots();
+      
+
+      
+      loadScheduleData();
+    }
+
+    // Generate day headers
+    function generateDayHeaders() {
+      const dayHeadersRow = document.getElementById('day-headers-row');
+              const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']; // Monday first
+      const monthNames = ["January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+      ];
+
+      // Clear existing day headers, but keep the 'Time' th
+      while (dayHeadersRow.children.length > 1) {
+        dayHeadersRow.removeChild(dayHeadersRow.lastChild);
+      }
+
+              for (let i = 0; i < 7; i++) {
+          const date = new Date(currentWeek);
+          // Calculate Monday as the start of the week (Monday = 1, Sunday = 0)
+          const dayOfWeek = currentWeek.getDay();
+          const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // If Sunday, go back 6 days; if Monday, go back 0 days, etc.
+          date.setDate(currentWeek.getDate() - daysToMonday + i);
+
+        const dayTh = document.createElement('th');
+        dayTh.className = 'day-column';
+        dayTh.innerHTML = `${days[i]}<br>${monthNames[date.getMonth()]} ${date.getDate()}`;
+        dayTh.dataset.date = date.toISOString().split('T')[0];
+
+        dayHeadersRow.appendChild(dayTh);
+      }
+    }
+
+    // Generate time slots (30-minute intervals from 01:00 to 24:00) - 24-hour format
+    function generateTimeSlots() {
+      const gridBody = document.getElementById('time-slots-grid');
+      gridBody.innerHTML = '';
+      
+      console.log('🔍 Generating time slots for currentWeek:', currentWeek.toISOString());
+      
+      const startHour = 1;
+      const endHour = 24;
+      
+      for (let hour = startHour; hour < endHour; hour++) {
+        for (let minute = 0; minute < 60; minute += 30) {
+          const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+          
+          const timeRow = document.createElement('tr');
+          
+          // Time column
+          const timeColumn = document.createElement('td');
+          timeColumn.className = 'time-slot';
+          timeColumn.textContent = timeString;
+          timeRow.appendChild(timeColumn);
+          
+          // Day columns
+                  for (let day = 0; day < 7; day++) {
+          const date = new Date(currentWeek);
+          // Calculate Monday as the start of the week (Monday = 1, Sunday = 0)
+          const dayOfWeek = currentWeek.getDay();
+          const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // If Sunday, go back 6 days; if Monday, go back 0 days, etc.
+          date.setDate(currentWeek.getDate() - daysToMonday + day);
+            const dateString = date.toISOString().split('T')[0];
+            
+            // Debug: Log the first few slots to see what dates are being generated
+            if (timeString === '09:00' && day < 3) {
+              console.log(`🔍 Generated slot for day ${day}: ${dateString} ${timeString}`);
+            }
+            
+            const slot = document.createElement('td');
+            slot.className = 'time-slot';
+            slot.dataset.date = dateString;
+            slot.dataset.time = timeString;
+            
+                            // Check if slot is in the past (but don't mark as unavailable - let the data determine the status)
+                const slotDateTime = new Date(`${dateString}T${timeString}:00`);
+                const now = new Date();
+                
+                // Check if the specific time has passed today
+                const currentDate = now.toISOString().split('T')[0];
+                const currentTime = now.toTimeString().split(' ')[0].substring(0, 5); // HH:MM format
+                
+                let isTimePassed = false;
+                if (dateString === currentDate) {
+                    // If it's today, check if the time has passed
+                    isTimePassed = timeString <= currentTime;
+                }
+                
+                // Only mark as unavailable if it's in the past AND not booked
+                if (slotDateTime <= now && isTimePassed) {
+                  slot.classList.add('unavailable');
+                }
+            
+            // Append the slot to the timeRow
+            timeRow.appendChild(slot);
+          }
+          
+          gridBody.appendChild(timeRow);
+        }
+      }
+    }
+
+    // Load schedule data from backend - ALWAYS FRESH FROM DATABASE
+    async function loadScheduleData() {
+      if (!teacherId) return;
+      
+      try {
+              const weekStart = new Date(currentWeek);
+      // Calculate Monday as the start of the week (Monday = 1, Sunday = 0)
+      const dayOfWeek = currentWeek.getDay();
+      const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // If Sunday, go back 6 days; if Monday, go back 0 days, etc.
+      weekStart.setDate(currentWeek.getDate() - daysToMonday);
+      const weekString = weekStart.toISOString().split('T')[0];
+        
+        console.log('🔄 Loading FRESH schedule data for week:', weekString, 'teacherId:', teacherId);
+        console.log('🔄 Current time:', new Date().toISOString());
+        
+        // Clear any existing cache first
+        localStorage.removeItem('teacher_slots_cache');
+        localStorage.removeItem('teacher_bookings_cache');
+        
+        // Force fresh data with multiple cache-busting parameters
+        const timestamp = Date.now();
+        const random = Math.random();
+        const url = `/api/teacher/slots?teacherId=${teacherId}&week=${weekString}&allSlots=true&t=${timestamp}&v=${random}&fresh=true&nocache=${timestamp}&force=${timestamp}&clear=${random}&update=${Date.now()}&refresh=${Math.random()}`;
+        console.log('🔍 Making fetch request to:', url);
+        
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+            'X-Requested-With': 'XMLHttpRequest'
+          }
+        });
+        
+        console.log('🔍 Response status:', response.status);
+        console.log('🔍 Response ok:', response.ok);
+        
+        if (!response.ok) {
+          console.error('❌ Fetch request failed with status:', response.status);
+          const errorText = await response.text();
+          console.error('❌ Error response:', errorText);
+          return;
+        }
+        
+        const data = await response.json();
+        console.log('🔍 Raw response data:', data);
+        
+        // Check if there's an error in the response
+        if (data.error) {
+          console.error('❌ API returned error:', data.error);
+          return;
+        }
+        
+        console.log('🔄 FRESH Schedule data received:', data);
+        console.log('🔄 Slots count:', data.slots ? data.slots.length : 0);
+        console.log('🔄 Bookings count:', data.bookings ? data.bookings.length : 0);
+        console.log('🔄 Raw slots data:', JSON.stringify(data.slots, null, 2));
+        console.log('🔄 Raw bookings data:', JSON.stringify(data.bookings, null, 2));
+        
+        // Check if we're getting the right teacher's data
+        console.log('🔄 Current teacher ID from localStorage:', teacherId);
+        console.log('🔄 Week being requested:', weekString);
+        
+        // ALWAYS clear existing data first
+        slotsData = [];
+        bookingsData = [];
+        
+        // Set new data from database
+        slotsData = data.slots || [];
+        bookingsData = data.bookings || [];
+        
+        console.log('🔄 Updated slotsData (from database):', slotsData);
+        console.log('🔄 Updated bookingsData (from database):', bookingsData);
+        
+        // Debug: Check for past slots in the data
+        const pastSlots = slotsData.filter(slot => {
+          const slotDate = new Date(slot.date);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          return slotDate < today;
+        });
+        console.log('🔍 Past slots found in data:', pastSlots.length);
+        console.log('🔍 Past slots details:', pastSlots);
+        
+        // Force re-render with fresh data
+        renderScheduleData();
+        
+      } catch (error) {
+        console.error('❌ Error loading schedule data:', error);
+      }
+    }
+
+    // Render the schedule data on the grid
+    function renderScheduleData() {
+      console.log('🔄 Rendering schedule data...');
+      console.log('🔄 slotsData:', slotsData);
+      console.log('🔄 bookingsData:', bookingsData);
+      
+      // Force clear all existing data first
+      console.log('🔄 Force clearing all existing slot data...');
+      
+      // Clear all existing classes
+      const allSlots = document.querySelectorAll('.time-slot[data-date]');
+      console.log('Found', allSlots.length, 'slots to clear');
+      
+      // Create a set of booked slots to check against
+      const bookedSlots = new Set();
+      bookingsData.forEach(booking => {
+        bookedSlots.add(`${booking.date}-${booking.time}`);
+      });
+      
+      allSlots.forEach(slot => {
+        slot.classList.remove('open', 'booked', 'unavailable', 'finished', 'absent', 'unbooked');
+        slot.textContent = '';
+        slot.style.background = '';
+        slot.style.color = '';
+        slot.style.fontWeight = '';
+        slot.style.cursor = '';
+        slot.onclick = null;
+        
+        // Check if slot is in the past AND has no booking data
+        const slotKey = `${slot.dataset.date}-${slot.dataset.time}`;
+        
+        // Only mark as "Unbooked" if it's a teacher-opened slot that didn't get booked
+        // We need to check if this slot was opened by the teacher (exists in slotsData)
+        const slotDate = new Date(slot.dataset.date);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Start of today
+        
+        // Check if this slot was opened by the teacher (exists in slotsData)
+        // slotsData should contain all teacher slots (both available and unavailable) when allSlots=true
+        const wasOpenedByTeacher = slotsData.some(teacherSlot => 
+          teacherSlot.date === slot.dataset.date && teacherSlot.time === slot.dataset.time
+        );
+        
+        // Check if the slot time has passed today
+        const now = new Date();
+        const currentDate = now.toISOString().split('T')[0];
+        const currentTime = now.toTimeString().split(' ')[0].substring(0, 5); // HH:MM format
+        
+        let isTimePassedToday = false;
+        if (slot.dataset.date === currentDate) {
+          // If it's today, check if the time has passed
+          isTimePassedToday = slot.dataset.time <= currentTime;
+        }
+        
+        // Debug logging for past slots and current day passed slots
+        if (slotDate < today || (slot.dataset.date === currentDate && isTimePassedToday)) {
+          console.log(`🔍 Checking slot: ${slot.dataset.date} ${slot.dataset.time}`);
+          console.log(`🔍 Is past date: ${slotDate < today}`);
+          console.log(`🔍 Is time passed today: ${isTimePassedToday}`);
+          console.log(`🔍 Was opened by teacher: ${wasOpenedByTeacher}`);
+          console.log(`🔍 Is booked: ${bookedSlots.has(slotKey)}`);
+          console.log(`🔍 Available slotsData entries for this slot:`, slotsData.filter(s => s.date === slot.dataset.date && s.time === slot.dataset.time).length);
+        }
+        
+        // Mark as "Unbooked" if:
+        // 1. It's strictly in the past (not current day) OR time has passed today
+        // 2. It was opened by the teacher (exists in slotsData)
+        // 3. It's not booked
+        if ((slotDate < today || (slot.dataset.date === currentDate && isTimePassedToday)) && wasOpenedByTeacher && !bookedSlots.has(slotKey)) {
+          slot.classList.add('unbooked');
+          slot.textContent = 'Unbooked';
+          slot.style.background = '#f8f9fa';
+          slot.style.color = '#6c757d';
+          slot.style.fontWeight = 'normal';
+          slot.style.cursor = 'default';
+          slot.title = 'Past teacher-opened slot that was not booked';
+        }
+      });
+
+      // Use the bookedSlots set that was created earlier
+      
+      // Render open slots (but skip those that are booked)
+      console.log('🔄 Rendering open slots...');
+      console.log('🔄 slotsData to render:', JSON.stringify(slotsData, null, 2));
+      console.log('🔄 slotsData length:', slotsData.length);
+      
+      if (slotsData.length === 0) {
+        console.log('❌ No slots data found - this might be the issue!');
+      }
+      
+      slotsData.forEach(slot => {
+        const slotKey = `${slot.date}-${slot.time}`;
+        
+        // Skip if this slot is booked
+        if (bookedSlots.has(slotKey)) {
+          console.log('🔄 Skipping open slot (already booked):', slot.date, slot.time);
+          return;
+        }
+        
+        // Check if the class duration has passed (25 minutes after start time)
+        const now = new Date();
+        const currentDate = now.toISOString().split('T')[0];
+        const currentTime = now.toTimeString().split(' ')[0].substring(0, 5); // HH:MM format
+        
+        let isClassDurationPassed = false;
+        if (slot.date === currentDate) {
+            // If it's today, check if the class duration has passed (25 minutes after start)
+            const [startHour, startMinute] = slot.time.split(':').map(Number);
+            const endTime = new Date();
+            endTime.setHours(startHour, startMinute + 25, 0, 0); // 25 minutes after start
+            
+            const currentDateTime = new Date();
+            isClassDurationPassed = currentDateTime > endTime;
+        }
+        
+        // For open slots, we should always show them as "Open" regardless of time
+        // Only skip if they are actually booked
+        console.log('🔄 Processing open slot:', slot.date, slot.time);
+        
+        // Check if slot is in the past (strictly past dates, not current day)
+        const slotDate = new Date(slot.date);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Start of today
+        
+        console.log('🔄 Processing open slot:', slot.date, slot.time);
+        const slotElement = document.querySelector(`[data-date="${slot.date}"][data-time="${slot.time}"]`);
+        if (slotElement) {
+          console.log('✅ Found slot element for:', slot.date, slot.time);
+          
+          // Check if slot is in the past (strictly past dates, not current day)
+          const slotDate = new Date(slot.date);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0); // Start of today
+          
+                      // Check if the class duration has passed (25 minutes after start time)
+            const now = new Date();
+            const currentDate = now.toISOString().split('T')[0];
+            const currentTime = now.toTimeString().split(' ')[0].substring(0, 5); // HH:MM format
+            
+            let isClassDurationPassed = false;
+            if (slot.date === currentDate) {
+                // If it's today, check if the class duration has passed (25 minutes after start)
+                const [startHour, startMinute] = slot.time.split(':').map(Number);
+                const endTime = new Date();
+                endTime.setHours(startHour, startMinute + 25, 0, 0); // 25 minutes after start
+                
+                const currentDateTime = new Date();
+                isClassDurationPassed = currentDateTime > endTime;
+            }
+            
+            // Check if the slot time has passed today
+            let isTimePassedToday = false;
+            if (slot.date === currentDate) {
+              // If it's today, check if the time has passed
+              isTimePassedToday = slot.time <= currentTime;
+            }
+            
+            // For open slots, mark as "Unbooked" if it's past date OR time has passed today
+            if (slotDate < today || (slot.date === currentDate && isTimePassedToday)) {
+              slotElement.classList.remove('unavailable', 'open');
+              slotElement.classList.add('unbooked');
+              slotElement.textContent = 'Unbooked';
+              slotElement.style.background = '#f8f9fa';
+              slotElement.style.color = '#6c757d';
+              slotElement.style.fontWeight = 'normal';
+              slotElement.style.cursor = 'default';
+              slotElement.title = 'Past teacher-opened slot that was not booked';
+              console.log('✅ Marked past teacher-opened slot as Unbooked:', slot.date, slot.time);
+            } else {
+            slotElement.classList.remove('unavailable', 'unbooked'); // Remove unavailable/unbooked class if slot is open
+            slotElement.classList.add('open');
+            slotElement.textContent = 'Open';
+            slotElement.style.background = '#90EE90'; // Light green
+            slotElement.style.color = '#333';
+            slotElement.style.fontWeight = 'bold';
+            slotElement.style.cursor = 'pointer';
+            slotElement.title = 'Open slot - Click to book';
+            console.log('✅ Successfully rendered open slot:', slot.date, slot.time);
+          }
+        } else {
+          console.log('❌ Slot element NOT found for:', slot.date, slot.time);
+          // Try alternative selector
+          const alternativeElement = document.querySelector(`td[data-date="${slot.date}"][data-time="${slot.time}"]`);
+          if (alternativeElement) {
+            console.log('✅ Found slot element with alternative selector for:', slot.date, slot.time);
+            
+            // Check if slot is in the past (strictly past dates, not current day)
+            const slotDate = new Date(slot.date);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0); // Start of today
+            
+            // Check if the class duration has passed (25 minutes after start time)
+            const now = new Date();
+            const currentDate = now.toISOString().split('T')[0];
+            const currentTime = now.toTimeString().split(' ')[0].substring(0, 5); // HH:MM format
+            
+            let isClassDurationPassed = false;
+            if (slot.date === currentDate) {
+                // If it's today, check if the class duration has passed (25 minutes after start)
+                const [startHour, startMinute] = slot.time.split(':').map(Number);
+                const endTime = new Date();
+                endTime.setHours(startHour, startMinute + 25, 0, 0); // 25 minutes after start
+                
+                const currentDateTime = new Date();
+                isClassDurationPassed = currentDateTime > endTime;
+            }
+            
+            // Check if the slot time has passed today
+            let isTimePassedToday = false;
+            if (slot.date === currentDate) {
+              // If it's today, check if the time has passed
+              isTimePassedToday = slot.time <= currentTime;
+            }
+            
+            // For open slots, mark as "Unbooked" if it's past date OR time has passed today
+            if (slotDate < today || (slot.date === currentDate && isTimePassedToday)) {
+              alternativeElement.classList.remove('unavailable', 'open');
+              alternativeElement.classList.add('unbooked');
+              alternativeElement.textContent = 'Unbooked';
+              alternativeElement.style.background = '#f8f9fa';
+              alternativeElement.style.color = '#6c757d';
+              alternativeElement.style.fontWeight = 'normal';
+              alternativeElement.style.cursor = 'default';
+              alternativeElement.title = 'Past teacher-opened slot that was not booked';
+              console.log('✅ Marked past teacher-opened slot as Unbooked (alternative selector):', slot.date, slot.time);
+            } else {
+              alternativeElement.classList.remove('unavailable', 'unbooked');
+              alternativeElement.classList.add('open');
+              alternativeElement.textContent = 'Open';
+              alternativeElement.style.background = '#90EE90';
+              alternativeElement.style.color = '#333';
+              alternativeElement.style.fontWeight = 'bold';
+              alternativeElement.style.cursor = 'pointer';
+              alternativeElement.title = 'Open slot - Click to book';
+            }
+          } else {
+            console.log('❌ Slot element NOT found with alternative selector for:', slot.date, slot.time);
+            console.log('🔍 Available slot elements:');
+            const allSlots = document.querySelectorAll('[data-date][data-time]');
+            console.log('🔍 Total slot elements found:', allSlots.length);
+            allSlots.forEach(el => {
+              if (el.dataset.date === slot.date) {
+                console.log(`  - Date: ${el.dataset.date}, Time: ${el.dataset.time}`);
+              }
+            });
+            
+            // Also check for the specific time
+            const timeSlots = document.querySelectorAll(`[data-time="${slot.time}"]`);
+            console.log(`🔍 Slots with time ${slot.time}:`, timeSlots.length);
+            timeSlots.forEach(el => {
+              console.log(`  - Date: ${el.dataset.date}, Time: ${el.dataset.time}`);
+            });
+          }
+        }
+      });
+
+      // Render booked classes with indicators
+      console.log('🔄 Rendering booked classes...');
+      console.log('🔄 bookingsData to render:', JSON.stringify(bookingsData, null, 2));
+      console.log('🔄 bookingsData length:', bookingsData.length);
+      
+      if (bookingsData.length === 0) {
+        console.log('❌ No bookings data found - this might be the issue!');
+      }
+      
+      bookingsData.forEach(booking => {
+        console.log('🔄 Processing booking:', booking.date, booking.time, 'Status:', booking.status, 'Student:', booking.studentId?.firstName || booking.studentId?.username);
+        console.log('🔄 Full booking object:', JSON.stringify(booking, null, 2));
+        
+        // Debug: Check if this is a completed booking
+        if (booking.status === 'completed') {
+          console.log('🔍 FOUND COMPLETED BOOKING:', booking.date, booking.time, booking.status);
+        }
+        console.log('🔄 Booking details:', booking.finishedAt, booking.studentLevel, booking.studentTechnicalIssues);
+        
+        const slotElement = document.querySelector(`[data-date="${booking.date}"][data-time="${booking.time}"]`);
+        if (slotElement) {
+          console.log('✅ Found slot element for booking:', booking.date, booking.time);
+          slotElement.classList.remove('unavailable'); // Remove unavailable class if slot is booked
+        } else {
+          console.log('❌ Slot element NOT found for booking:', booking.date, booking.time);
+          console.log('🔍 Available slot elements:');
+          const allSlots = document.querySelectorAll('[data-date][data-time]');
+          console.log('🔍 Total slot elements found:', allSlots.length);
+          allSlots.forEach(el => {
+            if (el.dataset.date === booking.date) {
+              console.log(`  - Date: ${el.dataset.date}, Time: ${el.dataset.time}`);
+            }
+          });
+          return; // Skip processing if slot element not found
+        }
+          
+          // Check if the class duration has passed (25 minutes after start time)
+          const now = new Date();
+          const currentDate = now.toISOString().split('T')[0];
+          const currentTime = now.toTimeString().split(' ')[0].substring(0, 5); // HH:MM format
+          
+          let isClassDurationPassed = false;
+          if (booking.date === currentDate) {
+              // If it's today, check if the class duration has passed (25 minutes after start)
+              const [startHour, startMinute] = booking.time.split(':').map(Number);
+              const endTime = new Date();
+              endTime.setHours(startHour, startMinute + 25, 0, 0); // 25 minutes after start
+              
+              const currentDateTime = new Date();
+              isClassDurationPassed = currentDateTime > endTime;
+          }
+          
+          // Check if class should be marked as finished first (before checking if it's past)
+          if (booking.status === 'completed') {
+            console.log('✅ Marking as finished (completed class):', booking.date, booking.time);
+            console.log('🔍 Booking details for completed class:', booking.status, booking.studentId?.firstName);
+            
+            // All completed classes should be marked as finished, regardless of duration
+            slotElement.classList.add('finished');
+            const indicator = 'F';
+            
+            // Get student first name for display
+            const studentFirstName = booking.studentId?.firstName || booking.studentId?.username || 'Unknown';
+            const displayText = `${indicator}- ${studentFirstName}`;
+            console.log('🔍 Setting display text for completed class:', displayText);
+            
+            slotElement.textContent = displayText;
+            
+            // Force the CSS styles to ensure they're applied
+            slotElement.style.background = '#cce5ff';
+            slotElement.style.color = '#004085';
+            slotElement.style.fontWeight = '600';
+            slotElement.style.cursor = 'pointer';
+            slotElement.style.fontWeight = 'bold';
+            slotElement.style.fontSize = '1.1em';
+            slotElement.onclick = () => showClassInfo(booking);
+            
+            // Add special styling for classes with technical issues
+            if (booking.studentTechnicalIssues) {
+              slotElement.style.border = '2px solid #ffc107';
+              slotElement.style.boxShadow = '0 0 8px rgba(255, 193, 7, 0.5)';
+            }
+            
+            console.log('✅ Completed class marked as finished with text:', slotElement.textContent);
+            return; // Skip further processing for completed classes
+          }
+          
+          // Only check for "Past" status if the class is not completed
+          if (isClassDurationPassed) {
+            console.log('✅ Marking booked slot as Past (class duration passed):', booking.date, booking.time);
+            slotElement.classList.remove('booked', 'finished', 'absent', 'student-absent');
+            slotElement.classList.add('past');
+            slotElement.textContent = 'Past';
+            slotElement.style.background = '#f8f9fa';
+            slotElement.style.color = '#6c757d';
+            slotElement.style.fontWeight = 'normal';
+            slotElement.style.cursor = 'not-allowed';
+            slotElement.onclick = null;
+            return; // Skip the rest of the booking processing
+          }
+          
+                  // Initialize indicator variable
+          let indicator = 'P'; // Default to Primary
+          
+          if (booking.status === 'absent') {
+            // Check if teacher entered the classroom to determine who was absent
+            const teacherEntered = booking.attendance?.teacherEntered || false;
+            const studentEntered = booking.attendance?.studentEntered || false;
+            const lateMinutes = booking.lateMinutes || 0;
+            
+            // If teacher was 15+ minutes late, mark as teacher absent regardless of who entered
+            if (lateMinutes >= 15) {
+              console.log('✅ Marking as teacher absent (teacher was late by', lateMinutes, 'minutes)');
+              slotElement.classList.add('absent');
+              indicator = 'T';
+              slotElement.style.background = '#ff6b6b';
+              slotElement.style.color = 'white';
+              
+              // Get student first name for display
+              const studentFirstName = booking.studentId?.firstName || booking.studentId?.username || 'Unknown';
+              slotElement.textContent = `${indicator}- ${studentFirstName}`;
+              slotElement.style.cursor = 'pointer';
+              slotElement.style.fontWeight = 'bold';
+              slotElement.style.fontSize = '1.1em';
+              slotElement.onclick = () => showClassInfo(booking);
+              return; // Skip further processing
+            }
+            
+            if (!teacherEntered && !studentEntered) {
+              // Neither teacher nor student entered - mark as teacher absent
+              console.log('✅ Marking as teacher absent (neither entered)');
+              slotElement.classList.add('absent');
+              indicator = 'T';
+              slotElement.style.background = '#ff6b6b';
+              slotElement.style.color = 'white';
+            } else if (teacherEntered && !studentEntered) {
+              // Teacher entered but student didn't - mark as student absent
+              console.log('✅ Marking as student absent (teacher present)');
+              slotElement.classList.add('student-absent');
+              indicator = 'S';
+              slotElement.style.background = '#ff8c42';
+              slotElement.style.color = 'white';
+            } else if (!teacherEntered && studentEntered) {
+              // Student entered but teacher didn't - mark as teacher absent
+              console.log('✅ Marking as teacher absent (student present)');
+              slotElement.classList.add('absent');
+              indicator = 'T';
+              slotElement.style.background = '#ff6b6b';
+              slotElement.style.color = 'white';
+            } else {
+              // Both entered but still marked as absent - this shouldn't happen
+              console.log('⚠️ Both entered but marked as absent - showing as student absent');
+              slotElement.classList.add('student-absent');
+              indicator = 'S';
+              slotElement.style.background = '#ff8c42';
+              slotElement.style.color = 'white';
+            }
+          } else if (shouldClassBeFinished(booking)) {
+            console.log('✅ Marking as finished (time-based completed class)');
+            // Class should be finished based on time
+            slotElement.classList.add('finished');
+            indicator = 'F';
+            
+            // Get student first name for display
+            const studentFirstName = booking.studentId?.firstName || booking.studentId?.username || 'Unknown';
+            slotElement.textContent = `${indicator}- ${studentFirstName}`;
+            slotElement.style.cursor = 'pointer';
+            slotElement.style.fontWeight = 'bold';
+            slotElement.style.fontSize = '1.1em';
+            slotElement.onclick = () => showClassInfo(booking);
+          } else if (shouldClassBeFinished(booking)) {
+            // Check if class should be marked as student absent
+            const teacherEntered = booking.attendance?.teacherEntered || false;
+            const studentEntered = booking.attendance?.studentEntered || false;
+            
+            if (teacherEntered && !studentEntered) {
+              // Teacher entered but student didn't - mark as student absent
+              console.log('✅ Marking as student absent (teacher entered, student didn\'t)');
+              slotElement.classList.add('student-absent');
+              indicator = 'S';
+              slotElement.style.background = '#ff8c42';
+              slotElement.style.color = 'white';
+            } else if (!teacherEntered) {
+              // Teacher didn't enter - mark as teacher absent
+              console.log('✅ Marking as teacher absent (teacher didn\'t enter)');
+              slotElement.classList.add('absent');
+              indicator = 'T';
+              slotElement.style.background = '#ff6b6b';
+              slotElement.style.color = 'white';
+            } else {
+              // Both entered or other case - mark as finished
+              console.log('✅ Marking as finished (time-based completed class)');
+              slotElement.classList.add('finished');
+              indicator = 'F';
+              
+              // Get student first name for display
+              const studentFirstName = booking.studentId?.firstName || booking.studentId?.username || 'Unknown';
+              slotElement.textContent = `${indicator}- ${studentFirstName}`;
+              slotElement.style.cursor = 'pointer';
+              slotElement.style.fontWeight = 'bold';
+              slotElement.style.fontSize = '1.1em';
+              slotElement.onclick = () => showClassInfo(booking);
+            }
+          } else {
+            console.log('📋 Marking as booked (default)');
+            // Default indicator based on student level
+            const level = booking.studentLevel?.toLowerCase() || '';
+            if (level.includes('nursery')) {
+              slotElement.classList.add('N');
+              indicator = 'N';
+            } else if (level.includes('kindergarten') || level.includes('kinder')) {
+              slotElement.classList.add('K');
+              indicator = 'K';
+            } else if (level.includes('primary') || level.includes('preparatory')) {
+              slotElement.classList.add('P');
+              indicator = 'P';
+            } else {
+              // If no level specified, default to Primary
+              slotElement.classList.add('P');
+              indicator = 'P';
+            }
+            slotElement.classList.add('booked');
+            // Force yellow background and blue text for booked slots
+            slotElement.style.background = '#ffe85a';
+            slotElement.style.color = '#1ca7e7';
+          }
+          
+          // Get student first name for display (only for non-finished slots)
+          if (!slotElement.classList.contains('finished')) {
+            const studentFirstName = booking.studentId?.firstName || booking.studentId?.username || 'Unknown';
+            slotElement.textContent = `${indicator}- ${studentFirstName}`;
+          }
+                      let statusText = '';
+          if (booking.status === 'absent') {
+            // Check if teacher entered the classroom to determine who was absent
+            const teacherEntered = booking.attendance?.teacherEntered || false;
+            const studentEntered = booking.attendance?.studentEntered || false;
+            
+            if (!teacherEntered && !studentEntered) {
+              statusText = 'Teacher Absent (Neither entered)';
+            } else if (teacherEntered && !studentEntered) {
+              statusText = 'Student Absent (Teacher Present)';
+            } else if (!teacherEntered && studentEntered) {
+              statusText = 'Teacher Absent (Student Present)';
+            } else {
+              statusText = 'Absent (Both entered)';
+            }
+          } else if (booking.status === 'completed') {
+            statusText = booking.studentTechnicalIssues ? 'Class Completed (Student had technical issues)' : 'Class Completed';
+          } else if (shouldClassBeFinished(booking)) {
+            // Handle time-based student absences
+            const teacherEntered = booking.attendance?.teacherEntered || false;
+            const studentEntered = booking.attendance?.studentEntered || false;
+            
+            if (teacherEntered && !studentEntered) {
+              statusText = 'Student Absent (Teacher entered, student didn\'t)';
+            } else if (!teacherEntered) {
+              statusText = 'Teacher Absent (Teacher didn\'t enter)';
+            } else {
+              statusText = 'Class Completed';
+            }
+          } else {
+            statusText = 'Booked Class';
+          }
+          slotElement.title = `${statusText} - ${booking.studentId?.firstName || booking.studentId?.username || 'Unknown Student'}`;
+          slotElement.style.cursor = 'pointer';
+          slotElement.style.fontWeight = 'bold';
+          slotElement.style.fontSize = '1.1em';
+          slotElement.onclick = () => showClassInfo(booking);
+        }
+      });
+    }
+
+    // Check if a class should be marked as finished based on time
+    function shouldClassBeFinished(booking) {
+      if (!booking.date || !booking.time) return false;
+      
+      const now = new Date();
+      const classDate = new Date(booking.date);
+      const [hours, minutes] = booking.time.split(':').map(Number);
+      
+      // Set class start time
+      const classStartTime = new Date(classDate);
+      classStartTime.setHours(hours, minutes, 0, 0);
+      
+      // Set class end time (30 minutes after start)
+      const classEndTime = new Date(classStartTime);
+      classEndTime.setMinutes(classEndTime.getMinutes() + 30);
+      
+      // Class should be marked as finished if current time is past class end time
+      return now > classEndTime;
+    }
+    
+    // Check if a class meets the duration requirement (15-25 minutes)
+    function hasCompletedDuration(booking) {
+      if (!booking.date || !booking.time) {
+        console.log('❌ Missing date or time for duration check:', booking.date, booking.time);
+        return false;
+      }
+      
+      console.log('🔍 Checking duration for booking:', booking.date, booking.time, booking.status);
+      
+      // Prefer explicit attendance flag if available
+      if (booking.attendance && typeof booking.attendance.classCompleted === 'boolean') {
+        console.log('🔎 Using attendance.classCompleted flag:', booking.attendance.classCompleted);
+        return booking.attendance.classCompleted === true;
+      }
+
+      console.log('⚠️ No attendance.classCompleted flag found, falling back to finishedAt calculation');
+
+      const classDate = new Date(booking.date);
+      const [hours, minutes] = booking.time.split(':').map(Number);
+      
+      // Set class start time
+      const classStartTime = new Date(classDate);
+      classStartTime.setHours(hours, minutes, 0, 0);
+      
+      let durationMinutes;
+      
+      if (booking.finishedAt) {
+        // Use actual finishedAt timestamp
+        const classFinishTime = new Date(booking.finishedAt);
+        durationMinutes = (classFinishTime - classStartTime) / (1000 * 60);
+        
+        console.log('🔍 Duration check for booking (with finishedAt):', booking.date, booking.time, durationMinutes.toFixed(2));
+      } else {
+        // No finishedAt timestamp found - cannot determine duration, so mark as incomplete
+        console.log('⚠️ No finishedAt timestamp found, cannot determine duration - marking as incomplete');
+        durationMinutes = 0;
+        
+        console.log('🔍 Duration check for booking (no finishedAt):', booking.date, booking.time, durationMinutes);
+      }
+      
+      // Class meets requirement if duration is between 15-25 minutes
+      const result = durationMinutes >= 15 && durationMinutes <= 25;
+      console.log(`✅ Duration check result: ${result} (${durationMinutes.toFixed(2)} minutes)`);
+      return result;
+    }
+
+    // Week navigation functionality
+    document.getElementById('prev-week').addEventListener('click', () => {
+      console.log('Previous week button clicked');
+      
+      // Add visual feedback
+      const prevBtn = document.getElementById('prev-week');
+      prevBtn.style.background = '#f4d03f';
+      setTimeout(() => {
+        prevBtn.style.background = '#ffe85a';
+      }, 200);
+      
+      currentWeek.setDate(currentWeek.getDate() - 7);
+      console.log('New currentWeek:', currentWeek.toISOString());
+      updateWeekDisplay();
+      initializeWeeklyGrid();
+    });
+
+    document.getElementById('next-week').addEventListener('click', () => {
+      console.log('Next week button clicked');
+      
+      // Add visual feedback
+      const nextBtn = document.getElementById('next-week');
+      nextBtn.style.background = '#f4d03f';
+      setTimeout(() => {
+        nextBtn.style.background = '#ffe85a';
+      }, 200);
+      
+      currentWeek.setDate(currentWeek.getDate() + 7);
+      console.log('New currentWeek:', currentWeek.toISOString());
+      updateWeekDisplay();
+      initializeWeeklyGrid();
+    });
+
+    document.getElementById('current-week').addEventListener('click', () => {
+      currentWeek = new Date();
+      updateWeekDisplay();
+      initializeWeeklyGrid();
+    });
+
+    // Update week display
+    function updateWeekDisplay() {
+      const weekStart = new Date(currentWeek);
+      // Calculate Monday as the start of the week (Monday = 1, Sunday = 0)
+      const dayOfWeek = currentWeek.getDay();
+      const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // If Sunday, go back 6 days; if Monday, go back 0 days, etc.
+      weekStart.setDate(currentWeek.getDate() - daysToMonday);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6);
+      
+      const display = document.getElementById('week-display');
+      display.textContent = `${weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+      
+      // Allow navigation to previous weeks (remove the restriction)
+      const prevBtn = document.getElementById('prev-week');
+      prevBtn.disabled = false; // Always allow previous week navigation
+      
+      // Add debug info to console
+      console.log('Current week display:', currentWeek.toISOString(), weekStart.toISOString(), weekEnd.toISOString());
+    }
+
+    // Class Info Modal Functions
+    let currentBooking = null;
+
+    function showClassInfo(booking) {
+      currentBooking = booking;
+      
+      // Format date
+      const date = new Date(booking.date);
+      const formattedDate = date.toLocaleDateString('en-US', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      });
+      
+      // Populate modal with booking data
+      document.getElementById('class-date').textContent = formattedDate;
+      // Format time as 24-hour format
+      let formattedTime = booking.time;
+      if (booking.time) {
+        const [hour, minute] = booking.time.split(':');
+        formattedTime = `${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`;
+      }
+      document.getElementById('class-time').textContent = formattedTime;
+      document.getElementById('class-student').textContent = booking.studentId?.firstName || booking.studentId?.username || 'Unknown Student';
+      document.getElementById('class-level').textContent = booking.studentLevel || 'Not specified';
+      document.getElementById('class-lesson').textContent = booking.lesson || 'Not specified';
+      document.getElementById('classroom-id').textContent = booking.classroomId || 'Not set';
+      
+      // Show modal
+      document.getElementById('class-info-modal').style.display = 'block';
+    }
+
+    function closeClassInfo() {
+      document.getElementById('class-info-modal').style.display = 'none';
+      currentBooking = null;
+    }
+
+    async function joinClassroom() {
+      if (!currentBooking) return;
+      const classroomId = currentBooking.classroomId;
+      if (!classroomId) {
+        alert('No classroom ID set for this booking.');
+        return;
+      }
+      // const now = new Date();
+      // const classDate = new Date(currentBooking.date + 'T' + currentBooking.time);
+      // const timeDiff = now - classDate;
+      // const timeDiffMinutes = timeDiff / (1000 * 60);
+      // // Debug logging
+      // console.log('Time validation:', {
+      //   now: now.toISOString(),
+      //   classDate: classDate.toISOString(),
+      //   timeDiffMinutes: timeDiffMinutes,
+      //   allowed: timeDiffMinutes >= -60 && timeDiffMinutes <= 60
+      // });
+      // // Allow access 1 hour before class starts and 1 hour after it ends
+      // if (timeDiffMinutes < -60 || timeDiffMinutes > 60) {
+      //   alert('Classroom is available 1 hour before class starts and 1 hour after it ends.');
+      //   return;
+      // }
+      const roomUrl = `live-classroom.html?room=${classroomId}&type=live&bookingId=${currentBooking._id}`;
+      window.open(roomUrl, '_blank');
+    }
+
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+      const modal = document.getElementById('class-info-modal');
+      if (event.target === modal) {
+        closeClassInfo();
+      }
+      
+      const cancellationModal = document.getElementById('cancellation-modal');
+      if (event.target === cancellationModal) {
+        closeCancellationModal();
+      }
+    }
+
+    // Add event listener for character count
+    document.addEventListener('DOMContentLoaded', function() {
+      const reasonTextarea = document.getElementById('cancellation-reason');
+      if (reasonTextarea) {
+        reasonTextarea.addEventListener('input', updateCharCount);
+      }
+    });
+
+    // Cancellation Form Functions
+    function toggleCancellationForm() {
+      if (!currentBooking) return;
+      
+      // Check if class has already started
+      const classDateTime = new Date(`${currentBooking.date}T${currentBooking.time}:00`);
+      const now = new Date();
+      
+      if (classDateTime <= now) {
+        alert('Cannot cancel a class that has already started.');
+        return;
+      }
+      
+      const form = document.getElementById('cancellation-form');
+      const isVisible = form.style.display !== 'none';
+      
+      if (isVisible) {
+        hideCancellationForm();
+      } else {
+        showCancellationForm();
+      }
+    }
+    
+    function showCancellationForm() {
+      document.getElementById('cancellation-form').style.display = 'block';
+      document.getElementById('cancellation-reason').value = ''; // Clear previous reason
+      document.getElementById('char-count').textContent = '0';
+      document.getElementById('cancellation-reason').focus();
+      
+      // Add character count listener
+      document.getElementById('cancellation-reason').addEventListener('input', function() {
+        const count = this.value.length;
+        document.getElementById('char-count').textContent = count;
+      });
+    }
+    
+    function hideCancellationForm() {
+      document.getElementById('cancellation-form').style.display = 'none';
+      document.getElementById('cancellation-reason').value = '';
+      document.getElementById('char-count').textContent = '0';
+    }
+
+    function updateCharCount() {
+      const reason = document.getElementById('cancellation-reason').value;
+      document.getElementById('char-count').textContent = reason.length;
+    }
+
+    async function submitCancellationRequest() {
+      const reason = document.getElementById('cancellation-reason').value.trim();
+      
+      if (reason.length < 10) {
+        alert('Cancellation reason must be at least 10 characters long.');
+        return;
+      }
+
+      if (!currentBooking) return;
+
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          alert('Authentication required for cancellation.');
+          window.location.href = 'teacher-login.html';
+          return;
+        }
+
+        const response = await fetch('/api/teacher/request-cancellation', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            bookingId: currentBooking._id,
+            reason: reason
+          })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          alert('Cancellation request submitted successfully! It will be reviewed by admin.');
+          hideCancellationForm();
+          closeClassInfo();
+          loadScheduleData(); // Refresh schedule
+        } else {
+          alert(`Cancellation failed: ${data.error || response.statusText}`);
+        }
+      } catch (error) {
+        console.error('Error submitting cancellation request:', error);
+        alert('An error occurred while submitting the cancellation request.');
+      }
+    }
+
+    // Realtime updates via Socket.IO
+    (function initRealtime(){
+      try {
+        const socket = io();
+        socket.on('slotsUpdated', (payload) => {
+          if (!payload || !payload.teacherId) return;
+          const myId = localStorage.getItem('teacherId');
+          if (payload.teacherId === myId || String(payload.teacherId) === String(myId)) {
+            console.log('🔔 Realtime slotsUpdated received, refreshing schedule...', payload);
+            loadScheduleData();
+          }
+        });
+        socket.on('bookingsUpdated', (payload) => {
+          const myId = localStorage.getItem('teacherId');
+          if (payload && (payload.teacherId === myId || String(payload.teacherId) === String(myId))) {
+            console.log('🔔 Realtime bookingsUpdated received, refreshing schedule...', payload);
+            loadScheduleData();
+          }
+        });
+      } catch (e) { console.log('Socket init failed', e); }
+    })();
+
+    // Initialize when page loads
+    document.addEventListener('DOMContentLoaded', () => {
+      console.log('🔄 Page loaded - Loading fresh data');
+      
+      // Clear only slot-related cache, preserve login and time log data
+      localStorage.removeItem('last_slot_update');
+      localStorage.removeItem('schedule_cache');
+      localStorage.removeItem('slots_cache');
+      localStorage.removeItem('bookings_cache');
+      localStorage.removeItem('teacher_slots_cache');
+      localStorage.removeItem('teacher_bookings_cache');
+      localStorage.removeItem('last_page_load');
+      localStorage.removeItem('last_auto_refresh');
+      
+      // Clear data arrays
+      slotsData = [];
+      bookingsData = [];
+      
+      updateWeekDisplay();
+      initializeWeeklyGrid();
+      
+      // Listen for class completion events
+      window.addEventListener('classFinished', () => {
+        console.log('Class finished event received, refreshing schedule...');
+        loadScheduleData();
+      });
+      
+      // Listen for slot update events from teacher-open-class.html
+      window.addEventListener('slotsUpdated', (event) => {
+        console.log('Slots updated event received, refreshing schedule...', event.detail);
+        setTimeout(() => {
+          loadScheduleData();
+        }, 500); // Small delay to ensure backend has processed the update
+      });
+      
+      // Check for immediate class completion notifications
+      const lastNotification = localStorage.getItem('class_completion_notification');
+      if (lastNotification) {
+        const notificationTime = parseInt(lastNotification);
+        const currentTime = Date.now();
+        
+        // If notification is less than 5 minutes old, refresh immediately
+        if (currentTime - notificationTime < 300000) {
+          console.log('Recent class completion detected, refreshing immediately...');
+          loadScheduleData();
+        }
+      }
+      
+      // Check if we need to refresh data (e.g., coming back from teacher-open-class.html)
+      const lastSlotUpdate = localStorage.getItem('last_slot_update');
+      if (lastSlotUpdate) {
+        const updateTime = parseInt(lastSlotUpdate);
+        const currentTime = Date.now();
+        
+        // If slot update was less than 30 seconds ago, refresh data
+        if (currentTime - updateTime < 30000) {
+          console.log('Recent slot update detected, refreshing schedule...');
+          setTimeout(() => {
+            loadScheduleData();
+          }, 1000); // Small delay to ensure backend has processed the update
+        }
+      }
+      
+      // Force cache refresh
+      console.log('🔄 Page loaded at:', new Date().toISOString());
+      
+
+      
+      // Set up periodic refresh every 30 seconds to ensure data stays fresh
+      setInterval(() => {
+        // Check if there was a recent slot update
+        const lastSlotUpdate = localStorage.getItem('last_slot_update');
+        const lastRefresh = localStorage.getItem('last_auto_refresh');
+        
+        if (lastSlotUpdate && (!lastRefresh || parseInt(lastSlotUpdate) > parseInt(lastRefresh))) {
+          console.log('🔄 Auto-refresh triggered due to slot update');
+          localStorage.setItem('last_auto_refresh', Date.now().toString());
+        } else {
+          console.log('🔄 Regular auto-refresh');
+        }
+        
+        loadScheduleData();
+      }, 30000); // 30 seconds
+    });
+    
+    // Force refresh schedule data
+    async function forceRefreshSchedule() {
+        console.log('🔄 Manual refresh triggered');
+        const refreshBtn = document.getElementById('refresh-btn');
+        refreshBtn.disabled = true;
+        refreshBtn.textContent = '🔄 Refreshing...';
+        
+        try {
+            // Clear all cache
+            localStorage.removeItem('teacher_slots_cache');
+            localStorage.removeItem('teacher_bookings_cache');
+            localStorage.removeItem('last_slot_update');
+            localStorage.removeItem('schedule_cache');
+            
+            // Force fresh data load
+            await loadScheduleData();
+            
+            // Show success message
+            showNotification('Schedule refreshed successfully!', 'success');
+        } catch (error) {
+            console.error('Error refreshing schedule:', error);
+            showNotification('Error refreshing schedule: ' + error.message, 'error');
+        } finally {
+            refreshBtn.disabled = false;
+            refreshBtn.textContent = '🔄 Refresh';
+        }
+    }
+    
+    // Debug function to check slot data
+    function debugSlotData() {
+        console.log('=== DEBUG SLOT DATA ===');
+        console.log('Current week:', currentWeek.toISOString());
+        console.log('Slots data:', slotsData);
+        console.log('Bookings data:', bookingsData);
+        
+        // Check DOM elements
+        const allSlots = document.querySelectorAll('[data-date][data-time]');
+        console.log('Total slot elements in DOM:', allSlots.length);
+        
+        // Check for specific dates
+        const today = new Date().toISOString().split('T')[0];
+        const todaySlots = document.querySelectorAll(`[data-date="${today}"]`);
+        console.log('Today slots:', todaySlots.length);
+        
+        // Check for open slots
+        const openSlots = document.querySelectorAll('.open');
+        console.log('Open slots in DOM:', openSlots.length);
+        
+        // Check for unavailable slots
+        const unavailableSlots = document.querySelectorAll('.unavailable');
+        console.log('Unavailable slots in DOM:', unavailableSlots.length);
+        
+        console.log('=== END DEBUG ===');
+    }
+    
+
+    
+    // Show notification to user
+    function showNotification(message, type) {
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            z-index: 10000;
+            background: ${type === 'success' ? '#28a745' : '#dc3545'};
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        `;
+        notification.textContent = message;
+        
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 3000);
+    }
+    
+    // Load profile picture and update sidebar from backend
+    async function loadProfilePicture(teacherId) {
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                console.log('No token found for profile picture');
+                return;
+            }
+            
+            const response = await fetch(`/api/teacher/profile`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                
+                // Update sidebar with first name
+                if (data.profile && data.profile.firstName) {
+                    const sidebarElement = document.getElementById('sidebar-email');
+                    if (sidebarElement) {
+                        sidebarElement.textContent = `Hi, ${data.profile.firstName}`;
+                        console.log('✅ Sidebar updated with first name:', data.profile.firstName);
+                    }
+                }
+                
+                if (data.profile && data.profile.profilePicture) {
+                    // Show profile image and hide text
+                    const profileImage = document.getElementById('profile-image');
+                    const avatarText = document.getElementById('avatar-text');
+                    
+                    if (profileImage && avatarText) {
+                        profileImage.src = data.profile.profilePicture;
+                        profileImage.style.display = 'block';
+                        avatarText.style.display = 'none';
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error loading profile picture:', error);
+        }
+    }
+  </script>
+  
+  <!-- Force cache refresh -->
+  <script>
+    // Force reload to clear any cached JavaScript
+    if (window.performance && window.performance.navigation.type === window.performance.navigation.TYPE_BACK_FORWARD) {
+      window.location.reload(true);
+    }
+  </script>
+</body>
+</html> 

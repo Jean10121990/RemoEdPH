@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Whiteboard - RemoEdPH</title>
+    <link rel="stylesheet" href="modern-styles.css">
+    <style>
+        body { 
+            margin: 0; 
+            padding: 0; 
+            background: #f4f6fb; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+        }
+        .whiteboard-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .whiteboard-header {
+            background: #1ca7e7;
+            color: white;
+            padding: 12px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .whiteboard-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+        .whiteboard-controls {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        .control-btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.2s;
+        }
+        .control-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        .control-btn.active {
+            background: rgba(255,255,255,0.4);
+        }
+        .color-picker {
+            width: 40px;
+            height: 32px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .brush-size {
+            width: 60px;
+            padding: 4px;
+            border: none;
+            border-radius: 4px;
+        }
+        .whiteboard-canvas {
+            flex: 1;
+            background: white;
+            cursor: crosshair;
+            border: none;
+        }
+        .close-btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        .close-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        .room-info {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="whiteboard-container">
+        <div class="whiteboard-header">
+            <div>
+                <div class="whiteboard-title">Whiteboard</div>
+                <div class="room-info" id="room-info">Room: Loading...</div>
+            </div>
+            <div class="whiteboard-controls">
+                <button class="control-btn active" id="draw-btn" title="Draw">✏️ Draw</button>
+                <button class="control-btn" id="eraser-btn" title="Eraser">🧽 Eraser</button>
+                <input type="color" class="color-picker" id="color-picker" value="#000000" title="Color">
+                <select class="brush-size" id="brush-size" title="Brush Size">
+                    <option value="2">Thin</option>
+                    <option value="5" selected>Normal</option>
+                    <option value="10">Thick</option>
+                    <option value="20">Very Thick</option>
+                </select>
+                <button class="control-btn" id="clear-btn" title="Clear All">🗑️ Clear</button>
+                <button class="control-btn" id="share-screen-btn" title="Share Screen">📺 Share Screen</button>
+                <button class="close-btn" id="close-btn" title="Close">✕</button>
+            </div>
+        </div>
+        <canvas id="whiteboard" class="whiteboard-canvas"></canvas>
+    </div>
+
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script>
+        // --- Setup ---
+        const SIGNALING_SERVER_URL = 'http://localhost:4000';
+        const socket = io(SIGNALING_SERVER_URL);
+        
+        const canvas = document.getElementById('whiteboard');
+        const ctx = canvas.getContext('2d');
+        const drawBtn = document.getElementById('draw-btn');
+        const eraserBtn = document.getElementById('eraser-btn');
+        const colorPicker = document.getElementById('color-picker');
+        const brushSize = document.getElementById('brush-size');
+        const clearBtn = document.getElementById('clear-btn');
+        const closeBtn = document.getElementById('close-btn');
+        const roomInfo = document.getElementById('room-info');
+        const shareScreenBtn = document.getElementById('share-screen-btn');
+
+        // Get room from URL parameters
+        function getQueryParam(name) {
+            const url = new URL(window.location.href);
+            return url.searchParams.get(name);
+        }
+        const room = getQueryParam('room');
+        if (room) {
+            roomInfo.textContent = `Room: ${room}`;
+            socket.emit('join', room);
+        } else {
+            roomInfo.textContent = 'Room: Not connected';
+        }
+
+        // Set canvas size to fill the available space
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight - 60; // Subtract header height
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // Drawing state
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+        let currentTool = 'draw';
+
+        // Initialize canvas
+        ctx.strokeStyle = colorPicker.value;
+        ctx.lineWidth = brushSize.value;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        // Tool selection
+        drawBtn.addEventListener('click', () => {
+            currentTool = 'draw';
+            drawBtn.classList.add('active');
+            eraserBtn.classList.remove('active');
+            ctx.globalCompositeOperation = 'source-over';
+        });
+
+        eraserBtn.addEventListener('click', () => {
+            currentTool = 'eraser';
+            eraserBtn.classList.add('active');
+            drawBtn.classList.remove('active');
+            ctx.globalCompositeOperation = 'destination-out';
+        });
+
+        // Color and brush size
+        colorPicker.addEventListener('change', (e) => {
+            ctx.strokeStyle = e.target.value;
+        });
+
+        brushSize.addEventListener('change', (e) => {
+            ctx.lineWidth = e.target.value;
+        });
+
+        // Clear canvas
+        clearBtn.addEventListener('click', () => {
+            if (confirm('Clear the entire whiteboard? This will clear for all participants.')) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                if (room) {
+                    socket.emit('whiteboard-clear', { room });
+                }
+            }
+        });
+
+        // Share screen functionality
+        shareScreenBtn.addEventListener('click', async () => {
+            try {
+                const stream = await navigator.mediaDevices.getDisplayMedia({ 
+                    video: { 
+                        mediaSource: 'screen',
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 }
+                    } 
+                });
+                
+                // Show success message
+                shareScreenBtn.textContent = '📺 Sharing...';
+                shareScreenBtn.style.background = 'rgba(255,255,255,0.4)';
+                
+                // Handle stream end
+                stream.getVideoTracks()[0].onended = () => {
+                    shareScreenBtn.textContent = '📺 Share Screen';
+                    shareScreenBtn.style.background = 'rgba(255,255,255,0.2)';
+                };
+                
+                // You can also emit the stream to the room if needed
+                if (room) {
+                    socket.emit('screen-share-started', { room });
+                }
+                
+            } catch (err) {
+                console.error('Screen sharing failed:', err);
+                alert('Screen sharing failed or was cancelled.');
+            }
+        });
+
+        // Close whiteboard
+        closeBtn.addEventListener('click', () => {
+            window.close();
+        });
+
+        // Drawing events
+        canvas.addEventListener('mousedown', (e) => {
+            isDrawing = true;
+            [lastX, lastY] = [e.offsetX, e.offsetY];
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!isDrawing) return;
+            
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(e.offsetX, e.offsetY);
+            ctx.stroke();
+            
+            // Emit drawing data to other participants
+            if (room) {
+                socket.emit('whiteboard-draw', { 
+                    room, 
+                    from: [lastX, lastY], 
+                    to: [e.offsetX, e.offsetY],
+                    color: ctx.strokeStyle,
+                    width: ctx.lineWidth,
+                    tool: currentTool
+                });
+            }
+            
+            [lastX, lastY] = [e.offsetX, e.offsetY];
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            isDrawing = false;
+        });
+
+        canvas.addEventListener('mouseout', () => {
+            isDrawing = false;
+        });
+
+        // Touch support for mobile devices
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            isDrawing = true;
+            [lastX, lastY] = [touch.clientX - rect.left, touch.clientY - rect.top];
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (!isDrawing) return;
+            
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const x = touch.clientX - rect.left;
+            const y = touch.clientY - rect.top;
+            
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(x, y);
+            ctx.stroke();
+            
+            // Emit drawing data to other participants
+            if (room) {
+                socket.emit('whiteboard-draw', { 
+                    room, 
+                    from: [lastX, lastY], 
+                    to: [x, y],
+                    color: ctx.strokeStyle,
+                    width: ctx.lineWidth,
+                    tool: currentTool
+                });
+            }
+            
+            [lastX, lastY] = [x, y];
+        });
+
+        canvas.addEventListener('touchend', () => {
+            isDrawing = false;
+        });
+
+        // Socket events for real-time drawing
+        socket.on('whiteboard-draw', ({ from, to, color, width, tool }) => {
+            const originalColor = ctx.strokeStyle;
+            const originalWidth = ctx.lineWidth;
+            const originalComposite = ctx.globalCompositeOperation;
+            
+            ctx.strokeStyle = color || '#000000';
+            ctx.lineWidth = width || 5;
+            ctx.globalCompositeOperation = tool === 'eraser' ? 'destination-out' : 'source-over';
+            
+            ctx.beginPath();
+            ctx.moveTo(from[0], from[1]);
+            ctx.lineTo(to[0], to[1]);
+            ctx.stroke();
+            
+            // Restore original settings
+            ctx.strokeStyle = originalColor;
+            ctx.lineWidth = originalWidth;
+            ctx.globalCompositeOperation = originalComposite;
+        });
+
+        socket.on('whiteboard-clear', () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            switch(e.key) {
+                case 'd':
+                case 'D':
+                    drawBtn.click();
+                    break;
+                case 'e':
+                case 'E':
+                    eraserBtn.click();
+                    break;
+                case 'c':
+                case 'C':
+                    if (e.ctrlKey) {
+                        clearBtn.click();
+                    }
+                    break;
+                case 'Escape':
+                    closeBtn.click();
+                    break;
+            }
+        });
+    </script>
+</body>
+</html> 

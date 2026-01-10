@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Waiting Room</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 10px 5px;
+            font-size: 16px;
+        }
+        .test-btn:hover {
+            background: #45a049;
+        }
+        .test-btn.teacher {
+            background: #2196F3;
+        }
+        .test-btn.student {
+            background: #FF9800;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Waiting Room Functionality</h1>
+    
+    <div class="test-section">
+        <h2>📋 Test Instructions</h2>
+        <p>This page helps you test the waiting room functionality:</p>
+        <ol>
+            <li><strong>Step 1:</strong> Open the student waiting room</li>
+            <li><strong>Step 2:</strong> Open the teacher classroom</li>
+            <li><strong>Step 3:</strong> Click "Signal Presence" in teacher classroom</li>
+            <li><strong>Step 4:</strong> Check if student gets redirected to live classroom</li>
+        </ol>
+    </div>
+
+    <div class="test-section">
+        <h2>🔑 Test Room Setup</h2>
+        <p>Test room ID: <strong id="test-room">test-waiting-room-20241201</strong></p>
+        <button class="test-btn" onclick="generateNewRoom()">🔄 Generate New Room</button>
+    </div>
+
+    <div class="test-section">
+        <h2>👨‍🏫 Teacher Test</h2>
+        <p>Open the teacher classroom:</p>
+        <button class="test-btn teacher" onclick="openTeacherClassroom()">🚀 Open Teacher Classroom</button>
+        <div id="teacher-status"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>🎓 Student Test</h2>
+        <p>Open the student waiting room:</p>
+        <button class="test-btn student" onclick="openStudentWaitingRoom()">🚀 Open Student Waiting Room</button>
+        <div id="student-status"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>🔍 Manual Teacher Presence</h2>
+        <p>Manually signal teacher presence (for testing):</p>
+        <button class="test-btn" onclick="signalTeacherPresence()">👨‍🏫 Signal Teacher Presence</button>
+        <div id="presence-status"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>🔍 Check Room Status</h2>
+        <p>Check current room status:</p>
+        <button class="test-btn" onclick="checkRoomStatus()">🔍 Check Status</button>
+        <div id="room-status"></div>
+    </div>
+
+    <script>
+        // Generate a test room ID
+        function generateRoomId() {
+            const now = new Date();
+            const dateStr = now.getFullYear().toString() + 
+                           (now.getMonth() + 1).toString().padStart(2, '0') + 
+                           now.getDate().toString().padStart(2, '0');
+            return `test-waiting-room-${dateStr}`;
+        }
+
+        // Initialize with a test room ID
+        document.getElementById('test-room').textContent = generateRoomId();
+
+        // Generate new room ID
+        function generateNewRoom() {
+            const newRoomId = generateRoomId();
+            document.getElementById('test-room').textContent = newRoomId;
+            showStatus('teacher-status', 'New room ID generated!', 'success');
+        }
+
+        // Open teacher classroom
+        function openTeacherClassroom() {
+            const roomId = document.getElementById('test-room').textContent;
+            
+            // Set teacher ID in localStorage
+            localStorage.setItem('teacherId', 'TKBF7202500001');
+            localStorage.setItem('remoedUsername', 'Test Teacher');
+            
+            // Open teacher classroom
+            const url = `live-classroom.html?room=${roomId}`;
+            window.open(url, '_blank');
+            
+            showStatus('teacher-status', 'Teacher classroom opened! Click "Signal Presence" button in the classroom.', 'success');
+        }
+
+        // Open student waiting room
+        function openStudentWaitingRoom() {
+            const roomId = document.getElementById('test-room').textContent;
+            
+            // Set student ID in localStorage
+            localStorage.setItem('studentId', 'test-student-456');
+            localStorage.setItem('remoedUsername', 'Test Student');
+            
+            // Open student waiting room
+            const url = `student-waiting-room.html?room=${roomId}`;
+            window.open(url, '_blank');
+            
+            showStatus('student-status', 'Student waiting room opened! Wait for teacher to signal presence.', 'success');
+        }
+
+        // Signal teacher presence manually
+        async function signalTeacherPresence() {
+            const roomId = document.getElementById('test-room').textContent;
+            
+            try {
+                const response = await fetch('/api/signaling/teacher-present', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        room: roomId,
+                        teacherId: 'TKBF7202500001',
+                        username: 'Test Teacher'
+                    })
+                });
+                
+                if (response.ok) {
+                    showStatus('presence-status', 'Teacher presence signaled successfully!', 'success');
+                } else {
+                    showStatus('presence-status', 'Failed to signal teacher presence', 'error');
+                }
+            } catch (error) {
+                console.error('Error signaling teacher presence:', error);
+                showStatus('presence-status', 'Error signaling teacher presence', 'error');
+            }
+        }
+
+        // Check room status
+        async function checkRoomStatus() {
+            const roomId = document.getElementById('test-room').textContent;
+            
+            try {
+                const response = await fetch(`/api/signaling/room-status?room=${roomId}`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    const statusHtml = `
+                        <div class="status info">
+                            <strong>Room Status:</strong><br>
+                            Room: ${data.room}<br>
+                            Teacher Present: ${data.teacherPresent ? '✅ Yes' : '❌ No'}<br>
+                            Teacher Message Present: ${data.teacherMessagePresent ? '✅ Yes' : '❌ No'}<br>
+                            Teacher Socket Present: ${data.teacherSocketPresent ? '✅ Yes' : '❌ No'}<br>
+                            Room Exists: ${data.roomExists ? '✅ Yes' : '❌ No'}<br>
+                            Client Count: ${data.clientCount}<br>
+                            Last Activity: ${data.lastActivity ? new Date(data.lastActivity).toLocaleString() : 'None'}
+                        </div>
+                    `;
+                    document.getElementById('room-status').innerHTML = statusHtml;
+                } else {
+                    showStatus('room-status', 'Failed to check room status', 'error');
+                }
+            } catch (error) {
+                console.error('Error checking room status:', error);
+                showStatus('room-status', 'Error checking room status', 'error');
+            }
+        }
+
+        // Show status message
+        function showStatus(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="status ${type}">${message}</div>`;
+            setTimeout(() => {
+                element.innerHTML = '';
+            }, 5000);
+        }
+
+        // Auto-check room status every 5 seconds
+        setInterval(checkRoomStatus, 5000);
+
+        // Instructions for testing
+        console.log('🧪 Test Waiting Room - Instructions:');
+        console.log('1. Click "Open Student Waiting Room"');
+        console.log('2. Click "Open Teacher Classroom"');
+        console.log('3. In teacher classroom, click "Signal Presence" button');
+        console.log('4. Check if student gets redirected to live classroom');
+        console.log('5. Use "Check Status" to monitor room status');
+    </script>
+</body>
+</html>

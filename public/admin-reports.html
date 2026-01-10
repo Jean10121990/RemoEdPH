@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reports - RemoEdPH Admin</title>
+    <link rel="stylesheet" href="modern-styles.css">
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f6fbff; }
+        .remoed-main { display: flex; min-height: calc(100vh - 70px); }
+        .remoed-sidebar { width: 220px; background: #fff; box-shadow: 2px 0 8px rgba(0,0,0,0.05); padding: 32px 0 0 0; display: flex; flex-direction: column; }
+        .remoed-logo { display: flex; align-items: center; gap: 14px; }
+        .remoed-logo img { height: 48px; }
+        .remoed-title { font-size: 1.7rem; font-weight: 700; color: #667eea; letter-spacing: 1px; }
+        .remoed-user { display: flex; align-items: center; gap: 10px; }
+        .remoed-avatar { width: 72px; height: 72px; border-radius: 50%; background: #667eea; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 2.2rem; }
+        .remoed-username { color: #667eea; font-weight: 600; }
+        .remoed-menu { list-style: none; padding: 0; margin: 0; }
+        .remoed-menu li { padding: 14px 32px; color: #667eea; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 12px; border-left: 4px solid transparent; transition: all 0.2s; }
+        .remoed-menu li.active, .remoed-menu li:hover { background: linear-gradient(90deg, #667eea 0%, #5a67d8 100%); border-left: 4px solid #667eea; color: white; transform: translateX(4px); }
+        .remoed-menu svg { width: 20px; height: 20px; }
+        .remoed-content { flex: 1; padding: 12px 16px; }
+        .remoed-section { background: #fff; border-radius: 12px; box-shadow: 0 4px 24px rgba(28,167,231,0.07); padding: 12px; margin-bottom: 12px; }
+        .remoed-section-title { font-size: 1rem; font-weight: 700; color: #1ca7e7; margin-bottom: 10px; letter-spacing: 0.5px; }
+        .report-card { background: #f8f9fa; border-radius: 8px; padding: 10px; margin-bottom: 8px; border-left: 4px solid #1ca7e7; }
+        .report-title { font-size: 0.95rem; font-weight: 600; color: #1ca7e7; margin-bottom: 6px; }
+        .report-description { color: #666; margin-bottom: 8px; font-size: 0.8rem; }
+        .btn { padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.8rem; }
+        .btn-primary { background: #1ca7e7; color: #fff; }
+        .btn-primary:hover { background: #168fc1; }
+        @media (max-width: 900px) {
+            .remoed-main { flex-direction: column; }
+            .remoed-sidebar { width: 100%; flex-direction: row; box-shadow: none; border-bottom: 1px solid #e0e6ed; }
+            .remoed-menu li { padding: 12px 10px; font-size: 0.97rem; }
+            .remoed-content { padding: 18px 6px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="remoed-main">
+        <nav class="remoed-sidebar">
+            <div class="remoed-logo" style="height:100px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding-top:5px;">
+                <img src="remoed-logo.png" alt="RemoEdPH Logo" style="height:40px; width:auto; display:inline-block; vertical-align:middle;">
+                <span class="remoed-title" style="font-size:1.3rem; font-weight:700; color:#667eea; letter-spacing:1px;">RemoEdPH</span>
+            </div>
+            <div class="remoed-user" style="display:flex; flex-direction:column; align-items:center; margin-bottom:24px;">
+                <div class="remoed-avatar" id="remoed-avatar">
+                    <span id="avatar-text">A</span>
+                </div>
+                <span class="remoed-username" id="remoed-username">Admin</span>
+            </div>
+            <ul class="remoed-menu">
+                <li onclick="window.location.href='admin-dashboard.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/></svg>Dashboard</li>
+                <li onclick="window.location.href='admin-users.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"/></svg>User Management</li>
+                <li onclick="window.location.href='admin-announcements.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg>Announcements</li>
+                <li onclick="window.location.href='admin-payroll.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 10c-4.41 0-8-1.79-8-4V6c0-2.21 3.59-4 8-4s8 1.79 8 4v8c0 2.21-3.59 4-8 4z"/></svg>Payroll Management</li>
+                <li class="active"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>Reports</li>
+                <li onclick="window.location.href='admin-issue-management.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Issue Management</li>
+                <li onclick="window.location.href='admin-lessons-library.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>Lesson Library</li>
+                <li onclick="window.location.href='admin-settings.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Settings</li>
+                <li id="logout-nav" style="margin-top:auto; color:#e74c3c; cursor:pointer;"><svg fill="none" stroke="#e74c3c" stroke-width="2" viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7"/><path d="M3 12a9 9 0 0118 0 9 9 0 01-18 0z"/></svg>Logout</li>
+            </ul>
+        </nav>
+        <div class="remoed-content">
+            <div class="remoed-section">
+                <div class="remoed-section-title">📊 System Reports</div>
+                
+                <div class="report-card">
+                    <div class="report-title">📈 User Activity Report</div>
+                    <div class="report-description">Generate comprehensive reports on user activity, login patterns, and engagement metrics.</div>
+                                         <button class="btn btn-primary" onclick="generateReport('user-activity', event)">Generate Report</button>
+                </div>
+                
+                <div class="report-card">
+                    <div class="report-title">💰 Financial Report</div>
+                    <div class="report-description">View detailed financial reports including teacher salaries, payment history, and revenue analytics.</div>
+                                         <button class="btn btn-primary" onclick="generateReport('financial', event)">Generate Report</button>
+                </div>
+                
+                <div class="report-card">
+                    <div class="report-title">📚 Class Performance Report</div>
+                    <div class="report-description">Analyze class completion rates, teacher performance, and student satisfaction metrics.</div>
+                                         <button class="btn btn-primary" onclick="generateReport('class-performance', event)">Generate Report</button>
+                </div>
+                
+                <div class="report-card">
+                    <div class="report-title">📅 Weekly Summary Report</div>
+                    <div class="report-description">Get a comprehensive weekly summary of all platform activities and key metrics.</div>
+                                         <button class="btn btn-primary" onclick="generateReport('weekly-summary', event)">Generate Report</button>
+                </div>
+                
+                <div class="report-card">
+                    <div class="report-title">🎯 Custom Report</div>
+                    <div class="report-description">Create custom reports with specific date ranges, filters, and metrics of your choice.</div>
+                                         <button class="btn btn-primary" onclick="generateReport('custom', event)">Create Custom Report</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Role-based access control
+        const userType = localStorage.getItem('userType');
+        if (userType !== 'admin') {
+            alert('Access denied. This page is for administrators only.');
+            window.location.href = 'index.html';
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            const username = localStorage.getItem('adminUsername');
+            
+            if (username) {
+                document.getElementById('remoed-username').textContent = username;
+                document.getElementById('avatar-text').textContent = username[0].toUpperCase();
+            }
+        });
+
+        document.getElementById('logout-nav').onclick = function() {
+            localStorage.clear();
+            window.location.href = 'admin-login.html';
+        };
+
+        async function generateReport(reportType, event) {
+            let button = null;
+            let originalText = '';
+            
+            try {
+                button = event ? event.target : null;
+                if (!button) {
+                    console.error('Button element not found');
+                    return;
+                }
+                originalText = button.textContent;
+                button.textContent = 'Generating...';
+                button.disabled = true;
+                
+                let endpoint = '';
+                let reportName = '';
+                
+                switch(reportType) {
+                    case 'user-activity':
+                        endpoint = '/api/admin/reports/user-activity';
+                        reportName = 'User Activity Report';
+                        break;
+                    case 'financial':
+                        endpoint = '/api/admin/reports/financial';
+                        reportName = 'Financial Report';
+                        break;
+                    case 'class-performance':
+                        endpoint = '/api/admin/reports/class-performance';
+                        reportName = 'Class Performance Report';
+                        break;
+                    case 'weekly-summary':
+                        endpoint = '/api/admin/reports/weekly-summary';
+                        reportName = 'Weekly Summary Report';
+                        break;
+                    case 'custom':
+                        showCustomReportModal();
+                        if (button) {
+                            button.textContent = originalText;
+                            button.disabled = false;
+                        }
+                        return;
+                    default:
+                        throw new Error('Invalid report type');
+                }
+                
+                const response = await fetch(endpoint, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    displayReport(data, reportName);
+                    // Reset button state after successful report generation
+                    if (button) {
+                        button.textContent = originalText;
+                        button.disabled = false;
+                    }
+                } else {
+                    throw new Error('Failed to generate report');
+                }
+                
+            } catch (error) {
+                console.error('Error generating report:', error);
+                alert(`Error generating ${reportType} report. Please try again.`);
+                // Reset button state on error
+                if (button && originalText) {
+                    button.textContent = originalText;
+                    button.disabled = false;
+                }
+            }
+        }
+        
+        function showCustomReportModal() {
+            const modal = document.createElement('div');
+            modal.id = 'custom-report-modal';
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.5);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 1000;
+            `;
+            
+            modal.innerHTML = `
+                <div style="
+                    background: white;
+                    border-radius: 12px;
+                    padding: 24px;
+                    max-width: 500px;
+                    width: 90%;
+                    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+                ">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h2 style="color: #1ca7e7; margin: 0;">Create Custom Report</h2>
+                        <button onclick="closeCustomReportModal()" style="
+                            background: none;
+                            border: none;
+                            font-size: 24px;
+                            cursor: pointer;
+                            color: #666;
+                        ">&times;</button>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">Report Type:</label>
+                        <select id="custom-report-type" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
+                            <option value="user-activity">User Activity</option>
+                            <option value="financial">Financial</option>
+                            <option value="class-performance">Class Performance</option>
+                            <option value="weekly-summary">Weekly Summary</option>
+                        </select>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">Date Range:</label>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="date" id="start-date" style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                            <span style="align-self: center;">to</span>
+                            <input type="date" id="end-date" style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px;">
+                        <button onclick="generateCustomReport()" style="
+                            flex: 1;
+                            padding: 12px;
+                            background: #1ca7e7;
+                            color: white;
+                            border: none;
+                            border-radius: 4px;
+                            cursor: pointer;
+                            font-weight: 600;
+                        ">Generate Report</button>
+                        <button onclick="closeCustomReportModal()" style="
+                            flex: 1;
+                            padding: 12px;
+                            background: #666;
+                            color: white;
+                            border: none;
+                            border-radius: 4px;
+                            cursor: pointer;
+                        ">Cancel</button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Set default dates (last 30 days)
+            const endDate = new Date();
+            const startDate = new Date();
+            startDate.setDate(startDate.getDate() - 30);
+            
+            document.getElementById('end-date').value = endDate.toISOString().split('T')[0];
+            document.getElementById('start-date').value = startDate.toISOString().split('T')[0];
+        }
+        
+        function closeCustomReportModal() {
+            const modal = document.getElementById('custom-report-modal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+        
+        async function generateCustomReport() {
+            const reportType = document.getElementById('custom-report-type').value;
+            const startDate = document.getElementById('start-date').value;
+            const endDate = document.getElementById('end-date').value;
+            
+            if (!startDate || !endDate) {
+                alert('Please select both start and end dates');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/admin/reports/custom', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        reportType,
+                        startDate,
+                        endDate
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    closeCustomReportModal();
+                    displayReport(data, `Custom ${reportType} Report`);
+                } else {
+                    throw new Error('Failed to generate custom report');
+                }
+                
+            } catch (error) {
+                console.error('Error generating custom report:', error);
+                alert('Error generating custom report. Please try again.');
+            }
+        }
+        
+        function displayReport(data, reportName) {
+            const modal = document.createElement('div');
+            modal.id = 'report-modal';
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.5);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 1000;
+            `;
+            
+            modal.innerHTML = `
+                <div style="
+                    background: white;
+                    border-radius: 12px;
+                    padding: 24px;
+                    max-width: 800px;
+                    width: 90%;
+                    max-height: 80vh;
+                    overflow-y: auto;
+                    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+                ">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h2 style="color: #1ca7e7; margin: 0;">${reportName}</h2>
+                        <div style="display: flex; gap: 10px;">
+                            <button onclick="downloadReport()" style="
+                                padding: 8px 16px;
+                                background: #27ae60;
+                                color: white;
+                                border: none;
+                                border-radius: 4px;
+                                cursor: pointer;
+                                font-weight: 600;
+                            ">📥 Download</button>
+                            <button onclick="closeReportModal()" style="
+                                background: none;
+                                border: none;
+                                font-size: 24px;
+                                cursor: pointer;
+                                color: #666;
+                            ">&times;</button>
+                        </div>
+                    </div>
+                    
+                    <div id="report-content">
+                        <pre style="white-space: pre-wrap; font-family: monospace; background: #f8f9fa; padding: 16px; border-radius: 8px; max-height: 400px; overflow-y: auto;">${JSON.stringify(data, null, 2)}</pre>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+        }
+        
+        function closeReportModal() {
+            const modal = document.getElementById('report-modal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+        
+        function downloadReport() {
+            const reportData = JSON.parse(document.querySelector('#report-content pre').textContent);
+            const reportName = document.querySelector('#report-modal h2').textContent;
+            const csvContent = convertToCSV(reportData, reportName);
+            
+            // Add BOM (Byte Order Mark) for proper UTF-8 encoding
+            const BOM = '\uFEFF';
+            const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${reportName.replace(/\s+/g, '-').toLowerCase()}-${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function convertToCSV(data, reportName) {
+            let csv = '';
+            
+            // Add report header
+            csv += `Report: ${reportName}\n`;
+            csv += `Generated: ${new Date().toLocaleString()}\n\n`;
+            
+            if (reportName.includes('User Activity')) {
+                csv += 'Metric,Value\n';
+                csv += `Total Users,${data.data.totalUsers}\n`;
+                csv += `Total Teachers,${data.data.totalTeachers}\n`;
+                csv += `Total Students,${data.data.totalStudents}\n`;
+                csv += `Total Bookings,${data.data.totalBookings}\n\n`;
+                
+                if (data.data.recentBookings && data.data.recentBookings.length > 0) {
+                    csv += 'Recent Bookings\n';
+                    csv += 'Teacher,Student,Date,Time,Status\n';
+                    data.data.recentBookings.forEach(booking => {
+                        csv += `"${booking.teacher}","${booking.student}","${booking.date}","${booking.time}","${booking.status}"\n`;
+                    });
+                }
+                         } else if (reportName.includes('Financial')) {
+                 csv += 'Metric,Value\n';
+                 csv += `Global Rate,${data.data.globalRate}\n`;
+                 csv += `Total Completed Classes,${data.data.totalCompletedClasses}\n`;
+                 csv += `Total Earnings,${data.data.totalEarnings}\n`;
+                 csv += `Average Earnings Per Class,${data.data.averageEarningsPerClass}\n\n`;
+                
+                                 if (Object.keys(data.data.monthlyEarnings).length > 0) {
+                     csv += 'Monthly Earnings\n';
+                     csv += 'Month,Earnings\n';
+                     Object.entries(data.data.monthlyEarnings).forEach(([month, earnings]) => {
+                         csv += `"${month}",${earnings}\n`;
+                     });
+                 }
+            } else if (reportName.includes('Class Performance')) {
+                csv += 'Overall Statistics\n';
+                csv += 'Metric,Value\n';
+                csv += `Total Classes,${data.data.overallStats.totalClasses}\n`;
+                csv += `Completed Classes,${data.data.overallStats.completedClasses}\n`;
+                csv += `Cancelled Classes,${data.data.overallStats.cancelledClasses}\n`;
+                csv += `Average Completion Rate,${data.data.overallStats.averageCompletionRate}%\n\n`;
+                
+                csv += 'Teacher Performance\n';
+                csv += 'Teacher,Total Classes,Completed Classes,Completion Rate,Average Rating\n';
+                data.data.teacherPerformance.forEach(teacher => {
+                    csv += `"${teacher.teacher}",${teacher.totalClasses},${teacher.completedClasses},${teacher.completionRate}%,${teacher.averageRating}\n`;
+                });
+            } else if (reportName.includes('Weekly Summary')) {
+                csv += 'Weekly Summary\n';
+                csv += 'Metric,Value\n';
+                csv += `Period,${data.data.period}\n`;
+                csv += `New Teachers,${data.data.newUsers.teachers}\n`;
+                csv += `New Students,${data.data.newUsers.students}\n`;
+                csv += `Total New Users,${data.data.newUsers.total}\n`;
+                csv += `New Bookings,${data.data.bookings.total}\n`;
+                csv += `Completed Bookings,${data.data.bookings.completed}\n`;
+                csv += `Completion Rate,${data.data.bookings.completionRate}%\n`;
+                csv += `New Announcements,${data.data.announcements}\n\n`;
+                csv += `Summary,${data.data.summary}\n`;
+            } else if (reportName.includes('Custom')) {
+                // Handle custom reports based on report type
+                const reportType = data.data.period ? 'Custom Report' : 'Custom Report';
+                csv += `${reportType}\n`;
+                csv += 'Metric,Value\n';
+                
+                Object.entries(data.data).forEach(([key, value]) => {
+                    if (typeof value === 'object' && value !== null) {
+                        csv += `\n${key}\n`;
+                        Object.entries(value).forEach(([subKey, subValue]) => {
+                            csv += `"${subKey}","${subValue}"\n`;
+                        });
+                    } else {
+                        csv += `"${key}","${value}"\n`;
+                    }
+                });
+            } else {
+                // Generic CSV conversion for unknown report types
+                csv += 'Data\n';
+                csv += 'Key,Value\n';
+                Object.entries(data.data).forEach(([key, value]) => {
+                    csv += `"${key}","${value}"\n`;
+                });
+            }
+            
+            return csv;
+        }
+    </script>
+</body>
+</html> 

@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timezone Test - RemoEdPH</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .section {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .timezone-info {
+            background: #e3f2fd;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+        .date-test {
+            background: #f3e5f5;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+        .api-test {
+            background: #e8f5e8;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #5a67d8;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Timezone Alignment Test</h1>
+        
+        <div class="section">
+            <h2>Current Timezone Information</h2>
+            <div class="timezone-info">
+                <p><strong>Browser Timezone:</strong> <span id="browser-timezone"></span></p>
+                <p><strong>Current Date/Time:</strong> <span id="current-datetime"></span></p>
+                <p><strong>UTC Date/Time:</strong> <span id="utc-datetime"></span></p>
+                <p><strong>Timezone Offset:</strong> <span id="timezone-offset"></span></p>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Date Formatting Tests</h2>
+            <div class="date-test">
+                <p><strong>Today's Date (Local):</strong> <span id="today-local"></span></p>
+                <p><strong>Today's Date (ISO):</strong> <span id="today-iso"></span></p>
+                <p><strong>Week Start (Monday):</strong> <span id="week-start"></span></p>
+                <p><strong>Week End (Sunday):</strong> <span id="week-end"></span></p>
+            </div>
+            <button onclick="testDateFunctions()">Test Date Functions</button>
+        </div>
+
+        <div class="section">
+            <h2>API Test</h2>
+            <div class="api-test">
+                <p><strong>Test Week:</strong> <span id="test-week"></span></p>
+                <p><strong>API Response:</strong></p>
+                <pre id="api-response">Click "Test API" to see response</pre>
+            </div>
+            <button onclick="testAPI()">Test API</button>
+            <button onclick="testTimezoneDebug()">Test Timezone Debug</button>
+        </div>
+    </div>
+
+    <script>
+        // Timezone alignment utility functions (same as in student-book.html)
+        function getLocalDateString(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+        
+        function getWeekStartDate(date) {
+            const dayOfWeek = date.getDay();
+            const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+            const monday = new Date(date);
+            monday.setDate(date.getDate() - daysToMonday);
+            return monday;
+        }
+
+        function updateTimezoneInfo() {
+            const now = new Date();
+            
+            document.getElementById('browser-timezone').textContent = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            document.getElementById('current-datetime').textContent = now.toLocaleString();
+            document.getElementById('utc-datetime').textContent = now.toISOString();
+            document.getElementById('timezone-offset').textContent = `${now.getTimezoneOffset() / -60} hours`;
+        }
+
+        function testDateFunctions() {
+            const today = new Date();
+            const weekStart = getWeekStartDate(today);
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekStart.getDate() + 6);
+
+            document.getElementById('today-local').textContent = getLocalDateString(today);
+            document.getElementById('today-iso').textContent = today.toISOString().split('T')[0];
+            document.getElementById('week-start').textContent = getLocalDateString(weekStart);
+            document.getElementById('week-end').textContent = getLocalDateString(weekEnd);
+            document.getElementById('test-week').textContent = getLocalDateString(weekStart);
+        }
+
+        async function testAPI() {
+            const weekStart = getWeekStartDate(new Date());
+            const weekString = getLocalDateString(weekStart);
+            
+            try {
+                const response = await fetch(`/api/teacher/slots?week=${weekString}`, {
+                    headers: {
+                        'Cache-Control': 'no-cache',
+                        'Pragma': 'no-cache'
+                    }
+                });
+                
+                const data = await response.json();
+                document.getElementById('api-response').textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                document.getElementById('api-response').textContent = `Error: ${error.message}`;
+            }
+        }
+
+        async function testTimezoneDebug() {
+            try {
+                const response = await fetch('/api/teacher/timezone-debug', {
+                    headers: {
+                        'Cache-Control': 'no-cache',
+                        'Pragma': 'no-cache'
+                    }
+                });
+                
+                const data = await response.json();
+                document.getElementById('api-response').textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                document.getElementById('api-response').textContent = `Error: ${error.message}`;
+            }
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            updateTimezoneInfo();
+            testDateFunctions();
+            
+            // Update timezone info every second
+            setInterval(updateTimezoneInfo, 1000);
+        });
+    </script>
+</body>
+</html>

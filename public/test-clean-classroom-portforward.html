@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Clean Classroom - Port Forward</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 10px 5px;
+            font-size: 16px;
+        }
+        .test-btn:hover {
+            background: #45a049;
+        }
+        .test-btn.teacher {
+            background: #2196F3;
+        }
+        .test-btn.teacher:hover {
+            background: #1976D2;
+        }
+        .test-btn.student {
+            background: #FF9800;
+        }
+        .test-btn.student:hover {
+            background: #F57C00;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .test-room {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-family: monospace;
+        }
+        .url-display {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: monospace;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Clean Classroom - Port Forward Setup</h1>
+    
+    <div class="test-section">
+        <h2>📋 Test Instructions for Port Forward</h2>
+        <p>Since you're using port forwarding, follow these steps:</p>
+        <ol>
+            <li><strong>Server:</strong> Server should be running on port 5000</li>
+            <li><strong>Port Forward:</strong> Use your port forwarding URL (e.g., ngrok, devtunnels)</li>
+            <li><strong>Test Room:</strong> Use the test room ID below</li>
+            <li><strong>Two Tabs:</strong> Open teacher and student in separate tabs</li>
+            <li><strong>Test Features:</strong> Check camera, chat, whiteboard, etc.</li>
+        </ol>
+    </div>
+
+    <div class="test-section">
+        <h2>🔗 Your Current URL</h2>
+        <p>Current page URL (use this base for testing):</p>
+        <div class="url-display" id="current-url"></div>
+        <button class="test-btn" onclick="copyCurrentUrl()">📋 Copy Current URL</button>
+    </div>
+
+    <div class="test-section">
+        <h2>🔑 Test Room Setup</h2>
+        <p>Use this test room ID for testing:</p>
+        <div class="test-room" id="test-room-id">test-room-20241201</div>
+        <button class="test-btn" onclick="copyRoomId()">📋 Copy Room ID</button>
+        <button class="test-btn" onclick="generateNewRoom()">🔄 Generate New Room</button>
+    </div>
+
+    <div class="test-section">
+        <h2>👨‍🏫 Teacher Test</h2>
+        <p>Test the classroom as a teacher:</p>
+        <button class="test-btn teacher" onclick="testAsTeacher()">🚀 Open as Teacher</button>
+        <div id="teacher-url" class="url-display" style="display: none;"></div>
+        <div id="teacher-status"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>🎓 Student Test</h2>
+        <p>Test the classroom as a student:</p>
+        <button class="test-btn student" onclick="testAsStudent()">🚀 Open as Student</button>
+        <div id="student-url" class="url-display" style="display: none;"></div>
+        <div id="student-status"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>🔍 Test Checklist</h2>
+        <div id="test-checklist">
+            <p><input type="checkbox" id="check1"> ✅ Server running (port 5000)</p>
+            <p><input type="checkbox" id="check2"> ✅ Teacher page loads</p>
+            <p><input type="checkbox" id="check3"> ✅ Student page loads</p>
+            <p><input type="checkbox" id="check4"> ✅ Camera permission granted</p>
+            <p><input type="checkbox" id="check5"> ✅ Local video shows</p>
+            <p><input type="checkbox" id="check6"> ✅ Remote video shows (KEY TEST!)</p>
+            <p><input type="checkbox" id="check7"> ✅ Chat works</p>
+            <p><input type="checkbox" id="check8"> ✅ Whiteboard works</p>
+            <p><input type="checkbox" id="check9"> ✅ Screen sharing works</p>
+            <p><input type="checkbox" id="check10"> ✅ Timer works</p>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>🐛 Debug Tools</h2>
+        <button class="test-btn" onclick="checkServerStatus()">🔍 Check Server Status</button>
+        <button class="test-btn" onclick="clearLocalStorage()">🗑️ Clear Local Storage</button>
+        <button class="test-btn" onclick="openConsole()">📝 Open Console</button>
+        <button class="test-btn" onclick="showConnectionInfo()">🔗 Show Connection Info</button>
+        <div id="debug-status"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>📱 Manual Testing</h2>
+        <p>If the buttons don't work, manually open these URLs:</p>
+        <div id="manual-urls"></div>
+    </div>
+
+    <script>
+        // Get current URL and display it
+        const currentUrl = window.location.origin;
+        document.getElementById('current-url').textContent = currentUrl;
+
+        // Generate a test room ID
+        function generateRoomId() {
+            const now = new Date();
+            const dateStr = now.getFullYear().toString() + 
+                           (now.getMonth() + 1).toString().padStart(2, '0') + 
+                           now.getDate().toString().padStart(2, '0');
+            return `test-room-${dateStr}`;
+        }
+
+        // Initialize with a test room ID
+        document.getElementById('test-room-id').textContent = generateRoomId();
+
+        // Copy current URL to clipboard
+        function copyCurrentUrl() {
+            navigator.clipboard.writeText(currentUrl).then(() => {
+                showStatus('debug-status', 'Current URL copied to clipboard!', 'success');
+            });
+        }
+
+        // Copy room ID to clipboard
+        function copyRoomId() {
+            const roomId = document.getElementById('test-room-id').textContent;
+            navigator.clipboard.writeText(roomId).then(() => {
+                showStatus('teacher-status', 'Room ID copied to clipboard!', 'success');
+            });
+        }
+
+        // Generate new room ID
+        function generateNewRoom() {
+            const newRoomId = generateRoomId();
+            document.getElementById('test-room-id').textContent = newRoomId;
+            showStatus('teacher-status', 'New room ID generated!', 'success');
+            updateManualUrls();
+        }
+
+        // Test as teacher
+        function testAsTeacher() {
+            const roomId = document.getElementById('test-room-id').textContent;
+            
+            // Set teacher ID in localStorage
+            localStorage.setItem('teacherId', 'TKBF7202500001');
+            localStorage.setItem('remoedUsername', 'Test Teacher');
+            
+            // Create teacher URL
+            const teacherUrl = `${currentUrl}/live-classroom-clean.html?room=${roomId}`;
+            
+            // Display the URL
+            const teacherUrlDiv = document.getElementById('teacher-url');
+            teacherUrlDiv.textContent = teacherUrl;
+            teacherUrlDiv.style.display = 'block';
+            
+            // Open clean classroom as teacher
+            window.open(teacherUrl, '_blank');
+            
+            showStatus('teacher-status', 'Teacher classroom opened in new tab!', 'success');
+            document.getElementById('check2').checked = true;
+        }
+
+        // Test as student
+        function testAsStudent() {
+            const roomId = document.getElementById('test-room-id').textContent;
+            
+            // Set student ID in localStorage
+            localStorage.setItem('studentId', 'test-student-456');
+            localStorage.setItem('remoedUsername', 'Test Student');
+            
+            // Create student URL
+            const studentUrl = `${currentUrl}/live-classroom-clean.html?room=${roomId}`;
+            
+            // Display the URL
+            const studentUrlDiv = document.getElementById('student-url');
+            studentUrlDiv.textContent = studentUrl;
+            studentUrlDiv.style.display = 'block';
+            
+            // Open clean classroom as student
+            window.open(studentUrl, '_blank');
+            
+            showStatus('student-status', 'Student classroom opened in new tab!', 'success');
+            document.getElementById('check3').checked = true;
+        }
+
+        // Check server status
+        async function checkServerStatus() {
+            try {
+                const response = await fetch('/api/health');
+                const data = await response.json();
+                showStatus('debug-status', `Server is running! Status: ${data.status}`, 'success');
+                document.getElementById('check1').checked = true;
+            } catch (error) {
+                showStatus('debug-status', 'Server is not running. Please start with: npm run start:backend', 'error');
+            }
+        }
+
+        // Clear localStorage
+        function clearLocalStorage() {
+            localStorage.clear();
+            showStatus('debug-status', 'Local storage cleared!', 'info');
+        }
+
+        // Open console
+        function openConsole() {
+            showStatus('debug-status', 'Press F12 to open browser console for debugging', 'info');
+        }
+
+        // Show connection info
+        function showConnectionInfo() {
+            const info = `
+                Current URL: ${currentUrl}
+                Protocol: ${window.location.protocol}
+                Hostname: ${window.location.hostname}
+                Port: ${window.location.port}
+                User Agent: ${navigator.userAgent}
+            `;
+            showStatus('debug-status', info, 'info');
+        }
+
+        // Update manual URLs
+        function updateManualUrls() {
+            const roomId = document.getElementById('test-room-id').textContent;
+            const teacherUrl = `${currentUrl}/live-classroom-clean.html?room=${roomId}`;
+            const studentUrl = `${currentUrl}/live-classroom-clean.html?room=${roomId}`;
+            
+            document.getElementById('manual-urls').innerHTML = `
+                <p><strong>Teacher URL:</strong></p>
+                <div class="url-display">${teacherUrl}</div>
+                <p><strong>Student URL:</strong></p>
+                <div class="url-display">${studentUrl}</div>
+                <p><em>Copy these URLs and open them in separate tabs after setting localStorage:</em></p>
+                <p><code>localStorage.setItem('teacherId', 'TKBF7202500001');</code></p>
+                <p><code>localStorage.setItem('studentId', 'test-student-456');</code></p>
+            `;
+        }
+
+        // Show status message
+        function showStatus(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="status ${type}">${message}</div>`;
+            setTimeout(() => {
+                element.innerHTML = '';
+            }, 8000);
+        }
+
+        // Auto-check server status on page load
+        window.addEventListener('load', () => {
+            setTimeout(checkServerStatus, 1000);
+            updateManualUrls();
+        });
+
+        // Instructions for testing
+        console.log('🧪 Test Clean Classroom - Port Forward Instructions:');
+        console.log('1. Server should be running on port 5000');
+        console.log('2. Current URL:', currentUrl);
+        console.log('3. Click "Open as Teacher" to test teacher view');
+        console.log('4. Click "Open as Student" to test student view');
+        console.log('5. Check that cameras work on both ends');
+        console.log('6. Test chat, whiteboard, and other features');
+        console.log('7. Use browser console (F12) for debugging');
+    </script>
+</body>
+</html>

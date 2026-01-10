@@ -1,0 +1,172 @@
+
+/* Teacher Login Page Styles */
+body {
+    background: #f4f6fb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    margin: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+.login-container {
+    background: #fff;
+    padding: 2.5rem 2rem 2rem 2rem;
+    border-radius: 10px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    width: 100%;
+    max-width: 350px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.login-container form {
+    width: 100%;
+}
+.login-container h2 {
+    margin-bottom: 1.5rem;
+    text-align: center;
+    color: #333;
+}
+.form-group {
+    margin-bottom: 1.2rem;
+}
+.form-group label {
+    display: block;
+    margin-bottom: 0.4rem;
+    color: #555;
+}
+.form-group input {
+    width: 100%;
+    padding: 0.7rem;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 1rem;
+}
+.login-btn {
+    width: 100%;
+    padding: 0.8rem;
+    background: #3a7afe;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: background 0.2s;
+    margin-bottom: 0.7rem;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+}
+.login-btn:last-child {
+    margin-bottom: 0;
+}
+.login-btn:hover {
+    background: #255ed6;
+}
+.register-link {
+    display: block;
+    width: 100%;
+    margin-top: 0.2rem;
+    color: #3a7afe;
+    text-decoration: none;
+    font-size: 1rem;
+    text-align: center;
+    transition: color 0.2s;
+}
+.register-link:hover {
+    color: #255ed6;
+    text-decoration: underline;
+}
+.error-message {
+    color: #e74c3c;
+    margin-bottom: 1rem;
+    text-align: center;
+    display: none;
+}
+
+.success-message {
+    color: #27ae60;
+    margin-bottom: 1rem;
+    text-align: center;
+    display: none;
+}
+
+.password-group {
+    position: relative;
+    width: 100%;
+}
+.password-group input[type="password"],
+.password-group input[type="text"] {
+    width: 100%;
+    padding-right: 44px;
+    box-sizing: border-box;
+}
+.password-group button {
+    position: absolute;
+    right: 5px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.1rem;
+    color: #3a7afe;
+    padding: 0;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.login-container input[type="text"],
+.login-container input[type="password"],
+.login-container input[type="email"] {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.7rem;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 1rem;
+}
+
+.dashboard-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    padding: 2.5rem 2rem 2rem 2rem;
+    max-width: 400px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.dashboard-title {
+    font-size: 2rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+.dashboard-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    width: 100%;
+    margin-top: 2rem;
+}
+.dashboard-btn {
+    width: 100%;
+    padding: 0.9rem;
+    background: #3a7afe;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: background 0.2s;
+    text-align: center;
+}
+.dashboard-btn:hover {
+    background: #255ed6;
+}
+
