@@ -2375,12 +2375,12 @@ const startServer = async () => {
       console.warn(`⚠️  Cloudmersive API key not configured. PPTX conversion will fail. Set CLOUDMERSIVE_API_KEY in .env file.`);
     }
 
-    http.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
+    http.listen(PORT, '0.0.0.0', () => {
+      console.log(`🚀 Server running on 0.0.0.0:${PORT}`);
       console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
       console.log(`🔗 API base: http://localhost:${PORT}/api`);
       console.log(`🌐 Frontend: http://localhost:${PORT}`);
-      console.log(`🔌 Socket.IO signaling server running on port ${PORT}`);
+      console.log(`🔌 Socket.IO signaling server running on 0.0.0.0:${PORT}`);
       
       // Start periodic check for absent students (every minute)
       setInterval(checkAndMarkAbsentStudents, 60 * 1000);

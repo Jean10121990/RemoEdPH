@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
+    "start": "node server/index.js",
     "start:backend": "node server/index.js",
     "start:frontend": "echo Frontend is served by Express on port 5000",
     "start:all": "npm run start:backend"
