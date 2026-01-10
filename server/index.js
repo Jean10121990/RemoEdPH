@@ -56,6 +56,15 @@ const messageId = 0;
 // Keep in-memory cache for quick access during active sessions
 const lessonMaterialsByRoom = new Map(); // room -> [{ id, name, type, size, data, uploader, uploadedAt }]
 
+// Add a minimal startup endpoint FIRST - responds immediately
+app.get('/startup', (req, res) => {
+  res.json({ 
+    status: 'starting', 
+    message: 'Server is initializing',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Middleware
 app.use(cors({
   origin: ["*", "https://*.devtunnels.ms", "https://*.ngrok.io", "http://localhost:5000"],
@@ -644,14 +653,23 @@ app.post('/api/feedback/submit', verifyToken, requireTeacher, async (req, res) =
   }
 });
 
-// Health check endpoint
+// Health check endpoint - MUST respond quickly for Cloud Run
 app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
-    message: 'Server is running',
-    database: db.readyState === 1 ? 'Connected' : 'Disconnected',
-    timestamp: new Date().toISOString()
-  });
+  try {
+    res.json({ 
+      status: 'OK', 
+      message: 'Server is running',
+      database: db.readyState === 1 ? 'Connected' : 'Disconnected',
+      port: PORT,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'ERROR',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // Manual trigger for absent student check (for testing)
@@ -2203,6 +2221,12 @@ io.on('connection', socket => {
 // Function to check and mark absent students
 async function checkAndMarkAbsentStudents() {
   try {
+    // Check if database is connected before attempting queries
+    if (db.readyState !== 1) {
+      console.warn('⚠️  Database not connected, skipping absent student check');
+      return;
+    }
+    
     const now = new Date();
     const today = now.toISOString().split('T')[0];
     
@@ -2245,6 +2269,12 @@ async function checkAndMarkAbsentStudents() {
 // Function to update booking attendance when user enters classroom
 async function updateBookingAttendance(room, userType, userId, username) {
     try {
+        // Check if database is connected before attempting queries
+        if (db.readyState !== 1) {
+            console.warn(`⚠️  Database not connected, skipping attendance update for ${userType} ${username} in room ${room}`);
+            return;
+        }
+        
         console.log(`📊 Updating attendance for ${userType} ${username} in room ${room}`);
         
         // Find the booking by classroomId
@@ -2360,45 +2390,102 @@ const scheduleCleanup = () => {
 
 scheduleCleanup();
 
-// Start server
-const startServer = async () => {
+// Start server - listen immediately, connect DB in background
+const startServer = () => {
   try {
-    // Connect to database first
-    await connectDB();
+    console.log(`🔧 Starting server on port ${PORT}...`);
+    console.log(`📦 Environment: PORT=${PORT}, NODE_ENV=${process.env.NODE_ENV || 'not set'}`);
     
-    // Start the server
-    // Verify Cloudmersive API key configuration
-    const cloudmersiveKey = process.env.CLOUDMERSIVE_API_KEY;
-    if (cloudmersiveKey && cloudmersiveKey.trim() && cloudmersiveKey !== 'your-api-key-here') {
-      const cleanKey = cloudmersiveKey.trim().replace(/^["']|["']$/g, '');
-      console.log(`✅ Cloudmersive API key configured (${cleanKey.length} chars, starts with: ${cleanKey.substring(0, 8)}...)`);
-    } else {
-      console.warn(`⚠️  Cloudmersive API key not configured. PPTX conversion will fail. Set CLOUDMERSIVE_API_KEY in .env file.`);
-    }
-
     // You MUST listen on 0.0.0.0 (not localhost or 127.0.0.1)
+    // Start listening IMMEDIATELY - don't wait for anything
+    console.log(`🌐 Attempting to listen on 0.0.0.0:${PORT}...`);
+    
+    // Start listening FIRST - this is critical for Cloud Run health checks
     http.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Server is live on port ${PORT}`);
+      console.log(`🌐 Listening on 0.0.0.0:${PORT}`);
       console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
       console.log(`🔗 API base: http://localhost:${PORT}/api`);
-      console.log(`🌐 Frontend: http://localhost:${PORT}`);
       console.log(`🔌 Socket.IO signaling server running on 0.0.0.0:${PORT}`);
       
-      // Start periodic check for absent students (every minute)
-      setInterval(checkAndMarkAbsentStudents, 60 * 1000);
-      console.log(`⏰ Absent student check scheduled (every minute)`);
+      // Now that server is listening, do other initialization
+      // Verify Cloudmersive API key configuration
+      const cloudmersiveKey = process.env.CLOUDMERSIVE_API_KEY;
+      if (cloudmersiveKey && cloudmersiveKey.trim() && cloudmersiveKey !== 'your-api-key-here') {
+        const cleanKey = cloudmersiveKey.trim().replace(/^["']|["']$/g, '');
+        console.log(`✅ Cloudmersive API key configured (${cleanKey.length} chars, starts with: ${cleanKey.substring(0, 8)}...)`);
+      } else {
+        console.warn(`⚠️  Cloudmersive API key not configured. PPTX conversion will fail. Set CLOUDMERSIVE_API_KEY in .env file.`);
+      }
       
-      // Run initial check for any students who should already be marked as absent
-      setTimeout(checkAndMarkAbsentStudents, 5000); // Run after 5 seconds
-      console.log(`⏰ Initial absent student check scheduled (in 5 seconds)`);
+      // Connect to database in background (non-blocking)
+      connectDB().then((connected) => {
+        if (connected) {
+          // Start periodic check for absent students (every minute) only if DB connected
+          setInterval(checkAndMarkAbsentStudents, 60 * 1000);
+          console.log(`⏰ Absent student check scheduled (every minute)`);
+          
+          // Run initial check for any students who should already be marked as absent
+          setTimeout(checkAndMarkAbsentStudents, 5000); // Run after 5 seconds
+          console.log(`⏰ Initial absent student check scheduled (in 5 seconds)`);
+        }
+      }).catch((err) => {
+        console.error('❌ Database connection failed in background:', err.message);
+      });
+    }).on('error', (err) => {
+      console.error(`❌ Failed to start server on port ${PORT}:`, err);
+      console.error(`Error code: ${err.code}, Error message: ${err.message}`);
+      if (err.code === 'EADDRINUSE') {
+        console.error(`⚠️  Port ${PORT} is already in use.`);
+      } else if (err.code === 'EACCES') {
+        console.error(`⚠️  Permission denied. Cannot bind to port ${PORT}.`);
+      }
+      process.exit(1);
     });
   } catch (error) {
-    console.error('Failed to start server:', error);
+    console.error('❌ Failed to start server:', error);
+    console.error('Stack trace:', error.stack);
     process.exit(1);
   }
 };
 
-startServer();
+// Handle uncaught exceptions to prevent crashes
+process.on('uncaughtException', (error) => {
+  console.error('❌ Uncaught Exception:', error);
+  console.error('Stack:', error.stack);
+  // Don't exit - let the server try to continue
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+  // Don't exit - let the server try to continue
+});
+
+// Start the server immediately - wrap in try-catch to catch any startup errors
+console.log('🚀 Initializing RemoEdPH server...');
+console.log(`📦 Node version: ${process.version}`);
+console.log(`📦 Platform: ${process.platform}`);
+
+try {
+  startServer();
+} catch (error) {
+  console.error('❌ CRITICAL: Failed to initialize server:', error);
+  console.error('Stack trace:', error.stack);
+  // Try to start a minimal server anyway
+  try {
+    const minimalApp = require('express')();
+    minimalApp.get('/', (req, res) => {
+      res.json({ error: 'Server initialization failed', message: error.message });
+    });
+    const minimalHttp = require('http').createServer(minimalApp);
+    minimalHttp.listen(PORT, '0.0.0.0', () => {
+      console.log(`⚠️  Minimal error server started on port ${PORT} for debugging`);
+    });
+  } catch (minimalError) {
+    console.error('❌ Even minimal server failed:', minimalError);
+    process.exit(1);
+  }
+}
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
