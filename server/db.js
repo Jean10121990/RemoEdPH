@@ -5,7 +5,7 @@ const MONGO_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/online-d
 
 // Connection options for modern Mongoose versions
 const connectionOptions = {
-  serverSelectionTimeoutMS: 5000, // Timeout after 5s (reduced to fail faster if wrong URI)
+  serverSelectionTimeoutMS: 10000, // Timeout after 10s (increased for localhost)
   socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
   maxPoolSize: 10, // Maintain up to 10 socket connections
 };
@@ -16,14 +16,9 @@ const connectDB = async () => {
     // Check if MONGODB_URI is actually set (not using default)
     const isUsingDefault = !process.env.MONGODB_URI || MONGO_URI === 'mongodb://localhost:27017/online-distance-learning';
     
-    if (isUsingDefault) {
-      console.error('❌ MONGODB_URI environment variable is NOT SET!');
-      console.error('⚠️  Using default localhost connection (will fail in Cloud Run)');
-      console.error('📝 To fix: Set MONGODB_URI environment variable or secret in Cloud Run');
-      console.error('📝 Example: mongodb+srv://username:password@cluster.mongodb.net/database');
-      // Don't attempt connection if using default (will fail anyway)
-      console.warn('⚠️  Skipping MongoDB connection attempt (using default localhost)');
-      return false;
+    if (isUsingDefault || MONGO_URI.includes('localhost') || MONGO_URI.includes('127.0.0.1')) {
+      console.log('🔗 Connecting to local MongoDB: mongodb://localhost:27017/online-distance-learning');
+      console.log('📝 Make sure MongoDB is running locally. Use start-mongodb.bat or start-mongodb.ps1 to start it.');
     } else {
       // Log connection attempt (hide password)
       const uriForLogging = MONGO_URI.replace(/\/\/([^:]+):([^@]+)@/, '//$1:***@');
@@ -45,14 +40,16 @@ const connectDB = async () => {
     if (err.message.includes('ENOTFOUND') || err.message.includes('getaddrinfo')) {
       console.error('⚠️  DNS resolution failed. Check if MONGODB_URI is correct.');
     } else if (err.message.includes('ECONNREFUSED') || err.message.includes('127.0.0.1')) {
-      console.error('⚠️  Connection refused - MONGODB_URI not set or pointing to localhost.');
-      console.error('⚠️  In Cloud Run, you MUST set MONGODB_URI to your MongoDB Atlas connection string.');
+      console.error('⚠️  Connection refused - MongoDB server is not running or MONGODB_URI is incorrect.');
+      console.error('📝 For local development: Make sure MongoDB is running on localhost:27017');
+      console.error('📝 For Cloud Run: Set MONGODB_URI to your MongoDB Atlas connection string.');
     } else if (err.message.includes('authentication failed')) {
       console.error('⚠️  Authentication failed. Check username and password in MONGODB_URI.');
     } else if (err.message.includes('timeout')) {
       console.error('⚠️  Connection timeout. Check network connectivity and MongoDB server status.');
     }
     console.warn('⚠️  Server will continue without database connection. Some features may not work.');
+    console.warn('⚠️  Database-dependent features (login, registration, etc.) will fail.');
     // Don't exit the process - allow server to start without DB
     return false;
   }
