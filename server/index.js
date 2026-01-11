@@ -65,6 +65,11 @@ app.get('/startup', (req, res) => {
   });
 });
 
+// Ultra-fast health check for Cloud Run (responds immediately, no DB check)
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });
+});
+
 // Middleware
 app.use(cors({
   origin: ["*", "https://*.devtunnels.ms", "https://*.ngrok.io", "http://localhost:5000"],

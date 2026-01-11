@@ -36,14 +36,6 @@ const connectDB = async () => {
       }
     }
     
-<<<<<<< HEAD
-    if (isUsingDefault || MONGO_URI.includes('localhost') || MONGO_URI.includes('127.0.0.1')) {
-      console.log('🔗 Connecting to local MongoDB: mongodb://localhost:27017/online-distance-learning');
-      console.log('📝 Make sure MongoDB is running locally. Use start-mongodb.bat or start-mongodb.ps1 to start it.');
-    } else {
-      // Log connection attempt (hide password)
-      const uriForLogging = MONGO_URI.replace(/\/\/([^:]+):([^@]+)@/, '//$1:***@');
-=======
     // Log connection attempt (hide password if present)
     if (MONGO_URI) {
       // Mask credentials in MongoDB URI (handles both mongodb:// and mongodb+srv://)
@@ -52,7 +44,6 @@ const connectDB = async () => {
       uriForLogging = uriForLogging.replace(/\/\/([^:]+):([^@]+)@/, '//$1:***@');
       // Also handle cases where password might be in query string
       uriForLogging = uriForLogging.replace(/([?&])(password|pass|pwd)=[^&]*/gi, '$1$2=***');
->>>>>>> da9de468fb1fb771b8de4b4f25ba3d9a1815209f
       console.log(`🔗 Connecting to MongoDB: ${uriForLogging}`);
     }
     
