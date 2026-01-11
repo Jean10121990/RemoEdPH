@@ -3,8 +3,15 @@ const nodemailer = require('nodemailer');
 // Email configuration
 const emailConfig = {
   host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: process.env.SMTP_PORT || 587,
+  port: parseInt(process.env.SMTP_PORT || '587', 10),
   secure: false, // true for 465, false for other ports
+  requireTLS: true, // Require TLS for Gmail and most SMTP servers
+  tls: {
+    // Do not fail on invalid certificates (useful for some SMTP servers)
+    rejectUnauthorized: false
+  },
+  connectionTimeout: 10000, // 10 seconds timeout
+  greetingTimeout: 10000,
   auth: {
     user: process.env.SMTP_USER || 'your-email@gmail.com',
     pass: process.env.SMTP_PASS || 'your-app-password'
@@ -18,6 +25,25 @@ const isEmailConfigured = process.env.SMTP_USER && process.env.SMTP_PASS &&
 
 // Create transporter
 const transporter = nodemailer.createTransport(emailConfig);
+
+// Verify transporter connection on startup (non-blocking)
+let transporterVerified = false;
+if (isEmailConfigured) {
+  transporter.verify((error, success) => {
+    if (error) {
+      const safeError = String(error).replace(/(password|pass|pwd)=[^\s&"']*/gi, '$1=***');
+      console.error('❌ SMTP connection verification failed:', safeError);
+      console.error('⚠️  Email sending may fail. Check SMTP credentials and network connectivity.');
+      transporterVerified = false;
+    } else {
+      console.log('✅ SMTP connection verified successfully');
+      console.log(`📧 Email configured: ${emailConfig.host}:${emailConfig.port}`);
+      transporterVerified = true;
+    }
+  });
+} else {
+  console.log('⚠️  Email not configured - SMTP credentials not set');
+}
 
 // Email templates
 const emailTemplates = {
@@ -241,12 +267,29 @@ async function sendEmail(to, template, data) {
   try {
     // Check if email is properly configured
     if (!isEmailConfigured) {
-      console.log('Email not configured - using fallback mode');
+      console.log('⚠️  Email not configured - using fallback mode');
       return { 
         success: false, 
-        error: 'Email service not configured. Please set up SMTP credentials in .env file.',
+        error: 'Email service not configured. Please set up SMTP credentials in environment variables.',
         fallback: true
       };
+    }
+
+    // Verify connection before sending (if not already verified)
+    if (!transporterVerified) {
+      console.log('🔍 Verifying SMTP connection before sending email...');
+      try {
+        await transporter.verify();
+        transporterVerified = true;
+        console.log('✅ SMTP connection verified');
+      } catch (verifyError) {
+        const safeError = String(verifyError).replace(/(password|pass|pwd)=[^\s&"']*/gi, '$1=***');
+        console.error('❌ SMTP verification failed:', safeError);
+        return { 
+          success: false, 
+          error: `SMTP connection failed: ${verifyError.message || 'Connection verification failed'}` 
+        };
+      }
     }
 
     const emailContent = emailTemplates[template](data.username, data.newPassword, data.userType);
@@ -259,12 +302,32 @@ async function sendEmail(to, template, data) {
       text: emailContent.text
     };
     
+    console.log(`📧 Attempting to send email to: ${to}`);
     const info = await transporter.sendMail(mailOptions);
-    console.log('Email sent successfully:', info.messageId);
+    console.log('✅ Email sent successfully:', info.messageId);
     return { success: true, messageId: info.messageId };
   } catch (error) {
-    console.error('Error sending email:', error);
-    return { success: false, error: error.message };
+    // Safely log error without exposing SMTP credentials
+    const errorMessage = error.message || String(error);
+    // Remove any potential credential leaks
+    const safeErrorMessage = errorMessage
+      .replace(/(password|pass|pwd)=[^\s&"']*/gi, '$1=***')
+      .replace(/auth[^}]*pass[^}]*}/gi, 'auth:{...}');
+    
+    // Enhanced error logging for debugging
+    console.error('❌ Error sending email:', safeErrorMessage);
+    if (error.code) {
+      console.error(`   Error code: ${error.code}`);
+    }
+    if (error.response) {
+      const safeResponse = String(error.response).replace(/(password|pass|pwd)=[^\s&"']*/gi, '$1=***');
+      console.error(`   SMTP response: ${safeResponse}`);
+    }
+    if (error.responseCode) {
+      console.error(`   Response code: ${error.responseCode}`);
+    }
+    
+    return { success: false, error: errorMessage };
   }
 }
 
@@ -272,13 +335,31 @@ async function sendEmail(to, template, data) {
 async function sendTeacherRegistrationEmail(email, username, password, firstName, lastName) {
   try {
     if (!isEmailConfigured) {
-      console.log('Email not configured - returning credentials for testing');
+      console.log('⚠️  Email not configured - returning credentials for testing');
       return {
         success: false,
         fallback: true,
         error: 'Email service not configured',
         credentials: { username, password }
       };
+    }
+
+    // Verify connection before sending (if not already verified)
+    if (!transporterVerified) {
+      console.log('🔍 Verifying SMTP connection before sending teacher registration email...');
+      try {
+        await transporter.verify();
+        transporterVerified = true;
+        console.log('✅ SMTP connection verified');
+      } catch (verifyError) {
+        const safeError = String(verifyError).replace(/(password|pass|pwd)=[^\s&"']*/gi, '$1=***');
+        console.error('❌ SMTP verification failed:', safeError);
+        return {
+          success: false,
+          error: `SMTP connection failed: ${verifyError.message || 'Connection verification failed'}`,
+          credentials: { username, password }
+        };
+      }
     }
 
     const template = emailTemplates.teacherRegistration(email, username, password, firstName, lastName);
@@ -291,15 +372,35 @@ async function sendTeacherRegistrationEmail(email, username, password, firstName
       text: template.text
     };
 
+    console.log(`📧 Attempting to send teacher registration email to: ${email}`);
     const result = await transporter.sendMail(mailOptions);
-    console.log('Teacher registration email sent successfully:', result.messageId);
+    console.log('✅ Teacher registration email sent successfully:', result.messageId);
     
     return { success: true, messageId: result.messageId };
   } catch (error) {
-    console.error('Error sending teacher registration email:', error);
+    // Safely log error without exposing SMTP credentials
+    const errorMessage = error.message || String(error);
+    // Remove any potential credential leaks
+    const safeErrorMessage = errorMessage
+      .replace(/(password|pass|pwd)=[^\s&"']*/gi, '$1=***')
+      .replace(/auth[^}]*pass[^}]*}/gi, 'auth:{...}');
+    
+    // Enhanced error logging for debugging
+    console.error('❌ Error sending teacher registration email:', safeErrorMessage);
+    if (error.code) {
+      console.error(`   Error code: ${error.code}`);
+    }
+    if (error.response) {
+      const safeResponse = String(error.response).replace(/(password|pass|pwd)=[^\s&"']*/gi, '$1=***');
+      console.error(`   SMTP response: ${safeResponse}`);
+    }
+    if (error.responseCode) {
+      console.error(`   Response code: ${error.responseCode}`);
+    }
+    
     return {
       success: false,
-      error: error.message,
+      error: errorMessage,
       credentials: { username, password }
     };
   }
@@ -314,8 +415,22 @@ async function sendPasswordResetEmail(email, username, newPassword, userType) {
   });
 }
 
+// Diagnostic function to check email configuration (without exposing credentials)
+function getEmailConfigStatus() {
+  return {
+    configured: isEmailConfigured,
+    verified: transporterVerified,
+    host: emailConfig.host,
+    port: emailConfig.port,
+    user: isEmailConfigured ? emailConfig.auth.user : 'not set',
+    hasPassword: !!emailConfig.auth.pass && emailConfig.auth.pass !== 'your-app-password',
+    requireTLS: emailConfig.requireTLS
+  };
+}
+
 module.exports = {
   sendPasswordResetEmail,
   sendTeacherRegistrationEmail,
-  sendEmail
+  sendEmail,
+  getEmailConfigStatus
 };
