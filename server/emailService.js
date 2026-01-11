@@ -591,7 +591,6 @@ async function sendPasswordResetEmail(email, username, newPassword, userType) {
   });
 }
 
-<<<<<<< HEAD
 // Send assessment result email
 async function sendAssessmentEmail(parentEmail, childName, cefrLevel, score) {
   try {
@@ -851,7 +850,10 @@ This is an automated message. Please do not reply to this email.
       success: false,
       error: error.message,
       subscription: { email, username, plan, planPrice }
-=======
+    };
+  }
+}
+
 // Diagnostic function to check email configuration (without exposing credentials)
 function getEmailConfigStatus() {
   const status = {
@@ -912,7 +914,6 @@ async function testEmailSending(testEmail) {
       success: false,
       error: error.message,
       status: getEmailConfigStatus()
->>>>>>> da9de468fb1fb771b8de4b4f25ba3d9a1815209f
     };
   }
 }
@@ -921,11 +922,8 @@ module.exports = {
   sendPasswordResetEmail,
   sendTeacherRegistrationEmail,
   sendEmail,
-<<<<<<< HEAD
   sendAssessmentEmail,
-  sendSubscriptionEmail
-=======
+  sendSubscriptionEmail,
   getEmailConfigStatus,
   testEmailSending
->>>>>>> da9de468fb1fb771b8de4b4f25ba3d9a1815209f
 };
