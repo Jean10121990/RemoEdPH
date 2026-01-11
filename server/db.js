@@ -5,7 +5,7 @@ const MONGO_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/online-d
 
 // Connection options for modern Mongoose versions
 const connectionOptions = {
-  serverSelectionTimeoutMS: 10000, // Timeout after 10s (increased for Cloud Run)
+  serverSelectionTimeoutMS: 5000, // Timeout after 5s (reduced to fail faster if wrong URI)
   socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
   maxPoolSize: 10, // Maintain up to 10 socket connections
 };
@@ -21,6 +21,9 @@ const connectDB = async () => {
       console.error('⚠️  Using default localhost connection (will fail in Cloud Run)');
       console.error('📝 To fix: Set MONGODB_URI environment variable or secret in Cloud Run');
       console.error('📝 Example: mongodb+srv://username:password@cluster.mongodb.net/database');
+      // Don't attempt connection if using default (will fail anyway)
+      console.warn('⚠️  Skipping MongoDB connection attempt (using default localhost)');
+      return false;
     } else {
       // Log connection attempt (hide password)
       const uriForLogging = MONGO_URI.replace(/\/\/([^:]+):([^@]+)@/, '//$1:***@');
@@ -41,6 +44,9 @@ const connectDB = async () => {
     console.error('❌ MongoDB connection error:', err.message);
     if (err.message.includes('ENOTFOUND') || err.message.includes('getaddrinfo')) {
       console.error('⚠️  DNS resolution failed. Check if MONGODB_URI is correct.');
+    } else if (err.message.includes('ECONNREFUSED') || err.message.includes('127.0.0.1')) {
+      console.error('⚠️  Connection refused - MONGODB_URI not set or pointing to localhost.');
+      console.error('⚠️  In Cloud Run, you MUST set MONGODB_URI to your MongoDB Atlas connection string.');
     } else if (err.message.includes('authentication failed')) {
       console.error('⚠️  Authentication failed. Check username and password in MONGODB_URI.');
     } else if (err.message.includes('timeout')) {
