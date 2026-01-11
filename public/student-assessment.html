@@ -951,9 +951,9 @@
                 const level = document.getElementById('cefr-level').textContent.replace('Level ', '');
                 const scoreMatch = document.getElementById('score-display').textContent.match(/\d+/);
                 const score = scoreMatch ? scoreMatch[0] : '0';
-                window.location.href = `landing.html?email=${encodeURIComponent(guestAssessmentData.parentEmail)}&cefrLevel=${encodeURIComponent(level)}&score=${encodeURIComponent(score)}&signup=true`;
+                window.location.href = `index.html?email=${encodeURIComponent(guestAssessmentData.parentEmail)}&cefrLevel=${encodeURIComponent(level)}&score=${encodeURIComponent(score)}&signup=true`;
             } else {
-                window.location.href = 'landing.html?signup=true';
+                window.location.href = 'index.html?signup=true';
             }
         }
 
