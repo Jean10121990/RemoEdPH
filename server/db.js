@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 // Use environment variable for MongoDB URI, fallback to localhost for local development only
 // Cloud Run detection: K_SERVICE is automatically set by Google Cloud Run
-const isCloudRun = !!process.env.K_SERVICE;
+const isCloudRun = !!process.env.K_SERVICE;// this is a comment
 const MONGO_URI = process.env.MONGODB_URI || (!isCloudRun ? 'mongodb://localhost:27017/online-distance-learning' : undefined);
 
 // Connection options for modern Mongoose versions
