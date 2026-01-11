@@ -38,9 +38,12 @@ const connectDB = async () => {
     
     // Log connection attempt (hide password if present)
     if (MONGO_URI) {
-      const uriForLogging = MONGO_URI.includes('@') 
-        ? MONGO_URI.replace(/\/\/([^:]+):([^@]+)@/, '//$1:***@')
-        : MONGO_URI;
+      // Mask credentials in MongoDB URI (handles both mongodb:// and mongodb+srv://)
+      let uriForLogging = MONGO_URI;
+      // Match: mongodb:// or mongodb+srv:// followed by username:password@
+      uriForLogging = uriForLogging.replace(/\/\/([^:]+):([^@]+)@/, '//$1:***@');
+      // Also handle cases where password might be in query string
+      uriForLogging = uriForLogging.replace(/([?&])(password|pass|pwd)=[^&]*/gi, '$1$2=***');
       console.log(`🔗 Connecting to MongoDB: ${uriForLogging}`);
     }
     
@@ -55,15 +58,21 @@ const connectDB = async () => {
     
     return true;
   } catch (err) {
-    console.error('❌ MongoDB connection error:', err.message);
-    if (err.message.includes('ENOTFOUND') || err.message.includes('getaddrinfo')) {
+    // Safely extract error message without exposing credentials
+    let errorMessage = err.message || String(err);
+    // Remove any potential credential leaks from error messages
+    errorMessage = errorMessage.replace(/\/\/([^:]+):([^@]+)@/g, '//$1:***@');
+    errorMessage = errorMessage.replace(/([?&])(password|pass|pwd)=[^&\s]*/gi, '$1$2=***');
+    
+    console.error('❌ MongoDB connection error:', errorMessage);
+    if (errorMessage.includes('ENOTFOUND') || errorMessage.includes('getaddrinfo')) {
       console.error('⚠️  DNS resolution failed. Check if MONGODB_URI is correct.');
-    } else if (err.message.includes('ECONNREFUSED') || err.message.includes('127.0.0.1')) {
+    } else if (errorMessage.includes('ECONNREFUSED') || errorMessage.includes('127.0.0.1')) {
       console.error('⚠️  Connection refused - MONGODB_URI not set or pointing to localhost.');
       console.error('⚠️  In Cloud Run, you MUST set MONGODB_URI to your MongoDB Atlas connection string.');
-    } else if (err.message.includes('authentication failed')) {
+    } else if (errorMessage.includes('authentication failed')) {
       console.error('⚠️  Authentication failed. Check username and password in MONGODB_URI.');
-    } else if (err.message.includes('timeout')) {
+    } else if (errorMessage.includes('timeout')) {
       console.error('⚠️  Connection timeout. Check network connectivity and MongoDB server status.');
     }
     console.warn('⚠️  Server will continue without database connection. Some features may not work.');
@@ -76,7 +85,12 @@ const db = mongoose.connection;
 
 // Connection event handlers
 db.on('error', (err) => {
-  console.error('MongoDB connection error:', err);
+  // Safely log error without exposing credentials
+  let errorMessage = err.message || String(err);
+  // Remove any potential credential leaks from error messages
+  errorMessage = errorMessage.replace(/\/\/([^:]+):([^@]+)@/g, '//$1:***@');
+  errorMessage = errorMessage.replace(/([?&])(password|pass|pwd)=[^&\s]*/gi, '$1$2=***');
+  console.error('MongoDB connection error:', errorMessage);
   if (err.name === 'MongoNetworkError') {
     console.log('Network error - please check if MongoDB is running');
   }
