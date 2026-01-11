@@ -3,13 +3,856 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RemoEdPH - Home</title>
-    <meta http-equiv="refresh" content="0; url=landing.html">
-    <script>
-        window.location.href = 'landing.html';
-    </script>
+    <title>RemoEdPH - Learn English at Home for Kids</title>
+    <link rel="stylesheet" href="modern-styles.css">
+    <link rel="stylesheet" href="child-friendly-styles.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Comic Sans MS', 'Chalkboard SE', 'Trebuchet MS', 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #FFF0F5 0%, #E8F8F5 50%, #FFF9E6 100%);
+            background-attachment: fixed;
+            color: #1E3A5F;
+            line-height: 1.8;
+        }
+        
+        /* Navigation */
+        .navbar {
+            background: white;
+            padding: 20px 40px;
+            box-shadow: 0 4px 20px rgba(28, 167, 231, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .logo-section img {
+            height: 50px;
+        }
+        
+        .logo-section span {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: #1CA7E7;
+            text-shadow: 2px 2px 4px rgba(28, 167, 231, 0.2);
+        }
+        
+        .nav-buttons {
+            display: flex;
+            gap: 16px;
+        }
+        
+        .nav-btn {
+            padding: 12px 24px;
+            border-radius: 25px;
+            border: 2px solid #1CA7E7;
+            background: white;
+            color: #1CA7E7;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            font-size: 1rem;
+        }
+        
+        .nav-btn:hover {
+            background: #1CA7E7;
+            color: white;
+            transform: translateY(-2px);
+        }
+        
+        .nav-btn.primary {
+            background: linear-gradient(135deg, #1CA7E7, #5CB3FF);
+            color: white;
+            border: 2px solid #FFD700;
+        }
+        
+        /* Hero Section */
+        .hero {
+            padding: 80px 40px;
+            text-align: center;
+            background: linear-gradient(135deg, rgba(28, 167, 231, 0.1), rgba(255, 215, 0, 0.1));
+        }
+        
+        .hero h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            color: #1CA7E7;
+            margin-bottom: 24px;
+            text-shadow: 2px 2px 4px rgba(28, 167, 231, 0.2);
+        }
+        
+        .hero p {
+            font-size: 1.5rem;
+            color: #1E3A5F;
+            margin-bottom: 40px;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .cta-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .cta-btn {
+            padding: 18px 40px;
+            border-radius: 30px;
+            font-size: 1.2rem;
+            font-weight: 800;
+            cursor: pointer;
+            border: none;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .cta-btn.primary {
+            background: linear-gradient(135deg, #1CA7E7, #5CB3FF);
+            color: white;
+            border: 3px solid #FFD700;
+            box-shadow: 0 6px 20px rgba(28, 167, 231, 0.4);
+        }
+        
+        .cta-btn.primary:hover {
+            transform: translateY(-4px) scale(1.05);
+            box-shadow: 0 10px 30px rgba(28, 167, 231, 0.5);
+        }
+        
+        .cta-btn.secondary {
+            background: white;
+            color: #1CA7E7;
+            border: 3px solid #1CA7E7;
+        }
+        
+        .cta-btn.secondary:hover {
+            background: #1CA7E7;
+            color: white;
+        }
+        
+        /* Benefits Section */
+        .section {
+            padding: 80px 40px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .section-title {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: #1CA7E7;
+            text-align: center;
+            margin-bottom: 50px;
+        }
+        
+        .benefits-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+        
+        .benefit-card {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+            text-align: center;
+            transition: all 0.3s ease;
+            border: 3px solid transparent;
+        }
+        
+        .benefit-card:hover {
+            transform: translateY(-10px);
+            border-color: #FFD700;
+            box-shadow: 0 12px 32px rgba(28, 167, 231, 0.2);
+        }
+        
+        .benefit-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+        
+        .benefit-card h3 {
+            font-size: 1.5rem;
+            color: #1CA7E7;
+            margin-bottom: 16px;
+        }
+        
+        .benefit-card p {
+            color: #1E3A5F;
+            font-size: 1.1rem;
+        }
+        
+        /* Assessment Section */
+        .assessment-section {
+            background: linear-gradient(135deg, #1CA7E7, #5CB3FF);
+            color: white;
+            padding: 80px 40px;
+            text-align: center;
+        }
+        
+        .assessment-section h2 {
+            font-size: 2.5rem;
+            margin-bottom: 24px;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .assessment-section p {
+            font-size: 1.3rem;
+            margin-bottom: 40px;
+            color: white;
+            opacity: 1;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+        }
+        
+        .assessment-form {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+        }
+        
+        .form-group {
+            margin-bottom: 24px;
+            text-align: left;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 700;
+            color: #1E3A5F;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 14px 18px;
+            border: 3px solid #E8F4FD;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-family: inherit;
+            transition: all 0.3s ease;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: #1CA7E7;
+            box-shadow: 0 0 0 4px rgba(28, 167, 231, 0.1);
+        }
+        
+        .assessment-btn {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(135deg, #1CA7E7, #5CB3FF);
+            color: white;
+            border: 3px solid #FFD700;
+            border-radius: 12px;
+            font-size: 1.2rem;
+            font-weight: 800;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .assessment-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(28, 167, 231, 0.4);
+        }
+        
+        /* Subscription Plans */
+        .plans-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+        
+        .plan-card {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+            text-align: center;
+            transition: all 0.3s ease;
+            border: 3px solid transparent;
+            position: relative;
+        }
+        
+        .plan-card.featured {
+            border-color: #FFD700;
+            transform: scale(1.05);
+            box-shadow: 0 12px 32px rgba(255, 215, 0, 0.3);
+        }
+        
+        .plan-card:hover {
+            transform: translateY(-10px);
+            border-color: #1CA7E7;
+        }
+        
+        .plan-card.featured:hover {
+            transform: scale(1.08) translateY(-10px);
+        }
+        
+        .plan-badge {
+            position: absolute;
+            top: -15px;
+            right: 20px;
+            background: linear-gradient(135deg, #FFD700, #FFE66D);
+            color: #1E3A5F;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: 800;
+            font-size: 0.9rem;
+        }
+        
+        .plan-name {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: #1CA7E7;
+            margin-bottom: 12px;
+        }
+        
+        .plan-price {
+            font-size: 3rem;
+            font-weight: 800;
+            color: #1CA7E7;
+            margin-bottom: 8px;
+        }
+        
+        .plan-period {
+            color: #4A6FA5;
+            margin-bottom: 24px;
+        }
+        
+        .plan-features {
+            list-style: none;
+            margin: 24px 0;
+            text-align: left;
+        }
+        
+        .plan-features li {
+            padding: 12px 0;
+            color: #1E3A5F;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .plan-features li::before {
+            content: '✓';
+            color: #4CAF50;
+            font-weight: 800;
+            font-size: 1.5rem;
+        }
+        
+        .plan-btn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #1CA7E7, #5CB3FF);
+            color: white;
+            border: 2px solid #FFD700;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 24px;
+        }
+        
+        .plan-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(28, 167, 231, 0.4);
+        }
+        
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            text-align: center;
+        }
+        
+        .modal-content h2 {
+            color: #1CA7E7;
+            margin-bottom: 20px;
+        }
+        
+        .close-modal {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: none;
+            border: none;
+            font-size: 2rem;
+            cursor: pointer;
+            color: #1E3A5F;
+        }
+        
+        /* Footer */
+        .footer {
+            background: #1E3A5F;
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+            
+            .section-title {
+                font-size: 2rem;
+            }
+            
+            .benefits-grid,
+            .plans-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .nav-buttons {
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+            
+            .nav-btn {
+                padding: 10px 16px;
+                font-size: 0.9rem;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .navbar {
+                padding: 15px 20px;
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .nav-buttons {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .nav-btn {
+                flex: 1;
+                min-width: 120px;
+                text-align: center;
+            }
+        }
+    </style>
 </head>
 <body>
-    <p>Redirecting to <a href="landing.html">landing page</a>...</p>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="logo-section">
+            <img src="remoed-logo.png" alt="RemoEdPH Logo">
+            <span>RemoEdPH</span>
+        </div>
+        <div class="nav-buttons">
+            <a href="#assessment" class="nav-btn">Free Assessment</a>
+            <a href="#plans" class="nav-btn">Plans</a>
+            <a href="teacher-login.html" class="nav-btn">Teacher Login</a>
+            <a href="student-login.html" class="nav-btn primary">Student Login</a>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <h1>🌟 Learn English at Home! 🏠</h1>
+        <p>Fun, interactive English learning for kids ages 2-6! Join thousands of happy learners studying from the comfort of home.</p>
+        <div class="cta-buttons">
+            <a href="#assessment" class="cta-btn primary">🎯 Take Free Assessment</a>
+            <a href="#plans" class="cta-btn secondary">📚 View Plans</a>
+        </div>
+    </section>
+
+    <!-- Benefits Section -->
+    <section class="section" id="benefits">
+        <h2 class="section-title">✨ Why Learn at Home? ✨</h2>
+        <div class="benefits-grid">
+            <div class="benefit-card">
+                <div class="benefit-icon">🏠</div>
+                <h3>Safe & Comfortable</h3>
+                <p>Learn in the safety and comfort of your own home. No need to travel or worry about safety!</p>
+            </div>
+            <div class="benefit-card">
+                <div class="benefit-icon">⏰</div>
+                <h3>Flexible Schedule</h3>
+                <p>Choose class times that work for your family. Learn at your own pace!</p>
+            </div>
+            <div class="benefit-card">
+                <div class="benefit-icon">👨‍👩‍👧</div>
+                <h3>Family Involvement</h3>
+                <p>Parents can watch and support their child's learning journey together!</p>
+            </div>
+            <div class="benefit-card">
+                <div class="benefit-icon">🎮</div>
+                <h3>Fun & Interactive</h3>
+                <p>Play games, do activities, and learn through fun interactive lessons!</p>
+            </div>
+            <div class="benefit-card">
+                <div class="benefit-icon">👨‍🏫</div>
+                <h3>Expert Teachers</h3>
+                <p>Learn from experienced, friendly teachers who love teaching kids!</p>
+            </div>
+            <div class="benefit-card">
+                <div class="benefit-icon">📱</div>
+                <h3>Easy to Use</h3>
+                <p>Simple platform designed for kids. Easy for parents to manage too!</p>
+            </div>
+        </div>
+    </section>
+<!-- comment -->
+    <!-- Free Assessment Section -->
+    <section class="assessment-section" id="assessment">
+        <h2>🎯 Take Your Free Level Assessment!</h2>
+        <p>Find out your English level and get personalized learning recommendations sent to your email!</p>
+        <p style="font-size: 1.1rem; margin-top: 16px; opacity: 0.9;">✨ No sign-up required! Results will be emailed to you. Sign up after to access your results online.</p>
+        <div class="assessment-form">
+            <form id="assessment-form">
+                <div class="form-group">
+                    <label>👤 Child's Name</label>
+                    <input type="text" id="child-name" required placeholder="Enter child's name">
+                </div>
+                <div class="form-group">
+                    <label>📧 Parent's Email</label>
+                    <input type="email" id="parent-email" required placeholder="Enter parent's email">
+                </div>
+                <div class="form-group">
+                    <label>📞 Contact Number</label>
+                    <input type="tel" id="contact-number" required placeholder="Enter contact number">
+                </div>
+                <button type="submit" class="assessment-btn">🚀 Start Free Assessment</button>
+            </form>
+        </div>
+    </section>
+
+    <!-- Subscription Plans -->
+    <section class="section" id="plans">
+        <h2 class="section-title">📚 Choose Your Learning Plan 📚</h2>
+        <div class="plans-grid">
+            <div class="plan-card">
+                <div class="plan-name">1 Month</div>
+                <div class="plan-price">$0</div>
+                <div class="plan-period">per month</div>
+                <div style="color: #4CAF50; font-weight: 700; margin-bottom: 16px; font-size: 1.1rem;">🆓 Testing Mode - FREE!</div>
+                <ul class="plan-features">
+                    <li>Unlimited Classes</li>
+                    <li>All Learning Games</li>
+                    <li>Progress Tracking</li>
+                    <li>Email Support</li>
+                </ul>
+                <button class="plan-btn" onclick="selectPlan('1month', 0)">Choose Plan</button>
+            </div>
+            
+            <div class="plan-card featured">
+                <div class="plan-badge">Popular</div>
+                <div class="plan-name">3 Months</div>
+                <div class="plan-price">$0</div>
+                <div class="plan-period">per month</div>
+                <div style="color: #4CAF50; font-weight: 700; margin-bottom: 16px; font-size: 1.1rem;">🆓 Testing Mode - FREE!</div>
+                <ul class="plan-features">
+                    <li>Unlimited Classes</li>
+                    <li>All Learning Games</li>
+                    <li>Progress Tracking</li>
+                    <li>Priority Support</li>
+                    <li>Free Assessment</li>
+                </ul>
+                <button class="plan-btn" onclick="selectPlan('3months', 0)">Choose Plan</button>
+            </div>
+            
+            <div class="plan-card">
+                <div class="plan-name">6 Months</div>
+                <div class="plan-price">$0</div>
+                <div class="plan-period">per month</div>
+                <div style="color: #4CAF50; font-weight: 700; margin-bottom: 16px; font-size: 1.1rem;">🆓 Testing Mode - FREE!</div>
+                <ul class="plan-features">
+                    <li>Unlimited Classes</li>
+                    <li>All Learning Games</li>
+                    <li>Progress Tracking</li>
+                    <li>Priority Support</li>
+                    <li>Free Assessment</li>
+                    <li>Bonus Learning Materials</li>
+                </ul>
+                <button class="plan-btn" onclick="selectPlan('6months', 0)">Choose Plan</button>
+            </div>
+            
+            <div class="plan-card">
+                <div class="plan-name">1 Year</div>
+                <div class="plan-price">$0</div>
+                <div class="plan-period">per month</div>
+                <div style="color: #4CAF50; font-weight: 700; margin-bottom: 16px; font-size: 1.1rem;">🆓 Testing Mode - FREE!</div>
+                <ul class="plan-features">
+                    <li>Unlimited Classes</li>
+                    <li>All Learning Games</li>
+                    <li>Progress Tracking</li>
+                    <li>Priority Support</li>
+                    <li>Free Assessment</li>
+                    <li>Bonus Learning Materials</li>
+                    <li>Certificate of Completion</li>
+                </ul>
+                <button class="plan-btn" onclick="selectPlan('1year', 0)">Choose Plan</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>&copy; 2024 RemoEdPH. All rights reserved. 🌟</p>
+    </footer>
+
+    <!-- Sign Up Modal -->
+    <div id="signup-modal" class="modal">
+        <div class="modal-content" style="position: relative;">
+            <button class="close-modal" onclick="closeModal()">&times;</button>
+            <h2>📝 Create Your Account</h2>
+            <p style="margin-bottom: 24px; color: #1E3A5F;">Sign up to receive your assessment results and start learning!</p>
+            <form id="signup-form">
+                <div class="form-group">
+                    <label>👤 Username</label>
+                    <input type="text" id="signup-username" required placeholder="Choose a username">
+                </div>
+                <div class="form-group">
+                    <label>📧 Email</label>
+                    <input type="email" id="signup-email" required placeholder="Enter email">
+                </div>
+                <div class="form-group">
+                    <label>🔑 Password</label>
+                    <input type="password" id="signup-password" required placeholder="Create a password">
+                </div>
+                <div class="form-group">
+                    <label>👨‍👩‍👧 Parent/Guardian Name</label>
+                    <input type="text" id="signup-parent-name" required placeholder="Parent or guardian name">
+                </div>
+                <input type="hidden" id="selected-plan" value="">
+                <input type="hidden" id="selected-plan-price" value="">
+                <button type="submit" class="assessment-btn">✨ Sign Up & Subscribe</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let selectedPlan = '';
+        let selectedPlanPrice = 0;
+        let assessmentData = null;
+
+        // Assessment form submission
+        document.getElementById('assessment-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const childName = document.getElementById('child-name').value;
+            const parentEmail = document.getElementById('parent-email').value;
+            const contactNumber = document.getElementById('contact-number').value;
+            
+            // Store assessment data
+            assessmentData = {
+                childName,
+                parentEmail,
+                contactNumber
+            };
+            
+            // Redirect to assessment page with data
+            const assessmentUrl = `student-assessment.html?childName=${encodeURIComponent(childName)}&parentEmail=${encodeURIComponent(parentEmail)}&contactNumber=${encodeURIComponent(contactNumber)}`;
+            window.location.href = assessmentUrl;
+        });
+
+        // Plan selection
+        function selectPlan(plan, price) {
+            selectedPlan = plan;
+            selectedPlanPrice = price;
+            
+            // Check if user is coming from assessment
+            const urlParams = new URLSearchParams(window.location.search);
+            const email = urlParams.get('email');
+            const cefrLevel = urlParams.get('cefrLevel');
+            
+            // Show signup modal
+            document.getElementById('signup-modal').classList.add('active');
+            document.getElementById('selected-plan').value = plan;
+            document.getElementById('selected-plan-price').value = price;
+            
+            // Pre-fill email if coming from assessment
+            if (email) {
+                document.getElementById('signup-email').value = email;
+            }
+        }
+        
+        // Check if returning from assessment
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const email = urlParams.get('email');
+            const cefrLevel = urlParams.get('cefrLevel');
+            const signup = urlParams.get('signup');
+            
+            if (email && cefrLevel) {
+                // Pre-fill email in signup form
+                if (document.getElementById('signup-email')) {
+                    document.getElementById('signup-email').value = email;
+                }
+                
+                // Show signup modal automatically if signup=true
+                if (signup === 'true') {
+                    setTimeout(() => {
+                        document.getElementById('signup-modal').classList.add('active');
+                    }, 500);
+                } else {
+                    // Show welcome message
+                    setTimeout(() => {
+                        alert(`🎉 Welcome back! Your assessment result: ${cefrLevel}\n\nSign up now to access your results online and start learning!`);
+                    }, 500);
+                }
+            }
+        });
+
+        // Sign up form submission
+        document.getElementById('signup-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('signup-username').value;
+            const email = document.getElementById('signup-email').value;
+            const password = document.getElementById('signup-password').value;
+            const parentName = document.getElementById('signup-parent-name').value;
+            const plan = document.getElementById('selected-plan').value || '';
+            const planPrice = document.getElementById('selected-plan-price').value || '';
+            
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Creating Account...';
+            
+            try {
+                // Register student
+                const registerResponse = await fetch('/api/auth/student-register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username,
+                        email,
+                        password,
+                        parentName: parentName || assessmentData?.parentEmail || ''
+                    })
+                });
+                
+                const registerResult = await registerResponse.json();
+                
+                if (!registerResponse.ok) {
+                    const errorMsg = registerResult.message || registerResult.error || 'Registration failed';
+                    console.error('Registration error:', registerResult);
+                    throw new Error(errorMsg);
+                }
+                
+                // Save subscription if plan was selected
+                if (plan) {
+                    const subscribeResponse = await fetch('/api/student/subscribe', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            email,
+                            plan,
+                            planPrice,
+                            assessmentData: assessmentData || null
+                        })
+                    });
+                    
+                    if (!subscribeResponse.ok) {
+                        console.warn('Subscription save failed, but registration succeeded');
+                    }
+                }
+                
+                // Send assessment email if assessment was taken
+                if (assessmentData) {
+                    try {
+                        const emailResponse = await fetch('/api/student/send-assessment-email', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                email,
+                                childName: assessmentData.childName,
+                                parentEmail: assessmentData.parentEmail || email,
+                                contactNumber: assessmentData.contactNumber
+                            })
+                        });
+                        
+                        const emailResult = await emailResponse.json();
+                        if (emailResult.fallback) {
+                            console.log('Email not configured, but assessment saved');
+                        }
+                    } catch (emailError) {
+                        console.error('Error sending assessment email:', emailError);
+                        // Don't fail registration if email fails
+                    }
+                }
+                
+                alert('✅ Account created successfully! Redirecting to login...');
+                setTimeout(() => {
+                    window.location.href = 'student-login.html';
+                }, 1000);
+                
+            } catch (error) {
+                console.error('Error:', error);
+                alert('❌ Error: ' + error.message);
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
+            }
+        });
+
+        function closeModal() {
+            document.getElementById('signup-modal').classList.remove('active');
+        }
+
+        // Close modal on outside click
+        document.getElementById('signup-modal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+    </script>
 </body>
 </html>
