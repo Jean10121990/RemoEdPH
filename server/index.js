@@ -653,6 +653,31 @@ app.post('/api/feedback/submit', verifyToken, requireTeacher, async (req, res) =
   }
 });
 
+// API base endpoint - returns API status (for Cloud Run health checks)
+app.get('/api', (req, res) => {
+  try {
+    res.json({ 
+      status: 'OK', 
+      message: 'API is running',
+      version: '1.0.0',
+      endpoints: {
+        health: '/api/health',
+        auth: '/api/auth',
+        teacher: '/api/teacher',
+        student: '/api/student',
+        admin: '/api/admin'
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'ERROR',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // Health check endpoint - MUST respond quickly for Cloud Run
 app.get('/api/health', (req, res) => {
   try {
@@ -2325,9 +2350,9 @@ async function cleanupExpiredMaterials() {
     }
 }
 
-// Run cleanup immediately, then every hour
-cleanupExpiredMaterials();
-setInterval(cleanupExpiredMaterials, 60 * 60 * 1000); // Every hour
+// Run cleanup after database is connected (not at startup to avoid blocking)
+// This will be scheduled after DB connection in startServer()
+let cleanupInterval = null;
 
 // Cleanup old recordings (older than 7 days)
 async function cleanupOldRecordings() {
@@ -2370,7 +2395,7 @@ async function cleanupOldRecordings() {
   }
 }
 
-// Run cleanup daily at 2 AM
+// Run cleanup daily at 2 AM (will be scheduled after DB connection)
 const scheduleCleanup = () => {
   const now = new Date();
   const tomorrow = new Date(now);
@@ -2387,8 +2412,6 @@ const scheduleCleanup = () => {
   
   console.log(`🧹 Recording cleanup scheduled (daily at 2 AM)`);
 };
-
-scheduleCleanup();
 
 // Start server - listen immediately, connect DB in background
 const startServer = () => {
@@ -2428,6 +2451,14 @@ const startServer = () => {
           // Run initial check for any students who should already be marked as absent
           setTimeout(checkAndMarkAbsentStudents, 5000); // Run after 5 seconds
           console.log(`⏰ Initial absent student check scheduled (in 5 seconds)`);
+          
+          // Schedule cleanup jobs only after DB is connected
+          cleanupExpiredMaterials(); // Run once immediately
+          cleanupInterval = setInterval(cleanupExpiredMaterials, 60 * 60 * 1000); // Every hour
+          console.log(`🧹 Cleanup jobs scheduled (every hour)`);
+          
+          // Schedule recording cleanup (daily at 2 AM)
+          scheduleCleanup();
         }
       }).catch((err) => {
         console.error('❌ Database connection failed in background:', err.message);
