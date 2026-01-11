@@ -273,6 +273,17 @@ router.post('/student-register', async (req, res) => {
   if (!email) {
     return res.status(400).json({ success: false, message: 'Email address is required' });
   }
+  
+  // Check if database is connected
+  const mongoose = require('mongoose');
+  if (mongoose.connection.readyState !== 1) {
+    console.error('❌ Database not connected. Connection state:', mongoose.connection.readyState);
+    return res.status(503).json({ 
+      success: false, 
+      message: 'Database connection unavailable. Please try again in a moment.' 
+    });
+  }
+  
   try {
     // Check if username already exists
     const existingUsername = await Student.findOne({ username });
@@ -290,14 +301,38 @@ router.post('/student-register', async (req, res) => {
     const student = new Student({ 
       username, 
       email: email,
-      password: hashedPassword
+      password: hashedPassword,
+      parentName: req.body.parentName || ''
       // firstName and lastName will be set when they update their profile
     });
     await student.save();
-    res.json({ success: true, message: 'Student registered successfully' });
+    res.json({ success: true, message: 'Student registered successfully', studentId: student._id });
   } catch (err) {
-    console.error('Student registration error:', err);
-    res.status(500).json({ success: false, message: 'Server error' });
+    console.error('❌ Student registration error:', err);
+    console.error('Error details:', {
+      message: err.message,
+      name: err.name,
+      code: err.code,
+      stack: err.stack
+    });
+    
+    // Provide more specific error messages
+    let errorMessage = 'Server error';
+    if (err.name === 'ValidationError') {
+      errorMessage = `Validation error: ${err.message}`;
+    } else if (err.name === 'MongoServerError' && err.code === 11000) {
+      // Duplicate key error
+      const field = Object.keys(err.keyPattern)[0];
+      errorMessage = `${field} already exists`;
+    } else if (err.message) {
+      errorMessage = err.message;
+    }
+    
+    res.status(500).json({ 
+      success: false, 
+      message: errorMessage,
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
   }
 });
 

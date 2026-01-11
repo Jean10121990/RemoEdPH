@@ -1,0 +1,519 @@
+/* Child-Friendly Styles for RemoEdPH - Ages 2-6 */
+
+/* Fun Animations */
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+@keyframes wiggle {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(-5deg); }
+    75% { transform: rotate(5deg); }
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-15px); }
+}
+
+@keyframes sparkle {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.7; transform: scale(1.2); }
+}
+
+@keyframes rainbow {
+    0% { filter: hue-rotate(0deg); }
+    100% { filter: hue-rotate(360deg); }
+}
+
+/* Color Palette - Based on RemoEdPH Logo (Blue, Yellow & Green Theme) */
+:root {
+    --logo-blue: #1CA7E7; /* Bright cerulean/sky blue from logo */
+    --logo-yellow: #FFD700; /* Bright yellow from Wi-Fi signal */
+    --logo-green: #A8E6CF; /* Light green from logo underline */
+    --primary-blue: #1CA7E7; /* Logo blue */
+    --primary-yellow: #FFD700; /* Logo yellow */
+    --primary-green: #A8E6CF; /* Logo green */
+    --primary-pink: #FF6B9D; /* Accent color for variety */
+    --primary-purple: #C8E6C9; /* Soft green-purple accent */
+    --primary-orange: #FF8B94; /* Warm accent */
+    --secondary-blue: #5CB3FF; /* Lighter blue variant */
+    --secondary-yellow: #FFE66D; /* Softer yellow variant */
+    --secondary-green: #95E1D3; /* Lighter green variant */
+    --fun-red: #FF6B6B;
+    --fun-green: #95E1D3;
+    --background-light: #F0F8FF; /* Light blue tint */
+    --background-yellow: #FFFBF0; /* Light yellow tint */
+    --background-green: #F1F8F4; /* Light green tint */
+    --background-blue: #E8F4FD; /* Soft blue background */
+    --background-gradient: linear-gradient(135deg, #E8F4FD 0%, #FFFBF0 50%, #F1F8F4 100%);
+    --text-dark: #1E3A5F; /* Darker blue for text */
+    --text-light: #4A6FA5; /* Medium blue for secondary text */
+}
+
+/* Child-Friendly Typography - Logo Colors */
+body {
+    font-family: 'Comic Sans MS', 'Chalkboard SE', 'Trebuchet MS', 'Segoe UI', sans-serif;
+    background: var(--background-gradient);
+    background-attachment: fixed;
+}
+
+/* Fun Sidebar - Logo Colors */
+.remoed-sidebar {
+    background: linear-gradient(180deg, #FFFFFF 0%, #F0F8FF 100%);
+    box-shadow: 4px 0 20px rgba(28, 167, 231, 0.2);
+    border-right: 4px solid var(--logo-blue);
+}
+
+.remoed-logo {
+    position: relative;
+}
+
+.remoed-logo::before {
+    content: '📚📶';
+    display: block;
+    font-size: 2rem;
+    margin-bottom: 8px;
+    animation: bounce 2s ease-in-out infinite;
+}
+
+.remoed-title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--logo-blue);
+    text-shadow: 2px 2px 4px rgba(28, 167, 231, 0.2);
+    letter-spacing: 1px;
+}
+
+.remoed-avatar {
+    background: linear-gradient(135deg, var(--logo-blue), var(--secondary-blue));
+    box-shadow: 0 4px 15px rgba(28, 167, 231, 0.4);
+    border: 4px solid var(--logo-yellow);
+    animation: bounce 2s ease-in-out infinite;
+}
+
+.remoed-avatar:hover {
+    animation: wiggle 0.5s ease-in-out;
+    transform: scale(1.1);
+}
+
+.remoed-menu li {
+    padding: 16px 24px;
+    font-size: 1rem;
+    font-weight: 600;
+    border-radius: 20px;
+    margin: 4px 12px;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.remoed-menu li:hover {
+    background: linear-gradient(135deg, var(--logo-blue), var(--secondary-blue));
+    color: white !important;
+    transform: translateX(10px) scale(1.05);
+    box-shadow: 0 4px 15px rgba(28, 167, 231, 0.4);
+}
+
+.remoed-menu li.active {
+    background: linear-gradient(135deg, var(--logo-blue), var(--secondary-blue));
+    color: white !important;
+    border-left: 6px solid var(--logo-yellow);
+    box-shadow: 0 4px 15px rgba(28, 167, 231, 0.4);
+    animation: sparkle 2s ease-in-out infinite;
+}
+
+.remoed-menu svg {
+    width: 24px;
+    height: 24px;
+    margin-right: 12px;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+}
+
+/* Fun Buttons - Logo Colors with Green Accent */
+.fun-btn {
+    background: linear-gradient(135deg, var(--logo-blue), var(--secondary-blue));
+    color: white;
+    border: 2px solid var(--logo-yellow);
+    border-bottom: 3px solid var(--logo-green);
+    border-radius: 25px;
+    padding: 14px 28px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 6px 20px rgba(28, 167, 231, 0.4), 0 0 0 2px var(--logo-yellow), 0 4px 0 rgba(168, 230, 207, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+.fun-btn:hover {
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 8px 25px rgba(28, 167, 231, 0.6), 0 0 0 3px var(--logo-yellow), 0 6px 0 rgba(168, 230, 207, 0.4);
+    animation: bounce 0.5s ease-in-out;
+    background: linear-gradient(135deg, var(--logo-yellow), var(--secondary-yellow));
+    color: var(--logo-blue);
+    border-color: var(--logo-blue);
+    border-bottom-color: var(--logo-green);
+}
+
+.fun-btn:active {
+    transform: scale(0.95);
+}
+
+.fun-btn::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+}
+
+.fun-btn:hover::before {
+    width: 300px;
+    height: 300px;
+}
+
+/* Star Rating System - Logo Yellow */
+.star-rating {
+    display: flex;
+    gap: 8px;
+    font-size: 2rem;
+}
+
+.star {
+    color: var(--logo-yellow);
+    text-shadow: 0 2px 4px rgba(255, 215, 0, 0.5);
+    animation: sparkle 2s ease-in-out infinite;
+    animation-delay: calc(var(--delay, 0) * 0.2s);
+    filter: drop-shadow(0 2px 4px rgba(255, 215, 0, 0.4));
+}
+
+/* Badge System - Logo Colors with Green Accent */
+.badge {
+    display: inline-block;
+    background: linear-gradient(135deg, var(--logo-yellow), var(--secondary-yellow));
+    color: var(--logo-blue);
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: 800;
+    font-size: 0.9rem;
+    box-shadow: 0 4px 10px rgba(255, 215, 0, 0.4), 0 0 0 2px var(--logo-blue), 0 2px 0 rgba(168, 230, 207, 0.3);
+    animation: bounce 2s ease-in-out infinite;
+    border: 2px solid var(--logo-blue);
+    border-bottom: 3px solid var(--logo-green);
+}
+
+.badge::before {
+    content: '⭐ ';
+}
+
+/* Progress Bars - Logo Colors */
+.fun-progress {
+    background: #FFF;
+    border-radius: 20px;
+    height: 30px;
+    overflow: hidden;
+    box-shadow: inset 0 2px 8px rgba(0,0,0,0.1);
+    border: 3px solid var(--logo-blue);
+    position: relative;
+}
+
+.fun-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--logo-blue), var(--secondary-blue), var(--logo-yellow));
+    border-radius: 20px;
+    transition: width 0.6s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.fun-progress-bar::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+/* Fun Cards - Logo Colors with Green Accent */
+.fun-card {
+    background: white;
+    border-radius: 25px;
+    padding: 24px;
+    box-shadow: 0 8px 25px rgba(28, 167, 231, 0.2), 0 2px 0 rgba(168, 230, 207, 0.2);
+    border: 3px solid var(--logo-blue);
+    border-bottom: 4px solid var(--logo-green);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.fun-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255, 107, 157, 0.1) 0%, transparent 70%);
+    animation: rotate 10s linear infinite;
+}
+
+@keyframes rotate {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.fun-card:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 12px 35px rgba(28, 167, 231, 0.4), 0 4px 0 rgba(168, 230, 207, 0.3);
+    border-color: var(--logo-yellow);
+    border-width: 4px;
+    border-bottom-width: 5px;
+}
+
+/* Floating Elements */
+.floating-element {
+    position: absolute;
+    font-size: 3rem;
+    animation: float 3s ease-in-out infinite;
+    opacity: 0.6;
+    pointer-events: none;
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.1));
+}
+
+.floating-element:nth-child(1) { animation-delay: 0s; }
+.floating-element:nth-child(2) { animation-delay: 0.5s; }
+.floating-element:nth-child(3) { animation-delay: 1s; }
+.floating-element:nth-child(4) { animation-delay: 1.5s; }
+.floating-element:nth-child(5) { animation-delay: 2s; }
+.floating-element:nth-child(6) { animation-delay: 2.5s; }
+
+/* Cultural Exploration Card - Logo Colors */
+.cultural-card {
+    background: linear-gradient(135deg, #E8F4FD, #FFFBF0);
+    border: 4px dashed var(--logo-blue);
+    border-radius: 25px;
+    padding: 24px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 8px 25px rgba(28, 167, 231, 0.2);
+}
+
+.cultural-card::before {
+    content: '📚🌍';
+    position: absolute;
+    top: -20px;
+    right: -20px;
+    font-size: 8rem;
+    opacity: 0.15;
+    animation: float 4s ease-in-out infinite;
+}
+
+.cultural-card:hover {
+    border-color: var(--logo-yellow);
+    border-style: solid;
+    transform: scale(1.02);
+}
+
+.cultural-flag {
+    font-size: 4rem;
+    margin: 16px;
+    animation: bounce 2s ease-in-out infinite;
+}
+
+/* Game-like Achievement System - Logo Colors */
+.achievement-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(135deg, var(--logo-yellow), var(--secondary-yellow));
+    color: var(--logo-blue);
+    padding: 12px 20px;
+    border-radius: 25px;
+    font-weight: 800;
+    font-size: 1rem;
+    box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4), 0 0 0 2px var(--logo-blue);
+    border: 2px solid var(--logo-blue);
+    margin: 8px;
+    animation: sparkle 2s ease-in-out infinite;
+}
+
+/* Points Display - Logo Colors with Green Accent */
+.points-display {
+    background: linear-gradient(135deg, var(--logo-blue), var(--secondary-blue));
+    color: white;
+    padding: 12px 24px;
+    border-radius: 25px;
+    font-weight: 800;
+    font-size: 1.2rem;
+    box-shadow: 0 6px 20px rgba(28, 167, 231, 0.4), 0 0 0 2px var(--logo-yellow), 0 4px 0 rgba(168, 230, 207, 0.3);
+    border: 2px solid var(--logo-yellow);
+    border-bottom: 3px solid var(--logo-green);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.points-display::before {
+    content: '⭐';
+    font-size: 1.5rem;
+    animation: sparkle 1s ease-in-out infinite;
+    color: var(--logo-yellow);
+    filter: drop-shadow(0 2px 4px rgba(255, 215, 0, 0.5));
+}
+
+/* Fun Input Fields - Logo Colors */
+.fun-input {
+    border: 3px solid var(--logo-blue);
+    border-radius: 20px;
+    padding: 14px 20px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    background: white;
+    color: var(--text-dark);
+}
+
+.fun-input:focus {
+    outline: none;
+    border-color: var(--logo-yellow);
+    box-shadow: 0 0 0 4px rgba(255, 215, 0, 0.2);
+    transform: scale(1.02);
+}
+
+/* Celebration Animation */
+@keyframes celebrate {
+    0%, 100% { transform: scale(1) rotate(0deg); }
+    25% { transform: scale(1.2) rotate(-10deg); }
+    50% { transform: scale(1.3) rotate(10deg); }
+    75% { transform: scale(1.2) rotate(-10deg); }
+}
+
+.celebrate {
+    animation: celebrate 0.6s ease-in-out;
+}
+
+        /* Safe Content Indicator - Logo Colors with Green Accent */
+.safe-content-badge {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, var(--logo-blue), var(--secondary-blue));
+    color: white;
+    padding: 12px 20px;
+    border-radius: 25px;
+    font-weight: 700;
+    font-size: 0.9rem;
+    box-shadow: 0 6px 20px rgba(28, 167, 231, 0.4), 0 0 0 2px var(--logo-yellow), 0 4px 0 rgba(168, 230, 207, 0.3);
+    border: 2px solid var(--logo-yellow);
+    border-bottom: 3px solid var(--logo-green);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    animation: bounce 3s ease-in-out infinite;
+}
+
+.safe-content-badge::before {
+    content: '🛡️';
+    font-size: 1.3rem;
+}
+
+@keyframes fadeOut {
+    from { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    to { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+}
+
+@keyframes celebrate {
+    0%, 100% { transform: scale(1) rotate(0deg); }
+    25% { transform: scale(1.2) rotate(-10deg); }
+    50% { transform: scale(1.3) rotate(10deg); }
+    75% { transform: scale(1.2) rotate(-10deg); }
+}
+
+/* Responsive Design for Kids */
+@media (max-width: 768px) {
+    .fun-btn {
+        padding: 12px 20px;
+        font-size: 1rem;
+    }
+    
+    .fun-card {
+        padding: 16px;
+    }
+    
+    .remoed-menu li {
+        font-size: 0.9rem;
+        padding: 12px 16px;
+    }
+}
+
+/* Large Touch Targets for Small Fingers */
+.fun-btn,
+.remoed-menu li,
+.fun-card {
+    min-height: 44px;
+    min-width: 44px;
+}
+
+/* High Contrast for Readability - Logo Colors */
+h1, h2, h3, h4, h5, h6 {
+    color: var(--logo-blue);
+    text-shadow: 2px 2px 4px rgba(255, 255, 255, 0.9);
+    font-weight: 800;
+}
+
+p, span {
+    color: var(--text-dark);
+    line-height: 1.8;
+}
+
+/* Selection Cards - Logo Colors */
+.selection-card.active {
+    background: linear-gradient(135deg, var(--logo-blue), var(--secondary-blue));
+    color: white;
+    border-color: var(--logo-yellow);
+    border-width: 3px;
+    box-shadow: 0 8px 20px rgba(28, 167, 231, 0.4), 0 0 0 2px var(--logo-yellow);
+}
+
+.selection-card:hover {
+    border-color: var(--logo-yellow);
+    box-shadow: 0 8px 20px rgba(28, 167, 231, 0.3);
+}
+
+/* Fun Scrollbar - Logo Colors */
+::-webkit-scrollbar {
+    width: 12px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--background-light);
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, var(--logo-blue), var(--logo-yellow));
+    border-radius: 10px;
+    border: 2px solid var(--background-light);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, var(--logo-yellow), var(--logo-blue));
+}

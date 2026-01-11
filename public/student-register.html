@@ -318,6 +318,140 @@
       transform: translateY(0);
     }
     
+    /* Plan Selection Modal */
+    .plan-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 3000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    
+    .plan-modal-content {
+      background: white;
+      border-radius: 20px;
+      padding: 40px;
+      max-width: 1200px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      position: relative;
+    }
+    
+    .plans-grid-modal {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 24px;
+      margin-top: 30px;
+    }
+    
+    .plan-card-modal {
+      background: white;
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      text-align: center;
+      transition: all 0.3s ease;
+      border: 3px solid transparent;
+      position: relative;
+    }
+    
+    .plan-card-modal.featured-modal {
+      border-color: #FFD700;
+      transform: scale(1.05);
+    }
+    
+    .plan-card-modal:hover {
+      transform: translateY(-5px);
+      border-color: #667eea;
+      box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+    }
+    
+    .plan-card-modal.featured-modal:hover {
+      transform: scale(1.08) translateY(-5px);
+    }
+    
+    .plan-badge-modal {
+      position: absolute;
+      top: -12px;
+      right: 15px;
+      background: linear-gradient(135deg, #FFD700, #FFE66D);
+      color: #1E3A5F;
+      padding: 6px 16px;
+      border-radius: 15px;
+      font-weight: 800;
+      font-size: 0.85rem;
+    }
+    
+    .plan-name-modal {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: #667eea;
+      margin-bottom: 10px;
+    }
+    
+    .plan-price-modal {
+      font-size: 2.5rem;
+      font-weight: 800;
+      color: #667eea;
+      margin-bottom: 5px;
+    }
+    
+    .plan-period-modal {
+      color: #4A6FA5;
+      margin-bottom: 16px;
+      font-size: 0.9rem;
+    }
+    
+    .plan-features-modal {
+      list-style: none;
+      margin: 20px 0;
+      text-align: left;
+      padding: 0;
+    }
+    
+    .plan-features-modal li {
+      padding: 8px 0;
+      color: #1E3A5F;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.9rem;
+    }
+    
+    .plan-features-modal li::before {
+      content: '✓';
+      color: #4CAF50;
+      font-weight: 800;
+      font-size: 1.2rem;
+    }
+    
+    .plan-btn-modal {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(45deg, #667eea, #764ba2);
+      color: white;
+      border: 2px solid #FFD700;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin-top: 20px;
+    }
+    
+    .plan-btn-modal:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+    
     /* Responsive design for different screen sizes and zoom levels */
     @media (max-width: 768px) {
       body {
@@ -436,6 +570,79 @@
       <a href="index.html">🏠 Back to Home</a>
     </div>
   </div>
+
+  <!-- Plan Selection Modal -->
+  <div id="plan-selection-modal" class="plan-modal" style="display: none;">
+    <div class="plan-modal-content">
+      <h2 style="color: #667eea; margin-bottom: 24px; text-align: center;">📚 Choose Your Learning Plan 📚</h2>
+      <p style="text-align: center; color: #666; margin-bottom: 30px;">Select a subscription plan to continue (Testing Mode - All plans are FREE!)</p>
+      
+      <div class="plans-grid-modal">
+        <div class="plan-card-modal">
+          <div class="plan-name-modal">1 Month</div>
+          <div class="plan-price-modal">$0</div>
+          <div class="plan-period-modal">per month</div>
+          <div style="color: #4CAF50; font-weight: 700; margin-bottom: 16px; font-size: 1.1rem;">🆓 FREE!</div>
+          <ul class="plan-features-modal">
+            <li>Unlimited Classes</li>
+            <li>All Learning Games</li>
+            <li>Progress Tracking</li>
+            <li>Email Support</li>
+          </ul>
+          <button class="plan-btn-modal" onclick="selectSubscriptionPlan('1month', 0)">Choose Plan</button>
+        </div>
+        
+        <div class="plan-card-modal featured-modal">
+          <div class="plan-badge-modal">Popular</div>
+          <div class="plan-name-modal">3 Months</div>
+          <div class="plan-price-modal">$0</div>
+          <div class="plan-period-modal">per month</div>
+          <div style="color: #4CAF50; font-weight: 700; margin-bottom: 16px; font-size: 1.1rem;">🆓 FREE!</div>
+          <ul class="plan-features-modal">
+            <li>Unlimited Classes</li>
+            <li>All Learning Games</li>
+            <li>Progress Tracking</li>
+            <li>Priority Support</li>
+            <li>Free Assessment</li>
+          </ul>
+          <button class="plan-btn-modal" onclick="selectSubscriptionPlan('3months', 0)">Choose Plan</button>
+        </div>
+        
+        <div class="plan-card-modal">
+          <div class="plan-name-modal">6 Months</div>
+          <div class="plan-price-modal">$0</div>
+          <div class="plan-period-modal">per month</div>
+          <div style="color: #4CAF50; font-weight: 700; margin-bottom: 16px; font-size: 1.1rem;">🆓 FREE!</div>
+          <ul class="plan-features-modal">
+            <li>Unlimited Classes</li>
+            <li>All Learning Games</li>
+            <li>Progress Tracking</li>
+            <li>Priority Support</li>
+            <li>Free Assessment</li>
+            <li>Bonus Learning Materials</li>
+          </ul>
+          <button class="plan-btn-modal" onclick="selectSubscriptionPlan('6months', 0)">Choose Plan</button>
+        </div>
+        
+        <div class="plan-card-modal">
+          <div class="plan-name-modal">1 Year</div>
+          <div class="plan-price-modal">$0</div>
+          <div class="plan-period-modal">per month</div>
+          <div style="color: #4CAF50; font-weight: 700; margin-bottom: 16px; font-size: 1.1rem;">🆓 FREE!</div>
+          <ul class="plan-features-modal">
+            <li>Unlimited Classes</li>
+            <li>All Learning Games</li>
+            <li>Progress Tracking</li>
+            <li>Priority Support</li>
+            <li>Free Assessment</li>
+            <li>Bonus Learning Materials</li>
+            <li>Certificate of Completion</li>
+          </ul>
+          <button class="plan-btn-modal" onclick="selectSubscriptionPlan('1year', 0)">Choose Plan</button>
+        </div>
+      </div>
+    </div>
+  </div>
   
   <script>
     // Password toggle functionality
@@ -518,15 +725,19 @@
         const data = await response.json();
         
         if (data.success) {
-          errorDiv.textContent = '✅ Registration successful! Redirecting to login...';
+          errorDiv.textContent = '✅ Registration successful! Please choose a subscription plan.';
           errorDiv.className = 'register-error register-success';
           errorDiv.style.display = 'block';
           submitBtn.textContent = '✅ Success!';
           
-          // Redirect after a short delay
+          // Store registration data for plan selection
+          localStorage.setItem('newStudentEmail', email);
+          localStorage.setItem('newStudentUsername', username);
+          
+          // Show plan selection modal
           setTimeout(() => {
-            window.location.href = 'student-login.html';
-          }, 2000);
+            document.getElementById('plan-selection-modal').style.display = 'flex';
+          }, 1000);
         } else {
           errorDiv.textContent = data.message || 'Registration failed. Please try again.';
           errorDiv.className = 'register-error';
@@ -543,6 +754,120 @@
         submitBtn.disabled = false;
       }
     };
+    
+    // Plan selection function
+    async function selectSubscriptionPlan(plan, price) {
+      const email = localStorage.getItem('newStudentEmail');
+      const username = localStorage.getItem('newStudentUsername');
+      
+      if (!email) {
+        alert('Error: Email not found. Please register again.');
+        return;
+      }
+      
+      // Show loading state
+      const planCards = document.querySelectorAll('.plan-card-modal');
+      planCards.forEach(card => {
+        const btn = card.querySelector('.plan-btn-modal');
+        if (btn) {
+          btn.disabled = true;
+          btn.textContent = '⏳ Processing...';
+        }
+      });
+      
+      try {
+        // Subscribe to plan
+        const subscribeResponse = await fetch('/api/student/subscribe', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            email: email,
+            plan: plan,
+            planPrice: price
+          })
+        });
+        
+        const subscribeResult = await subscribeResponse.json();
+        
+        if (!subscribeResponse.ok) {
+          throw new Error(subscribeResult.error || 'Subscription failed');
+        }
+        
+        // Send subscription confirmation email
+        try {
+          const emailResponse = await fetch('/api/student/send-subscription-email', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              email: email,
+              username: username,
+              plan: plan,
+              planPrice: price
+            })
+          });
+          
+          if (!emailResponse.ok) {
+            console.warn('Email sending failed, but subscription succeeded');
+          }
+        } catch (emailError) {
+          console.warn('Email error:', emailError);
+        }
+        
+        // Show success message
+        const modalContent = document.querySelector('.plan-modal-content');
+        modalContent.innerHTML = `
+          <div style="text-align: center; padding: 40px;">
+            <div style="font-size: 4rem; margin-bottom: 20px;">✅</div>
+            <h2 style="color: #667eea; margin-bottom: 20px;">Subscription Confirmed! 🎉</h2>
+            <p style="color: #666; margin-bottom: 30px; font-size: 1.1rem;">
+              Your subscription has been activated successfully!<br>
+              A confirmation email has been sent to <strong>${email}</strong>
+            </p>
+            <p style="color: #4CAF50; font-weight: 700; margin-bottom: 30px;">
+              Plan: ${plan === '1month' ? '1 Month' : plan === '3months' ? '3 Months' : plan === '6months' ? '6 Months' : '1 Year'}
+            </p>
+            <button onclick="goToLogin()" style="
+              padding: 14px 40px;
+              background: linear-gradient(45deg, #667eea, #764ba2);
+              color: white;
+              border: none;
+              border-radius: 10px;
+              font-size: 1.1rem;
+              font-weight: 700;
+              cursor: pointer;
+              transition: all 0.3s ease;
+            ">Go to Login 🚀</button>
+          </div>
+        `;
+        
+      } catch (error) {
+        console.error('Subscription error:', error);
+        alert('Error subscribing to plan: ' + error.message);
+        
+        // Reset buttons
+        const planCards = document.querySelectorAll('.plan-card-modal');
+        planCards.forEach(card => {
+          const btn = card.querySelector('.plan-btn-modal');
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = 'Choose Plan';
+          }
+        });
+      }
+    }
+    
+    function goToLogin() {
+      // Clear temporary data
+      localStorage.removeItem('newStudentEmail');
+      localStorage.removeItem('newStudentUsername');
+      
+      // Redirect to login
+      window.location.href = 'student-login.html';
+    }
   </script>
 </body>
 </html> 

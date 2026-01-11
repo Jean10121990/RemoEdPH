@@ -118,7 +118,11 @@ router.get('/profile', verifyToken, requireStudent, async (req, res) => {
         aboutMe: student.aboutMe,
         profilePicture: student.profilePicture,
         education: student.education,
-        documents: student.documents
+        documents: student.documents,
+        cefrLevel: student.cefrLevel,
+        leveling: student.leveling,
+        assessmentScore: student.assessmentScore,
+        assessmentDate: student.assessmentDate
       }
     });
   } catch (error) {
@@ -689,6 +693,239 @@ router.post('/update-settings', verifyToken, requireStudent, async (req, res) =>
     
   } catch (error) {
     console.error('❌ Error updating student settings:', error);
+    res.status(500).json({ error: 'Server error: ' + error.message });
+  }
+});
+
+// Save assessment result
+router.post('/save-assessment', verifyToken, requireStudent, async (req, res) => {
+  try {
+    console.log('🎯 Assessment result submission received');
+    console.log('🔍 Student ID:', req.user.studentId);
+    console.log('🔍 Request body:', req.body);
+    
+    const { cefrLevel, score, date } = req.body;
+    
+    // Validate required fields
+    if (!cefrLevel || score === undefined) {
+      console.log('❌ Missing required fields');
+      return res.status(400).json({ error: 'Missing required fields: cefrLevel, score' });
+    }
+    
+    // Validate CEFR level (allow A3 for custom levels)
+    const validLevels = ['A1', 'A2', 'A3', 'B1', 'B2', 'C1', 'C2'];
+    if (!validLevels.includes(cefrLevel)) {
+      console.log('⚠️ Non-standard CEFR level:', cefrLevel, '- allowing it for custom leveling system');
+      // Don't reject, just log a warning - allows for custom leveling
+    }
+    
+    // Find and update student
+    const student = await Student.findById(req.user.studentId);
+    if (!student) {
+      console.log('❌ Student not found');
+      return res.status(404).json({ error: 'Student not found' });
+    }
+    
+    // Update assessment data
+    student.cefrLevel = cefrLevel;
+    student.leveling = cefrLevel; // Save to leveling field for custom leveling system
+    student.assessmentScore = score;
+    student.assessmentDate = date ? new Date(date) : new Date();
+    
+    // Also update the legacy level field for backward compatibility
+    if (cefrLevel === 'A1' || cefrLevel === 'A2') {
+      student.level = 'Beginner';
+    } else if (cefrLevel === 'B1' || cefrLevel === 'B2') {
+      student.level = 'Intermediate';
+    } else if (cefrLevel === 'C1' || cefrLevel === 'C2') {
+      student.level = 'Advanced';
+    }
+    
+    await student.save();
+    
+    console.log('✅ Assessment result saved successfully:', {
+      cefrLevel: student.cefrLevel,
+      leveling: student.leveling,
+      score: student.assessmentScore,
+      date: student.assessmentDate
+    });
+    
+    res.json({
+      success: true,
+      message: 'Assessment result saved successfully',
+      assessment: {
+        cefrLevel: student.cefrLevel,
+        leveling: student.leveling,
+        score: student.assessmentScore,
+        date: student.assessmentDate
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error saving assessment result:', error);
+    res.status(500).json({ error: 'Server error: ' + error.message });
+  }
+});
+
+// Subscribe to a plan (for landing page)
+router.post('/subscribe', async (req, res) => {
+  try {
+    console.log('💳 Subscription request received:', req.body);
+    
+    const { email, plan, planPrice, assessmentData } = req.body;
+    
+    if (!email || !plan) {
+      return res.status(400).json({ error: 'Email and plan are required' });
+    }
+    
+    // Find student by email
+    const student = await Student.findOne({ email });
+    if (!student) {
+      return res.status(404).json({ error: 'Student not found. Please register first.' });
+    }
+    
+    // Calculate subscription dates
+    const startDate = new Date();
+    const endDate = new Date();
+    
+    switch(plan) {
+      case '1month':
+        endDate.setMonth(endDate.getMonth() + 1);
+        break;
+      case '3months':
+        endDate.setMonth(endDate.getMonth() + 3);
+        break;
+      case '6months':
+        endDate.setMonth(endDate.getMonth() + 6);
+        break;
+      case '1year':
+        endDate.setFullYear(endDate.getFullYear() + 1);
+        break;
+      default:
+        return res.status(400).json({ error: 'Invalid plan' });
+    }
+    
+    // Update student subscription
+    student.subscriptionPlan = plan;
+    student.subscriptionStartDate = startDate;
+    student.subscriptionEndDate = endDate;
+    student.subscriptionStatus = 'active';
+    
+    await student.save();
+    
+    console.log('✅ Subscription saved successfully:', {
+      email,
+      plan,
+      startDate,
+      endDate
+    });
+    
+    res.json({
+      success: true,
+      message: 'Subscription activated successfully',
+      subscription: {
+        plan,
+        startDate,
+        endDate
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error processing subscription:', error);
+    res.status(500).json({ error: 'Server error: ' + error.message });
+  }
+});
+
+// Send subscription confirmation email
+router.post('/send-subscription-email', async (req, res) => {
+  try {
+    console.log('📧 Subscription confirmation email request:', req.body);
+    
+    const { email, username, plan, planPrice } = req.body;
+    
+    if (!email || !plan) {
+      return res.status(400).json({ error: 'Email and plan are required' });
+    }
+    
+    const emailService = require('./emailService');
+    const emailResult = await emailService.sendSubscriptionEmail(
+      email,
+      username || email.split('@')[0],
+      plan,
+      planPrice || 0
+    );
+    
+    if (emailResult.success) {
+      console.log('✅ Subscription confirmation email sent successfully');
+      res.json({
+        success: true,
+        message: 'Subscription confirmation email sent successfully',
+        messageId: emailResult.messageId
+      });
+    } else {
+      console.warn('⚠️ Email sending failed (may not be configured):', emailResult.error);
+      res.json({
+        success: false,
+        message: 'Email service not configured, but subscription is active',
+        fallback: emailResult.fallback,
+        error: emailResult.error
+      });
+    }
+  } catch (error) {
+    console.error('❌ Error sending subscription confirmation email:', error);
+    res.status(500).json({ error: 'Server error: ' + error.message });
+  }
+});
+
+// Send assessment result email
+router.post('/send-assessment-email', async (req, res) => {
+  try {
+    console.log('📧 Assessment email request received:', req.body);
+    
+    const { email, childName, parentEmail, contactNumber, cefrLevel, score } = req.body;
+    
+    if (!parentEmail && !email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+    
+    if (!childName) {
+      return res.status(400).json({ error: 'Child name is required' });
+    }
+    
+    // Get assessment result from request or from student record
+    let finalCefrLevel = cefrLevel;
+    let finalScore = score;
+    
+    if (!finalCefrLevel || !finalScore) {
+      // Try to find student and get their assessment
+      const student = await Student.findOne({ email: parentEmail || email });
+      if (student) {
+        finalCefrLevel = student.cefrLevel || student.leveling || 'Not assessed yet';
+        finalScore = student.assessmentScore || 0;
+      }
+    }
+    
+    // Send email using email service
+    const emailService = require('./emailService');
+    const emailResult = await emailService.sendAssessmentEmail(
+      parentEmail || email,
+      childName,
+      finalCefrLevel || 'A1',
+      finalScore || 0
+    );
+    
+    if (emailResult.success) {
+      console.log('✅ Assessment email sent successfully');
+      res.json({ success: true, message: 'Assessment results emailed successfully' });
+    } else {
+      console.log('⚠️ Email not configured, but assessment data available');
+      res.json({ 
+        success: true, 
+        message: 'Assessment data available. Email not configured.',
+        fallback: true,
+        assessment: { cefrLevel: finalCefrLevel, score: finalScore }
+      });
+    }
+  } catch (error) {
+    console.error('❌ Error sending assessment email:', error);
     res.status(500).json({ error: 'Server error: ' + error.message });
   }
 });

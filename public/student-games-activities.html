@@ -1,0 +1,1552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎮 Play & Learn - RemoEdPH</title>
+    <link rel="stylesheet" href="modern-styles.css">
+    <link rel="stylesheet" href="child-friendly-styles.css">
+    <style>
+        body { 
+            font-family: 'Comic Sans MS', 'Chalkboard SE', 'Trebuchet MS', 'Segoe UI', sans-serif; 
+            background: linear-gradient(135deg, #FFF0F5 0%, #E8F8F5 50%, #FFF9E6 100%);
+            background-attachment: fixed;
+            margin: 0;
+            padding: 0;
+        }
+        .remoed-main { 
+            display: flex; 
+            min-height: 100vh; 
+        }
+        .remoed-sidebar { 
+            width: 260px; 
+            min-width: 260px;
+            background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%); 
+            box-shadow: 4px 0 20px rgba(102, 126, 234, 0.1); 
+            padding: 0; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: stretch;
+            position: fixed;
+            height: 100vh;
+            z-index: 100;
+            border-right: 1px solid rgba(102, 126, 234, 0.1);
+        }
+        .remoed-content {
+            flex: 1;
+            padding: 36px 32px;
+            min-width: 0;
+            background: transparent;
+            min-height: 100vh;
+            box-sizing: border-box;
+            margin-left: 260px;
+            max-width: calc(100vw - 260px);
+            overflow-x: auto;
+        }
+        .remoed-logo { 
+            height: 100px; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            gap: 8px; 
+            padding-top: 5px; 
+        }
+        .remoed-logo img { 
+            height: 40px; 
+            width: auto; 
+            display: inline-block; 
+            vertical-align: middle; 
+        }
+        .remoed-title { 
+            font-size: 1.3rem; 
+            font-weight: 700; 
+            color: #667eea; 
+            letter-spacing: 1px; 
+        }
+        .remoed-user { 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            margin-bottom: 24px; 
+        }
+        .remoed-avatar { 
+            width: 60px; 
+            height: 60px; 
+            border-radius: 50%; 
+            background: linear-gradient(135deg, #667eea, #5a67d8); 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            color: white; 
+            font-weight: bold; 
+            font-size: 1.5rem; 
+            margin-bottom: 8px; 
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .remoed-username { 
+            font-size: 0.9rem; 
+            color: #333; 
+            font-weight: 500; 
+        }
+        .remoed-menu { 
+            list-style: none; 
+            padding: 0; 
+            margin: 0; 
+            flex: 1; 
+            display: flex; 
+            flex-direction: column; 
+        }
+        .remoed-menu li { 
+            padding: 14px 32px; 
+            color: #667eea; 
+            font-weight: 500; 
+            cursor: pointer; 
+            display: flex; 
+            align-items: center; 
+            gap: 12px; 
+            border-left: 4px solid transparent; 
+            transition: background 0.2s, border-color 0.2s; 
+        }
+        .remoed-menu li.active, .remoed-menu li:hover { 
+            background: linear-gradient(90deg, #667eea 0%, #5a67d8 100%) !important; 
+            border-left: 4px solid #667eea !important; 
+            color: white !important; 
+            transform: translateX(4px) !important; 
+            transition: all 0.3s ease !important; 
+        }
+        .remoed-menu svg { 
+            width: 20px; 
+            height: 20px; 
+            stroke: currentColor; 
+        }
+
+        /* Games and Activities Styles */
+        .games-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .page-header {
+            margin-bottom: 32px;
+        }
+
+        .page-header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #667eea;
+            margin: 0 0 8px 0;
+        }
+
+        .page-header p {
+            color: #666;
+            font-size: 1rem;
+            margin: 0;
+        }
+
+        .selection-section {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+            margin-bottom: 32px;
+        }
+
+        .selection-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .selection-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .selection-card {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border: 2px solid transparent;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .selection-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.2);
+            border-color: #667eea;
+        }
+
+        .selection-card.active {
+            background: linear-gradient(135deg, #667eea 0%, #5a67d8 100%);
+            color: white;
+            border-color: #667eea;
+        }
+
+        .selection-card .icon {
+            font-size: 2.5rem;
+            margin-bottom: 12px;
+        }
+
+        .selection-card .label {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .game-display {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+            min-height: 500px;
+        }
+
+        .game-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .game-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .game-content {
+            display: none;
+        }
+
+        .game-content.active {
+            display: block;
+        }
+
+        /* Reading Game Styles */
+        .word-card {
+            background: linear-gradient(135deg, #667eea 0%, #5a67d8 100%);
+            color: white;
+            border-radius: 16px;
+            padding: 40px;
+            text-align: center;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
+        }
+
+        .word-card .word {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        .word-card .phonetic {
+            font-size: 1.25rem;
+            opacity: 0.9;
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
+            margin: 24px 0;
+        }
+
+        .option-btn {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 20px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .option-btn:hover {
+            background: #e9ecef;
+            transform: scale(1.05);
+        }
+
+        .option-btn.correct {
+            background: #d4edda;
+            border-color: #28a745;
+            color: #155724;
+        }
+
+        .option-btn.incorrect {
+            background: #f8d7da;
+            border-color: #dc3545;
+            color: #721c24;
+        }
+
+        /* Speaking Game Styles */
+        .speaking-card {
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 16px;
+            padding: 32px;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .speaking-card .phrase {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 24px;
+        }
+
+        .record-btn {
+            background: linear-gradient(135deg, #667eea 0%, #5a67d8 100%);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 80px;
+            height: 80px;
+            font-size: 2rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .record-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .record-btn.recording {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        /* Writing Game Styles */
+        .writing-prompt {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            border-radius: 8px;
+            padding: 24px;
+            margin: 20px 0;
+        }
+
+        .writing-prompt h3 {
+            margin: 0 0 12px 0;
+            color: #667eea;
+            font-size: 1.25rem;
+        }
+
+        .writing-area {
+            width: 100%;
+            min-height: 200px;
+            padding: 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-family: inherit;
+            resize: vertical;
+            margin: 16px 0;
+        }
+
+        .writing-area:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        /* Listening Game Styles */
+        .audio-player {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .audio-btn {
+            background: linear-gradient(135deg, #667eea 0%, #5a67d8 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 12px 24px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .audio-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        /* Good Moral Activity Styles */
+        .moral-card {
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+            border: 2px solid #ffc107;
+            border-radius: 16px;
+            padding: 32px;
+            margin: 20px 0;
+        }
+
+        .moral-card .title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #856404;
+            margin-bottom: 16px;
+        }
+
+        .moral-card .story {
+            font-size: 1.1rem;
+            color: #856404;
+            line-height: 1.8;
+            margin-bottom: 24px;
+        }
+
+        .moral-question {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 16px 0;
+        }
+
+        .feedback-message {
+            padding: 16px;
+            border-radius: 8px;
+            margin: 16px 0;
+            font-weight: 600;
+            display: none;
+        }
+
+        .feedback-message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+
+        .feedback-message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+
+        .score-display {
+            background: linear-gradient(135deg, #667eea 0%, #5a67d8 100%);
+            color: white;
+            border-radius: 12px;
+            padding: 16px 24px;
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin: 16px 0;
+        }
+
+        .next-btn {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 12px 32px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 16px;
+        }
+
+        .next-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+        }
+
+        @media (max-width: 768px) {
+            .remoed-sidebar {
+                position: relative;
+                width: 100%;
+                height: auto;
+            }
+            .remoed-content {
+                margin-left: 0;
+                max-width: 100%;
+                padding: 20px;
+            }
+            .selection-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="remoed-main">
+        <nav class="remoed-sidebar">
+            <div class="remoed-logo" style="position: relative;">
+                <img src="remoed-logo.png" alt="RemoEdPH Logo" style="height:50px; filter: drop-shadow(0 2px 4px rgba(28, 167, 231, 0.3));">
+                <span class="remoed-title" style="font-size:1.4rem; font-weight:800; color:#1CA7E7; letter-spacing:1px; text-shadow: 2px 2px 4px rgba(28, 167, 231, 0.2);">RemoEdPH</span>
+            </div>
+            <div class="remoed-user">
+                <div class="remoed-avatar" id="student-avatar" onclick="window.location.href='student-profile.html'" style="cursor: pointer;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+                    <img id="profile-image" class="avatar-img" src="" alt="Profile" style="display: none; width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">
+                    <span id="avatar-text" class="avatar-text">S</span>
+                </div>
+                <span class="remoed-username" id="remoed-username"></span>
+            </div>
+            <ul class="remoed-menu">
+                <li onclick="window.location.href='student-dashboard.html'">🏠 <span>My Home</span></li>
+                <li onclick="window.location.href='student-class-table.html'">📅 <span>My Schedule</span></li>
+                <li onclick="window.location.href='student-book.html'">➕ <span>Book a Class</span></li>
+                <li onclick="window.location.href='student-booking-history.html'">📜 <span>My Classes</span></li>
+                <li class="active">🎮 <span>Play & Learn</span></li>
+                <li onclick="window.location.href='student-profile.html'">👤 <span>My Profile</span></li>
+                <li onclick="window.location.href='student-assessment.html'">🎯 <span>My Level</span></li>
+                <li id="logout-nav" style="margin-top:auto; color:#e74c3c; cursor:pointer;">🚪 <span>Exit</span></li>
+            </ul>
+        </nav>
+        <div class="remoed-content">
+            <div class="games-container">
+                <div class="page-header">
+                    <h1 style="font-size: 2.5rem; font-weight: 800; color: #1CA7E7; text-shadow: 2px 2px 4px rgba(28, 167, 231, 0.2); margin-bottom: 12px; display: flex; align-items: center; gap: 12px; justify-content: center;">
+                        <span>📚📶</span>
+                        <span>🎮 Play & Learn! 🎨</span>
+                    </h1>
+                    <p style="font-size: 1.2rem; color: #636E72; font-weight: 600;">Have fun while learning new things! 🚀</p>
+                </div>
+
+                <div class="selection-section" style="background: white; border-radius: 25px; padding: 32px; box-shadow: 0 8px 25px rgba(255, 107, 157, 0.2); border: 3px solid #FF6B9D;">
+                    <div class="selection-title" style="font-size: 1.5rem; font-weight: 800; color: #2D3436; margin-bottom: 24px;">🎯 First, Choose Your Level!</div>
+                    <div class="selection-grid">
+                        <div class="selection-card fun-card" data-level="nursery" style="cursor: pointer;">
+                            <div class="icon" style="font-size: 4rem; margin-bottom: 16px; animation: bounce 2s ease-in-out infinite;">🌱</div>
+                            <div class="label" style="font-size: 1.3rem; font-weight: 800;">Nursery</div>
+                            <div style="font-size: 0.9rem; color: #636E72; margin-top: 8px;">For little learners!</div>
+                        </div>
+                        <div class="selection-card fun-card" data-level="kinder" style="cursor: pointer;">
+                            <div class="icon" style="font-size: 4rem; margin-bottom: 16px; animation: bounce 2s ease-in-out infinite; animation-delay: 0.2s;">🌟</div>
+                            <div class="label" style="font-size: 1.3rem; font-weight: 800;">Kinder</div>
+                            <div style="font-size: 0.9rem; color: #636E72; margin-top: 8px;">Keep growing!</div>
+                        </div>
+                        <div class="selection-card fun-card" data-level="preparatory" style="cursor: pointer;">
+                            <div class="icon" style="font-size: 4rem; margin-bottom: 16px; animation: bounce 2s ease-in-out infinite; animation-delay: 0.4s;">🚀</div>
+                            <div class="label" style="font-size: 1.3rem; font-weight: 800;">Preparatory</div>
+                            <div style="font-size: 0.9rem; color: #636E72; margin-top: 8px;">Ready for big adventures!</div>
+                        </div>
+                    </div>
+
+                    <div class="selection-title" style="font-size: 1.5rem; font-weight: 800; color: #2D3436; margin: 32px 0 24px 0;">🎨 Now, Pick What You Want to Practice!</div>
+                    <div class="selection-grid">
+                        <div class="selection-card fun-card" data-skill="reading" style="cursor: pointer;">
+                            <div class="icon" style="font-size: 3.5rem; margin-bottom: 12px;">📖</div>
+                            <div class="label" style="font-size: 1.2rem; font-weight: 800;">Reading</div>
+                        </div>
+                        <div class="selection-card fun-card" data-skill="speaking" style="cursor: pointer;">
+                            <div class="icon" style="font-size: 3.5rem; margin-bottom: 12px;">🎤</div>
+                            <div class="label" style="font-size: 1.2rem; font-weight: 800;">Speaking</div>
+                        </div>
+                        <div class="selection-card fun-card" data-skill="writing" style="cursor: pointer;">
+                            <div class="icon" style="font-size: 3.5rem; margin-bottom: 12px;">✍️</div>
+                            <div class="label" style="font-size: 1.2rem; font-weight: 800;">Writing</div>
+                        </div>
+                        <div class="selection-card fun-card" data-skill="listening" style="cursor: pointer;">
+                            <div class="icon" style="font-size: 3.5rem; margin-bottom: 12px;">👂</div>
+                            <div class="label" style="font-size: 1.2rem; font-weight: 800;">Listening</div>
+                        </div>
+                        <div class="selection-card fun-card" data-skill="moral" style="cursor: pointer;">
+                            <div class="icon" style="font-size: 3.5rem; margin-bottom: 12px;">💝</div>
+                            <div class="label" style="font-size: 1.2rem; font-weight: 800;">Being Kind</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="game-display fun-card" id="game-display" style="min-height: 400px;">
+                    <div class="game-header">
+                        <div class="game-title" style="font-size: 1.8rem; font-weight: 800; color: #2D3436;">✨ Choose Your Adventure Above! ✨</div>
+                    </div>
+                    <div class="game-content" style="text-align: center; padding: 40px;">
+                        <div style="font-size: 6rem; margin-bottom: 24px; animation: bounce 2s ease-in-out infinite;">🎮</div>
+                        <p style="color: #636E72; font-size: 1.3rem; font-weight: 600; line-height: 1.8;">
+                            Pick a level and a skill to start having fun while learning!<br>
+                            Every game you complete earns you stars! ⭐
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="avatar-helper.js"></script>
+    <script>
+        // Role-based access control
+        const userType = localStorage.getItem('userType');
+        if (userType !== 'student') {
+            alert('Access denied. This page is for students only.');
+            window.location.href = 'index.html';
+        }
+
+        // Load user info
+        document.addEventListener('DOMContentLoaded', function() {
+            const username = localStorage.getItem('remoedUsername');
+            const studentId = localStorage.getItem('studentId');
+            
+            if (username) {
+                document.getElementById('remoed-username').textContent = username;
+                document.getElementById('avatar-text').textContent = username[0].toUpperCase();
+            }
+            
+            if (studentId) {
+                loadProfilePicture(studentId);
+            }
+            
+            document.getElementById('logout-nav').onclick = function() {
+                localStorage.clear();
+                window.location.href = 'student-login.html';
+            };
+            
+            setupGameSelection();
+        });
+
+        let selectedLevel = null;
+        let selectedSkill = null;
+
+        function setupGameSelection() {
+            const levelCards = document.querySelectorAll('[data-level]');
+            const skillCards = document.querySelectorAll('[data-skill]');
+
+            levelCards.forEach(card => {
+                card.addEventListener('click', () => {
+                    levelCards.forEach(c => c.classList.remove('active'));
+                    card.classList.add('active');
+                    selectedLevel = card.dataset.level;
+                    if (selectedLevel && selectedSkill) {
+                        loadGame(selectedLevel, selectedSkill);
+                    }
+                });
+            });
+
+            skillCards.forEach(card => {
+                card.addEventListener('click', () => {
+                    skillCards.forEach(c => c.classList.remove('active'));
+                    card.classList.add('active');
+                    selectedSkill = card.dataset.skill;
+                    if (selectedLevel && selectedSkill) {
+                        loadGame(selectedLevel, selectedSkill);
+                    }
+                });
+            });
+        }
+
+        function loadGame(level, skill) {
+            const gameDisplay = document.getElementById('game-display');
+            const gameTitle = gameDisplay.querySelector('.game-title');
+            const gameContent = gameDisplay.querySelector('.game-content');
+            
+            gameTitle.textContent = `${getLevelName(level)} - ${getSkillName(skill)}`;
+            
+            // Load the appropriate game
+            switch(skill) {
+                case 'reading':
+                    gameContent.innerHTML = getReadingGame(level);
+                    break;
+                case 'speaking':
+                    gameContent.innerHTML = getSpeakingGame(level);
+                    break;
+                case 'writing':
+                    gameContent.innerHTML = getWritingGame(level);
+                    break;
+                case 'listening':
+                    gameContent.innerHTML = getListeningGame(level);
+                    break;
+                case 'moral':
+                    gameContent.innerHTML = getMoralActivity(level);
+                    break;
+            }
+            
+            gameContent.classList.add('active');
+            initializeGame(skill);
+        }
+
+        function getLevelName(level) {
+            const names = {
+                'nursery': 'Nursery',
+                'kinder': 'Kinder',
+                'preparatory': 'Preparatory'
+            };
+            return names[level] || level;
+        }
+
+        function getSkillName(skill) {
+            const names = {
+                'reading': 'Reading',
+                'speaking': 'Speaking',
+                'writing': 'Writing',
+                'listening': 'Listening',
+                'moral': 'Good Moral Activity'
+            };
+            return names[skill] || skill;
+        }
+
+        // Game Data
+        const gameData = {
+            nursery: {
+                reading: [
+                    { word: 'CAT', phonetic: '/kæt/', options: ['Cat', 'Dog', 'Car', 'Hat'], correct: 0 },
+                    { word: 'DOG', phonetic: '/dɔːg/', options: ['Dog', 'Cat', 'Sun', 'Moon'], correct: 0 },
+                    { word: 'SUN', phonetic: '/sʌn/', options: ['Sun', 'Moon', 'Star', 'Cloud'], correct: 0 },
+                    { word: 'BALL', phonetic: '/bɔːl/', options: ['Ball', 'Doll', 'Toy', 'Car'], correct: 0 }
+                ],
+                speaking: [
+                    'Say: "Hello, my name is [Your Name]"',
+                    'Say: "I am [your age] years old"',
+                    'Say: "I like [something you like]"',
+                    'Say: "Thank you" and "Please"'
+                ],
+                writing: [
+                    'Write the letter A',
+                    'Write your name',
+                    'Write: "I am happy"',
+                    'Write numbers 1 to 5'
+                ],
+                listening: [
+                    { audio: '🐱', question: 'What animal says "Meow"?', options: ['Cat', 'Dog', 'Bird', 'Fish'], correct: 0 },
+                    { audio: '🚗', question: 'What makes a "Vroom" sound?', options: ['Car', 'Bicycle', 'Train', 'Bus'], correct: 0 }
+                ],
+                moral: [
+                    {
+                        title: 'Sharing is Caring',
+                        story: 'Tommy had two apples. He saw his friend Sarah had no snack. Tommy shared one apple with Sarah. Sarah smiled and said "Thank you!" Both friends were happy.',
+                        question: 'What did Tommy do that made Sarah happy?',
+                        options: ['He shared his apple', 'He kept both apples', 'He ignored Sarah', 'He ran away'],
+                        correct: 0,
+                        moral: 'Sharing with others makes everyone happy!'
+                    }
+                ]
+            },
+            kinder: {
+                reading: [
+                    { word: 'BOOK', phonetic: '/bʊk/', options: ['Book', 'Look', 'Cook', 'Hook'], correct: 0 },
+                    { word: 'TREE', phonetic: '/triː/', options: ['Tree', 'Free', 'See', 'Bee'], correct: 0 },
+                    { word: 'HOUSE', phonetic: '/haʊs/', options: ['House', 'Mouse', 'Loud', 'Cloud'], correct: 0 },
+                    { word: 'WATER', phonetic: '/ˈwɔːtər/', options: ['Water', 'Later', 'Mater', 'Cater'], correct: 0 }
+                ],
+                speaking: [
+                    'Tell a short story about your day',
+                    'Describe your favorite toy or game',
+                    'Say: "My favorite color is [color] because..."',
+                    'Practice saying: "Good morning", "Good afternoon", "Good night"'
+                ],
+                writing: [
+                    'Write a sentence: "I love my family"',
+                    'Write 3 words that start with the letter B',
+                    'Write: "Today is a sunny day"',
+                    'Write a short story (2-3 sentences)'
+                ],
+                listening: [
+                    { audio: '🐦', question: 'Which animal can fly?', options: ['Bird', 'Fish', 'Cat', 'Dog'], correct: 0 },
+                    { audio: '🌊', question: 'Where do fish live?', options: ['Water', 'Sky', 'Land', 'Tree'], correct: 0 }
+                ],
+                moral: [
+                    {
+                        title: 'Helping Others',
+                        story: 'Maria saw an old lady carrying heavy bags. Maria offered to help carry the bags. The old lady was grateful and said Maria was very kind. Maria felt happy for helping.',
+                        question: 'Why did Maria feel happy?',
+                        options: ['She helped someone', 'She got a reward', 'She avoided work', 'She made fun'],
+                        correct: 0,
+                        moral: 'Helping others makes us feel good inside!'
+                    }
+                ]
+            },
+            preparatory: {
+                reading: [
+                    { word: 'FRIEND', phonetic: '/frend/', options: ['Friend', 'Trend', 'Bend', 'Send'], correct: 0 },
+                    { word: 'SCHOOL', phonetic: '/skuːl/', options: ['School', 'Cool', 'Pool', 'Tool'], correct: 0 },
+                    { word: 'LEARN', phonetic: '/lɜːrn/', options: ['Learn', 'Earn', 'Yearn', 'Turn'], correct: 0 },
+                    { word: 'TEACHER', phonetic: '/ˈtiːtʃər/', options: ['Teacher', 'Feature', 'Creature', 'Reacher'], correct: 0 }
+                ],
+                speaking: [
+                    'Give a 1-minute speech about your favorite subject',
+                    'Describe your best friend in detail',
+                    'Explain how to make your favorite food',
+                    'Practice reading a short paragraph aloud'
+                ],
+                writing: [
+                    'Write a letter to a friend',
+                    'Write a story about an adventure (5-7 sentences)',
+                    'Write: "What I want to be when I grow up"',
+                    'Write a paragraph describing your family'
+                ],
+                listening: [
+                    { audio: '🎓', question: 'Where do children go to learn?', options: ['School', 'Park', 'Mall', 'Home'], correct: 0 },
+                    { audio: '📚', question: 'What do we use to read stories?', options: ['Books', 'Toys', 'Food', 'Games'], correct: 0 }
+                ],
+                moral: [
+                    {
+                        title: 'Honesty is the Best Policy',
+                        story: 'John accidentally broke his teacher\'s favorite pen. He was scared but told the truth. The teacher thanked him for being honest and said mistakes happen. John learned that telling the truth is always better.',
+                        question: 'What did John learn from this experience?',
+                        options: ['Honesty is important', 'Lying is okay', 'Avoiding problems helps', 'Breaking things is fine'],
+                        correct: 0,
+                        moral: 'Being honest builds trust and shows good character!'
+                    }
+                ]
+            }
+        };
+
+        let currentReadingIndex = 0;
+        let readingScore = 0;
+
+        function getReadingGame(level) {
+            const data = gameData[level].reading;
+            currentReadingIndex = 0;
+            readingScore = 0;
+            return generateReadingGame(data[0]);
+        }
+
+        function generateReadingGame(item) {
+            const optionsHtml = item.options.map((opt, idx) => 
+                `<button class="option-btn" onclick="checkReadingAnswer(${idx}, ${item.correct})">${opt}</button>`
+            ).join('');
+
+            return `
+                <div class="score-display">Score: <span id="reading-score">${readingScore}</span></div>
+                <div class="word-card">
+                    <div class="word">${item.word}</div>
+                    <div class="phonetic">${item.phonetic}</div>
+                </div>
+                <div class="options-grid">
+                    ${optionsHtml}
+                </div>
+                <div class="feedback-message" id="reading-feedback"></div>
+            `;
+        }
+
+        function checkReadingAnswer(selected, correct) {
+            const feedback = document.getElementById('reading-feedback');
+            const buttons = document.querySelectorAll('.option-btn');
+            
+            buttons.forEach(btn => {
+                btn.disabled = true;
+                const idx = Array.from(buttons).indexOf(btn);
+                if (idx === correct) {
+                    btn.classList.add('correct');
+                } else if (idx === selected && idx !== correct) {
+                    btn.classList.add('incorrect');
+                }
+            });
+
+            if (selected === correct) {
+                readingScore++;
+                document.getElementById('reading-score').textContent = readingScore;
+                feedback.innerHTML = '✅ <strong>Correct! Awesome job!</strong> 🌟';
+                feedback.className = 'feedback-message success';
+                // Play success sound if available
+                playSuccessSound();
+            } else {
+                feedback.innerHTML = '❌ Oops! That\'s okay, keep trying! 💪';
+                feedback.className = 'feedback-message error';
+            }
+
+            setTimeout(() => {
+                nextReadingQuestion();
+            }, 2000);
+        }
+        
+        function playSuccessSound() {
+            // Use Web Audio API to play a pleasant sound
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.value = 800;
+                oscillator.type = 'sine';
+                
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.3);
+            } catch (e) {
+                // Fallback if audio context fails
+                console.log('Audio not available');
+            }
+        }
+
+        function nextReadingQuestion() {
+            const data = gameData[selectedLevel].reading;
+            currentReadingIndex++;
+            
+            if (currentReadingIndex < data.length) {
+                document.querySelector('.game-content').innerHTML = generateReadingGame(data[currentReadingIndex]);
+            } else {
+                // Award stars for completion
+                const starsEarned = Math.ceil((readingScore / data.length) * 5);
+                awardStars(starsEarned, 'Reading Game');
+                
+                document.querySelector('.game-content').innerHTML = `
+                    <div style="text-align: center; padding: 40px;">
+                        <div style="font-size: 6rem; margin-bottom: 20px; animation: celebrate 0.6s ease-in-out;">🎉</div>
+                        <h2 style="color: #1CA7E7; font-size: 2rem; font-weight: 800; margin-bottom: 16px; text-shadow: 2px 2px 4px rgba(28, 167, 231, 0.2);">Amazing Job!</h2>
+                        <p style="font-size: 1.5rem; color: #1E3A5F; margin: 20px 0; font-weight: 600;">
+                            You got <strong style="color: #1CA7E7;">${readingScore}/${data.length}</strong> correct!
+                        </p>
+                        <div style="font-size: 2rem; margin: 20px 0; color: #FFD700; filter: drop-shadow(0 2px 4px rgba(255, 215, 0, 0.4));">
+                            ${'⭐'.repeat(starsEarned)}
+                        </div>
+                        <p style="font-size: 1.2rem; color: #FFD700; font-weight: 700; margin: 16px 0; text-shadow: 1px 1px 2px rgba(255, 215, 0, 0.3);">
+                            +${starsEarned} Stars Earned! ⭐
+                        </p>
+                        <button class="fun-btn" onclick="loadGame('${selectedLevel}', 'reading')" style="margin-top: 24px;">Play Again! 🎮</button>
+                    </div>
+                `;
+            }
+        }
+        
+        // Award stars function
+        function awardStars(count, activity) {
+            let points = parseInt(localStorage.getItem('studentPoints') || '0');
+            points += count;
+            localStorage.setItem('studentPoints', points.toString());
+            
+            // Show celebration
+            showStarCelebration(count);
+            
+            // Update dashboard if loaded
+            if (typeof loadGamificationData === 'function') {
+                loadGamificationData();
+            }
+        }
+        
+        function showStarCelebration(count) {
+            const celebration = document.createElement('div');
+            celebration.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: linear-gradient(135deg, #FF6B9D, #4ECDC4);
+                color: white;
+                padding: 30px 50px;
+                border-radius: 30px;
+                font-size: 2rem;
+                font-weight: 800;
+                z-index: 10000;
+                box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+                animation: celebrate 0.6s ease-in-out;
+                text-align: center;
+            `;
+            celebration.innerHTML = `
+                <div style="font-size: 4rem; margin-bottom: 16px; color: #FFD700; filter: drop-shadow(0 4px 8px rgba(255, 215, 0, 0.5));">⭐</div>
+                <div style="font-weight: 800; color: #1CA7E7;">+${count} Stars!</div>
+                <div style="font-size: 1.2rem; margin-top: 12px; opacity: 0.9; color: white;">Great job! Keep learning! 🎉</div>
+            `;
+            document.body.appendChild(celebration);
+            
+            setTimeout(() => {
+                celebration.style.animation = 'fadeOut 0.5s ease-in-out';
+                setTimeout(() => celebration.remove(), 500);
+            }, 2000);
+        }
+        
+        @keyframes fadeOut {
+            from { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            to { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+        }
+
+        function getSpeakingGame(level) {
+            const phrases = gameData[level].speaking;
+            let currentIndex = 0;
+
+            return `
+                <div class="speaking-card">
+                    <div class="phrase" id="speaking-phrase">${phrases[0]}</div>
+                    <button class="record-btn" id="record-btn" onclick="toggleRecording()">🎤 Record</button>
+                    <p style="margin-top: 20px; color: #666;">Click the microphone button to start recording your practice!</p>
+                    <div id="recording-feedback"></div>
+                    <div style="margin-top: 24px;">
+                        ${phrases.map((phrase, idx) => 
+                            `<button class="option-btn" style="margin: 8px;" onclick="changePhrase(${idx})">Practice ${idx + 1}</button>`
+                        ).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        let isRecording = false;
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let recordingStream = null;
+
+        async function toggleRecording() {
+            const btn = document.getElementById('record-btn');
+            const feedback = document.getElementById('recording-feedback');
+            
+            if (!isRecording) {
+                try {
+                    // Request microphone access
+                    recordingStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    
+                    // Initialize MediaRecorder
+                    mediaRecorder = new MediaRecorder(recordingStream, {
+                        mimeType: 'audio/webm;codecs=opus'
+                    });
+                    
+                    audioChunks = [];
+                    
+                    mediaRecorder.ondataavailable = (event) => {
+                        if (event.data.size > 0) {
+                            audioChunks.push(event.data);
+                        }
+                    };
+                    
+                    mediaRecorder.onstop = () => {
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                        const audioUrl = URL.createObjectURL(audioBlob);
+                        
+                        // Create audio player for playback
+                        if (feedback) {
+                            feedback.innerHTML = `
+                                <div style="margin-top: 16px; padding: 12px; background: #e8f5e9; border-radius: 8px;">
+                                    <p style="margin: 0 0 8px 0; color: #2e7d32; font-weight: 600;">✅ Recording saved!</p>
+                                    <audio controls style="width: 100%; margin-top: 8px;">
+                                        <source src="${audioUrl}" type="audio/webm">
+                                    </audio>
+                                    <button onclick="downloadRecording('${audioUrl}')" style="margin-top: 8px; padding: 6px 12px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">Download Recording</button>
+                                </div>
+                            `;
+                        }
+                        
+                        // Stop all tracks
+                        recordingStream.getTracks().forEach(track => track.stop());
+                    };
+                    
+                    mediaRecorder.onerror = (event) => {
+                        console.error('MediaRecorder error:', event);
+                        if (feedback) {
+                            feedback.innerHTML = '<p style="color: #d32f2f; margin-top: 8px;">❌ Recording error occurred. Please try again.</p>';
+                        }
+                    };
+                    
+                    // Start recording
+                    mediaRecorder.start();
+                    isRecording = true;
+                    btn.classList.add('recording');
+                    btn.textContent = '⏹️ Stop';
+                    
+                    if (feedback) {
+                        feedback.innerHTML = '<p style="color: #1976d2; margin-top: 8px; font-weight: 600;">🔴 Recording... Speak now!</p>';
+                    }
+                    
+                } catch (error) {
+                    console.error('Error accessing microphone:', error);
+                    alert('Unable to access microphone. Please check your browser permissions and try again.');
+                    isRecording = false;
+                }
+            } else {
+                // Stop recording
+                if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                    mediaRecorder.stop();
+                }
+                isRecording = false;
+                btn.classList.remove('recording');
+                btn.textContent = '🎤 Record';
+            }
+        }
+
+        function downloadRecording(audioUrl) {
+            const a = document.createElement('a');
+            a.href = audioUrl;
+            a.download = `speaking-practice-${Date.now()}.webm`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        function changePhrase(index) {
+            const phrases = gameData[selectedLevel].speaking;
+            const phraseElement = document.getElementById('speaking-phrase');
+            const btn = document.getElementById('record-btn');
+            const feedback = document.getElementById('recording-feedback');
+            
+            if (phraseElement) {
+                phraseElement.textContent = phrases[index];
+            }
+            
+            // Stop any ongoing recording when switching phrases
+            if (isRecording && mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+                isRecording = false;
+                if (btn) {
+                    btn.classList.remove('recording');
+                    btn.textContent = '🎤 Record';
+                }
+            }
+            
+            if (recordingStream) {
+                recordingStream.getTracks().forEach(track => track.stop());
+                recordingStream = null;
+            }
+            
+            // Clear feedback
+            if (feedback) {
+                feedback.innerHTML = '';
+            }
+        }
+
+        let currentWritingPromptIndex = 0;
+
+        function getWritingGame(level) {
+            const prompts = gameData[level].writing;
+            currentWritingPromptIndex = 0;
+
+            return `
+                <div class="writing-prompt">
+                    <h3>Writing Prompt ${currentWritingPromptIndex + 1}</h3>
+                    <p id="writing-prompt-text">${prompts[0]}</p>
+                </div>
+                <textarea class="writing-area" id="writing-area" placeholder="Start writing here... Write your response to the prompt above." oninput="updateWordCount()"></textarea>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+                    <div style="font-size: 0.85rem; color: #666;">
+                        <span id="word-count">0 words</span> | <span id="char-count">0 characters</span>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap;">
+                    ${prompts.map((prompt, idx) => 
+                        `<button class="option-btn" onclick="changeWritingPrompt(${idx})">Prompt ${idx + 1}</button>`
+                    ).join('')}
+                    <button class="next-btn" onclick="saveWriting()">💾 Save My Writing</button>
+                </div>
+                <div class="feedback-message" id="writing-feedback" style="display: none;"></div>
+                <div style="margin-top: 16px; padding: 12px; background: #f8f9fa; border-radius: 8px; font-size: 0.85rem; color: #666;">
+                    <strong>💡 Tip:</strong> Take your time to write a thoughtful response. You can save multiple writings and review them later.
+                </div>
+            `;
+        }
+
+        function changeWritingPrompt(index) {
+            const prompts = gameData[selectedLevel].writing;
+            currentWritingPromptIndex = index;
+            const promptElement = document.getElementById('writing-prompt-text');
+            const promptTitle = document.querySelector('.writing-prompt h3');
+            
+            if (promptElement) {
+                promptElement.textContent = prompts[index];
+            }
+            if (promptTitle) {
+                promptTitle.textContent = `Writing Prompt ${index + 1}`;
+            }
+            
+            const writingArea = document.getElementById('writing-area');
+            if (writingArea) {
+                writingArea.value = '';
+                writingArea.focus();
+            }
+            
+            // Hide any previous feedback
+            const feedback = document.getElementById('writing-feedback');
+            if (feedback) {
+                feedback.style.display = 'none';
+            }
+        }
+
+        async function saveWriting() {
+            const writing = document.getElementById('writing-area').value;
+            const feedback = document.getElementById('writing-feedback');
+            
+            if (!writing.trim()) {
+                if (feedback) {
+                    feedback.innerHTML = '<p style="color: #d32f2f;">⚠️ Please write something before saving!</p>';
+                    feedback.className = 'feedback-message error';
+                    feedback.style.display = 'block';
+                }
+                return;
+            }
+            
+            try {
+                // Save to localStorage
+                const savedWritings = JSON.parse(localStorage.getItem('studentWritings') || '[]');
+                const writingEntry = {
+                    level: selectedLevel,
+                    skill: 'writing',
+                    prompt: document.getElementById('writing-prompt-text').textContent,
+                    content: writing,
+                    timestamp: new Date().toISOString(),
+                    date: new Date().toLocaleDateString()
+                };
+                
+                savedWritings.push(writingEntry);
+                localStorage.setItem('studentWritings', JSON.stringify(savedWritings));
+                
+                // Show success feedback
+                if (feedback) {
+                    feedback.innerHTML = `
+                        <div style="padding: 12px; background: #e8f5e9; border-radius: 8px; border: 1px solid #c3e6cb;">
+                            <p style="margin: 0 0 8px 0; color: #2e7d32; font-weight: 600;">✅ Writing saved successfully!</p>
+                            <p style="margin: 0; color: #2e7d32; font-size: 0.9rem;">Your writing has been saved. You can view it in your profile.</p>
+                        </div>
+                    `;
+                    feedback.className = 'feedback-message success';
+                    feedback.style.display = 'block';
+                }
+                
+                // Optionally save to server
+                const token = localStorage.getItem('token');
+                if (token) {
+                    try {
+                        await fetch('/api/student/save-writing', {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${token}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(writingEntry)
+                        });
+                    } catch (err) {
+                        console.log('Server save failed, but local save succeeded:', err);
+                    }
+                }
+                
+            } catch (error) {
+                console.error('Error saving writing:', error);
+                if (feedback) {
+                    feedback.innerHTML = '<p style="color: #d32f2f;">❌ Error saving writing. Please try again.</p>';
+                    feedback.className = 'feedback-message error';
+                    feedback.style.display = 'block';
+                }
+            }
+        }
+
+        function getListeningGame(level) {
+            const data = gameData[level].listening;
+            let currentIndex = 0;
+            return generateListeningGame(data[0], 0);
+        }
+
+        function generateListeningGame(item, index) {
+            const optionsHtml = item.options.map((opt, idx) => 
+                `<button class="option-btn" onclick="checkListeningAnswer(${idx}, ${item.correct}, ${index})">${opt}</button>`
+            ).join('');
+
+            return `
+                <div class="audio-player">
+                    <div style="font-size: 4rem; margin: 20px 0;">${item.audio}</div>
+                    <button class="audio-btn" onclick="playAudio()">🔊 Listen to Question</button>
+                    <p style="margin-top: 12px; color: #666; font-size: 0.9rem;">Click the button above to hear the question, then select your answer below.</p>
+                </div>
+                <div style="background: #f8f9fa; padding: 24px; border-radius: 12px; margin: 20px 0;">
+                    <h3 style="margin: 0 0 16px 0; color: #333;">${item.question}</h3>
+                    <div class="options-grid">
+                        ${optionsHtml}
+                    </div>
+                </div>
+                <div class="feedback-message" id="listening-feedback" style="display: none;"></div>
+            `;
+        }
+
+        let listeningScore = 0;
+        let currentListeningIndex = 0;
+
+        let currentAudio = null;
+        let audioContext = null;
+
+        async function playAudio() {
+            try {
+                // Use Web Speech API for text-to-speech
+                if ('speechSynthesis' in window) {
+                    const item = gameData[selectedLevel].listening[currentListeningIndex];
+                    const utterance = new SpeechSynthesisUtterance(item.question);
+                    utterance.lang = 'en-US';
+                    utterance.rate = 0.9;
+                    utterance.pitch = 1;
+                    
+                    // Stop any previous speech
+                    window.speechSynthesis.cancel();
+                    
+                    // Play the question
+                    window.speechSynthesis.speak(utterance);
+                    
+                    // Show feedback
+                    const feedback = document.getElementById('listening-feedback');
+                    if (feedback) {
+                        feedback.innerHTML = '<p style="color: #1976d2; margin: 8px 0;">🔊 Playing audio question...</p>';
+                        feedback.className = 'feedback-message';
+                        feedback.style.display = 'block';
+                        feedback.style.background = '#e3f2fd';
+                        feedback.style.color = '#1976d2';
+                    }
+                } else {
+                    // Fallback: show the question text
+                    const item = gameData[selectedLevel].listening[currentListeningIndex];
+                    const feedback = document.getElementById('listening-feedback');
+                    if (feedback) {
+                        feedback.innerHTML = `<p style="color: #1976d2; margin: 8px 0;">📝 Question: "${item.question}"</p>`;
+                        feedback.className = 'feedback-message';
+                        feedback.style.display = 'block';
+                        feedback.style.background = '#e3f2fd';
+                        feedback.style.color = '#1976d2';
+                    }
+                }
+            } catch (error) {
+                console.error('Error playing audio:', error);
+                const feedback = document.getElementById('listening-feedback');
+                if (feedback) {
+                    feedback.innerHTML = '<p style="color: #d32f2f; margin: 8px 0;">❌ Unable to play audio. Please read the question below.</p>';
+                    feedback.className = 'feedback-message';
+                    feedback.style.display = 'block';
+                    feedback.style.background = '#ffebee';
+                    feedback.style.color = '#d32f2f';
+                }
+            }
+        }
+
+        function checkListeningAnswer(selected, correct, index) {
+            const feedback = document.getElementById('listening-feedback');
+            const buttons = document.querySelectorAll('.option-btn');
+            
+            // Stop any ongoing speech
+            if (window.speechSynthesis) {
+                window.speechSynthesis.cancel();
+            }
+            
+            buttons.forEach(btn => {
+                btn.disabled = true;
+                const idx = Array.from(buttons).indexOf(btn);
+                if (idx === correct) {
+                    btn.classList.add('correct');
+                } else if (idx === selected && idx !== correct) {
+                    btn.classList.add('incorrect');
+                }
+            });
+
+            if (selected === correct) {
+                listeningScore++;
+                if (feedback) {
+                    feedback.innerHTML = '<p style="margin: 0;">✅ Correct! Well done!</p>';
+                    feedback.className = 'feedback-message success';
+                    feedback.style.display = 'block';
+                }
+            } else {
+                if (feedback) {
+                    feedback.innerHTML = `<p style="margin: 0;">❌ Not quite right. The correct answer is: <strong>${gameData[selectedLevel].listening[currentListeningIndex].options[correct]}</strong></p>`;
+                    feedback.className = 'feedback-message error';
+                    feedback.style.display = 'block';
+                }
+            }
+
+            setTimeout(() => {
+                nextListeningQuestion();
+            }, 2500);
+        }
+
+        function nextListeningQuestion() {
+            const data = gameData[selectedLevel].listening;
+            currentListeningIndex++;
+            
+            if (currentListeningIndex < data.length) {
+                document.querySelector('.game-content').innerHTML = generateListeningGame(data[currentListeningIndex], currentListeningIndex);
+            } else {
+                // Award stars for completion
+                const starsEarned = Math.ceil((listeningScore / data.length) * 5);
+                awardStars(starsEarned, 'Listening Game');
+                
+                document.querySelector('.game-content').innerHTML = `
+                    <div style="text-align: center; padding: 40px;">
+                        <div style="font-size: 6rem; margin-bottom: 20px; animation: celebrate 0.6s ease-in-out;">🎉</div>
+                        <h2 style="color: #1CA7E7; font-size: 2rem; font-weight: 800; margin-bottom: 16px; text-shadow: 2px 2px 4px rgba(28, 167, 231, 0.2);">Wonderful!</h2>
+                        <p style="font-size: 1.5rem; color: #1E3A5F; margin: 20px 0; font-weight: 600;">
+                            You got <strong style="color: #1CA7E7;">${listeningScore}/${data.length}</strong> correct!
+                        </p>
+                        <div style="font-size: 2rem; margin: 20px 0; color: #FFD700; filter: drop-shadow(0 2px 4px rgba(255, 215, 0, 0.4));">
+                            ${'⭐'.repeat(starsEarned)}
+                        </div>
+                        <p style="font-size: 1.2rem; color: #FFD700; font-weight: 700; margin: 16px 0; text-shadow: 1px 1px 2px rgba(255, 215, 0, 0.3);">
+                            +${starsEarned} Stars Earned! ⭐
+                        </p>
+                        <button class="fun-btn" onclick="loadGame('${selectedLevel}', 'listening')" style="margin-top: 24px;">Play Again! 🎮</button>
+                    </div>
+                `;
+                listeningScore = 0;
+                currentListeningIndex = 0;
+            }
+        }
+
+        function getMoralActivity(level) {
+            const activity = gameData[level].moral[0];
+            
+            const optionsHtml = activity.options.map((opt, idx) => 
+                `<button class="option-btn" onclick="checkMoralAnswer(${idx}, ${activity.correct})">${opt}</button>`
+            ).join('');
+
+            return `
+                <div class="moral-card">
+                    <div class="title">${activity.title}</div>
+                    <div class="story">${activity.story}</div>
+                    <div class="moral-question">
+                        <h3 style="margin: 0 0 16px 0; color: #856404;">Question:</h3>
+                        <p style="font-size: 1.1rem; color: #333; margin-bottom: 16px;">${activity.question}</p>
+                        <div class="options-grid">
+                            ${optionsHtml}
+                        </div>
+                    </div>
+                    <div class="feedback-message" id="moral-feedback"></div>
+                </div>
+            `;
+        }
+
+        function checkMoralAnswer(selected, correct) {
+            const feedback = document.getElementById('moral-feedback');
+            const activity = gameData[selectedLevel].moral[0];
+            const buttons = document.querySelectorAll('.option-btn');
+            
+            buttons.forEach(btn => {
+                btn.disabled = true;
+                const idx = Array.from(buttons).indexOf(btn);
+                if (idx === correct) {
+                    btn.classList.add('correct');
+                } else if (idx === selected && idx !== correct) {
+                    btn.classList.add('incorrect');
+                }
+            });
+
+            if (selected === correct) {
+                feedback.innerHTML = `✅ <strong>Excellent!</strong><br><br>${activity.moral}`;
+                feedback.className = 'feedback-message success';
+                feedback.style.display = 'block';
+                
+                // Award stars for completing moral activity
+                awardStars(3, 'Being Kind Activity');
+                
+                // Show celebration after a delay
+                setTimeout(() => {
+                    const starMsg = document.createElement('div');
+                    starMsg.style.cssText = 'margin-top: 16px; padding: 12px; background: #E8F5E9; border-radius: 12px; font-size: 1.1rem; font-weight: 700; color: #2E7D32;';
+                    starMsg.innerHTML = '+3 Stars for learning about being kind! ⭐';
+                    feedback.appendChild(starMsg);
+                }, 500);
+            } else {
+                feedback.innerHTML = `❌ Not quite right. The correct answer teaches us: ${activity.moral}`;
+                feedback.className = 'feedback-message error';
+                feedback.style.display = 'block';
+            }
+        }
+
+        function updateWordCount() {
+            const textarea = document.getElementById('writing-area');
+            const wordCountEl = document.getElementById('word-count');
+            const charCountEl = document.getElementById('char-count');
+            
+            if (textarea && wordCountEl && charCountEl) {
+                const text = textarea.value.trim();
+                const words = text ? text.split(/\s+/).filter(word => word.length > 0) : [];
+                const chars = text.length;
+                
+                wordCountEl.textContent = `${words.length} word${words.length !== 1 ? 's' : ''}`;
+                charCountEl.textContent = `${chars} character${chars !== 1 ? 's' : ''}`;
+            }
+        }
+
+        function initializeGame(skill) {
+            // Reset game state
+            if (skill === 'reading') {
+                currentReadingIndex = 0;
+                readingScore = 0;
+            } else if (skill === 'listening') {
+                currentListeningIndex = 0;
+                listeningScore = 0;
+                // Stop any ongoing speech
+                if (window.speechSynthesis) {
+                    window.speechSynthesis.cancel();
+                }
+            } else if (skill === 'speaking') {
+                // Stop any ongoing recording
+                if (isRecording && mediaRecorder && mediaRecorder.state !== 'inactive') {
+                    mediaRecorder.stop();
+                    isRecording = false;
+                }
+                if (recordingStream) {
+                    recordingStream.getTracks().forEach(track => track.stop());
+                    recordingStream = null;
+                }
+            } else if (skill === 'writing') {
+                currentWritingPromptIndex = 0;
+                // Initialize word count
+                setTimeout(updateWordCount, 100);
+            }
+        }
+
+        // Add safe content badge
+        function addSafeContentBadge() {
+            if (!document.getElementById('safe-content-badge')) {
+                const badge = document.createElement('div');
+                badge.id = 'safe-content-badge';
+                badge.className = 'safe-content-badge';
+                badge.innerHTML = '🛡️ Safe & Friendly Content';
+                document.body.appendChild(badge);
+            }
+        }
+        
+        // Add safe content badge on load
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', addSafeContentBadge);
+        } else {
+            addSafeContentBadge();
+        }
+        
+        // Load profile picture
+        async function loadProfilePicture(studentId) {
+            try {
+                const token = localStorage.getItem('token');
+                if (!token) return;
+                
+                const response = await fetch(`/api/student/profile`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Cache-Control': 'no-cache',
+                        'Pragma': 'no-cache'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.profile && data.profile.profilePicture && data.profile.profilePicture.trim() !== '') {
+                        setAvatar({
+                            imageUrl: data.profile.profilePicture,
+                            displayName: localStorage.getItem('remoedUsername') || 'Student',
+                            imgSelector: '#profile-image',
+                            textSelector: '#avatar-text'
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading profile picture:', error);
+            }
+        }
+    </script>
+    
+    <!-- Safe Content Badge -->
+    <div class="safe-content-badge" id="safe-content-badge" style="display: none;">
+        🛡️ Safe & Friendly Content
+    </div>
+    <script>
+        // Show safe content badge
+        setTimeout(() => {
+            const badge = document.getElementById('safe-content-badge');
+            if (badge) badge.style.display = 'flex';
+        }, 1000);
+    </script>
+</body>
+</html>
