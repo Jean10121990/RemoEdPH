@@ -1,7 +1,9 @@
 const mongoose = require('mongoose');
 
-// Use environment variable for MongoDB URI, fallback to localhost for development
-const MONGO_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/online-distance-learning';
+// Use environment variable for MongoDB URI, fallback to localhost for local development only
+// Cloud Run detection: K_SERVICE is automatically set by Google Cloud Run
+const isCloudRun = !!process.env.K_SERVICE;
+const MONGO_URI = process.env.MONGODB_URI || (!isCloudRun ? 'mongodb://localhost:27017/online-distance-learning' : undefined);
 
 // Connection options for modern Mongoose versions
 const connectionOptions = {
@@ -13,20 +15,32 @@ const connectionOptions = {
 // Connect to MongoDB with better error handling (non-blocking)
 const connectDB = async () => {
   try {
-    // Check if MONGODB_URI is actually set (not using default)
-    const isUsingDefault = !process.env.MONGODB_URI || MONGO_URI === 'mongodb://localhost:27017/online-distance-learning';
+    // Check if MONGODB_URI is actually set
+    if (!MONGO_URI) {
+      if (isCloudRun) {
+        console.error('❌ MONGODB_URI environment variable is NOT SET in Cloud Run!');
+        console.error('⚠️  Cloud Run requires MONGODB_URI to be set as an environment variable or secret');
+        console.error('📝 To fix: Set MONGODB_URI environment variable or secret in Cloud Run');
+        console.error('📝 Example: mongodb+srv://username:password@cluster.mongodb.net/database');
+        console.warn('⚠️  Skipping MongoDB connection attempt (MONGODB_URI not set in Cloud Run)');
+      } else {
+        console.error('❌ MONGODB_URI environment variable is NOT SET!');
+        console.error('⚠️  Using fallback localhost connection for local development');
+        console.error('📝 To use MongoDB Atlas locally, set MONGODB_URI environment variable');
+        console.error('📝 Example: mongodb+srv://username:password@cluster.mongodb.net/database');
+        console.log('🔗 Attempting localhost connection (make sure MongoDB is running locally)');
+      }
+      // Only skip if in Cloud Run without MONGODB_URI
+      if (isCloudRun) {
+        return false;
+      }
+    }
     
-    if (isUsingDefault) {
-      console.error('❌ MONGODB_URI environment variable is NOT SET!');
-      console.error('⚠️  Using default localhost connection (will fail in Cloud Run)');
-      console.error('📝 To fix: Set MONGODB_URI environment variable or secret in Cloud Run');
-      console.error('📝 Example: mongodb+srv://username:password@cluster.mongodb.net/database');
-      // Don't attempt connection if using default (will fail anyway)
-      console.warn('⚠️  Skipping MongoDB connection attempt (using default localhost)');
-      return false;
-    } else {
-      // Log connection attempt (hide password)
-      const uriForLogging = MONGO_URI.replace(/\/\/([^:]+):([^@]+)@/, '//$1:***@');
+    // Log connection attempt (hide password if present)
+    if (MONGO_URI) {
+      const uriForLogging = MONGO_URI.includes('@') 
+        ? MONGO_URI.replace(/\/\/([^:]+):([^@]+)@/, '//$1:***@')
+        : MONGO_URI;
       console.log(`🔗 Connecting to MongoDB: ${uriForLogging}`);
     }
     
