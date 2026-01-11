@@ -1,7 +1,7 @@
 const nodemailer = require('nodemailer');
 
-// Email service type: 'sendgrid', 'mailgun', or 'smtp'
-const EMAIL_SERVICE_TYPE = process.env.EMAIL_SERVICE_TYPE || 'smtp';
+// Email service type: 'sendgrid', 'mailgun', or 'smtp' (optional - auto-detects if not set)
+const EMAIL_SERVICE_TYPE = process.env.EMAIL_SERVICE_TYPE;
 
 // Check which email service is configured
 const isSendGridConfigured = !!process.env.SENDGRID_API_KEY;
@@ -11,22 +11,35 @@ const isSMTPConfigured = process.env.SMTP_USER && process.env.SMTP_PASS &&
                          process.env.SMTP_PASS !== 'your-app-password';
 
 // Determine which service to use (priority: SendGrid > Mailgun > SMTP)
+// IMPORTANT: If SendGrid is available, ALWAYS use it (best for Cloud Run)
 let activeEmailService = 'none';
-if (EMAIL_SERVICE_TYPE === 'sendgrid' && isSendGridConfigured) {
+
+// Priority 1: Always prefer SendGrid if available (regardless of EMAIL_SERVICE_TYPE)
+if (isSendGridConfigured) {
   activeEmailService = 'sendgrid';
-} else if (EMAIL_SERVICE_TYPE === 'mailgun' && isMailgunConfigured) {
-  activeEmailService = 'mailgun';
-} else if (EMAIL_SERVICE_TYPE === 'smtp' && isSMTPConfigured) {
-  activeEmailService = 'smtp';
-} else if (isSendGridConfigured) {
-  // Auto-detect: if SendGrid is configured but EMAIL_SERVICE_TYPE not set, use SendGrid
-  activeEmailService = 'sendgrid';
-} else if (isMailgunConfigured) {
-  // Auto-detect: if Mailgun is configured, use it
-  activeEmailService = 'mailgun';
-} else if (isSMTPConfigured) {
-  // Fallback to SMTP if configured
-  activeEmailService = 'smtp';
+  if (EMAIL_SERVICE_TYPE && EMAIL_SERVICE_TYPE !== 'sendgrid') {
+    console.warn(`⚠️  EMAIL_SERVICE_TYPE is set to '${EMAIL_SERVICE_TYPE}' but SendGrid is available. Using SendGrid instead.`);
+  }
+} 
+// Priority 2: Mailgun if SendGrid not available
+else if (isMailgunConfigured) {
+  if (EMAIL_SERVICE_TYPE === 'mailgun') {
+    activeEmailService = 'mailgun';
+  } else if (!EMAIL_SERVICE_TYPE || EMAIL_SERVICE_TYPE === 'mailgun') {
+    activeEmailService = 'mailgun';
+  } else {
+    console.warn(`⚠️  EMAIL_SERVICE_TYPE is set to '${EMAIL_SERVICE_TYPE}' but Mailgun is configured. Using Mailgun.`);
+    activeEmailService = 'mailgun';
+  }
+}
+// Priority 3: SMTP only if neither SendGrid nor Mailgun available
+else if (isSMTPConfigured) {
+  if (EMAIL_SERVICE_TYPE === 'smtp' || !EMAIL_SERVICE_TYPE) {
+    activeEmailService = 'smtp';
+  } else {
+    console.warn(`⚠️  EMAIL_SERVICE_TYPE is set to '${EMAIL_SERVICE_TYPE}' but only SMTP is configured. Using SMTP.`);
+    activeEmailService = 'smtp';
+  }
 }
 
 const isEmailConfigured = activeEmailService !== 'none';
@@ -62,6 +75,12 @@ console.log(`   SMTP_USER: ${isSMTPConfigured ? '✅ Set' : '❌ Not set'}`);
 console.log(`   Active Service: ${activeEmailService.toUpperCase()}`);
 
 if (activeEmailService === 'smtp') {
+  // Warn if SendGrid is available but SMTP is being used
+  if (isSendGridConfigured) {
+    console.warn('⚠️  WARNING: SendGrid API key is configured but SMTP is being used!');
+    console.warn('⚠️  Set EMAIL_SERVICE_TYPE=sendgrid or remove SMTP credentials to use SendGrid.');
+  }
+  
   transporter = nodemailer.createTransport(emailConfig);
   // Verify transporter connection on startup (non-blocking)
   transporter.verify((error, success) => {
@@ -69,6 +88,9 @@ if (activeEmailService === 'smtp') {
       const safeError = String(error).replace(/(password|pass|pwd)=[^\s&"']*/gi, '$1=***');
       console.error('❌ SMTP connection verification failed:', safeError);
       console.error('⚠️  Email sending may fail. Check SMTP credentials and network connectivity.');
+      if (isSendGridConfigured) {
+        console.error('💡 TIP: SendGrid API key is available. Consider using SendGrid instead of SMTP for Cloud Run.');
+      }
       transporterVerified = false;
     } else {
       console.log('✅ SMTP connection verified successfully');
@@ -80,6 +102,7 @@ if (activeEmailService === 'smtp') {
   console.log(`✅ Email service configured: ${activeEmailService.toUpperCase()}`);
   if (activeEmailService === 'sendgrid') {
     console.log('📧 Using SendGrid API for email delivery');
+    console.log(`   From email: ${process.env.SENDGRID_FROM_EMAIL || process.env.SMTP_USER || 'not set'}`);
   } else if (activeEmailService === 'mailgun') {
     console.log(`📧 Using Mailgun API for email delivery (domain: ${process.env.MAILGUN_DOMAIN})`);
   }
