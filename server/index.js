@@ -91,7 +91,46 @@ app.use('/api/files', fileRoutes);
 app.use('/api/upload', fileRoutes); // Add alias for upload endpoint
 app.use('/api', announcementRoutes); // Mount announcement routes directly under /api
 app.use('/api', fileRoutes); // Add direct access to file routes (moved after announcement routes)
-app.use('/api/lessons', lessonRoutes); // Lesson tracker and curriculum routes
+app.use('/api/lessons', lessonRoutes);
+
+// Email diagnostic endpoint (for debugging)
+app.get('/api/email/status', (req, res) => {
+  const { getEmailConfigStatus } = require('./emailService');
+  const status = getEmailConfigStatus();
+  res.json({
+    success: true,
+    email: status,
+    environment: {
+      hasSendGridKey: !!process.env.SENDGRID_API_KEY,
+      sendGridKeyLength: process.env.SENDGRID_API_KEY ? process.env.SENDGRID_API_KEY.length : 0,
+      emailServiceType: process.env.EMAIL_SERVICE_TYPE || '(not set)',
+      sendGridFromEmail: process.env.SENDGRID_FROM_EMAIL || '(not set)'
+    }
+  });
+});
+
+// Email test endpoint (for debugging - requires email parameter)
+app.post('/api/email/test', async (req, res) => {
+  try {
+    const { testEmailSending } = require('./emailService');
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Email address is required' 
+      });
+    }
+    
+    const result = await testEmailSending(email);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+}); // Lesson tracker and curriculum routes
 
 async function ensureDir(dirPath) {
   await fsp.mkdir(dirPath, { recursive: true });
