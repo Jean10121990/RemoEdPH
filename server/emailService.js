@@ -1,23 +1,115 @@
 const nodemailer = require('nodemailer');
 
-// Email configuration
+// Email service type: 'sendgrid', 'mailgun', or 'smtp' (optional - auto-detects if not set)
+const EMAIL_SERVICE_TYPE = process.env.EMAIL_SERVICE_TYPE;
+
+// Check which email service is configured
+const isSendGridConfigured = !!process.env.SENDGRID_API_KEY;
+const isMailgunConfigured = !!(process.env.MAILGUN_API_KEY && process.env.MAILGUN_DOMAIN);
+const isSMTPConfigured = process.env.SMTP_USER && process.env.SMTP_PASS && 
+                         process.env.SMTP_USER !== 'your-email@gmail.com' && 
+                         process.env.SMTP_PASS !== 'your-app-password';
+
+// Determine which service to use (priority: SendGrid > Mailgun > SMTP)
+// IMPORTANT: If SendGrid is available, ALWAYS use it (best for Cloud Run)
+let activeEmailService = 'none';
+
+// Priority 1: Always prefer SendGrid if available (regardless of EMAIL_SERVICE_TYPE)
+if (isSendGridConfigured) {
+  activeEmailService = 'sendgrid';
+  if (EMAIL_SERVICE_TYPE && EMAIL_SERVICE_TYPE !== 'sendgrid') {
+    console.warn(`⚠️  EMAIL_SERVICE_TYPE is set to '${EMAIL_SERVICE_TYPE}' but SendGrid is available. Using SendGrid instead.`);
+  }
+} 
+// Priority 2: Mailgun if SendGrid not available
+else if (isMailgunConfigured) {
+  if (EMAIL_SERVICE_TYPE === 'mailgun') {
+    activeEmailService = 'mailgun';
+  } else if (!EMAIL_SERVICE_TYPE || EMAIL_SERVICE_TYPE === 'mailgun') {
+    activeEmailService = 'mailgun';
+  } else {
+    console.warn(`⚠️  EMAIL_SERVICE_TYPE is set to '${EMAIL_SERVICE_TYPE}' but Mailgun is configured. Using Mailgun.`);
+    activeEmailService = 'mailgun';
+  }
+}
+// Priority 3: SMTP only if neither SendGrid nor Mailgun available
+else if (isSMTPConfigured) {
+  if (EMAIL_SERVICE_TYPE === 'smtp' || !EMAIL_SERVICE_TYPE) {
+    activeEmailService = 'smtp';
+  } else {
+    console.warn(`⚠️  EMAIL_SERVICE_TYPE is set to '${EMAIL_SERVICE_TYPE}' but only SMTP is configured. Using SMTP.`);
+    activeEmailService = 'smtp';
+  }
+}
+
+const isEmailConfigured = activeEmailService !== 'none';
+
+// SMTP configuration (for local development or fallback)
 const emailConfig = {
   host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: parseInt(process.env.SMTP_PORT) || 587,
-  secure: process.env.SMTP_PORT === '465', // true for 465, false for other ports
+  port: parseInt(process.env.SMTP_PORT || '587', 10),
+  secure: false, // true for 465, false for other ports
+  requireTLS: true, // Require TLS for Gmail and most SMTP servers
+  tls: {
+    // Do not fail on invalid certificates (useful for some SMTP servers)
+    rejectUnauthorized: false
+  },
+  connectionTimeout: 10000, // 10 seconds timeout
+  greetingTimeout: 10000,
   auth: {
     user: process.env.SMTP_USER || 'your-email@gmail.com',
     pass: process.env.SMTP_PASS || 'your-app-password'
   }
 };
 
-// Check if email credentials are properly configured
-const isEmailConfigured = process.env.SMTP_USER && process.env.SMTP_PASS && 
-                         process.env.SMTP_USER !== 'your-email@gmail.com' && 
-                         process.env.SMTP_PASS !== 'your-app-password';
+// Create transporter only if using SMTP
+let transporter = null;
+let transporterVerified = false;
 
-// Create transporter
-const transporter = nodemailer.createTransport(emailConfig);
+// Log email service detection on startup
+console.log('📧 Email Service Detection:');
+console.log(`   EMAIL_SERVICE_TYPE: ${EMAIL_SERVICE_TYPE || '(not set, using auto-detect)'}`);
+console.log(`   SENDGRID_API_KEY: ${isSendGridConfigured ? '✅ Set' : '❌ Not set'}`);
+console.log(`   MAILGUN_API_KEY: ${isMailgunConfigured ? '✅ Set' : '❌ Not set'}`);
+console.log(`   SMTP_USER: ${isSMTPConfigured ? '✅ Set' : '❌ Not set'}`);
+console.log(`   Active Service: ${activeEmailService.toUpperCase()}`);
+
+if (activeEmailService === 'smtp') {
+  // Warn if SendGrid is available but SMTP is being used
+  if (isSendGridConfigured) {
+    console.warn('⚠️  WARNING: SendGrid API key is configured but SMTP is being used!');
+    console.warn('⚠️  Set EMAIL_SERVICE_TYPE=sendgrid or remove SMTP credentials to use SendGrid.');
+  }
+  
+  transporter = nodemailer.createTransport(emailConfig);
+  // Verify transporter connection on startup (non-blocking)
+  transporter.verify((error, success) => {
+    if (error) {
+      const safeError = String(error).replace(/(password|pass|pwd)=[^\s&"']*/gi, '$1=***');
+      console.error('❌ SMTP connection verification failed:', safeError);
+      console.error('⚠️  Email sending may fail. Check SMTP credentials and network connectivity.');
+      if (isSendGridConfigured) {
+        console.error('💡 TIP: SendGrid API key is available. Consider using SendGrid instead of SMTP for Cloud Run.');
+      }
+      transporterVerified = false;
+    } else {
+      console.log('✅ SMTP connection verified successfully');
+      console.log(`📧 Email configured: ${emailConfig.host}:${emailConfig.port}`);
+      transporterVerified = true;
+    }
+  });
+} else if (isEmailConfigured) {
+  console.log(`✅ Email service configured: ${activeEmailService.toUpperCase()}`);
+  if (activeEmailService === 'sendgrid') {
+    console.log('📧 Using SendGrid API for email delivery');
+    console.log(`   From email: ${process.env.SENDGRID_FROM_EMAIL || process.env.SMTP_USER || 'not set'}`);
+  } else if (activeEmailService === 'mailgun') {
+    console.log(`📧 Using Mailgun API for email delivery (domain: ${process.env.MAILGUN_DOMAIN})`);
+  }
+} else {
+  console.log('⚠️  Email not configured - No email service credentials found');
+  console.log('💡 For Cloud Run, consider using SendGrid or Mailgun instead of SMTP');
+}
 
 // Email templates
 const emailTemplates = {
@@ -236,35 +328,170 @@ Please do not reply to this email.
   })
 };
 
+// Send email using SendGrid API (using official @sendgrid/mail library)
+async function sendEmailViaSendGrid(to, subject, html, text) {
+  const sgMail = require('@sendgrid/mail');
+  
+  // Set SendGrid API key
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+  
+  const emailFrom = process.env.SENDGRID_FROM_EMAIL || process.env.SMTP_USER || 'noreply@remoedph.com';
+  const emailFromName = process.env.SENDGRID_FROM_NAME || 'RemoEdPH';
+  
+  const msg = {
+    to: to,
+    from: {
+      email: emailFrom,
+      name: emailFromName
+    },
+    subject: subject,
+    text: text,
+    html: html
+  };
+  
+  try {
+    const response = await sgMail.send(msg);
+    // SendGrid returns an array with response object
+    const messageId = response[0]?.headers?.['x-message-id'] || 'sent';
+    return { success: true, messageId: messageId };
+  } catch (error) {
+    // Enhanced error logging for SendGrid
+    let errorMessage = 'SendGrid API error';
+    
+    if (error.response) {
+      const errorData = error.response.body;
+      if (errorData?.errors && Array.isArray(errorData.errors)) {
+        errorMessage = errorData.errors.map(e => e.message || e.field || JSON.stringify(e)).join('; ');
+      } else if (errorData?.message) {
+        errorMessage = errorData.message;
+      }
+      
+      const statusCode = error.response.code || error.response.statusCode;
+      console.error(`❌ SendGrid API Error (${statusCode}):`, errorMessage);
+      
+      if (statusCode === 401) {
+        errorMessage = 'Invalid SendGrid API key. Please check your SENDGRID_API_KEY.';
+      } else if (statusCode === 403) {
+        errorMessage = 'SendGrid API key does not have permission to send emails.';
+      } else if (statusCode === 400) {
+        errorMessage = `SendGrid validation error: ${errorMessage}`;
+      }
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    throw new Error(errorMessage);
+  }
+}
+
+// Send email using Mailgun API
+async function sendEmailViaMailgun(to, subject, html, text) {
+  const axios = require('axios');
+  const FormData = require('form-data');
+  
+  const mailgunDomain = process.env.MAILGUN_DOMAIN;
+  const mailgunUrl = `https://api.mailgun.net/v3/${mailgunDomain}/messages`;
+  const emailFrom = process.env.MAILGUN_FROM_EMAIL || `noreply@${mailgunDomain}`;
+  
+  const form = new FormData();
+  form.append('from', `RemoEdPH <${emailFrom}>`);
+  form.append('to', to);
+  form.append('subject', subject);
+  form.append('text', text);
+  form.append('html', html);
+  
+  try {
+    const response = await axios.post(mailgunUrl, form, {
+      headers: {
+        ...form.getHeaders(),
+        'Authorization': `Basic ${Buffer.from(`api:${process.env.MAILGUN_API_KEY}`).toString('base64')}`
+      }
+    });
+    return { success: true, messageId: response.data.id || 'sent' };
+  } catch (error) {
+    const errorMessage = error.response?.data?.message || error.message || 'Mailgun API error';
+    throw new Error(errorMessage);
+  }
+}
+
 // Send email function
 async function sendEmail(to, template, data) {
   try {
     // Check if email is properly configured
     if (!isEmailConfigured) {
-      console.log('Email not configured - using fallback mode');
+      console.log('⚠️  Email not configured - using fallback mode');
       return { 
         success: false, 
-        error: 'Email service not configured. Please set up SMTP credentials in .env file.',
+        error: 'Email service not configured. Please set up email credentials in environment variables.',
         fallback: true
       };
     }
 
     const emailContent = emailTemplates[template](data.username, data.newPassword, data.userType);
     
-    const mailOptions = {
-      from: `"RemoEdPH" <${emailConfig.auth.user}>`,
-      to: to,
-      subject: emailContent.subject,
-      html: emailContent.html,
-      text: emailContent.text
-    };
+    console.log(`📧 Attempting to send email to: ${to} via ${activeEmailService.toUpperCase()}`);
     
-    const info = await transporter.sendMail(mailOptions);
-    console.log('Email sent successfully:', info.messageId);
-    return { success: true, messageId: info.messageId };
+    let result;
+    
+    // Use appropriate email service
+    if (activeEmailService === 'sendgrid') {
+      result = await sendEmailViaSendGrid(to, emailContent.subject, emailContent.html, emailContent.text);
+    } else if (activeEmailService === 'mailgun') {
+      result = await sendEmailViaMailgun(to, emailContent.subject, emailContent.html, emailContent.text);
+    } else if (activeEmailService === 'smtp') {
+      // Verify connection before sending (if not already verified)
+      if (!transporterVerified) {
+        console.log('🔍 Verifying SMTP connection before sending email...');
+        try {
+          await transporter.verify();
+          transporterVerified = true;
+          console.log('✅ SMTP connection verified');
+        } catch (verifyError) {
+          const safeError = String(verifyError).replace(/(password|pass|pwd)=[^\s&"']*/gi, '$1=***');
+          console.error('❌ SMTP verification failed:', safeError);
+          return { 
+            success: false, 
+            error: `SMTP connection failed: ${verifyError.message || 'Connection verification failed'}` 
+          };
+        }
+      }
+      
+      const mailOptions = {
+        from: `"RemoEdPH" <${emailConfig.auth.user}>`,
+        to: to,
+        subject: emailContent.subject,
+        html: emailContent.html,
+        text: emailContent.text
+      };
+      
+      const info = await transporter.sendMail(mailOptions);
+      result = { success: true, messageId: info.messageId };
+    } else {
+      return { 
+        success: false, 
+        error: 'No email service configured' 
+      };
+    }
+    
+    console.log('✅ Email sent successfully:', result.messageId);
+    return result;
   } catch (error) {
-    console.error('Error sending email:', error);
-    return { success: false, error: error.message };
+    // Safely log error without exposing credentials
+    const errorMessage = error.message || String(error);
+    const safeErrorMessage = errorMessage
+      .replace(/(password|pass|pwd|api[_-]?key)=[^\s&"']*/gi, '$1=***')
+      .replace(/auth[^}]*pass[^}]*}/gi, 'auth:{...}');
+    
+    // Enhanced error logging for debugging
+    console.error(`❌ Error sending email via ${activeEmailService}:`, safeErrorMessage);
+    if (error.response?.status) {
+      console.error(`   HTTP status: ${error.response.status}`);
+    }
+    if (error.code) {
+      console.error(`   Error code: ${error.code}`);
+    }
+    
+    return { success: false, error: errorMessage };
   }
 }
 
@@ -272,7 +499,7 @@ async function sendEmail(to, template, data) {
 async function sendTeacherRegistrationEmail(email, username, password, firstName, lastName) {
   try {
     if (!isEmailConfigured) {
-      console.log('Email not configured - returning credentials for testing');
+      console.log('⚠️  Email not configured - returning credentials for testing');
       return {
         success: false,
         fallback: true,
@@ -283,23 +510,73 @@ async function sendTeacherRegistrationEmail(email, username, password, firstName
 
     const template = emailTemplates.teacherRegistration(email, username, password, firstName, lastName);
     
-    const mailOptions = {
-      from: `"RemoEdPH" <${emailConfig.auth.user}>`,
-      to: email,
-      subject: template.subject,
-      html: template.html,
-      text: template.text
-    };
-
-    const result = await transporter.sendMail(mailOptions);
-    console.log('Teacher registration email sent successfully:', result.messageId);
+    console.log(`📧 Attempting to send teacher registration email to: ${email} via ${activeEmailService.toUpperCase()}`);
     
-    return { success: true, messageId: result.messageId };
+    let result;
+    
+    // Use appropriate email service
+    if (activeEmailService === 'sendgrid') {
+      result = await sendEmailViaSendGrid(email, template.subject, template.html, template.text);
+    } else if (activeEmailService === 'mailgun') {
+      result = await sendEmailViaMailgun(email, template.subject, template.html, template.text);
+    } else if (activeEmailService === 'smtp') {
+      // Verify connection before sending (if not already verified)
+      if (!transporterVerified) {
+        console.log('🔍 Verifying SMTP connection before sending teacher registration email...');
+        try {
+          await transporter.verify();
+          transporterVerified = true;
+          console.log('✅ SMTP connection verified');
+        } catch (verifyError) {
+          const safeError = String(verifyError).replace(/(password|pass|pwd)=[^\s&"']*/gi, '$1=***');
+          console.error('❌ SMTP verification failed:', safeError);
+          return {
+            success: false,
+            error: `SMTP connection failed: ${verifyError.message || 'Connection verification failed'}`,
+            credentials: { username, password }
+          };
+        }
+      }
+      
+      const mailOptions = {
+        from: `"RemoEdPH" <${emailConfig.auth.user}>`,
+        to: email,
+        subject: template.subject,
+        html: template.html,
+        text: template.text
+      };
+      
+      result = await transporter.sendMail(mailOptions);
+      result = { success: true, messageId: result.messageId };
+    } else {
+      return {
+        success: false,
+        error: 'No email service configured',
+        credentials: { username, password }
+      };
+    }
+    
+    console.log('✅ Teacher registration email sent successfully:', result.messageId);
+    return result;
   } catch (error) {
-    console.error('Error sending teacher registration email:', error);
+    // Safely log error without exposing credentials
+    const errorMessage = error.message || String(error);
+    const safeErrorMessage = errorMessage
+      .replace(/(password|pass|pwd|api[_-]?key)=[^\s&"']*/gi, '$1=***')
+      .replace(/auth[^}]*pass[^}]*}/gi, 'auth:{...}');
+    
+    // Enhanced error logging for debugging
+    console.error(`❌ Error sending teacher registration email via ${activeEmailService}:`, safeErrorMessage);
+    if (error.response?.status) {
+      console.error(`   HTTP status: ${error.response.status}`);
+    }
+    if (error.code) {
+      console.error(`   Error code: ${error.code}`);
+    }
+    
     return {
       success: false,
-      error: error.message,
+      error: errorMessage,
       credentials: { username, password }
     };
   }
@@ -314,6 +591,7 @@ async function sendPasswordResetEmail(email, username, newPassword, userType) {
   });
 }
 
+<<<<<<< HEAD
 // Send assessment result email
 async function sendAssessmentEmail(parentEmail, childName, cefrLevel, score) {
   try {
@@ -573,6 +851,68 @@ This is an automated message. Please do not reply to this email.
       success: false,
       error: error.message,
       subscription: { email, username, plan, planPrice }
+=======
+// Diagnostic function to check email configuration (without exposing credentials)
+function getEmailConfigStatus() {
+  const status = {
+    configured: isEmailConfigured,
+    service: activeEmailService,
+    verified: transporterVerified,
+    emailServiceType: EMAIL_SERVICE_TYPE || '(not set, using auto-detect)',
+    hasSendGridKey: isSendGridConfigured,
+    hasMailgunConfig: isMailgunConfigured,
+    hasSMTPConfig: isSMTPConfigured
+  };
+  
+  if (activeEmailService === 'sendgrid') {
+    status.sendgridConfigured = isSendGridConfigured;
+    status.fromEmail = process.env.SENDGRID_FROM_EMAIL || process.env.SMTP_USER || 'not set';
+    status.fromName = process.env.SENDGRID_FROM_NAME || 'RemoEdPH';
+    status.apiKeyLength = process.env.SENDGRID_API_KEY ? process.env.SENDGRID_API_KEY.length : 0;
+  } else if (activeEmailService === 'mailgun') {
+    status.mailgunConfigured = isMailgunConfigured;
+    status.domain = process.env.MAILGUN_DOMAIN || 'not set';
+    status.fromEmail = process.env.MAILGUN_FROM_EMAIL || 'not set';
+  } else if (activeEmailService === 'smtp') {
+    status.host = emailConfig.host;
+    status.port = emailConfig.port;
+    status.user = emailConfig.auth.user;
+    status.hasPassword = !!emailConfig.auth.pass && emailConfig.auth.pass !== 'your-app-password';
+    status.requireTLS = emailConfig.requireTLS;
+  }
+  
+  return status;
+}
+
+// Test email sending function (for diagnostics)
+async function testEmailSending(testEmail) {
+  if (!isEmailConfigured) {
+    return {
+      success: false,
+      error: 'No email service configured',
+      status: getEmailConfigStatus()
+    };
+  }
+  
+  try {
+    const testResult = await sendEmail(testEmail, 'passwordReset', {
+      username: 'test-user',
+      newPassword: 'test-password-123',
+      userType: 'Test'
+    });
+    
+    return {
+      success: testResult.success,
+      messageId: testResult.messageId,
+      error: testResult.error,
+      status: getEmailConfigStatus()
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error.message,
+      status: getEmailConfigStatus()
+>>>>>>> da9de468fb1fb771b8de4b4f25ba3d9a1815209f
     };
   }
 }
@@ -581,6 +921,11 @@ module.exports = {
   sendPasswordResetEmail,
   sendTeacherRegistrationEmail,
   sendEmail,
+<<<<<<< HEAD
   sendAssessmentEmail,
   sendSubscriptionEmail
+=======
+  getEmailConfigStatus,
+  testEmailSending
+>>>>>>> da9de468fb1fb771b8de4b4f25ba3d9a1815209f
 };
