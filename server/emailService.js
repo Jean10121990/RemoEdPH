@@ -12,11 +12,20 @@ const isSMTPConfigured = process.env.SMTP_USER && process.env.SMTP_PASS &&
 
 // Determine which service to use (priority: SendGrid > Mailgun > SMTP)
 let activeEmailService = 'none';
-if (isSendGridConfigured && (EMAIL_SERVICE_TYPE === 'sendgrid' || EMAIL_SERVICE_TYPE === 'smtp')) {
+if (EMAIL_SERVICE_TYPE === 'sendgrid' && isSendGridConfigured) {
   activeEmailService = 'sendgrid';
-} else if (isMailgunConfigured && EMAIL_SERVICE_TYPE === 'mailgun') {
+} else if (EMAIL_SERVICE_TYPE === 'mailgun' && isMailgunConfigured) {
+  activeEmailService = 'mailgun';
+} else if (EMAIL_SERVICE_TYPE === 'smtp' && isSMTPConfigured) {
+  activeEmailService = 'smtp';
+} else if (isSendGridConfigured) {
+  // Auto-detect: if SendGrid is configured but EMAIL_SERVICE_TYPE not set, use SendGrid
+  activeEmailService = 'sendgrid';
+} else if (isMailgunConfigured) {
+  // Auto-detect: if Mailgun is configured, use it
   activeEmailService = 'mailgun';
 } else if (isSMTPConfigured) {
+  // Fallback to SMTP if configured
   activeEmailService = 'smtp';
 }
 
@@ -43,6 +52,14 @@ const emailConfig = {
 // Create transporter only if using SMTP
 let transporter = null;
 let transporterVerified = false;
+
+// Log email service detection on startup
+console.log('📧 Email Service Detection:');
+console.log(`   EMAIL_SERVICE_TYPE: ${EMAIL_SERVICE_TYPE || '(not set, using auto-detect)'}`);
+console.log(`   SENDGRID_API_KEY: ${isSendGridConfigured ? '✅ Set' : '❌ Not set'}`);
+console.log(`   MAILGUN_API_KEY: ${isMailgunConfigured ? '✅ Set' : '❌ Not set'}`);
+console.log(`   SMTP_USER: ${isSMTPConfigured ? '✅ Set' : '❌ Not set'}`);
+console.log(`   Active Service: ${activeEmailService.toUpperCase()}`);
 
 if (activeEmailService === 'smtp') {
   transporter = nodemailer.createTransport(emailConfig);
@@ -288,45 +305,58 @@ Please do not reply to this email.
   })
 };
 
-// Send email using SendGrid API
+// Send email using SendGrid API (using official @sendgrid/mail library)
 async function sendEmailViaSendGrid(to, subject, html, text) {
-  const axios = require('axios');
-  const sendGridUrl = 'https://api.sendgrid.com/v3/mail/send';
+  const sgMail = require('@sendgrid/mail');
+  
+  // Set SendGrid API key
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
   
   const emailFrom = process.env.SENDGRID_FROM_EMAIL || process.env.SMTP_USER || 'noreply@remoedph.com';
   const emailFromName = process.env.SENDGRID_FROM_NAME || 'RemoEdPH';
   
-  const payload = {
-    personalizations: [{
-      to: [{ email: to }],
-      subject: subject
-    }],
+  const msg = {
+    to: to,
     from: {
       email: emailFrom,
       name: emailFromName
     },
-    content: [
-      {
-        type: 'text/plain',
-        value: text
-      },
-      {
-        type: 'text/html',
-        value: html
-      }
-    ]
+    subject: subject,
+    text: text,
+    html: html
   };
   
   try {
-    const response = await axios.post(sendGridUrl, payload, {
-      headers: {
-        'Authorization': `Bearer ${process.env.SENDGRID_API_KEY}`,
-        'Content-Type': 'application/json'
-      }
-    });
-    return { success: true, messageId: response.headers['x-msg-id'] || 'sent' };
+    const response = await sgMail.send(msg);
+    // SendGrid returns an array with response object
+    const messageId = response[0]?.headers?.['x-message-id'] || 'sent';
+    return { success: true, messageId: messageId };
   } catch (error) {
-    const errorMessage = error.response?.data?.errors?.[0]?.message || error.message || 'SendGrid API error';
+    // Enhanced error logging for SendGrid
+    let errorMessage = 'SendGrid API error';
+    
+    if (error.response) {
+      const errorData = error.response.body;
+      if (errorData?.errors && Array.isArray(errorData.errors)) {
+        errorMessage = errorData.errors.map(e => e.message || e.field || JSON.stringify(e)).join('; ');
+      } else if (errorData?.message) {
+        errorMessage = errorData.message;
+      }
+      
+      const statusCode = error.response.code || error.response.statusCode;
+      console.error(`❌ SendGrid API Error (${statusCode}):`, errorMessage);
+      
+      if (statusCode === 401) {
+        errorMessage = 'Invalid SendGrid API key. Please check your SENDGRID_API_KEY.';
+      } else if (statusCode === 403) {
+        errorMessage = 'SendGrid API key does not have permission to send emails.';
+      } else if (statusCode === 400) {
+        errorMessage = `SendGrid validation error: ${errorMessage}`;
+      }
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
     throw new Error(errorMessage);
   }
 }
@@ -543,12 +573,18 @@ function getEmailConfigStatus() {
   const status = {
     configured: isEmailConfigured,
     service: activeEmailService,
-    verified: transporterVerified
+    verified: transporterVerified,
+    emailServiceType: EMAIL_SERVICE_TYPE || '(not set, using auto-detect)',
+    hasSendGridKey: isSendGridConfigured,
+    hasMailgunConfig: isMailgunConfigured,
+    hasSMTPConfig: isSMTPConfigured
   };
   
   if (activeEmailService === 'sendgrid') {
     status.sendgridConfigured = isSendGridConfigured;
     status.fromEmail = process.env.SENDGRID_FROM_EMAIL || process.env.SMTP_USER || 'not set';
+    status.fromName = process.env.SENDGRID_FROM_NAME || 'RemoEdPH';
+    status.apiKeyLength = process.env.SENDGRID_API_KEY ? process.env.SENDGRID_API_KEY.length : 0;
   } else if (activeEmailService === 'mailgun') {
     status.mailgunConfigured = isMailgunConfigured;
     status.domain = process.env.MAILGUN_DOMAIN || 'not set';
@@ -564,9 +600,42 @@ function getEmailConfigStatus() {
   return status;
 }
 
+// Test email sending function (for diagnostics)
+async function testEmailSending(testEmail) {
+  if (!isEmailConfigured) {
+    return {
+      success: false,
+      error: 'No email service configured',
+      status: getEmailConfigStatus()
+    };
+  }
+  
+  try {
+    const testResult = await sendEmail(testEmail, 'passwordReset', {
+      username: 'test-user',
+      newPassword: 'test-password-123',
+      userType: 'Test'
+    });
+    
+    return {
+      success: testResult.success,
+      messageId: testResult.messageId,
+      error: testResult.error,
+      status: getEmailConfigStatus()
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error.message,
+      status: getEmailConfigStatus()
+    };
+  }
+}
+
 module.exports = {
   sendPasswordResetEmail,
   sendTeacherRegistrationEmail,
   sendEmail,
-  getEmailConfigStatus
+  getEmailConfigStatus,
+  testEmailSending
 };
