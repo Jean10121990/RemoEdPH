@@ -981,9 +981,9 @@
                     const emailResult = await emailResponse.json();
                     if (emailResult.success || emailResult.fallback) {
                         console.log('✅ Assessment results sent via email');
-                        // Automatically redirect to landing page with sign-up
+                        // Automatically redirect to home page with sign-up
                         setTimeout(() => {
-                            window.location.href = `landing.html?email=${encodeURIComponent(guestAssessmentData.parentEmail)}&cefrLevel=${level}&score=${score}&signup=true`;
+                            window.location.href = `/?email=${encodeURIComponent(guestAssessmentData.parentEmail)}&cefrLevel=${level}&score=${score}&signup=true`;
                         }, 3000);
                     }
                     return;
