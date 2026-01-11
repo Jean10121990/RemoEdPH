@@ -3,54 +3,134 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Booking History - Student Dashboard</title>
+    <title>📜 My Classes - RemoEdPH</title>
     <link rel="stylesheet" href="modern-styles.css">
+    <link rel="stylesheet" href="child-friendly-styles.css">
     <style>
+        body { 
+            font-family: 'Comic Sans MS', 'Chalkboard SE', 'Trebuchet MS', 'Segoe UI', sans-serif; 
+            background: linear-gradient(135deg, #FFF0F5 0%, #E8F8F5 50%, #FFF9E6 100%);
+            background-attachment: fixed;
+            margin: 0;
+            padding: 0;
+        }
+        .remoed-main { 
+            display: flex; 
+            min-height: 100vh; 
+        }
+        .remoed-sidebar { 
+            width: 260px; 
+            min-width: 260px;
+            background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%); 
+            box-shadow: 4px 0 20px rgba(102, 126, 234, 0.1); 
+            padding: 0; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: stretch;
+            position: fixed;
+            height: 100vh;
+            z-index: 100;
+            border-right: 1px solid rgba(102, 126, 234, 0.1);
+        }
+        .remoed-content {
+            flex: 1;
+            padding: 36px 20px 36px 20px;
+            min-width: 0;
+            background: #f6fbff;
+            min-height: 100vh;
+            box-sizing: border-box;
+            margin-left: 260px;
+            max-width: calc(100vw - 260px);
+            overflow-x: auto;
+        }
         .booking-history-container {
-            max-width: 1200px;
+            max-width: 100%;
             margin: 0 auto;
-            padding: 20px;
+            padding: 24px 32px;
         }
         
         .booking-history-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 2px solid #e0e0e0;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 16px;
         }
         
         .booking-history-title {
-            font-size: 28px;
-            font-weight: bold;
-            color: #333;
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #667eea;
+            margin: 0;
         }
         
         .booking-count {
-            font-size: 16px;
+            font-size: 0.95rem;
+            color: #495057;
+            background: #f8f9fa;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-weight: 500;
+        }
+        
+        .view-controls {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .view-selector {
+            display: flex;
+            gap: 8px;
+            background: #f8f9fa;
+            padding: 4px;
+            border-radius: 8px;
+        }
+        
+        .view-btn {
+            padding: 6px 12px;
+            border: none;
+            background: transparent;
             color: #666;
-            background: #f5f5f5;
-            padding: 8px 16px;
-            border-radius: 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        
+        .view-btn.active {
+            background: #667eea;
+            color: white;
+        }
+        
+        .view-btn:hover {
+            background: #e9ecef;
+        }
+        
+        .view-btn.active:hover {
+            background: #5a67d8;
         }
         
         .filter-tabs {
             display: flex;
-            gap: 10px;
-            margin-bottom: 30px;
+            gap: 8px;
+            margin-bottom: 20px;
             flex-wrap: wrap;
         }
         
         .filter-tab {
-            padding: 10px 20px;
-            border: 2px solid #e0e0e0;
+            padding: 8px 16px;
+            border: 1px solid #e0e0e0;
             background: white;
             color: #666;
-            border-radius: 25px;
+            border-radius: 6px;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
             font-weight: 500;
+            font-size: 0.875rem;
         }
         
         .filter-tab:hover {
@@ -64,45 +144,76 @@
             border-color: #667eea;
         }
         
-        .bookings-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-            gap: 20px;
-        }
-        
-        .booking-card {
+        /* Excel-like Table Styles */
+        .bookings-table-container {
             background: white;
-            border-radius: 15px;
-            padding: 25px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            border: 1px solid #e0e0e0;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            overflow-x: auto;
+            overflow-y: auto;
+            max-height: calc(100vh - 300px);
+            border: 1px solid #e0e6ed;
         }
         
-        .booking-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        .bookings-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+            min-width: 800px;
         }
         
-        .booking-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 15px;
+        .bookings-table thead {
+            background: linear-gradient(135deg, #667eea, #5a67d8);
+            color: white;
         }
         
-        .booking-date {
-            font-size: 18px;
-            font-weight: bold;
-            color: #333;
-        }
-        
-        .booking-status {
-            padding: 6px 12px;
-            border-radius: 15px;
-            font-size: 12px;
-            font-weight: bold;
+        .bookings-table th {
+            padding: 12px 8px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.8rem;
             text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-right: 1px solid rgba(255, 255, 255, 0.2);
+            white-space: nowrap;
+        }
+        
+        .bookings-table th:last-child {
+            border-right: none;
+        }
+        
+        .bookings-table tbody tr {
+            border-bottom: 1px solid #e0e6ed;
+            transition: background 0.2s ease;
+        }
+        
+        .bookings-table tbody tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .bookings-table tbody tr:last-child {
+            border-bottom: none;
+        }
+        
+        .bookings-table td {
+            padding: 10px 8px;
+            color: #333;
+            border-right: 1px solid #f1f5f9;
+            vertical-align: middle;
+        }
+        
+        .bookings-table td:last-child {
+            border-right: none;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            white-space: nowrap;
         }
         
         .status-completed {
@@ -110,9 +221,29 @@
             color: #155724;
         }
         
+        .status-finished {
+            background: #cce5ff;
+            color: #004085;
+        }
+        
         .status-cancelled {
             background: #f8d7da;
             color: #721c24;
+        }
+        
+        .status-student-absent {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .status-teacher-absent {
+            background: #f5c6cb;
+            color: #721c24;
+        }
+        
+        .status-in-progress {
+            background: #d1ecf1;
+            color: #0c5460;
         }
         
         .status-upcoming {
@@ -123,91 +254,6 @@
         .status-past {
             background: #e2e3e5;
             color: #383d41;
-        }
-        
-        .booking-details {
-            margin-bottom: 20px;
-        }
-        
-        .detail-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 8px;
-            font-size: 14px;
-        }
-        
-        .detail-label {
-            color: #666;
-            font-weight: 500;
-        }
-        
-        .detail-value {
-            color: #333;
-            font-weight: 600;
-        }
-        
-        .teacher-info {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 15px;
-        }
-        
-        .teacher-name {
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 5px;
-        }
-        
-        .teacher-email {
-            color: #666;
-            font-size: 14px;
-        }
-        
-        .booking-actions {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-        
-        .action-btn {
-            padding: 8px 16px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-block;
-            text-align: center;
-        }
-        
-        .btn-primary {
-            background: #667eea;
-            color: white;
-        }
-        
-        .btn-primary:hover {
-            background: #5a6fd8;
-        }
-        
-        .btn-secondary {
-            background: #6c757d;
-            color: white;
-        }
-        
-        .btn-secondary:hover {
-            background: #5a6268;
-        }
-        
-        .btn-danger {
-            background: #dc3545;
-            color: white;
-        }
-        
-        .btn-danger:hover {
-            background: #c82333;
         }
         
         .empty-state {
@@ -274,6 +320,24 @@
             100% { transform: rotate(360deg); }
         }
         
+        .table-actions {
+            display: flex;
+            gap: 6px;
+        }
+        
+        .action-link {
+            color: #667eea;
+            text-decoration: none;
+            font-size: 0.8rem;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        
+        .action-link:hover {
+            background: #e9ecef;
+        }
+        
                  /* Override modern-styles.css sidebar styles to match teacher dashboard */
          .remoed-menu li { 
              padding: 14px 32px; 
@@ -309,15 +373,26 @@
             }
             
             .filter-tabs {
-                justify-content: center;
+                justify-content: flex-start;
+                overflow-x: auto;
+                flex-wrap: nowrap;
             }
             
-            .bookings-grid {
-                grid-template-columns: 1fr;
+            .view-controls {
+                width: 100%;
             }
             
-            .booking-card {
-                padding: 20px;
+            .bookings-table-container {
+                max-height: calc(100vh - 350px);
+            }
+            
+            .bookings-table {
+                font-size: 0.75rem;
+            }
+            
+            .bookings-table th,
+            .bookings-table td {
+                padding: 8px 6px;
             }
         }
     </style>
@@ -327,7 +402,7 @@
         <nav class="remoed-sidebar">
             <div class="remoed-logo" style="height:100px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding-top:5px;">
                 <img src="remoed-logo.png" alt="RemoEdPH Logo" style="height:40px; width:auto; display:inline-block; vertical-align:middle;">
-                <span class="remoed-title" style="font-size:1.3rem; font-weight:700; color:#667eea; letter-spacing:1px;">RemoEdPH</span>
+                <span class="remoed-title" style="font-size:1.4rem; font-weight:800; color:#1CA7E7; letter-spacing:1px; text-shadow: 2px 2px 4px rgba(28, 167, 231, 0.2);">RemoEdPH</span>
             </div>
             <div class="remoed-user" style="display:flex; flex-direction:column; align-items:center; margin-bottom:24px;">
                 <div class="remoed-avatar" id="student-avatar" onclick="window.location.href='student-profile.html'" style="cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
@@ -337,11 +412,13 @@
                 <span class="remoed-username" id="remoed-username"></span>
             </div>
             <ul class="remoed-menu">
-                <li onclick="window.location.href='student-dashboard.html'"><svg fill="none" stroke="#667eea" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/></svg>Dashboard</li>
-                <li onclick="window.location.href='student-class-table.html'"><svg fill="none" stroke="#667eea" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M16 3v4M8 3v4"/></svg>Class Schedule</li>
-                <li onclick="window.location.href='student-book.html'"><svg fill="none" stroke="#667eea" stroke-width="2" viewBox="0 0 24 24"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 10c-4.41 0-8-1.79-8-4V6c0-2.21 3.59-4 8-4s8 1.79 8 4v8c0 2.21-3.59 4-8 4z"/></svg>Book Class</li>
-                <li class="active"><svg fill="none" stroke="#667eea" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>Booking History</li>
-                <li onclick="window.location.href='student-profile.html'"><svg fill="none" stroke="#667eea" stroke-width="2" viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>Profile</li>
+                <li onclick="window.location.href='student-dashboard.html'">🏠 <span>My Home</span></li>
+                <li onclick="window.location.href='student-class-table.html'">📅 <span>My Schedule</span></li>
+                <li onclick="window.location.href='student-book.html'">➕ <span>Book a Class</span></li>
+                <li class="active">📜 <span>My Classes</span></li>
+                <li onclick="window.location.href='student-games-activities.html'">🎮 <span>Play & Learn</span></li>
+                <li onclick="window.location.href='student-profile.html'">👤 <span>My Profile</span></li>
+                <li onclick="window.location.href='student-assessment.html'">🎯 <span>My Level</span></li>
                 <li id="logout-nav" style="margin-top:auto; color:#e74c3c; cursor:pointer;"><svg fill="none" stroke="#e74c3c" stroke-width="2" viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7"/><path d="M3 12a9 9 0 0118 0 9 9 0 01-18 0z"/></svg>Logout</li>
             </ul>
         </nav>
@@ -349,17 +426,34 @@
             <div class="booking-history-container">
                 <div class="booking-history-header">
                     <div>
-                        <h1 class="booking-history-title">Booking History</h1>
+                        <h1 class="booking-history-title" style="font-size: 2rem; font-weight: 800; color: #1CA7E7; text-shadow: 2px 2px 4px rgba(28, 167, 231, 0.2); display: flex; align-items: center; gap: 12px;">
+                            <span>📚📶</span>
+                            <span>📜 My Classes</span>
+                        </h1>
                         <div class="booking-count" id="booking-count">Loading...</div>
                     </div>
                 </div>
 
-                <div class="filter-tabs">
-                    <div class="filter-tab active" data-filter="all">All Bookings</div>
-                    <div class="filter-tab" data-filter="upcoming">Upcoming</div>
-                    <div class="filter-tab" data-filter="completed">Completed</div>
-                    <div class="filter-tab" data-filter="cancelled">Cancelled</div>
-                    <div class="filter-tab" data-filter="past">Past</div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 16px;">
+                    <div class="filter-tabs">
+                        <div class="filter-tab active" data-filter="all">All Bookings</div>
+                        <div class="filter-tab" data-filter="upcoming">Upcoming</div>
+                        <div class="filter-tab" data-filter="completed">Completed</div>
+                        <div class="filter-tab" data-filter="finished">Finished</div>
+                        <div class="filter-tab" data-filter="cancelled">Cancelled</div>
+                        <div class="filter-tab" data-filter="student-absent">Student Absent</div>
+                        <div class="filter-tab" data-filter="teacher-absent">Teacher Absent</div>
+                    </div>
+                    
+                    <div class="view-controls">
+                        <span style="font-size: 0.875rem; color: #666; margin-right: 8px;">View:</span>
+                        <div class="view-selector">
+                            <button class="view-btn active" data-view="all">All</button>
+                            <button class="view-btn" data-view="daily">Daily</button>
+                            <button class="view-btn" data-view="weekly">Weekly</button>
+                            <button class="view-btn" data-view="monthly">Monthly</button>
+                        </div>
+                    </div>
                 </div>
 
                 <div id="bookings-container">
@@ -407,6 +501,17 @@
              setupFilterTabs();
          });
 
+        // Helper function to get Monday of a week
+        function getWeekStart(date) {
+            const d = new Date(date);
+            const day = d.getDay();
+            const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
+            const monday = new Date(d.setDate(diff));
+            return monday.getFullYear() + '-' + 
+                   String(monday.getMonth() + 1).padStart(2, '0') + '-' + 
+                   String(monday.getDate()).padStart(2, '0');
+        }
+        
         // Load booking history from API
         async function loadBookingHistory() {
             try {
@@ -417,45 +522,66 @@
                     return;
                 }
 
-                // Add timeout to prevent hanging
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-
-                const response = await fetch('/api/student/booking-history', {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json',
-                        'Cache-Control': 'no-cache',
-                        'Pragma': 'no-cache'
-                    },
-                    signal: controller.signal
-                });
-
-                clearTimeout(timeoutId);
-
-                if (response.ok) {
-                    const data = await response.json();
-                    console.log('📋 Booking history loaded:', data);
-                    allBookings = data.bookings || [];
-                    displayBookings(allBookings);
-                    updateBookingCount(allBookings.length);
-                } else if (response.status === 401) {
-                    console.error('Unauthorized - token may be expired');
-                    showError('Session expired. Please log in again.');
-                    setTimeout(() => {
-                        localStorage.clear();
-                        window.location.href = 'student-login.html';
-                    }, 2000);
-                } else if (response.status === 404) {
-                    console.log('No booking history found');
-                    allBookings = [];
-                    displayBookings(allBookings);
-                    updateBookingCount(0);
-                } else {
-                    console.error('Failed to load booking history:', response.status);
-                    showError('Failed to load booking history. Please try again.');
+                // Fetch bookings for multiple weeks to get all history
+                // Get bookings from the past 6 months
+                const allBookingsData = [];
+                const today = new Date();
+                const weeksToFetch = 26; // 6 months = ~26 weeks
+                
+                // Fetch bookings in parallel batches to speed up loading
+                const fetchPromises = [];
+                for (let i = 0; i < weeksToFetch; i++) {
+                    const weekDate = new Date(today);
+                    weekDate.setDate(today.getDate() - (i * 7));
+                    const weekString = getWeekStart(weekDate);
+                    
+                    fetchPromises.push(
+                        fetch(`/api/student/bookings?week=${weekString}`, {
+                            method: 'GET',
+                            headers: {
+                                'Authorization': `Bearer ${token}`,
+                                'Content-Type': 'application/json',
+                                'Cache-Control': 'no-cache',
+                                'Pragma': 'no-cache'
+                            }
+                        }).then(async response => {
+                            if (response.ok) {
+                                const data = await response.json();
+                                return data.bookings || [];
+                            }
+                            return [];
+                        }).catch(err => {
+                            console.log(`Skipping week ${weekString}:`, err.message);
+                            return [];
+                        })
+                    );
                 }
+                
+                // Wait for all requests to complete
+                const results = await Promise.all(fetchPromises);
+                results.forEach(bookings => {
+                    if (bookings && bookings.length > 0) {
+                        allBookingsData.push(...bookings);
+                    }
+                });
+                
+                console.log('📋 Total bookings loaded:', allBookingsData.length);
+                allBookings = allBookingsData;
+                
+                // Remove duplicates based on _id
+                const uniqueBookings = [];
+                const seenIds = new Set();
+                allBookings.forEach(booking => {
+                    if (booking._id && !seenIds.has(booking._id.toString())) {
+                        seenIds.add(booking._id.toString());
+                        uniqueBookings.push(booking);
+                    }
+                });
+                allBookings = uniqueBookings;
+                
+                console.log('📋 Unique bookings after deduplication:', allBookings.length);
+                displayBookings(allBookings);
+                updateBookingCount(allBookings.length);
             } catch (error) {
                 console.error('Error loading booking history:', error);
                 if (error.name === 'AbortError') {
@@ -490,63 +616,113 @@
                 return;
             }
 
-            const bookingsHTML = bookings.map(booking => createBookingCard(booking)).join('');
-            container.innerHTML = `
-                <div class="bookings-grid">
-                    ${bookingsHTML}
+            // Sort bookings by date and time (newest first)
+            const sortedBookings = [...bookings].sort((a, b) => {
+                const dateA = new Date(a.date + 'T' + a.time);
+                const dateB = new Date(b.date + 'T' + b.time);
+                return dateB - dateA;
+            });
+
+            container.innerHTML = createBookingsTable(sortedBookings);
+        }
+        
+        // Create Excel-like table
+        function createBookingsTable(bookings) {
+            const tableRows = bookings.map(booking => {
+                const status = getBookingStatus(booking);
+                const statusClass = `status-${status.toLowerCase().replace(/\s+/g, '-')}`;
+                const date = new Date(booking.date);
+                const formattedDate = date.toLocaleDateString('en-US', { 
+                    month: 'short', 
+                    day: 'numeric', 
+                    year: 'numeric' 
+                });
+                const time = booking.time;
+                const duration = calculateDuration(booking);
+                const lesson = booking.lesson || 'N/A';
+                const teacherName = getTeacherName(booking);
+                
+                return `
+                    <tr>
+                        <td>${formattedDate}</td>
+                        <td>${time}</td>
+                        <td>${duration}</td>
+                        <td>${lesson}</td>
+                        <td>${teacherName}</td>
+                        <td><span class="status-badge ${statusClass}">${status}</span></td>
+                        <td>
+                            <div class="table-actions">
+                                ${getTableActions(booking, status)}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+            
+            return `
+                <div class="bookings-table-container">
+                    <table class="bookings-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Time</th>
+                                <th>Duration</th>
+                                <th>Class/Lesson</th>
+                                <th>Teacher</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${tableRows}
+                        </tbody>
+                    </table>
                 </div>
             `;
         }
-
-        // Create booking card HTML
-        function createBookingCard(booking) {
-            const status = getBookingStatus(booking);
-            const statusClass = `status-${status.toLowerCase()}`;
+        
+        // Calculate duration
+        function calculateDuration(booking) {
+            if (booking.finishedAt && booking.date && booking.time) {
+                const startTime = new Date(booking.date + 'T' + booking.time);
+                const endTime = new Date(booking.finishedAt);
+                const diffMs = endTime - startTime;
+                const diffMins = Math.round(diffMs / 60000);
+                return diffMins > 0 ? `${diffMins} min` : '25 min';
+            }
+            return '25 min';
+        }
+        
+        // Get teacher name
+        function getTeacherName(booking) {
+            if (booking.teacherId) {
+                if (typeof booking.teacherId === 'object') {
+                    if (booking.teacherId.firstName && booking.teacherId.lastName) {
+                        return `${booking.teacherId.firstName} ${booking.teacherId.lastName}`;
+                    }
+                    return booking.teacherId.username || 'Unknown';
+                }
+            }
+            if (booking.teacherName) return booking.teacherName;
+            if (booking.teacher && booking.teacher.name) return booking.teacher.name;
+            return 'Unknown Teacher';
+        }
+        
+        // Get table actions
+        function getTableActions(booking, status) {
+            const actions = [];
             
-            const date = new Date(booking.date);
-            const formattedDate = date.toLocaleDateString('en-US', { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
-            });
+            if (status === 'Upcoming') {
+                if (booking.classroomId) {
+                    actions.push(`<a href="live-classroom.html?bookingId=${booking._id}&room=${booking.classroomId}&userType=student" class="action-link">Join</a>`);
+                }
+            } else if (status === 'Completed' || status === 'Finished') {
+                actions.push(`<a href="student-class-table.html" class="action-link">View</a>`);
+            } else if (status === 'Past' && booking.status !== 'completed' && booking.status !== 'cancelled') {
+                actions.push(`<a href="student-class-table.html" class="action-link">View</a>`);
+            }
             
-            const time = booking.time;
-            
-            return `
-                <div class="booking-card">
-                    <div class="booking-header">
-                        <div class="booking-date">${formattedDate}</div>
-                        <div class="booking-status ${statusClass}">${status}</div>
-                    </div>
-                    
-                    <div class="booking-details">
-                        <div class="detail-row">
-                            <span class="detail-label">Time:</span>
-                            <span class="detail-value">${time}</span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="detail-label">Duration:</span>
-                            <span class="detail-value">25 minutes</span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="detail-label">Subject:</span>
-                            <span class="detail-value">${booking.subject || 'General'}</span>
-                        </div>
-                    </div>
-                    
-                    ${booking.teacher ? `
-                        <div class="teacher-info">
-                            <div class="teacher-name">${booking.teacher.name || 'Teacher'}</div>
-                            <div class="teacher-email">${booking.teacher.email || 'teacher@example.com'}</div>
-                        </div>
-                    ` : ''}
-                    
-                    <div class="booking-actions">
-                        ${getActionButtons(booking, status)}
-                    </div>
-                </div>
-            `;
+            return actions.join('') || '-';
         }
 
         // Get booking status
@@ -555,49 +731,46 @@
             const bookingDate = new Date(booking.date + 'T' + booking.time);
             const endTime = new Date(bookingDate.getTime() + 25 * 60000); // 25 minutes
             
+            // Check for cancelled status
             if (booking.status === 'cancelled') {
                 return 'Cancelled';
-            } else if (booking.status === 'completed') {
+            }
+            
+            // Check for absent status
+            if (booking.absentType === 'student') {
+                return 'Student Absent';
+            }
+            if (booking.absentType === 'teacher') {
+                return 'Teacher Absent';
+            }
+            
+            // Check if class is finished (has finishedAt timestamp)
+            if (booking.finishedAt) {
+                return 'Finished';
+            }
+            
+            // Check for completed status
+            if (booking.status === 'completed') {
                 return 'Completed';
-            } else if (now < bookingDate) {
+            }
+            
+            // Check if booking is in the future
+            if (now < bookingDate) {
                 return 'Upcoming';
-            } else if (now > endTime) {
+            }
+            
+            // Check if booking time has passed
+            if (now > endTime) {
                 return 'Past';
-            } else {
-                return 'In Progress';
-            }
-        }
-
-        // Get action buttons based on booking status
-        function getActionButtons(booking, status) {
-            const buttons = [];
-            
-            if (status === 'Upcoming') {
-                buttons.push(`
-                    <a href="live-classroom.html?bookingId=${booking._id}&room=${booking.room}&userType=student" 
-                       class="action-btn btn-primary">Join Class</a>
-                `);
-                
-                if (booking.status !== 'cancelled') {
-                    buttons.push(`
-                        <button onclick="requestCancellation('${booking._id}')" 
-                                class="action-btn btn-secondary">Request Cancellation</button>
-                    `);
-                }
-            } else if (status === 'Completed') {
-                buttons.push(`
-                    <button onclick="viewFeedback('${booking._id}')" 
-                            class="action-btn btn-primary">View Feedback</button>
-                `);
-            } else if (status === 'Past' && booking.status !== 'completed') {
-                buttons.push(`
-                    <span class="action-btn btn-secondary" style="opacity: 0.6;">Missed</span>
-                `);
             }
             
-            return buttons.join('');
+            // Default to in progress if class is currently happening
+            return 'In Progress';
         }
 
+
+        let currentView = 'all';
+        
         // Setup filter tabs
         function setupFilterTabs() {
             const filterTabs = document.querySelectorAll('.filter-tab');
@@ -614,11 +787,28 @@
                     currentFilter = tab.dataset.filter;
                     
                     // Filter and display bookings
-                    const filteredBookings = filterBookings(allBookings, currentFilter);
-                    displayBookings(filteredBookings);
-                    updateBookingCount(filteredBookings.length);
+                    applyFilters();
                 });
             });
+            
+            // Setup view buttons
+            const viewButtons = document.querySelectorAll('.view-btn');
+            viewButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    viewButtons.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    currentView = btn.dataset.view;
+                    applyFilters();
+                });
+            });
+        }
+        
+        // Apply both status and view filters
+        function applyFilters() {
+            let filtered = filterBookings(allBookings, currentFilter);
+            filtered = applyViewFilter(filtered, currentView);
+            displayBookings(filtered);
+            updateBookingCount(filtered.length);
         }
 
         // Filter bookings based on selected filter
@@ -629,7 +819,43 @@
             
             return bookings.filter(booking => {
                 const status = getBookingStatus(booking);
-                return status.toLowerCase() === filter;
+                const statusKey = status.toLowerCase().replace(/\s+/g, '-');
+                return statusKey === filter;
+            });
+        }
+        
+        // Apply view filter (daily, weekly, monthly)
+        function applyViewFilter(bookings, view) {
+            if (view === 'all') {
+                return bookings;
+            }
+            
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            
+            return bookings.filter(booking => {
+                const bookingDateStr = booking.date;
+                if (!bookingDateStr) return false;
+                
+                const bookingDate = new Date(bookingDateStr + 'T00:00:00');
+                const bookingDateOnly = new Date(bookingDate.getFullYear(), bookingDate.getMonth(), bookingDate.getDate());
+                
+                if (view === 'daily') {
+                    return bookingDateOnly.getTime() === today.getTime();
+                } else if (view === 'weekly') {
+                    const weekStart = new Date(today);
+                    const dayOfWeek = today.getDay();
+                    const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+                    weekStart.setDate(today.getDate() - daysToMonday);
+                    const weekEnd = new Date(weekStart);
+                    weekEnd.setDate(weekStart.getDate() + 6);
+                    return bookingDateOnly >= weekStart && bookingDateOnly <= weekEnd;
+                } else if (view === 'monthly') {
+                    return bookingDateOnly.getMonth() === today.getMonth() && 
+                           bookingDateOnly.getFullYear() === today.getFullYear();
+                }
+                
+                return true;
             });
         }
 

@@ -3,8 +3,8 @@ const nodemailer = require('nodemailer');
 // Email configuration
 const emailConfig = {
   host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: process.env.SMTP_PORT || 587,
-  secure: false, // true for 465, false for other ports
+  port: parseInt(process.env.SMTP_PORT) || 587,
+  secure: process.env.SMTP_PORT === '465', // true for 465, false for other ports
   auth: {
     user: process.env.SMTP_USER || 'your-email@gmail.com',
     pass: process.env.SMTP_PASS || 'your-app-password'
@@ -314,8 +314,273 @@ async function sendPasswordResetEmail(email, username, newPassword, userType) {
   });
 }
 
+// Send assessment result email
+async function sendAssessmentEmail(parentEmail, childName, cefrLevel, score) {
+  try {
+    if (!isEmailConfigured) {
+      console.log('Email not configured - returning assessment data for testing');
+      return {
+        success: false,
+        fallback: true,
+        error: 'Email service not configured',
+        assessment: { childName, cefrLevel, score }
+      };
+    }
+
+    const levelLabels = {
+      'A1': 'A1 - Beginner Level',
+      'A2': 'A2 - Elementary Level',
+      'A3': 'A3 - Upper Elementary Level',
+      'B1': 'B1 - Intermediate Level',
+      'B2': 'B2 - Upper Intermediate Level',
+      'C1': 'C1 - Advanced Level',
+      'C2': 'C2 - Proficient Level'
+    };
+    
+    const levelLabel = levelLabels[cefrLevel] || cefrLevel;
+    
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Your Child's English Level Assessment Results</title>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #1CA7E7, #5CB3FF); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
+          .result-box { background: white; border: 3px solid #1CA7E7; border-radius: 12px; padding: 25px; margin: 20px 0; text-align: center; }
+          .level { font-size: 2.5rem; font-weight: 800; color: #1CA7E7; margin: 15px 0; }
+          .score { font-size: 1.5rem; color: #4CAF50; font-weight: 700; }
+          .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
+          .btn { display: inline-block; background: linear-gradient(135deg, #1CA7E7, #5CB3FF); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; margin: 20px 0; font-weight: 700; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🎯 Assessment Results! 🎉</h1>
+            <p>Your Child's English Level Assessment</p>
+          </div>
+          
+          <div class="content">
+            <h2>Hello! 👋</h2>
+            <p>Great news! <strong>${childName}</strong> has completed the English level assessment!</p>
+            
+            <div class="result-box">
+              <h3 style="color: #1CA7E7; margin-bottom: 15px;">English Level</h3>
+              <div class="level">${levelLabel}</div>
+              <div class="score">Score: ${score}%</div>
+            </div>
+            
+            <p style="margin-top: 25px;"><strong>What's Next?</strong></p>
+            <p>Based on this assessment, we recommend classes at the <strong>${levelLabel}</strong> level. Our expert teachers will help ${childName} continue learning and improving!</p>
+            
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${process.env.FRONTEND_URL || 'http://localhost:5000'}/student-login.html" class="btn">Start Learning Now! 🚀</a>
+            </div>
+            
+            <p style="margin-top: 25px;"><strong>Questions?</strong></p>
+            <p>If you have any questions about the assessment results or our learning programs, please don't hesitate to contact us!</p>
+          </div>
+          
+          <div class="footer">
+            <p>© 2024 RemoEdPH. All rights reserved.</p>
+            <p>This is an automated message. Please do not reply to this email.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+    
+    const text = `
+RemoEdPH - Assessment Results
+
+Hello!
+
+Great news! ${childName} has completed the English level assessment!
+
+English Level: ${levelLabel}
+Score: ${score}%
+
+What's Next?
+Based on this assessment, we recommend classes at the ${levelLabel} level. Our expert teachers will help ${childName} continue learning and improving!
+
+Start Learning Now!
+Visit: ${process.env.FRONTEND_URL || 'http://localhost:5000'}/student-login.html
+
+Questions?
+If you have any questions about the assessment results or our learning programs, please don't hesitate to contact us!
+
+© 2024 RemoEdPH. All rights reserved.
+This is an automated message. Please do not reply to this email.
+    `;
+    
+    const mailOptions = {
+      from: `"RemoEdPH" <${emailConfig.auth.user}>`,
+      to: parentEmail,
+      subject: `🎯 ${childName}'s English Level Assessment Results - RemoEdPH`,
+      html: html,
+      text: text
+    };
+    
+    const result = await transporter.sendMail(mailOptions);
+    console.log('Assessment email sent successfully:', result.messageId);
+    
+    return { success: true, messageId: result.messageId };
+  } catch (error) {
+    console.error('Error sending assessment email:', error);
+    return {
+      success: false,
+      error: error.message,
+      assessment: { childName, cefrLevel, score }
+    };
+  }
+}
+
+// Send subscription confirmation email
+async function sendSubscriptionEmail(email, username, plan, planPrice) {
+  try {
+    if (!isEmailConfigured) {
+      console.log('Email not configured - returning subscription data for testing');
+      return {
+        success: false,
+        fallback: true,
+        error: 'Email service not configured',
+        subscription: { email, username, plan, planPrice }
+      };
+    }
+
+    const planLabels = {
+      '1month': '1 Month',
+      '3months': '3 Months',
+      '6months': '6 Months',
+      '1year': '1 Year'
+    };
+    
+    const planLabel = planLabels[plan] || plan;
+    
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Subscription Confirmation - RemoEdPH</title>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #1CA7E7, #5CB3FF); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
+          .subscription-box { background: white; border: 3px solid #1CA7E7; border-radius: 12px; padding: 25px; margin: 20px 0; text-align: center; }
+          .plan-name { font-size: 2rem; font-weight: 800; color: #1CA7E7; margin: 15px 0; }
+          .price { font-size: 1.5rem; color: #4CAF50; font-weight: 700; }
+          .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
+          .btn { display: inline-block; background: linear-gradient(135deg, #1CA7E7, #5CB3FF); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; margin: 20px 0; font-weight: 700; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🎉 Subscription Confirmed! 🎉</h1>
+            <p>Welcome to RemoEdPH!</p>
+          </div>
+          
+          <div class="content">
+            <h2>Hello ${username}! 👋</h2>
+            <p>Thank you for subscribing to RemoEdPH! Your subscription has been successfully activated.</p>
+            
+            <div class="subscription-box">
+              <h3 style="color: #1CA7E7; margin-bottom: 15px;">Your Subscription Details</h3>
+              <div class="plan-name">${planLabel}</div>
+              <div class="price">$${planPrice === 0 ? '0 (Testing Mode - FREE!)' : planPrice}</div>
+              <p style="margin-top: 15px; color: #666;">Your subscription is now active and you can start learning immediately!</p>
+            </div>
+            
+            <p style="margin-top: 25px;"><strong>What's Next?</strong></p>
+            <p>You can now log in to your account and start exploring all the amazing learning features:</p>
+            <ul style="text-align: left; margin: 20px 0;">
+              <li>📚 Book classes with expert teachers</li>
+              <li>🎮 Play interactive learning games</li>
+              <li>📊 Track your progress</li>
+              <li>🎯 Take assessments to measure your level</li>
+            </ul>
+            
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${process.env.FRONTEND_URL || 'http://localhost:5000'}/student-login.html" class="btn">Start Learning Now! 🚀</a>
+            </div>
+            
+            <p style="margin-top: 25px;"><strong>Questions?</strong></p>
+            <p>If you have any questions about your subscription or our learning platform, please don't hesitate to contact us!</p>
+          </div>
+          
+          <div class="footer">
+            <p>© 2024 RemoEdPH. All rights reserved.</p>
+            <p>This is an automated message. Please do not reply to this email.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+    
+    const text = `
+RemoEdPH - Subscription Confirmation
+
+Hello ${username}!
+
+Thank you for subscribing to RemoEdPH! Your subscription has been successfully activated.
+
+Your Subscription Details:
+Plan: ${planLabel}
+Price: $${planPrice === 0 ? '0 (Testing Mode - FREE!)' : planPrice}
+
+Your subscription is now active and you can start learning immediately!
+
+What's Next?
+You can now log in to your account and start exploring all the amazing learning features:
+- Book classes with expert teachers
+- Play interactive learning games
+- Track your progress
+- Take assessments to measure your level
+
+Start Learning Now!
+Visit: ${process.env.FRONTEND_URL || 'http://localhost:5000'}/student-login.html
+
+Questions?
+If you have any questions about your subscription or our learning platform, please don't hesitate to contact us!
+
+© 2024 RemoEdPH. All rights reserved.
+This is an automated message. Please do not reply to this email.
+    `;
+    
+    const mailOptions = {
+      from: `"RemoEdPH" <${emailConfig.auth.user}>`,
+      to: email,
+      subject: `🎉 Subscription Confirmed - Welcome to RemoEdPH!`,
+      html: html,
+      text: text
+    };
+    
+    const result = await transporter.sendMail(mailOptions);
+    console.log('Subscription confirmation email sent successfully:', result.messageId);
+    
+    return { success: true, messageId: result.messageId };
+  } catch (error) {
+    console.error('Error sending subscription confirmation email:', error);
+    return {
+      success: false,
+      error: error.message,
+      subscription: { email, username, plan, planPrice }
+    };
+  }
+}
+
 module.exports = {
   sendPasswordResetEmail,
   sendTeacherRegistrationEmail,
-  sendEmail
+  sendEmail,
+  sendAssessmentEmail,
+  sendSubscriptionEmail
 };

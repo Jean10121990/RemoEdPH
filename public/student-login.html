@@ -3,15 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-  <title>Student Login - RemoEdPH</title>
+  <title>Welcome to RemoEdPH! 🎮 - Student Login</title>
   <link rel="stylesheet" href="modern-styles.css">
+  <link rel="stylesheet" href="child-friendly-styles.css">
   <style>
     body { 
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, #FF6B9D 0%, #4ECDC4 50%, #FFE66D 100%);
+      background-attachment: fixed;
       margin: 0;
       padding: 20px;
       min-height: 100vh;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-family: 'Comic Sans MS', 'Chalkboard SE', 'Trebuchet MS', 'Segoe UI', sans-serif;
       position: relative;
       overflow-x: hidden;
       overflow-y: auto;
@@ -48,15 +50,15 @@
     }
     
     .remoed-form {
-      background: rgba(255, 255, 255, 0.95);
-      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.98);
+      border-radius: 30px;
       padding: 2.5rem;
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 20px 40px rgba(255, 107, 157, 0.3);
       backdrop-filter: blur(10px);
-      border: 2px solid #667eea;
+      border: 4px solid #FF6B9D;
       position: relative;
       z-index: 2;
-      max-width: 400px;
+      max-width: 450px;
       width: 90%;
       margin: 50px auto;
       animation: slideIn 0.8s ease-out;
@@ -287,15 +289,18 @@
 
   <div class="remoed-form">
     <div class="remoed-logo">
-      <img src="remoed-logo.png" alt="RemoEdPH Logo" style="height: 50px;">
-      <span class="remoed-title">RemoEdPH</span>
+      <img src="remoed-logo.png" alt="RemoEdPH Logo" style="height: 60px; filter: drop-shadow(0 2px 4px rgba(28, 167, 231, 0.3));">
+      <span class="remoed-title" style="font-size:1.6rem; font-weight:800; color:#1CA7E7; letter-spacing:1px; text-shadow: 2px 2px 4px rgba(28, 167, 231, 0.2);">RemoEdPH</span>
     </div>
     
     <div class="welcome-message">
-      🎓 Welcome to Your Learning Journey! 🎓
+      🎮 Welcome to Your Learning Adventure! 🚀
     </div>
     
-    <h2 class="remoed-form-title">Student Login</h2>
+    <h2 class="remoed-form-title" style="font-size: 2rem; color: #1CA7E7; text-shadow: 2px 2px 4px rgba(28, 167, 231, 0.2); display: flex; align-items: center; justify-content: center; gap: 12px;">
+      <span>📚📶</span>
+      <span>🎨 Let's Start Learning!</span>
+    </h2>
     <div id="student-login-error" class="remoed-status error" style="display: none;"></div>
     <form id="student-login-form">
       <div class="remoed-form-group">
@@ -311,12 +316,12 @@
           </button>
         </div>
       </div>
-      <button type="submit" class="remoed-btn remoed-btn-primary" style="width: 100%;">
-        🚀 Start Learning!
+      <button type="submit" class="fun-btn" style="width: 100%; font-size: 1.2rem; padding: 16px; margin-top: 8px;">
+        🎮 Start My Adventure!
       </button>
     </form>
-    <div class="links-container">
-      <a href="student-register.html">📝 Don't have an account? Register here</a>
+    <div class="links-container" style="text-align: center; margin-top: 20px;">
+      <a href="student-register.html" style="font-size: 1.1rem; font-weight: 600; color: #4ECDC4;">✨ New here? Join the fun! ✨</a>
       <a href="student-forgot-password.html">🔑 Forgot password?</a>
       <a href="index.html">🏠 Back to Home</a>
     </div>
@@ -330,7 +335,12 @@
       const username = document.getElementById('student-username').value.trim();
       const password = document.getElementById('student-password').value.trim();
       const errorDiv = document.getElementById('student-login-error');
-      const submitBtn = document.querySelector('.remoed-btn-primary');
+      const submitBtn = document.querySelector('button[type="submit"]') || document.querySelector('.fun-btn');
+      
+      if (!submitBtn) {
+        console.error('Submit button not found');
+        return;
+      }
       
       errorDiv.style.display = 'none';
       submitBtn.textContent = '🔄 Logging in...';
@@ -351,15 +361,19 @@
           errorDiv.style.background = '#fff3cd';
           errorDiv.style.borderColor = '#ffeaa7';
           errorDiv.style.color = '#856404';
-          submitBtn.textContent = '🚀 Start Learning!';
-          submitBtn.disabled = false;
+          if (submitBtn) {
+            submitBtn.textContent = '🎮 Start My Adventure!';
+            submitBtn.disabled = false;
+          }
           return;
         }
         
         const data = await response.json();
         
         if (data.success && data.token) {
-          submitBtn.textContent = '✅ Success!';
+          if (submitBtn) {
+            submitBtn.textContent = '✅ Success!';
+          }
           localStorage.setItem('remoedUsername', username);
           localStorage.setItem('token', data.token);
           localStorage.setItem('studentId', data.studentId);
@@ -378,14 +392,19 @@
         } else {
           errorDiv.textContent = data.message || '❌ Invalid username or password.';
           errorDiv.style.display = 'block';
-          submitBtn.textContent = '🚀 Start Learning!';
-          submitBtn.disabled = false;
+          if (submitBtn) {
+            submitBtn.textContent = '🎮 Start My Adventure!';
+            submitBtn.disabled = false;
+          }
         }
       } catch (error) {
+        console.error('Login error:', error);
         errorDiv.textContent = '❌ Connection error. Please try again.';
         errorDiv.style.display = 'block';
-        submitBtn.textContent = '🚀 Start Learning!';
-        submitBtn.disabled = false;
+        if (submitBtn) {
+          submitBtn.textContent = '🎮 Start My Adventure!';
+          submitBtn.disabled = false;
+        }
       }
     };
     
