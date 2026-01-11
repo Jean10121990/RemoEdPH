@@ -335,10 +335,12 @@
       const username = document.getElementById('student-username').value.trim();
       const password = document.getElementById('student-password').value.trim();
       const errorDiv = document.getElementById('student-login-error');
-      const submitBtn = document.querySelector('button[type="submit"]') || document.querySelector('.fun-btn');
+      const submitBtn = document.querySelector('button[type="submit"]') || document.querySelector('.remoed-btn-primary');
       
       if (!submitBtn) {
         console.error('Submit button not found');
+        errorDiv.textContent = '❌ Form error. Please refresh the page.';
+        errorDiv.style.display = 'block';
         return;
       }
       
@@ -393,7 +395,7 @@
           errorDiv.textContent = data.message || '❌ Invalid username or password.';
           errorDiv.style.display = 'block';
           if (submitBtn) {
-            submitBtn.textContent = '🎮 Start My Adventure!';
+            submitBtn.textContent = '🚀 Start Learning!';
             submitBtn.disabled = false;
           }
         }
@@ -402,7 +404,7 @@
         errorDiv.textContent = '❌ Connection error. Please try again.';
         errorDiv.style.display = 'block';
         if (submitBtn) {
-          submitBtn.textContent = '🎮 Start My Adventure!';
+          submitBtn.textContent = '🚀 Start Learning!';
           submitBtn.disabled = false;
         }
       }

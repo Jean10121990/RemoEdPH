@@ -220,12 +220,18 @@ router.post('/student-login', async (req, res) => {
   console.log('=== STUDENT LOGIN ATTEMPT ===');
   console.log('Request body:', { username, password: '***' });
   try {
+    // Check if database is connected
+    if (mongoose.connection.readyState !== 1) {
+      console.error('❌ Database not connected. Connection state:', mongoose.connection.readyState);
+      return res.status(503).json({ 
+        success: false, 
+        message: 'Database connection unavailable. Please try again in a moment.' 
+      });
+    }
+    
     const student = await Student.findOne({ username });
     console.log('Student found:', !!student);
     console.log('Searching for username:', username);
-    console.log('All students in database:');
-    const allStudents = await Student.find({});
-    allStudents.forEach(s => console.log('- Username:', s.username, '| Email:', s.email));
     if (!student) {
       console.log('Student not found');
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
@@ -259,8 +265,27 @@ router.post('/student-login', async (req, res) => {
       res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, message: 'Server error' });
+    console.error('❌ Student login error:', err);
+    console.error('Error details:', {
+      message: err.message,
+      name: err.name,
+      code: err.code
+    });
+    
+    // Check if it's a database connection error
+    if (err.name === 'MongoServerError' || err.message.includes('Mongo') || err.message.includes('connection')) {
+      return res.status(503).json({ 
+        success: false, 
+        message: 'Database connection error. Please try again in a moment.' 
+      });
+    }
+    
+    // Provide more specific error messages
+    const errorMessage = err.message || 'Server error';
+    res.status(500).json({ 
+      success: false, 
+      message: errorMessage 
+    });
   }
 });
 
