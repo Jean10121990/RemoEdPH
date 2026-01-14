@@ -14,8 +14,8 @@
       const avatarTextEl = document.getElementById('avatar-text');
       if (avatarTextEl) avatarTextEl.textContent = username[0].toUpperCase();
 
-      const sidebarEmailEl = document.getElementById('sidebar-email');
-      if (sidebarEmailEl) sidebarEmailEl.textContent = 'Loading...';
+      const usernameEl = document.getElementById('remoed-username');
+      if (usernameEl) usernameEl.textContent = 'Loading...';
 
       if (teacherId && typeof loadProfilePicture === 'function') {
         try { loadProfilePicture(teacherId); } catch (e) { /* ignore */ }
@@ -842,7 +842,7 @@
           <img id="profile-image" src="" alt="Profile" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: none;">
           <span id="avatar-text">K</span>
         </div>
-        <span class="remoed-username" id="sidebar-email"></span>
+        <span class="remoed-username" id="remoed-username"></span>
       </div>
       <ul class="remoed-menu">
         <li onclick="window.location.href='teacher-dashboard.html'">
@@ -872,6 +872,16 @@
           <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 10c-4.41 0-8-1.79-8-4V6c0-2.21 3.59-4 8-4s8 1.79 8 4v8c0 2.21-3.59 4-8 4z"/>
           </svg>Teaching Fee
+        </li>
+        <li onclick="window.location.href='teacher-performance-indicator.html'">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M3 3v18h18M7 12h10M7 8h6M7 16h4"/>
+          </svg>Performance Indicator
+        </li>
+        <li onclick="window.location.href='teacher-professional-development.html'">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+          </svg>Professional Development
         </li>
         <li onclick="window.location.href='teacher-profile.html'">
           <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -2681,8 +2691,17 @@
 
       const data = await response.json();
       if (data.profile && data.profile.firstName) {
-        const sidebarElement = document.getElementById('sidebar-email');
-        if (sidebarElement) sidebarElement.textContent = `Hi, ${data.profile.firstName}`;
+        const usernameElement = document.getElementById('remoed-username');
+        if (usernameElement) {
+          usernameElement.textContent = `Hi, ${data.profile.firstName}`;
+        }
+      } else {
+        // Fallback if no firstName
+        const username = localStorage.getItem('remoedUsername') || 'Teacher';
+        const usernameElement = document.getElementById('remoed-username');
+        if (usernameElement) {
+          usernameElement.textContent = `Hi, ${username}`;
+        }
       }
 
       const profilePic = data.profile && data.profile.profilePicture ? data.profile.profilePicture : '';
@@ -3287,6 +3306,36 @@
     
 
     
+  </script>
+  <script src="mobile-utils.js"></script>
+  <script>
+    // Initialize mobile features for class table
+    document.addEventListener('DOMContentLoaded', function() {
+      if (isMobile && isMobile()) {
+        // Add swipe gestures to booking cells for quick actions
+        setTimeout(() => {
+          const bookingCells = document.querySelectorAll('[data-booking-id]');
+          bookingCells.forEach(cell => {
+            cell.setAttribute('data-swipe-item', 'true');
+            cell.style.position = 'relative';
+          });
+          
+          if (bookingCells.length > 0) {
+            new QuickActions('.remoed-content', {
+              actionButtons: ['edit', 'delete']
+            });
+          }
+        }, 2000);
+        
+        // Pull to refresh
+        const content = document.querySelector('.remoed-content');
+        if (content) {
+          new PullToRefresh(content, () => {
+            location.reload();
+          });
+        }
+      }
+    });
   </script>
 </body>
 </html> 

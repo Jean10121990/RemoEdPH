@@ -240,6 +240,123 @@
     </div>
     
     <script>
+        // Setup sidebar navigation links
+        function setupSidebarNavigation() {
+            const menuItems = document.querySelectorAll('.remoed-menu li');
+            menuItems.forEach(item => {
+                const text = item.textContent.trim();
+                
+                // Remove existing onclick and add new one to ensure it works
+                item.onclick = null;
+                
+                if (text.includes('Dashboard')) {
+                    item.onclick = () => window.location.href = 'teacher-dashboard.html';
+                    item.style.cursor = 'pointer';
+                } else if (text.includes('Class Schedule')) {
+                    item.onclick = () => window.location.href = 'teacher-class-table.html';
+                    item.style.cursor = 'pointer';
+                } else if (text.includes('Class Configuration')) {
+                    item.onclick = () => window.location.href = 'teacher-open-class.html';
+                    item.style.cursor = 'pointer';
+                } else if (text.includes('Device Check')) {
+                    item.onclick = () => window.location.href = 'device-check.html';
+                    item.style.cursor = 'pointer';
+                } else if (text.includes('Teaching Fee')) {
+                    item.onclick = () => window.location.href = 'teacher-service-fee.html';
+                    item.style.cursor = 'pointer';
+                } else if (text.includes('Performance Indicator')) {
+                    item.onclick = () => window.location.href = 'teacher-performance-indicator.html';
+                    item.style.cursor = 'pointer';
+                } else if (text.includes('Professional Development')) {
+                    item.onclick = () => window.location.href = 'teacher-professional-development.html';
+                    item.style.cursor = 'pointer';
+                } else if (text.includes('Profile') && !text.includes('Support')) {
+                    item.onclick = () => window.location.href = 'teacher-profile.html';
+                    item.style.cursor = 'pointer';
+                } else if (text.includes('Logout')) {
+                    item.onclick = () => {
+                        localStorage.clear();
+                        window.location.href = 'teacher-login.html';
+                    };
+                    item.style.cursor = 'pointer';
+                }
+            });
+        }
+        
+        // Shared function to update sidebar username and profile
+        async function updateSidebarProfile() {
+            const username = localStorage.getItem('remoedUsername') || 'Teacher';
+            const teacherId = localStorage.getItem('teacherId');
+            const token = localStorage.getItem('token');
+            
+            // Get username element (could be remoed-username or sidebar-email depending on page)
+            const usernameEl = document.getElementById('remoed-username') || document.getElementById('sidebar-email');
+            const avatarTextEl = document.getElementById('avatar-text');
+            const profileImageEl = document.getElementById('profile-image');
+            
+            // Set initial values
+            if (usernameEl) {
+                usernameEl.textContent = 'Loading...';
+            }
+            if (avatarTextEl) {
+                avatarTextEl.textContent = username[0].toUpperCase();
+            }
+            
+            // Load profile to get firstName
+            if (token && teacherId) {
+                try {
+                    const response = await fetch('/api/teacher/profile', {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.profile) {
+                            const firstName = data.profile.firstName || username;
+                            
+                            // Update username with "Hi, [FirstName]" format
+                            if (usernameEl) {
+                                usernameEl.textContent = `Hi, ${firstName}`;
+                            }
+                            
+                            // Update avatar
+                            if (data.profile.profilePicture) {
+                                if (profileImageEl) {
+                                    profileImageEl.src = data.profile.profilePicture;
+                                    profileImageEl.style.display = 'block';
+                                }
+                                if (avatarTextEl) {
+                                    avatarTextEl.style.display = 'none';
+                                }
+                            } else {
+                                if (profileImageEl) {
+                                    profileImageEl.style.display = 'none';
+                                }
+                                if (avatarTextEl) {
+                                    avatarTextEl.textContent = firstName[0].toUpperCase();
+                                    avatarTextEl.style.display = 'inline-block';
+                                }
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error loading profile:', error);
+                    // Fallback to username
+                    if (usernameEl) {
+                        usernameEl.textContent = `Hi, ${username}`;
+                    }
+                }
+            } else {
+                // Fallback if no token
+                if (usernameEl) {
+                    usernameEl.textContent = `Hi, ${username}`;
+                }
+            }
+        }
+        
         // Load sidebar
         fetch('teacher-dashboard.html')
             .then(r => r.text())
@@ -249,15 +366,24 @@
                 const sidebar = doc.querySelector('.remoed-sidebar');
                 if (sidebar) {
                     document.getElementById('sidebar').innerHTML = sidebar.innerHTML;
-                    // Update active menu item
+                    
+                    // Setup all navigation links
+                    setupSidebarNavigation();
+                    
+                    // Update active menu item - remove active from all first, then add to current page only
                     const menuItems = document.querySelectorAll('.remoed-menu li');
                     menuItems.forEach(item => {
+                        item.classList.remove('active');
                         if (item.textContent.includes('Attendance')) {
                             item.classList.add('active');
                         }
                     });
+                    
+                    // Update sidebar profile (username and picture)
+                    updateSidebarProfile();
                 }
-            });
+            })
+            .catch(err => console.error('Error loading sidebar:', err));
         
         let currentPeriod = 'weekly';
         
