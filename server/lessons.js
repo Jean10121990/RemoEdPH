@@ -50,7 +50,7 @@ router.get('/curricula', authenticateToken, async (req, res) => {
       .select('title description level order');
     
     // Sort by custom order: nursery, kinder, preparatory
-    const levelOrder = { 'nursery': 1, 'kinder': 2, 'preparatory': 3 };
+    const levelOrder = { 'nursery': 1, 'kinder': 2, 'preparatory': 3, 'elementary': 4, 'intermediate': 5, 'advanced': 6 };
     curricula.sort((a, b) => {
       const orderA = levelOrder[a.level] || 99;
       const orderB = levelOrder[b.level] || 99;
@@ -62,6 +62,68 @@ router.get('/curricula', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Error fetching curricula:', error);
     res.status(500).json({ error: 'Failed to fetch curricula' });
+  }
+});
+
+// Create a new curriculum - Admin/Teacher only
+router.post('/curriculum', authenticateToken, requireTeacher, async (req, res) => {
+  try {
+    const { title, description, level, order } = req.body;
+    const isAdmin = req.user && (req.user.isAdmin === true || req.user.role === 'admin' || req.user.username === 'admin');
+    const createdBy = isAdmin ? (req.user.username || 'admin') : (req.user.teacherId || req.user.userId);
+
+    console.log(`➕ [CREATE CURRICULUM] Creating new curriculum`);
+    console.log(`➕ [CREATE CURRICULUM] Title: ${title}`);
+    console.log(`➕ [CREATE CURRICULUM] Level: ${level}`);
+    console.log(`➕ [CREATE CURRICULUM] Created by: ${createdBy}`);
+
+    if (!title || !level) {
+      return res.status(400).json({ error: 'Title and level are required' });
+    }
+
+    // Validate level
+    const validLevels = ['nursery', 'kinder', 'preparatory', 'elementary', 'intermediate', 'advanced'];
+    if (!validLevels.includes(level)) {
+      return res.status(400).json({ error: `Invalid level. Must be one of: ${validLevels.join(', ')}` });
+    }
+
+    // Check if curriculum with same title and level already exists
+    const existingCurriculum = await Curriculum.findOne({ 
+      title: title.trim(),
+      level: level,
+      isActive: true 
+    });
+    if (existingCurriculum) {
+      return res.status(400).json({ error: `A curriculum with title "${title}" already exists for level "${level}"` });
+    }
+
+    // Create new curriculum
+    const curriculum = new Curriculum({
+      title: title.trim(),
+      description: description || '',
+      level: level,
+      order: order ? parseInt(order, 10) : 0,
+      createdBy,
+      isActive: true
+    });
+
+    await curriculum.save();
+    console.log(`✅ [CREATE CURRICULUM] Curriculum created successfully: ${curriculum._id}`);
+
+    res.json({
+      success: true,
+      message: 'Curriculum created successfully',
+      curriculum: {
+        _id: curriculum._id,
+        title: curriculum.title,
+        description: curriculum.description,
+        level: curriculum.level,
+        order: curriculum.order
+      }
+    });
+  } catch (error) {
+    console.error('❌ [CREATE CURRICULUM] Error creating curriculum:', error);
+    res.status(500).json({ error: 'Failed to create curriculum: ' + error.message });
   }
 });
 
