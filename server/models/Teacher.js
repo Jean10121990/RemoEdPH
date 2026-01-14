@@ -50,10 +50,78 @@ const teacherSchema = new mongoose.Schema({
   
   // Documents & Certifications
   documents: {
-    diploma: { type: String, default: null },
-    certifications: [{ type: String }],
+    diploma: { type: String, default: null }, // Legacy single diploma support
+    diplomas: [{ 
+      fileData: { type: String },
+      fileName: { type: String }
+    }],
+    certifications: [{ type: String }], // Legacy certifications support
+    certificates: [{ 
+      fileData: { type: String },
+      fileName: { type: String }
+    }],
     validId: { type: String, default: null }
   },
+  
+  // Teaching Abilities
+  teachingAbilities: {
+    listening: {
+      description: { type: String, default: '' },
+      level: { type: String, default: null }, // Assessed by system
+      criteria: [{ type: String }] // Assessment criteria
+    },
+    reading: {
+      description: { type: String, default: '' },
+      level: { type: String, default: null },
+      criteria: [{ type: String }]
+    },
+    speaking: {
+      description: { type: String, default: '' },
+      level: { type: String, default: null },
+      criteria: [{ type: String }]
+    },
+    writing: {
+      description: { type: String, default: '' },
+      level: { type: String, default: null },
+      criteria: [{ type: String }]
+    },
+    creativityHobbies: { type: String, default: '' }
+  },
+  
+  // Professional Development - Certifications with expiration tracking
+  professionalCertifications: [{
+    name: { type: String, required: true },
+    organization: { type: String, required: true },
+    issueDate: { type: Date, required: true },
+    expiryDate: { type: Date, default: null }, // null if doesn't expire
+    certificateNumber: { type: String, default: null },
+    certificateFile: { type: String, default: null }, // Base64 or file path
+    createdAt: { type: Date, default: Date.now }
+  }],
+  
+  // Skill Assessments History
+  skillAssessments: [{
+    assessmentDate: { type: Date, default: Date.now },
+    assessedBy: { type: String, default: null }, // Admin/Trainer ID or 'system'
+    skills: {
+      listening: { type: String, default: null },
+      reading: { type: String, default: null },
+      speaking: { type: String, default: null },
+      writing: { type: String, default: null }
+    },
+    notes: { type: String, default: '' },
+    levelChange: { type: String, default: null } // e.g., "Intermediate to Advanced"
+  }],
+  
+  // Training Progress
+  trainingProgress: [{
+    courseId: { type: String, required: true },
+    courseName: { type: String, required: true },
+    status: { type: String, enum: ['available', 'in-progress', 'completed'], default: 'available' },
+    progress: { type: Number, default: 0, min: 0, max: 100 },
+    startedAt: { type: Date, default: null },
+    completedAt: { type: Date, default: null }
+  }],
   
   // Rate Information
   hourlyRate: { type: Number, default: 100 },
