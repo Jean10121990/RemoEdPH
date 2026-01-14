@@ -1703,7 +1703,44 @@ router.post('/profile', verifyToken, requireTeacher, async (req, res) => {
     const teacherId = req.user.teacherId;
     const profileData = req.body;
     
+    console.log('=== PROFILE UPDATE REQUEST ===');
     console.log('Saving profile data for teacher:', teacherId);
+    console.log('Received documents data:', {
+      hasDocuments: !!profileData.documents,
+      diplomasCount: profileData.documents?.diplomas?.length || 0,
+      certificatesCount: profileData.documents?.certificates?.length || 0,
+      hasValidId: !!profileData.documents?.validId,
+      documentsKeys: profileData.documents ? Object.keys(profileData.documents) : []
+    });
+    
+    // Detailed logging of diplomas and certificates
+    if (profileData.documents?.diplomas) {
+      console.log('✓ Diplomas received:', profileData.documents.diplomas.length);
+      profileData.documents.diplomas.forEach((diploma, index) => {
+        console.log(`  Diploma ${index + 1}:`, {
+          hasFileData: !!diploma.fileData,
+          fileDataLength: diploma.fileData ? diploma.fileData.length : 0,
+          fileDataStart: diploma.fileData ? diploma.fileData.substring(0, 50) : 'missing',
+          fileName: diploma.fileName
+        });
+      });
+    } else {
+      console.log('⚠️ No diplomas array in request!');
+    }
+    
+    if (profileData.documents?.certificates) {
+      console.log('✓ Certificates received:', profileData.documents.certificates.length);
+      profileData.documents.certificates.forEach((cert, index) => {
+        console.log(`  Certificate ${index + 1}:`, {
+          hasFileData: !!cert.fileData,
+          fileDataLength: cert.fileData ? cert.fileData.length : 0,
+          fileDataStart: cert.fileData ? cert.fileData.substring(0, 50) : 'missing',
+          fileName: cert.fileName
+        });
+      });
+    } else {
+      console.log('⚠️ No certificates array in request!');
+    }
     
     // Check if username is being changed and validate uniqueness
     if (profileData.username) {
@@ -1719,34 +1756,83 @@ router.post('/profile', verifyToken, requireTeacher, async (req, res) => {
       }
     }
     
-    // Update teacher profile
+    // Prepare documents data - ensure arrays are properly formatted
+    const diplomasArray = Array.isArray(profileData.documents?.diplomas) ? profileData.documents.diplomas : [];
+    const certificatesArray = Array.isArray(profileData.documents?.certificates) ? profileData.documents.certificates : [];
+    const validIdData = profileData.documents?.validId || null;
+    
+    console.log('=== BACKEND: Documents data received ===');
+    console.log('Diplomas count:', diplomasArray.length);
+    console.log('Certificates count:', certificatesArray.length);
+    console.log('Valid ID:', validIdData ? `Present (${validIdData.length} chars, starts with: ${validIdData.substring(0, 50)}...)` : 'MISSING/NULL');
+    console.log('Valid ID type:', typeof validIdData);
+    console.log('Valid ID is string:', typeof validIdData === 'string');
+    console.log('Valid ID starts with data:', validIdData ? validIdData.startsWith('data:') : false);
+    
+    if (diplomasArray.length > 0) {
+      console.log('Diploma sample:', { fileData: diplomasArray[0].fileData?.substring(0, 50) + '...', fileName: diplomasArray[0].fileName });
+    }
+    if (certificatesArray.length > 0) {
+      console.log('Certificate sample:', { fileData: certificatesArray[0].fileData?.substring(0, 50) + '...', fileName: certificatesArray[0].fileName });
+    }
+    
+    // Update teacher profile - use $set with dot notation for nested arrays to ensure proper update
     const updateData = {
-      fullname: profileData.fullname,
-      firstName: profileData.firstName,
-      middleName: profileData.middleName,
-      lastName: profileData.lastName,
-      birthday: profileData.birthday,
-      gender: profileData.gender,
-      language: profileData.language,
-      hobbies: profileData.hobbies,
-      address: profileData.address,
-      contact: profileData.contact,
-      email: profileData.email,
-      username: profileData.username,
-      emergencyContact: profileData.emergencyContact,
-      introduction: profileData.introduction,
-      experience: profileData.experience,
-      profilePicture: profileData.profilePicture,
-      education: profileData.education || [],
-      workExperience: profileData.workExperience || [],
-      documents: {
-        diploma: profileData.documents?.diploma || null,
-        certifications: profileData.documents?.certifications || [],
-        validId: profileData.documents?.validId || null
+      $set: {
+        fullname: profileData.fullname,
+        firstName: profileData.firstName,
+        middleName: profileData.middleName,
+        lastName: profileData.lastName,
+        birthday: profileData.birthday,
+        gender: profileData.gender,
+        language: profileData.language,
+        hobbies: profileData.hobbies,
+        address: profileData.address,
+        contact: profileData.contact,
+        email: profileData.email,
+        username: profileData.username,
+        emergencyContact: profileData.emergencyContact,
+        introduction: profileData.introduction,
+        experience: profileData.experience,
+        profilePicture: profileData.profilePicture,
+        education: profileData.education || [],
+        workExperience: profileData.workExperience || [],
+        // Use dot notation for nested document fields to ensure proper array replacement
+        'documents.diploma': profileData.documents?.diploma || null,
+        'documents.diplomas': diplomasArray,
+        'documents.certifications': Array.isArray(profileData.documents?.certifications) ? profileData.documents.certifications : [],
+        'documents.certificates': certificatesArray,
+        'documents.validId': profileData.documents?.validId || null
       }
     };
     
-
+    // Add teaching abilities if provided (preserve existing levels/criteria, only update descriptions)
+    if (profileData.teachingAbilities) {
+      console.log('Teaching abilities received:', profileData.teachingAbilities);
+      if (profileData.teachingAbilities.listening) {
+        updateData.$set['teachingAbilities.listening.description'] = profileData.teachingAbilities.listening.description || '';
+      }
+      if (profileData.teachingAbilities.reading) {
+        updateData.$set['teachingAbilities.reading.description'] = profileData.teachingAbilities.reading.description || '';
+      }
+      if (profileData.teachingAbilities.speaking) {
+        updateData.$set['teachingAbilities.speaking.description'] = profileData.teachingAbilities.speaking.description || '';
+      }
+      if (profileData.teachingAbilities.writing) {
+        updateData.$set['teachingAbilities.writing.description'] = profileData.teachingAbilities.writing.description || '';
+      }
+      if (profileData.teachingAbilities.creativityHobbies !== undefined) {
+        updateData.$set['teachingAbilities.creativityHobbies'] = profileData.teachingAbilities.creativityHobbies || '';
+      }
+    }
+    
+    console.log('=== BACKEND: Update data prepared ===');
+    console.log('Diplomas in update:', updateData.$set['documents.diplomas']?.length || 0);
+    console.log('Certificates in update:', updateData.$set['documents.certificates']?.length || 0);
+    console.log('Valid ID in update:', updateData.$set['documents.validId'] ? `Present (${updateData.$set['documents.validId'].length} chars)` : 'MISSING/NULL');
+    console.log('Diplomas is array:', Array.isArray(updateData.$set['documents.diplomas']));
+    console.log('Certificates is array:', Array.isArray(updateData.$set['documents.certificates']));
+    console.log('Valid ID type:', typeof updateData.$set['documents.validId']);
     
     const updatedTeacher = await Teacher.findOneAndUpdate(
       { teacherId },
@@ -1759,7 +1845,33 @@ router.post('/profile', verifyToken, requireTeacher, async (req, res) => {
       return res.status(404).json({ error: 'Teacher not found' });
     }
     
-    console.log('Profile updated successfully for teacher:', teacherId);
+    console.log('=== BACKEND: Profile updated successfully ===');
+    console.log('Teacher ID:', teacherId);
+    console.log('Updated documents object:', JSON.stringify(updatedTeacher.documents, null, 2));
+    console.log('Diplomas count:', updatedTeacher.documents?.diplomas?.length || 0);
+    console.log('Certificates count:', updatedTeacher.documents?.certificates?.length || 0);
+    console.log('Valid ID:', updatedTeacher.documents?.validId ? `Present (${updatedTeacher.documents.validId.length} chars)` : 'MISSING/NULL');
+    
+    // Verify the documents were saved correctly
+    if (updatedTeacher.documents) {
+      if (Array.isArray(updatedTeacher.documents.diplomas)) {
+        console.log('✓ Diplomas array is valid, length:', updatedTeacher.documents.diplomas.length);
+      } else {
+        console.error('✗ Diplomas is not an array:', typeof updatedTeacher.documents.diplomas);
+      }
+      if (Array.isArray(updatedTeacher.documents.certificates)) {
+        console.log('✓ Certificates array is valid, length:', updatedTeacher.documents.certificates.length);
+      } else {
+        console.error('✗ Certificates is not an array:', typeof updatedTeacher.documents.certificates);
+      }
+      if (updatedTeacher.documents.validId) {
+        console.log('✓ Valid ID is present, length:', updatedTeacher.documents.validId.length);
+      } else {
+        console.error('✗ Valid ID is MISSING in saved documents!');
+      }
+    } else {
+      console.error('✗ Documents object is missing from updated teacher');
+    }
     
     // Check if username was changed and generate new token
     let newToken = null;
@@ -1775,10 +1887,20 @@ router.post('/profile', verifyToken, requireTeacher, async (req, res) => {
       );
     }
     
+    // Ensure documents are properly included in response
+    const responseProfile = updatedTeacher.toObject ? updatedTeacher.toObject() : updatedTeacher;
+    
+    console.log('=== BACKEND: Response data ===');
+    console.log('Response profile documents:', responseProfile.documents);
+    console.log('Response profile documents type:', typeof responseProfile.documents);
+    console.log('Response diplomas:', responseProfile.documents?.diplomas?.length || 0);
+    console.log('Response certificates:', responseProfile.documents?.certificates?.length || 0);
+    console.log('Response validId:', responseProfile.documents?.validId ? `Present (${responseProfile.documents.validId.length} chars)` : 'MISSING/NULL');
+    
     res.json({ 
       success: true, 
       message: 'Profile updated successfully',
-      profile: updatedTeacher,
+      profile: responseProfile,
       newToken: newToken // Include new token if username was changed
     });
   } catch (err) {
@@ -4531,6 +4653,245 @@ router.get('/validate-token', verifyToken, requireTeacher, async (req, res) => {
       success: false, 
       error: 'Invalid token' 
     });
+  }
+});
+
+// ========== PROFESSIONAL DEVELOPMENT ENDPOINTS ==========
+
+// Get or add certifications
+router.get('/certifications', verifyToken, requireTeacher, async (req, res) => {
+  try {
+    console.log('=== GET /certifications ===');
+    console.log('Teacher ID:', req.user.teacherId);
+    
+    const teacher = await Teacher.findOne({ teacherId: req.user.teacherId });
+    if (!teacher) {
+      console.log('Teacher not found');
+      return res.status(404).json({ error: 'Teacher not found' });
+    }
+    
+    const certifications = teacher.professionalCertifications || [];
+    console.log('Found certifications:', certifications.length);
+    console.log('Certifications data:', JSON.stringify(certifications, null, 2));
+    
+    res.json({
+      success: true,
+      certifications: certifications
+    });
+  } catch (error) {
+    console.error('Error fetching certifications:', error);
+    res.status(500).json({ error: 'Server error: ' + error.message });
+  }
+});
+
+// Add certification
+router.post('/certifications', verifyToken, requireTeacher, async (req, res) => {
+  try {
+    console.log('=== POST /certifications ===');
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    console.log('Teacher ID:', req.user.teacherId);
+    
+    const { name, organization, issueDate, expiryDate, certificateNumber } = req.body;
+    
+    if (!name || !organization || !issueDate) {
+      console.log('Validation failed: missing required fields');
+      return res.status(400).json({ error: 'Name, organization, and issue date are required' });
+    }
+    
+    const teacher = await Teacher.findOne({ teacherId: req.user.teacherId });
+    if (!teacher) {
+      console.log('Teacher not found');
+      return res.status(404).json({ error: 'Teacher not found' });
+    }
+    
+    console.log('Teacher found. Current certifications count:', teacher.professionalCertifications?.length || 0);
+    
+    const newCertification = {
+      name,
+      organization,
+      issueDate: new Date(issueDate),
+      expiryDate: expiryDate ? new Date(expiryDate) : null,
+      certificateNumber: certificateNumber || null
+    };
+    
+    if (!teacher.professionalCertifications) {
+      teacher.professionalCertifications = [];
+    }
+    
+    teacher.professionalCertifications.push(newCertification);
+    console.log('Pushed new certification. New count:', teacher.professionalCertifications.length);
+    
+    await teacher.save();
+    console.log('Teacher saved successfully');
+    
+    // Refresh teacher from database to get the _id
+    await teacher.populate();
+    const savedTeacher = await Teacher.findOne({ teacherId: req.user.teacherId });
+    const savedCert = savedTeacher.professionalCertifications[savedTeacher.professionalCertifications.length - 1];
+    
+    console.log('Saved certification with _id:', savedCert._id);
+    console.log('All certifications after save:', savedTeacher.professionalCertifications.length);
+    
+    res.json({
+      success: true,
+      message: 'Certification added successfully',
+      certification: savedCert
+    });
+  } catch (error) {
+    console.error('Error adding certification:', error);
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ error: 'Server error: ' + error.message });
+  }
+});
+
+// Update certification
+router.put('/certifications/:certId', verifyToken, requireTeacher, async (req, res) => {
+  try {
+    const { certId } = req.params;
+    const { name, organization, issueDate, expiryDate, certificateNumber } = req.body;
+    
+    const teacher = await Teacher.findOne({ teacherId: req.user.teacherId });
+    if (!teacher) {
+      return res.status(404).json({ error: 'Teacher not found' });
+    }
+    
+    const cert = teacher.professionalCertifications.id(certId);
+    if (!cert) {
+      return res.status(404).json({ error: 'Certification not found' });
+    }
+    
+    if (name) cert.name = name;
+    if (organization) cert.organization = organization;
+    if (issueDate) cert.issueDate = new Date(issueDate);
+    if (expiryDate !== undefined) cert.expiryDate = expiryDate ? new Date(expiryDate) : null;
+    if (certificateNumber !== undefined) cert.certificateNumber = certificateNumber;
+    
+    await teacher.save();
+    
+    res.json({
+      success: true,
+      message: 'Certification updated successfully',
+      certification: cert
+    });
+  } catch (error) {
+    console.error('Error updating certification:', error);
+    res.status(500).json({ error: 'Server error: ' + error.message });
+  }
+});
+
+// Delete certification
+router.delete('/certifications/:certId', verifyToken, requireTeacher, async (req, res) => {
+  try {
+    const { certId } = req.params;
+    
+    const teacher = await Teacher.findOne({ teacherId: req.user.teacherId });
+    if (!teacher) {
+      return res.status(404).json({ error: 'Teacher not found' });
+    }
+    
+    teacher.professionalCertifications.pull(certId);
+    await teacher.save();
+    
+    res.json({
+      success: true,
+      message: 'Certification deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error deleting certification:', error);
+    res.status(500).json({ error: 'Server error: ' + error.message });
+  }
+});
+
+// Get skill assessments
+router.get('/assessments', verifyToken, requireTeacher, async (req, res) => {
+  try {
+    const teacher = await Teacher.findOne({ teacherId: req.user.teacherId });
+    if (!teacher) {
+      return res.status(404).json({ error: 'Teacher not found' });
+    }
+    
+    res.json({
+      success: true,
+      assessments: teacher.skillAssessments || []
+    });
+  } catch (error) {
+    console.error('Error fetching assessments:', error);
+    res.status(500).json({ error: 'Server error: ' + error.message });
+  }
+});
+
+// Request assessment
+router.post('/assessments/request', verifyToken, requireTeacher, async (req, res) => {
+  try {
+    const teacher = await Teacher.findOne({ teacherId: req.user.teacherId });
+    if (!teacher) {
+      return res.status(404).json({ error: 'Teacher not found' });
+    }
+    
+    // In production, this would create a notification for admins/trainers
+    // For now, just log the request
+    console.log(`Assessment requested by teacher: ${teacher.teacherId}`);
+    
+    res.json({
+      success: true,
+      message: 'Assessment request submitted. You will be notified when it\'s scheduled.'
+    });
+  } catch (error) {
+    console.error('Error requesting assessment:', error);
+    res.status(500).json({ error: 'Server error: ' + error.message });
+  }
+});
+
+// Get peer teachers (for peer learning)
+router.get('/peers', verifyToken, requireTeacher, async (req, res) => {
+  try {
+    const { search } = req.query;
+    const currentTeacherId = req.user.teacherId;
+    
+    // Find other active teachers
+    let query = { 
+      teacherId: { $ne: currentTeacherId },
+      status: 'active'
+    };
+    
+    if (search) {
+      query.$or = [
+        { firstName: { $regex: search, $options: 'i' } },
+        { lastName: { $regex: search, $options: 'i' } },
+        { fullname: { $regex: search, $options: 'i' } },
+        { experience: { $regex: search, $options: 'i' } }
+      ];
+    }
+    
+    const peers = await Teacher.find(query)
+      .select('teacherId firstName lastName fullname experience teachingAbilities profilePicture')
+      .limit(20);
+    
+    // Format peer data
+    const peerData = peers.map(peer => {
+      const expertise = [];
+      if (peer.teachingAbilities?.listening?.level) expertise.push('Listening');
+      if (peer.teachingAbilities?.reading?.level) expertise.push('Reading');
+      if (peer.teachingAbilities?.speaking?.level) expertise.push('Speaking');
+      if (peer.teachingAbilities?.writing?.level) expertise.push('Writing');
+      
+      return {
+        id: peer.teacherId,
+        name: peer.fullname || `${peer.firstName || ''} ${peer.lastName || ''}`.trim() || 'Teacher',
+        expertise: expertise.length > 0 ? expertise : ['General English'],
+        experience: peer.experience || 'Not specified',
+        rating: 4.5, // In production, calculate from feedback
+        profilePicture: peer.profilePicture
+      };
+    });
+    
+    res.json({
+      success: true,
+      peers: peerData
+    });
+  } catch (error) {
+    console.error('Error fetching peer teachers:', error);
+    res.status(500).json({ error: 'Server error: ' + error.message });
   }
 });
 
