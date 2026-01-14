@@ -456,10 +456,51 @@
             <div class="library-container">
                 <div class="selection-panel">
                     <div class="form-group">
-                        <label for="curriculum-select">Select Curriculum</label>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                            <label for="curriculum-select" style="margin: 0;">Select Curriculum</label>
+                            <button class="btn-icon edit" onclick="toggleAddCurriculumForm()" title="Add New Curriculum" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">
+                                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="margin-right: 4px;">
+                                    <path d="M12 5v14m-7-7h14"></path>
+                                </svg>
+                                Add Curriculum
+                            </button>
+                        </div>
                         <select id="curriculum-select" onchange="loadLessons()">
                             <option value="">-- Select a curriculum --</option>
                         </select>
+                    </div>
+
+                    <div id="add-curriculum-section" style="display: none; margin-top: 1rem; padding: 1rem; background: #f8fafc; border-radius: 8px; border: 1px solid #e5e7eb;">
+                        <h3 style="margin: 0 0 1rem 0; color: #667eea; font-weight: 600; font-size: 1rem;">Add New Curriculum</h3>
+                        <div class="form-group" style="margin-bottom: 1rem;">
+                            <label for="new-curriculum-title">Curriculum Title *</label>
+                            <input type="text" id="new-curriculum-title" class="form-control" required placeholder="e.g., Basic Math, English Fundamentals">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 1rem;">
+                            <label for="new-curriculum-description">Description</label>
+                            <textarea id="new-curriculum-description" class="form-control" rows="3" placeholder="Brief description of the curriculum"></textarea>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 1rem;">
+                            <label for="new-curriculum-level">Level *</label>
+                            <select id="new-curriculum-level" class="form-control" required>
+                                <option value="">-- Select level --</option>
+                                <option value="nursery">Nursery</option>
+                                <option value="kinder">Kinder</option>
+                                <option value="preparatory">Preparatory</option>
+                                <option value="elementary">Elementary</option>
+                                <option value="intermediate">Intermediate</option>
+                                <option value="advanced">Advanced</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 1rem;">
+                            <label for="new-curriculum-order">Display Order</label>
+                            <input type="number" id="new-curriculum-order" class="form-control" min="0" value="0" placeholder="0">
+                            <small style="color: #64748b; display: block; margin-top: 0.25rem;">Lower numbers appear first (default: 0)</small>
+                        </div>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button class="upload-btn" onclick="createNewCurriculum()" id="create-curriculum-btn" style="flex: 1; margin: 0;">Create Curriculum</button>
+                            <button class="upload-btn" onclick="toggleAddCurriculumForm()" style="flex: 1; margin: 0; background: #6b7280;">Cancel</button>
+                        </div>
                     </div>
 
                     <div class="form-group" id="lessons-control-group" style="display: none;">
@@ -1246,6 +1287,95 @@
             } finally {
                 createBtn.disabled = false;
                 createBtn.textContent = 'Create Lesson';
+            }
+        }
+
+        function toggleAddCurriculumForm() {
+            const section = document.getElementById('add-curriculum-section');
+            if (section.style.display === 'none') {
+                section.style.display = 'block';
+                // Clear form
+                document.getElementById('new-curriculum-title').value = '';
+                document.getElementById('new-curriculum-description').value = '';
+                document.getElementById('new-curriculum-level').value = '';
+                document.getElementById('new-curriculum-order').value = '0';
+            } else {
+                section.style.display = 'none';
+            }
+        }
+
+        async function createNewCurriculum() {
+            const title = document.getElementById('new-curriculum-title').value.trim();
+            const description = document.getElementById('new-curriculum-description').value.trim();
+            const level = document.getElementById('new-curriculum-level').value;
+            const order = document.getElementById('new-curriculum-order').value || 0;
+
+            // Validation
+            if (!title) {
+                showAlert('error', 'Curriculum title is required');
+                document.getElementById('new-curriculum-title').focus();
+                return;
+            }
+
+            if (!level) {
+                showAlert('error', 'Level is required');
+                document.getElementById('new-curriculum-level').focus();
+                return;
+            }
+
+            const createBtn = document.getElementById('create-curriculum-btn');
+            createBtn.disabled = true;
+            createBtn.textContent = 'Creating...';
+
+            try {
+                const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
+                if (!token) {
+                    showAlert('error', 'Authentication required. Please log in again.');
+                    return;
+                }
+
+                const response = await fetch('/api/lessons/curriculum', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        title,
+                        description,
+                        level,
+                        order: parseInt(order, 10)
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ error: 'Failed to create curriculum' }));
+                    throw new Error(errorData.error || `Server error: ${response.status}`);
+                }
+
+                const result = await response.json();
+                showAlert('success', 'Curriculum created successfully!');
+                
+                // Hide the form
+                toggleAddCurriculumForm();
+                
+                // Reload curricula list
+                await loadCurricula();
+                
+                // Select the newly created curriculum
+                setTimeout(() => {
+                    const curriculumSelect = document.getElementById('curriculum-select');
+                    if (curriculumSelect && result.curriculum) {
+                        curriculumSelect.value = result.curriculum._id;
+                        loadLessons();
+                    }
+                }, 500);
+            } catch (error) {
+                showAlert('error', 'Failed to create curriculum: ' + error.message);
+                console.error('Create curriculum error:', error);
+            } finally {
+                createBtn.disabled = false;
+                createBtn.textContent = 'Create Curriculum';
             }
         }
 
