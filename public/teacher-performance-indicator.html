@@ -29,6 +29,7 @@
             flex-direction: column;
             position: fixed;
             height: 100vh;
+            overflow: hidden;
             z-index: 100;
         }
         
@@ -40,7 +41,7 @@
         
         .remoed-menu li {
             padding: 14px 32px;
-            color: #667eea;
+            color: #64748b;
             font-weight: 500;
             cursor: pointer;
             display: flex;
@@ -49,7 +50,7 @@
             border-left: 4px solid transparent;
             transition: background 0.2s, border-color 0.2s;
         }
-        
+
         .remoed-menu li.active,
         .remoed-menu li:hover {
             background: linear-gradient(90deg, #667eea 0%, #5a67d8 100%);
@@ -57,6 +58,7 @@
             color: white;
             transform: translateX(4px);
             transition: all 0.3s ease;
+            border-radius: 0 8px 8px 0;
         }
         
         .remoed-menu svg {
@@ -922,7 +924,8 @@
             }
             
             // Badge 3: No Cancellation
-            if (analysis.cancellations === 0) {
+            // Only award if teacher has had classes AND no cancellations
+            if (analysis.totalScheduled > 0 && analysis.cancellations === 0) {
                 badges.push({
                     id: 'no-cancellation',
                     name: 'Reliable Teacher',
@@ -938,12 +941,13 @@
                     icon: '🎯',
                     description: 'No cancellations',
                     earned: false,
-                    progress: 0
+                    progress: analysis.totalScheduled > 0 ? Math.max(0, 100 - (analysis.cancellations / analysis.totalScheduled * 100)) : 0
                 });
             }
             
             // Badge 4: No Absent
-            if (analysis.teacherAbsences === 0) {
+            // Only award if teacher has had classes AND no absences
+            if (analysis.totalScheduled > 0 && analysis.teacherAbsences === 0) {
                 badges.push({
                     id: 'no-absent',
                     name: 'Perfect Attendance',
@@ -959,7 +963,7 @@
                     icon: '🌟',
                     description: 'No absences',
                     earned: false,
-                    progress: 0
+                    progress: analysis.totalScheduled > 0 ? Math.max(0, 100 - (analysis.teacherAbsences / analysis.totalScheduled * 100)) : 0
                 });
             }
             
