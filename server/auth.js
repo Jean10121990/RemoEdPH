@@ -116,7 +116,12 @@ router.post('/admin-login', async (req, res) => {
     return res.status(401).json({ success: false, message: 'Invalid credentials' });
   }
   const jwt = require('jsonwebtoken');
-  const token = jwt.sign({ username: admin.username, isAdmin: true }, JWT_SECRET, { expiresIn: '1h' });
+  const token = jwt.sign({ 
+    username: admin.username, 
+    isAdmin: true, 
+    role: 'admin' 
+  }, JWT_SECRET, { expiresIn: '24h' });
+  console.log('Admin login successful, token created with:', { username: admin.username, isAdmin: true, role: 'admin' });
   res.json({ success: true, token, username: admin.username });
 });
 
