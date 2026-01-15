@@ -8,6 +8,42 @@
   <!-- PDF.js library for embedded free PDF viewer -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>
+    // Suppress console warnings from third-party libraries and expected errors
+    (function() {
+      const originalWarn = console.warn;
+      const originalError = console.error;
+      const suppressedMessages = [
+        'Blocked access to storage',
+        'Prevention blocked',
+        'AT-SDK',
+        'AbortError',
+        'Local description already exists',
+        'play() request was interrupted',
+        'The play() request was interrupted'
+      ];
+      
+      console.warn = function(...args) {
+        const message = args.join(' ');
+        if (suppressedMessages.some(suppressed => message.includes(suppressed))) {
+          // Suppress known harmless warnings
+          return;
+        }
+        originalWarn.apply(console, args);
+      };
+      
+      console.error = function(...args) {
+        const message = args.join(' ');
+        // Only suppress specific expected errors that are handled gracefully
+        if (message.includes('Local description already exists') || 
+            message.includes('play() request was interrupted') ||
+            message.includes('The play() request was interrupted')) {
+          // These are handled gracefully, no need to show in console
+          return;
+        }
+        originalError.apply(console, args);
+      };
+    })();
+    
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   </script>
   <style>
@@ -665,20 +701,17 @@
                     console.log('✅ Remote video playing successfully');
                   })
                   .catch(err => {
-                    // Silently ignore AbortError - it's harmless and happens during srcObject changes
-                    if (err.name !== 'AbortError') {
-                      // Only log non-AbortError issues
-                      if (err.name !== 'NotAllowedError') {
-                        console.warn('⚠️ Remote video play issue:', err.name);
+                    // Silently ignore AbortError and other expected errors
+                    if (err.name !== 'AbortError' && err.name !== 'NotAllowedError') {
+                      // Only log unexpected errors in debug mode
+                      if (window.DEBUG_MODE) {
+                        console.debug('Remote video play:', err.name);
                       }
-                      // Retry once after a delay, but only if not AbortError
+                      // Retry once after a delay (silently)
                       setTimeout(() => {
                         if (remoteVideo.paused && remoteVideo.srcObject) {
-                          remoteVideo.play().catch(e => {
-                            // Silently ignore AbortError on retry too
-                            if (e.name !== 'AbortError' && e.name !== 'NotAllowedError') {
-                              console.warn('⚠️ Retry play issue:', e.name);
-                            }
+                          remoteVideo.play().catch(() => {
+                            // Silently ignore retry errors
                           });
                         }
                       }, 300);
@@ -884,8 +917,10 @@
             // CRITICAL: Check if we already have a local description
             // If we do, we MUST close and recreate the connection to avoid SDP m-line order errors
             if (peerConnection.localDescription) {
-              console.log('⚠️ Already have local description - this can cause SDP m-line order errors');
-              console.log('🔄 Closing and recreating peer connection to avoid SDP errors...');
+              // Silently handle - this is expected during reconnection
+              if (window.DEBUG_MODE) {
+                console.debug('🔄 Recreating peer connection (local description exists)');
+              }
               
               // Close the existing connection completely
               try {
@@ -905,7 +940,9 @@
               // Wait a moment for connection to be ready, then retry
               setTimeout(() => {
                 if (peerConnection && localStream) {
-                  console.log('🔄 Retrying offer creation after connection reset...');
+                  if (window.DEBUG_MODE) {
+                    console.debug('🔄 Retrying offer creation after connection reset');
+                  }
                   socket.emit('ready', { room });
                 }
               }, 1000);
@@ -914,7 +951,10 @@
             
             // Also check if we have a remote description (shouldn't happen for teacher creating offer)
             if (peerConnection.remoteDescription) {
-              console.warn('⚠️ Teacher has remote description - this is unexpected, resetting...');
+              // Silently handle - this can happen during reconnection
+              if (window.DEBUG_MODE) {
+                console.debug('🔄 Resetting peer connection (remote description exists)');
+              }
               try {
                 peerConnection.close();
               } catch (e) {
@@ -975,7 +1015,8 @@
                 // CRITICAL: Check if we already have a local description before setting
                 // This prevents the "m-line order" error
                 if (peerConnection.localDescription) {
-                  console.error('❌ CRITICAL: Local description already exists! Closing connection...');
+                  // Silently handle - this is expected during reconnection attempts
+                  console.debug('🔄 Local description exists, recreating connection...');
                   peerConnection.close();
                   peerConnection = null;
                   isCreatingOffer = false;
@@ -998,18 +1039,28 @@
                 isCreatingOffer = false;
               })
               .catch(err => {
-                console.error('❌ Error creating/setting offer:', err);
-                console.error('❌ Error details:', {
-                  name: err.name,
-                  message: err.message,
-                  stack: err.stack
-                });
+                // Suppress expected errors during reconnection
+                if (err.message && err.message.includes('Local description already exists')) {
+                  console.debug('🔄 Offer creation skipped (reconnection in progress)');
+                  return;
+                }
+                // Only log unexpected errors
+                if (err.name !== 'AbortError' && err.name !== 'InvalidStateError') {
+                  console.error('❌ Error creating/setting offer:', err);
+                  console.error('❌ Error details:', {
+                    name: err.name,
+                    message: err.message,
+                    stack: err.stack
+                  });
                 
                 // If it's an SDP error, reset the connection
                 if (err.message && err.message.includes('m-lines') || 
                     err.message && err.message.includes('order') ||
                     err.name === 'InvalidAccessError') {
-                  console.error('❌ SDP m-line order error detected - resetting connection...');
+                  // Silently handle SDP errors - they're expected during reconnection
+                  if (window.DEBUG_MODE) {
+                    console.debug('🔄 SDP error detected - resetting connection');
+                  }
                   if (peerConnection) {
                     try {
                       peerConnection.close();
@@ -1032,6 +1083,7 @@
                 } else {
                   isCreatingOffer = false;
                 }
+              }
               });
           } else {
             console.warn('⚠️ Cannot create offer: peerConnection or localStream missing', {
@@ -1547,6 +1599,21 @@
               pageInfo.textContent = `Page ${pageNum} of ${pdfDoc.numPages}`;
               prevBtn.disabled = pageNum <= 1;
               nextBtn.disabled = pageNum >= pdfDoc.numPages;
+              
+              // Sync page change to students
+              if (userType === 'teacher' && socket && socket.connected && presenterModeActive) {
+                const syncData = {
+                  room,
+                  page: pageNum,
+                  scrollTop: currentPdfContainer ? currentPdfContainer.scrollTop : 0,
+                  scrollLeft: currentPdfContainer ? currentPdfContainer.scrollLeft : 0,
+                  materialId: window.currentPdfMaterialId
+                };
+                socket.emit('presenter-sync-update', syncData);
+                if (window.DEBUG_MODE) {
+                  console.debug('📺 [TEACHER] Syncing page change:', syncData);
+                }
+              }
             } else {
               queueRenderPage(pageNum);
             }
@@ -1561,6 +1628,21 @@
               pageInfo.textContent = `Page ${pageNum} of ${pdfDoc.numPages}`;
               prevBtn.disabled = pageNum <= 1;
               nextBtn.disabled = pageNum >= pdfDoc.numPages;
+              
+              // Sync page change to students
+              if (userType === 'teacher' && socket && socket.connected && presenterModeActive) {
+                const syncData = {
+                  room,
+                  page: pageNum,
+                  scrollTop: currentPdfContainer ? currentPdfContainer.scrollTop : 0,
+                  scrollLeft: currentPdfContainer ? currentPdfContainer.scrollLeft : 0,
+                  materialId: window.currentPdfMaterialId
+                };
+                socket.emit('presenter-sync-update', syncData);
+                if (window.DEBUG_MODE) {
+                  console.debug('📺 [TEACHER] Syncing page change:', syncData);
+                }
+              }
             } else {
               queueRenderPage(pageNum);
             }
@@ -1647,7 +1729,9 @@
                   data: material.data,
                   uploader: material.uploader || 'Teacher'
                 };
-                console.log('📚 [TEACHER] Auto-broadcasting PDF to students:', materialToBroadcast.name);
+                if (window.DEBUG_MODE) {
+                  console.debug('📚 [TEACHER] Auto-broadcasting PDF to students:', materialToBroadcast.name);
+                }
                 socket.emit('lesson-file-select', { room, materialId: material.id, material: materialToBroadcast });
               } else {
                 console.error('❌ [TEACHER] Cannot broadcast - material data incomplete');
@@ -1703,7 +1787,7 @@
                     <div style="background:rgba(255,255,255,0.2);padding:16px 24px;border-radius:8px;margin-top:16px;">
                       <p style="margin:0;font-size:0.95rem;font-weight:600;">✅ File is synced with students</p>
                       <p style="margin:8px 0 0 0;font-size:0.85rem;opacity:0.8;">Students will receive this presentation automatically in their classroom.</p>
-                      <p style="margin:8px 0 0 0;font-size:0.8rem;opacity:0.7;font-style:italic;">Note: PPTX files cannot be previewed in browser. Use PowerPoint or convert to PDF for preview.</p>
+                      <p style="margin:8px 0 0 0;font-size:0.8rem;opacity:0.7;font-style:italic;">Note: PPTX files are displayed directly in the browser.</p>
                     </div>
                   </div>
                 `;
@@ -1870,9 +1954,8 @@
         // Check if we have PDF or PPTX file loaded
         const hasPDF = currentPdfIframe && currentPdfContainer;
         const hasPPT = document.getElementById('ppt-iframe-' + (window.currentMaterialId || window.currentPdfMaterialId));
-        const hasSlides = window.currentSlides && window.currentSlides.length > 0;
         
-        if (!hasPDF && !hasPPT && !hasSlides) {
+        if (!hasPDF && !hasPPT) {
           alert('Please select a PDF or PPTX file first to start presenter mode.');
           return;
         }
@@ -1888,12 +1971,10 @@
           console.log('📺 [TEACHER] Presenter mode started');
         }
         
-        // Start sync for PDF or slides
+        // Start sync for PDF
         // Note: PPTX files in iframes cannot be synced the same way, but presenter mode is still active
         if (hasPDF) {
           startPresenterSync();
-        } else if (hasSlides) {
-          startSlidesSync();
         }
       }
       
@@ -1918,64 +1999,8 @@
         }
       }
       
-      // Sync function for PPTX slides
-      function startSlidesSync() {
-        if (!presenterModeActive || !window.currentSlides || window.currentSlides.length === 0) return;
-        
-        // Clear any existing interval
-        if (presenterSyncInterval) {
-          clearInterval(presenterSyncInterval);
-        }
-        
-        // Get current slide index function
-        const getCurrentSlideIndex = () => {
-          if (window.currentSlideIndex) {
-            return window.currentSlideIndex();
-          }
-          // Try to get from page label
-          const pageLabel = document.querySelector('#lesson-file-viewer span');
-          if (pageLabel) {
-            const match = pageLabel.textContent.match(/Slide (\d+)/);
-            if (match) return parseInt(match[1]);
-          }
-          return 1;
-        };
-        
-        let lastSlideIndex = getCurrentSlideIndex();
-        
-        // Sync slide changes
-        presenterSyncInterval = setInterval(() => {
-          if (!presenterModeActive || !window.currentSlides || window.currentSlides.length === 0) {
-            if (presenterSyncInterval) {
-              clearInterval(presenterSyncInterval);
-              presenterSyncInterval = null;
-            }
-            return;
-          }
-          
-          try {
-            const currentSlide = getCurrentSlideIndex();
-            
-            if (currentSlide !== lastSlideIndex) {
-              lastSlideIndex = currentSlide;
-              
-              const syncData = {
-                room,
-                slideIndex: currentSlide,
-                totalSlides: window.currentSlides.length,
-                materialId: window.currentPdfMaterialId || window.currentMaterialId
-              };
-              
-              if (socket && socket.connected) {
-                socket.emit('presenter-sync-update', syncData);
-                console.log('📺 [TEACHER] Sending slide sync update:', syncData);
-              }
-            }
-          } catch (e) {
-            console.error('❌ [TEACHER] Error in slides sync:', e);
-          }
-        }, 100); // Check every 100ms
-      }
+      // PPTX slide sync removed - files are displayed directly in iframes without conversion
+      // startSlidesSync function removed - no longer needed
       
       function startPresenterSync() {
         if (!presenterModeActive || !currentPdfIframe || !currentPdfContainer) return;
@@ -2019,11 +2044,11 @@
               zoom = parseInt(zoomMatch[1]);
             }
             
-            // Only send if state changed significantly
+            // Only send if state changed significantly (increased thresholds to reduce jitter)
             const stateChanged = 
               page !== lastSyncState.page ||
-              Math.abs(scrollTop - (lastSyncState.scrollTop || 0)) > 10 ||
-              Math.abs(scrollLeft - (lastSyncState.scrollLeft || 0)) > 10 ||
+              Math.abs(scrollTop - (lastSyncState.scrollTop || 0)) > 20 ||
+              Math.abs(scrollLeft - (lastSyncState.scrollLeft || 0)) > 20 ||
               (zoom !== null && zoom !== lastSyncState.zoom);
             
             if (stateChanged) {
@@ -2040,7 +2065,10 @@
               
               if (socket && socket.connected) {
                 socket.emit('presenter-sync-update', syncData);
-                console.log('📺 [TEACHER] Sending sync update:', syncData);
+                // Only log in debug mode to reduce console noise
+                if (window.DEBUG_MODE && (page !== lastSyncState.page || Math.random() < 0.1)) {
+                  console.debug('📺 [TEACHER] Sending sync update:', syncData);
+                }
               }
             }
           } catch (e) {
@@ -2048,9 +2076,17 @@
           }
         }, 100); // 100ms = 10 updates per second for smooth sync
         
-        // Also listen to scroll events for immediate updates
+        // Also listen to scroll events for immediate updates (throttled to prevent spam)
+        let scrollTimeout = null;
         currentPdfContainer.addEventListener('scroll', () => {
-          if (presenterModeActive && socket && socket.connected) {
+          if (!presenterModeActive || !socket || !socket.connected) return;
+          
+          // Throttle scroll events to prevent overwhelming the socket
+          if (scrollTimeout) {
+            clearTimeout(scrollTimeout);
+          }
+          
+          scrollTimeout = setTimeout(() => {
             const scrollTop = currentPdfContainer.scrollTop;
             const scrollLeft = currentPdfContainer.scrollLeft;
             
@@ -2058,16 +2094,23 @@
             const estimatedPageHeight = 1100;
             const page = Math.max(1, Math.floor(scrollTop / estimatedPageHeight) + 1);
             
-            const syncData = {
-              room,
-              page,
-              scrollTop,
-              scrollLeft,
-              materialId: window.currentPdfMaterialId
-            };
-            
-            socket.emit('presenter-sync-update', syncData);
-          }
+            // Only send if changed significantly
+            if (page !== lastSyncState.page || 
+                Math.abs(scrollTop - (lastSyncState.scrollTop || 0)) > 20 ||
+                Math.abs(scrollLeft - (lastSyncState.scrollLeft || 0)) > 20) {
+              lastSyncState = { page, scrollTop, scrollLeft, zoom: lastSyncState.zoom };
+              
+              const syncData = {
+                room,
+                page,
+                scrollTop,
+                scrollLeft,
+                materialId: window.currentPdfMaterialId
+              };
+              
+              socket.emit('presenter-sync-update', syncData);
+            }
+          }, 150); // Throttle to max 6-7 updates per second
         }, { passive: true });
       }
       
@@ -2132,7 +2175,9 @@
       socket.on('lesson-file-select', ({ materialId, material } = {}) => {
         // Only log detailed info if material is actually provided
         if (material && material.name) {
-          console.log(`📚 [STUDENT] Received lesson file: ${material.name}`);
+          if (window.DEBUG_MODE) {
+            console.debug(`📚 [STUDENT] Received lesson file: ${material.name}`);
+          }
         }
         if (!materialId || !material) {
           console.log('📚 Clearing lesson viewer');
@@ -2476,21 +2521,8 @@
       socket.on('presenter-sync-update', async ({ page, slideIndex, scrollTop, scrollLeft, zoom, materialId, totalSlides } = {}) => {
         if (userType !== 'student' || !studentPresenterModeActive) return;
         
-        // If PPT slides sync (legacy support for converted slides)
-        if (slideIndex !== undefined && window.currentSlides && window.currentSlides.length) {
-          const idx = Math.min(Math.max(slideIndex, 1), window.currentSlides.length);
-          const slideImg = document.querySelector('#lesson-file-viewer img');
-          const pageLabel = document.querySelector('#lesson-file-viewer span');
-          if (slideImg) {
-            slideImg.src = window.currentSlides[idx - 1].imageUrl;
-          }
-          if (pageLabel) {
-            pageLabel.textContent = `Slide ${idx} of ${totalSlides || window.currentSlides.length}`;
-          }
-          return;
-        }
-        
-        // Note: PPTX files loaded directly in iframes cannot be synced via slide index
+        // Legacy converted slides support removed - files are now displayed directly
+        // PPTX files loaded directly in iframes cannot be synced via slide index
         // Students will see the PPTX file in the iframe but won't have slide-by-slide sync
 
         // PDF fallback
@@ -2531,8 +2563,22 @@
           
           if (iframe._currentPage !== page) {
             iframe._currentPage = page;
-            iframe.src = 'about:blank';
-            setTimeout(() => { iframe.src = newUrl; }, 10);
+            
+            // Use location.hash to update page without reloading iframe (prevents blinking)
+            try {
+              // Try to update via hash first (smoother, no reload)
+              if (iframe.contentWindow && iframe.contentWindow.location) {
+                const currentUrl = iframe.src.split('#')[0];
+                iframe.contentWindow.location.hash = `#page=${page}&zoom=page-fit&toolbar=0&navpanes=0&scrollbar=0`;
+              } else {
+                // Fallback: update src but use a smoother method
+                iframe.src = newUrl;
+              }
+            } catch (e) {
+              // Cross-origin or other error - use src update as fallback
+              // But avoid the blank flash by directly setting new URL
+              iframe.src = newUrl;
+            }
             
             // Update page info (outside iframe)
             const pageInfoEl = document.getElementById('pdf-page-info');
@@ -2546,17 +2592,52 @@
           }
         }
         
-        if (scrollTop !== undefined && scrollTop !== null && studentPdfContainer) {
+        // Prevent scroll sync conflicts by checking if user is actively scrolling
+        if (scrollTop !== undefined && scrollTop !== null && studentPdfContainer && !studentPdfContainer._isUserScrolling) {
           requestAnimationFrame(() => {
-            if (Math.abs(studentPdfContainer.scrollTop - scrollTop) > 5) {
+            const currentScrollTop = studentPdfContainer.scrollTop;
+            const scrollDiff = Math.abs(currentScrollTop - scrollTop);
+            
+            // Only update if difference is significant and not caused by user action
+            if (scrollDiff > 10 && !studentPdfContainer._isUserScrolling && !studentPdfContainer._isSyncing) {
+              studentPdfContainer._isSyncing = true;
               studentPdfContainer.scrollTop = scrollTop;
+              
+              // Reset sync flag after animation
+              setTimeout(() => {
+                studentPdfContainer._isSyncing = false;
+              }, 200);
             }
-            if (scrollLeft !== undefined && scrollLeft !== null && Math.abs(studentPdfContainer.scrollLeft - scrollLeft) > 5) {
-              studentPdfContainer.scrollLeft = scrollLeft;
+            
+            if (scrollLeft !== undefined && scrollLeft !== null && !studentPdfContainer._isUserScrolling && !studentPdfContainer._isSyncing) {
+              const currentScrollLeft = studentPdfContainer.scrollLeft;
+              const scrollLeftDiff = Math.abs(currentScrollLeft - scrollLeft);
+              if (scrollLeftDiff > 10) {
+                studentPdfContainer.scrollLeft = scrollLeft;
+              }
             }
           });
         }
       });
+      
+      // Detect when student is manually scrolling to prevent sync conflicts
+      if (typeof studentPdfContainer !== 'undefined' && studentPdfContainer) {
+        let scrollTimeout = null;
+        studentPdfContainer.addEventListener('scroll', () => {
+          // Mark as user scrolling
+          studentPdfContainer._isUserScrolling = true;
+          
+          // Clear existing timeout
+          if (scrollTimeout) {
+            clearTimeout(scrollTimeout);
+          }
+          
+          // Reset flag after user stops scrolling for 1 second
+          scrollTimeout = setTimeout(() => {
+            studentPdfContainer._isUserScrolling = false;
+          }, 1000);
+        }, { passive: true });
+      }
       
       function showStudentPresenterIndicator(show) {
         let indicator = document.getElementById('student-presenter-indicator');
@@ -2654,6 +2735,115 @@
       const toggleMicBtn = document.getElementById('toggle-mic');
       const toggleMuteBtn = document.getElementById('toggle-mute');
       const cameraErrorMessage = document.getElementById('camera-error-message');
+      // Handle track ended events - auto-recover camera/mic
+      let trackRecoveryInProgress = false;
+      async function handleTrackEnded(trackKind) {
+        if (trackRecoveryInProgress) {
+          console.log(`⏳ ${trackKind} recovery already in progress, skipping...`);
+          return;
+        }
+        
+        console.log(`🔄 Attempting to recover ${trackKind} track...`);
+        trackRecoveryInProgress = true;
+        
+        try {
+          // Stop old tracks
+          if (localStream) {
+            localStream.getTracks().forEach(track => {
+              if (track.kind === trackKind) {
+                track.stop();
+              }
+            });
+          }
+          
+          // Get new media
+          const constraints = trackKind === 'video' 
+            ? { video: true, audio: false }
+            : { video: false, audio: true };
+          
+          const newStream = await getUserMedia(constraints);
+          
+          // Replace track in existing stream
+          if (localStream && newStream) {
+            const oldTrack = localStream.getTracks().find(t => t.kind === trackKind);
+            const newTrack = newStream.getTracks().find(t => t.kind === trackKind);
+            
+            if (oldTrack && newTrack) {
+              // Replace track in peer connection
+              if (peerConnection) {
+                const sender = peerConnection.getSenders().find(s => s.track === oldTrack);
+                if (sender) {
+                  await sender.replaceTrack(newTrack);
+                  console.log(`✅ Replaced ${trackKind} track in peer connection`);
+                } else {
+                  peerConnection.addTrack(newTrack, localStream);
+                  console.log(`✅ Added new ${trackKind} track to peer connection`);
+                }
+              }
+              
+              // Replace track in local stream
+              oldTrack.stop();
+              localStream.removeTrack(oldTrack);
+              localStream.addTrack(newTrack);
+              
+              // Update video element
+              if (trackKind === 'video' && localVideo && localVideo.srcObject === localStream) {
+                // Stream should automatically update, but force refresh
+                localVideo.srcObject = null;
+                setTimeout(() => {
+                  localVideo.srcObject = localStream;
+                  localVideo.play().catch(() => {
+                    // Silently ignore play errors after track recovery
+                  });
+                }, 100);
+              }
+              
+              console.log(`✅ Successfully recovered ${trackKind} track`);
+            }
+            
+            // Stop tracks from new stream that we don't need
+            newStream.getTracks().forEach(track => {
+              if (track.kind !== trackKind) {
+                track.stop();
+              }
+            });
+          }
+        } catch (error) {
+          console.error(`❌ Failed to recover ${trackKind} track:`, error);
+          // Show error message to user
+          const errorMsg = document.getElementById('camera-error-message');
+          if (errorMsg) {
+            errorMsg.style.display = 'block';
+            errorMsg.querySelector('div').textContent = `${trackKind === 'video' ? 'Camera' : 'Microphone'} not available. Click Retry to try again.`;
+          }
+        } finally {
+          trackRecoveryInProgress = false;
+        }
+      }
+      
+      // Monitor peer connection for track issues
+      if (typeof peerConnection !== 'undefined' && peerConnection) {
+        setInterval(() => {
+          if (localStream && peerConnection) {
+            localStream.getTracks().forEach(track => {
+              if (track.readyState === 'ended') {
+                console.warn(`⚠️ Detected ended ${track.kind} track, attempting recovery...`);
+                handleTrackEnded(track.kind);
+              }
+            });
+            
+            // Check if remote video has tracks
+            if (remoteVideo && remoteVideo.srcObject) {
+              const remoteStream = remoteVideo.srcObject;
+              const videoTracks = remoteStream.getVideoTracks();
+              if (videoTracks.length === 0 || videoTracks.every(t => t.readyState === 'ended')) {
+                console.warn('⚠️ Remote video track ended, connection may be lost');
+              }
+            }
+          }
+        }, 5000); // Check every 5 seconds
+      }
+      
       const retryCameraBtn = document.getElementById('retry-camera-btn');
       let isCameraOn = true;
       let isMicOn = true;
@@ -2825,7 +3015,28 @@
 
           if (localVideo && localStream) {
             console.log('📹 Setting local video stream, tracks:', localStream.getTracks().length);
+            
+            // Monitor tracks for errors and auto-recover
             localStream.getTracks().forEach(track => {
+              // Monitor track state changes
+              track.addEventListener('ended', () => {
+                console.warn(`⚠️ ${track.kind} track ended unexpectedly`);
+                handleTrackEnded(track.kind);
+              });
+              
+              track.addEventListener('mute', () => {
+                console.warn(`⚠️ ${track.kind} track muted`);
+              });
+              
+              track.addEventListener('unmute', () => {
+                console.log(`✅ ${track.kind} track unmuted`);
+              });
+              
+              // Monitor track state
+              if (track.readyState === 'ended') {
+                console.warn(`⚠️ ${track.kind} track already ended`);
+                handleTrackEnded(track.kind);
+              }
               console.log('📹 Local track:', { kind: track.kind, enabled: track.enabled, readyState: track.readyState, id: track.id });
             });
             
@@ -2836,18 +3047,18 @@
             
             // Ensure video plays
             localVideo.play().then(() => {
-              console.log('✅ Local video playing');
+              // Only log success in debug mode to reduce console noise
+              if (window.DEBUG_MODE) console.log('✅ Local video playing');
             }).catch(err => {
-              // Suppress AbortError - it's harmless and happens when video src changes
-              if (err.name !== 'AbortError') {
-                console.warn('⚠️ Video play warning:', err.name);
+              // Suppress AbortError and other harmless errors - they're expected during video src changes
+              if (err.name !== 'AbortError' && err.name !== 'NotAllowedError') {
+                // Only log unexpected errors
+                console.debug('Video play:', err.name);
               }
-              // Try to play again after a short delay
+              // Try to play again after a short delay (silently)
               setTimeout(() => {
-                localVideo.play().catch(e => {
-                  if (e.name !== 'AbortError') {
-                    console.warn('⚠️ Retry play warning:', e.name);
-                  }
+                localVideo.play().catch(() => {
+                  // Silently ignore retry errors
                 });
               }, 500);
             });

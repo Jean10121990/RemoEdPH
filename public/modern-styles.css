@@ -250,6 +250,7 @@ p {
     transition: all 0.2s ease;
 }
 
+/* Fixed: Removed transform to prevent sidebar overlap */
 .remoed-menu li.active,
 .remoed-menu li:hover {
     background: #f1f5f9;
