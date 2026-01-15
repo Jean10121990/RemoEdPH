@@ -126,18 +126,18 @@
         
         .character-speech {
             position: absolute;
-            top: -60px;
+            top: -45px;
             left: 50%;
             transform: translateX(-50%);
             background: linear-gradient(135deg, #1CA7E7, #5CB3FF);
             color: white;
-            padding: 12px 18px;
-            border-radius: 20px;
-            font-size: 0.9rem;
-            font-weight: 800;
+            padding: 8px 14px;
+            border-radius: 16px;
+            font-size: 0.75rem;
+            font-weight: 700;
             white-space: nowrap;
-            box-shadow: 0 6px 20px rgba(28, 167, 231, 0.5);
-            border: 3px solid #FFD700;
+            box-shadow: 0 4px 15px rgba(28, 167, 231, 0.4);
+            border: 2px solid #FFD700;
             animation: speechBubble 2s ease-in-out infinite;
             z-index: 10;
             pointer-events: none;
@@ -182,13 +182,13 @@
             top: 0;
             left: 260px;
             right: 0;
-            height: 60px;
+            height: 55px;
             background: #ffffff;
             border-bottom: 1px solid #e2e8f0;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0 2rem;
+            padding: 0 1.5rem;
             z-index: 50;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
@@ -196,7 +196,12 @@
         .nav-left {
             display: flex;
             align-items: center;
-            gap: 1rem;
+            gap: 0.75rem;
+        }
+        
+        .points-display, .badge {
+            font-size: 0.85rem;
+            padding: 6px 12px;
         }
         
         .nav-right {
@@ -415,12 +420,12 @@
         
         /* Main content adjustment - Natural flow */
         .remoed-content {
-            margin-top: 60px;
+            margin-top: 55px;
             display: flex;
             flex-direction: column;
-            padding: 2rem;
-            padding-top: 3rem;
-            min-height: calc(100vh - 60px);
+            padding: 1.5rem;
+            padding-top: 2rem;
+            min-height: calc(100vh - 55px);
             overflow-x: visible;
         }
         
@@ -918,17 +923,15 @@
         
         <div class="nav-header">
             <div class="nav-left">
-                <h1 style="margin: 0; font-size: 1.8rem; font-weight: 800; color: #1CA7E7; text-shadow: 2px 2px 4px rgba(28, 167, 231, 0.2); display: flex; align-items: center; gap: 12px;">
-                    <span style="font-size: 2rem;">📚📶</span>
-                    <span>🎮 My Learning Adventure!</span>
-                    <span style="font-size: 1.2rem; margin-left: 8px; animation: sparkle 2s ease-in-out infinite;">✨</span>
+                <h1 style="margin: 0; font-size: 1.4rem; font-weight: 700; color: #1CA7E7; display: flex; align-items: center; gap: 8px;">
+                    <span>🎮 My Learning Adventure</span>
                 </h1>
             </div>
-            <div style="display: flex; align-items: center; gap: 16px;">
-                <div class="points-display" id="student-points">
-                    <span id="points-count">0</span> Stars
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div class="points-display" id="student-points" style="font-size: 0.9rem; padding: 6px 12px;">
+                    <span id="points-count">0</span> ⭐
                 </div>
-                <div class="badge" id="level-badge">Level 1 Explorer 🌱</div>
+                <div class="badge" id="level-badge" style="font-size: 0.85rem; padding: 6px 12px;">Level 1 🌱</div>
             </div>
             <div class="nav-right">
                 <!-- Quick Actions Icons -->
@@ -1022,14 +1025,14 @@
         </nav>
         <div class="remoed-content" style="position: relative; z-index: 2; overflow-y: auto; overflow-x: visible;">
             <!-- Games & Activities Quick Access with Characters -->
-            <div class="fun-card" style="margin-top: 80px; margin-bottom: 2.5rem; cursor: pointer; border-color: #1CA7E7; padding: 2.5rem; padding-top: 3.5rem; position: relative; overflow: visible; min-height: 320px;" onclick="window.location.href='student-games-activities.html'">
+            <div class="fun-card" style="margin-top: 70px; margin-bottom: 2rem; cursor: pointer; border-color: #1CA7E7; padding: 2rem; padding-top: 2.5rem; position: relative; overflow: visible; min-height: 280px;" onclick="window.location.href='student-games-activities.html'">
                 <!-- Characters - Using Separate Images -->
-                <div style="position: absolute; top: -70px; right: 50px; display: flex; gap: 20px; z-index: 5; pointer-events: none; align-items: flex-end;">
+                <div style="position: absolute; top: -50px; right: 40px; display: flex; gap: 15px; z-index: 5; pointer-events: none; align-items: flex-end;">
                     <!-- Remo the Robot -->
                     <div class="character-container" style="pointer-events: auto;" onclick="event.stopPropagation(); window.location.href='student-games-activities.html';" title="Click me to play games!">
                         <div class="character-speech">Let's Play! 🎮</div>
                         <div class="character-message">Tap to Start!</div>
-                        <div class="character-remo" style="width: 140px; height: 180px; position: relative;">
+                        <div class="character-remo" style="width: 110px; height: 140px; position: relative;">
                             <img src="images/remo-robot.png" alt="Remo the Robot" style="width: 100%; height: 100%; object-fit: contain; display: block;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
                             <!-- Fallback SVG if image not found -->
                             <svg class="remo-robot" width="140" height="180" viewBox="0 0 120 150" xmlns="http://www.w3.org/2000/svg" style="display: none; transform: scale(1.2);">
@@ -1053,7 +1056,7 @@
                     <div class="character-container" style="pointer-events: auto;" onclick="event.stopPropagation(); window.location.href='student-games-activities.html';" title="Join me for fun activities!">
                         <div class="character-speech" style="animation-delay: 0.5s;">So Fun! 🎨</div>
                         <div class="character-message" style="animation-delay: 0.5s;">Let's Go!</div>
-                        <div class="character-ed" style="width: 130px; height: 180px; position: relative;">
+                        <div class="character-ed" style="width: 100px; height: 140px; position: relative;">
                             <img src="images/ed-boy.png" alt="Ed the Curious Boy" style="width: 100%; height: 100%; object-fit: contain; display: block;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
                             <!-- Fallback SVG if image not found -->
                             <svg class="ed-boy" width="130" height="180" viewBox="0 0 100 140" xmlns="http://www.w3.org/2000/svg" style="display: none; transform: scale(1.3);">
@@ -1083,7 +1086,7 @@
                     <div class="character-container" style="pointer-events: auto;" onclick="event.stopPropagation(); window.location.href='student-games-activities.html';" title="Join me for fun learning!">
                         <div class="character-speech" style="animation-delay: 0.8s;">Let's Learn! 💖</div>
                         <div class="character-message" style="animation-delay: 0.8s;">So Exciting!</div>
-                        <div class="character-sophia" style="width: 130px; height: 180px; position: relative;">
+                        <div class="character-sophia" style="width: 100px; height: 140px; position: relative;">
                             <img src="images/sophia-girl.png" alt="Sophia the Cute Doll" style="width: 100%; height: 100%; object-fit: contain; display: block;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
                             <!-- Fallback SVG if image not found -->
                             <svg class="sophia-girl" width="130" height="180" viewBox="0 0 100 140" xmlns="http://www.w3.org/2000/svg" style="display: none; transform: scale(1.3);">
@@ -1111,34 +1114,34 @@
                     </div>
                 </div>
                 
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; padding-right: 520px;">
-                    <h2 style="margin: 0; color: #1CA7E7; font-size: 2rem; font-weight: 800; display: flex; align-items: center; gap: 16px;">
-                        <span style="font-size: 2.5rem;">🎮</span>
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; padding-right: 400px;">
+                    <h2 style="margin: 0; color: #1CA7E7; font-size: 1.6rem; font-weight: 700; display: flex; align-items: center; gap: 10px;">
+                        <span style="font-size: 1.8rem;">🎮</span>
                         <span>Play & Learn!</span>
                     </h2>
-                    <div class="fun-btn" style="padding: 12px 28px; font-size: 1.1rem; margin: 0;">Let's Play! →</div>
+                    <div class="fun-btn" style="padding: 10px 20px; font-size: 0.95rem; margin: 0;">Let's Play! →</div>
                 </div>
-                <p style="margin: 0 0 1.5rem 0; color: #4A6FA5; font-size: 1.2rem; font-weight: 600; line-height: 1.6;">Practice Reading, Speaking, Writing, Listening, and Good Moral Activities! ⭐</p>
-                <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px;">
-                    <div style="text-align: center; padding: 18px; background: linear-gradient(135deg, #E8F4FD, #FFFBF0); border-radius: 16px; border: 3px solid #1CA7E7; transition: all 0.3s ease;" onmouseover="this.style.transform='scale(1.1)'; this.style.borderColor='#FFD700';" onmouseout="this.style.transform='scale(1)'; this.style.borderColor='#1CA7E7';">
-                        <div style="font-size: 3rem; margin-bottom: 8px; animation: bounce 2s ease-in-out infinite;">📖</div>
-                        <div style="font-size: 1rem; font-weight: 800; color: #1CA7E7;">Reading</div>
+                <p style="margin: 0 0 1.2rem 0; color: #4A6FA5; font-size: 1rem; font-weight: 500; line-height: 1.5;">Practice Reading, Speaking, Writing, Listening, and Good Moral Activities! ⭐</p>
+                <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px;">
+                    <div style="text-align: center; padding: 14px; background: linear-gradient(135deg, #E8F4FD, #FFFBF0); border-radius: 12px; border: 2px solid #1CA7E7; transition: all 0.3s ease;" onmouseover="this.style.transform='scale(1.05)'; this.style.borderColor='#FFD700';" onmouseout="this.style.transform='scale(1)'; this.style.borderColor='#1CA7E7';">
+                        <div style="font-size: 2.2rem; margin-bottom: 6px; animation: bounce 2s ease-in-out infinite;">📖</div>
+                        <div style="font-size: 0.9rem; font-weight: 700; color: #1CA7E7;">Reading</div>
                     </div>
-                    <div style="text-align: center; padding: 18px; background: linear-gradient(135deg, #E8F4FD, #FFFBF0); border-radius: 16px; border: 3px solid #1CA7E7; transition: all 0.3s ease;" onmouseover="this.style.transform='scale(1.1)'; this.style.borderColor='#FFD700';" onmouseout="this.style.transform='scale(1)'; this.style.borderColor='#1CA7E7';">
-                        <div style="font-size: 3rem; margin-bottom: 8px; animation: bounce 2s ease-in-out infinite; animation-delay: 0.2s;">🗣️</div>
-                        <div style="font-size: 1rem; font-weight: 800; color: #1CA7E7;">Speaking</div>
+                    <div style="text-align: center; padding: 14px; background: linear-gradient(135deg, #E8F4FD, #FFFBF0); border-radius: 12px; border: 2px solid #1CA7E7; transition: all 0.3s ease;" onmouseover="this.style.transform='scale(1.05)'; this.style.borderColor='#FFD700';" onmouseout="this.style.transform='scale(1)'; this.style.borderColor='#1CA7E7';">
+                        <div style="font-size: 2.2rem; margin-bottom: 6px; animation: bounce 2s ease-in-out infinite; animation-delay: 0.2s;">🗣️</div>
+                        <div style="font-size: 0.9rem; font-weight: 700; color: #1CA7E7;">Speaking</div>
                     </div>
-                    <div style="text-align: center; padding: 18px; background: linear-gradient(135deg, #E8F4FD, #FFFBF0); border-radius: 16px; border: 3px solid #1CA7E7; transition: all 0.3s ease;" onmouseover="this.style.transform='scale(1.1)'; this.style.borderColor='#FFD700';" onmouseout="this.style.transform='scale(1)'; this.style.borderColor='#1CA7E7';">
-                        <div style="font-size: 3rem; margin-bottom: 8px; animation: bounce 2s ease-in-out infinite; animation-delay: 0.4s;">✍️</div>
-                        <div style="font-size: 1rem; font-weight: 800; color: #1CA7E7;">Writing</div>
+                    <div style="text-align: center; padding: 14px; background: linear-gradient(135deg, #E8F4FD, #FFFBF0); border-radius: 12px; border: 2px solid #1CA7E7; transition: all 0.3s ease;" onmouseover="this.style.transform='scale(1.05)'; this.style.borderColor='#FFD700';" onmouseout="this.style.transform='scale(1)'; this.style.borderColor='#1CA7E7';">
+                        <div style="font-size: 2.2rem; margin-bottom: 6px; animation: bounce 2s ease-in-out infinite; animation-delay: 0.4s;">✍️</div>
+                        <div style="font-size: 0.9rem; font-weight: 700; color: #1CA7E7;">Writing</div>
                     </div>
-                    <div style="text-align: center; padding: 18px; background: linear-gradient(135deg, #E8F4FD, #FFFBF0); border-radius: 16px; border: 3px solid #1CA7E7; transition: all 0.3s ease;" onmouseover="this.style.transform='scale(1.1)'; this.style.borderColor='#FFD700';" onmouseout="this.style.transform='scale(1)'; this.style.borderColor='#1CA7E7';">
-                        <div style="font-size: 3rem; margin-bottom: 8px; animation: bounce 2s ease-in-out infinite; animation-delay: 0.6s;">👂</div>
-                        <div style="font-size: 1rem; font-weight: 800; color: #1CA7E7;">Listening</div>
+                    <div style="text-align: center; padding: 14px; background: linear-gradient(135deg, #E8F4FD, #FFFBF0); border-radius: 12px; border: 2px solid #1CA7E7; transition: all 0.3s ease;" onmouseover="this.style.transform='scale(1.05)'; this.style.borderColor='#FFD700';" onmouseout="this.style.transform='scale(1)'; this.style.borderColor='#1CA7E7';">
+                        <div style="font-size: 2.2rem; margin-bottom: 6px; animation: bounce 2s ease-in-out infinite; animation-delay: 0.6s;">👂</div>
+                        <div style="font-size: 0.9rem; font-weight: 700; color: #1CA7E7;">Listening</div>
                     </div>
-                    <div style="text-align: center; padding: 18px; background: linear-gradient(135deg, #E8F4FD, #FFFBF0); border-radius: 16px; border: 3px solid #1CA7E7; transition: all 0.3s ease;" onmouseover="this.style.transform='scale(1.1)'; this.style.borderColor='#FFD700';" onmouseout="this.style.transform='scale(1)'; this.style.borderColor='#1CA7E7';">
-                        <div style="font-size: 3rem; margin-bottom: 8px; animation: bounce 2s ease-in-out infinite; animation-delay: 0.8s;">❤️</div>
-                        <div style="font-size: 1rem; font-weight: 800; color: #1CA7E7;">Moral</div>
+                    <div style="text-align: center; padding: 14px; background: linear-gradient(135deg, #E8F4FD, #FFFBF0); border-radius: 12px; border: 2px solid #1CA7E7; transition: all 0.3s ease;" onmouseover="this.style.transform='scale(1.05)'; this.style.borderColor='#FFD700';" onmouseout="this.style.transform='scale(1)'; this.style.borderColor='#1CA7E7';">
+                        <div style="font-size: 2.2rem; margin-bottom: 6px; animation: bounce 2s ease-in-out infinite; animation-delay: 0.8s;">❤️</div>
+                        <div style="font-size: 0.9rem; font-weight: 700; color: #1CA7E7;">Moral</div>
                     </div>
                 </div>
             </div>

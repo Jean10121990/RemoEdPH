@@ -116,7 +116,12 @@ router.post('/admin-login', async (req, res) => {
     return res.status(401).json({ success: false, message: 'Invalid credentials' });
   }
   const jwt = require('jsonwebtoken');
-  const token = jwt.sign({ username: admin.username, isAdmin: true }, JWT_SECRET, { expiresIn: '1h' });
+  const token = jwt.sign({ 
+    username: admin.username, 
+    isAdmin: true, 
+    role: 'admin' 
+  }, JWT_SECRET, { expiresIn: '24h' });
+  console.log('Admin login successful, token created with:', { username: admin.username, isAdmin: true, role: 'admin' });
   res.json({ success: true, token, username: admin.username });
 });
 
@@ -184,14 +189,23 @@ router.post('/login', async (req, res) => {
 });
 
 router.post('/register', async (req, res) => {
-  const { username, password, firstName = '', middleName = '', lastName = '' } = req.body;
+  const { username, password, firstName = '', middleName = '', lastName = '', email = '' } = req.body;
   if (!username || !password) {
     return res.status(400).json({ success: false, message: 'Username and password are required.' });
   }
   try {
-    const existing = await Teacher.findOne({ username });
-    if (existing) {
+    // Check if username already exists
+    const existingUsername = await Teacher.findOne({ username });
+    if (existingUsername) {
       return res.status(409).json({ success: false, message: 'Username already exists.' });
+    }
+    
+    // Check if email already exists (if provided)
+    if (email) {
+      const existingEmail = await Teacher.findOne({ email });
+      if (existingEmail) {
+        return res.status(409).json({ success: false, message: 'Email already exists.' });
+      }
     }
     
     // Generate unique teacherId using new format
@@ -204,21 +218,27 @@ router.post('/register', async (req, res) => {
       teacherId: teacherId,
       firstName,
       middleName,
-      lastName
+      lastName,
+      email: email || undefined
     });
     await teacher.save();
-    res.json({ success: true, teacherId: teacherId });
+    res.json({ success: true, teacherId: teacherId, message: 'Account created successfully!' });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, message: 'Server error' });
+    console.error('Registration error:', err);
+    if (err.code === 11000) {
+      // Duplicate key error
+      const field = Object.keys(err.keyPattern)[0];
+      return res.status(409).json({ success: false, message: `${field} already exists.` });
+    }
+    res.status(500).json({ success: false, message: 'Server error: ' + (err.message || 'Failed to create account') });
   }
 });
 
 // Student login endpoint
 router.post('/student-login', async (req, res) => {
-  const { username, password } = req.body;
+  const { email, username, password } = req.body;
   console.log('=== STUDENT LOGIN ATTEMPT ===');
-  console.log('Request body:', { username, password: '***' });
+  console.log('Request body:', { email, username, password: '***' });
   try {
     // Check if database is connected
     if (mongoose.connection.readyState !== 1) {
@@ -229,12 +249,24 @@ router.post('/student-login', async (req, res) => {
       });
     }
     
-    const student = await Student.findOne({ username });
+    // Support both email and username for backward compatibility
+    const loginIdentifier = email || username;
+    if (!loginIdentifier) {
+      return res.status(400).json({ success: false, message: 'Email is required' });
+    }
+    
+    // Search by email first, then fall back to username for backward compatibility
+    const student = await Student.findOne({ 
+      $or: [
+        { email: loginIdentifier },
+        { username: loginIdentifier }
+      ]
+    });
     console.log('Student found:', !!student);
-    console.log('Searching for username:', username);
+    console.log('Searching for:', loginIdentifier);
     if (!student) {
       console.log('Student not found');
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+      return res.status(401).json({ success: false, message: 'Invalid email or password' });
     }
     
     // Check if user is suspended
@@ -256,13 +288,14 @@ router.post('/student-login', async (req, res) => {
         success: true, 
         token, 
         studentId: student._id,
+        username: student.username,
         needsPasswordChange: needsPasswordChange
       };
       console.log('Sending response:', { ...response, token: '***' });
       res.json(response);
     } else {
       console.log('Password incorrect');
-      res.status(401).json({ success: false, message: 'Invalid credentials' });
+      res.status(401).json({ success: false, message: 'Invalid email or password' });
     }
   } catch (err) {
     console.error('❌ Student login error:', err);

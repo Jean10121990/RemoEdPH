@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assessment Results - RemoEdPH</title>
+    <link rel="stylesheet" href="modern-styles.css">
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: #F0F2F5; 
+            margin: 0;
+            padding: 0;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 40px 24px;
+        }
+        
+        .header {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        .header h1 {
+            color: #667eea;
+            font-size: 2rem;
+            font-weight: 800;
+            margin-bottom: 12px;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-top: 12px;
+        }
+        
+        .status-completed {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        
+        .status-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        
+        .test-card {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        .test-card h2 {
+            color: #1e293b;
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .test-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .info-item {
+            padding: 16px;
+            background: #f8fafc;
+            border-radius: 8px;
+        }
+        
+        .info-label {
+            font-size: 0.85rem;
+            color: #64748b;
+            margin-bottom: 4px;
+        }
+        
+        .info-value {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #1e293b;
+        }
+        
+        .audio-player {
+            margin-top: 16px;
+            padding: 16px;
+            background: #f8fafc;
+            border-radius: 8px;
+        }
+        
+        .audio-player audio {
+            width: 100%;
+            margin-top: 8px;
+        }
+        
+        .pronunciation-words {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 16px;
+            margin-top: 16px;
+        }
+        
+        .word-card {
+            padding: 16px;
+            background: #f8fafc;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .word-card .word {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 8px;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+        
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            color: #64748b;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #64748b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Assessment Test Results</h1>
+            <p>View your submitted assessment test results</p>
+            <div id="status-badge" class="status-badge"></div>
+        </div>
+        
+        <div id="loading" class="loading">Loading assessment results...</div>
+        
+        <div id="results-container" style="display: none;">
+            <!-- Listening Test -->
+            <div class="test-card" id="listening-card">
+                <h2>🎧 Listening Test</h2>
+                <div id="listening-content"></div>
+            </div>
+            
+            <!-- Typing Test -->
+            <div class="test-card" id="typing-card">
+                <h2>⌨️ Typing Test</h2>
+                <div id="typing-content"></div>
+            </div>
+            
+            <!-- Reading Test -->
+            <div class="test-card" id="reading-card">
+                <h2>📖 Reading Test</h2>
+                <div id="reading-content"></div>
+            </div>
+            
+            <!-- Pronunciation Test -->
+            <div class="test-card" id="pronunciation-card">
+                <h2>🗣️ Pronunciation Test</h2>
+                <div id="pronunciation-content"></div>
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 32px;">
+            <a href="teacher-profile.html" class="btn btn-primary">← Back to Profile</a>
+        </div>
+    </div>
+
+    <script>
+        // Check authentication
+        const userType = localStorage.getItem('userType');
+        if (userType !== 'teacher') {
+            alert('Access denied. This page is for teachers only.');
+            window.location.href = 'index.html';
+        }
+
+        async function loadAssessmentResults() {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                document.getElementById('loading').textContent = 'Authentication required. Please login again.';
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/teacher/assessment-results', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to load assessment results');
+                }
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('results-container').style.display = 'block';
+
+                // Update status badge
+                const statusBadge = document.getElementById('status-badge');
+                if (data.completed) {
+                    statusBadge.className = 'status-badge status-completed';
+                    statusBadge.textContent = `✅ Completed on ${new Date(data.completedAt).toLocaleDateString()}`;
+                } else {
+                    statusBadge.className = 'status-badge status-pending';
+                    statusBadge.textContent = '⏳ Assessment in progress';
+                }
+
+                // Display Listening Test
+                if (data.tests.listening && data.tests.listening.audioRecording) {
+                    const listeningContent = document.getElementById('listening-content');
+                    listeningContent.innerHTML = `
+                        <div class="test-info">
+                            <div class="info-item">
+                                <div class="info-label">Status</div>
+                                <div class="info-value">✅ Completed</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Completed At</div>
+                                <div class="info-value">${data.tests.listening.completedAt ? new Date(data.tests.listening.completedAt).toLocaleString() : 'N/A'}</div>
+                            </div>
+                        </div>
+                        <div class="audio-player">
+                            <div class="info-label">Your Recording:</div>
+                            <audio controls>
+                                <source src="data:audio/webm;base64,${data.tests.listening.audioRecording}" type="audio/webm">
+                                <source src="data:audio/mp4;base64,${data.tests.listening.audioRecording}" type="audio/mp4">
+                                Your browser does not support the audio element.
+                            </audio>
+                        </div>
+                    `;
+                } else {
+                    document.getElementById('listening-card').style.display = 'none';
+                }
+
+                // Display Typing Test
+                if (data.tests.typing && data.tests.typing.wpm !== null) {
+                    const typingContent = document.getElementById('typing-content');
+                    typingContent.innerHTML = `
+                        <div class="test-info">
+                            <div class="info-item">
+                                <div class="info-label">Words Per Minute (WPM)</div>
+                                <div class="info-value">${data.tests.typing.wpm} WPM</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Accuracy</div>
+                                <div class="info-value">${data.tests.typing.accuracy || 0}%</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Completed At</div>
+                                <div class="info-value">${data.tests.typing.completedAt ? new Date(data.tests.typing.completedAt).toLocaleString() : 'N/A'}</div>
+                            </div>
+                        </div>
+                        ${data.tests.typing.text ? `
+                            <div style="margin-top: 20px; padding: 16px; background: #f8fafc; border-radius: 8px;">
+                                <div class="info-label">Typed Text:</div>
+                                <div style="margin-top: 8px; color: #1e293b; white-space: pre-wrap;">${data.tests.typing.text}</div>
+                            </div>
+                        ` : ''}
+                    `;
+                } else {
+                    document.getElementById('typing-card').style.display = 'none';
+                }
+
+                // Display Reading Test
+                if (data.tests.reading && data.tests.reading.audioRecording) {
+                    const readingContent = document.getElementById('reading-content');
+                    readingContent.innerHTML = `
+                        <div class="test-info">
+                            <div class="info-item">
+                                <div class="info-label">Status</div>
+                                <div class="info-value">✅ Completed</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Completed At</div>
+                                <div class="info-value">${data.tests.reading.completedAt ? new Date(data.tests.reading.completedAt).toLocaleString() : 'N/A'}</div>
+                            </div>
+                        </div>
+                        ${data.tests.reading.text ? `
+                            <div style="margin-top: 20px; padding: 16px; background: #f8fafc; border-radius: 8px;">
+                                <div class="info-label">Text Read:</div>
+                                <div style="margin-top: 8px; color: #1e293b; white-space: pre-wrap;">${data.tests.reading.text}</div>
+                            </div>
+                        ` : ''}
+                        <div class="audio-player">
+                            <div class="info-label">Your Recording:</div>
+                            <audio controls>
+                                <source src="data:audio/webm;base64,${data.tests.reading.audioRecording}" type="audio/webm">
+                                <source src="data:audio/mp4;base64,${data.tests.reading.audioRecording}" type="audio/mp4">
+                                Your browser does not support the audio element.
+                            </audio>
+                        </div>
+                    `;
+                } else {
+                    document.getElementById('reading-card').style.display = 'none';
+                }
+
+                // Display Pronunciation Test
+                if (data.tests.pronunciation && (data.tests.pronunciation.words || data.tests.pronunciation.audioRecording)) {
+                    const pronunciationContent = document.getElementById('pronunciation-content');
+                    let wordsHtml = '';
+                    
+                    if (data.tests.pronunciation.words && data.tests.pronunciation.words.length > 0) {
+                        wordsHtml = '<div class="pronunciation-words">';
+                        data.tests.pronunciation.words.forEach(wordData => {
+                            if (wordData.audio) {
+                                wordsHtml += `
+                                    <div class="word-card">
+                                        <div class="word">${wordData.word}</div>
+                                        <audio controls style="width: 100%; margin-top: 8px;">
+                                            <source src="data:audio/webm;base64,${wordData.audio}" type="audio/webm">
+                                            <source src="data:audio/mp4;base64,${wordData.audio}" type="audio/mp4">
+                                        </audio>
+                                    </div>
+                                `;
+                            }
+                        });
+                        wordsHtml += '</div>';
+                    }
+                    
+                    pronunciationContent.innerHTML = `
+                        <div class="test-info">
+                            <div class="info-item">
+                                <div class="info-label">Status</div>
+                                <div class="info-value">✅ Completed</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Words Recorded</div>
+                                <div class="info-value">${data.tests.pronunciation.words ? data.tests.pronunciation.words.length : 0}</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Completed At</div>
+                                <div class="info-value">${data.tests.pronunciation.completedAt ? new Date(data.tests.pronunciation.completedAt).toLocaleString() : 'N/A'}</div>
+                            </div>
+                        </div>
+                        ${wordsHtml}
+                    `;
+                } else {
+                    document.getElementById('pronunciation-card').style.display = 'none';
+                }
+
+            } catch (error) {
+                console.error('Error loading assessment results:', error);
+                document.getElementById('loading').textContent = `Error: ${error.message}`;
+            }
+        }
+
+        // Load results on page load
+        document.addEventListener('DOMContentLoaded', loadAssessmentResults);
+    </script>
+</body>
+</html>
