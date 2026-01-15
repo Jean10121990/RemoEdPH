@@ -82,7 +82,8 @@
             display: grid;
             grid-template-rows: 1fr;
             gap: 20px;
-            height: 60%;
+            height: auto;
+            min-height: 60%;
         }
         
         .video-container {
@@ -90,6 +91,9 @@
             background: #000;
             border-radius: 10px;
             overflow: hidden;
+            aspect-ratio: 1 / 1; /* Make it square */
+            width: 100%;
+            max-width: 100%;
         }
         
         .video-container video {

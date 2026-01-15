@@ -145,7 +145,39 @@ const teacherSchema = new mongoose.Schema({
   
   // Status field
   status: { type: String, enum: ['active', 'suspended'], default: 'active' },
-  hasGeneratedPassword: { type: Boolean, default: false }
+  hasGeneratedPassword: { type: Boolean, default: false },
+  
+  // Assessment Test Results
+  assessmentTests: {
+    completed: { type: Boolean, default: false },
+    completedAt: { type: Date, default: null },
+    listening: {
+      audioRecording: { type: String, default: null }, // Base64 audio data
+      audioFileName: { type: String, default: null },
+      completedAt: { type: Date, default: null }
+    },
+    typing: {
+      wpm: { type: Number, default: null }, // Words per minute
+      accuracy: { type: Number, default: null }, // Percentage
+      text: { type: String, default: null }, // Typed text
+      completedAt: { type: Date, default: null }
+    },
+    reading: {
+      audioRecording: { type: String, default: null }, // Base64 audio data
+      audioFileName: { type: String, default: null },
+      text: { type: String, default: null }, // Text that was read
+      completedAt: { type: Date, default: null }
+    },
+    pronunciation: {
+      audioRecording: { type: String, default: null }, // Base64 audio data
+      audioFileName: { type: String, default: null },
+      words: [{ 
+        word: { type: String },
+        audio: { type: String } // Individual word recordings
+      }],
+      completedAt: { type: Date, default: null }
+    }
+  }
 }, {
   timestamps: true
 });
