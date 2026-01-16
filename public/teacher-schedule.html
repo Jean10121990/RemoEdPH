@@ -37,8 +37,7 @@
     }
     .remoed-sidebar {
       width: 260px;
-      min-width: 220px;
-      max-width: 280px;
+      min-width: 260px;
       background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
       box-shadow: 4px 0 20px rgba(102, 126, 234, 0.1);
       padding: 0;
@@ -46,9 +45,9 @@
       flex-direction: column;
       align-items: stretch;
       height: 100vh;
+      overflow: hidden;
       position: fixed;
       z-index: 100;
-      border-right: 1px solid rgba(102, 126, 234, 0.1);
     }
     .remoed-logo { 
       display: flex; 
@@ -70,38 +69,44 @@
       gap: 10px; 
     }
     .remoed-avatar { 
-      <script>
-        // Defer DOM operations and guard element access to avoid null errors
-        document.addEventListener('DOMContentLoaded', function () {
-          const userType = localStorage.getItem('userType');
-          if (userType !== 'teacher') {
-            alert('Access denied. This page is for teachers only.');
-            window.location.href = 'index.html';
-            return;
-          }
-
-          const username = localStorage.getItem('remoedUsername') || 'Teacher';
-          const teacherId = localStorage.getItem('teacherId');
-
-          const avatarTextEl = document.getElementById('avatar-text');
-          if (avatarTextEl) avatarTextEl.textContent = username[0].toUpperCase();
-
-          const sidebarEmailEl = document.getElementById('sidebar-email');
-          if (sidebarEmailEl) sidebarEmailEl.textContent = 'Loading...';
-
-          if (teacherId && typeof loadProfilePicture === 'function') {
-            try { loadProfilePicture(teacherId); } catch (e) { /* ignore */ }
-          }
-
-          const openClassBtn = document.getElementById('open-class-btn');
-          if (openClassBtn) openClassBtn.onclick = () => { window.location.href = 'teacher-open-class.html'; };
-
-          const logoutNav = document.getElementById('logout-nav');
-          if (logoutNav) logoutNav.onclick = function() { localStorage.clear(); window.location.href = 'teacher-login.html'; };
-        });
-      color: white; 
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background: #667eea;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 2.2rem;
+    }
+    .remoed-username {
+      color: #667eea;
+      font-weight: 600;
+    }
+    .remoed-menu {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .remoed-menu li {
+      padding: 14px 32px;
+      color: #64748b;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-left: 4px solid transparent;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .remoed-menu li.active, .remoed-menu li:hover {
+      background: linear-gradient(90deg, #667eea 0%, #5a67d8 100%);
+      border-left: 4px solid #667eea;
+      color: white;
       transform: translateX(4px);
       transition: all 0.3s ease;
+      border-radius: 0 8px 8px 0;
     }
     .remoed-menu svg { 
       width: 20px; 
@@ -614,20 +619,347 @@
       border-top: 1px solid #e0e6ed;
     }
   </style>
+  
+  <!-- Remo AI Chatbot Styles -->
+  <style>
+    #remo-ai-chatbot {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        width: 380px;
+        height: 600px;
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        z-index: 10000;
+        display: none;
+        flex-direction: column;
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+    
+    #remo-ai-chatbot.open {
+        display: flex;
+    }
+    
+    .chatbot-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-radius: 20px 20px 0 0;
+    }
+    
+    .chatbot-header h3 {
+        margin: 0;
+        font-size: 1.1rem;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .chatbot-close {
+        background: rgba(255, 255, 255, 0.2);
+        border: none;
+        color: white;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        cursor: pointer;
+        font-size: 1.2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.2s;
+    }
+    
+    .chatbot-close:hover {
+        background: rgba(255, 255, 255, 0.3);
+    }
+    
+    .chatbot-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+        background: #f8fafc;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .chatbot-message {
+        display: flex;
+        gap: 10px;
+        animation: fadeIn 0.3s ease;
+    }
+    
+    .chatbot-message.user {
+        flex-direction: row-reverse;
+    }
+    
+    .message-avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        flex-shrink: 0;
+    }
+    
+    .chatbot-message.bot .message-avatar {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    
+    .chatbot-message.user .message-avatar {
+        background: #e2e8f0;
+        color: #667eea;
+    }
+    
+    .message-content {
+        max-width: 75%;
+        padding: 12px 16px;
+        border-radius: 18px;
+        font-size: 0.9rem;
+        line-height: 1.5;
+    }
+    
+    .chatbot-message.bot .message-content {
+        background: white;
+        color: #1a202c;
+        border: 1px solid #e2e8f0;
+    }
+    
+    .chatbot-message.user .message-content {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    
+    .message-buttons {
+        margin-top: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .message-button {
+        padding: 10px 14px;
+        background: #f1f5f9;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        color: #667eea;
+        font-weight: 500;
+        text-align: left;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .message-button:hover {
+        background: #e2e8f0;
+        border-color: #667eea;
+        transform: translateX(4px);
+    }
+    
+    .message-button-icon {
+        font-size: 1rem;
+    }
+    
+    .quick-actions {
+        padding: 15px 20px;
+        background: white;
+        border-top: 1px solid #e2e8f0;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    
+    .quick-action-btn {
+        padding: 8px 12px;
+        background: #f1f5f9;
+        border: 1px solid #e2e8f0;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        color: #667eea;
+        font-weight: 500;
+    }
+    
+    .quick-action-btn:hover {
+        background: #e2e8f0;
+        transform: translateY(-1px);
+    }
+    
+    .chatbot-input-area {
+        padding: 15px 20px;
+        background: white;
+        border-top: 1px solid #e2e8f0;
+        display: flex;
+        gap: 10px;
+    }
+    
+    .chatbot-input {
+        flex: 1;
+        padding: 10px 15px;
+        border: 1px solid #e2e8f0;
+        border-radius: 25px;
+        font-size: 0.9rem;
+        outline: none;
+    }
+    
+    .chatbot-input:focus {
+        border-color: #667eea;
+    }
+    
+    .chatbot-send {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        color: white;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: transform 0.2s;
+    }
+    
+    .chatbot-send:hover {
+        transform: scale(1.1);
+    }
+    
+    .chatbot-toggle {
+        position: fixed;
+        bottom: 90px;
+        right: 20px;
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        color: white;
+        font-size: 1.5rem;
+        cursor: pointer;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4), 0 0 20px rgba(255, 165, 0, 0.3);
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: transform 0.3s;
+        padding: 0;
+        overflow: visible;
+    }
+    
+    .chatbot-toggle:hover {
+        transform: scale(1.1);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4), 0 0 30px rgba(255, 165, 0, 0.5);
+    }
+    
+    .remo-ai-icon {
+        width: 40px;
+        height: 40px;
+        filter: drop-shadow(0 0 8px rgba(255, 165, 0, 0.6));
+    }
+    
+    .chatbot-message.bot .message-avatar {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2px;
+    }
+    
+    .chatbot-message.bot .message-avatar svg {
+        width: 28px;
+        height: 28px;
+    }
+    
+    .chatbot-toggle.hidden {
+        display: none;
+    }
+    
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .typing-indicator {
+        display: flex;
+        gap: 4px;
+        padding: 12px 16px;
+    }
+    
+    .typing-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #667eea;
+        animation: typing 1.4s infinite;
+    }
+    
+    .typing-dot:nth-child(2) {
+        animation-delay: 0.2s;
+    }
+    
+    .typing-dot:nth-child(3) {
+        animation-delay: 0.4s;
+    }
+    
+    @keyframes typing {
+        0%, 60%, 100% {
+            transform: translateY(0);
+        }
+        30% {
+            transform: translateY(-10px);
+        }
+    }
+  </style>
 </head>
 <body>
   <div class="remoed-main">
     <nav class="remoed-sidebar">
-      <div class="remoed-logo" style="height:100px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding-top:5px;">
-        <img src="remoed-logo.png" alt="RemoEdPH Logo" style="height:40px; width:auto; display:inline-block; vertical-align:middle;">
-        <span class="remoed-title" style="font-size:1.3rem; font-weight:700; color:#667eea; letter-spacing:1px;">RemoEdPH</span>
+      <div style="padding: 24px; border-bottom: 2px solid #e8f4fd;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 1.2rem;">R</div>
+          <div>
+            <div style="font-weight: 700; color: #667eea; font-size: 1.1rem;">RemoEdPH</div>
+            <div style="font-size: 0.75rem; color: #666;">Teacher Portal</div>
+          </div>
+        </div>
       </div>
+<<<<<<< HEAD
       <div class="remoed-user" style="display:flex; flex-direction:column; align-items:center; margin-bottom:24px;">
                         <div class="remoed-avatar" id="sidebar-avatar">
                     <img id="profile-image" src="" alt="Profile" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: none;">
                     <span id="avatar-text">K</span>
                 </div>
         <span class="remoed-username" id="sidebar-email"></span>
+=======
+      <div style="padding: 16px; border-bottom: 2px solid #e8f4fd;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div id="sidebar-avatar" onclick="window.location.href='teacher-profile.html'" style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #764ba2); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+            <img id="profile-image" src="" alt="Profile" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: none;">
+            <span id="avatar-text">T</span>
+          </div>
+          <span class="remoed-username" id="remoed-username">Hi, Teacher</span>
+        </div>
+>>>>>>> 82021f05c965758b36140a1a8099d60eb2ea224f
       </div>
       <ul class="remoed-menu">
         <li onclick="window.location.href='teacher-dashboard.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/></svg>Dashboard</li>
@@ -2181,6 +2513,460 @@
     // Force reload to clear any cached JavaScript
     if (window.performance && window.performance.navigation.type === window.performance.navigation.TYPE_BACK_FORWARD) {
       window.location.reload(true);
+    }
+  </script>
+  
+  <!-- Remo AI Chatbot -->
+  <div id="remo-ai-chatbot">
+    <div class="chatbot-header">
+      <h3>
+        <svg viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg" style="width: 24px; height: 24px; margin-right: 5px;">
+          <defs>
+            <radialGradient id="eyeGlowHeaderSCH" cx="50%" cy="50%">
+              <stop offset="0%" stop-color="#4FC3F7" stop-opacity="1"/>
+              <stop offset="100%" stop-color="#29B6F6" stop-opacity="0.8"/>
+            </radialGradient>
+          </defs>
+          <line x1="50" y1="5" x2="50" y2="15" stroke="#fff" stroke-width="2"/>
+          <circle cx="50" cy="5" r="2" fill="#fff"/>
+          <ellipse cx="50" cy="30" rx="25" ry="20" fill="white" stroke="#fff" stroke-width="2"/>
+          <path d="M 45 20 L 50 25 L 55 20" stroke="#fff" stroke-width="1.5" fill="none"/>
+          <rect x="35" y="25" width="30" height="20" rx="3" fill="#fff"/>
+          <circle cx="42" cy="33" r="4" fill="url(#eyeGlowHeaderSCH)"/>
+          <circle cx="58" cy="33" r="4" fill="url(#eyeGlowHeaderSCH)"/>
+          <path d="M 40 40 Q 50 45 60 40" stroke="#4FC3F7" stroke-width="2" fill="none" stroke-linecap="round"/>
+          <ellipse cx="25" cy="30" rx="8" ry="12" fill="#29B6F6" stroke="#fff" stroke-width="1.5"/>
+          <ellipse cx="25" cy="30" rx="4" ry="6" fill="#fff"/>
+          <ellipse cx="75" cy="30" rx="8" ry="12" fill="#29B6F6" stroke="#fff" stroke-width="1.5"/>
+          <ellipse cx="75" cy="30" rx="4" ry="6" fill="#fff"/>
+          <rect x="30" y="50" width="40" height="35" rx="5" fill="white" stroke="#fff" stroke-width="2"/>
+          <rect x="38" y="58" width="24" height="18" rx="2" fill="#29B6F6" stroke="#4FC3F7" stroke-width="1"/>
+          <circle cx="42" cy="62" r="1.5" fill="#ff4444"/>
+          <circle cx="45" cy="62" r="1.5" fill="white"/>
+          <circle cx="50" cy="66" r="3" fill="#FFD700"/>
+          <ellipse cx="50" cy="70" rx="2" ry="3" fill="#4FC3F7"/>
+          <rect x="30" y="82" width="40" height="4" fill="#fff"/>
+          <rect x="20" y="55" width="12" height="20" rx="3" fill="white" stroke="#fff" stroke-width="1.5"/>
+          <rect x="20" y="60" width="12" height="3" fill="#fff"/>
+          <rect x="68" y="55" width="12" height="20" rx="3" fill="white" stroke="#fff" stroke-width="1.5"/>
+          <rect x="68" y="60" width="12" height="3" fill="#fff"/>
+          <ellipse cx="26" cy="78" rx="4" ry="5" fill="white" stroke="#fff" stroke-width="1.5"/>
+          <ellipse cx="74" cy="78" rx="4" ry="5" fill="white" stroke="#fff" stroke-width="1.5"/>
+          <rect x="35" y="88" width="12" height="20" rx="3" fill="white" stroke="#fff" stroke-width="1.5"/>
+          <rect x="35" y="93" width="12" height="3" fill="#fff"/>
+          <rect x="53" y="88" width="12" height="20" rx="3" fill="white" stroke="#fff" stroke-width="1.5"/>
+          <rect x="53" y="93" width="12" height="3" fill="#fff"/>
+          <ellipse cx="41" cy="110" rx="6" ry="4" fill="white" stroke="#fff" stroke-width="1.5"/>
+          <ellipse cx="59" cy="110" rx="6" ry="4" fill="white" stroke="#fff" stroke-width="1.5"/>
+        </svg>
+        <span>Remo AI Assistant</span>
+      </h3>
+      <button class="chatbot-close" onclick="toggleChatbot()">×</button>
+    </div>
+    <div class="chatbot-messages" id="chatbot-messages">
+      <div class="chatbot-message bot">
+        <div class="message-avatar">
+          <svg viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg" style="width: 28px; height: 28px;">
+            <defs>
+              <radialGradient id="eyeGlowInitSCH" cx="50%" cy="50%">
+                <stop offset="0%" stop-color="#4FC3F7" stop-opacity="1"/>
+                <stop offset="100%" stop-color="#29B6F6" stop-opacity="0.8"/>
+              </radialGradient>
+            </defs>
+            <line x1="50" y1="5" x2="50" y2="15" stroke="#1a1a1a" stroke-width="2"/>
+            <circle cx="50" cy="5" r="2" fill="#1a1a1a"/>
+            <ellipse cx="50" cy="30" rx="25" ry="20" fill="white" stroke="#1a1a1a" stroke-width="2"/>
+            <path d="M 45 20 L 50 25 L 55 20" stroke="#1a1a1a" stroke-width="1.5" fill="none"/>
+            <rect x="35" y="25" width="30" height="20" rx="3" fill="#1a1a1a"/>
+            <circle cx="42" cy="33" r="4" fill="url(#eyeGlowInitSCH)"/>
+            <circle cx="58" cy="33" r="4" fill="url(#eyeGlowInitSCH)"/>
+            <path d="M 40 40 Q 50 45 60 40" stroke="#4FC3F7" stroke-width="2" fill="none" stroke-linecap="round"/>
+            <ellipse cx="25" cy="30" rx="8" ry="12" fill="#29B6F6" stroke="#1a1a1a" stroke-width="1.5"/>
+            <ellipse cx="25" cy="30" rx="4" ry="6" fill="#1a1a1a"/>
+            <ellipse cx="75" cy="30" rx="8" ry="12" fill="#29B6F6" stroke="#1a1a1a" stroke-width="1.5"/>
+            <ellipse cx="75" cy="30" rx="4" ry="6" fill="#1a1a1a"/>
+            <rect x="30" y="50" width="40" height="35" rx="5" fill="white" stroke="#1a1a1a" stroke-width="2"/>
+            <rect x="38" y="58" width="24" height="18" rx="2" fill="#29B6F6" stroke="#4FC3F7" stroke-width="1"/>
+            <circle cx="42" cy="62" r="1.5" fill="#ff4444"/>
+            <circle cx="45" cy="62" r="1.5" fill="white"/>
+            <circle cx="50" cy="66" r="3" fill="#FFD700"/>
+            <ellipse cx="50" cy="70" rx="2" ry="3" fill="#4FC3F7"/>
+            <rect x="30" y="82" width="40" height="4" fill="#1a1a1a"/>
+            <rect x="20" y="55" width="12" height="20" rx="3" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+            <rect x="20" y="60" width="12" height="3" fill="#1a1a1a"/>
+            <rect x="68" y="55" width="12" height="20" rx="3" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+            <rect x="68" y="60" width="12" height="3" fill="#1a1a1a"/>
+            <ellipse cx="26" cy="78" rx="4" ry="5" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+            <ellipse cx="74" cy="78" rx="4" ry="5" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+            <rect x="35" y="88" width="12" height="20" rx="3" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+            <rect x="35" y="93" width="12" height="3" fill="#1a1a1a"/>
+            <rect x="53" y="88" width="12" height="20" rx="3" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+            <rect x="53" y="93" width="12" height="3" fill="#1a1a1a"/>
+            <ellipse cx="41" cy="110" rx="6" ry="4" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+            <ellipse cx="59" cy="110" rx="6" ry="4" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+          </svg>
+        </div>
+        <div class="message-content">
+          <strong>Hello! I'm Remo AI Assistant 👋</strong><br>
+          I'm here to help you with troubleshooting, lesson support, and any questions about the platform. How can I assist you today?
+        </div>
+      </div>
+    </div>
+    <div class="quick-actions">
+      <button class="quick-action-btn" onclick="handleQuickAction('tour')">🎯 Start Tour</button>
+      <button class="quick-action-btn" onclick="handleQuickAction('troubleshooting')">🔧 Troubleshooting</button>
+      <button class="quick-action-btn" onclick="handleQuickAction('lessons')">📚 Lesson Support</button>
+      <button class="quick-action-btn" onclick="handleQuickAction('schedule')">📅 Schedule Help</button>
+    </div>
+    <div class="chatbot-input-area">
+      <input type="text" class="chatbot-input" id="chatbot-input" placeholder="Type your question..." onkeypress="handleChatbotKeyPress(event)">
+      <button class="chatbot-send" onclick="sendChatbotMessage()">➤</button>
+    </div>
+  </div>
+  <button class="chatbot-toggle" id="chatbot-toggle" onclick="toggleChatbot()" title="Open Remo AI Assistant">
+    <svg class="remo-ai-icon" viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <radialGradient id="eyeGlowToggleSCH" cx="50%" cy="50%">
+          <stop offset="0%" stop-color="#4FC3F7" stop-opacity="1"/>
+          <stop offset="100%" stop-color="#29B6F6" stop-opacity="0.8"/>
+        </radialGradient>
+      </defs>
+      <line x1="50" y1="5" x2="50" y2="15" stroke="#fff" stroke-width="2"/>
+      <circle cx="50" cy="5" r="2" fill="#fff"/>
+      <ellipse cx="50" cy="30" rx="25" ry="20" fill="white" stroke="#fff" stroke-width="2"/>
+      <path d="M 45 20 L 50 25 L 55 20" stroke="#fff" stroke-width="1.5" fill="none"/>
+      <rect x="35" y="25" width="30" height="20" rx="3" fill="#fff"/>
+      <circle cx="42" cy="33" r="4" fill="url(#eyeGlowToggleSCH)"/>
+      <circle cx="58" cy="33" r="4" fill="url(#eyeGlowToggleSCH)"/>
+      <path d="M 40 40 Q 50 45 60 40" stroke="#4FC3F7" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <ellipse cx="25" cy="30" rx="8" ry="12" fill="#29B6F6" stroke="#fff" stroke-width="1.5"/>
+      <ellipse cx="25" cy="30" rx="4" ry="6" fill="#fff"/>
+      <ellipse cx="75" cy="30" rx="8" ry="12" fill="#29B6F6" stroke="#fff" stroke-width="1.5"/>
+      <ellipse cx="75" cy="30" rx="4" ry="6" fill="#fff"/>
+      <rect x="30" y="50" width="40" height="35" rx="5" fill="white" stroke="#fff" stroke-width="2"/>
+      <rect x="38" y="58" width="24" height="18" rx="2" fill="#29B6F6" stroke="#4FC3F7" stroke-width="1"/>
+      <circle cx="42" cy="62" r="1.5" fill="#ff4444"/>
+      <circle cx="45" cy="62" r="1.5" fill="white"/>
+      <circle cx="50" cy="66" r="3" fill="#FFD700"/>
+      <ellipse cx="50" cy="70" rx="2" ry="3" fill="#4FC3F7"/>
+      <rect x="30" y="82" width="40" height="4" fill="#fff"/>
+      <rect x="20" y="55" width="12" height="20" rx="3" fill="white" stroke="#fff" stroke-width="1.5"/>
+      <rect x="20" y="60" width="12" height="3" fill="#fff"/>
+      <rect x="68" y="55" width="12" height="20" rx="3" fill="white" stroke="#fff" stroke-width="1.5"/>
+      <rect x="68" y="60" width="12" height="3" fill="#fff"/>
+      <ellipse cx="26" cy="78" rx="4" ry="5" fill="white" stroke="#fff" stroke-width="1.5"/>
+      <ellipse cx="74" cy="78" rx="4" ry="5" fill="white" stroke="#fff" stroke-width="1.5"/>
+      <rect x="35" y="88" width="12" height="20" rx="3" fill="white" stroke="#fff" stroke-width="1.5"/>
+      <rect x="35" y="93" width="12" height="3" fill="#fff"/>
+      <rect x="53" y="88" width="12" height="20" rx="3" fill="white" stroke="#fff" stroke-width="1.5"/>
+      <rect x="53" y="93" width="12" height="3" fill="#fff"/>
+      <ellipse cx="41" cy="110" rx="6" ry="4" fill="white" stroke="#fff" stroke-width="1.5"/>
+      <ellipse cx="59" cy="110" rx="6" ry="4" fill="white" stroke="#fff" stroke-width="1.5"/>
+    </svg>
+  </button>
+  
+  <script>
+    if (typeof chatbot === 'undefined') {
+      window.chatbot = {
+        isOpen: false,
+        messages: [],
+        init() {
+          const urlParams = new URLSearchParams(window.location.search);
+          if (urlParams.get('help') === 'technical') {
+            setTimeout(() => {
+              this.open();
+              this.addBotMessage("Welcome! I see you're looking for technical help. I'm here to assist you with troubleshooting, lesson support, and any questions about the platform. What can I help you with?");
+            }, 500);
+          }
+        },
+        open() {
+          this.isOpen = true;
+          const el = document.getElementById('remo-ai-chatbot');
+          const toggle = document.getElementById('chatbot-toggle');
+          if (el) el.classList.add('open');
+          if (toggle) toggle.classList.add('hidden');
+          setTimeout(() => {
+            const input = document.getElementById('chatbot-input');
+            if (input) input.focus();
+          }, 100);
+        },
+        close() {
+          this.isOpen = false;
+          const el = document.getElementById('remo-ai-chatbot');
+          const toggle = document.getElementById('chatbot-toggle');
+          if (el) el.classList.remove('open');
+          if (toggle) toggle.classList.remove('hidden');
+        },
+        addMessage(text, isUser = false, buttons = null) {
+          const container = document.getElementById('chatbot-messages');
+          if (!container) return;
+          const msg = document.createElement('div');
+          msg.className = `chatbot-message ${isUser ? 'user' : 'bot'}`;
+          const avatar = document.createElement('div');
+          avatar.className = 'message-avatar';
+          if (isUser) {
+            avatar.textContent = '👤';
+          } else {
+            const uniqueId = 'eyeGlow' + Date.now() + Math.random().toString(36).substr(2, 9);
+            avatar.innerHTML = `<svg viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg" style="width: 28px; height: 28px;">
+              <defs>
+                <radialGradient id="${uniqueId}" cx="50%" cy="50%">
+                  <stop offset="0%" stop-color="#4FC3F7" stop-opacity="1"/>
+                  <stop offset="100%" stop-color="#29B6F6" stop-opacity="0.8"/>
+                </radialGradient>
+              </defs>
+              <line x1="50" y1="5" x2="50" y2="15" stroke="#1a1a1a" stroke-width="2"/>
+              <circle cx="50" cy="5" r="2" fill="#1a1a1a"/>
+              <ellipse cx="50" cy="30" rx="25" ry="20" fill="white" stroke="#1a1a1a" stroke-width="2"/>
+              <path d="M 45 20 L 50 25 L 55 20" stroke="#1a1a1a" stroke-width="1.5" fill="none"/>
+              <rect x="35" y="25" width="30" height="20" rx="3" fill="#1a1a1a"/>
+              <circle cx="42" cy="33" r="4" fill="url(#${uniqueId})"/>
+              <circle cx="58" cy="33" r="4" fill="url(#${uniqueId})"/>
+              <path d="M 40 40 Q 50 45 60 40" stroke="#4FC3F7" stroke-width="2" fill="none" stroke-linecap="round"/>
+              <ellipse cx="25" cy="30" rx="8" ry="12" fill="#29B6F6" stroke="#1a1a1a" stroke-width="1.5"/>
+              <ellipse cx="25" cy="30" rx="4" ry="6" fill="#1a1a1a"/>
+              <ellipse cx="75" cy="30" rx="8" ry="12" fill="#29B6F6" stroke="#1a1a1a" stroke-width="1.5"/>
+              <ellipse cx="75" cy="30" rx="4" ry="6" fill="#1a1a1a"/>
+              <rect x="30" y="50" width="40" height="35" rx="5" fill="white" stroke="#1a1a1a" stroke-width="2"/>
+              <rect x="38" y="58" width="24" height="18" rx="2" fill="#29B6F6" stroke="#4FC3F7" stroke-width="1"/>
+              <circle cx="42" cy="62" r="1.5" fill="#ff4444"/>
+              <circle cx="45" cy="62" r="1.5" fill="white"/>
+              <circle cx="50" cy="66" r="3" fill="#FFD700"/>
+              <ellipse cx="50" cy="70" rx="2" ry="3" fill="#4FC3F7"/>
+              <rect x="30" y="82" width="40" height="4" fill="#1a1a1a"/>
+              <rect x="20" y="55" width="12" height="20" rx="3" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+              <rect x="20" y="60" width="12" height="3" fill="#1a1a1a"/>
+              <rect x="68" y="55" width="12" height="20" rx="3" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+              <rect x="68" y="60" width="12" height="3" fill="#1a1a1a"/>
+              <ellipse cx="26" cy="78" rx="4" ry="5" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+              <ellipse cx="74" cy="78" rx="4" ry="5" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+              <rect x="35" y="88" width="12" height="20" rx="3" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+              <rect x="35" y="93" width="12" height="3" fill="#1a1a1a"/>
+              <rect x="53" y="88" width="12" height="20" rx="3" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+              <rect x="53" y="93" width="12" height="3" fill="#1a1a1a"/>
+              <ellipse cx="41" cy="110" rx="6" ry="4" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+              <ellipse cx="59" cy="110" rx="6" ry="4" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+            </svg>`;
+          }
+          const content = document.createElement('div');
+          content.className = 'message-content';
+          const textDiv = document.createElement('div');
+          textDiv.innerHTML = text.replace(/\n/g, '<br>');
+          content.appendChild(textDiv);
+          if (buttons && buttons.length > 0 && !isUser) {
+            const btnContainer = document.createElement('div');
+            btnContainer.className = 'message-buttons';
+            buttons.forEach(btn => {
+              const b = document.createElement('button');
+              b.className = 'message-button';
+              b.innerHTML = `<span class="message-button-icon">${btn.icon || '📌'}</span><span>${btn.text}</span>`;
+              b.onclick = () => {
+                this.addUserMessage(btn.text);
+                if (btn.action) btn.action();
+                else this.processMessage(btn.topic || btn.text.toLowerCase());
+              };
+              btnContainer.appendChild(b);
+            });
+            content.appendChild(btnContainer);
+          }
+          msg.appendChild(avatar);
+          msg.appendChild(content);
+          container.appendChild(msg);
+          container.scrollTop = container.scrollHeight;
+          this.messages.push({ text, isUser, buttons, timestamp: new Date() });
+        },
+        addBotMessage(text, buttons = null) { this.addMessage(text, false, buttons); },
+        addUserMessage(text) { this.addMessage(text, true); },
+        showTyping() {
+          const container = document.getElementById('chatbot-messages');
+          if (!container) return;
+          const typing = document.createElement('div');
+          typing.className = 'chatbot-message bot';
+          typing.id = 'typing-indicator';
+          const avatar = document.createElement('div');
+          avatar.className = 'message-avatar';
+          const uniqueIdTyping = 'eyeGlowTyping' + Date.now() + Math.random().toString(36).substr(2, 9);
+          avatar.innerHTML = `<svg viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg" style="width: 28px; height: 28px;">
+            <defs>
+              <radialGradient id="${uniqueIdTyping}" cx="50%" cy="50%">
+                <stop offset="0%" stop-color="#4FC3F7" stop-opacity="1"/>
+                <stop offset="100%" stop-color="#29B6F6" stop-opacity="0.8"/>
+              </radialGradient>
+            </defs>
+            <line x1="50" y1="5" x2="50" y2="15" stroke="#1a1a1a" stroke-width="2"/>
+            <circle cx="50" cy="5" r="2" fill="#1a1a1a"/>
+            <ellipse cx="50" cy="30" rx="25" ry="20" fill="white" stroke="#1a1a1a" stroke-width="2"/>
+            <path d="M 45 20 L 50 25 L 55 20" stroke="#1a1a1a" stroke-width="1.5" fill="none"/>
+            <rect x="35" y="25" width="30" height="20" rx="3" fill="#1a1a1a"/>
+            <circle cx="42" cy="33" r="4" fill="url(#${uniqueIdTyping})"/>
+            <circle cx="58" cy="33" r="4" fill="url(#${uniqueIdTyping})"/>
+            <path d="M 40 40 Q 50 45 60 40" stroke="#4FC3F7" stroke-width="2" fill="none" stroke-linecap="round"/>
+            <ellipse cx="25" cy="30" rx="8" ry="12" fill="#29B6F6" stroke="#1a1a1a" stroke-width="1.5"/>
+            <ellipse cx="25" cy="30" rx="4" ry="6" fill="#1a1a1a"/>
+            <ellipse cx="75" cy="30" rx="8" ry="12" fill="#29B6F6" stroke="#1a1a1a" stroke-width="1.5"/>
+            <ellipse cx="75" cy="30" rx="4" ry="6" fill="#1a1a1a"/>
+            <rect x="30" y="50" width="40" height="35" rx="5" fill="white" stroke="#1a1a1a" stroke-width="2"/>
+            <rect x="38" y="58" width="24" height="18" rx="2" fill="#29B6F6" stroke="#4FC3F7" stroke-width="1"/>
+            <circle cx="42" cy="62" r="1.5" fill="#ff4444"/>
+            <circle cx="45" cy="62" r="1.5" fill="white"/>
+            <circle cx="50" cy="66" r="3" fill="#FFD700"/>
+            <ellipse cx="50" cy="70" rx="2" ry="3" fill="#4FC3F7"/>
+            <rect x="30" y="82" width="40" height="4" fill="#1a1a1a"/>
+            <rect x="20" y="55" width="12" height="20" rx="3" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+            <rect x="20" y="60" width="12" height="3" fill="#1a1a1a"/>
+            <rect x="68" y="55" width="12" height="20" rx="3" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+            <rect x="68" y="60" width="12" height="3" fill="#1a1a1a"/>
+            <ellipse cx="26" cy="78" rx="4" ry="5" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+            <ellipse cx="74" cy="78" rx="4" ry="5" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+            <rect x="35" y="88" width="12" height="20" rx="3" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+            <rect x="35" y="93" width="12" height="3" fill="#1a1a1a"/>
+            <rect x="53" y="88" width="12" height="20" rx="3" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+            <rect x="53" y="93" width="12" height="3" fill="#1a1a1a"/>
+            <ellipse cx="41" cy="110" rx="6" ry="4" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+            <ellipse cx="59" cy="110" rx="6" ry="4" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+          </svg>`;
+          const content = document.createElement('div');
+          content.className = 'message-content typing-indicator';
+          content.innerHTML = '<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>';
+          typing.appendChild(avatar);
+          typing.appendChild(content);
+          container.appendChild(typing);
+          container.scrollTop = container.scrollHeight;
+        },
+        hideTyping() {
+          const typing = document.getElementById('typing-indicator');
+          if (typing) typing.remove();
+        },
+        async processMessage(userMessage) {
+          const lower = userMessage.toLowerCase();
+          this.showTyping();
+          await new Promise(r => setTimeout(r, 1000));
+          this.hideTyping();
+          if (lower.includes('tour') || lower.includes('guide')) {
+            this.addBotMessage("Great! I'll start the interactive tour for you.");
+            setTimeout(() => { if (typeof teacherTour !== 'undefined') teacherTour.startTour(); }, 500);
+          } else if (lower.includes('lesson material') || lower.includes('finding lesson')) {
+            this.addBotMessage("Here's how to find lesson materials:\n\n**Step 1: Access Lessons Library**\n• Click 'Lessons Library' in sidebar\n• Or go to: teacher-lessons-library.html\n\n**Step 2: Browse Materials**\n• Filter by subject, level, or keywords\n• Preview before downloading\n\n**Step 3: Create Your Own**\n• Click 'Create Lesson'\n• Upload files or create content\n\nWould you like me to take you there?", [
+              { text: "Open Lessons Library", icon: "📚", action: () => window.location.href = 'teacher-lessons-library.html' },
+              { text: "How to Create a Lesson", icon: "➕", topic: "create lesson" }
+            ]);
+          } else if (lower.includes('lesson structure') || lower.includes('lesson format')) {
+            this.addBotMessage("**Standard Lesson Structure (50-60 min):**\n\n1️⃣ **Warm-up (5-10 min)** - Engage students\n2️⃣ **Introduction (5-10 min)** - Present objectives\n3️⃣ **Practice (15-20 min)** - Interactive exercises\n4️⃣ **Production (10-15 min)** - Apply learning\n5️⃣ **Wrap-up (5 min)** - Review and homework\n\n**Tips:** Keep it interactive, use multimedia!");
+          } else if (lower.includes('teaching tip') || lower.includes('effective teaching')) {
+            this.addBotMessage("**Top Tips for Online Teaching:**\n\n🎯 **Engagement**: Use polls, games, breakout rooms\n💬 **Communication**: Speak clearly, use visuals\n⏰ **Time Management**: Plan with time allocations\n👥 **Interaction**: Encourage participation, give feedback\n🔧 **Technical**: Test equipment, have backup plans\n\nRemember: Adaptability and creativity are key!");
+          } else if (lower.includes('create lesson')) {
+            this.addBotMessage("**How to Create a Lesson:**\n\n1. Go to Lessons Library\n2. Click 'Create Lesson'\n3. Fill in details (title, subject, level)\n4. Upload materials or create content\n5. Save and organize\n\nReady to create?", [
+              { text: "Go to Lessons Library", icon: "📚", action: () => window.location.href = 'teacher-lessons-library.html' }
+            ]);
+          } else if (lower.includes('internet connection') || lower.includes('connection issue')) {
+            this.addBotMessage("**Internet Connection Troubleshooting:**\n\n1. Check Wi-Fi signal strength\n2. Restart router (unplug 30 sec)\n3. Test speed at speedtest.net\n4. Use wired connection if possible\n5. Close bandwidth-heavy apps\n\nIf problems persist, contact your ISP.");
+          } else if (lower.includes('camera') || lower.includes('microphone') || lower.includes('mic')) {
+            this.addBotMessage("**Camera/Microphone Fixes:**\n\n1. Check browser permissions\n2. Make sure no other app is using devices\n3. Test in Device Check section\n4. Refresh page and allow permissions\n5. Update browser\n\nNeed to test devices?", [
+              { text: "Go to Device Check", icon: "🔍", action: () => window.location.href = 'device-check.html' }
+            ]);
+          } else if (lower.includes('browser') || lower.includes('compatibility')) {
+            this.addBotMessage("**Browser Compatibility:**\n\n✅ **Recommended**: Chrome, Firefox, Edge (latest)\n\n**Fixes:**\n1. Update browser\n2. Clear cache (Ctrl+Shift+Delete)\n3. Disable extensions\n4. Try incognito mode\n\nIf issues persist, try a different browser.");
+          } else if (lower.includes('platform error') || lower.includes('error message')) {
+            this.addBotMessage("**Platform Error Fixes:**\n\n1. Refresh page (F5 or Ctrl+R)\n2. Clear browser cache\n3. Check internet connection\n4. Try different browser\n\n**If error persists:**\n📸 Take screenshot\n📝 Note what you were doing\n📧 Contact support@remoedph.com", [
+              { text: "Contact Support", icon: "📧", action: () => {
+                this.addBotMessage("**Contact Support:**\n\n📧 Email: support@remoedph.com\n\nPlease include:\n• Screenshot of error\n• What you were doing\n• Browser and OS info");
+              }}
+            ]);
+          } else if (lower.includes('troubleshoot') || lower.includes('problem') || lower.includes('issue')) {
+            this.addBotMessage("I can help with troubleshooting! What specific issue?", [
+              { text: "Internet Connection", icon: "🌐", topic: "internet connection" },
+              { text: "Camera/Microphone", icon: "🎥", topic: "camera microphone" },
+              { text: "Browser Issues", icon: "🌏", topic: "browser compatibility" },
+              { text: "Platform Errors", icon: "⚠️", topic: "platform errors" },
+              { text: "Contact Support", icon: "📧", action: () => {
+                this.addBotMessage("📧 Email: support@remoedph.com\n\nPlease provide details about your problem.");
+              }}
+            ]);
+          } else if (lower.includes('lesson') || lower.includes('teaching')) {
+            this.addBotMessage("I can help with lesson support! What do you need?", [
+              { text: "Finding Lesson Materials", icon: "📚", topic: "finding lesson materials" },
+              { text: "Lesson Structure", icon: "📋", topic: "lesson structure and format" },
+              { text: "Teaching Tips", icon: "💡", topic: "teaching tips" },
+              { text: "Go to Lessons Library", icon: "📖", action: () => window.location.href = 'teacher-lessons-library.html' }
+            ]);
+          } else if (lower.includes('set reminder') || lower.includes('reminder')) {
+            this.addBotMessage("**How to Set Reminders:**\n\n**Method 1**: Dashboard > Upcoming Classes > Set reminder\n**Method 2**: Class Schedule > Click class > Enable reminder\n**Method 3**: Allow browser notifications\n\n**Tips**: Set 15-30 min before class", [
+              { text: "View Schedule", icon: "📅", action: () => window.location.href = 'teacher-class-table.html' }
+            ]);
+          } else if (lower.includes('booking') || lower.includes('accept booking')) {
+            this.addBotMessage("**Booking Guide:**\n\n1. Students book your time slots\n2. You receive notifications\n3. Accept/decline in Class Schedule\n4. Prepare materials and set reminders\n\n**Manage Availability**: Go to Class Configuration", [
+              { text: "View Bookings", icon: "📋", action: () => window.location.href = 'teacher-class-table.html' },
+              { text: "Class Configuration", icon: "⚙️", action: () => window.location.href = 'teacher-open-class.html' }
+            ]);
+          } else if (lower.includes('schedule') || lower.includes('class time')) {
+            this.addBotMessage("I can help with schedule questions! What do you need?", [
+              { text: "View My Schedule", icon: "📅", action: () => window.location.href = 'teacher-class-table.html' },
+              { text: "Set Reminders", icon: "🔔", topic: "set reminders" },
+              { text: "Manage Availability", icon: "⚙️", action: () => window.location.href = 'teacher-open-class.html' },
+              { text: "Booking Questions", icon: "❓", topic: "booking questions" }
+            ]);
+          } else if (lower.includes('hello') || lower.includes('hi') || lower.includes('hey')) {
+            this.addBotMessage("Hello! 👋 I'm Remo AI Assistant. I can help with:\n\n• Troubleshooting\n• Lesson support\n• Platform navigation\n• Starting tours\n\nWhat would you like help with?");
+          } else if (lower.includes('help') || lower.includes('support')) {
+            this.addBotMessage("I'm here to help! You can:\n\n• Ask questions about the platform\n• Click 'Start Tour' for guidance\n• Use quick action buttons\n• Contact support@remoedph.com\n\nWhat specific help do you need?");
+          } else {
+            this.addBotMessage("I understand you're asking about: \"" + userMessage + "\"\n\nI can help you with:", [
+              { text: "Troubleshooting", icon: "🔧", topic: "troubleshooting" },
+              { text: "Lesson Support", icon: "📚", topic: "lesson support" },
+              { text: "Schedule Help", icon: "📅", topic: "schedule" },
+              { text: "Start Tour", icon: "🎯", action: () => {
+                this.addBotMessage("Great! Starting tour...");
+                setTimeout(() => { if (typeof teacherTour !== 'undefined') teacherTour.startTour(); }, 500);
+              }}
+            ]);
+          }
+        }
+      };
+      
+      window.toggleChatbot = function() {
+        if (window.chatbot.isOpen) window.chatbot.close();
+        else window.chatbot.open();
+      };
+      
+      window.sendChatbotMessage = function() {
+        const input = document.getElementById('chatbot-input');
+        const message = input ? input.value.trim() : '';
+        if (message) {
+          window.chatbot.addUserMessage(message);
+          if (input) input.value = '';
+          window.chatbot.processMessage(message);
+        }
+      };
+      
+      window.handleChatbotKeyPress = function(event) {
+        if (event.key === 'Enter') window.sendChatbotMessage();
+      };
+      
+      window.handleQuickAction = function(action) {
+        switch(action) {
+          case 'tour':
+            window.chatbot.addUserMessage("Start the tour");
+            window.chatbot.addBotMessage("Great! Starting tour...");
+            setTimeout(() => { if (typeof teacherTour !== 'undefined') teacherTour.startTour(); }, 500);
+            break;
+          case 'troubleshooting':
+            window.chatbot.addUserMessage("I need troubleshooting help");
+            window.chatbot.processMessage("troubleshooting");
+            break;
+          case 'lessons':
+            window.chatbot.addUserMessage("I need lesson support");
+            window.chatbot.processMessage("lesson support");
+            break;
+          case 'schedule':
+            window.chatbot.addUserMessage("I need schedule help");
+            window.chatbot.processMessage("schedule");
+            break;
+        }
+      };
+      
+      document.addEventListener('DOMContentLoaded', function() {
+        if (window.chatbot) window.chatbot.init();
+      });
     }
   </script>
 </body>

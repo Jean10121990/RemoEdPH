@@ -345,24 +345,28 @@
             max-width: 100vw;
             overflow-x: hidden;
         }
-        .remoed-sidebar { 
-            width: 260px; 
+        .remoed-sidebar {
+            width: 260px;
             min-width: 260px;
-            background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%); 
+            background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
             box-shadow: 4px 0 20px rgba(102, 126, 234, 0.1);
-            padding: 0; 
-            display: flex; 
+            padding: 0;
+            display: flex;
             flex-direction: column;
             align-items: stretch;
             position: fixed;
             height: 100vh;
+            overflow: hidden;
             z-index: 100;
-            border-right: 1px solid rgba(102, 126, 234, 0.1);
         }
-        .remoed-menu { list-style: none; padding: 0; margin: 0; }
+        .remoed-menu { 
+            list-style: none; 
+            padding: 0; 
+            margin: 0; 
+        }
         .remoed-menu li { 
             padding: 14px 32px; 
-            color: #667eea; 
+            color: #64748b; 
             font-weight: 500; 
             cursor: pointer; 
             display: flex; 
@@ -377,8 +381,13 @@
             color: white; 
             transform: translateX(4px);
             transition: all 0.3s ease;
+            border-radius: 0 8px 8px 0;
         }
-        .remoed-menu svg { width: 20px; height: 20px; stroke: currentColor; }
+        .remoed-menu svg { 
+            width: 20px; 
+            height: 20px; 
+            stroke: currentColor; 
+        }
         .remoed-content { 
             flex: 1; 
             padding: 0.75rem 1rem; 
@@ -680,6 +689,321 @@
             }
         }
     </style>
+<<<<<<< HEAD
+=======
+    
+    <!-- Remo AI Chatbot Styles -->
+    <style>
+        #remo-ai-chatbot {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 380px;
+            height: 600px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            z-index: 10000;
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        #remo-ai-chatbot.open {
+            display: flex;
+        }
+        
+        .chatbot-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 20px 20px 0 0;
+        }
+        
+        .chatbot-header h3 {
+            margin: 0;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .chatbot-close {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+        
+        .chatbot-close:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .chatbot-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f8fafc;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .chatbot-message {
+            display: flex;
+            gap: 10px;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .chatbot-message.user {
+            flex-direction: row-reverse;
+        }
+        
+        .message-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+        
+        .chatbot-message.bot .message-avatar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2px;
+        }
+        
+        .chatbot-message.bot .message-avatar svg {
+            width: 28px;
+            height: 28px;
+        }
+        
+        .chatbot-message.user .message-avatar {
+            background: #e2e8f0;
+            color: #667eea;
+        }
+        
+        .message-content {
+            max-width: 75%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        
+        .chatbot-message.bot .message-content {
+            background: white;
+            color: #1a202c;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .chatbot-message.user .message-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .message-buttons {
+            margin-top: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .message-button {
+            padding: 10px 14px;
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #667eea;
+            font-weight: 500;
+            text-align: left;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .message-button:hover {
+            background: #e2e8f0;
+            border-color: #667eea;
+            transform: translateX(4px);
+        }
+        
+        .message-button-icon {
+            font-size: 1rem;
+        }
+        
+        .quick-actions {
+            padding: 15px 20px;
+            background: white;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        
+        .quick-action-btn {
+            padding: 8px 12px;
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #667eea;
+            font-weight: 500;
+        }
+        
+        .quick-action-btn:hover {
+            background: #e2e8f0;
+            transform: translateY(-1px);
+        }
+        
+        .chatbot-input-area {
+            padding: 15px 20px;
+            background: white;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .chatbot-input {
+            flex: 1;
+            padding: 10px 15px;
+            border: 1px solid #e2e8f0;
+            border-radius: 25px;
+            font-size: 0.9rem;
+            outline: none;
+        }
+        
+        .chatbot-input:focus {
+            border-color: #667eea;
+        }
+        
+        .chatbot-send {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s;
+        }
+        
+        .chatbot-send:hover {
+            transform: scale(1.1);
+        }
+        
+        .chatbot-toggle {
+            position: fixed;
+            bottom: 90px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4), 0 0 20px rgba(255, 165, 0, 0.3);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.3s;
+            padding: 0;
+            overflow: visible;
+        }
+        
+        .chatbot-toggle:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4), 0 0 30px rgba(255, 165, 0, 0.5);
+        }
+        
+        .remo-ai-icon {
+            width: 40px;
+            height: 40px;
+            filter: drop-shadow(0 0 8px rgba(255, 165, 0, 0.6));
+        }
+        
+        .chatbot-toggle.hidden {
+            display: none;
+        }
+        
+        /* Adjust tour button position when chatbot is open */
+        #remo-ai-chatbot.open ~ #tour-button {
+            bottom: 680px !important;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 12px 16px;
+        }
+        
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #667eea;
+            animation: typing 1.4s infinite;
+        }
+        
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        
+        @keyframes typing {
+            0%, 60%, 100% {
+                transform: translateY(0);
+            }
+            30% {
+                transform: translateY(-10px);
+            }
+        }
+    </style>
+    <script src="teacher-tour.js"></script>
+>>>>>>> 82021f05c965758b36140a1a8099d60eb2ea224f
 </head>
 <body>
     <!-- Main Layout: Sidebar + Content -->
@@ -741,22 +1065,30 @@
         </div>
         
         <nav class="remoed-sidebar">
-            <div class="remoed-logo" style="height:100px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding-top:5px;">
-                <img src="remoed-logo.png" alt="RemoEdPH Logo" style="height:40px; width:auto; display:inline-block; vertical-align:middle;">
-                <span class="remoed-title" style="font-size:1.3rem; font-weight:700; color:#667eea; letter-spacing:1px;">RemoEdPH</span>
-            </div>
-            <div class="remoed-user" style="display:flex; flex-direction:column; align-items:center; margin-bottom:24px;">
-                <div class="remoed-avatar" id="remoed-avatar" onclick="window.location.href='teacher-profile.html'" style="cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
-                    <img id="profile-image" src="" alt="Profile" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: none;">
-                    <span id="avatar-text">K</span>
+            <div style="padding: 24px; border-bottom: 2px solid #e8f4fd;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 1.2rem;">R</div>
+                    <div>
+                        <div style="font-weight: 700; color: #667eea; font-size: 1.1rem;">RemoEdPH</div>
+                        <div style="font-size: 0.75rem; color: #666;">Teacher Portal</div>
+                    </div>
                 </div>
-                <span class="remoed-username" id="remoed-username"></span>
+            </div>
+            <div style="padding: 16px; border-bottom: 2px solid #e8f4fd;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div id="remoed-avatar" onclick="window.location.href='teacher-profile.html'" style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #764ba2); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+                        <img id="profile-image" src="" alt="Profile" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: none;">
+                        <span id="avatar-text">T</span>
+                    </div>
+                    <span class="remoed-username" id="remoed-username">Hi, Teacher</span>
+                </div>
             </div>
             <ul class="remoed-menu">
                 <li class="active"><svg fill="none" stroke="#667eea" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/></svg>Dashboard</li>
                 <li onclick="window.location.href='teacher-class-table.html'"><svg fill="none" stroke="#667eea" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M16 3v4M8 3v4"/></svg>Class Schedule</li>
                 <li onclick="window.location.href='teacher-open-class.html'"><svg fill="none" stroke="#667eea" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>Class Configuration</li>
                 <li onclick="window.location.href='device-check.html'"><svg fill="none" stroke="#667eea" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>Device Check</li>
+                <li onclick="window.location.href='teacher-lessons-library.html'"><svg fill="none" stroke="#667eea" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>Lessons Library</li>
                 <li onclick="window.location.href='teacher-service-fee.html'"><svg fill="none" stroke="#667eea" stroke-width="2" viewBox="0 0 24 24"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 10c-4.41 0-8-1.79-8-4V6c0-2.21 3.59-4 8-4s8 1.79 8 4v8c0 2.21-3.59 4-8 4z"/></svg>Teaching Fee</li>
                 <li onclick="window.location.href='teacher-profile.html'"><svg fill="none" stroke="#667eea" stroke-width="2" viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>Profile</li>
                 <li id="logout-nav" style="margin-top:auto; color:#e74c3c; cursor:pointer;"><svg fill="none" stroke="#e74c3c" stroke-width="2" viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7"/><path d="M3 12a9 9 0 0118 0 9 9 0 01-18 0z"/></svg>Logout</li>
@@ -3095,6 +3427,762 @@
   }
 
 </script>
+<<<<<<< HEAD
+=======
+<script src="mobile-utils.js"></script>
+<script>
+    // Initialize mobile-specific features for dashboard
+    document.addEventListener('DOMContentLoaded', function() {
+        if (isMobile && isMobile()) {
+            // Add swipe gestures to announcement cards
+            const announcementCards = document.querySelectorAll('.announcement-card');
+            announcementCards.forEach(card => {
+                card.setAttribute('data-swipe-item', 'true');
+            });
+            
+            // Initialize quick actions for announcements
+            if (announcementCards.length > 0) {
+                new QuickActions('.announcements-container', {
+                    actionButtons: ['archive']
+                });
+            }
+            
+            // Pull to refresh for dashboard
+            const dashboardContent = document.querySelector('.remoed-content');
+            if (dashboardContent) {
+                new PullToRefresh(dashboardContent, () => {
+                    location.reload();
+                });
+            }
+        }
+    });
+</script>
+
+<!-- Remo AI Chatbot -->
+<div id="remo-ai-chatbot">
+    <div class="chatbot-header">
+        <h3>
+            <svg viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg" style="width: 24px; height: 24px; margin-right: 5px;">
+                <defs>
+                    <radialGradient id="eyeGlowHeader" cx="50%" cy="50%">
+                        <stop offset="0%" stop-color="#4FC3F7" stop-opacity="1"/>
+                        <stop offset="100%" stop-color="#29B6F6" stop-opacity="0.8"/>
+                    </radialGradient>
+                </defs>
+                <line x1="50" y1="5" x2="50" y2="15" stroke="#fff" stroke-width="2"/>
+                <circle cx="50" cy="5" r="2" fill="#fff"/>
+                <ellipse cx="50" cy="30" rx="25" ry="20" fill="white" stroke="#fff" stroke-width="2"/>
+                <path d="M 45 20 L 50 25 L 55 20" stroke="#fff" stroke-width="1.5" fill="none"/>
+                <rect x="35" y="25" width="30" height="20" rx="3" fill="#fff"/>
+                <circle cx="42" cy="33" r="4" fill="url(#eyeGlowHeader)"/>
+                <circle cx="58" cy="33" r="4" fill="url(#eyeGlowHeader)"/>
+                <path d="M 40 40 Q 50 45 60 40" stroke="#4FC3F7" stroke-width="2" fill="none" stroke-linecap="round"/>
+                <ellipse cx="25" cy="30" rx="8" ry="12" fill="#29B6F6" stroke="#fff" stroke-width="1.5"/>
+                <ellipse cx="25" cy="30" rx="4" ry="6" fill="#fff"/>
+                <ellipse cx="75" cy="30" rx="8" ry="12" fill="#29B6F6" stroke="#fff" stroke-width="1.5"/>
+                <ellipse cx="75" cy="30" rx="4" ry="6" fill="#fff"/>
+                <rect x="30" y="50" width="40" height="35" rx="5" fill="white" stroke="#fff" stroke-width="2"/>
+                <rect x="38" y="58" width="24" height="18" rx="2" fill="#29B6F6" stroke="#4FC3F7" stroke-width="1"/>
+                <circle cx="42" cy="62" r="1.5" fill="#ff4444"/>
+                <circle cx="45" cy="62" r="1.5" fill="white"/>
+                <circle cx="50" cy="66" r="3" fill="#FFD700"/>
+                <ellipse cx="50" cy="70" rx="2" ry="3" fill="#4FC3F7"/>
+                <rect x="30" y="82" width="40" height="4" fill="#fff"/>
+                <rect x="20" y="55" width="12" height="20" rx="3" fill="white" stroke="#fff" stroke-width="1.5"/>
+                <rect x="20" y="60" width="12" height="3" fill="#fff"/>
+                <rect x="68" y="55" width="12" height="20" rx="3" fill="white" stroke="#fff" stroke-width="1.5"/>
+                <rect x="68" y="60" width="12" height="3" fill="#fff"/>
+                <ellipse cx="26" cy="78" rx="4" ry="5" fill="white" stroke="#fff" stroke-width="1.5"/>
+                <ellipse cx="74" cy="78" rx="4" ry="5" fill="white" stroke="#fff" stroke-width="1.5"/>
+                <rect x="35" y="88" width="12" height="20" rx="3" fill="white" stroke="#fff" stroke-width="1.5"/>
+                <rect x="35" y="93" width="12" height="3" fill="#fff"/>
+                <rect x="53" y="88" width="12" height="20" rx="3" fill="white" stroke="#fff" stroke-width="1.5"/>
+                <rect x="53" y="93" width="12" height="3" fill="#fff"/>
+                <ellipse cx="41" cy="110" rx="6" ry="4" fill="white" stroke="#fff" stroke-width="1.5"/>
+                <ellipse cx="59" cy="110" rx="6" ry="4" fill="white" stroke="#fff" stroke-width="1.5"/>
+            </svg>
+            <span>Remo AI Assistant</span>
+        </h3>
+        <button class="chatbot-close" onclick="toggleChatbot()">×</button>
+    </div>
+    <div class="chatbot-messages" id="chatbot-messages">
+        <div class="chatbot-message bot">
+            <div class="message-avatar">
+                <svg viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg" style="width: 28px; height: 28px;">
+                    <defs>
+                        <radialGradient id="eyeGlowInit" cx="50%" cy="50%">
+                            <stop offset="0%" stop-color="#4FC3F7" stop-opacity="1"/>
+                            <stop offset="100%" stop-color="#29B6F6" stop-opacity="0.8"/>
+                        </radialGradient>
+                    </defs>
+                    <line x1="50" y1="5" x2="50" y2="15" stroke="#1a1a1a" stroke-width="2"/>
+                    <circle cx="50" cy="5" r="2" fill="#1a1a1a"/>
+                    <ellipse cx="50" cy="30" rx="25" ry="20" fill="white" stroke="#1a1a1a" stroke-width="2"/>
+                    <path d="M 45 20 L 50 25 L 55 20" stroke="#1a1a1a" stroke-width="1.5" fill="none"/>
+                    <rect x="35" y="25" width="30" height="20" rx="3" fill="#1a1a1a"/>
+                    <circle cx="42" cy="33" r="4" fill="url(#eyeGlowInit)"/>
+                    <circle cx="58" cy="33" r="4" fill="url(#eyeGlowInit)"/>
+                    <path d="M 40 40 Q 50 45 60 40" stroke="#4FC3F7" stroke-width="2" fill="none" stroke-linecap="round"/>
+                    <ellipse cx="25" cy="30" rx="8" ry="12" fill="#29B6F6" stroke="#1a1a1a" stroke-width="1.5"/>
+                    <ellipse cx="25" cy="30" rx="4" ry="6" fill="#1a1a1a"/>
+                    <ellipse cx="75" cy="30" rx="8" ry="12" fill="#29B6F6" stroke="#1a1a1a" stroke-width="1.5"/>
+                    <ellipse cx="75" cy="30" rx="4" ry="6" fill="#1a1a1a"/>
+                    <rect x="30" y="50" width="40" height="35" rx="5" fill="white" stroke="#1a1a1a" stroke-width="2"/>
+                    <rect x="38" y="58" width="24" height="18" rx="2" fill="#29B6F6" stroke="#4FC3F7" stroke-width="1"/>
+                    <circle cx="42" cy="62" r="1.5" fill="#ff4444"/>
+                    <circle cx="45" cy="62" r="1.5" fill="white"/>
+                    <circle cx="50" cy="66" r="3" fill="#FFD700"/>
+                    <ellipse cx="50" cy="70" rx="2" ry="3" fill="#4FC3F7"/>
+                    <rect x="30" y="82" width="40" height="4" fill="#1a1a1a"/>
+                    <rect x="20" y="55" width="12" height="20" rx="3" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+                    <rect x="20" y="60" width="12" height="3" fill="#1a1a1a"/>
+                    <rect x="68" y="55" width="12" height="20" rx="3" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+                    <rect x="68" y="60" width="12" height="3" fill="#1a1a1a"/>
+                    <ellipse cx="26" cy="78" rx="4" ry="5" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+                    <ellipse cx="74" cy="78" rx="4" ry="5" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+                    <rect x="35" y="88" width="12" height="20" rx="3" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+                    <rect x="35" y="93" width="12" height="3" fill="#1a1a1a"/>
+                    <rect x="53" y="88" width="12" height="20" rx="3" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+                    <rect x="53" y="93" width="12" height="3" fill="#1a1a1a"/>
+                    <ellipse cx="41" cy="110" rx="6" ry="4" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+                    <ellipse cx="59" cy="110" rx="6" ry="4" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+                </svg>
+            </div>
+            <div class="message-content">
+                <strong>Hello! I'm Remo AI Assistant 👋</strong><br>
+                I'm here to help you with troubleshooting, lesson support, and any questions about the platform. How can I assist you today?
+            </div>
+        </div>
+    </div>
+    <div class="quick-actions">
+        <button class="quick-action-btn" onclick="handleQuickAction('tour')">🎯 Start Tour</button>
+        <button class="quick-action-btn" onclick="handleQuickAction('troubleshooting')">🔧 Troubleshooting</button>
+        <button class="quick-action-btn" onclick="handleQuickAction('lessons')">📚 Lesson Support</button>
+        <button class="quick-action-btn" onclick="handleQuickAction('schedule')">📅 Schedule Help</button>
+    </div>
+    <div class="chatbot-input-area">
+        <input type="text" class="chatbot-input" id="chatbot-input" placeholder="Type your question..." onkeypress="handleChatbotKeyPress(event)">
+        <button class="chatbot-send" onclick="sendChatbotMessage()">➤</button>
+    </div>
+</div>
+
+<button class="chatbot-toggle" id="chatbot-toggle" onclick="toggleChatbot()" title="Open Remo AI Assistant">
+    <svg class="remo-ai-icon" viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg">
+        <!-- Golden glow effect -->
+        <defs>
+            <filter id="glow">
+                <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                <feMerge>
+                    <feMergeNode in="coloredBlur"/>
+                    <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+            </filter>
+            <radialGradient id="eyeGlow" cx="50%" cy="50%">
+                <stop offset="0%" stop-color="#4FC3F7" stop-opacity="1"/>
+                <stop offset="100%" stop-color="#29B6F6" stop-opacity="0.8"/>
+            </radialGradient>
+        </defs>
+        
+        <!-- Antenna -->
+        <line x1="50" y1="5" x2="50" y2="15" stroke="#1a1a1a" stroke-width="2"/>
+        <circle cx="50" cy="5" r="2" fill="#1a1a1a"/>
+        
+        <!-- Head (white rounded dome) -->
+        <ellipse cx="50" cy="30" rx="25" ry="20" fill="white" stroke="#1a1a1a" stroke-width="2" filter="url(#glow)"/>
+        
+        <!-- Forehead V -->
+        <path d="M 45 20 L 50 25 L 55 20" stroke="#1a1a1a" stroke-width="1.5" fill="none"/>
+        
+        <!-- Face screen (dark grey) -->
+        <rect x="35" y="25" width="30" height="20" rx="3" fill="#1a1a1a"/>
+        
+        <!-- Eyes (bright blue glowing) -->
+        <circle cx="42" cy="33" r="4" fill="url(#eyeGlow)"/>
+        <circle cx="58" cy="33" r="4" fill="url(#eyeGlow)"/>
+        
+        <!-- Smile (light blue) -->
+        <path d="M 40 40 Q 50 45 60 40" stroke="#4FC3F7" stroke-width="2" fill="none" stroke-linecap="round"/>
+        
+        <!-- Headphones/Ears -->
+        <ellipse cx="25" cy="30" rx="8" ry="12" fill="#29B6F6" stroke="#1a1a1a" stroke-width="1.5"/>
+        <ellipse cx="25" cy="30" rx="4" ry="6" fill="#1a1a1a"/>
+        <ellipse cx="75" cy="30" rx="8" ry="12" fill="#29B6F6" stroke="#1a1a1a" stroke-width="1.5"/>
+        <ellipse cx="75" cy="30" rx="4" ry="6" fill="#1a1a1a"/>
+        
+        <!-- Torso (white) -->
+        <rect x="30" y="50" width="40" height="35" rx="5" fill="white" stroke="#1a1a1a" stroke-width="2"/>
+        
+        <!-- Chest screen (bright blue) -->
+        <rect x="38" y="58" width="24" height="18" rx="2" fill="#29B6F6" stroke="#4FC3F7" stroke-width="1"/>
+        <!-- Screen elements -->
+        <circle cx="42" cy="62" r="1.5" fill="#ff4444"/>
+        <circle cx="45" cy="62" r="1.5" fill="white"/>
+        <circle cx="50" cy="66" r="3" fill="#FFD700"/>
+        <ellipse cx="50" cy="70" rx="2" ry="3" fill="#4FC3F7"/>
+        <path d="M 54 62 L 56 62 L 56 64 L 54 64 Z" fill="white"/>
+        <path d="M 56 70 L 58 70 L 58 72 L 56 72 Z" fill="white"/>
+        
+        <!-- Waist band -->
+        <rect x="30" y="82" width="40" height="4" fill="#1a1a1a"/>
+        
+        <!-- Arms -->
+        <rect x="20" y="55" width="12" height="20" rx="3" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+        <rect x="20" y="60" width="12" height="3" fill="#1a1a1a"/>
+        <rect x="68" y="55" width="12" height="20" rx="3" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+        <rect x="68" y="60" width="12" height="3" fill="#1a1a1a"/>
+        
+        <!-- Hands -->
+        <ellipse cx="26" cy="78" rx="4" ry="5" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+        <ellipse cx="26" cy="80" rx="3" ry="2" fill="#1a1a1a"/>
+        <ellipse cx="74" cy="78" rx="4" ry="5" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+        <ellipse cx="74" cy="80" rx="3" ry="2" fill="#1a1a1a"/>
+        
+        <!-- Legs -->
+        <rect x="35" y="88" width="12" height="20" rx="3" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+        <rect x="35" y="93" width="12" height="3" fill="#1a1a1a"/>
+        <rect x="53" y="88" width="12" height="20" rx="3" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+        <rect x="53" y="93" width="12" height="3" fill="#1a1a1a"/>
+        
+        <!-- Feet -->
+        <ellipse cx="41" cy="110" rx="6" ry="4" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+        <ellipse cx="41" cy="112" rx="5" ry="2" fill="#1a1a1a"/>
+        <ellipse cx="59" cy="110" rx="6" ry="4" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+        <ellipse cx="59" cy="112" rx="5" ry="2" fill="#1a1a1a"/>
+    </svg>
+</button>
+
+<script>
+    // Remo AI Chatbot Functionality
+    const chatbot = {
+        isOpen: false,
+        messages: [],
+        
+        init() {
+            // Check if chatbot should open automatically
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('help') === 'technical') {
+                setTimeout(() => {
+                    this.open();
+                    this.addBotMessage("Welcome! I see you're looking for technical help. I'm here to assist you with troubleshooting, lesson support, and any questions about the platform. What can I help you with?");
+                }, 500);
+            }
+        },
+        
+        open() {
+            this.isOpen = true;
+            document.getElementById('remo-ai-chatbot').classList.add('open');
+            document.getElementById('chatbot-toggle').classList.add('hidden');
+            // Focus on input
+            setTimeout(() => {
+                document.getElementById('chatbot-input').focus();
+            }, 100);
+        },
+        
+        close() {
+            this.isOpen = false;
+            document.getElementById('remo-ai-chatbot').classList.remove('open');
+            document.getElementById('chatbot-toggle').classList.remove('hidden');
+        },
+        
+        addMessage(text, isUser = false, buttons = null) {
+            const messagesContainer = document.getElementById('chatbot-messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `chatbot-message ${isUser ? 'user' : 'bot'}`;
+            
+            const avatar = document.createElement('div');
+            avatar.className = 'message-avatar';
+            if (isUser) {
+                avatar.textContent = '👤';
+            } else {
+                // Remo AI icon SVG
+                avatar.innerHTML = `<svg viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg" style="width: 28px; height: 28px;">
+                    <defs>
+                        <radialGradient id="eyeGlow${Date.now()}" cx="50%" cy="50%">
+                            <stop offset="0%" stop-color="#4FC3F7" stop-opacity="1"/>
+                            <stop offset="100%" stop-color="#29B6F6" stop-opacity="0.8"/>
+                        </radialGradient>
+                    </defs>
+                    <line x1="50" y1="5" x2="50" y2="15" stroke="#1a1a1a" stroke-width="2"/>
+                    <circle cx="50" cy="5" r="2" fill="#1a1a1a"/>
+                    <ellipse cx="50" cy="30" rx="25" ry="20" fill="white" stroke="#1a1a1a" stroke-width="2"/>
+                    <path d="M 45 20 L 50 25 L 55 20" stroke="#1a1a1a" stroke-width="1.5" fill="none"/>
+                    <rect x="35" y="25" width="30" height="20" rx="3" fill="#1a1a1a"/>
+                    <circle cx="42" cy="33" r="4" fill="url(#eyeGlow${Date.now()})"/>
+                    <circle cx="58" cy="33" r="4" fill="url(#eyeGlow${Date.now()})"/>
+                    <path d="M 40 40 Q 50 45 60 40" stroke="#4FC3F7" stroke-width="2" fill="none" stroke-linecap="round"/>
+                    <ellipse cx="25" cy="30" rx="8" ry="12" fill="#29B6F6" stroke="#1a1a1a" stroke-width="1.5"/>
+                    <ellipse cx="25" cy="30" rx="4" ry="6" fill="#1a1a1a"/>
+                    <ellipse cx="75" cy="30" rx="8" ry="12" fill="#29B6F6" stroke="#1a1a1a" stroke-width="1.5"/>
+                    <ellipse cx="75" cy="30" rx="4" ry="6" fill="#1a1a1a"/>
+                    <rect x="30" y="50" width="40" height="35" rx="5" fill="white" stroke="#1a1a1a" stroke-width="2"/>
+                    <rect x="38" y="58" width="24" height="18" rx="2" fill="#29B6F6" stroke="#4FC3F7" stroke-width="1"/>
+                    <circle cx="42" cy="62" r="1.5" fill="#ff4444"/>
+                    <circle cx="45" cy="62" r="1.5" fill="white"/>
+                    <circle cx="50" cy="66" r="3" fill="#FFD700"/>
+                    <ellipse cx="50" cy="70" rx="2" ry="3" fill="#4FC3F7"/>
+                    <rect x="30" y="82" width="40" height="4" fill="#1a1a1a"/>
+                    <rect x="20" y="55" width="12" height="20" rx="3" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+                    <rect x="20" y="60" width="12" height="3" fill="#1a1a1a"/>
+                    <rect x="68" y="55" width="12" height="20" rx="3" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+                    <rect x="68" y="60" width="12" height="3" fill="#1a1a1a"/>
+                    <ellipse cx="26" cy="78" rx="4" ry="5" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+                    <ellipse cx="74" cy="78" rx="4" ry="5" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+                    <rect x="35" y="88" width="12" height="20" rx="3" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+                    <rect x="35" y="93" width="12" height="3" fill="#1a1a1a"/>
+                    <rect x="53" y="88" width="12" height="20" rx="3" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+                    <rect x="53" y="93" width="12" height="3" fill="#1a1a1a"/>
+                    <ellipse cx="41" cy="110" rx="6" ry="4" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+                    <ellipse cx="59" cy="110" rx="6" ry="4" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+                </svg>`;
+            }
+            
+            const content = document.createElement('div');
+            content.className = 'message-content';
+            
+            // Add text content (preserve line breaks)
+            const textDiv = document.createElement('div');
+            textDiv.innerHTML = text.replace(/\n/g, '<br>');
+            content.appendChild(textDiv);
+            
+            // Add buttons if provided
+            if (buttons && buttons.length > 0 && !isUser) {
+                const buttonsContainer = document.createElement('div');
+                buttonsContainer.className = 'message-buttons';
+                
+                buttons.forEach(button => {
+                    const btn = document.createElement('button');
+                    btn.className = 'message-button';
+                    btn.innerHTML = `<span class="message-button-icon">${button.icon || '📌'}</span><span>${button.text}</span>`;
+                    btn.onclick = () => {
+                        this.addUserMessage(button.text);
+                        if (button.action) {
+                            button.action();
+                        } else {
+                            this.processMessage(button.topic || button.text.toLowerCase());
+                        }
+                    };
+                    buttonsContainer.appendChild(btn);
+                });
+                
+                content.appendChild(buttonsContainer);
+            }
+            
+            messageDiv.appendChild(avatar);
+            messageDiv.appendChild(content);
+            messagesContainer.appendChild(messageDiv);
+            
+            // Scroll to bottom
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            
+            this.messages.push({ text, isUser, buttons, timestamp: new Date() });
+        },
+        
+        addBotMessage(text, buttons = null) {
+            this.addMessage(text, false, buttons);
+        },
+        
+        addUserMessage(text) {
+            this.addMessage(text, true);
+        },
+        
+        showTyping() {
+            const messagesContainer = document.getElementById('chatbot-messages');
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'chatbot-message bot';
+            typingDiv.id = 'typing-indicator';
+            
+            const avatar = document.createElement('div');
+            avatar.className = 'message-avatar';
+            avatar.innerHTML = `<svg viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg" style="width: 28px; height: 28px;">
+                <defs>
+                    <radialGradient id="eyeGlowTyping${Date.now()}" cx="50%" cy="50%">
+                        <stop offset="0%" stop-color="#4FC3F7" stop-opacity="1"/>
+                        <stop offset="100%" stop-color="#29B6F6" stop-opacity="0.8"/>
+                    </radialGradient>
+                </defs>
+                <line x1="50" y1="5" x2="50" y2="15" stroke="#1a1a1a" stroke-width="2"/>
+                <circle cx="50" cy="5" r="2" fill="#1a1a1a"/>
+                <ellipse cx="50" cy="30" rx="25" ry="20" fill="white" stroke="#1a1a1a" stroke-width="2"/>
+                <path d="M 45 20 L 50 25 L 55 20" stroke="#1a1a1a" stroke-width="1.5" fill="none"/>
+                <rect x="35" y="25" width="30" height="20" rx="3" fill="#1a1a1a"/>
+                <circle cx="42" cy="33" r="4" fill="url(#eyeGlowTyping${Date.now()})"/>
+                <circle cx="58" cy="33" r="4" fill="url(#eyeGlowTyping${Date.now()})"/>
+                <path d="M 40 40 Q 50 45 60 40" stroke="#4FC3F7" stroke-width="2" fill="none" stroke-linecap="round"/>
+                <ellipse cx="25" cy="30" rx="8" ry="12" fill="#29B6F6" stroke="#1a1a1a" stroke-width="1.5"/>
+                <ellipse cx="25" cy="30" rx="4" ry="6" fill="#1a1a1a"/>
+                <ellipse cx="75" cy="30" rx="8" ry="12" fill="#29B6F6" stroke="#1a1a1a" stroke-width="1.5"/>
+                <ellipse cx="75" cy="30" rx="4" ry="6" fill="#1a1a1a"/>
+                <rect x="30" y="50" width="40" height="35" rx="5" fill="white" stroke="#1a1a1a" stroke-width="2"/>
+                <rect x="38" y="58" width="24" height="18" rx="2" fill="#29B6F6" stroke="#4FC3F7" stroke-width="1"/>
+                <circle cx="42" cy="62" r="1.5" fill="#ff4444"/>
+                <circle cx="45" cy="62" r="1.5" fill="white"/>
+                <circle cx="50" cy="66" r="3" fill="#FFD700"/>
+                <ellipse cx="50" cy="70" rx="2" ry="3" fill="#4FC3F7"/>
+                <rect x="30" y="82" width="40" height="4" fill="#1a1a1a"/>
+                <rect x="20" y="55" width="12" height="20" rx="3" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+                <rect x="20" y="60" width="12" height="3" fill="#1a1a1a"/>
+                <rect x="68" y="55" width="12" height="20" rx="3" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+                <rect x="68" y="60" width="12" height="3" fill="#1a1a1a"/>
+                <ellipse cx="26" cy="78" rx="4" ry="5" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+                <ellipse cx="74" cy="78" rx="4" ry="5" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+                <rect x="35" y="88" width="12" height="20" rx="3" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+                <rect x="35" y="93" width="12" height="3" fill="#1a1a1a"/>
+                <rect x="53" y="88" width="12" height="20" rx="3" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+                <rect x="53" y="93" width="12" height="3" fill="#1a1a1a"/>
+                <ellipse cx="41" cy="110" rx="6" ry="4" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+                <ellipse cx="59" cy="110" rx="6" ry="4" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+            </svg>`;
+            
+            const content = document.createElement('div');
+            content.className = 'message-content typing-indicator';
+            content.innerHTML = '<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>';
+            
+            typingDiv.appendChild(avatar);
+            typingDiv.appendChild(content);
+            messagesContainer.appendChild(typingDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        },
+        
+        hideTyping() {
+            const typing = document.getElementById('typing-indicator');
+            if (typing) {
+                typing.remove();
+            }
+        },
+        
+        async processMessage(userMessage) {
+            const lowerMessage = userMessage.toLowerCase();
+            
+            // Show typing indicator
+            this.showTyping();
+            
+            // Simulate AI processing delay
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            this.hideTyping();
+            
+            // Process different types of queries - SPECIFIC conditions first to avoid matching general ones
+            if (lowerMessage.includes('tour') || lowerMessage.includes('guide') || lowerMessage.includes('show me')) {
+                this.addBotMessage("Great! I'll start the interactive tour for you. This will guide you through the main features of the teacher portal.");
+                setTimeout(() => {
+                    if (typeof teacherTour !== 'undefined') {
+                        teacherTour.startTour();
+                    }
+                }, 500);
+            } else if (lowerMessage.includes('lesson material') || lowerMessage.includes('finding lesson') || lowerMessage.includes('lesson resources')) {
+                // SPECIFIC: Finding lesson materials - provide detailed help
+                this.addBotMessage("Here's how to find lesson materials:\n\n" +
+                    "**Step 1: Access Lessons Library**\n" +
+                    "• Click on 'Lessons Library' in your sidebar navigation\n" +
+                    "• Or go directly to: teacher-lessons-library.html\n\n" +
+                    "**Step 2: Browse Materials**\n" +
+                    "• Use filters to search by subject (English, Math, Science, etc.)\n" +
+                    "• Filter by level (Beginner, Intermediate, Advanced)\n" +
+                    "• Search by keywords or topics\n\n" +
+                    "**Step 3: Download or Use Materials**\n" +
+                    "• Click on any lesson to view details\n" +
+                    "• Download materials in PDF, DOCX, or other formats\n" +
+                    "• Preview materials before downloading\n\n" +
+                    "**Step 4: Create Your Own**\n" +
+                    "• Click 'Create Lesson' to make custom materials\n" +
+                    "• Upload your own files (PDFs, images, videos)\n" +
+                    "• Organize lessons by category\n\n" +
+                    "Would you like me to take you there now?", [
+                    { text: "Open Lessons Library", icon: "📚", action: () => {
+                        window.location.href = 'teacher-lessons-library.html';
+                    }},
+                    { text: "How to Create a Lesson", icon: "➕", topic: "create lesson" }
+                ]);
+            } else if (lowerMessage.includes('lesson structure') || lowerMessage.includes('lesson format') || lowerMessage.includes('structure and format')) {
+                // SPECIFIC: Lesson structure - provide detailed help
+                this.addBotMessage("Here's a complete guide to lesson structure:\n\n" +
+                    "**Standard Lesson Structure (50-60 minutes):**\n\n" +
+                    "1️⃣ **Warm-up (5-10 min)**\n" +
+                    "   • Greet students and check in\n" +
+                    "   • Review previous lesson briefly\n" +
+                    "   • Use icebreakers or quick games\n" +
+                    "   • Goal: Engage and prepare students\n\n" +
+                    "2️⃣ **Introduction (5-10 min)**\n" +
+                    "   • Present learning objectives clearly\n" +
+                    "   • Introduce new vocabulary/concepts\n" +
+                    "   • Use visual aids (images, videos)\n" +
+                    "   • Goal: Set context and expectations\n\n" +
+                    "3️⃣ **Practice (15-20 min)**\n" +
+                    "   • Guided exercises and activities\n" +
+                    "   • Interactive games or quizzes\n" +
+                    "   • Pair or group work\n" +
+                    "   • Goal: Reinforce learning through practice\n\n" +
+                    "4️⃣ **Production (10-15 min)**\n" +
+                    "   • Students apply what they learned\n" +
+                    "   • Creative tasks or presentations\n" +
+                    "   • Real-world application\n" +
+                    "   • Goal: Demonstrate understanding\n\n" +
+                    "5️⃣ **Wrap-up (5 min)**\n" +
+                    "   • Review key points\n" +
+                    "   • Assign homework if needed\n" +
+                    "   • Preview next lesson\n" +
+                    "   • Goal: Consolidate learning\n\n" +
+                    "**Tips:** Keep it interactive, use multimedia, and adapt to student needs!");
+            } else if (lowerMessage.includes('teaching tip') || lowerMessage.includes('effective teaching') || lowerMessage.includes('online teaching')) {
+                // SPECIFIC: Teaching tips - provide detailed help
+                this.addBotMessage("**Top Tips for Effective Online Teaching:**\n\n" +
+                    "🎯 **Engagement Strategies**\n" +
+                    "• Use interactive tools: polls, quizzes, breakout rooms\n" +
+                    "• Incorporate games and competitions\n" +
+                    "• Ask open-ended questions to encourage discussion\n" +
+                    "• Use multimedia: videos, images, animations\n\n" +
+                    "💬 **Communication**\n" +
+                    "• Speak clearly and at a moderate pace\n" +
+                    "• Use visual aids to support explanations\n" +
+                    "• Check for understanding frequently\n" +
+                    "• Provide clear instructions and examples\n\n" +
+                    "⏰ **Time Management**\n" +
+                    "• Plan your lesson with time allocations\n" +
+                    "• Keep activities focused and on-topic\n" +
+                    "• Have backup activities ready\n" +
+                    "• End on time to respect student schedules\n\n" +
+                    "👥 **Student Interaction**\n" +
+                    "• Encourage all students to participate\n" +
+                    "• Give positive feedback and encouragement\n" +
+                    "• Be patient and allow thinking time\n" +
+                    "• Build rapport through personal connections\n\n" +
+                    "🔧 **Technical Best Practices**\n" +
+                    "• Test your equipment before class\n" +
+                    "• Have a backup plan if tech fails\n" +
+                    "• Use screen sharing effectively\n" +
+                    "• Record important sessions if possible\n\n" +
+                    "Remember: Adaptability and creativity are key to successful online teaching!");
+            } else if (lowerMessage.includes('create lesson') || lowerMessage.includes('make lesson')) {
+                // SPECIFIC: Create lesson - provide detailed help
+                this.addBotMessage("**How to Create a New Lesson:**\n\n" +
+                    "**Step-by-Step Guide:**\n\n" +
+                    "1. **Navigate to Lessons Library**\n" +
+                    "   • Click 'Lessons Library' in your sidebar\n" +
+                    "   • Or go to: teacher-lessons-library.html\n\n" +
+                    "2. **Click 'Create Lesson' Button**\n" +
+                    "   • Located at the top of the lessons page\n" +
+                    "   • Opens the lesson creation form\n\n" +
+                    "3. **Fill in Lesson Details**\n" +
+                    "   • **Title**: Give your lesson a clear name\n" +
+                    "   • **Subject**: Select the subject area\n" +
+                    "   • **Level**: Choose appropriate difficulty level\n" +
+                    "   • **Description**: Add a brief overview\n" +
+                    "   • **Duration**: Set expected time (e.g., 50 minutes)\n\n" +
+                    "4. **Add Materials**\n" +
+                    "   • Upload files (PDFs, images, videos)\n" +
+                    "   • Create content directly in the editor\n" +
+                    "   • Link to external resources\n" +
+                    "   • Organize materials by section\n\n" +
+                    "5. **Save and Organize**\n" +
+                    "   • Click 'Save Lesson'\n" +
+                    "   • Add tags for easy searching\n" +
+                    "   • Categorize for better organization\n\n" +
+                    "Ready to create your lesson?", [
+                    { text: "Go to Lessons Library", icon: "📚", action: () => {
+                        window.location.href = 'teacher-lessons-library.html';
+                    }}
+                ]);
+            } else if (lowerMessage.includes('internet connection') || lowerMessage.includes('connection issue')) {
+                this.addBotMessage("I can help with troubleshooting! Here are some common solutions:\n\n" +
+                    "• Check your internet connection\n" +
+                    "• Clear your browser cache and refresh\n" +
+                    "• Make sure your microphone and camera permissions are enabled\n" +
+                    "• Try using a different browser\n" +
+                    "• Contact support at support@remoedph.com\n\n" +
+                    "What specific issue are you experiencing?", [
+                    { text: "Internet Connection Issues", icon: "🌐", topic: "internet connection" },
+                    { text: "Camera/Microphone Problems", icon: "🎥", topic: "camera microphone" },
+                    { text: "Browser Compatibility", icon: "🌏", topic: "browser compatibility" },
+                    { text: "Platform Errors", icon: "⚠️", topic: "platform errors" },
+                    { text: "Contact Support", icon: "📧", action: () => {
+                        this.addBotMessage("You can contact our support team at:\n\n📧 Email: support@remoedph.com\n\nOur support team is available to help you with any technical issues. Please provide details about your problem when contacting them.");
+                    }}
+                ]);
+            } else if (lowerMessage.includes('lesson') || lowerMessage.includes('teaching') || lowerMessage.includes('class')) {
+                // GENERAL lesson support - show options only if not already covered by specific topics
+                this.addBotMessage("I can help with lesson support! Here's what I can assist with:\n\n" +
+                    "• Finding lesson materials and resources\n" +
+                    "• Understanding lesson structure and format\n" +
+                    "• Tips for effective online teaching\n" +
+                    "• Managing your class schedule\n\n" +
+                    "What specific help do you need?", [
+                    { text: "Finding Lesson Materials", icon: "📚", topic: "finding lesson materials" },
+                    { text: "Lesson Structure & Format", icon: "📋", topic: "lesson structure and format" },
+                    { text: "Online Teaching Tips", icon: "💡", topic: "teaching tips" },
+                    { text: "Go to Lessons Library", icon: "📖", action: () => {
+                        window.location.href = 'teacher-lessons-library.html';
+                    }}
+                ]);
+            } else if (lowerMessage.includes('set reminder') || lowerMessage.includes('reminder') || lowerMessage.includes('notify')) {
+                // SPECIFIC: Set reminders - provide detailed help
+                this.addBotMessage("**How to Set Class Reminders:**\n\n" +
+                    "**Method 1: Dashboard Reminders**\n\n" +
+                    "1. Go to your Dashboard\n" +
+                    "2. Find 'Upcoming Classes' section\n" +
+                    "3. Click on a class\n" +
+                    "4. Set reminder time (e.g., 1 hour before)\n" +
+                    "5. You'll receive a notification\n\n" +
+                    "**Method 2: Class Schedule**\n\n" +
+                    "1. Navigate to 'Class Schedule'\n" +
+                    "2. Click on any upcoming class\n" +
+                    "3. Enable 'Remind Me' option\n" +
+                    "4. Choose reminder time\n\n" +
+                    "**Method 3: Browser Notifications**\n\n" +
+                    "1. Allow browser notifications when prompted\n" +
+                    "2. Notifications will appear before your classes\n" +
+                    "3. Click notification to go directly to class\n\n" +
+                    "**Tips:**\n" +
+                    "• Set reminders 15-30 minutes before class\n" +
+                    "• Check your notification settings\n" +
+                    "• Keep your dashboard open for visual reminders\n\n" +
+                    "Want to view your schedule now?", [
+                    { text: "View Class Schedule", icon: "📅", action: () => {
+                        window.location.href = 'teacher-class-table.html';
+                    }}
+                ]);
+            } else if (lowerMessage.includes('booking question') || lowerMessage.includes('booking') || lowerMessage.includes('accept booking')) {
+                // SPECIFIC: Booking questions - provide detailed help
+                this.addBotMessage("**Booking Questions - Complete Guide:**\n\n" +
+                    "**How Bookings Work:**\n\n" +
+                    "1. **Students Book Your Classes**\n" +
+                    "   • Students see your available time slots\n" +
+                    "   • They select a time and book\n" +
+                    "   • You receive a notification\n\n" +
+                    "2. **Accept or Decline**\n" +
+                    "   • Check your Class Schedule\n" +
+                    "   • Accept bookings you can teach\n" +
+                    "   • Decline if you're unavailable\n\n" +
+                    "3. **Prepare for Class**\n" +
+                    "   • Review student information\n" +
+                    "   • Prepare lesson materials\n" +
+                    "   • Set reminders\n\n" +
+                    "**Managing Your Availability:**\n\n" +
+                    "• Go to 'Class Configuration'\n" +
+                    "• Set your available time slots\n" +
+                    "• Update your schedule as needed\n" +
+                    "• Block times when you're unavailable\n\n" +
+                    "**Cancellation Policy:**\n\n" +
+                    "• Check announcements for current policy\n" +
+                    "• Late cancellations may have penalties\n" +
+                    "• Contact support if you need to reschedule\n\n" +
+                    "**Common Questions:**\n\n" +
+                    "Q: How do I see new bookings?\n" +
+                    "A: Check your Dashboard or Class Schedule\n\n" +
+                    "Q: Can I change my availability?\n" +
+                    "A: Yes, go to Class Configuration\n\n" +
+                    "Q: What if I need to cancel?\n" +
+                    "A: Contact support as soon as possible\n\n" +
+                    "Need to manage your schedule?", [
+                    { text: "View Bookings", icon: "📋", action: () => {
+                        window.location.href = 'teacher-class-table.html';
+                    }},
+                    { text: "Class Configuration", icon: "⚙️", action: () => {
+                        window.location.href = 'teacher-open-class.html';
+                    }}
+                ]);
+            } else if (lowerMessage.includes('schedule') || lowerMessage.includes('class time')) {
+                // GENERAL schedule help - show options
+                this.addBotMessage("I can help with schedule-related questions! What do you need help with?", [
+                    { text: "View My Schedule", icon: "📅", action: () => {
+                        window.location.href = 'teacher-class-table.html';
+                    }},
+                    { text: "Set Class Reminders", icon: "🔔", topic: "set reminders" },
+                    { text: "Manage Availability", icon: "⚙️", action: () => {
+                        window.location.href = 'teacher-open-class.html';
+                    }},
+                    { text: "Booking Questions", icon: "❓", topic: "booking questions" }
+                ]);
+            } else if (lowerMessage.includes('hello') || lowerMessage.includes('hi') || lowerMessage.includes('hey')) {
+                this.addBotMessage("Hello! 👋 I'm Remo AI Assistant. I can help you with:\n\n" +
+                    "• Troubleshooting technical issues\n" +
+                    "• Lesson support and resources\n" +
+                    "• Platform navigation and features\n" +
+                    "• Starting an interactive tour\n\n" +
+                    "What would you like help with?");
+            } else if (lowerMessage.includes('help') || lowerMessage.includes('support')) {
+                this.addBotMessage("I'm here to help! You can:\n\n" +
+                    "• Ask me questions about the platform\n" +
+                    "• Click 'Start Tour' for a guided walkthrough\n" +
+                    "• Use the quick action buttons above\n" +
+                    "• Contact support at support@remoedph.com\n\n" +
+                    "What specific help do you need?");
+            } else {
+                // Default response
+                this.addBotMessage("I understand you're asking about: \"" + userMessage + "\"\n\n" +
+                    "I can help you with:", [
+                    { text: "Troubleshooting", icon: "🔧", topic: "troubleshooting" },
+                    { text: "Lesson Support", icon: "📚", topic: "lesson support" },
+                    { text: "Schedule Help", icon: "📅", topic: "schedule" },
+                    { text: "Start Tour", icon: "🎯", action: () => {
+                        this.addBotMessage("Great! Starting the interactive tour now...");
+                        setTimeout(() => {
+                            if (typeof teacherTour !== 'undefined') {
+                                teacherTour.startTour();
+                            }
+                        }, 500);
+                    }}
+                ]);
+            }
+        }
+    };
+    
+    function toggleChatbot() {
+        if (chatbot.isOpen) {
+            chatbot.close();
+        } else {
+            chatbot.open();
+        }
+    }
+    
+    function sendChatbotMessage() {
+        const input = document.getElementById('chatbot-input');
+        const message = input.value.trim();
+        
+        if (message) {
+            chatbot.addUserMessage(message);
+            input.value = '';
+            chatbot.processMessage(message);
+        }
+    }
+    
+    function handleChatbotKeyPress(event) {
+        if (event.key === 'Enter') {
+            sendChatbotMessage();
+        }
+    }
+    
+    function handleQuickAction(action) {
+        switch(action) {
+            case 'tour':
+                chatbot.addUserMessage("Start the tour");
+                chatbot.addBotMessage("Great! Starting the interactive tour now...");
+                setTimeout(() => {
+                    if (typeof teacherTour !== 'undefined') {
+                        teacherTour.startTour();
+                    }
+                }, 500);
+                break;
+            case 'troubleshooting':
+                chatbot.addUserMessage("I need troubleshooting help");
+                chatbot.processMessage("troubleshooting");
+                break;
+            case 'lessons':
+                chatbot.addUserMessage("I need lesson support");
+                chatbot.processMessage("lesson support");
+                break;
+            case 'schedule':
+                chatbot.addUserMessage("I need schedule help");
+                chatbot.processMessage("schedule");
+                break;
+        }
+    }
+    
+    // Initialize chatbot on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        chatbot.init();
+    });
+</script>
+>>>>>>> 82021f05c965758b36140a1a8099d60eb2ea224f
 </body>
 </html>
  

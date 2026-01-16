@@ -40,7 +40,7 @@
         
         .remoed-menu li {
             padding: 14px 32px;
-            color: #667eea;
+            color: #64748b;
             font-weight: 500;
             cursor: pointer;
             display: flex;
@@ -57,6 +57,7 @@
             color: white;
             transform: translateX(4px);
             transition: all 0.3s ease;
+            border-radius: 0 8px 8px 0;
         }
         
         .remoed-menu svg {
@@ -468,6 +469,317 @@
             }
         }
     </style>
+    
+    <!-- Remo AI Chatbot Styles -->
+    <style>
+        #remo-ai-chatbot {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 380px;
+            height: 600px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            z-index: 10000;
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        #remo-ai-chatbot.open {
+            display: flex;
+        }
+        
+        .chatbot-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 20px 20px 0 0;
+        }
+        
+        .chatbot-header h3 {
+            margin: 0;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .chatbot-close {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+        
+        .chatbot-close:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .chatbot-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f8fafc;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .chatbot-message {
+            display: flex;
+            gap: 10px;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .chatbot-message.user {
+            flex-direction: row-reverse;
+        }
+        
+        .message-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+        
+        .chatbot-message.bot .message-avatar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .chatbot-message.user .message-avatar {
+            background: #e2e8f0;
+            color: #667eea;
+        }
+        
+        .message-content {
+            max-width: 75%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        
+        .chatbot-message.bot .message-content {
+            background: white;
+            color: #1a202c;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .chatbot-message.user .message-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .message-buttons {
+            margin-top: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .message-button {
+            padding: 10px 14px;
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #667eea;
+            font-weight: 500;
+            text-align: left;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .message-button:hover {
+            background: #e2e8f0;
+            border-color: #667eea;
+            transform: translateX(4px);
+        }
+        
+        .message-button-icon {
+            font-size: 1rem;
+        }
+        
+        .quick-actions {
+            padding: 15px 20px;
+            background: white;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        
+        .quick-action-btn {
+            padding: 8px 12px;
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #667eea;
+            font-weight: 500;
+        }
+        
+        .quick-action-btn:hover {
+            background: #e2e8f0;
+            transform: translateY(-1px);
+        }
+        
+        .chatbot-input-area {
+            padding: 15px 20px;
+            background: white;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .chatbot-input {
+            flex: 1;
+            padding: 10px 15px;
+            border: 1px solid #e2e8f0;
+            border-radius: 25px;
+            font-size: 0.9rem;
+            outline: none;
+        }
+        
+        .chatbot-input:focus {
+            border-color: #667eea;
+        }
+        
+        .chatbot-send {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s;
+        }
+        
+        .chatbot-send:hover {
+            transform: scale(1.1);
+        }
+        
+        .chatbot-toggle {
+            position: fixed;
+            bottom: 90px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4), 0 0 20px rgba(255, 165, 0, 0.3);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.3s;
+            padding: 0;
+            overflow: visible;
+        }
+        
+        .chatbot-toggle:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4), 0 0 30px rgba(255, 165, 0, 0.5);
+        }
+        
+        .remo-ai-icon {
+            width: 40px;
+            height: 40px;
+            filter: drop-shadow(0 0 8px rgba(255, 165, 0, 0.6));
+        }
+        
+        .chatbot-message.bot .message-avatar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2px;
+        }
+        
+        .chatbot-message.bot .message-avatar svg {
+            width: 28px;
+            height: 28px;
+        }
+        
+        .chatbot-toggle.hidden {
+            display: none;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 12px 16px;
+        }
+        
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #667eea;
+            animation: typing 1.4s infinite;
+        }
+        
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        
+        @keyframes typing {
+            0%, 60%, 100% {
+                transform: translateY(0);
+            }
+            30% {
+                transform: translateY(-10px);
+            }
+        }
+    </style>
 </head>
 <body>
     <div class="remoed-main">
@@ -509,10 +821,10 @@
             
             <!-- Tab Navigation -->
             <div class="tab-buttons">
-                <button class="tab-btn active" onclick="showTab('training')">📚 Training Portal</button>
-                <button class="tab-btn" onclick="showTab('certifications')">🏆 Certifications</button>
-                <button class="tab-btn" onclick="showTab('assessments')">📊 Skill Assessments</button>
-                <button class="tab-btn" onclick="showTab('peer-learning')">👥 Peer Learning</button>
+                <button class="tab-btn active" onclick="showTab('training', this)">📚 Training Portal</button>
+                <button class="tab-btn" onclick="showTab('certifications', this)">🏆 Certifications</button>
+                <button class="tab-btn" onclick="showTab('assessments', this)">📊 Skill Assessments</button>
+                <button class="tab-btn" onclick="showTab('peer-learning', this)">👥 Peer Learning</button>
             </div>
             
             <!-- Training Portal Tab -->
@@ -688,7 +1000,7 @@
         }
         
         // Tab switching
-        function showTab(tabName) {
+        function showTab(tabName, clickedElement) {
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.classList.remove('active');
             });
@@ -697,7 +1009,25 @@
             });
             
             document.getElementById(tabName + '-tab').classList.add('active');
-            event.target.classList.add('active');
+            
+            // Find and activate the clicked button
+            if (clickedElement) {
+                clickedElement.classList.add('active');
+            } else {
+                // Fallback: find button by data attribute or text
+                document.querySelectorAll('.tab-btn').forEach(btn => {
+                    if (btn.textContent.includes(tabName === 'training' ? 'Training' : 
+                                                  tabName === 'certifications' ? 'Certifications' :
+                                                  tabName === 'assessments' ? 'Assessments' : 'Peer')) {
+                        btn.classList.add('active');
+                    }
+                });
+            }
+            
+            // Update URL hash without triggering navigation
+            if (window.history && window.history.replaceState) {
+                window.history.replaceState(null, null, '#' + tabName);
+            }
             
             // Load data for the selected tab
             if (tabName === 'training') {
@@ -770,7 +1100,7 @@
             ];
             
             grid.innerHTML = courses.map(course => `
-                <div class="training-card ${course.status}" onclick="openTrainingCourse(${course.id})">
+                <div class="training-card ${course.status}" onclick="openTrainingCourse(${course.id}, event)">
                     <div class="training-icon">${course.icon}</div>
                     <div class="training-title">${course.title}</div>
                     <div class="training-description">${course.description}</div>
@@ -785,9 +1115,53 @@
             `).join('');
         }
         
-        function openTrainingCourse(courseId) {
-            alert(`Opening training course ${courseId}. This would open the course content in a new window or modal.`);
-            // In production, this would open the actual course content
+        function openTrainingCourse(courseId, evt) {
+            // Prevent event bubbling
+            if (evt) {
+                evt.stopPropagation();
+            }
+            
+            // Show a modal or navigate to course content
+            const courseName = document.querySelector(`.training-card[onclick*="${courseId}"] .training-title`)?.textContent || `Course ${courseId}`;
+            
+            // Create a simple modal to show course details
+            const modal = document.createElement('div');
+            modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;';
+            modal.innerHTML = `
+                <div style="background: white; border-radius: 16px; padding: 32px; max-width: 500px; width: 90%;">
+                    <h2 style="margin: 0 0 16px 0; color: #667eea;">${courseName}</h2>
+                    <p style="color: #666; margin-bottom: 24px;">Ready to start this course? Click "Start Course" to begin your learning journey.</p>
+                    <div style="display: flex; gap: 12px;">
+                        <button class="btn-primary" onclick="this.closest('div[style*=\"position: fixed\"]').remove()">Close</button>
+                        <button class="btn-secondary" onclick="startCourse(${courseId}); this.closest('div[style*=\"position: fixed\"]').remove();">Start Course</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            
+            // Close on background click
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    modal.remove();
+                }
+            });
+        }
+        
+        function startCourse(courseId) {
+            // Map course IDs to appropriate actions
+            const courseActions = {
+                1: 'teacher-professional-development.html#training',
+                2: 'teacher-professional-development.html#training',
+                3: 'teacher-professional-development.html#training',
+                4: 'teacher-professional-development.html#training',
+                5: 'teacher-professional-development.html#training',
+                6: 'teacher-professional-development.html#training'
+            };
+            
+            // For now, redirect to training portal
+            // In production, this could redirect to a specific course page
+            const redirectUrl = courseActions[courseId] || 'teacher-professional-development.html#training';
+            window.location.href = redirectUrl;
         }
         
         // Certifications
@@ -1096,30 +1470,8 @@
                     const data = await response.json();
                     displayPeerTeachers(data.peers || []);
                 } else {
-                    // Mock data for demonstration
-                    displayPeerTeachers([
-                        {
-                            id: 1,
-                            name: 'Maria Santos',
-                            expertise: ['Grammar', 'Business English', 'TOEFL'],
-                            experience: '5 years',
-                            rating: 4.9
-                        },
-                        {
-                            id: 2,
-                            name: 'John Smith',
-                            expertise: ['Conversation', 'IELTS', 'Pronunciation'],
-                            experience: '8 years',
-                            rating: 4.8
-                        },
-                        {
-                            id: 3,
-                            name: 'Sarah Johnson',
-                            expertise: ['Kids English', 'Storytelling', 'Creative Writing'],
-                            experience: '3 years',
-                            rating: 4.9
-                        }
-                    ]);
+                    console.error('Failed to load peer teachers:', response.status);
+                    displayPeerTeachers([]);
                 }
             } catch (error) {
                 console.error('Error loading peer teachers:', error);
@@ -1141,8 +1493,10 @@
                 return;
             }
             
-            grid.innerHTML = peers.map(peer => `
-                <div class="peer-card" onclick="viewPeerProfile(${peer.id})">
+            grid.innerHTML = peers.map(peer => {
+                const peerId = String(peer.id || '').replace(/'/g, "\\'");
+                return `
+                <div class="peer-card" data-peer-id="${peerId.replace(/"/g, '&quot;')}" onclick="viewPeerProfile('${peerId}', event)">
                     <div class="peer-header">
                         <div class="peer-avatar">${peer.name.charAt(0)}</div>
                         <div class="peer-info">
@@ -1153,9 +1507,10 @@
                     <div class="peer-expertise">
                         ${peer.expertise.map(exp => `<span class="expertise-tag">${exp}</span>`).join('')}
                     </div>
-                    <button class="btn-secondary" style="width: 100%; margin-top: 12px;" onclick="event.stopPropagation(); connectWithPeer(${peer.id})">Connect</button>
+                    <button class="btn-secondary" style="width: 100%; margin-top: 12px;" onclick="event.stopPropagation(); connectWithPeer('${peerId}', event)">Connect</button>
                 </div>
-            `).join('');
+            `;
+            }).join('');
         }
         
         function searchPeers() {
@@ -1163,12 +1518,56 @@
             loadPeerTeachers(); // In production, pass search term to API
         }
         
-        function viewPeerProfile(peerId) {
-            alert(`View profile of peer teacher ${peerId}. This would open their profile.`);
+        function viewPeerProfile(peerId, evt) {
+            // Prevent event bubbling if called from card click
+            if (evt) {
+                evt.stopPropagation();
+            }
+            
+            // Ensure peerId is a string
+            const peerIdStr = String(peerId || '');
+            
+            // Create a modal to show peer profile
+            // Use data attribute instead of searching onclick for better reliability
+            const peerCard = document.querySelector(`.peer-card[data-peer-id="${peerIdStr}"]`);
+            const peerName = peerCard?.querySelector('.peer-info h4')?.textContent || `Teacher ${peerIdStr}`;
+            const peerInfo = peerCard?.querySelector('.peer-info p')?.textContent || '';
+            const safePeerId = peerIdStr.replace(/'/g, "\\'");
+            
+            const modal = document.createElement('div');
+            modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;';
+            modal.innerHTML = `
+                <div style="background: white; border-radius: 16px; padding: 32px; max-width: 500px; width: 90%;">
+                    <h2 style="margin: 0 0 16px 0; color: #667eea;">${peerName}</h2>
+                    <p style="color: #666; margin-bottom: 24px;">${peerInfo}</p>
+                    <p style="color: #666; margin-bottom: 24px;">View their full profile, teaching experience, and connect for peer learning opportunities.</p>
+                    <div style="display: flex; gap: 12px;">
+                        <button class="btn-primary" onclick="this.closest('div[style*=\"position: fixed\"]').remove()">Close</button>
+                        <button class="btn-secondary" onclick="connectWithPeer('${safePeerId}'); this.closest('div[style*=\"position: fixed\"]').remove();">Connect</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            
+            // Close on background click
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    modal.remove();
+                }
+            });
         }
         
-        function connectWithPeer(peerId) {
-            alert(`Connecting with peer teacher ${peerId}. This would open a messaging interface.`);
+        function connectWithPeer(peerId, evt) {
+            // Prevent event bubbling
+            if (evt) {
+                evt.stopPropagation();
+            }
+            
+            // Ensure peerId is a string and encode it properly
+            const safePeerId = encodeURIComponent(String(peerId || ''));
+            
+            // Redirect to peer learning connections page with peer ID
+            window.location.href = `teacher-peer-learning-connections.html?peerId=${safePeerId}&action=connect`;
         }
         
         // Logout
@@ -1177,6 +1576,38 @@
             window.location.href = 'teacher-login.html';
         });
         
+        // Handle hash navigation (e.g., #certifications)
+        function handleHashNavigation() {
+            const hash = window.location.hash.replace('#', '');
+            if (hash) {
+                // Map hash to tab name
+                const tabMap = {
+                    'certifications': 'certifications',
+                    'training': 'training',
+                    'assessments': 'assessments',
+                    'peer-learning': 'peer-learning'
+                };
+                
+                const tabName = tabMap[hash];
+                if (tabName) {
+                    // Find and click the appropriate tab button
+                    const tabButton = Array.from(document.querySelectorAll('.tab-btn')).find(btn => {
+                        return btn.textContent.includes(
+                            tabName === 'certifications' ? 'Certifications' :
+                            tabName === 'training' ? 'Training' :
+                            tabName === 'assessments' ? 'Assessments' : 'Peer'
+                        );
+                    });
+                    
+                    if (tabButton) {
+                        setTimeout(() => {
+                            tabButton.click();
+                        }, 100);
+                    }
+                }
+            }
+        }
+        
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', function() {
             updateSidebarProfile();
@@ -1184,6 +1615,9 @@
             loadCertifications();
             loadAssessments();
             loadPeerTeachers();
+            
+            // Handle hash navigation after a short delay to ensure DOM is ready
+            setTimeout(handleHashNavigation, 200);
             
             // Initialize mobile features
             if (isMobile && isMobile()) {
@@ -1217,5 +1651,459 @@
         });
     </script>
     <script src="mobile-utils.js"></script>
+    
+    <!-- Remo AI Chatbot -->
+    <div id="remo-ai-chatbot">
+      <div class="chatbot-header">
+        <h3>
+          <svg viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg" style="width: 24px; height: 24px; margin-right: 5px;">
+            <defs>
+              <radialGradient id="eyeGlowHeaderPD" cx="50%" cy="50%">
+                <stop offset="0%" stop-color="#4FC3F7" stop-opacity="1"/>
+                <stop offset="100%" stop-color="#29B6F6" stop-opacity="0.8"/>
+              </radialGradient>
+            </defs>
+            <line x1="50" y1="5" x2="50" y2="15" stroke="#fff" stroke-width="2"/>
+            <circle cx="50" cy="5" r="2" fill="#fff"/>
+            <ellipse cx="50" cy="30" rx="25" ry="20" fill="white" stroke="#fff" stroke-width="2"/>
+            <path d="M 45 20 L 50 25 L 55 20" stroke="#fff" stroke-width="1.5" fill="none"/>
+            <rect x="35" y="25" width="30" height="20" rx="3" fill="#fff"/>
+            <circle cx="42" cy="33" r="4" fill="url(#eyeGlowHeaderPD)"/>
+            <circle cx="58" cy="33" r="4" fill="url(#eyeGlowHeaderPD)"/>
+            <path d="M 40 40 Q 50 45 60 40" stroke="#4FC3F7" stroke-width="2" fill="none" stroke-linecap="round"/>
+            <ellipse cx="25" cy="30" rx="8" ry="12" fill="#29B6F6" stroke="#fff" stroke-width="1.5"/>
+            <ellipse cx="25" cy="30" rx="4" ry="6" fill="#fff"/>
+            <ellipse cx="75" cy="30" rx="8" ry="12" fill="#29B6F6" stroke="#fff" stroke-width="1.5"/>
+            <ellipse cx="75" cy="30" rx="4" ry="6" fill="#fff"/>
+            <rect x="30" y="50" width="40" height="35" rx="5" fill="white" stroke="#fff" stroke-width="2"/>
+            <rect x="38" y="58" width="24" height="18" rx="2" fill="#29B6F6" stroke="#4FC3F7" stroke-width="1"/>
+            <circle cx="42" cy="62" r="1.5" fill="#ff4444"/>
+            <circle cx="45" cy="62" r="1.5" fill="white"/>
+            <circle cx="50" cy="66" r="3" fill="#FFD700"/>
+            <ellipse cx="50" cy="70" rx="2" ry="3" fill="#4FC3F7"/>
+            <rect x="30" y="82" width="40" height="4" fill="#fff"/>
+            <rect x="20" y="55" width="12" height="20" rx="3" fill="white" stroke="#fff" stroke-width="1.5"/>
+            <rect x="20" y="60" width="12" height="3" fill="#fff"/>
+            <rect x="68" y="55" width="12" height="20" rx="3" fill="white" stroke="#fff" stroke-width="1.5"/>
+            <rect x="68" y="60" width="12" height="3" fill="#fff"/>
+            <ellipse cx="26" cy="78" rx="4" ry="5" fill="white" stroke="#fff" stroke-width="1.5"/>
+            <ellipse cx="74" cy="78" rx="4" ry="5" fill="white" stroke="#fff" stroke-width="1.5"/>
+            <rect x="35" y="88" width="12" height="20" rx="3" fill="white" stroke="#fff" stroke-width="1.5"/>
+            <rect x="35" y="93" width="12" height="3" fill="#fff"/>
+            <rect x="53" y="88" width="12" height="20" rx="3" fill="white" stroke="#fff" stroke-width="1.5"/>
+            <rect x="53" y="93" width="12" height="3" fill="#fff"/>
+            <ellipse cx="41" cy="110" rx="6" ry="4" fill="white" stroke="#fff" stroke-width="1.5"/>
+            <ellipse cx="59" cy="110" rx="6" ry="4" fill="white" stroke="#fff" stroke-width="1.5"/>
+          </svg>
+          <span>Remo AI Assistant</span>
+        </h3>
+        <button class="chatbot-close" onclick="toggleChatbot()">×</button>
+      </div>
+      <div class="chatbot-messages" id="chatbot-messages">
+        <div class="chatbot-message bot">
+          <div class="message-avatar">
+            <svg viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg" style="width: 28px; height: 28px;">
+              <defs>
+                <radialGradient id="eyeGlowInitPD" cx="50%" cy="50%">
+                  <stop offset="0%" stop-color="#4FC3F7" stop-opacity="1"/>
+                  <stop offset="100%" stop-color="#29B6F6" stop-opacity="0.8"/>
+                </radialGradient>
+              </defs>
+              <line x1="50" y1="5" x2="50" y2="15" stroke="#1a1a1a" stroke-width="2"/>
+              <circle cx="50" cy="5" r="2" fill="#1a1a1a"/>
+              <ellipse cx="50" cy="30" rx="25" ry="20" fill="white" stroke="#1a1a1a" stroke-width="2"/>
+              <path d="M 45 20 L 50 25 L 55 20" stroke="#1a1a1a" stroke-width="1.5" fill="none"/>
+              <rect x="35" y="25" width="30" height="20" rx="3" fill="#1a1a1a"/>
+              <circle cx="42" cy="33" r="4" fill="url(#eyeGlowInitPD)"/>
+              <circle cx="58" cy="33" r="4" fill="url(#eyeGlowInitPD)"/>
+              <path d="M 40 40 Q 50 45 60 40" stroke="#4FC3F7" stroke-width="2" fill="none" stroke-linecap="round"/>
+              <ellipse cx="25" cy="30" rx="8" ry="12" fill="#29B6F6" stroke="#1a1a1a" stroke-width="1.5"/>
+              <ellipse cx="25" cy="30" rx="4" ry="6" fill="#1a1a1a"/>
+              <ellipse cx="75" cy="30" rx="8" ry="12" fill="#29B6F6" stroke="#1a1a1a" stroke-width="1.5"/>
+              <ellipse cx="75" cy="30" rx="4" ry="6" fill="#1a1a1a"/>
+              <rect x="30" y="50" width="40" height="35" rx="5" fill="white" stroke="#1a1a1a" stroke-width="2"/>
+              <rect x="38" y="58" width="24" height="18" rx="2" fill="#29B6F6" stroke="#4FC3F7" stroke-width="1"/>
+              <circle cx="42" cy="62" r="1.5" fill="#ff4444"/>
+              <circle cx="45" cy="62" r="1.5" fill="white"/>
+              <circle cx="50" cy="66" r="3" fill="#FFD700"/>
+              <ellipse cx="50" cy="70" rx="2" ry="3" fill="#4FC3F7"/>
+              <rect x="30" y="82" width="40" height="4" fill="#1a1a1a"/>
+              <rect x="20" y="55" width="12" height="20" rx="3" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+              <rect x="20" y="60" width="12" height="3" fill="#1a1a1a"/>
+              <rect x="68" y="55" width="12" height="20" rx="3" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+              <rect x="68" y="60" width="12" height="3" fill="#1a1a1a"/>
+              <ellipse cx="26" cy="78" rx="4" ry="5" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+              <ellipse cx="74" cy="78" rx="4" ry="5" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+              <rect x="35" y="88" width="12" height="20" rx="3" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+              <rect x="35" y="93" width="12" height="3" fill="#1a1a1a"/>
+              <rect x="53" y="88" width="12" height="20" rx="3" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+              <rect x="53" y="93" width="12" height="3" fill="#1a1a1a"/>
+              <ellipse cx="41" cy="110" rx="6" ry="4" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+              <ellipse cx="59" cy="110" rx="6" ry="4" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+            </svg>
+          </div>
+          <div class="message-content">
+            <strong>Hello! I'm Remo AI Assistant 👋</strong><br>
+            I'm here to help you with troubleshooting, lesson support, and any questions about the platform. How can I assist you today?
+          </div>
+        </div>
+      </div>
+      <div class="quick-actions">
+        <button class="quick-action-btn" onclick="handleQuickAction('tour')">🎯 Start Tour</button>
+        <button class="quick-action-btn" onclick="handleQuickAction('troubleshooting')">🔧 Troubleshooting</button>
+        <button class="quick-action-btn" onclick="handleQuickAction('lessons')">📚 Lesson Support</button>
+        <button class="quick-action-btn" onclick="handleQuickAction('schedule')">📅 Schedule Help</button>
+      </div>
+      <div class="chatbot-input-area">
+        <input type="text" class="chatbot-input" id="chatbot-input" placeholder="Type your question..." onkeypress="handleChatbotKeyPress(event)">
+        <button class="chatbot-send" onclick="sendChatbotMessage()">➤</button>
+      </div>
+    </div>
+    <button class="chatbot-toggle" id="chatbot-toggle" onclick="toggleChatbot()" title="Open Remo AI Assistant">
+      <svg class="remo-ai-icon" viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <radialGradient id="eyeGlowTogglePD" cx="50%" cy="50%">
+            <stop offset="0%" stop-color="#4FC3F7" stop-opacity="1"/>
+            <stop offset="100%" stop-color="#29B6F6" stop-opacity="0.8"/>
+          </radialGradient>
+        </defs>
+        <line x1="50" y1="5" x2="50" y2="15" stroke="#fff" stroke-width="2"/>
+        <circle cx="50" cy="5" r="2" fill="#fff"/>
+        <ellipse cx="50" cy="30" rx="25" ry="20" fill="white" stroke="#fff" stroke-width="2"/>
+        <path d="M 45 20 L 50 25 L 55 20" stroke="#fff" stroke-width="1.5" fill="none"/>
+        <rect x="35" y="25" width="30" height="20" rx="3" fill="#fff"/>
+        <circle cx="42" cy="33" r="4" fill="url(#eyeGlowTogglePD)"/>
+        <circle cx="58" cy="33" r="4" fill="url(#eyeGlowTogglePD)"/>
+        <path d="M 40 40 Q 50 45 60 40" stroke="#4FC3F7" stroke-width="2" fill="none" stroke-linecap="round"/>
+        <ellipse cx="25" cy="30" rx="8" ry="12" fill="#29B6F6" stroke="#fff" stroke-width="1.5"/>
+        <ellipse cx="25" cy="30" rx="4" ry="6" fill="#fff"/>
+        <ellipse cx="75" cy="30" rx="8" ry="12" fill="#29B6F6" stroke="#fff" stroke-width="1.5"/>
+        <ellipse cx="75" cy="30" rx="4" ry="6" fill="#fff"/>
+        <rect x="30" y="50" width="40" height="35" rx="5" fill="white" stroke="#fff" stroke-width="2"/>
+        <rect x="38" y="58" width="24" height="18" rx="2" fill="#29B6F6" stroke="#4FC3F7" stroke-width="1"/>
+        <circle cx="42" cy="62" r="1.5" fill="#ff4444"/>
+        <circle cx="45" cy="62" r="1.5" fill="white"/>
+        <circle cx="50" cy="66" r="3" fill="#FFD700"/>
+        <ellipse cx="50" cy="70" rx="2" ry="3" fill="#4FC3F7"/>
+        <rect x="30" y="82" width="40" height="4" fill="#fff"/>
+        <rect x="20" y="55" width="12" height="20" rx="3" fill="white" stroke="#fff" stroke-width="1.5"/>
+        <rect x="20" y="60" width="12" height="3" fill="#fff"/>
+        <rect x="68" y="55" width="12" height="20" rx="3" fill="white" stroke="#fff" stroke-width="1.5"/>
+        <rect x="68" y="60" width="12" height="3" fill="#fff"/>
+        <ellipse cx="26" cy="78" rx="4" ry="5" fill="white" stroke="#fff" stroke-width="1.5"/>
+        <ellipse cx="74" cy="78" rx="4" ry="5" fill="white" stroke="#fff" stroke-width="1.5"/>
+        <rect x="35" y="88" width="12" height="20" rx="3" fill="white" stroke="#fff" stroke-width="1.5"/>
+        <rect x="35" y="93" width="12" height="3" fill="#fff"/>
+        <rect x="53" y="88" width="12" height="20" rx="3" fill="white" stroke="#fff" stroke-width="1.5"/>
+        <rect x="53" y="93" width="12" height="3" fill="#fff"/>
+        <ellipse cx="41" cy="110" rx="6" ry="4" fill="white" stroke="#fff" stroke-width="1.5"/>
+        <ellipse cx="59" cy="110" rx="6" ry="4" fill="white" stroke="#fff" stroke-width="1.5"/>
+      </svg>
+    </button>
+    
+    <script>
+      if (typeof chatbot === 'undefined') {
+        window.chatbot = {
+          isOpen: false,
+          messages: [],
+          init() {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('help') === 'technical') {
+              setTimeout(() => {
+                this.open();
+                this.addBotMessage("Welcome! I see you're looking for technical help. I'm here to assist you with troubleshooting, lesson support, and any questions about the platform. What can I help you with?");
+              }, 500);
+            }
+          },
+          open() {
+            this.isOpen = true;
+            const el = document.getElementById('remo-ai-chatbot');
+            const toggle = document.getElementById('chatbot-toggle');
+            if (el) el.classList.add('open');
+            if (toggle) toggle.classList.add('hidden');
+            setTimeout(() => {
+              const input = document.getElementById('chatbot-input');
+              if (input) input.focus();
+            }, 100);
+          },
+          close() {
+            this.isOpen = false;
+            const el = document.getElementById('remo-ai-chatbot');
+            const toggle = document.getElementById('chatbot-toggle');
+            if (el) el.classList.remove('open');
+            if (toggle) toggle.classList.remove('hidden');
+          },
+          addMessage(text, isUser = false, buttons = null) {
+            const container = document.getElementById('chatbot-messages');
+            if (!container) return;
+            const msg = document.createElement('div');
+            msg.className = `chatbot-message ${isUser ? 'user' : 'bot'}`;
+            const avatar = document.createElement('div');
+            avatar.className = 'message-avatar';
+            if (isUser) {
+              avatar.textContent = '👤';
+            } else {
+              const uniqueId = 'eyeGlow' + Date.now() + Math.random().toString(36).substr(2, 9);
+              avatar.innerHTML = `<svg viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg" style="width: 28px; height: 28px;">
+                <defs>
+                  <radialGradient id="${uniqueId}" cx="50%" cy="50%">
+                    <stop offset="0%" stop-color="#4FC3F7" stop-opacity="1"/>
+                    <stop offset="100%" stop-color="#29B6F6" stop-opacity="0.8"/>
+                  </radialGradient>
+                </defs>
+                <line x1="50" y1="5" x2="50" y2="15" stroke="#1a1a1a" stroke-width="2"/>
+                <circle cx="50" cy="5" r="2" fill="#1a1a1a"/>
+                <ellipse cx="50" cy="30" rx="25" ry="20" fill="white" stroke="#1a1a1a" stroke-width="2"/>
+                <path d="M 45 20 L 50 25 L 55 20" stroke="#1a1a1a" stroke-width="1.5" fill="none"/>
+                <rect x="35" y="25" width="30" height="20" rx="3" fill="#1a1a1a"/>
+                <circle cx="42" cy="33" r="4" fill="url(#${uniqueId})"/>
+                <circle cx="58" cy="33" r="4" fill="url(#${uniqueId})"/>
+                <path d="M 40 40 Q 50 45 60 40" stroke="#4FC3F7" stroke-width="2" fill="none" stroke-linecap="round"/>
+                <ellipse cx="25" cy="30" rx="8" ry="12" fill="#29B6F6" stroke="#1a1a1a" stroke-width="1.5"/>
+                <ellipse cx="25" cy="30" rx="4" ry="6" fill="#1a1a1a"/>
+                <ellipse cx="75" cy="30" rx="8" ry="12" fill="#29B6F6" stroke="#1a1a1a" stroke-width="1.5"/>
+                <ellipse cx="75" cy="30" rx="4" ry="6" fill="#1a1a1a"/>
+                <rect x="30" y="50" width="40" height="35" rx="5" fill="white" stroke="#1a1a1a" stroke-width="2"/>
+                <rect x="38" y="58" width="24" height="18" rx="2" fill="#29B6F6" stroke="#4FC3F7" stroke-width="1"/>
+                <circle cx="42" cy="62" r="1.5" fill="#ff4444"/>
+                <circle cx="45" cy="62" r="1.5" fill="white"/>
+                <circle cx="50" cy="66" r="3" fill="#FFD700"/>
+                <ellipse cx="50" cy="70" rx="2" ry="3" fill="#4FC3F7"/>
+                <rect x="30" y="82" width="40" height="4" fill="#1a1a1a"/>
+                <rect x="20" y="55" width="12" height="20" rx="3" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+                <rect x="20" y="60" width="12" height="3" fill="#1a1a1a"/>
+                <rect x="68" y="55" width="12" height="20" rx="3" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+                <rect x="68" y="60" width="12" height="3" fill="#1a1a1a"/>
+                <ellipse cx="26" cy="78" rx="4" ry="5" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+                <ellipse cx="74" cy="78" rx="4" ry="5" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+                <rect x="35" y="88" width="12" height="20" rx="3" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+                <rect x="35" y="93" width="12" height="3" fill="#1a1a1a"/>
+                <rect x="53" y="88" width="12" height="20" rx="3" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+                <rect x="53" y="93" width="12" height="3" fill="#1a1a1a"/>
+                <ellipse cx="41" cy="110" rx="6" ry="4" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+                <ellipse cx="59" cy="110" rx="6" ry="4" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+              </svg>`;
+            }
+            const content = document.createElement('div');
+            content.className = 'message-content';
+            const textDiv = document.createElement('div');
+            textDiv.innerHTML = text.replace(/\n/g, '<br>');
+            content.appendChild(textDiv);
+            if (buttons && buttons.length > 0 && !isUser) {
+              const btnContainer = document.createElement('div');
+              btnContainer.className = 'message-buttons';
+              buttons.forEach(btn => {
+                const b = document.createElement('button');
+                b.className = 'message-button';
+                b.innerHTML = `<span class="message-button-icon">${btn.icon || '📌'}</span><span>${btn.text}</span>`;
+                b.onclick = () => {
+                  this.addUserMessage(btn.text);
+                  if (btn.action) btn.action();
+                  else this.processMessage(btn.topic || btn.text.toLowerCase());
+                };
+                btnContainer.appendChild(b);
+              });
+              content.appendChild(btnContainer);
+            }
+            msg.appendChild(avatar);
+            msg.appendChild(content);
+            container.appendChild(msg);
+            container.scrollTop = container.scrollHeight;
+            this.messages.push({ text, isUser, buttons, timestamp: new Date() });
+          },
+          addBotMessage(text, buttons = null) { this.addMessage(text, false, buttons); },
+          addUserMessage(text) { this.addMessage(text, true); },
+          showTyping() {
+            const container = document.getElementById('chatbot-messages');
+            if (!container) return;
+            const typing = document.createElement('div');
+            typing.className = 'chatbot-message bot';
+            typing.id = 'typing-indicator';
+            const avatar = document.createElement('div');
+            avatar.className = 'message-avatar';
+            const uniqueIdTyping = 'eyeGlowTyping' + Date.now() + Math.random().toString(36).substr(2, 9);
+            avatar.innerHTML = `<svg viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg" style="width: 28px; height: 28px;">
+              <defs>
+                <radialGradient id="${uniqueIdTyping}" cx="50%" cy="50%">
+                  <stop offset="0%" stop-color="#4FC3F7" stop-opacity="1"/>
+                  <stop offset="100%" stop-color="#29B6F6" stop-opacity="0.8"/>
+                </radialGradient>
+              </defs>
+              <line x1="50" y1="5" x2="50" y2="15" stroke="#1a1a1a" stroke-width="2"/>
+              <circle cx="50" cy="5" r="2" fill="#1a1a1a"/>
+              <ellipse cx="50" cy="30" rx="25" ry="20" fill="white" stroke="#1a1a1a" stroke-width="2"/>
+              <path d="M 45 20 L 50 25 L 55 20" stroke="#1a1a1a" stroke-width="1.5" fill="none"/>
+              <rect x="35" y="25" width="30" height="20" rx="3" fill="#1a1a1a"/>
+              <circle cx="42" cy="33" r="4" fill="url(#${uniqueIdTyping})"/>
+              <circle cx="58" cy="33" r="4" fill="url(#${uniqueIdTyping})"/>
+              <path d="M 40 40 Q 50 45 60 40" stroke="#4FC3F7" stroke-width="2" fill="none" stroke-linecap="round"/>
+              <ellipse cx="25" cy="30" rx="8" ry="12" fill="#29B6F6" stroke="#1a1a1a" stroke-width="1.5"/>
+              <ellipse cx="25" cy="30" rx="4" ry="6" fill="#1a1a1a"/>
+              <ellipse cx="75" cy="30" rx="8" ry="12" fill="#29B6F6" stroke="#1a1a1a" stroke-width="1.5"/>
+              <ellipse cx="75" cy="30" rx="4" ry="6" fill="#1a1a1a"/>
+              <rect x="30" y="50" width="40" height="35" rx="5" fill="white" stroke="#1a1a1a" stroke-width="2"/>
+              <rect x="38" y="58" width="24" height="18" rx="2" fill="#29B6F6" stroke="#4FC3F7" stroke-width="1"/>
+              <circle cx="42" cy="62" r="1.5" fill="#ff4444"/>
+              <circle cx="45" cy="62" r="1.5" fill="white"/>
+              <circle cx="50" cy="66" r="3" fill="#FFD700"/>
+              <ellipse cx="50" cy="70" rx="2" ry="3" fill="#4FC3F7"/>
+              <rect x="30" y="82" width="40" height="4" fill="#1a1a1a"/>
+              <rect x="20" y="55" width="12" height="20" rx="3" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+              <rect x="20" y="60" width="12" height="3" fill="#1a1a1a"/>
+              <rect x="68" y="55" width="12" height="20" rx="3" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+              <rect x="68" y="60" width="12" height="3" fill="#1a1a1a"/>
+              <ellipse cx="26" cy="78" rx="4" ry="5" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+              <ellipse cx="74" cy="78" rx="4" ry="5" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+              <rect x="35" y="88" width="12" height="20" rx="3" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+              <rect x="35" y="93" width="12" height="3" fill="#1a1a1a"/>
+              <rect x="53" y="88" width="12" height="20" rx="3" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+              <rect x="53" y="93" width="12" height="3" fill="#1a1a1a"/>
+              <ellipse cx="41" cy="110" rx="6" ry="4" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+              <ellipse cx="59" cy="110" rx="6" ry="4" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+            </svg>`;
+            const content = document.createElement('div');
+            content.className = 'message-content typing-indicator';
+            content.innerHTML = '<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>';
+            typing.appendChild(avatar);
+            typing.appendChild(content);
+            container.appendChild(typing);
+            container.scrollTop = container.scrollHeight;
+          },
+          hideTyping() {
+            const typing = document.getElementById('typing-indicator');
+            if (typing) typing.remove();
+          },
+          async processMessage(userMessage) {
+            const lower = userMessage.toLowerCase();
+            this.showTyping();
+            await new Promise(r => setTimeout(r, 1000));
+            this.hideTyping();
+            if (lower.includes('tour') || lower.includes('guide')) {
+              this.addBotMessage("Great! I'll start the interactive tour for you.");
+              setTimeout(() => { if (typeof teacherTour !== 'undefined') teacherTour.startTour(); }, 500);
+            } else if (lower.includes('lesson material') || lower.includes('finding lesson')) {
+              this.addBotMessage("Here's how to find lesson materials:\n\n**Step 1: Access Lessons Library**\n• Click 'Lessons Library' in sidebar\n• Or go to: teacher-lessons-library.html\n\n**Step 2: Browse Materials**\n• Filter by subject, level, or keywords\n• Preview before downloading\n\n**Step 3: Create Your Own**\n• Click 'Create Lesson'\n• Upload files or create content\n\nWould you like me to take you there?", [
+                { text: "Open Lessons Library", icon: "📚", action: () => window.location.href = 'teacher-lessons-library.html' },
+                { text: "How to Create a Lesson", icon: "➕", topic: "create lesson" }
+              ]);
+            } else if (lower.includes('lesson structure') || lower.includes('lesson format')) {
+              this.addBotMessage("**Standard Lesson Structure (50-60 min):**\n\n1️⃣ **Warm-up (5-10 min)** - Engage students\n2️⃣ **Introduction (5-10 min)** - Present objectives\n3️⃣ **Practice (15-20 min)** - Interactive exercises\n4️⃣ **Production (10-15 min)** - Apply learning\n5️⃣ **Wrap-up (5 min)** - Review and homework\n\n**Tips:** Keep it interactive, use multimedia!");
+            } else if (lower.includes('teaching tip') || lower.includes('effective teaching')) {
+              this.addBotMessage("**Top Tips for Online Teaching:**\n\n🎯 **Engagement**: Use polls, games, breakout rooms\n💬 **Communication**: Speak clearly, use visuals\n⏰ **Time Management**: Plan with time allocations\n👥 **Interaction**: Encourage participation, give feedback\n🔧 **Technical**: Test equipment, have backup plans\n\nRemember: Adaptability and creativity are key!");
+            } else if (lower.includes('create lesson')) {
+              this.addBotMessage("**How to Create a Lesson:**\n\n1. Go to Lessons Library\n2. Click 'Create Lesson'\n3. Fill in details (title, subject, level)\n4. Upload materials or create content\n5. Save and organize\n\nReady to create?", [
+                { text: "Go to Lessons Library", icon: "📚", action: () => window.location.href = 'teacher-lessons-library.html' }
+              ]);
+            } else if (lower.includes('internet connection') || lower.includes('connection issue')) {
+              this.addBotMessage("**Internet Connection Troubleshooting:**\n\n1. Check Wi-Fi signal strength\n2. Restart router (unplug 30 sec)\n3. Test speed at speedtest.net\n4. Use wired connection if possible\n5. Close bandwidth-heavy apps\n\nIf problems persist, contact your ISP.");
+            } else if (lower.includes('camera') || lower.includes('microphone') || lower.includes('mic')) {
+              this.addBotMessage("**Camera/Microphone Fixes:**\n\n1. Check browser permissions\n2. Make sure no other app is using devices\n3. Test in Device Check section\n4. Refresh page and allow permissions\n5. Update browser\n\nNeed to test devices?", [
+                { text: "Go to Device Check", icon: "🔍", action: () => window.location.href = 'device-check.html' }
+              ]);
+            } else if (lower.includes('browser') || lower.includes('compatibility')) {
+              this.addBotMessage("**Browser Compatibility:**\n\n✅ **Recommended**: Chrome, Firefox, Edge (latest)\n\n**Fixes:**\n1. Update browser\n2. Clear cache (Ctrl+Shift+Delete)\n3. Disable extensions\n4. Try incognito mode\n\nIf issues persist, try a different browser.");
+            } else if (lower.includes('platform error') || lower.includes('error message')) {
+              this.addBotMessage("**Platform Error Fixes:**\n\n1. Refresh page (F5 or Ctrl+R)\n2. Clear browser cache\n3. Check internet connection\n4. Try different browser\n\n**If error persists:**\n📸 Take screenshot\n📝 Note what you were doing\n📧 Contact support@remoedph.com", [
+                { text: "Contact Support", icon: "📧", action: () => {
+                  this.addBotMessage("**Contact Support:**\n\n📧 Email: support@remoedph.com\n\nPlease include:\n• Screenshot of error\n• What you were doing\n• Browser and OS info");
+                }}
+              ]);
+            } else if (lower.includes('troubleshoot') || lower.includes('problem') || lower.includes('issue')) {
+              this.addBotMessage("I can help with troubleshooting! What specific issue?", [
+                { text: "Internet Connection", icon: "🌐", topic: "internet connection" },
+                { text: "Camera/Microphone", icon: "🎥", topic: "camera microphone" },
+                { text: "Browser Issues", icon: "🌏", topic: "browser compatibility" },
+                { text: "Platform Errors", icon: "⚠️", topic: "platform errors" },
+                { text: "Contact Support", icon: "📧", action: () => {
+                  this.addBotMessage("📧 Email: support@remoedph.com\n\nPlease provide details about your problem.");
+                }}
+              ]);
+            } else if (lower.includes('lesson') || lower.includes('teaching')) {
+              this.addBotMessage("I can help with lesson support! What do you need?", [
+                { text: "Finding Lesson Materials", icon: "📚", topic: "finding lesson materials" },
+                { text: "Lesson Structure", icon: "📋", topic: "lesson structure and format" },
+                { text: "Teaching Tips", icon: "💡", topic: "teaching tips" },
+                { text: "Go to Lessons Library", icon: "📖", action: () => window.location.href = 'teacher-lessons-library.html' }
+              ]);
+            } else if (lower.includes('set reminder') || lower.includes('reminder')) {
+              this.addBotMessage("**How to Set Reminders:**\n\n**Method 1**: Dashboard > Upcoming Classes > Set reminder\n**Method 2**: Class Schedule > Click class > Enable reminder\n**Method 3**: Allow browser notifications\n\n**Tips**: Set 15-30 min before class", [
+                { text: "View Schedule", icon: "📅", action: () => window.location.href = 'teacher-class-table.html' }
+              ]);
+            } else if (lower.includes('booking') || lower.includes('accept booking')) {
+              this.addBotMessage("**Booking Guide:**\n\n1. Students book your time slots\n2. You receive notifications\n3. Accept/decline in Class Schedule\n4. Prepare materials and set reminders\n\n**Manage Availability**: Go to Class Configuration", [
+                { text: "View Bookings", icon: "📋", action: () => window.location.href = 'teacher-class-table.html' },
+                { text: "Class Configuration", icon: "⚙️", action: () => window.location.href = 'teacher-open-class.html' }
+              ]);
+            } else if (lower.includes('schedule') || lower.includes('class time')) {
+              this.addBotMessage("I can help with schedule questions! What do you need?", [
+                { text: "View My Schedule", icon: "📅", action: () => window.location.href = 'teacher-class-table.html' },
+                { text: "Set Reminders", icon: "🔔", topic: "set reminders" },
+                { text: "Manage Availability", icon: "⚙️", action: () => window.location.href = 'teacher-open-class.html' },
+                { text: "Booking Questions", icon: "❓", topic: "booking questions" }
+              ]);
+            } else if (lower.includes('hello') || lower.includes('hi') || lower.includes('hey')) {
+              this.addBotMessage("Hello! 👋 I'm Remo AI Assistant. I can help with:\n\n• Troubleshooting\n• Lesson support\n• Platform navigation\n• Starting tours\n\nWhat would you like help with?");
+            } else if (lower.includes('help') || lower.includes('support')) {
+              this.addBotMessage("I'm here to help! You can:\n\n• Ask questions about the platform\n• Click 'Start Tour' for guidance\n• Use quick action buttons\n• Contact support@remoedph.com\n\nWhat specific help do you need?");
+            } else {
+              this.addBotMessage("I understand you're asking about: \"" + userMessage + "\"\n\nI can help you with:", [
+                { text: "Troubleshooting", icon: "🔧", topic: "troubleshooting" },
+                { text: "Lesson Support", icon: "📚", topic: "lesson support" },
+                { text: "Schedule Help", icon: "📅", topic: "schedule" },
+                { text: "Start Tour", icon: "🎯", action: () => {
+                  this.addBotMessage("Great! Starting tour...");
+                  setTimeout(() => { if (typeof teacherTour !== 'undefined') teacherTour.startTour(); }, 500);
+                }}
+              ]);
+            }
+          }
+        };
+        
+        window.toggleChatbot = function() {
+          if (window.chatbot.isOpen) window.chatbot.close();
+          else window.chatbot.open();
+        };
+        
+        window.sendChatbotMessage = function() {
+          const input = document.getElementById('chatbot-input');
+          const message = input ? input.value.trim() : '';
+          if (message) {
+            window.chatbot.addUserMessage(message);
+            if (input) input.value = '';
+            window.chatbot.processMessage(message);
+          }
+        };
+        
+        window.handleChatbotKeyPress = function(event) {
+          if (event.key === 'Enter') window.sendChatbotMessage();
+        };
+        
+        window.handleQuickAction = function(action) {
+          switch(action) {
+            case 'tour':
+              window.chatbot.addUserMessage("Start the tour");
+              window.chatbot.addBotMessage("Great! Starting tour...");
+              setTimeout(() => { if (typeof teacherTour !== 'undefined') teacherTour.startTour(); }, 500);
+              break;
+            case 'troubleshooting':
+              window.chatbot.addUserMessage("I need troubleshooting help");
+              window.chatbot.processMessage("troubleshooting");
+              break;
+            case 'lessons':
+              window.chatbot.addUserMessage("I need lesson support");
+              window.chatbot.processMessage("lesson support");
+              break;
+            case 'schedule':
+              window.chatbot.addUserMessage("I need schedule help");
+              window.chatbot.processMessage("schedule");
+              break;
+          }
+        };
+        
+        document.addEventListener('DOMContentLoaded', function() {
+          if (window.chatbot) window.chatbot.init();
+        });
+      }
+    </script>
 </body>
 </html>

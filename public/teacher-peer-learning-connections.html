@@ -1,0 +1,1395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Peer Learning Connections - RemoEdPH</title>
+    <link rel="stylesheet" href="modern-styles.css">
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: #f8fafc; 
+            color: #1a202c;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .remoed-main {
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        .remoed-sidebar {
+            width: 260px;
+            min-width: 260px;
+            background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+            box-shadow: 4px 0 20px rgba(102, 126, 234, 0.1);
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            z-index: 100;
+        }
+        
+        .remoed-menu {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .remoed-menu li {
+            padding: 14px 32px;
+            color: #64748b;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-left: 4px solid transparent;
+            transition: background 0.2s, border-color 0.2s;
+        }
+        
+        .remoed-menu li.active,
+        .remoed-menu li:hover {
+            background: linear-gradient(90deg, #667eea 0%, #5a67d8 100%);
+            border-left: 4px solid #667eea;
+            color: white;
+            transform: translateX(4px);
+            transition: all 0.3s ease;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .remoed-content {
+            flex: 1;
+            padding: 36px 40px;
+            margin-left: 260px;
+            max-width: calc(100vw - 260px);
+        }
+        
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+        }
+        
+        .page-header h1 {
+            color: #667eea;
+            font-size: 2rem;
+            font-weight: 700;
+            margin: 0;
+        }
+        
+        .back-btn {
+            padding: 10px 20px;
+            background: #e8f4fd;
+            color: #667eea;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+        
+        .back-btn:hover {
+            background: #667eea;
+            color: white;
+        }
+        
+        .tab-buttons {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+            border-bottom: 2px solid #e8f4fd;
+        }
+        
+        .tab-btn {
+            padding: 12px 24px;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            color: #64748b;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.95rem;
+        }
+        
+        .tab-btn.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+        
+        .tab-btn:hover {
+            color: #667eea;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .section-card {
+            background: white;
+            border-radius: 16px;
+            padding: 28px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            border: 1px solid #e8f4fd;
+        }
+        
+        .connection-card {
+            background: white;
+            border: 2px solid #e8f4fd;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            transition: all 0.2s;
+        }
+        
+        .connection-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+        }
+        
+        .connection-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+        
+        .connection-info {
+            flex: 1;
+        }
+        
+        .connection-info h4 {
+            margin: 0 0 4px 0;
+            color: #1a202c;
+            font-size: 1.1rem;
+        }
+        
+        .connection-info p {
+            margin: 0;
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+        
+        .connection-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .btn-primary {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            padding: 10px 20px;
+            background: #e8f4fd;
+            color: #667eea;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        
+        .btn-secondary:hover {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-danger {
+            padding: 10px 20px;
+            background: #fee;
+            color: #e74c3c;
+            border: 2px solid #e74c3c;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        
+        .btn-danger:hover {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+        
+        .status-badge.pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .status-badge.connected {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #64748b;
+        }
+        
+        .empty-state svg {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+        
+        .empty-state h3 {
+            color: #1a202c;
+            margin-bottom: 8px;
+        }
+        
+        .connection-request-card {
+            background: linear-gradient(135deg, #f8f9ff 0%, #f0f4ff 100%);
+            border: 2px solid #667eea;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+        
+        .request-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        
+        .request-info {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        
+        .request-message {
+            background: white;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+        
+        .request-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        /* Remo AI Chatbot Styles */
+        #remo-ai-chatbot {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 380px;
+            height: 600px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            z-index: 10000;
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        #remo-ai-chatbot.open {
+            display: flex;
+        }
+        
+        .chatbot-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 20px 20px 0 0;
+        }
+        
+        .chatbot-header h3 {
+            margin: 0;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .chatbot-close {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+        
+        .chatbot-close:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .chatbot-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f8fafc;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .chatbot-message {
+            display: flex;
+            gap: 10px;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .chatbot-message.user {
+            flex-direction: row-reverse;
+        }
+        
+        .message-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+        
+        .chatbot-message.bot .message-avatar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2px;
+        }
+        
+        .chatbot-message.bot .message-avatar svg {
+            width: 28px;
+            height: 28px;
+        }
+        
+        .chatbot-message.user .message-avatar {
+            background: #e2e8f0;
+            color: #667eea;
+        }
+        
+        .message-content {
+            max-width: 75%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        
+        .chatbot-message.bot .message-content {
+            background: white;
+            color: #1a202c;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .chatbot-message.user .message-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .chatbot-input-area {
+            padding: 15px 20px;
+            background: white;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .chatbot-input {
+            flex: 1;
+            padding: 10px 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 25px;
+            font-size: 0.9rem;
+            outline: none;
+        }
+        
+        .chatbot-input:focus {
+            border-color: #667eea;
+        }
+        
+        .chatbot-send {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s;
+        }
+        
+        .chatbot-send:hover {
+            transform: scale(1.1);
+        }
+        
+        .chatbot-toggle {
+            position: fixed;
+            bottom: 90px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4), 0 0 20px rgba(255, 165, 0, 0.3);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.3s;
+            padding: 0;
+            overflow: visible;
+        }
+        
+        .chatbot-toggle:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4), 0 0 30px rgba(255, 165, 0, 0.5);
+        }
+        
+        .chatbot-toggle.hidden {
+            display: none;
+        }
+        
+        .remo-ai-icon {
+            width: 40px;
+            height: 40px;
+            filter: drop-shadow(0 0 8px rgba(255, 165, 0, 0.6));
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="remoed-main">
+        <nav class="remoed-sidebar">
+            <div style="padding: 24px; border-bottom: 1px solid #e8f4fd;">
+                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+                    <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700;" id="avatar-text">T</div>
+                    <span class="remoed-username" id="remoed-username">Hi, Teacher</span>
+                </div>
+            </div>
+            <ul class="remoed-menu">
+                <li onclick="window.location.href='teacher-dashboard.html'"><svg fill="none" stroke="#667eea" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/></svg>Dashboard</li>
+                <li onclick="window.location.href='teacher-class-table.html'"><svg fill="none" stroke="#667eea" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M16 3v4M8 3v4"/></svg>Class Schedule</li>
+                <li onclick="window.location.href='teacher-open-class.html'"><svg fill="none" stroke="#667eea" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>Class Configuration</li>
+                <li onclick="window.location.href='device-check.html'"><svg fill="none" stroke="#667eea" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>Device Check</li>
+                <li onclick="window.location.href='teacher-service-fee.html'"><svg fill="none" stroke="#667eea" stroke-width="2" viewBox="0 0 24 24"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 10c-4.41 0-8-1.79-8-4V6c0-2.21 3.59-4 8-4s8 1.79 8 4v8c0 2.21-3.59 4-8 4z"/></svg>Teaching Fee</li>
+                <li onclick="window.location.href='teacher-performance-indicator.html'"><svg fill="none" stroke="#667eea" stroke-width="2" viewBox="0 0 24 24"><path d="M3 3v18h18M7 12h10M7 8h6M7 16h4"/></svg>Performance Indicator</li>
+                <li onclick="window.location.href='teacher-professional-development.html'"><svg fill="none" stroke="#667eea" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>Professional Development</li>
+                <li onclick="window.location.href='teacher-profile.html'"><svg fill="none" stroke="#667eea" stroke-width="2" viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>Profile</li>
+                <li id="logout-nav" style="margin-top:auto; color:#e74c3c; cursor:pointer;"><svg fill="none" stroke="#e74c3c" stroke-width="2" viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7"/><path d="M3 12a9 9 0 0118 0 9 9 0 01-18 0z"/></svg>Logout</li>
+            </ul>
+        </nav>
+        
+        <div class="remoed-content">
+            <div class="page-header">
+                <div>
+                    <button class="back-btn" onclick="window.location.href='teacher-professional-development.html#peer-learning'">
+                        ← Back to Peer Learning
+                    </button>
+                    <h1 style="margin-top: 16px;">👥 Peer Learning Connections</h1>
+                </div>
+            </div>
+            
+            <!-- Tab Navigation -->
+            <div class="tab-buttons">
+                <button class="tab-btn active" onclick="showTab('connections', this)">✅ My Connections</button>
+                <button class="tab-btn" onclick="showTab('pending', this)">⏳ Pending Requests</button>
+                <button class="tab-btn" onclick="showTab('sent', this)">📤 Sent Requests</button>
+            </div>
+            
+            <!-- My Connections Tab -->
+            <div id="connections-tab" class="tab-content active">
+                <div class="section-card">
+                    <h2 style="margin: 0 0 24px 0; color: #667eea;">Connected Teachers</h2>
+                    <div id="connections-list">
+                        <!-- Connections will be loaded here -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Pending Requests Tab -->
+            <div id="pending-tab" class="tab-content">
+                <div class="section-card">
+                    <h2 style="margin: 0 0 24px 0; color: #667eea;">Connection Requests Received</h2>
+                    <div id="pending-requests-list">
+                        <!-- Pending requests will be loaded here -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Sent Requests Tab -->
+            <div id="sent-tab" class="tab-content">
+                <div class="section-card">
+                    <h2 style="margin: 0 0 24px 0; color: #667eea;">Connection Requests Sent</h2>
+                    <div id="sent-requests-list">
+                        <!-- Sent requests will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Check authentication
+        document.addEventListener('DOMContentLoaded', function() {
+            const userType = localStorage.getItem('userType');
+            if (userType !== 'teacher') {
+                alert('Access denied. This page is for teachers only.');
+                window.location.href = 'teacher-login.html';
+                return;
+            }
+            
+            const username = localStorage.getItem('remoedUsername') || 'Teacher';
+            const teacherId = localStorage.getItem('teacherId');
+            
+            const avatarTextEl = document.getElementById('avatar-text');
+            if (avatarTextEl) avatarTextEl.textContent = username[0].toUpperCase();
+            
+            const usernameEl = document.getElementById('remoed-username');
+            if (usernameEl) usernameEl.textContent = `Hi, ${username}`;
+            
+            // Logout
+            const logoutNav = document.getElementById('logout-nav');
+            if (logoutNav) {
+                logoutNav.onclick = function() {
+                    localStorage.clear();
+                    window.location.href = 'teacher-login.html';
+                };
+            }
+            
+            // Load connections data
+            loadConnections();
+            loadPendingRequests();
+            loadSentRequests();
+            
+            // Check if redirected from connect action
+            const urlParams = new URLSearchParams(window.location.search);
+            const peerId = urlParams.get('peerId');
+            const action = urlParams.get('action');
+            
+            if (peerId && action === 'connect') {
+                // Decode the peerId from URL and ensure it's a string
+                const decodedPeerId = decodeURIComponent(String(peerId));
+                showConnectModal(decodedPeerId);
+            }
+        });
+        
+        function showTab(tabName, clickedElement) {
+            // Update tab buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            clickedElement.classList.add('active');
+            
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+        }
+        
+        function loadConnections() {
+            const container = document.getElementById('connections-list');
+            const token = localStorage.getItem('token');
+            
+            if (!token) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                        </svg>
+                        <h3>No connections yet</h3>
+                        <p>Start connecting with other teachers to begin peer learning!</p>
+                        <button class="btn-primary" onclick="window.location.href='teacher-professional-development.html#peer-learning'" style="margin-top: 16px;">Browse Teachers</button>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Fetch connections from API
+            fetch(`/api/teacher/connections`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch connections');
+                    }
+                    return response.json();
+                })
+                .then(response => response.json())
+                .then(data => {
+                    const connections = data.connections || [];
+                    
+                    if (connections.length === 0) {
+                        container.innerHTML = `
+                            <div class="empty-state">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                                </svg>
+                                <h3>No connections yet</h3>
+                                <p>Start connecting with other teachers to begin peer learning!</p>
+                                <button class="btn-primary" onclick="window.location.href='teacher-professional-development.html#peer-learning'" style="margin-top: 16px;">Browse Teachers</button>
+                            </div>
+                        `;
+                        return;
+                    }
+                    
+                    container.innerHTML = connections.map(conn => `
+                        <div class="connection-card">
+                            <div class="connection-avatar">${(conn.name || '').charAt(0).toUpperCase()}</div>
+                            <div class="connection-info">
+                                <h4>${conn.name || 'Unknown'} <span class="status-badge connected">Connected</span></h4>
+                                <p>⭐ ${conn.rating || 'N/A'} | ${conn.experience || 'Not specified'} experience</p>
+                                <p style="margin-top: 4px;">
+                                    ${(conn.expertise || []).map(exp => `<span style="background: #e8f4fd; color: #667eea; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; margin-right: 4px;">${exp}</span>`).join('')}
+                                </p>
+                            </div>
+                            <div class="connection-actions">
+                                <button class="btn-primary" onclick="openMessage('${(conn.name || '').replace(/'/g, "\\'")}', '${String(conn.id || '').replace(/'/g, "\\'")}')">💬 Message</button>
+                                <button class="btn-secondary" onclick="viewProfile('${String(conn.id || '').replace(/'/g, "\\'")}')">👤 View Profile</button>
+                                <button class="btn-danger" onclick="removeConnection('${String(conn.connectionId || conn.id || '').replace(/'/g, "\\'")}', '${(conn.name || '').replace(/'/g, "\\'")}')">Remove</button>
+                            </div>
+                        </div>
+                    `).join('');
+                })
+                .catch(error => {
+                    console.error('Error loading connections:', error);
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                            </svg>
+                            <h3>No connections yet</h3>
+                            <p>Start connecting with other teachers to begin peer learning!</p>
+                            <button class="btn-primary" onclick="window.location.href='teacher-professional-development.html#peer-learning'" style="margin-top: 16px;">Browse Teachers</button>
+                        </div>
+                    `;
+                });
+        }
+        
+        function loadPendingRequests() {
+            const container = document.getElementById('pending-requests-list');
+            const token = localStorage.getItem('token');
+            
+            if (!token) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <h3>No pending requests</h3>
+                        <p>You don't have any pending connection requests at the moment.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Fetch pending requests from API
+            fetch(`/api/teacher/connection-requests/pending`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch pending requests');
+                    }
+                    return response.json();
+                })
+                .then(response => response.json())
+                .then(data => {
+                    const pendingRequests = data.requests || [];
+                    
+                    if (pendingRequests.length === 0) {
+                        container.innerHTML = `
+                            <div class="empty-state">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                <h3>No pending requests</h3>
+                                <p>You don't have any pending connection requests at the moment.</p>
+                            </div>
+                        `;
+                        return;
+                    }
+                    
+                    container.innerHTML = pendingRequests.map(req => `
+                        <div class="connection-request-card">
+                            <div class="request-header">
+                                <div class="request-info">
+                                    <div class="connection-avatar">${(req.name || '').charAt(0).toUpperCase()}</div>
+                                    <div>
+                                        <h4 style="margin: 0 0 4px 0;">${req.name || 'Unknown'}</h4>
+                                        <p style="margin: 0; color: #64748b; font-size: 0.9rem;">⭐ ${req.rating || 'N/A'} | ${req.experience || 'Not specified'} experience</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="request-message">
+                                <strong>Message:</strong> ${req.message || 'No message provided'}
+                            </div>
+                            <div class="request-actions">
+                                <button class="btn-primary" onclick="acceptRequest('${String(req.id || '').replace(/'/g, "\\'")}', '${(req.name || '').replace(/'/g, "\\'")}')">✅ Accept</button>
+                                <button class="btn-danger" onclick="declineRequest('${String(req.id || '').replace(/'/g, "\\'")}', '${(req.name || '').replace(/'/g, "\\'")}')">❌ Decline</button>
+                                <button class="btn-secondary" onclick="viewProfile('${String(req.id || '').replace(/'/g, "\\'")}')">👤 View Profile</button>
+                            </div>
+                        </div>
+                    `).join('');
+                })
+                .catch(error => {
+                    console.error('Error loading pending requests:', error);
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            <h3>No pending requests</h3>
+                            <p>You don't have any pending connection requests at the moment.</p>
+                        </div>
+                    `;
+                });
+        }
+        
+        function loadSentRequests() {
+            const container = document.getElementById('sent-requests-list');
+            const token = localStorage.getItem('token');
+            
+            if (!token) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                        </svg>
+                        <h3>No sent requests</h3>
+                        <p>You haven't sent any connection requests yet.</p>
+                        <button class="btn-primary" onclick="window.location.href='teacher-professional-development.html#peer-learning'" style="margin-top: 16px;">Find Teachers</button>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Fetch sent requests from API
+            fetch(`/api/teacher/connection-requests/sent`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch sent requests');
+                    }
+                    return response.json();
+                })
+                .then(response => response.json())
+                .then(data => {
+                    const sentRequests = data.requests || [];
+                    
+                    if (sentRequests.length === 0) {
+                        container.innerHTML = `
+                            <div class="empty-state">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                                </svg>
+                                <h3>No sent requests</h3>
+                                <p>You haven't sent any connection requests yet.</p>
+                                <button class="btn-primary" onclick="window.location.href='teacher-professional-development.html#peer-learning'" style="margin-top: 16px;">Find Teachers</button>
+                            </div>
+                        `;
+                        return;
+                    }
+                    
+                    container.innerHTML = sentRequests.map(req => `
+                        <div class="connection-card">
+                            <div class="connection-avatar">${(req.name || '').charAt(0).toUpperCase()}</div>
+                            <div class="connection-info">
+                                <h4>${req.name || 'Unknown'} <span class="status-badge pending">Pending</span></h4>
+                                <p>⭐ ${req.rating || 'N/A'} | ${req.experience || 'Not specified'} experience</p>
+                                <p style="margin-top: 4px;">
+                                    ${(req.expertise || []).map(exp => `<span style="background: #e8f4fd; color: #667eea; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; margin-right: 4px;">${exp}</span>`).join('')}
+                                </p>
+                            </div>
+                            <div class="connection-actions">
+                                <button class="btn-danger" onclick="cancelRequest('${String(req.id || '').replace(/'/g, "\\'")}', '${(req.name || '').replace(/'/g, "\\'")}')">Cancel Request</button>
+                                <button class="btn-secondary" onclick="viewProfile('${String(req.id || '').replace(/'/g, "\\'")}')">👤 View Profile</button>
+                            </div>
+                        </div>
+                    `).join('');
+                })
+                .catch(error => {
+                    console.error('Error loading sent requests:', error);
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                            </svg>
+                            <h3>No sent requests</h3>
+                            <p>You haven't sent any connection requests yet.</p>
+                            <button class="btn-primary" onclick="window.location.href='teacher-professional-development.html#peer-learning'" style="margin-top: 16px;">Find Teachers</button>
+                        </div>
+                    `;
+                });
+        }
+        
+        function showConnectModal(peerId) {
+            // Ensure peerId is a string
+            const safePeerId = String(peerId || '');
+            
+            // Fetch peer info and show connection modal
+            const modal = document.createElement('div');
+            modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;';
+            
+            const modalContent = document.createElement('div');
+            modalContent.style.cssText = 'background: white; border-radius: 16px; padding: 32px; max-width: 500px; width: 90%;';
+            modalContent.innerHTML = `
+                <h2 style="margin: 0 0 16px 0; color: #667eea;">Send Connection Request</h2>
+                <p style="color: #666; margin-bottom: 24px;">Send a connection request to start peer learning and collaboration.</p>
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #667eea;">Message (Optional)</label>
+                    <textarea id="connection-message" placeholder="Add a personal message..." style="width: 100%; padding: 12px; border: 2px solid #e8f4fd; border-radius: 8px; font-size: 0.9rem; min-height: 100px; resize: vertical;"></textarea>
+                </div>
+                <div style="display: flex; gap: 12px;">
+                    <button class="btn-primary" id="send-request-btn" style="flex: 1;">Send Request</button>
+                    <button class="btn-secondary" id="cancel-request-btn" style="flex: 1;">Cancel</button>
+                </div>
+            `;
+            
+            modal.appendChild(modalContent);
+            document.body.appendChild(modal);
+            
+            // Attach event listeners instead of inline onclick
+            const sendBtn = modalContent.querySelector('#send-request-btn');
+            const cancelBtn = modalContent.querySelector('#cancel-request-btn');
+            
+            sendBtn.addEventListener('click', function() {
+                sendConnectionRequest(safePeerId);
+                modal.remove();
+            });
+            
+            cancelBtn.addEventListener('click', function() {
+                modal.remove();
+            });
+            
+            // Close on background click
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    modal.remove();
+                }
+            });
+        }
+        
+        function sendConnectionRequest(peerId) {
+            // Ensure peerId is a string
+            const safePeerId = String(peerId || '');
+            const message = document.getElementById('connection-message')?.value || '';
+            const token = localStorage.getItem('token');
+            
+            if (!token) {
+                alert('Error: Not authenticated. Please log in again.');
+                return;
+            }
+            
+            // Send API request
+            fetch(`/api/teacher/connection-requests`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    peerId: safePeerId,
+                    message: message
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to send connection request');
+                }
+                return response.json();
+            })
+            .then(data => {
+                alert('Connection request sent! The teacher will be notified.');
+                // Remove peerId from URL
+                window.history.replaceState({}, document.title, window.location.pathname);
+                loadSentRequests();
+                // Switch to sent requests tab
+                document.querySelectorAll('.tab-btn')[2].click();
+            })
+            .catch(error => {
+                console.error('Error sending connection request:', error);
+                alert('Failed to send connection request. Please try again.');
+            });
+        }
+        
+        function acceptRequest(requestId, name) {
+            if (confirm(`Accept connection request from ${name}?`)) {
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    alert('Error: Not authenticated. Please log in again.');
+                    return;
+                }
+                
+                fetch(`/api/teacher/connection-requests/${requestId}/accept`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to accept connection request');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    alert(`Connection request accepted! You are now connected with ${name}.`);
+                    loadPendingRequests();
+                    loadConnections();
+                })
+                .catch(error => {
+                    console.error('Error accepting request:', error);
+                    alert('Failed to accept connection request. Please try again.');
+                });
+            }
+        }
+        
+        function declineRequest(requestId, name) {
+            if (confirm(`Decline connection request from ${name}?`)) {
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    alert('Error: Not authenticated. Please log in again.');
+                    return;
+                }
+                
+                fetch(`/api/teacher/connection-requests/${requestId}/decline`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to decline connection request');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    alert(`Connection request declined.`);
+                    loadPendingRequests();
+                })
+                .catch(error => {
+                    console.error('Error declining request:', error);
+                    alert('Failed to decline connection request. Please try again.');
+                });
+            }
+        }
+        
+        function cancelRequest(requestId, name) {
+            if (confirm(`Cancel connection request to ${name}?`)) {
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    alert('Error: Not authenticated. Please log in again.');
+                    return;
+                }
+                
+                fetch(`/api/teacher/connection-requests/${requestId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to cancel connection request');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    alert(`Connection request cancelled.`);
+                    loadSentRequests();
+                })
+                .catch(error => {
+                    console.error('Error cancelling request:', error);
+                    alert('Failed to cancel connection request. Please try again.');
+                });
+            }
+        }
+        
+        function removeConnection(connectionId, name) {
+            if (confirm(`Remove connection with ${name}? This action cannot be undone.`)) {
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    alert('Error: Not authenticated. Please log in again.');
+                    return;
+                }
+                
+                fetch(`/api/teacher/connections/${connectionId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to remove connection');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    alert(`Connection removed.`);
+                    loadConnections();
+                })
+                .catch(error => {
+                    console.error('Error removing connection:', error);
+                    alert('Failed to remove connection. Please try again.');
+                });
+            }
+        }
+        
+        function openMessage(name, id) {
+            alert(`Messaging feature coming soon! You'll be able to message ${name} here.`);
+            // In production, open messaging interface
+        }
+        
+        function viewProfile(id) {
+            alert(`Viewing profile for teacher ID: ${id}. Profile page coming soon!`);
+            // In production, navigate to teacher profile page
+        }
+    </script>
+    
+    <!-- Remo AI Chatbot -->
+    <div id="remo-ai-chatbot">
+        <div class="chatbot-header">
+            <h3>
+                <svg viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg" style="width: 24px; height: 24px; margin-right: 5px;">
+                    <defs>
+                        <radialGradient id="eyeGlowHeaderConn" cx="50%" cy="50%">
+                            <stop offset="0%" stop-color="#4FC3F7" stop-opacity="1"/>
+                            <stop offset="100%" stop-color="#29B6F6" stop-opacity="0.8"/>
+                        </radialGradient>
+                    </defs>
+                    <line x1="50" y1="5" x2="50" y2="15" stroke="#fff" stroke-width="2"/>
+                    <circle cx="50" cy="5" r="2" fill="#fff"/>
+                    <ellipse cx="50" cy="30" rx="25" ry="20" fill="white" stroke="#fff" stroke-width="2"/>
+                    <path d="M 45 20 L 50 25 L 55 20" stroke="#fff" stroke-width="1.5" fill="none"/>
+                    <rect x="35" y="25" width="30" height="20" rx="3" fill="#fff"/>
+                    <circle cx="42" cy="33" r="4" fill="url(#eyeGlowHeaderConn)"/>
+                    <circle cx="58" cy="33" r="4" fill="url(#eyeGlowHeaderConn)"/>
+                    <path d="M 40 40 Q 50 45 60 40" stroke="#4FC3F7" stroke-width="2" fill="none" stroke-linecap="round"/>
+                    <ellipse cx="25" cy="30" rx="8" ry="12" fill="#29B6F6" stroke="#fff" stroke-width="1.5"/>
+                    <ellipse cx="25" cy="30" rx="4" ry="6" fill="#fff"/>
+                    <ellipse cx="75" cy="30" rx="8" ry="12" fill="#29B6F6" stroke="#fff" stroke-width="1.5"/>
+                    <ellipse cx="75" cy="30" rx="4" ry="6" fill="#fff"/>
+                    <rect x="30" y="50" width="40" height="35" rx="5" fill="white" stroke="#fff" stroke-width="2"/>
+                    <rect x="38" y="58" width="24" height="18" rx="2" fill="#29B6F6" stroke="#4FC3F7" stroke-width="1"/>
+                    <circle cx="42" cy="62" r="1.5" fill="#ff4444"/>
+                    <circle cx="45" cy="62" r="1.5" fill="white"/>
+                    <circle cx="50" cy="66" r="3" fill="#FFD700"/>
+                    <ellipse cx="50" cy="70" rx="2" ry="3" fill="#4FC3F7"/>
+                    <rect x="30" y="82" width="40" height="4" fill="#fff"/>
+                    <rect x="20" y="55" width="12" height="20" rx="3" fill="white" stroke="#fff" stroke-width="1.5"/>
+                    <rect x="20" y="60" width="12" height="3" fill="#fff"/>
+                    <rect x="68" y="55" width="12" height="20" rx="3" fill="white" stroke="#fff" stroke-width="1.5"/>
+                    <rect x="68" y="60" width="12" height="3" fill="#fff"/>
+                    <ellipse cx="26" cy="78" rx="4" ry="5" fill="white" stroke="#fff" stroke-width="1.5"/>
+                    <ellipse cx="74" cy="78" rx="4" ry="5" fill="white" stroke="#fff" stroke-width="1.5"/>
+                    <rect x="35" y="88" width="12" height="20" rx="3" fill="white" stroke="#fff" stroke-width="1.5"/>
+                    <rect x="35" y="93" width="12" height="3" fill="#fff"/>
+                    <rect x="53" y="88" width="12" height="20" rx="3" fill="white" stroke="#fff" stroke-width="1.5"/>
+                    <rect x="53" y="93" width="12" height="3" fill="#fff"/>
+                    <ellipse cx="41" cy="110" rx="6" ry="4" fill="white" stroke="#fff" stroke-width="1.5"/>
+                    <ellipse cx="59" cy="110" rx="6" ry="4" fill="white" stroke="#fff" stroke-width="1.5"/>
+                </svg>
+                <span>Remo AI Assistant</span>
+            </h3>
+            <button class="chatbot-close" onclick="toggleChatbot()">×</button>
+        </div>
+        <div class="chatbot-messages" id="chatbot-messages">
+            <div class="chatbot-message bot">
+                <div class="message-avatar">
+                    <svg viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg" style="width: 28px; height: 28px;">
+                        <defs>
+                            <radialGradient id="eyeGlowInitConn" cx="50%" cy="50%">
+                                <stop offset="0%" stop-color="#4FC3F7" stop-opacity="1"/>
+                                <stop offset="100%" stop-color="#29B6F6" stop-opacity="0.8"/>
+                            </radialGradient>
+                        </defs>
+                        <line x1="50" y1="5" x2="50" y2="15" stroke="#1a1a1a" stroke-width="2"/>
+                        <circle cx="50" cy="5" r="2" fill="#1a1a1a"/>
+                        <ellipse cx="50" cy="30" rx="25" ry="20" fill="white" stroke="#1a1a1a" stroke-width="2"/>
+                        <path d="M 45 20 L 50 25 L 55 20" stroke="#1a1a1a" stroke-width="1.5" fill="none"/>
+                        <rect x="35" y="25" width="30" height="20" rx="3" fill="#1a1a1a"/>
+                        <circle cx="42" cy="33" r="4" fill="url(#eyeGlowInitConn)"/>
+                        <circle cx="58" cy="33" r="4" fill="url(#eyeGlowInitConn)"/>
+                        <path d="M 40 40 Q 50 45 60 40" stroke="#4FC3F7" stroke-width="2" fill="none" stroke-linecap="round"/>
+                        <ellipse cx="25" cy="30" rx="8" ry="12" fill="#29B6F6" stroke="#1a1a1a" stroke-width="1.5"/>
+                        <ellipse cx="25" cy="30" rx="4" ry="6" fill="#1a1a1a"/>
+                        <ellipse cx="75" cy="30" rx="8" ry="12" fill="#29B6F6" stroke="#1a1a1a" stroke-width="1.5"/>
+                        <ellipse cx="75" cy="30" rx="4" ry="6" fill="#1a1a1a"/>
+                        <rect x="30" y="50" width="40" height="35" rx="5" fill="white" stroke="#1a1a1a" stroke-width="2"/>
+                        <rect x="38" y="58" width="24" height="18" rx="2" fill="#29B6F6" stroke="#4FC3F7" stroke-width="1"/>
+                        <circle cx="42" cy="62" r="1.5" fill="#ff4444"/>
+                        <circle cx="45" cy="62" r="1.5" fill="white"/>
+                        <circle cx="50" cy="66" r="3" fill="#FFD700"/>
+                        <ellipse cx="50" cy="70" rx="2" ry="3" fill="#4FC3F7"/>
+                        <rect x="30" y="82" width="40" height="4" fill="#1a1a1a"/>
+                        <rect x="20" y="55" width="12" height="20" rx="3" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+                        <rect x="20" y="60" width="12" height="3" fill="#1a1a1a"/>
+                        <rect x="68" y="55" width="12" height="20" rx="3" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+                        <rect x="68" y="60" width="12" height="3" fill="#1a1a1a"/>
+                        <ellipse cx="26" cy="78" rx="4" ry="5" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+                        <ellipse cx="74" cy="78" rx="4" ry="5" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+                        <rect x="35" y="88" width="12" height="20" rx="3" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+                        <rect x="35" y="93" width="12" height="3" fill="#1a1a1a"/>
+                        <rect x="53" y="88" width="12" height="20" rx="3" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+                        <rect x="53" y="93" width="12" height="3" fill="#1a1a1a"/>
+                        <ellipse cx="41" cy="110" rx="6" ry="4" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+                        <ellipse cx="59" cy="110" rx="6" ry="4" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+                    </svg>
+                </div>
+                <div class="message-content">
+                    <strong>Hello! I'm Remo AI Assistant 👋</strong><br>
+                    I'm here to help you with peer learning connections, troubleshooting, and any questions about the platform. How can I assist you today?
+                </div>
+            </div>
+        </div>
+        <div class="chatbot-input-area">
+            <input type="text" class="chatbot-input" id="chatbot-input" placeholder="Type your question..." onkeypress="handleChatbotKeyPress(event)">
+            <button class="chatbot-send" onclick="sendChatbotMessage()">➤</button>
+        </div>
+    </div>
+    <button class="chatbot-toggle" id="chatbot-toggle" onclick="toggleChatbot()" title="Open Remo AI Assistant">
+        <svg class="remo-ai-icon" viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <radialGradient id="eyeGlowToggleConn" cx="50%" cy="50%">
+                    <stop offset="0%" stop-color="#4FC3F7" stop-opacity="1"/>
+                    <stop offset="100%" stop-color="#29B6F6" stop-opacity="0.8"/>
+                </radialGradient>
+            </defs>
+            <line x1="50" y1="5" x2="50" y2="15" stroke="#fff" stroke-width="2"/>
+            <circle cx="50" cy="5" r="2" fill="#fff"/>
+            <ellipse cx="50" cy="30" rx="25" ry="20" fill="white" stroke="#fff" stroke-width="2"/>
+            <path d="M 45 20 L 50 25 L 55 20" stroke="#fff" stroke-width="1.5" fill="none"/>
+            <rect x="35" y="25" width="30" height="20" rx="3" fill="#fff"/>
+            <circle cx="42" cy="33" r="4" fill="url(#eyeGlowToggleConn)"/>
+            <circle cx="58" cy="33" r="4" fill="url(#eyeGlowToggleConn)"/>
+            <path d="M 40 40 Q 50 45 60 40" stroke="#4FC3F7" stroke-width="2" fill="none" stroke-linecap="round"/>
+            <ellipse cx="25" cy="30" rx="8" ry="12" fill="#29B6F6" stroke="#fff" stroke-width="1.5"/>
+            <ellipse cx="25" cy="30" rx="4" ry="6" fill="#fff"/>
+            <ellipse cx="75" cy="30" rx="8" ry="12" fill="#29B6F6" stroke="#fff" stroke-width="1.5"/>
+            <ellipse cx="75" cy="30" rx="4" ry="6" fill="#fff"/>
+            <rect x="30" y="50" width="40" height="35" rx="5" fill="white" stroke="#fff" stroke-width="2"/>
+            <rect x="38" y="58" width="24" height="18" rx="2" fill="#29B6F6" stroke="#4FC3F7" stroke-width="1"/>
+            <circle cx="42" cy="62" r="1.5" fill="#ff4444"/>
+            <circle cx="45" cy="62" r="1.5" fill="white"/>
+            <circle cx="50" cy="66" r="3" fill="#FFD700"/>
+            <ellipse cx="50" cy="70" rx="2" ry="3" fill="#4FC3F7"/>
+            <rect x="30" y="82" width="40" height="4" fill="#fff"/>
+            <rect x="20" y="55" width="12" height="20" rx="3" fill="white" stroke="#fff" stroke-width="1.5"/>
+            <rect x="20" y="60" width="12" height="3" fill="#fff"/>
+            <rect x="68" y="55" width="12" height="20" rx="3" fill="white" stroke="#fff" stroke-width="1.5"/>
+            <rect x="68" y="60" width="12" height="3" fill="#fff"/>
+            <ellipse cx="26" cy="78" rx="4" ry="5" fill="white" stroke="#fff" stroke-width="1.5"/>
+            <ellipse cx="74" cy="78" rx="4" ry="5" fill="white" stroke="#fff" stroke-width="1.5"/>
+            <rect x="35" y="88" width="12" height="20" rx="3" fill="white" stroke="#fff" stroke-width="1.5"/>
+            <rect x="35" y="93" width="12" height="3" fill="#fff"/>
+            <rect x="53" y="88" width="12" height="20" rx="3" fill="white" stroke="#fff" stroke-width="1.5"/>
+            <rect x="53" y="93" width="12" height="3" fill="#fff"/>
+            <ellipse cx="41" cy="110" rx="6" ry="4" fill="white" stroke="#fff" stroke-width="1.5"/>
+            <ellipse cx="59" cy="110" rx="6" ry="4" fill="white" stroke="#fff" stroke-width="1.5"/>
+        </svg>
+    </button>
+    
+    <script>
+        // Chatbot functionality
+        if (typeof chatbot === 'undefined') {
+            window.chatbot = {
+                isOpen: false,
+                open() {
+                    this.isOpen = true;
+                    const el = document.getElementById('remo-ai-chatbot');
+                    const toggle = document.getElementById('chatbot-toggle');
+                    if (el) el.classList.add('open');
+                    if (toggle) toggle.classList.add('hidden');
+                    setTimeout(() => {
+                        const input = document.getElementById('chatbot-input');
+                        if (input) input.focus();
+                    }, 100);
+                },
+                close() {
+                    this.isOpen = false;
+                    const el = document.getElementById('remo-ai-chatbot');
+                    const toggle = document.getElementById('chatbot-toggle');
+                    if (el) el.classList.remove('open');
+                    if (toggle) toggle.classList.remove('hidden');
+                },
+                addMessage(text, isUser = false) {
+                    const container = document.getElementById('chatbot-messages');
+                    if (!container) return;
+                    const msg = document.createElement('div');
+                    msg.className = `chatbot-message ${isUser ? 'user' : 'bot'}`;
+                    const avatar = document.createElement('div');
+                    avatar.className = 'message-avatar';
+                    if (isUser) {
+                        avatar.textContent = '👤';
+                    } else {
+                        const uniqueId = 'eyeGlow' + Date.now() + Math.random().toString(36).substr(2, 9);
+                        avatar.innerHTML = `<svg viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg" style="width: 28px; height: 28px;">
+                            <defs>
+                                <radialGradient id="${uniqueId}" cx="50%" cy="50%">
+                                    <stop offset="0%" stop-color="#4FC3F7" stop-opacity="1"/>
+                                    <stop offset="100%" stop-color="#29B6F6" stop-opacity="0.8"/>
+                                </radialGradient>
+                            </defs>
+                            <line x1="50" y1="5" x2="50" y2="15" stroke="#1a1a1a" stroke-width="2"/>
+                            <circle cx="50" cy="5" r="2" fill="#1a1a1a"/>
+                            <ellipse cx="50" cy="30" rx="25" ry="20" fill="white" stroke="#1a1a1a" stroke-width="2"/>
+                            <path d="M 45 20 L 50 25 L 55 20" stroke="#1a1a1a" stroke-width="1.5" fill="none"/>
+                            <rect x="35" y="25" width="30" height="20" rx="3" fill="#1a1a1a"/>
+                            <circle cx="42" cy="33" r="4" fill="url(#${uniqueId})"/>
+                            <circle cx="58" cy="33" r="4" fill="url(#${uniqueId})"/>
+                            <path d="M 40 40 Q 50 45 60 40" stroke="#4FC3F7" stroke-width="2" fill="none" stroke-linecap="round"/>
+                            <ellipse cx="25" cy="30" rx="8" ry="12" fill="#29B6F6" stroke="#1a1a1a" stroke-width="1.5"/>
+                            <ellipse cx="25" cy="30" rx="4" ry="6" fill="#1a1a1a"/>
+                            <ellipse cx="75" cy="30" rx="8" ry="12" fill="#29B6F6" stroke="#1a1a1a" stroke-width="1.5"/>
+                            <ellipse cx="75" cy="30" rx="4" ry="6" fill="#1a1a1a"/>
+                            <rect x="30" y="50" width="40" height="35" rx="5" fill="white" stroke="#1a1a1a" stroke-width="2"/>
+                            <rect x="38" y="58" width="24" height="18" rx="2" fill="#29B6F6" stroke="#4FC3F7" stroke-width="1"/>
+                            <circle cx="42" cy="62" r="1.5" fill="#ff4444"/>
+                            <circle cx="45" cy="62" r="1.5" fill="white"/>
+                            <circle cx="50" cy="66" r="3" fill="#FFD700"/>
+                            <ellipse cx="50" cy="70" rx="2" ry="3" fill="#4FC3F7"/>
+                            <rect x="30" y="82" width="40" height="4" fill="#1a1a1a"/>
+                            <rect x="20" y="55" width="12" height="20" rx="3" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+                            <rect x="20" y="60" width="12" height="3" fill="#1a1a1a"/>
+                            <rect x="68" y="55" width="12" height="20" rx="3" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+                            <rect x="68" y="60" width="12" height="3" fill="#1a1a1a"/>
+                            <ellipse cx="26" cy="78" rx="4" ry="5" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+                            <ellipse cx="74" cy="78" rx="4" ry="5" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+                            <rect x="35" y="88" width="12" height="20" rx="3" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+                            <rect x="35" y="93" width="12" height="3" fill="#1a1a1a"/>
+                            <rect x="53" y="88" width="12" height="20" rx="3" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+                            <rect x="53" y="93" width="12" height="3" fill="#1a1a1a"/>
+                            <ellipse cx="41" cy="110" rx="6" ry="4" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+                            <ellipse cx="59" cy="110" rx="6" ry="4" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
+                        </svg>`;
+                    }
+                    const content = document.createElement('div');
+                    content.className = 'message-content';
+                    content.innerHTML = text.replace(/\n/g, '<br>');
+                    msg.appendChild(avatar);
+                    msg.appendChild(content);
+                    container.appendChild(msg);
+                    container.scrollTop = container.scrollHeight;
+                },
+                processMessage(userMessage) {
+                    const lower = userMessage.toLowerCase();
+                    if (lower.includes('connect') || lower.includes('peer learning') || lower.includes('connection')) {
+                        this.addMessage("I can help you with peer learning connections! Here's what you can do:\n\n✅ **My Connections**: View all your connected teachers\n⏳ **Pending Requests**: Accept or decline incoming requests\n📤 **Sent Requests**: Track your outgoing connection requests\n\nYou can also send messages to connected teachers and manage your connections from this page.");
+                    } else if (lower.includes('help') || lower.includes('support')) {
+                        this.addMessage("I'm here to help! You can ask me about:\n\n• Peer learning connections\n• Managing connection requests\n• Troubleshooting\n• Platform navigation\n\nWhat would you like to know?");
+                    } else {
+                        this.addMessage("I understand you're asking about: \"" + userMessage + "\"\n\nI can help you with peer learning connections, managing requests, or any questions about the platform. What specific help do you need?");
+                    }
+                }
+            };
+        }
+        
+        window.toggleChatbot = function() {
+            if (window.chatbot.isOpen) window.chatbot.close();
+            else window.chatbot.open();
+        };
+        
+        window.sendChatbotMessage = function() {
+            const input = document.getElementById('chatbot-input');
+            const message = input ? input.value.trim() : '';
+            if (message) {
+                window.chatbot.addMessage(message, true);
+                if (input) input.value = '';
+                window.chatbot.processMessage(message);
+            }
+        };
+        
+        window.handleChatbotKeyPress = function(event) {
+            if (event.key === 'Enter') window.sendChatbotMessage();
+        };
+    </script>
+</body>
+</html>
