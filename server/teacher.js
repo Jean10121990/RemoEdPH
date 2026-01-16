@@ -5,10 +5,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const fsp = require('fs').promises;
-const libre = require('libreoffice-convert');
-const { fromPath: pdf2picFromPath } = require('pdf2pic');
 const FormData = require('form-data');
-const AdmZip = require('adm-zip');
 const axios = require('axios');
 const Teacher = require('./models/Teacher');
 const Student = require('./models/Student');
@@ -23,14 +20,6 @@ const Feedback = require('./models/Feedback');
 const IssueReport = require('./models/IssueReport');
 const { verifyToken, requireTeacher, requireStudent, requireOwnTeacherData, requireOwnStudentData, logAccess } = require('./authMiddleware');
 const { io } = require('./index');
-
-// Promisify libreoffice-convert
-const libreConvertAsync = (inputBuffer, format) => new Promise((resolve, reject) => {
-  libre.convert(inputBuffer, format, undefined, (err, done) => {
-    if (err) return reject(err);
-    resolve(done);
-  });
-});
 
 async function ensureDir(dirPath) {
   await fsp.mkdir(dirPath, { recursive: true });
@@ -234,78 +223,20 @@ router.get('/test', (req, res) => {
   res.json({ message: 'Teacher routes are working!' });
 });
 
-// Convert PPTX (base64) to slides and persist for booking
-router.post('/convert-pptx-base64', verifyToken, requireTeacher, async (req, res) => {
-  try {
-    const { bookingId, fileName, data } = req.body || {};
-    if (!data || !fileName || !bookingId) {
-      return res.status(400).json({ success: false, error: 'Missing bookingId, fileName or data' });
-    }
-
-    // Decode base64 data URL
-    const base64Match = data.match(/^data:.*;base64,(.*)$/);
-    const base64String = base64Match ? base64Match[1] : data;
-    const buffer = Buffer.from(base64String, 'base64');
-
-    const uploadDir = path.join(__dirname, '../uploads/slides', bookingId);
-    await ensureDir(uploadDir);
-    const pptxPath = path.join(uploadDir, `${Date.now()}-${fileName.replace(/\s+/g, '-')}`);
-    await fsp.writeFile(pptxPath, buffer);
-
-    const { slides } = await convertPptxToSlides({ sourcePath: pptxPath, bookingId });
-
-    // LessonSlides collection removed - slides are no longer saved to database
-    console.log(`⚠️ LessonSlides collection removed - slides processed but not saved to database for booking ${bookingId}`);
-
-    res.json({
-      success: true,
-      slides,
-      totalSlides: slides.length,
-      message: 'PPTX converted to slides'
-    });
-  } catch (err) {
-    console.error('❌ PPTX base64 conversion failed:', err);
-    res.status(500).json({ success: false, error: 'Conversion failed: ' + err.message });
-  }
+// File conversion endpoints removed - files are now displayed directly without conversion
+// Legacy endpoints kept for compatibility but return error
+router.post('/convert-pptx-base64', verifyToken, requireTeacher, (req, res) => {
+  return res.status(410).json({ 
+    success: false, 
+    error: 'File conversion has been removed. Files are now displayed directly without conversion.' 
+  });
 });
 
-// Convert PPTX using Cloudmersive (no local tools)
-router.post('/convert-pptx-cloud', verifyToken, requireTeacher, async (req, res) => {
-  try {
-    const { bookingId, fileName, data } = req.body || {};
-    if (!data || !fileName || !bookingId) {
-      return res.status(400).json({ success: false, error: 'Missing bookingId, fileName or data' });
-    }
-
-    // Decode base64 data URL
-    const base64Match = data.match(/^data:.*;base64,(.*)$/);
-    const base64String = base64Match ? base64Match[1] : data;
-    const buffer = Buffer.from(base64String, 'base64');
-
-    const uploadDir = path.join(__dirname, '../uploads/slides', bookingId);
-    await ensureDir(uploadDir);
-    const pptxPath = path.join(uploadDir, `${Date.now()}-${fileName.replace(/\s+/g, '-')}`);
-    await fsp.writeFile(pptxPath, buffer);
-
-    const { slides } = await convertPptxViaCloudmersive({
-      sourcePath: pptxPath,
-      bookingId,
-      fileName
-    });
-
-    // LessonSlides collection removed - slides are no longer saved to database
-    console.log(`⚠️ LessonSlides collection removed - slides processed but not saved to database for booking ${bookingId}`);
-
-    res.json({
-      success: true,
-      slides,
-      totalSlides: slides.length,
-      message: 'PPTX converted to slides via Cloudmersive'
-    });
-  } catch (err) {
-    console.error('❌ PPTX cloud conversion failed:', err);
-    res.status(500).json({ success: false, error: 'Cloud conversion failed: ' + err.message });
-  }
+router.post('/convert-pptx-cloud', verifyToken, requireTeacher, (req, res) => {
+  return res.status(410).json({ 
+    success: false, 
+    error: 'File conversion has been removed. Files are now displayed directly without conversion.' 
+  });
 });
 
 // Timezone debug endpoint
@@ -3697,32 +3628,18 @@ router.post('/upload-slides', verifyToken, requireTeacher, upload.array('slides'
       });
 
       if (['.ppt', '.pptx'].includes(fileExt)) {
-        console.log(`📁 File ${i + 1} identified as PowerPoint, converting...`);
-        try {
-          const { slides: convertedSlides } = await convertPptxToSlides({
-            sourcePath: file.path,
-            bookingId
-          });
-          // Re-number if multiple files; append
-          convertedSlides.forEach((s, idx) => {
-            s.slideNumber = slides.length + idx + 1;
-          });
-          slides = slides.concat(convertedSlides);
-          console.log(`✅ Converted PPTX to ${convertedSlides.length} slide images`);
-        } catch (err) {
-          console.error('❌ PPTX conversion failed:', err);
-          // Fallback: store as PowerPoint placeholder
-          slides.push({
-            slideNumber: slides.length + 1,
-            imageUrl: '/images/powerpoint-placeholder.svg',
-            originalFile: `/uploads/slides/${file.filename}`,
-            fileName: file.originalname,
-            fileType: 'powerpoint',
-            title: `${path.basename(file.originalname, fileExt)}`,
-            notes: '',
-            needsConversion: true
-          });
-        }
+        // PPTX files are now displayed directly without conversion
+        console.log(`📁 File ${i + 1} identified as PowerPoint, storing as-is`);
+        slides.push({
+          slideNumber: slides.length + 1,
+          imageUrl: `/uploads/slides/${file.filename}`,
+          originalFile: `/uploads/slides/${file.filename}`,
+          fileName: file.originalname,
+          fileType: 'powerpoint',
+          title: `${path.basename(file.originalname, fileExt)}`,
+          notes: '',
+          needsConversion: false
+        });
       } else if (fileExt === '.pdf') {
         console.log(`📁 File ${i + 1} identified as PDF`);
         slides.push({
@@ -3774,66 +3691,12 @@ router.post('/upload-slides', verifyToken, requireTeacher, upload.array('slides'
   }
 });
 
-// Upload slide images (for PowerPoint conversion)
-router.post('/upload-slide-images', verifyToken, requireTeacher, upload.array('slideImages', 20), async (req, res) => {
-  try {
-    const { bookingId, slideIndex } = req.body;
-    const teacherId = req.user.teacherId;
-    const files = req.files;
-    
-    if (!bookingId || !slideIndex || !files || files.length === 0) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Missing required fields: bookingId, slideIndex, and slide images' 
-      });
-    }
-    
-    // LessonSlides collection removed - this endpoint is no longer functional
-    console.log('⚠️ LessonSlides collection removed - slides endpoint disabled');
-    return res.status(404).json({ 
-      success: false, 
-      error: 'LessonSlides collection removed. Slides are no longer stored in the database.' 
-    });
-    
-    /* Old code removed - LessonSlides collection no longer exists
-    // Update the specific slide with image versions
-    const slideIndexNum = parseInt(slideIndex);
-    if (slideIndexNum >= 0 && slideIndexNum < lessonSlides.slides.length) {
-      const slideImages = files.map((file, index) => ({
-        slideNumber: slideIndexNum + index + 1,
-        imageUrl: `/uploads/slides/${file.filename}`,
-        title: `Slide ${slideIndexNum + index + 1}`,
-        notes: '',
-        fileType: 'image'
-      }));
-      
-      // Replace or add the slide images
-      lessonSlides.slides.splice(slideIndexNum, slideImages.length, ...slideImages);
-      lessonSlides.totalSlides = lessonSlides.slides.length;
-      
-      await lessonSlides.save();
-      
-      console.log(`✅ Slide images uploaded: ${slideImages.length} images for slide ${slideIndexNum + 1}`);
-      
-      res.json({
-        success: true,
-        message: 'Slide images uploaded successfully',
-        slides: lessonSlides.slides
-      });
-    } else {
-      res.status(400).json({ 
-        success: false, 
-        error: 'Invalid slide index' 
-      });
-    }
-    
-  } catch (error) {
-    console.error('Error uploading slide images:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Failed to upload slide images: ' + error.message 
-    });
-  }
+// Upload slide images endpoint removed - no longer needed without conversion
+router.post('/upload-slide-images', verifyToken, requireTeacher, (req, res) => {
+  return res.status(410).json({ 
+    success: false, 
+    error: 'Slide image upload has been removed. Files are now displayed directly without conversion.' 
+  });
 });
 
 // Test route for debugging
@@ -3843,69 +3706,12 @@ router.get('/test-remove-slide', (req, res) => {
 });
 
 // Remove slide from lesson slides
-router.post('/remove-slide', verifyToken, requireTeacher, async (req, res) => {
-  try {
-    const { bookingId, slideIndex, slideId } = req.body;
-    const teacherId = req.user.teacherId;
-    
-    if (!bookingId || slideIndex === undefined) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Missing required fields: bookingId and slideIndex' 
-      });
-    }
-    
-    console.log(`🗑️ Removing slide ${slideIndex} from booking ${bookingId}`);
-    
-    // LessonSlides collection removed - this endpoint is no longer functional
-    console.log('⚠️ LessonSlides collection removed - slides endpoint disabled');
-    return res.status(404).json({ 
-      success: false, 
-      error: 'LessonSlides collection removed. Slides are no longer stored in the database.' 
-    });
-    
-    /* Old code removed - LessonSlides collection no longer exists
-    // Verify the slide index is valid
-    const slideIndexNum = parseInt(slideIndex);
-    if (slideIndexNum < 0 || slideIndexNum >= lessonSlides.slides.length) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Invalid slide index' 
-      });
-    }
-    
-    // Get the slide to be removed
-    const slideToRemove = lessonSlides.slides[slideIndexNum];
-    console.log(`🗑️ Removing slide:`, slideToRemove);
-    
-    // Remove the slide from the array
-    lessonSlides.slides.splice(slideIndexNum, 1);
-    lessonSlides.totalSlides = lessonSlides.slides.length;
-    
-    // Update slide numbers for remaining slides
-    lessonSlides.slides.forEach((slide, index) => {
-      slide.slideNumber = index + 1;
-    });
-    
-    await lessonSlides.save();
-    
-    console.log(`✅ Slide removed successfully. Remaining slides: ${lessonSlides.slides.length}`);
-    
-    res.json({
-      success: true,
-      message: 'Slide removed successfully',
-      remainingSlides: lessonSlides.slides.length,
-      slides: lessonSlides.slides
-    });
-    */
-    
-  } catch (error) {
-    console.error('Error removing slide:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Failed to remove slide: ' + error.message 
-    });
-  }
+// LessonSlides collection removed - this endpoint is no longer functional
+router.post('/remove-slide', verifyToken, requireTeacher, (req, res) => {
+  return res.status(410).json({ 
+    success: false, 
+    error: 'LessonSlides collection removed. Slides are no longer stored in the database.' 
+  });
 });
 
 // Submit teacher feedback for a class (legacy route for frontend compatibility)
@@ -4034,7 +3840,7 @@ router.post('/booking/:bookingId/complete', verifyToken, requireTeacher, async (
     if (booking.status === 'completed') {
       return res.status(400).json({ 
         success: false, 
-        error: 'Class is already completed' 
+        error: 'Class is already completed'
       });
     }
     
@@ -4066,7 +3872,6 @@ router.post('/booking/:bookingId/complete', verifyToken, requireTeacher, async (
         classCompleted: booking.attendance.classCompleted
       }
     });
-    
   } catch (error) {
     console.error('❌ Error completing class:', error);
     res.status(500).json({ 
@@ -4842,6 +4647,205 @@ router.post('/assessments/request', verifyToken, requireTeacher, async (req, res
   }
 });
 
+// Save assessment test result
+router.post('/save-assessment-test', verifyToken, requireTeacher, async (req, res) => {
+  try {
+    const teacher = await Teacher.findOne({ teacherId: req.user.teacherId });
+    if (!teacher) {
+      return res.status(404).json({ error: 'Teacher not found' });
+    }
+    
+    const { testType, audioRecording, audioFileName, wpm, accuracy, text, words } = req.body;
+    
+    if (!teacher.assessmentTests) {
+      teacher.assessmentTests = {
+        completed: false,
+        listening: {},
+        typing: {},
+        reading: {},
+        pronunciation: {}
+      };
+    }
+    
+    const testData = {
+      completedAt: new Date()
+    };
+    
+    if (testType === 'listening') {
+      if (audioRecording) testData.audioRecording = audioRecording;
+      if (audioFileName) testData.audioFileName = audioFileName;
+      teacher.assessmentTests.listening = testData;
+    } else if (testType === 'typing') {
+      if (wpm !== undefined) testData.wpm = wpm;
+      if (accuracy !== undefined) testData.accuracy = accuracy;
+      if (text) testData.text = text;
+      teacher.assessmentTests.typing = testData;
+    } else if (testType === 'reading') {
+      if (audioRecording) testData.audioRecording = audioRecording;
+      if (audioFileName) testData.audioFileName = audioFileName;
+      if (text) testData.text = text;
+      teacher.assessmentTests.reading = testData;
+    } else if (testType === 'pronunciation') {
+      if (audioRecording) testData.audioRecording = audioRecording;
+      if (audioFileName) testData.audioFileName = audioFileName;
+      if (words) testData.words = words;
+      teacher.assessmentTests.pronunciation = testData;
+    }
+    
+    await teacher.save();
+    
+    res.json({
+      success: true,
+      message: `${testType} test result saved successfully`
+    });
+  } catch (error) {
+    console.error('Error saving assessment test:', error);
+    res.status(500).json({ error: 'Server error: ' + error.message });
+  }
+});
+
+// Complete assessment (mark all tests as done)
+router.post('/complete-assessment', verifyToken, requireTeacher, async (req, res) => {
+  try {
+    const teacher = await Teacher.findOne({ teacherId: req.user.teacherId });
+    if (!teacher) {
+      return res.status(404).json({ error: 'Teacher not found' });
+    }
+    
+    if (!teacher.assessmentTests) {
+      return res.status(400).json({ error: 'Assessment tests not found' });
+    }
+    
+    // Check if all tests are completed
+    const tests = teacher.assessmentTests;
+    const listeningComplete = tests.listening && (tests.listening.audioRecording || tests.listening.completedAt);
+    const typingComplete = tests.typing && (tests.typing.wpm !== null || tests.typing.completedAt);
+    const readingComplete = tests.reading && (tests.reading.audioRecording || tests.reading.completedAt);
+    const pronunciationComplete = tests.pronunciation && (tests.pronunciation.audioRecording || tests.pronunciation.words || tests.pronunciation.completedAt);
+    
+    const allComplete = listeningComplete && typingComplete && readingComplete && pronunciationComplete;
+    
+    if (!allComplete) {
+      // Provide detailed error message
+      const missing = [];
+      if (!listeningComplete) missing.push('Listening');
+      if (!typingComplete) missing.push('Typing');
+      if (!readingComplete) missing.push('Reading');
+      if (!pronunciationComplete) missing.push('Pronunciation');
+      
+      return res.status(400).json({ 
+        error: 'Please complete all assessment tests before submitting',
+        missing: missing,
+        details: {
+          listening: !!listeningComplete,
+          typing: !!typingComplete,
+          reading: !!readingComplete,
+          pronunciation: !!pronunciationComplete
+        }
+      });
+    }
+    
+    teacher.assessmentTests.completed = true;
+    teacher.assessmentTests.completedAt = new Date();
+    
+    await teacher.save();
+    
+    res.json({
+      success: true,
+      message: 'Assessment completed successfully. Your results will be reviewed by RemoEd trainers/admins.'
+    });
+  } catch (error) {
+    console.error('Error completing assessment:', error);
+    res.status(500).json({ error: 'Server error: ' + error.message });
+  }
+});
+
+// Get assessment test results for viewing
+router.get('/assessment-results', verifyToken, requireTeacher, async (req, res) => {
+  try {
+    const teacher = await Teacher.findOne({ teacherId: req.user.teacherId });
+    if (!teacher) {
+      return res.status(404).json({ error: 'Teacher not found' });
+    }
+    
+    if (!teacher.assessmentTests) {
+      return res.json({
+        success: true,
+        completed: false,
+        message: 'No assessment tests found'
+      });
+    }
+    
+    res.json({
+      success: true,
+      completed: teacher.assessmentTests.completed || false,
+      completedAt: teacher.assessmentTests.completedAt || null,
+      tests: {
+        listening: teacher.assessmentTests.listening || null,
+        typing: teacher.assessmentTests.typing || null,
+        reading: teacher.assessmentTests.reading || null,
+        pronunciation: teacher.assessmentTests.pronunciation || null
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching assessment results:', error);
+    res.status(500).json({ error: 'Server error: ' + error.message });
+  }
+});
+
+// Get assessed abilities for display in profile
+router.get('/assessed-abilities', verifyToken, requireTeacher, async (req, res) => {
+  try {
+    const teacher = await Teacher.findOne({ teacherId: req.user.teacherId });
+    if (!teacher) {
+      return res.status(404).json({ error: 'Teacher not found' });
+    }
+    
+    // Get the latest assessment from skillAssessments history
+    const latestAssessment = teacher.skillAssessments && teacher.skillAssessments.length > 0
+      ? teacher.skillAssessments[teacher.skillAssessments.length - 1]
+      : null;
+    
+    // Build assessments object from teachingAbilities and latest assessment
+    const assessments = {};
+    const skills = ['listening', 'reading', 'speaking', 'writing'];
+    
+    skills.forEach(skill => {
+      const ability = teacher.teachingAbilities && teacher.teachingAbilities[skill];
+      if (ability && ability.level) {
+        // Convert level string to number (0-5 scale)
+        const levelMap = {
+          '0': 0, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5,
+          'Beginner': 0, 'Basic': 1, 'Intermediate': 2, 'Advanced': 3, 'Expert': 4, 'Master': 5
+        };
+        const level = levelMap[ability.level] !== undefined ? levelMap[ability.level] : parseInt(ability.level) || null;
+        
+        assessments[skill] = {
+          level: level,
+          criteria: ability.criteria || [],
+          source: latestAssessment && latestAssessment.assessedBy ? latestAssessment.assessedBy : 'Pending'
+        };
+      } else {
+        // No assessment yet
+        assessments[skill] = {
+          level: null,
+          criteria: [],
+          source: 'Pending'
+        };
+      }
+    });
+    
+    res.json({
+      success: true,
+      assessments: assessments,
+      lastAssessmentDate: latestAssessment ? latestAssessment.assessmentDate : null
+    });
+  } catch (error) {
+    console.error('Error fetching assessed abilities:', error);
+    res.status(500).json({ error: 'Server error: ' + error.message });
+  }
+});
+
 // Get peer teachers (for peer learning)
 router.get('/peers', verifyToken, requireTeacher, async (req, res) => {
   try {
@@ -4891,6 +4895,334 @@ router.get('/peers', verifyToken, requireTeacher, async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching peer teachers:', error);
+    res.status(500).json({ error: 'Server error: ' + error.message });
+  }
+});
+
+// Peer Learning Connection Endpoints
+const Connection = require('./models/Connection');
+
+// Send connection request
+router.post('/connection-requests', verifyToken, requireTeacher, async (req, res) => {
+  try {
+    const requesterId = req.user.teacherId;
+    const { peerId, message } = req.body;
+    
+    if (!peerId) {
+      return res.status(400).json({ error: 'Peer ID is required' });
+    }
+    
+    if (requesterId === peerId) {
+      return res.status(400).json({ error: 'Cannot send connection request to yourself' });
+    }
+    
+    // Check if peer exists
+    const peer = await Teacher.findOne({ teacherId: peerId, status: 'active' });
+    if (!peer) {
+      return res.status(404).json({ error: 'Teacher not found' });
+    }
+    
+    // Check if connection already exists
+    const existingConnection = await Connection.findOne({
+      $or: [
+        { requesterId, recipientId: peerId },
+        { requesterId: peerId, recipientId: requesterId }
+      ]
+    });
+    
+    if (existingConnection) {
+      if (existingConnection.status === 'accepted') {
+        return res.status(400).json({ error: 'Already connected with this teacher' });
+      }
+      if (existingConnection.status === 'pending' && existingConnection.requesterId === requesterId) {
+        return res.status(400).json({ error: 'Connection request already sent' });
+      }
+    }
+    
+    // Create connection request
+    const connection = new Connection({
+      requesterId,
+      recipientId: peerId,
+      message: message || '',
+      status: 'pending'
+    });
+    
+    await connection.save();
+    
+    res.json({
+      success: true,
+      message: 'Connection request sent successfully',
+      connectionId: connection._id
+    });
+  } catch (error) {
+    console.error('Error sending connection request:', error);
+    if (error.code === 11000) {
+      return res.status(400).json({ error: 'Connection request already exists' });
+    }
+    res.status(500).json({ error: 'Server error: ' + error.message });
+  }
+});
+
+// Get connections (accepted connections)
+router.get('/connections', verifyToken, requireTeacher, async (req, res) => {
+  try {
+    const teacherId = req.user.teacherId;
+    
+    const connections = await Connection.find({
+      $or: [
+        { requesterId: teacherId, status: 'accepted' },
+        { recipientId: teacherId, status: 'accepted' }
+      ]
+    }).sort({ updatedAt: -1 });
+    
+    // Get teacher details for each connection
+    const connectionData = await Promise.all(connections.map(async (conn) => {
+      const otherTeacherId = conn.requesterId === teacherId ? conn.recipientId : conn.requesterId;
+      const teacher = await Teacher.findOne({ teacherId: otherTeacherId });
+      
+      if (!teacher) return null;
+      
+      const expertise = [];
+      if (teacher.teachingAbilities?.listening?.level) expertise.push('Listening');
+      if (teacher.teachingAbilities?.reading?.level) expertise.push('Reading');
+      if (teacher.teachingAbilities?.speaking?.level) expertise.push('Speaking');
+      if (teacher.teachingAbilities?.writing?.level) expertise.push('Writing');
+      
+      return {
+        id: teacher.teacherId,
+        connectionId: conn._id.toString(),
+        name: teacher.fullname || `${teacher.firstName || ''} ${teacher.lastName || ''}`.trim() || 'Teacher',
+        expertise: expertise.length > 0 ? expertise : ['General English'],
+        experience: teacher.experience || 'Not specified',
+        rating: 4.5,
+        profilePicture: teacher.profilePicture
+      };
+    }));
+    
+    res.json({
+      success: true,
+      connections: connectionData.filter(c => c !== null)
+    });
+  } catch (error) {
+    console.error('Error fetching connections:', error);
+    res.status(500).json({ error: 'Server error: ' + error.message });
+  }
+});
+
+// Get pending requests (received)
+router.get('/connection-requests/pending', verifyToken, requireTeacher, async (req, res) => {
+  try {
+    const teacherId = req.user.teacherId;
+    
+    const requests = await Connection.find({
+      recipientId: teacherId,
+      status: 'pending'
+    }).sort({ createdAt: -1 });
+    
+    const requestData = await Promise.all(requests.map(async (req) => {
+      const teacher = await Teacher.findOne({ teacherId: req.requesterId });
+      
+      if (!teacher) return null;
+      
+      const expertise = [];
+      if (teacher.teachingAbilities?.listening?.level) expertise.push('Listening');
+      if (teacher.teachingAbilities?.reading?.level) expertise.push('Reading');
+      if (teacher.teachingAbilities?.speaking?.level) expertise.push('Speaking');
+      if (teacher.teachingAbilities?.writing?.level) expertise.push('Writing');
+      
+      return {
+        id: req._id.toString(),
+        name: teacher.fullname || `${teacher.firstName || ''} ${teacher.lastName || ''}`.trim() || 'Teacher',
+        expertise: expertise.length > 0 ? expertise : ['General English'],
+        experience: teacher.experience || 'Not specified',
+        rating: 4.5,
+        message: req.message,
+        profilePicture: teacher.profilePicture
+      };
+    }));
+    
+    res.json({
+      success: true,
+      requests: requestData.filter(r => r !== null)
+    });
+  } catch (error) {
+    console.error('Error fetching pending requests:', error);
+    res.status(500).json({ error: 'Server error: ' + error.message });
+  }
+});
+
+// Get sent requests
+router.get('/connection-requests/sent', verifyToken, requireTeacher, async (req, res) => {
+  try {
+    const teacherId = req.user.teacherId;
+    
+    const requests = await Connection.find({
+      requesterId: teacherId,
+      status: 'pending'
+    }).sort({ createdAt: -1 });
+    
+    const requestData = await Promise.all(requests.map(async (req) => {
+      const teacher = await Teacher.findOne({ teacherId: req.recipientId });
+      
+      if (!teacher) return null;
+      
+      const expertise = [];
+      if (teacher.teachingAbilities?.listening?.level) expertise.push('Listening');
+      if (teacher.teachingAbilities?.reading?.level) expertise.push('Reading');
+      if (teacher.teachingAbilities?.speaking?.level) expertise.push('Speaking');
+      if (teacher.teachingAbilities?.writing?.level) expertise.push('Writing');
+      
+      return {
+        id: req._id.toString(),
+        name: teacher.fullname || `${teacher.firstName || ''} ${teacher.lastName || ''}`.trim() || 'Teacher',
+        expertise: expertise.length > 0 ? expertise : ['General English'],
+        experience: teacher.experience || 'Not specified',
+        rating: 4.5,
+        status: 'pending',
+        profilePicture: teacher.profilePicture
+      };
+    }));
+    
+    res.json({
+      success: true,
+      requests: requestData.filter(r => r !== null)
+    });
+  } catch (error) {
+    console.error('Error fetching sent requests:', error);
+    res.status(500).json({ error: 'Server error: ' + error.message });
+  }
+});
+
+// Accept connection request
+router.post('/connection-requests/:requestId/accept', verifyToken, requireTeacher, async (req, res) => {
+  try {
+    const teacherId = req.user.teacherId;
+    const { requestId } = req.params;
+    
+    const connection = await Connection.findById(requestId);
+    
+    if (!connection) {
+      return res.status(404).json({ error: 'Connection request not found' });
+    }
+    
+    if (connection.recipientId !== teacherId) {
+      return res.status(403).json({ error: 'Unauthorized to accept this request' });
+    }
+    
+    if (connection.status !== 'pending') {
+      return res.status(400).json({ error: 'Connection request is not pending' });
+    }
+    
+    connection.status = 'accepted';
+    connection.updatedAt = new Date();
+    await connection.save();
+    
+    res.json({
+      success: true,
+      message: 'Connection request accepted'
+    });
+  } catch (error) {
+    console.error('Error accepting connection request:', error);
+    res.status(500).json({ error: 'Server error: ' + error.message });
+  }
+});
+
+// Decline connection request
+router.post('/connection-requests/:requestId/decline', verifyToken, requireTeacher, async (req, res) => {
+  try {
+    const teacherId = req.user.teacherId;
+    const { requestId } = req.params;
+    
+    const connection = await Connection.findById(requestId);
+    
+    if (!connection) {
+      return res.status(404).json({ error: 'Connection request not found' });
+    }
+    
+    if (connection.recipientId !== teacherId) {
+      return res.status(403).json({ error: 'Unauthorized to decline this request' });
+    }
+    
+    if (connection.status !== 'pending') {
+      return res.status(400).json({ error: 'Connection request is not pending' });
+    }
+    
+    connection.status = 'declined';
+    connection.updatedAt = new Date();
+    await connection.save();
+    
+    res.json({
+      success: true,
+      message: 'Connection request declined'
+    });
+  } catch (error) {
+    console.error('Error declining connection request:', error);
+    res.status(500).json({ error: 'Server error: ' + error.message });
+  }
+});
+
+// Cancel connection request (by requester)
+router.delete('/connection-requests/:requestId', verifyToken, requireTeacher, async (req, res) => {
+  try {
+    const teacherId = req.user.teacherId;
+    const { requestId } = req.params;
+    
+    const connection = await Connection.findById(requestId);
+    
+    if (!connection) {
+      return res.status(404).json({ error: 'Connection request not found' });
+    }
+    
+    if (connection.requesterId !== teacherId) {
+      return res.status(403).json({ error: 'Unauthorized to cancel this request' });
+    }
+    
+    if (connection.status !== 'pending') {
+      return res.status(400).json({ error: 'Can only cancel pending requests' });
+    }
+    
+    connection.status = 'cancelled';
+    connection.updatedAt = new Date();
+    await connection.save();
+    
+    res.json({
+      success: true,
+      message: 'Connection request cancelled'
+    });
+  } catch (error) {
+    console.error('Error cancelling connection request:', error);
+    res.status(500).json({ error: 'Server error: ' + error.message });
+  }
+});
+
+// Remove connection
+router.delete('/connections/:connectionId', verifyToken, requireTeacher, async (req, res) => {
+  try {
+    const teacherId = req.user.teacherId;
+    const { connectionId } = req.params;
+    
+    const connection = await Connection.findById(connectionId);
+    
+    if (!connection) {
+      return res.status(404).json({ error: 'Connection not found' });
+    }
+    
+    if (connection.requesterId !== teacherId && connection.recipientId !== teacherId) {
+      return res.status(403).json({ error: 'Unauthorized to remove this connection' });
+    }
+    
+    if (connection.status !== 'accepted') {
+      return res.status(400).json({ error: 'Can only remove accepted connections' });
+    }
+    
+    await Connection.findByIdAndDelete(connectionId);
+    
+    res.json({
+      success: true,
+      message: 'Connection removed'
+    });
+  } catch (error) {
+    console.error('Error removing connection:', error);
     res.status(500).json({ error: 'Server error: ' + error.message });
   }
 });

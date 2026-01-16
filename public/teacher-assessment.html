@@ -1,0 +1,1483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teaching Assessment - RemoEdPH</title>
+    <link rel="stylesheet" href="modern-styles.css">
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: #F0F2F5; 
+            margin: 0;
+            padding: 0;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 24px;
+        }
+        
+        .header {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            text-align: center;
+        }
+        
+        .header h1 {
+            color: #667eea;
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 12px;
+        }
+        
+        .header p {
+            color: #64748b;
+            font-size: 1.1rem;
+        }
+        
+        .progress-bar {
+            background: #e2e8f0;
+            border-radius: 10px;
+            height: 8px;
+            margin: 24px 0;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            height: 100%;
+            transition: width 0.3s ease;
+            border-radius: 10px;
+        }
+        
+        .test-card {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            display: none;
+        }
+        
+        .test-card.active {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+        
+        .test-card.completed {
+            border-left: 4px solid #10b981;
+        }
+        
+        .test-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        
+        .test-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1E3A5F;
+        }
+        
+        .test-status {
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+        
+        .test-status.pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        
+        .test-status.completed {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        
+        .test-instructions {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .test-instructions h4 {
+            color: #667eea;
+            margin-bottom: 12px;
+        }
+        
+        .test-instructions ul {
+            margin: 12px 0;
+            padding-left: 24px;
+        }
+        
+        .test-instructions li {
+            margin-bottom: 8px;
+            color: #1E3A5F;
+        }
+        
+        .audio-player {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .audio-controls {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            align-items: center;
+            margin-top: 16px;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #5a67d8;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #1E3A5F;
+        }
+        
+        .btn-secondary:hover {
+            background: #cbd5e0;
+        }
+        
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #059669;
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .recording-controls {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        
+        .recording-status {
+            text-align: center;
+            margin: 16px 0;
+            font-weight: 600;
+            color: #667eea;
+        }
+        
+        .recording-status.recording {
+            color: #ef4444;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .typing-test {
+            background: #f8f9fa;
+            padding: 24px;
+            border-radius: 12px;
+            margin: 20px 0;
+        }
+        
+        .typing-prompt {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: #1E3A5F;
+            border: 2px solid #e2e8f0;
+        }
+        
+        .typing-input {
+            width: 100%;
+            min-height: 150px;
+            padding: 16px;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            resize: vertical;
+            /* Disable Grammarly and spell check */
+            spellcheck: false;
+        }
+        
+        /* Prevent Grammarly from injecting styles */
+        .typing-input[data-gramm="false"],
+        .typing-input[data-gramm_editor="false"] {
+            background: white !important;
+        }
+        
+        /* Hide Grammarly suggestions */
+        grammarly-desktop-integration,
+        grammarly-extension {
+            display: none !important;
+        }
+        
+        .typing-stats {
+            display: flex;
+            gap: 24px;
+            margin-top: 16px;
+            justify-content: center;
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #667eea;
+        }
+        
+        .stat-label {
+            font-size: 0.875rem;
+            color: #64748b;
+            margin-top: 4px;
+        }
+        
+        .pronunciation-words {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin: 24px 0;
+        }
+        
+        .word-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            border: 2px solid #e2e8f0;
+        }
+        
+        .word-card.recorded {
+            border-color: #10b981;
+            background: #d1fae5;
+        }
+        
+        #listening-sentences-container {
+            margin: 24px 0;
+        }
+        
+        #listening-sentences-container .word-card {
+            background: white;
+            border: 2px solid #e2e8f0;
+            transition: all 0.3s ease;
+        }
+        
+        #listening-sentences-container .word-card.recorded {
+            border-color: #10b981;
+            background: #f0fdf4;
+        }
+        
+        .word-text {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1E3A5F;
+            margin-bottom: 12px;
+        }
+        
+        .word-audio-btn {
+            padding: 8px 16px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.875rem;
+        }
+        
+        .word-audio-btn:hover {
+            background: #5a67d8;
+        }
+        
+        .word-status {
+            margin-top: 8px;
+            font-size: 0.75rem;
+            color: #64748b;
+        }
+        
+        .word-status.recorded {
+            color: #10b981;
+            font-weight: 600;
+        }
+        
+        .navigation-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: space-between;
+            margin-top: 32px;
+        }
+        
+        .error-message {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin: 16px 0;
+            display: none;
+        }
+        
+        .success-message {
+            background: #d1fae5;
+            color: #065f46;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin: 16px 0;
+            display: none;
+        }
+        
+        .reading-text {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            margin: 20px 0;
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: #1E3A5F;
+            border: 2px solid #e2e8f0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 Teaching Abilities Assessment</h1>
+            <p>Complete all tests to begin teaching. Your assessments will be reviewed by RemoEd trainers/admins.</p>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+            </div>
+            <p id="progress-text" style="color: #64748b; margin-top: 8px;">0 of 4 tests completed</p>
+        </div>
+        
+        <div id="error-message" class="error-message"></div>
+        <div id="success-message" class="success-message"></div>
+        
+        <!-- Listening Test -->
+        <div class="test-card active" id="listening-test">
+            <div class="test-header">
+                <h2 class="test-title">1. Listening Test</h2>
+                <span class="test-status pending" id="listening-status">Pending</span>
+            </div>
+            
+            <div class="test-instructions">
+                <h4>Instructions:</h4>
+                <ul>
+                    <li>Listen to each short sentence by clicking the play button</li>
+                    <li>After listening, record your response repeating what you heard</li>
+                    <li>Complete all 3 sentences to finish this test</li>
+                    <li>You can replay each audio as many times as needed</li>
+                </ul>
+            </div>
+            
+            <div id="listening-sentences-container">
+                <!-- Sentences will be generated dynamically -->
+            </div>
+        </div>
+        
+        <!-- Typing Test -->
+        <div class="test-card" id="typing-test">
+            <div class="test-header">
+                <h2 class="test-title">2. Typing Test</h2>
+                <span class="test-status pending" id="typing-status">Pending</span>
+            </div>
+            
+            <div class="test-instructions">
+                <h4>Instructions:</h4>
+                <ul>
+                    <li>Type the text below exactly as shown</li>
+                    <li>Your typing speed (WPM) and accuracy will be measured</li>
+                    <li>Take your time to ensure accuracy</li>
+                    <li>Click "Start Test" when ready</li>
+                </ul>
+            </div>
+            
+            <div class="typing-test">
+                <div class="typing-prompt" id="typing-prompt">
+                    Teaching English as a second language requires patience, creativity, and a deep understanding of how students learn. Effective teachers adapt their methods to meet the diverse needs of learners from different cultural backgrounds. Communication skills are essential, as teachers must explain complex concepts in simple, understandable ways. Building rapport with students creates a positive learning environment where everyone feels comfortable making mistakes and learning from them.
+                </div>
+                <textarea class="typing-input" id="typing-input" placeholder="Start typing the text above when you click 'Start Test'..." disabled spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>
+                <div class="typing-stats" id="typing-stats" style="display: none;">
+                    <div class="stat-item">
+                        <div class="stat-value" id="wpm">0</div>
+                        <div class="stat-label">Words Per Minute</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="accuracy">0%</div>
+                        <div class="stat-label">Accuracy</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin: 24px 0;">
+                <button class="btn btn-primary" id="start-typing-test" onclick="startTypingTest()">Start Test</button>
+                <button class="btn btn-success" id="submit-typing-test" onclick="submitTypingTest()" style="display: none;">Submit Test</button>
+            </div>
+            
+            <div class="navigation-buttons">
+                <button class="btn btn-secondary" onclick="previousTest('listening')">← Previous</button>
+                <button class="btn btn-primary" id="next-typing" onclick="nextTest('reading')" disabled>Next: Reading Test →</button>
+            </div>
+        </div>
+        
+        <!-- Reading Test -->
+        <div class="test-card" id="reading-test">
+            <div class="test-header">
+                <h2 class="test-title">3. Reading Test</h2>
+                <span class="test-status pending" id="reading-status">Pending</span>
+            </div>
+            
+            <div class="test-instructions">
+                <h4>Instructions:</h4>
+                <ul>
+                    <li>Read the text below aloud</li>
+                    <li>Record yourself while reading</li>
+                    <li>Speak clearly and at a natural pace</li>
+                    <li>Focus on proper pronunciation and intonation</li>
+                </ul>
+            </div>
+            
+            <div class="reading-text" id="reading-text">
+                The art of teaching extends far beyond simply delivering information. Great educators understand that learning is a collaborative journey where both teacher and student grow together. They create environments that encourage curiosity, critical thinking, and a love for continuous learning. When teaching English, it's important to celebrate small victories and provide constructive feedback that motivates students to keep improving. Every student has unique strengths and challenges, and recognizing these individual differences is key to effective instruction.
+            </div>
+            
+            <div style="text-align: center; margin: 24px 0;">
+                <button class="btn btn-primary" id="start-reading-recording" onclick="startReadingRecording()">Start Recording</button>
+                <div class="recording-status" id="reading-recording-status" style="display: none;"></div>
+                <div class="recording-controls" id="reading-controls" style="display: none;">
+                    <button class="btn btn-secondary" onclick="stopReadingRecording()">Stop Recording</button>
+                    <button class="btn btn-secondary" onclick="playReadingRecording()">Play Recording</button>
+                    <audio id="reading-playback" controls style="display: none;"></audio>
+                </div>
+            </div>
+            
+            <div class="navigation-buttons">
+                <button class="btn btn-secondary" onclick="previousTest('typing')">← Previous</button>
+                <button class="btn btn-primary" id="next-reading" onclick="nextTest('pronunciation')" disabled>Next: Pronunciation Test →</button>
+            </div>
+        </div>
+        
+        <!-- Pronunciation Test -->
+        <div class="test-card" id="pronunciation-test">
+            <div class="test-header">
+                <h2 class="test-title">4. Pronunciation Test</h2>
+                <span class="test-status pending" id="pronunciation-status">Pending</span>
+            </div>
+            
+            <div class="test-instructions">
+                <h4>Instructions:</h4>
+                <ul>
+                    <li>Pronounce each word clearly</li>
+                    <li>Record your pronunciation for each word</li>
+                    <li>You can re-record any word if needed</li>
+                    <li>Complete all words to finish the test</li>
+                </ul>
+            </div>
+            
+            <div class="pronunciation-words" id="pronunciation-words">
+                <!-- Words will be generated dynamically -->
+            </div>
+            
+            <div class="navigation-buttons">
+                <button class="btn btn-secondary" onclick="previousTest('reading')">← Previous</button>
+                <button class="btn btn-success" id="submit-all-tests" onclick="submitAllTests()" disabled>Submit All Tests</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Check if user is a teacher
+        const userType = localStorage.getItem('userType');
+        if (userType !== 'teacher') {
+            alert('Access denied. This page is for teachers only.');
+            window.location.href = 'index.html';
+        }
+        
+        const token = localStorage.getItem('token');
+        if (!token) {
+            window.location.href = 'teacher-login.html';
+        }
+        
+        // Assessment state
+        let currentTest = 'listening';
+        let listeningRecording = null;
+        let readingRecording = null;
+        let typingStartTime = null;
+        let typingTestActive = false;
+        let pronunciationWords = [
+            'pronunciation', 'thorough', 'through', 'though', 'thought',
+            'schedule', 'comfortable', 'vegetable', 'interesting', 'develop',
+            'environment', 'opportunity', 'necessary', 'separate', 'definitely'
+        ];
+        let pronunciationRecordings = {};
+        
+        // Listening test sentences
+        const listeningSentences = [
+            "Good morning, class.",
+            "Today we will learn English.",
+            "Please listen carefully."
+        ];
+        let listeningRecordings = {}; // Store recordings for each sentence
+        let currentListeningSentenceIndex = 0;
+        let currentListeningRecorder = null;
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Initialize UI first
+            initializeListeningTest();
+            initializePronunciationTest();
+            
+            // Then load saved status (this will update the UI with saved progress)
+            await loadAssessmentStatus();
+            
+            // Update progress one more time to ensure it's accurate
+            updateProgress();
+        });
+        
+        // Load assessment status
+        async function loadAssessmentStatus() {
+            try {
+                const response = await fetch('/api/teacher/profile', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.teacher && data.teacher.assessmentTests) {
+                        const tests = data.teacher.assessmentTests;
+                        
+                        // Show completed tests and restore state
+                        if (tests.listening && tests.listening.audioRecording) {
+                            // Mark all sentences as recorded
+                            listeningSentences.forEach((_, index) => {
+                                listeningRecordings[index] = true; // Mark as recorded
+                                const statusEl = document.getElementById(`listening-sentence-status-${index}`);
+                                const recordBtn = document.getElementById(`record-btn-${index}`);
+                                const playBtn = document.getElementById(`play-btn-${index}`);
+                                const sentenceCard = document.getElementById(`listening-sentence-${index}`);
+                                
+                                if (statusEl) {
+                                    statusEl.textContent = 'Recorded ✓';
+                                    statusEl.style.color = '#10b981';
+                                    statusEl.style.fontWeight = '600';
+                                }
+                                if (recordBtn) recordBtn.disabled = true;
+                                if (playBtn) playBtn.disabled = true;
+                                if (sentenceCard) sentenceCard.classList.add('recorded');
+                            });
+                            markTestComplete('listening');
+                            document.getElementById('next-listening').disabled = false;
+                        }
+                        if (tests.typing && tests.typing.wpm !== null) {
+                            markTestComplete('typing');
+                        }
+                        if (tests.reading && tests.reading.audioRecording) {
+                            markTestComplete('reading');
+                        }
+                        if (tests.pronunciation && tests.pronunciation.audioRecording) {
+                            markTestComplete('pronunciation');
+                        }
+                        
+                        // Update progress after loading all states
+                        updateProgress();
+                        
+                        if (tests.completed) {
+                            showMessage('success', 'All assessments completed! You can now start teaching.');
+                        }
+                    } else {
+                        // No saved tests, just update progress
+                        updateProgress();
+                    }
+                } else {
+                    // If profile load fails, still update progress with current state
+                    updateProgress();
+                }
+            } catch (error) {
+                console.error('Error loading assessment status:', error);
+                // Even if load fails, update progress with current state
+                updateProgress();
+            }
+        }
+        
+        // Initialize listening test with 3 short sentences
+        function initializeListeningTest() {
+            const container = document.getElementById('listening-sentences-container');
+            container.innerHTML = '';
+            
+            listeningSentences.forEach((sentence, index) => {
+                const sentenceCard = document.createElement('div');
+                sentenceCard.className = 'word-card';
+                sentenceCard.id = `listening-sentence-${index}`;
+                sentenceCard.style.marginBottom = '24px';
+                sentenceCard.innerHTML = `
+                    <div class="word-text" style="font-size: 1.2rem; margin-bottom: 16px;">${sentence}</div>
+                    <div style="display: flex; gap: 12px; justify-content: center; margin-bottom: 12px;">
+                        <button class="btn btn-primary" onclick="playListeningSentence(${index})" id="play-btn-${index}">▶️ Play Audio</button>
+                        <button class="btn btn-secondary" onclick="startListeningRecording(${index})" id="record-btn-${index}">🎤 Record Response</button>
+                    </div>
+                    <div class="recording-status" id="listening-status-${index}" style="display: none; text-align: center; margin: 8px 0;"></div>
+                    <div style="display: none; gap: 8px; justify-content: center; margin-top: 8px;" id="listening-controls-${index}">
+                        <button class="btn btn-secondary" onclick="stopListeningRecording(${index})" id="stop-btn-${index}">Stop Recording</button>
+                        <button class="btn btn-secondary" onclick="playListeningRecording(${index})" id="play-recorded-btn-${index}">Play Recording</button>
+                    </div>
+                    <div class="word-status" id="listening-sentence-status-${index}" style="margin-top: 8px;">Not recorded</div>
+                    <audio id="listening-playback-${index}" controls style="display: none; width: 100%; margin-top: 8px;"></audio>
+                `;
+                container.appendChild(sentenceCard);
+            });
+            
+            // Add navigation button
+            const navContainer = document.createElement('div');
+            navContainer.className = 'navigation-buttons';
+            navContainer.style.marginTop = '32px';
+            navContainer.innerHTML = `
+                <div></div>
+                <button class="btn btn-primary" id="next-listening" onclick="nextTest('typing')" disabled>Next: Typing Test →</button>
+            `;
+            container.appendChild(navContainer);
+        }
+        
+        // Play listening sentence using text-to-speech with free API
+        async function playListeningSentence(index) {
+            const sentence = listeningSentences[index];
+            if (!sentence) return;
+            
+            const playBtn = document.getElementById(`play-btn-${index}`);
+            playBtn.disabled = true;
+            playBtn.textContent = 'Loading...';
+            
+            try {
+                // Try Web Speech API first (free, built-in, widely supported)
+                if ('speechSynthesis' in window) {
+                    // Cancel any ongoing speech
+                    window.speechSynthesis.cancel();
+                    
+                    // Wait a bit for cancellation to complete
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    
+                    const utterance = new SpeechSynthesisUtterance(sentence);
+                    utterance.lang = 'en-US';
+                    utterance.rate = 0.85; // Slightly slower for clarity
+                    utterance.pitch = 1;
+                    utterance.volume = 1;
+                    
+                    utterance.onstart = () => {
+                        playBtn.textContent = 'Playing...';
+                    };
+                    
+                    utterance.onend = () => {
+                        playBtn.disabled = false;
+                        playBtn.textContent = '▶️ Play Audio';
+                    };
+                    
+                    utterance.onerror = (event) => {
+                        console.error('Speech synthesis error:', event);
+                        playBtn.disabled = false;
+                        playBtn.textContent = '▶️ Play Audio';
+                        // Fallback to alternative method
+                        useFallbackTTS(sentence, playBtn);
+                    };
+                    
+                    // Speak with error handling
+                    try {
+                        window.speechSynthesis.speak(utterance);
+                    } catch (err) {
+                        console.error('Error starting speech:', err);
+                        useFallbackTTS(sentence, playBtn);
+                    }
+                } else {
+                    // Browser doesn't support speechSynthesis
+                    useFallbackTTS(sentence, playBtn);
+                }
+            } catch (error) {
+                console.error('TTS error:', error);
+                useFallbackTTS(sentence, playBtn);
+            }
+        }
+        
+        // Fallback: Show instruction to read the text
+        function useFallbackTTS(text, playBtn) {
+            playBtn.disabled = false;
+            playBtn.textContent = '▶️ Play Audio';
+            
+            // Show a helpful message
+            const message = 'Audio playback is not available. Please read the sentence text displayed above, then record your response.';
+            showMessage('info', message);
+            
+            // Highlight the sentence text to draw attention
+            const sentenceCard = document.querySelector(`#listening-sentence-${playBtn.id.replace('play-btn-', '')}`);
+            if (sentenceCard) {
+                const wordText = sentenceCard.querySelector('.word-text');
+                if (wordText) {
+                    wordText.style.background = '#fff3cd';
+                    wordText.style.padding = '12px';
+                    wordText.style.borderRadius = '8px';
+                    wordText.style.border = '2px solid #ffc107';
+                    setTimeout(() => {
+                        wordText.style.background = '';
+                        wordText.style.padding = '';
+                        wordText.style.borderRadius = '';
+                        wordText.style.border = '';
+                    }, 3000);
+                }
+            }
+        }
+        
+        // Initialize pronunciation test
+        function initializePronunciationTest() {
+            const container = document.getElementById('pronunciation-words');
+            pronunciationWords.forEach((word, index) => {
+                const wordCard = document.createElement('div');
+                wordCard.className = 'word-card';
+                wordCard.id = `word-${index}`;
+                wordCard.innerHTML = `
+                    <div class="word-text">${word}</div>
+                    <button class="word-audio-btn" onclick="recordPronunciation(${index})">Record</button>
+                    <div class="word-status" id="word-status-${index}">Not recorded</div>
+                `;
+                container.appendChild(wordCard);
+            });
+        }
+        
+        // Listening test functions - updated for multiple sentences
+        async function startListeningRecording(sentenceIndex) {
+            try {
+                // Stop any currently playing speech or audio
+                if ('speechSynthesis' in window) {
+                    window.speechSynthesis.cancel();
+                }
+                // Stop any playing audio elements
+                document.querySelectorAll('audio').forEach(audio => {
+                    if (!audio.paused) {
+                        audio.pause();
+                        audio.currentTime = 0;
+                    }
+                });
+                
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const mediaRecorder = new MediaRecorder(stream);
+                const chunks = [];
+                
+                // Store stream reference for cleanup
+                mediaRecorder.stream = stream;
+                mediaRecorder.sentenceIndex = sentenceIndex;
+                
+                mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(chunks, { type: 'audio/webm' });
+                    listeningRecordings[sentenceIndex] = blob;
+                    
+                    const playbackEl = document.getElementById(`listening-playback-${sentenceIndex}`);
+                    playbackEl.src = URL.createObjectURL(blob);
+                    playbackEl.style.display = 'block';
+                    
+                    // Mark as recorded
+                    const statusEl = document.getElementById(`listening-sentence-status-${sentenceIndex}`);
+                    statusEl.textContent = 'Recorded ✓';
+                    statusEl.style.color = '#10b981';
+                    statusEl.style.fontWeight = '600';
+                    
+                    const sentenceCard = document.getElementById(`listening-sentence-${sentenceIndex}`);
+                    sentenceCard.classList.add('recorded');
+                    
+                    // Check if all sentences are recorded
+                    checkListeningComplete();
+                };
+                
+                mediaRecorder.start();
+                currentListeningRecorder = mediaRecorder;
+                
+                // Show controls immediately when recording starts
+                const recordBtn = document.getElementById(`record-btn-${sentenceIndex}`);
+                const stopBtn = document.getElementById(`stop-btn-${sentenceIndex}`);
+                const playRecordedBtn = document.getElementById(`play-recorded-btn-${sentenceIndex}`);
+                const statusEl = document.getElementById(`listening-status-${sentenceIndex}`);
+                const controlsEl = document.getElementById(`listening-controls-${sentenceIndex}`);
+                
+                recordBtn.disabled = true;
+                statusEl.style.display = 'block';
+                statusEl.textContent = 'Recording...';
+                statusEl.classList.add('recording');
+                stopBtn.style.display = 'inline-block';
+                playRecordedBtn.style.display = 'inline-block';
+                controlsEl.style.display = 'flex';
+            } catch (error) {
+                showMessage('error', 'Error accessing microphone: ' + error.message);
+            }
+        }
+        
+        function stopListeningRecording(sentenceIndex) {
+            if (currentListeningRecorder && currentListeningRecorder.sentenceIndex === sentenceIndex) {
+                if (currentListeningRecorder.state && currentListeningRecorder.state !== 'inactive') {
+                    currentListeningRecorder.stop();
+                }
+                if (currentListeningRecorder.stream) {
+                    currentListeningRecorder.stream.getTracks().forEach(track => track.stop());
+                }
+                
+                const statusEl = document.getElementById(`listening-status-${sentenceIndex}`);
+                const recordBtn = document.getElementById(`record-btn-${sentenceIndex}`);
+                const stopBtn = document.getElementById(`stop-btn-${sentenceIndex}`);
+                
+                statusEl.textContent = 'Recording stopped';
+                statusEl.classList.remove('recording');
+                recordBtn.disabled = false;
+                stopBtn.style.display = 'none';
+                
+                // Keep controls visible so user can play back recording
+                const playRecordedBtn = document.getElementById(`play-recorded-btn-${sentenceIndex}`);
+                if (playRecordedBtn) playRecordedBtn.style.display = 'inline-block';
+                
+                currentListeningRecorder = null;
+            }
+        }
+        
+        function playListeningRecording(sentenceIndex) {
+            const playbackEl = document.getElementById(`listening-playback-${sentenceIndex}`);
+            if (playbackEl && playbackEl.src) {
+                playbackEl.play();
+            }
+        }
+        
+        function checkListeningComplete() {
+            const allRecorded = listeningSentences.every((_, index) => listeningRecordings[index]);
+            if (allRecorded) {
+                document.getElementById('next-listening').disabled = false;
+                // Mark test as complete in UI
+                if (!document.getElementById('listening-status').classList.contains('completed')) {
+                    markTestComplete('listening');
+                    // Auto-save the listening test
+                    saveTestResult('listening', { 
+                        sentences: listeningSentences,
+                        recordingsCount: Object.keys(listeningRecordings).length
+                    }).catch(err => console.error('Error auto-saving listening test:', err));
+                }
+            }
+        }
+        
+        // Typing test functions
+        function startTypingTest() {
+            typingTestActive = true;
+            typingStartTime = Date.now();
+            const typingInput = document.getElementById('typing-input');
+            
+            // Disable all grammar/spell checkers
+            typingInput.disabled = false;
+            typingInput.spellcheck = false;
+            typingInput.setAttribute('data-gramm', 'false');
+            typingInput.setAttribute('data-gramm_editor', 'false');
+            typingInput.setAttribute('data-enable-grammarly', 'false');
+            typingInput.setAttribute('autocomplete', 'off');
+            typingInput.setAttribute('autocorrect', 'off');
+            typingInput.setAttribute('autocapitalize', 'off');
+            
+            // Remove Grammarly if it's been injected
+            if (window.grammarly) {
+                try {
+                    window.grammarly = undefined;
+                } catch (e) {}
+            }
+            
+            // Remove Grammarly elements if they exist
+            const grammarlyElements = document.querySelectorAll('grammarly-desktop-integration, grammarly-extension, [data-gramm]');
+            grammarlyElements.forEach(el => {
+                if (el !== typingInput) {
+                    el.style.display = 'none';
+                    el.remove();
+                }
+            });
+            
+            typingInput.focus();
+            document.getElementById('start-typing-test').style.display = 'none';
+            document.getElementById('submit-typing-test').style.display = 'inline-block';
+            document.getElementById('typing-stats').style.display = 'flex';
+            
+            // Calculate stats in real-time
+            typingInput.addEventListener('input', calculateTypingStats);
+        }
+        
+        function calculateTypingStats() {
+            if (!typingTestActive || !typingStartTime) return;
+            
+            const typedText = document.getElementById('typing-input').value;
+            const promptText = document.getElementById('typing-prompt').textContent;
+            const timeElapsed = (Date.now() - typingStartTime) / 1000 / 60; // minutes
+            const wordsTyped = typedText.trim().split(/\s+/).length;
+            const wpm = Math.round(wordsTyped / timeElapsed);
+            
+            // Calculate accuracy
+            let correctChars = 0;
+            const minLength = Math.min(typedText.length, promptText.length);
+            for (let i = 0; i < minLength; i++) {
+                if (typedText[i] === promptText[i]) correctChars++;
+            }
+            const accuracy = Math.round((correctChars / typedText.length) * 100) || 0;
+            
+            document.getElementById('wpm').textContent = wpm || 0;
+            document.getElementById('accuracy').textContent = accuracy + '%';
+        }
+        
+        async function submitTypingTest() {
+            const typedText = document.getElementById('typing-input').value;
+            const promptText = document.getElementById('typing-prompt').textContent;
+            
+            // Check if user typed something
+            if (!typedText || typedText.trim().length === 0) {
+                showMessage('error', 'Please type the text before submitting.');
+                return;
+            }
+            
+            const timeElapsed = (Date.now() - typingStartTime) / 1000 / 60;
+            const wordsTyped = typedText.trim().split(/\s+/).length;
+            const wpm = Math.round(wordsTyped / timeElapsed);
+            
+            let correctChars = 0;
+            const minLength = Math.min(typedText.length, promptText.length);
+            for (let i = 0; i < minLength; i++) {
+                if (typedText[i] === promptText[i]) correctChars++;
+            }
+            const accuracy = Math.round((correctChars / typedText.length) * 100) || 0;
+            
+            // Disable input after submission
+            document.getElementById('typing-input').disabled = true;
+            typingTestActive = false;
+            
+            const saved = await saveTestResult('typing', {
+                wpm: wpm,
+                accuracy: accuracy,
+                text: typedText
+            });
+            
+            // Mark as complete and enable next button regardless of save status
+            markTestComplete('typing');
+            
+            // Enable the next button
+            const nextButton = document.getElementById('next-typing');
+            if (nextButton) {
+                nextButton.disabled = false;
+            }
+            
+            if (saved) {
+                showMessage('success', 'Typing test submitted successfully!');
+            } else {
+                showMessage('info', 'Typing test completed. You can proceed to the next test.');
+            }
+        }
+        
+        // Reading test functions
+        async function startReadingRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const mediaRecorder = new MediaRecorder(stream);
+                const chunks = [];
+                
+                // Store stream reference for cleanup
+                mediaRecorder.stream = stream;
+                
+                mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(chunks, { type: 'audio/webm' });
+                    readingRecording = blob;
+                    document.getElementById('reading-playback').src = URL.createObjectURL(blob);
+                    document.getElementById('reading-playback').style.display = 'block';
+                };
+                
+                mediaRecorder.start();
+                readingRecording = mediaRecorder;
+                
+                // Show controls immediately when recording starts
+                document.getElementById('start-reading-recording').disabled = true;
+                document.getElementById('reading-recording-status').style.display = 'block';
+                document.getElementById('reading-recording-status').textContent = 'Recording...';
+                document.getElementById('reading-recording-status').classList.add('recording');
+                document.getElementById('reading-controls').style.display = 'flex';
+            } catch (error) {
+                showMessage('error', 'Error accessing microphone: ' + error.message);
+            }
+        }
+        
+        function stopReadingRecording() {
+            if (readingRecording) {
+                if (readingRecording.state && readingRecording.state !== 'inactive') {
+                    readingRecording.stop();
+                }
+                if (readingRecording.stream) {
+                    readingRecording.stream.getTracks().forEach(track => track.stop());
+                }
+                document.getElementById('reading-recording-status').textContent = 'Recording stopped';
+                document.getElementById('reading-recording-status').classList.remove('recording');
+                document.getElementById('start-reading-recording').disabled = false;
+                document.getElementById('next-reading').disabled = false;
+                
+                // Mark reading test as complete
+                if (!document.getElementById('reading-status').classList.contains('completed')) {
+                    markTestComplete('reading');
+                    // Auto-save the reading test
+                    saveTestResult('reading', { text: document.getElementById('reading-text').textContent })
+                        .catch(err => console.error('Error auto-saving reading test:', err));
+                }
+                
+                // Check if all tests are ready
+                checkAllTestsReady();
+            }
+        }
+        
+        function playReadingRecording() {
+            document.getElementById('reading-playback').play();
+        }
+        
+        // Pronunciation test functions
+        async function recordPronunciation(wordIndex) {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const mediaRecorder = new MediaRecorder(stream);
+                const chunks = [];
+                
+                mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
+                mediaRecorder.onstop = async () => {
+                    const blob = new Blob(chunks, { type: 'audio/webm' });
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        const base64 = reader.result.split(',')[1];
+                        pronunciationRecordings[wordIndex] = base64;
+                        
+                        document.getElementById(`word-${wordIndex}`).classList.add('recorded');
+                        document.getElementById(`word-status-${wordIndex}`).textContent = 'Recorded ✓';
+                        document.getElementById(`word-status-${wordIndex}`).classList.add('recorded');
+                        
+                        checkPronunciationComplete();
+                    };
+                    reader.readAsDataURL(blob);
+                    stream.getTracks().forEach(track => track.stop());
+                };
+                
+                mediaRecorder.start();
+                document.getElementById(`word-status-${wordIndex}`).textContent = 'Recording...';
+                
+                setTimeout(() => {
+                    if (mediaRecorder.state !== 'inactive') {
+                        mediaRecorder.stop();
+                    }
+                }, 5000); // 5 second limit per word
+            } catch (error) {
+                showMessage('error', 'Error accessing microphone: ' + error.message);
+            }
+        }
+        
+        function checkPronunciationComplete() {
+            const allRecorded = pronunciationWords.every((_, index) => pronunciationRecordings[index]);
+            if (allRecorded) {
+                // Mark pronunciation as complete
+                if (!document.getElementById('pronunciation-status').classList.contains('completed')) {
+                    markTestComplete('pronunciation');
+                }
+                
+                // Enable submit button
+                const submitBtn = document.getElementById('submit-all-tests');
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                }
+            }
+        }
+        
+        // Check if all tests are ready for submission
+        function checkAllTestsReady() {
+            const listeningComplete = listeningSentences.every((_, index) => listeningRecordings[index]);
+            const typingComplete = document.getElementById('typing-status')?.textContent === 'Completed';
+            const readingComplete = !!readingRecording;
+            const pronunciationComplete = pronunciationWords.every((_, index) => pronunciationRecordings[index]);
+            
+            if (listeningComplete && typingComplete && readingComplete && pronunciationComplete) {
+                const submitBtn = document.getElementById('submit-all-tests');
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                }
+            }
+        }
+        
+        // Navigation functions
+        function nextTest(testName) {
+            console.log('Navigating from', currentTest, 'to', testName);
+            
+            // Save current test before moving to next
+            if (currentTest === 'listening') {
+                const allListeningRecorded = listeningSentences.every((_, index) => listeningRecordings[index]);
+                if (allListeningRecorded) {
+                    saveTestResult('listening', { 
+                        sentences: listeningSentences,
+                        recordingsCount: Object.keys(listeningRecordings).length
+                    }).catch(err => console.error('Error saving listening test:', err));
+                }
+            } else if (currentTest === 'typing' && typingTestActive === false && document.getElementById('typing-status')?.textContent.includes('Completed')) {
+                // Typing test already saved
+            } else if (currentTest === 'reading' && readingRecording) {
+                saveTestResult('reading', { text: document.getElementById('reading-text').textContent })
+                    .catch(err => console.error('Error saving reading test:', err));
+            }
+            
+            // Hide current test
+            const currentTestEl = document.querySelector(`#${currentTest}-test`);
+            const nextTestEl = document.querySelector(`#${testName}-test`);
+            
+            if (currentTestEl) {
+                currentTestEl.classList.remove('active');
+                currentTestEl.style.display = 'none';
+                console.log('Removed active from', currentTest);
+            } else {
+                console.error('Current test element not found:', `#${currentTest}-test`);
+            }
+            
+            if (nextTestEl) {
+                nextTestEl.classList.add('active');
+                nextTestEl.style.display = 'block';
+                console.log('Added active to', testName);
+                
+                // Force visibility
+                nextTestEl.style.visibility = 'visible';
+                nextTestEl.style.opacity = '1';
+                
+                // Scroll to top of page first, then to test card
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                setTimeout(() => {
+                    nextTestEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 100);
+            } else {
+                console.error('Next test element not found:', `#${testName}-test`);
+                showMessage('error', `Error: Could not find ${testName} test. Please refresh the page.`);
+            }
+            
+            currentTest = testName;
+            
+            // Update progress after navigation
+            updateProgress();
+        }
+        
+        function previousTest(testName) {
+            document.querySelector(`#${currentTest}-test`).classList.remove('active');
+            document.querySelector(`#${testName}-test`).classList.add('active');
+            currentTest = testName;
+        }
+        
+        // Save test results
+        async function saveTestResult(testType, data) {
+            try {
+                let audioData = null;
+                let audioFileName = null;
+                
+                if (testType === 'listening') {
+                    // Combine all listening recordings into one
+                    const allRecordings = Object.values(listeningRecordings);
+                    if (allRecordings.length > 0) {
+                        // Check if it's already base64 (from saved state) or a blob
+                        if (typeof allRecordings[0] === 'string') {
+                            audioData = allRecordings[0]; // Already base64
+                        } else {
+                            audioData = await blobToBase64(allRecordings[0]);
+                        }
+                        audioFileName = 'listening-response.webm';
+                    }
+                } else if (testType === 'reading' && readingRecording) {
+                    // Check if it's already base64 or a blob
+                    if (typeof readingRecording === 'string') {
+                        audioData = readingRecording; // Already base64
+                    } else {
+                        audioData = await blobToBase64(readingRecording);
+                    }
+                    audioFileName = 'reading-recording.webm';
+                } else if (testType === 'pronunciation' && data.audioRecording) {
+                    // Pronunciation audioRecording is already base64 from the recording process
+                    audioData = data.audioRecording;
+                    audioFileName = data.audioFileName || 'pronunciation-test.webm';
+                }
+                
+                const payload = {
+                    testType: testType,
+                    ...data
+                };
+                
+                if (audioData) {
+                    payload.audioRecording = audioData;
+                    payload.audioFileName = audioFileName;
+                }
+                
+                const response = await fetch('/api/teacher/save-assessment-test', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        throw new Error('Assessment endpoint not found. Please restart the server or contact support.');
+                    }
+                    const error = await response.json().catch(() => ({ error: `HTTP ${response.status}: ${response.statusText}` }));
+                    throw new Error(error.error || 'Failed to save test result');
+                }
+                
+                return true;
+            } catch (error) {
+                showMessage('error', 'Error saving test: ' + error.message);
+                return false;
+            }
+        }
+        
+        async function submitAllTests() {
+            // Disable button to prevent double submission
+            const submitBtn = document.getElementById('submit-all-tests');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Submitting...';
+            
+            try {
+                // Save listening test if all sentences are recorded
+                const allListeningRecorded = listeningSentences.every((_, index) => listeningRecordings[index]);
+                if (allListeningRecorded) {
+                    const listeningSaved = await saveTestResult('listening', { 
+                        sentences: listeningSentences,
+                        recordingsCount: Object.keys(listeningRecordings).length
+                    });
+                    if (!listeningSaved) {
+                        console.warn('Listening test save may have failed');
+                    }
+                } else {
+                    showMessage('error', 'Please complete the listening test first.');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Submit All Tests';
+                    return;
+                }
+                
+                // Save typing test if not saved
+                const typingStatus = document.getElementById('typing-status');
+                if (typingStatus && typingStatus.textContent === 'Completed') {
+                    // Already saved
+                } else {
+                    showMessage('error', 'Please complete the typing test first.');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Submit All Tests';
+                    return;
+                }
+                
+                // Save reading test if not saved
+                if (readingRecording) {
+                    const readingSaved = await saveTestResult('reading', { 
+                        text: document.getElementById('reading-text').textContent 
+                    });
+                    if (!readingSaved) {
+                        console.warn('Reading test save may have failed');
+                    }
+                } else {
+                    showMessage('error', 'Please complete the reading test first.');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Submit All Tests';
+                    return;
+                }
+                
+                // Save pronunciation test - save words array with audio data
+                const allPronunciationRecorded = pronunciationWords.every((_, index) => pronunciationRecordings[index]);
+                if (allPronunciationRecorded) {
+                    // Get the first word's audio as the main recording for backend validation
+                    const firstWordAudio = pronunciationRecordings[0];
+                    if (firstWordAudio) {
+                        const words = pronunciationWords.map((word, index) => ({
+                            word: word,
+                            audio: pronunciationRecordings[index] || null
+                        }));
+                        
+                        // Save pronunciation with both words array and main audioRecording
+                        const pronunciationSaved = await saveTestResult('pronunciation', { 
+                            words: words,
+                            audioRecording: firstWordAudio, // Save first word as main recording for backend check
+                            audioFileName: 'pronunciation-test.webm'
+                        });
+                        if (!pronunciationSaved) {
+                            console.warn('Pronunciation test save may have failed');
+                        }
+                    } else {
+                        showMessage('error', 'Pronunciation recordings not found. Please record all words again.');
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'Submit All Tests';
+                        return;
+                    }
+                } else {
+                    showMessage('error', 'Please complete the pronunciation test first (record all words).');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Submit All Tests';
+                    return;
+                }
+                
+                // Wait a moment for all saves to complete
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                // Mark all as complete
+                const response = await fetch('/api/teacher/complete-assessment', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    // Set flag to show success message on profile page
+                    localStorage.setItem('assessmentJustCompleted', 'true');
+                    
+                    showMessage('success', 'All assessments submitted successfully! Your results will be reviewed by RemoEd trainers/admins.');
+                    setTimeout(() => {
+                        window.location.href = 'teacher-profile.html?assessment=completed';
+                    }, 2000);
+                } else {
+                    const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+                    console.error('Complete assessment error:', errorData);
+                    
+                    // Show detailed error message
+                    let errorMsg = errorData.error || 'Failed to complete assessment. Please try again.';
+                    if (errorData.missing && errorData.missing.length > 0) {
+                        errorMsg += ` Missing: ${errorData.missing.join(', ')}`;
+                    }
+                    if (errorData.details) {
+                        console.log('Assessment details:', errorData.details);
+                    }
+                    
+                    showMessage('error', errorMsg);
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Submit All Tests';
+                }
+            } catch (error) {
+                console.error('Error in submitAllTests:', error);
+                showMessage('error', 'Error completing assessment: ' + error.message);
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit All Tests';
+            }
+        }
+        
+        function markTestComplete(testName) {
+            document.getElementById(`${testName}-status`).textContent = 'Completed';
+            document.getElementById(`${testName}-status`).classList.remove('pending');
+            document.getElementById(`${testName}-status`).classList.add('completed');
+            document.querySelector(`#${testName}-test`).classList.add('completed');
+            
+            // Enable the next button for this test
+            if (testName === 'listening') {
+                const nextBtn = document.getElementById('next-listening');
+                if (nextBtn) nextBtn.disabled = false;
+            } else if (testName === 'typing') {
+                const nextBtn = document.getElementById('next-typing');
+                if (nextBtn) nextBtn.disabled = false;
+            } else if (testName === 'reading') {
+                const nextBtn = document.getElementById('next-reading');
+                if (nextBtn) nextBtn.disabled = false;
+            }
+            
+            updateProgress();
+            
+            // Check if all tests are ready for final submission
+            checkAllTestsReady();
+        }
+        
+        function updateProgress() {
+            const tests = ['listening', 'typing', 'reading', 'pronunciation'];
+            let completed = 0;
+            
+            tests.forEach(test => {
+                const statusEl = document.getElementById(`${test}-status`);
+                if (statusEl) {
+                    // Check if test is marked as completed
+                    if (statusEl.classList.contains('completed') || statusEl.textContent === 'Completed') {
+                        completed++;
+                    } else {
+                        // Also check actual completion state
+                        if (test === 'listening') {
+                            const allRecorded = listeningSentences.every((_, index) => listeningRecordings[index]);
+                            if (allRecorded) completed++;
+                        } else if (test === 'typing') {
+                            const typingStatus = document.getElementById('typing-status');
+                            if (typingStatus && typingStatus.textContent === 'Completed') completed++;
+                        } else if (test === 'reading') {
+                            if (readingRecording) completed++;
+                        } else if (test === 'pronunciation') {
+                            const allRecorded = pronunciationWords.every((_, index) => pronunciationRecordings[index]);
+                            if (allRecorded) completed++;
+                        }
+                    }
+                }
+            });
+            
+            const progress = (completed / tests.length) * 100;
+            const progressFill = document.getElementById('progress-fill');
+            const progressText = document.getElementById('progress-text');
+            
+            if (progressFill) progressFill.style.width = progress + '%';
+            if (progressText) progressText.textContent = `${completed} of ${tests.length} tests completed`;
+        }
+        
+        function blobToBase64(blob) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    const base64 = reader.result.split(',')[1];
+                    resolve(base64);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        }
+        
+        function showMessage(type, message) {
+            const el = document.getElementById(type === 'error' ? 'error-message' : 'success-message');
+            el.textContent = message;
+            el.style.display = 'block';
+            setTimeout(() => {
+                el.style.display = 'none';
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

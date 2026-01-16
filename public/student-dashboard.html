@@ -15,19 +15,181 @@
             padding: 0;
         }
         
+<<<<<<< HEAD
+=======
+        /* Floating Fun Elements */
+        .fun-floating-elements {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+            overflow: hidden;
+        }
+        
+        .fun-floating-elements span {
+            position: absolute;
+            font-size: 2rem;
+            opacity: 0.3;
+            animation: float 4s ease-in-out infinite;
+        }
+        
+        /* Character Animations */
+        @keyframes characterBounce {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-15px) scale(1.05); }
+        }
+        
+        @keyframes characterWave {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(15deg); }
+            75% { transform: rotate(-15deg); }
+        }
+        
+        @keyframes characterPulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.9; }
+        }
+        
+        @keyframes speechBubble {
+            0%, 100% { transform: scale(1) translateY(0); opacity: 0.9; }
+            50% { transform: scale(1.05) translateY(-5px); opacity: 1; }
+        }
+        
+        /* Character Containers */
+        .character-container {
+            position: relative;
+            display: inline-block;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .character-container:hover {
+            transform: scale(1.2);
+        }
+        
+        .character-container:active {
+            transform: scale(0.95);
+        }
+        
+        /* More space for animated elements */
+        .character-container {
+            margin: 10px;
+        }
+        
+        /* Character Interaction Messages */
+        .character-message {
+            position: absolute;
+            bottom: -50px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #FFD700, #FFE66D);
+            color: #1CA7E7;
+            padding: 6px 10px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 800;
+            white-space: nowrap;
+            box-shadow: 0 3px 10px rgba(255, 215, 0, 0.4);
+            border: 2px solid #1CA7E7;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+        
+        .character-container:hover .character-message {
+            opacity: 1;
+        }
+        
+        .character-remo {
+            width: 160px;
+            height: 200px;
+            position: relative;
+            animation: characterBounce 2s ease-in-out infinite;
+        }
+        
+        .character-ed {
+            width: 140px;
+            height: 190px;
+            position: relative;
+            animation: characterBounce 2.5s ease-in-out infinite;
+            animation-delay: 0.3s;
+        }
+        
+        .character-sophia {
+            width: 140px;
+            height: 190px;
+            position: relative;
+            animation: characterBounce 2.3s ease-in-out infinite;
+            animation-delay: 0.6s;
+        }
+        
+        .character-speech {
+            position: absolute;
+            top: -45px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #1CA7E7, #5CB3FF);
+            color: white;
+            padding: 8px 14px;
+            border-radius: 16px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            white-space: nowrap;
+            box-shadow: 0 4px 15px rgba(28, 167, 231, 0.4);
+            border: 2px solid #FFD700;
+            animation: speechBubble 2s ease-in-out infinite;
+            z-index: 10;
+            pointer-events: none;
+        }
+        
+        .character-speech::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-top: 8px solid #1CA7E7;
+        }
+        
+        /* Remo Robot SVG Style */
+        .remo-robot {
+            filter: drop-shadow(0 4px 8px rgba(28, 167, 231, 0.3));
+        }
+        
+        .remo-screen {
+            animation: characterPulse 3s ease-in-out infinite;
+        }
+        
+        /* Ed Boy SVG Style */
+        .ed-boy {
+            filter: drop-shadow(0 4px 8px rgba(255, 140, 0, 0.3));
+        }
+        
+        /* Sophia Girl SVG Style */
+        .sophia-girl {
+            filter: drop-shadow(0 4px 8px rgba(255, 107, 157, 0.3));
+        }
+        
+        
+>>>>>>> 82021f05c965758b36140a1a8099d60eb2ea224f
         /* Navigation Header */
         .nav-header {
             position: fixed;
             top: 0;
             left: 260px;
             right: 0;
-            height: 60px;
+            height: 55px;
             background: #ffffff;
             border-bottom: 1px solid #e2e8f0;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0 2rem;
+            padding: 0 1.5rem;
             z-index: 50;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
@@ -35,7 +197,12 @@
         .nav-left {
             display: flex;
             align-items: center;
-            gap: 1rem;
+            gap: 0.75rem;
+        }
+        
+        .points-display, .badge {
+            font-size: 0.85rem;
+            padding: 6px 12px;
         }
         
         .nav-right {
@@ -250,7 +417,42 @@
         
         /* Main content adjustment */
         .remoed-content {
+<<<<<<< HEAD
             margin-top: 60px;
+=======
+            margin-top: 55px;
+            display: flex;
+            flex-direction: column;
+            padding: 1.5rem;
+            padding-top: 2rem;
+            min-height: calc(100vh - 55px);
+            overflow-x: visible;
+        }
+        
+        .remoed-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            flex: 1;
+            min-height: 0;
+        }
+        
+        .remoed-section {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        
+        #student-announcement-list,
+        .upcoming-classes-container,
+        #feedback-status-content {
+            flex: 1;
+            min-height: 0;
+        }
+        
+        .upcoming-classes-container {
+            max-height: none;
+>>>>>>> 82021f05c965758b36140a1a8099d60eb2ea224f
         }
         
         /* Notification and Upcoming Classes Container */
@@ -398,7 +600,19 @@
         <!-- Navigation Header -->
         <div class="nav-header">
             <div class="nav-left">
+<<<<<<< HEAD
                 <h1 style="margin: 0; font-size: 1.5rem; color: #1a202c;">Dashboard</h1>
+=======
+                <h1 style="margin: 0; font-size: 1.4rem; font-weight: 700; color: #1CA7E7; display: flex; align-items: center; gap: 8px;">
+                    <span>🎮 My Learning Adventure</span>
+                </h1>
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div class="points-display" id="student-points" style="font-size: 0.9rem; padding: 6px 12px;">
+                    <span id="points-count">0</span> ⭐
+                </div>
+                <div class="badge" id="level-badge" style="font-size: 0.85rem; padding: 6px 12px;">Level 1 🌱</div>
+>>>>>>> 82021f05c965758b36140a1a8099d60eb2ea224f
             </div>
             <div class="nav-right">
                 <!-- Quick Actions Icons -->
@@ -488,7 +702,133 @@
                 <li id="logout-nav" style="margin-top:auto; color:#e74c3c; cursor:pointer;"><svg fill="none" stroke="#e74c3c" stroke-width="2" viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7"/><path d="M3 12a9 9 0 0118 0 9 9 0 01-18 0z"/></svg>Logout</li>
             </ul>
         </nav>
+<<<<<<< HEAD
         <div class="remoed-content">
+=======
+        <div class="remoed-content" style="position: relative; z-index: 2; overflow-y: auto; overflow-x: visible;">
+            <!-- Games & Activities Quick Access with Characters -->
+            <div class="fun-card" style="margin-top: 70px; margin-bottom: 2rem; cursor: pointer; border-color: #1CA7E7; padding: 2rem; padding-top: 2.5rem; position: relative; overflow: visible; min-height: 280px;" onclick="window.location.href='student-games-activities.html'">
+                <!-- Characters - Using Separate Images -->
+                <div style="position: absolute; top: -50px; right: 40px; display: flex; gap: 15px; z-index: 5; pointer-events: none; align-items: flex-end;">
+                    <!-- Remo the Robot -->
+                    <div class="character-container" style="pointer-events: auto;" onclick="event.stopPropagation(); window.location.href='student-games-activities.html';" title="Click me to play games!">
+                        <div class="character-speech">Let's Play! 🎮</div>
+                        <div class="character-message">Tap to Start!</div>
+                        <div class="character-remo" style="width: 110px; height: 140px; position: relative;">
+                            <img src="images/remo-robot.png" alt="Remo the Robot" style="width: 100%; height: 100%; object-fit: contain; display: block;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                            <!-- Fallback SVG if image not found -->
+                            <svg class="remo-robot" width="140" height="180" viewBox="0 0 120 150" xmlns="http://www.w3.org/2000/svg" style="display: none; transform: scale(1.2);">
+                                <rect x="30" y="10" width="60" height="50" rx="8" fill="#FFFFFF" stroke="#1CA7E7" stroke-width="3"/>
+                                <rect x="20" y="20" width="12" height="30" rx="6" fill="#1CA7E7"/>
+                                <rect x="88" y="20" width="12" height="30" rx="6" fill="#1CA7E7"/>
+                                <circle cx="45" cy="30" r="6" fill="#1CA7E7"/>
+                                <circle cx="75" cy="30" r="6" fill="#1CA7E7"/>
+                                <path d="M 45 42 Q 60 48 75 42" stroke="#1CA7E7" stroke-width="2" fill="none"/>
+                                <rect x="35" y="60" width="50" height="60" rx="8" fill="#FFFFFF" stroke="#1CA7E7" stroke-width="3"/>
+                                <rect x="42" y="70" width="36" height="28" rx="4" fill="#FFD700"/>
+                                <rect x="20" y="70" width="15" height="8" rx="4" fill="#1CA7E7"/>
+                                <rect x="85" y="70" width="15" height="8" rx="4" fill="#1CA7E7"/>
+                                <rect x="40" y="120" width="12" height="20" rx="6" fill="#1CA7E7"/>
+                                <rect x="68" y="120" width="12" height="20" rx="6" fill="#1CA7E7"/>
+                            </svg>
+                        </div>
+                    </div>
+                    
+                    <!-- Ed the Curious Boy -->
+                    <div class="character-container" style="pointer-events: auto;" onclick="event.stopPropagation(); window.location.href='student-games-activities.html';" title="Join me for fun activities!">
+                        <div class="character-speech" style="animation-delay: 0.5s;">So Fun! 🎨</div>
+                        <div class="character-message" style="animation-delay: 0.5s;">Let's Go!</div>
+                        <div class="character-ed" style="width: 100px; height: 140px; position: relative;">
+                            <img src="images/ed-boy.png" alt="Ed the Curious Boy" style="width: 100%; height: 100%; object-fit: contain; display: block;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                            <!-- Fallback SVG if image not found -->
+                            <svg class="ed-boy" width="130" height="180" viewBox="0 0 100 140" xmlns="http://www.w3.org/2000/svg" style="display: none; transform: scale(1.3);">
+                                <circle cx="50" cy="30" r="22" fill="#F4C2A1" stroke="#D4A574" stroke-width="2"/>
+                                <path d="M 35 20 Q 30 10 35 15 Q 40 8 45 18 Q 50 5 55 18 Q 60 8 65 15 Q 70 10 65 20" fill="#1A1A1A"/>
+                                <circle cx="43" cy="28" r="3" fill="#1A1A1A"/>
+                                <circle cx="57" cy="28" r="3" fill="#1A1A1A"/>
+                                <circle cx="38" cy="32" r="3" fill="#FF6B9D" opacity="0.6"/>
+                                <circle cx="62" cy="32" r="3" fill="#FF6B9D" opacity="0.6"/>
+                                <path d="M 42 36 Q 50 40 58 36" stroke="#1A1A1A" stroke-width="2" fill="none"/>
+                                <path d="M 30 50 L 30 100 L 70 100 L 70 50 L 65 50 L 65 90 L 35 90 L 35 50 Z" fill="#FF8C42" stroke="#E67E22" stroke-width="2"/>
+                                <rect x="32" y="52" width="12" height="20" rx="2" fill="#1CA7E7"/>
+                                <rect x="56" y="52" width="12" height="20" rx="2" fill="#1CA7E7"/>
+                                <path d="M 35 50 Q 50 45 65 50 L 65 60 L 35 60 Z" fill="#E74C3C"/>
+                                <rect x="22" y="60" width="10" height="25" rx="5" fill="#FF8C42"/>
+                                <rect x="68" y="60" width="10" height="25" rx="5" fill="#FF8C42"/>
+                                <circle cx="27" cy="88" r="4" fill="#F4C2A1"/>
+                                <circle cx="73" cy="88" r="4" fill="#F4C2A1"/>
+                                <rect x="35" y="100" width="30" height="30" rx="4" fill="#1CA7E7"/>
+                                <ellipse cx="42" cy="135" rx="8" ry="5" fill="#1CA7E7"/>
+                                <ellipse cx="58" cy="135" rx="8" ry="5" fill="#1CA7E7"/>
+                            </svg>
+                        </div>
+                    </div>
+                    
+                    <!-- Sophia the Cute Doll -->
+                    <div class="character-container" style="pointer-events: auto;" onclick="event.stopPropagation(); window.location.href='student-games-activities.html';" title="Join me for fun learning!">
+                        <div class="character-speech" style="animation-delay: 0.8s;">Let's Learn! 💖</div>
+                        <div class="character-message" style="animation-delay: 0.8s;">So Exciting!</div>
+                        <div class="character-sophia" style="width: 100px; height: 140px; position: relative;">
+                            <img src="images/sophia-girl.png" alt="Sophia the Cute Doll" style="width: 100%; height: 100%; object-fit: contain; display: block;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                            <!-- Fallback SVG if image not found -->
+                            <svg class="sophia-girl" width="130" height="180" viewBox="0 0 100 140" xmlns="http://www.w3.org/2000/svg" style="display: none; transform: scale(1.3);">
+                                <path d="M 30 25 Q 25 15 30 20 Q 35 10 40 20 Q 45 8 50 20 Q 55 8 60 20 Q 65 10 70 20 Q 75 15 70 25 L 70 50 L 30 50 Z" fill="#8B4513"/>
+                                <circle cx="50" cy="30" r="22" fill="#FFF5E6" stroke="#F5E6D3" stroke-width="2"/>
+                                <path d="M 45 22 Q 50 18 55 22 Q 55 26 50 24 Q 45 26 45 22" fill="#FF6B9D"/>
+                                <circle cx="50" cy="23" r="3" fill="#FF6B9D"/>
+                                <circle cx="43" cy="28" r="3.5" fill="#1CA7E7"/>
+                                <circle cx="57" cy="28" r="3.5" fill="#1CA7E7"/>
+                                <circle cx="44" cy="27" r="1.5" fill="#FFFFFF"/>
+                                <circle cx="58" cy="27" r="1.5" fill="#FFFFFF"/>
+                                <circle cx="38" cy="32" r="4" fill="#FF6B9D" opacity="0.6"/>
+                                <circle cx="62" cy="32" r="4" fill="#FF6B9D" opacity="0.6"/>
+                                <path d="M 42 36 Q 50 41 58 36" stroke="#1A1A1A" stroke-width="2" fill="none"/>
+                                <path d="M 28 50 L 28 110 L 72 110 L 72 50 L 68 50 L 68 100 L 32 100 L 32 50 Z" fill="#FF6B9D" stroke="#E55A8A" stroke-width="2"/>
+                                <rect x="35" y="50" width="30" height="8" rx="4" fill="#FFB6C1"/>
+                                <rect x="20" y="60" width="10" height="25" rx="5" fill="#FFF5E6"/>
+                                <rect x="70" y="60" width="10" height="25" rx="5" fill="#FFF5E6"/>
+                                <rect x="38" y="110" width="8" height="20" rx="4" fill="#FFF5E6"/>
+                                <rect x="54" y="110" width="8" height="20" rx="4" fill="#FFF5E6"/>
+                                <ellipse cx="42" cy="132" rx="6" ry="4" fill="#FF6B9D"/>
+                                <ellipse cx="58" cy="132" rx="6" ry="4" fill="#FF6B9D"/>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; padding-right: 400px;">
+                    <h2 style="margin: 0; color: #1CA7E7; font-size: 1.6rem; font-weight: 700; display: flex; align-items: center; gap: 10px;">
+                        <span style="font-size: 1.8rem;">🎮</span>
+                        <span>Play & Learn!</span>
+                    </h2>
+                    <div class="fun-btn" style="padding: 10px 20px; font-size: 0.95rem; margin: 0;">Let's Play! →</div>
+                </div>
+                <p style="margin: 0 0 1.2rem 0; color: #4A6FA5; font-size: 1rem; font-weight: 500; line-height: 1.5;">Practice Reading, Speaking, Writing, Listening, and Good Moral Activities! ⭐</p>
+                <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px;">
+                    <div style="text-align: center; padding: 14px; background: linear-gradient(135deg, #E8F4FD, #FFFBF0); border-radius: 12px; border: 2px solid #1CA7E7; transition: all 0.3s ease;" onmouseover="this.style.transform='scale(1.05)'; this.style.borderColor='#FFD700';" onmouseout="this.style.transform='scale(1)'; this.style.borderColor='#1CA7E7';">
+                        <div style="font-size: 2.2rem; margin-bottom: 6px; animation: bounce 2s ease-in-out infinite;">📖</div>
+                        <div style="font-size: 0.9rem; font-weight: 700; color: #1CA7E7;">Reading</div>
+                    </div>
+                    <div style="text-align: center; padding: 14px; background: linear-gradient(135deg, #E8F4FD, #FFFBF0); border-radius: 12px; border: 2px solid #1CA7E7; transition: all 0.3s ease;" onmouseover="this.style.transform='scale(1.05)'; this.style.borderColor='#FFD700';" onmouseout="this.style.transform='scale(1)'; this.style.borderColor='#1CA7E7';">
+                        <div style="font-size: 2.2rem; margin-bottom: 6px; animation: bounce 2s ease-in-out infinite; animation-delay: 0.2s;">🗣️</div>
+                        <div style="font-size: 0.9rem; font-weight: 700; color: #1CA7E7;">Speaking</div>
+                    </div>
+                    <div style="text-align: center; padding: 14px; background: linear-gradient(135deg, #E8F4FD, #FFFBF0); border-radius: 12px; border: 2px solid #1CA7E7; transition: all 0.3s ease;" onmouseover="this.style.transform='scale(1.05)'; this.style.borderColor='#FFD700';" onmouseout="this.style.transform='scale(1)'; this.style.borderColor='#1CA7E7';">
+                        <div style="font-size: 2.2rem; margin-bottom: 6px; animation: bounce 2s ease-in-out infinite; animation-delay: 0.4s;">✍️</div>
+                        <div style="font-size: 0.9rem; font-weight: 700; color: #1CA7E7;">Writing</div>
+                    </div>
+                    <div style="text-align: center; padding: 14px; background: linear-gradient(135deg, #E8F4FD, #FFFBF0); border-radius: 12px; border: 2px solid #1CA7E7; transition: all 0.3s ease;" onmouseover="this.style.transform='scale(1.05)'; this.style.borderColor='#FFD700';" onmouseout="this.style.transform='scale(1)'; this.style.borderColor='#1CA7E7';">
+                        <div style="font-size: 2.2rem; margin-bottom: 6px; animation: bounce 2s ease-in-out infinite; animation-delay: 0.6s;">👂</div>
+                        <div style="font-size: 0.9rem; font-weight: 700; color: #1CA7E7;">Listening</div>
+                    </div>
+                    <div style="text-align: center; padding: 14px; background: linear-gradient(135deg, #E8F4FD, #FFFBF0); border-radius: 12px; border: 2px solid #1CA7E7; transition: all 0.3s ease;" onmouseover="this.style.transform='scale(1.05)'; this.style.borderColor='#FFD700';" onmouseout="this.style.transform='scale(1)'; this.style.borderColor='#1CA7E7';">
+                        <div style="font-size: 2.2rem; margin-bottom: 6px; animation: bounce 2s ease-in-out infinite; animation-delay: 0.8s;">❤️</div>
+                        <div style="font-size: 0.9rem; font-weight: 700; color: #1CA7E7;">Moral</div>
+                    </div>
+                </div>
+            </div>
+            
+>>>>>>> 82021f05c965758b36140a1a8099d60eb2ea224f
             <!-- Primary Charts Grid (Total Classes & Completed Classes) -->
             <div class="charts-grid">
                 <!-- Total Classes Booked Chart -->

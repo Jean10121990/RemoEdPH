@@ -141,21 +141,38 @@ const requireOwnStudentData = async (req, res, next) => {
 // Middleware to ensure user is an admin
 const requireAdmin = async (req, res, next) => {
   try {
-    console.log('requireAdmin middleware - req.user:', req.user);
+    console.log('requireAdmin middleware - req.user:', JSON.stringify(req.user, null, 2));
     if (!req.user) {
       console.log('No req.user found in requireAdmin middleware');
       return res.status(401).json({ error: 'Authentication required.' });
     }
 
-    // Check if user is admin (you can customize this based on your admin identification)
-    if (req.user.username === 'admin' || req.user.role === 'admin' || req.user.isAdmin) {
+    // Check if user is admin - check isAdmin flag first, then username patterns
+    const isAdmin = req.user.isAdmin === true || 
+                    req.user.role === 'admin' || 
+                    req.user.username === 'admin' ||
+                    (req.user.username && req.user.username.toLowerCase().includes('admin'));
+    
+    console.log('Admin check result:', {
+      isAdmin: req.user.isAdmin,
+      role: req.user.role,
+      username: req.user.username,
+      finalResult: isAdmin
+    });
+
+    if (isAdmin) {
       req.admin = req.user;
       next();
     } else {
-      console.log('User is not admin:', req.user.username);
+      console.log('User is not admin. User details:', {
+        username: req.user.username,
+        isAdmin: req.user.isAdmin,
+        role: req.user.role
+      });
       return res.status(403).json({ error: 'Access denied. Admin privileges required.' });
     }
   } catch (error) {
+    console.error('Error in requireAdmin middleware:', error);
     return res.status(500).json({ error: 'Server error during authentication.' });
   }
 };

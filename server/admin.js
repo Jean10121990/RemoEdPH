@@ -2829,4 +2829,193 @@ router.post('/issues/dismiss', verifyToken, requireAdmin, async (req, res) => {
   }
 });
 
+// GET all teacher assessments (for admin review)
+router.get('/teacher-assessments', verifyToken, requireAdmin, async (req, res) => {
+  console.log('📊 Admin accessing teacher assessments endpoint');
+  try {
+    const { status, teacherId } = req.query;
+    console.log('Query params:', { status, teacherId });
+    
+    // Build query
+    const query = {};
+    if (teacherId) {
+      query.teacherId = teacherId;
+    }
+    
+    // Find teachers with assessment tests
+    const teachers = await Teacher.find(query)
+      .select('teacherId username firstName lastName fullname email assessmentTests')
+      .sort({ 'assessmentTests.completedAt': -1 });
+    
+    // Filter by status if provided
+    let filteredTeachers = teachers;
+    if (status === 'completed') {
+      filteredTeachers = teachers.filter(t => t.assessmentTests && t.assessmentTests.completed);
+    } else if (status === 'pending') {
+      filteredTeachers = teachers.filter(t => 
+        t.assessmentTests && 
+        !t.assessmentTests.completed &&
+        (t.assessmentTests.listening || t.assessmentTests.typing || t.assessmentTests.reading || t.assessmentTests.pronunciation)
+      );
+    }
+    
+    // Format response
+    const assessments = filteredTeachers.map(teacher => ({
+      teacherId: teacher.teacherId,
+      name: teacher.fullname || `${teacher.firstName || ''} ${teacher.lastName || ''}`.trim() || teacher.username || 'Unknown',
+      email: teacher.email || '',
+      username: teacher.username || '',
+      completed: teacher.assessmentTests?.completed || false,
+      completedAt: teacher.assessmentTests?.completedAt || null,
+      tests: {
+        listening: {
+          completed: !!(teacher.assessmentTests?.listening?.audioRecording || teacher.assessmentTests?.listening?.completedAt),
+          completedAt: teacher.assessmentTests?.listening?.completedAt || null
+        },
+        typing: {
+          completed: !!(teacher.assessmentTests?.typing?.wpm !== null && teacher.assessmentTests?.typing?.wpm !== undefined || teacher.assessmentTests?.typing?.completedAt),
+          wpm: teacher.assessmentTests?.typing?.wpm || null,
+          accuracy: teacher.assessmentTests?.typing?.accuracy || null,
+          completedAt: teacher.assessmentTests?.typing?.completedAt || null
+        },
+        reading: {
+          completed: !!(teacher.assessmentTests?.reading?.audioRecording || teacher.assessmentTests?.reading?.completedAt),
+          completedAt: teacher.assessmentTests?.reading?.completedAt || null
+        },
+        pronunciation: {
+          completed: !!(teacher.assessmentTests?.pronunciation?.words?.length > 0 || teacher.assessmentTests?.pronunciation?.audioRecording || teacher.assessmentTests?.pronunciation?.completedAt),
+          wordsCount: teacher.assessmentTests?.pronunciation?.words?.length || 0,
+          completedAt: teacher.assessmentTests?.pronunciation?.completedAt || null
+        }
+      }
+    }));
+    
+    res.json({
+      success: true,
+      assessments: assessments,
+      total: assessments.length
+    });
+  } catch (error) {
+    console.error('Error fetching teacher assessments:', error);
+    res.status(500).json({ error: 'Server error: ' + error.message });
+  }
+});
+
+// GET specific teacher's assessment details (for admin review)
+router.get('/teacher-assessments/:teacherId', verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+    
+    const teacher = await Teacher.findOne({ teacherId })
+      .select('teacherId username firstName lastName fullname email assessmentTests');
+    
+    if (!teacher) {
+      return res.status(404).json({ error: 'Teacher not found' });
+    }
+    
+    if (!teacher.assessmentTests) {
+      return res.json({
+        success: true,
+        completed: false,
+        message: 'No assessment tests found for this teacher'
+      });
+    }
+    
+    res.json({
+      success: true,
+      teacher: {
+        teacherId: teacher.teacherId,
+        name: teacher.fullname || `${teacher.firstName || ''} ${teacher.lastName || ''}`.trim() || teacher.username || 'Unknown',
+        email: teacher.email || '',
+        username: teacher.username || ''
+      },
+      completed: teacher.assessmentTests.completed || false,
+      completedAt: teacher.assessmentTests.completedAt || null,
+      tests: {
+        listening: teacher.assessmentTests.listening || null,
+        typing: teacher.assessmentTests.typing || null,
+        reading: teacher.assessmentTests.reading || null,
+        pronunciation: teacher.assessmentTests.pronunciation || null
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching teacher assessment details:', error);
+    res.status(500).json({ error: 'Server error: ' + error.message });
+  }
+});
+
+// Assess teacher skills (Admin/Trainer endpoint)
+router.post('/assess-teacher/:teacherId', verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+    const { skills, notes } = req.body; // skills: { listening: 3, reading: 4, speaking: 3, writing: 2 }
+    
+    const teacher = await Teacher.findOne({ teacherId });
+    if (!teacher) {
+      return res.status(404).json({ error: 'Teacher not found' });
+    }
+    
+    // Determine assessor role (admin or trainer)
+    const isAdmin = req.user.isAdmin === true || req.user.role === 'admin' || req.user.username === 'admin';
+    const assessorRole = isAdmin ? 'Admin' : 'Trainer';
+    
+    // Create new assessment entry
+    const newAssessment = {
+      assessmentDate: new Date(),
+      assessedBy: assessorRole, // Store role instead of user ID
+      skills: {
+        listening: skills.listening !== undefined ? String(skills.listening) : null,
+        reading: skills.reading !== undefined ? String(skills.reading) : null,
+        speaking: skills.speaking !== undefined ? String(skills.speaking) : null,
+        writing: skills.writing !== undefined ? String(skills.writing) : null
+      },
+      notes: notes || ''
+    };
+    
+    // Add to assessment history
+    if (!teacher.skillAssessments) {
+      teacher.skillAssessments = [];
+    }
+    teacher.skillAssessments.push(newAssessment);
+    
+    // Update current teaching abilities levels
+    if (!teacher.teachingAbilities) {
+      teacher.teachingAbilities = {
+        listening: { description: '', level: null },
+        reading: { description: '', level: null },
+        speaking: { description: '', level: null },
+        writing: { description: '', level: null }
+      };
+    }
+    
+    if (skills.listening !== undefined) {
+      teacher.teachingAbilities.listening.level = String(skills.listening);
+    }
+    if (skills.reading !== undefined) {
+      teacher.teachingAbilities.reading.level = String(skills.reading);
+    }
+    if (skills.speaking !== undefined) {
+      teacher.teachingAbilities.speaking.level = String(skills.speaking);
+    }
+    if (skills.writing !== undefined) {
+      teacher.teachingAbilities.writing.level = String(skills.writing);
+    }
+    
+    await teacher.save();
+    
+    // Create notification for teacher
+    await createNotification(teacherId, 'assessment-completed', 
+      `Your teaching abilities have been assessed by ${assessorRole}. Check your profile to see your skill levels.`);
+    
+    res.json({
+      success: true,
+      message: `Teacher assessed successfully by ${assessorRole}`,
+      assessment: newAssessment
+    });
+  } catch (error) {
+    console.error('Error assessing teacher:', error);
+    res.status(500).json({ error: 'Server error: ' + error.message });
+  }
+});
+
 module.exports = router; 
