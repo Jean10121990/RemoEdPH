@@ -1517,15 +1517,43 @@
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/luxon@3.5.0/build/global/luxon.min.js"></script>
+  <script src="timezone-utils.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script src="avatar-helper.js"></script>
   <script>
+    // Use unique aliases to avoid redeclaring luxon globals from timezone-utils
+    const DateTimeLocal = luxon.DateTime;
+    const IANAZoneLocal = luxon.IANAZone;
 
     // Weekly grid variables - use current date
     let currentWeek = new Date();
     let slotsData = [];
     let bookingsData = [];
     const teacherId = localStorage.getItem('teacherId');
+
+    // Timezone helpers (teacher's local timezone where available)
+    let teacherTimezone = (window.TimezoneUtils && TimezoneUtils.getDetectedZone && TimezoneUtils.getDetectedZone()) || Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Manila';
+    if (!IANAZoneLocal.isValidZone(teacherTimezone)) {
+      teacherTimezone = 'Asia/Manila';
+    }
+
+    function getManilaNow() {
+      try {
+        return DateTimeLocal.now().setZone(teacherTimezone).toJSDate();
+      } catch (e) {
+        console.warn('Fallback to system time for getManilaNow:', e);
+        return new Date();
+      }
+    }
+    function getManilaDate(dateStr, timeStr = '00:00') {
+      try {
+        return DateTimeLocal.fromISO(`${dateStr}T${timeStr}`, { zone: teacherTimezone }).toJSDate();
+      } catch (e) {
+        console.warn('Fallback to system time for getManilaDate:', e);
+        return new Date(`${dateStr}T${timeStr}:00`);
+      }
+    }
 
     // Initialize the weekly grid
     function initializeWeeklyGrid() {
@@ -1658,7 +1686,7 @@
         // Force fresh data with multiple cache-busting parameters
         const timestamp = Date.now();
         const random = Math.random();
-        const url = `/api/teacher/slots?teacherId=${teacherId}&week=${weekString}&allSlots=true&t=${timestamp}&v=${random}&fresh=true&nocache=${timestamp}&force=${timestamp}&clear=${random}&update=${Date.now()}&refresh=${Math.random()}`;
+        const url = `/api/teacher/slots?teacherId=${teacherId}&week=${weekString}&allSlots=true&tz=${encodeURIComponent(teacherTimezone)}&t=${timestamp}&v=${random}&fresh=true&nocache=${timestamp}&force=${timestamp}&clear=${random}&update=${Date.now()}&refresh=${Math.random()}`;
         console.log('🔍 Making fetch request to:', url);
         
         const response = await fetch(url, {
@@ -1704,9 +1732,68 @@
         slotsData = [];
         bookingsData = [];
         
-        // Set new data from database
-        slotsData = data.slots || [];
-        bookingsData = data.bookings || [];
+        const tz = teacherTimezone;
+        const toLocalParts = (utcValue, fallbackDate, fallbackTime, fallbackZone) => {
+        const safeZone = IANAZoneLocal.isValidZone(tz) ? tz : 'UTC';
+          if (utcValue) {
+            const iso = utcValue instanceof Date ? utcValue.toISOString() : utcValue;
+            try {
+              return { ...TimezoneUtils.utcToLocalParts(iso, safeZone), zone: safeZone };
+            } catch (e) {
+              console.warn('⚠️ UTC→local conversion failed, falling back to provided date/time:', e.message);
+            }
+          }
+          if (fallbackDate && fallbackTime) {
+            try {
+              const iso = TimezoneUtils.toUtcIso(fallbackDate, fallbackTime, fallbackZone || safeZone);
+              return { ...TimezoneUtils.utcToLocalParts(iso, safeZone), zone: safeZone };
+            } catch (e) {
+              console.warn('⚠️ Fallback UTC derivation failed:', e.message);
+            }
+          }
+          return {
+            date: fallbackDate || '1970-01-01',
+            time: fallbackTime || '00:00',
+            label: `${fallbackDate || 'Unknown'} ${fallbackTime || '00:00'}`,
+            zone: safeZone
+          };
+        };
+
+        // Normalize slots to teacher timezone while keeping canonical UTC
+        slotsData = (data.slots || []).map((slot) => {
+          const utcIso = slot.dateTimeUtc
+            ? (slot.dateTimeUtc instanceof Date ? slot.dateTimeUtc.toISOString() : slot.dateTimeUtc)
+            : (slot.utc || null);
+          const local = toLocalParts(utcIso, slot.date, slot.time, slot.teacherLocalZone);
+          return {
+            ...slot,
+            utc: utcIso,
+            date: local.date,
+            time: local.time,
+            localDate: local.date,
+            localTime: local.time,
+            localLabel: local.label,
+            clientTz: tz
+          };
+        });
+
+        // Normalize bookings to teacher timezone while keeping canonical UTC
+        bookingsData = (data.bookings || []).map((booking) => {
+          const utcIso = booking.dateTimeUtc
+            ? (booking.dateTimeUtc instanceof Date ? booking.dateTimeUtc.toISOString() : booking.dateTimeUtc)
+            : (booking.utc || null);
+          const local = toLocalParts(utcIso, booking.date, booking.time, booking.teacherLocalZone || booking.studentLocalZone);
+          return {
+            ...booking,
+            utc: utcIso,
+            date: local.date,
+            time: local.time,
+            localDate: local.date,
+            localTime: local.time,
+            localLabel: local.label,
+            clientTz: tz
+          };
+        });
         
         console.log('🔄 Updated slotsData (from database):', slotsData);
         console.log('🔄 Updated bookingsData (from database):', bookingsData);
@@ -1732,6 +1819,11 @@
       const allSlots = document.querySelectorAll('.remoed-time-slot[data-date]');
       console.log('Found', allSlots.length, 'slots to clear');
       
+      // Manila time snapshot for consistent past checks
+      const manilaNow = getManilaNow();
+      const manilaTodayStr = manilaNow.toISOString().split('T')[0];
+      const manilaTodayStart = getManilaDate(manilaTodayStr, '00:00');
+
       // Create a set of booked slots to check against
       const bookedSlots = new Set();
       bookingsData.forEach(booking => {
@@ -1750,22 +1842,17 @@
         // Check if slot is in the past AND has no booking data
         const slotKey = `${slot.dataset.date}-${slot.dataset.time}`;
         
-        // Mark past open slots as "Unbooked" instead of unavailable
-        // Only mark as unbooked if it's strictly in the past (not current day)
-        const slotDate = new Date(slot.dataset.date);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0); // Start of today
+        // Mark past open slots as "Unbooked" (Philippine time) instead of unavailable
+        const slotDate = getManilaDate(slot.dataset.date, '00:00');
         
-        // Only mark as unbooked if it's strictly in the past (not current day)
-        // Open slots should always show as "Open" regardless of time
-        if (slotDate < today && !bookedSlots.has(slotKey)) {
+        if (slotDate < manilaTodayStart && !bookedSlots.has(slotKey)) {
           slot.classList.add('unbooked');
           slot.textContent = 'Unbooked';
           slot.style.background = '#f8f9fa';
           slot.style.color = '#6c757d';
           slot.style.fontWeight = 'normal';
           slot.style.cursor = 'default';
-          slot.title = 'Past slot - no longer available for booking';
+          slot.title = 'Past slot (PH) - no longer available for booking';
         }
       });
 
@@ -1789,40 +1876,30 @@
           return;
         }
         
-        // Check if the class duration has passed (25 minutes after start time)
-        const currentNow = new Date();
-        const currentDate = currentNow.toISOString().split('T')[0];
-        const currentTime = currentNow.toTimeString().split(' ')[0].substring(0, 5); // HH:MM format
-        
+        // Check if the class duration has passed (25 minutes after start) using PH time
         let isClassDurationPassed = false;
-        if (slot.date === currentDate) {
-            // If it's today, check if the class duration has passed (25 minutes after start)
-            const [startHour, startMinute] = slot.time.split(':').map(Number);
-            const endTime = new Date();
-            endTime.setHours(startHour, startMinute + 25, 0, 0); // 25 minutes after start
-            
-            const currentDateTime = new Date();
-            isClassDurationPassed = currentDateTime > endTime;
+        if (slot.date === manilaTodayStr) {
+            const startPH = getManilaDate(slot.date, slot.time);
+            const endPH = new Date(startPH.getTime() + 25 * 60 * 1000);
+            isClassDurationPassed = manilaNow > endPH;
         }
         
         // For open slots, we should always show them as "Open" regardless of time
         // Only skip if they are actually booked
         console.log('🔄 Processing open slot:', slot.date, slot.time);
         
-        // Check if slot is in the past (strictly past dates, not current day)
-        const slotDate = new Date(slot.date);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0); // Start of today
+        // Check if slot is in the past (strictly past dates, not current day) in PH time
+        const slotDate = getManilaDate(slot.date, '00:00');
+        const today = manilaTodayStart;
         
         console.log('🔄 Processing open slot:', slot.date, slot.time);
         const slotElement = document.querySelector(`[data-date="${slot.date}"][data-time="${slot.time}"]`);
         if (slotElement) {
           console.log('✅ Found slot element for:', slot.date, slot.time);
           
-          // Check if slot is in the past (strictly past dates, not current day)
-          const slotDate = new Date(slot.date);
-          const today = new Date();
-          today.setHours(0, 0, 0, 0); // Start of today
+          // Check if slot is in the past (strictly past dates, not current day) in PH time
+          const slotDate = getManilaDate(slot.date, '00:00');
+          const today = manilaTodayStart;
           
                       // Check if the class duration has passed (25 minutes after start time)
             const slotNow = new Date();
@@ -1875,20 +1952,12 @@
             const today = new Date();
             today.setHours(0, 0, 0, 0); // Start of today
             
-            // Check if the class duration has passed (25 minutes after start time)
-            const altNow = new Date();
-            const currentDate = altNow.toISOString().split('T')[0];
-            const currentTime = altNow.toTimeString().split(' ')[0].substring(0, 5); // HH:MM format
-            
+            // Check if the class duration has passed (25 minutes after start time) using PH time
             let isClassDurationPassed = false;
-            if (slot.date === currentDate) {
-                // If it's today, check if the class duration has passed (25 minutes after start)
-                const [startHour, startMinute] = slot.time.split(':').map(Number);
-                const endTime = new Date();
-                endTime.setHours(startHour, startMinute + 25, 0, 0); // 25 minutes after start
-                
-                const currentDateTime = new Date();
-                isClassDurationPassed = currentDateTime > endTime;
+            if (slot.date === manilaTodayStr) {
+                const startPH = getManilaDate(slot.date, slot.time);
+                const endPH = new Date(startPH.getTime() + 25 * 60 * 1000);
+                isClassDurationPassed = manilaNow > endPH;
             }
             
             // For open slots, always show as "Open" regardless of time
@@ -2366,10 +2435,8 @@
       const classManagementButtons = document.getElementById('class-management-buttons');
       
       // Parse date and time correctly (handle timezone)
-      const [year, month, day] = booking.date.split('-').map(Number);
-      const [hour, minute] = booking.time.split(':').map(Number);
-      const startTime = new Date(year, month - 1, day, hour, minute, 0, 0);
-      const buttonNow = new Date();
+      const startTime = getManilaDate(booking.date, booking.time);
+      const buttonNow = getManilaNow();
       const buttonElapsedMinutes = Math.floor((buttonNow - startTime) / 1000 / 60);
       const buttonElapsedHours = buttonElapsedMinutes / 60;
       
@@ -2402,10 +2469,8 @@
                         new URLSearchParams(window.location.search).get('testRecording') === 'true';
         
         // Recalculate time in case it's been updated
-        const [year2, month2, day2] = booking.date.split('-').map(Number);
-        const [hour2, minute2] = booking.time.split(':').map(Number);
-        const startTime2 = new Date(year2, month2 - 1, day2, hour2, minute2, 0, 0);
-        const buttonNow2 = new Date();
+        const startTime2 = getManilaDate(booking.date, booking.time);
+        const buttonNow2 = getManilaNow();
         const buttonElapsedHours2 = (buttonNow2 - startTime2) / (1000 * 60 * 60);
         
         let hasVideo = booking.recording && booking.recording.videoPath;
