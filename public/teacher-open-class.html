@@ -498,17 +498,17 @@
 
     </div>
   </div>
+  <script src="https://cdn.jsdelivr.net/npm/luxon@3.5.0/build/global/luxon.min.js"></script>
+  <script src="timezone-utils.js"></script>
   <script src="avatar-helper.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script>
 
-    // Timezone alignment utility
+  // Timezone helpers
+    let teacherTimezone = (window.TimezoneUtils && TimezoneUtils.getDetectedZone()) || 'UTC';
     function getLocalDateString(date) {
-      // Ensure we get the date in the user's local timezone
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
+      const { DateTime } = luxon;
+      return DateTime.fromJSDate(date, { zone: teacherTimezone }).toFormat('yyyy-LL-dd');
     }
     
     function getWeekStartDate(date) {
@@ -655,19 +655,12 @@
               console.log('Created slot element for:', dateString, timeString);
             }
             
-            // Check if slot is in the past or unavailable
-            const slotDateTime = new Date(`${dateString}T${timeString}:00`);
-            const now = new Date();
-            
-            // Check if the specific time has passed today
-            const currentDate = now.toISOString().split('T')[0];
-            const currentTime = now.toTimeString().split(' ')[0].substring(0, 5); // HH:MM format
-            
-            let isTimePassed = false;
-            if (dateString === currentDate) {
-                // If it's today, check if the time has passed
-                isTimePassed = timeString <= currentTime;
-            }
+            // Check if slot is in the past or unavailable using teacher's timezone
+            const { DateTime } = luxon;
+            const now = DateTime.now().setZone(teacherTimezone);
+            const slotDateTime = DateTime.fromISO(`${dateString}T${timeString}`, { zone: teacherTimezone });
+            const todayStart = now.startOf('day');
+            const isTimePassed = slotDateTime <= now;
             
             // Check if this slot is booked (will be marked by loadExistingSlots)
             const slotId = `${dateString}-${timeString}`;
@@ -695,19 +688,17 @@
                 slot.onclick = null;
               }
             } else {
-              // Check if slot is strictly in the past (not current day) or time has passed today
-              const slotDate = new Date(dateString);
-              const today = new Date();
-              today.setHours(0, 0, 0, 0); // Start of today
+              // Check if slot is strictly in the past (before PH today) or time has passed today (PH)
+              const isPastDay = slotDateTime < todayStart;
               
-              if (slotDate < today || isTimePassed) {
+              if (isPastDay || isTimePassed) {
                 // Mark as unavailable if the slot is strictly in the past or time has passed today
                 slot.classList.add('unavailable');
                 slot.style.background = '#d3d3d3';
                 slot.style.color = 'white';
                 slot.style.fontWeight = 'bold';
                 slot.style.fontSize = '0.8rem';
-                slot.title = isTimePassed ? 'Past slot - time has passed' : 'Past slot - not available';
+                slot.title = isTimePassed ? 'Past slot - time has passed (PH)' : 'Past slot - not available (PH)';
                 slot.style.cursor = 'not-allowed';
                 slot.onclick = null; // Make past slots non-clickable
               }
@@ -790,24 +781,13 @@
       console.log('Slot element:', slot);
       console.log('Slot dataset:', slot.dataset);
       
-      // Check if this slot is in the past - if so, don't allow toggling
-      const slotDate = new Date(slot.dataset.date);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0); // Start of today
+      // Check if this slot is in the past (teacher timezone) - if so, don't allow toggling
+      const { DateTime } = luxon;
+      const now = DateTime.now().setZone(teacherTimezone);
+      const slotDateTime = DateTime.fromISO(`${slot.dataset.date}T${slot.dataset.time}`, { zone: teacherTimezone });
       
-      // Check if the specific time has passed today
-      const now = new Date();
-      const currentDate = now.toISOString().split('T')[0];
-      const currentTime = now.toTimeString().split(' ')[0].substring(0, 5); // HH:MM format
-      
-      let isTimePassed = false;
-      if (slot.dataset.date === currentDate) {
-          // If it's today, check if the time has passed
-          isTimePassed = slot.dataset.time <= currentTime;
-      }
-      
-      if (slotDate < today || isTimePassed) {
-        console.log('Cannot toggle past slot:', slotKey, 'isTimePassed:', isTimePassed);
+      if (slotDateTime <= now) {
+        console.log('Cannot toggle past slot (TZ):', slotKey);
         return;
       }
       
@@ -1449,7 +1429,7 @@
         const timestamp = Date.now();
         const random = Math.random();
         const cacheBuster = `t=${timestamp}&v=${random}&fresh=true&nocache=${timestamp}&update=${Date.now()}&refresh=${Math.random()}&clear=${Math.random()}&force=${Date.now()}`;
-        const existingResponse = await fetch(`/api/teacher/slots?teacherId=${teacherId}&week=${weekString}&allSlots=true&${cacheBuster}`, {
+        const existingResponse = await fetch(`/api/teacher/slots?teacherId=${teacherId}&week=${weekString}&allSlots=true&tz=${encodeURIComponent(teacherTimezone)}&${cacheBuster}`, {
           method: 'GET',
           headers: {
             'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
@@ -1483,7 +1463,7 @@
             'X-Requested-With': 'XMLHttpRequest',
             'X-Cache-Buster': Date.now().toString()
           },
-          body: JSON.stringify({ teacherId, slots: uniqueSlots })
+          body: JSON.stringify({ teacherId, slots: uniqueSlots, timezone: teacherTimezone })
         });
         const data = await response.json();
         
@@ -1531,7 +1511,7 @@
         const timestamp = Date.now();
         const random = Math.random();
         const cacheBuster = `t=${timestamp}&v=${random}&fresh=true&nocache=${timestamp}&update=${Date.now()}&refresh=${Math.random()}&clear=${Math.random()}&force=${Date.now()}`;
-        const existingResponse = await fetch(`/api/teacher/slots?teacherId=${teacherId}&week=${weekString}&allSlots=true&${cacheBuster}`, {
+        const existingResponse = await fetch(`/api/teacher/slots?teacherId=${teacherId}&week=${weekString}&allSlots=true&tz=${encodeURIComponent(teacherTimezone)}&${cacheBuster}`, {
           method: 'GET',
           headers: {
             'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
@@ -1584,7 +1564,7 @@
             'X-Requested-With': 'XMLHttpRequest',
             'X-Cache-Buster': Date.now().toString()
           },
-          body: JSON.stringify({ teacherId, slots: slotsToClose })
+          body: JSON.stringify({ teacherId, slots: slotsToClose, timezone: teacherTimezone })
         });
         const data = await response.json();
         

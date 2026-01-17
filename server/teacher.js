@@ -11,6 +11,7 @@ const Teacher = require('./models/Teacher');
 const Student = require('./models/Student');
 const TeacherSlot = require('./models/TeacherSlot');
 const Booking = require('./models/Booking');
+const { DateTime } = require('luxon');
 const Notification = require('./models/Notification');
 const TimeLog = require('./models/TimeLog');
 const CancellationRequest = require('./models/CancellationRequest');
@@ -584,11 +585,19 @@ router.get('/booking-test/:classroomId', async (req, res) => {
   }
 });
 
+// Helper: convert local date/time in a zone to UTC ISO string
+function toUtcFromLocal(dateStr, timeStr, zone) {
+  const z = zone && DateTime.now().setZone(zone).isValid ? zone : 'Asia/Manila';
+  const dt = DateTime.fromISO(`${dateStr}T${timeStr}`, { zone: z });
+  if (!dt.isValid) throw new Error(`Invalid date/time: ${dateStr} ${timeStr} in zone ${z}`);
+  return { utcIso: dt.toUTC().toISO(), zoneUsed: z };
+}
+
 // Save open slots - Protected: Only authenticated teachers can access their own data
 router.post('/open-slot', async (req, res) => {
   try {
     console.log('Received request body:', req.body); // Debug log
-    const { teacherId, slots } = req.body; // slots: [{ date, time }]
+    const { teacherId, slots, timezone } = req.body; // slots: [{ date, time }]
     
     console.log('Teacher ID from request:', teacherId); // Debug log
     console.log('Slots data:', slots); // Debug log
@@ -639,13 +648,18 @@ router.post('/open-slot', async (req, res) => {
     });
     console.log(`Deleted ${deleteAllResult.deletedCount} existing open slots for the week`);
 
-    // Save new open slots with available: true
-    const newSlots = slots.map(s => ({ 
-      teacherId: actualTeacherId, 
-      date: s.date, 
-      time: s.time,
-      available: true // Set to true when opening slots
-    }));
+    // Save new open slots with available: true (UTC canonical)
+    const newSlots = slots.map(s => { 
+      const { utcIso, zoneUsed } = toUtcFromLocal(s.date, s.time, s.timezone || timezone);
+      return {
+        teacherId: actualTeacherId,
+        date: s.date,
+        time: s.time,
+        dateTimeUtc: utcIso,
+        teacherLocalZone: zoneUsed,
+        available: true // Set to true when opening slots
+      };
+    });
     const insertResult = await TeacherSlot.insertMany(newSlots);
     console.log(`Inserted ${insertResult.length} new open slots`);
 
@@ -678,7 +692,7 @@ router.post('/open-slot', async (req, res) => {
 router.post('/close-slot', async (req, res) => {
   try {
     console.log('Received close slot request body:', req.body);
-    const { teacherId, slots } = req.body; // slots: [{ date, time }]
+    const { teacherId, slots, timezone } = req.body; // slots: [{ date, time }]
     
     console.log('Teacher ID from request:', teacherId);
     console.log('Slots to close:', slots);
@@ -713,7 +727,21 @@ router.post('/close-slot', async (req, res) => {
     }
 
     // Remove specific slots that are selected for closing
-    const slotConditions = slots.map(s => ({ teacherId: actualTeacherId, date: s.date, time: s.time }));
+    const slotConditions = slots.map(s => {
+      // Try to match by UTC if available on existing data
+      if (s.dateTimeUtc) {
+        return { teacherId: actualTeacherId, dateTimeUtc: s.dateTimeUtc };
+      }
+      // Otherwise compute from provided timezone/body timezone
+      let dateTimeUtc = null;
+      try {
+        const { utcIso } = toUtcFromLocal(s.date, s.time, s.timezone || timezone);
+        dateTimeUtc = utcIso;
+      } catch (e) {
+        // ignore
+      }
+      return dateTimeUtc ? { teacherId: actualTeacherId, dateTimeUtc } : { teacherId: actualTeacherId, date: s.date, time: s.time };
+    });
     console.log('Slot conditions for deletion:', slotConditions);
     
     const deleteResult = await TeacherSlot.deleteMany({
@@ -750,15 +778,15 @@ router.get('/slots', async (req, res) => {
     // If no teacherId is provided, return all available slots for the week (for students)
     if (!teacherId) {
       console.log('🔍 Student request: Getting all available slots for week:', week);
+      const clientTz = req.query.tz && DateTime.now().setZone(req.query.tz).isValid ? req.query.tz : null;
       
-      // Get all available slots for the week - use local timezone instead of hardcoded +08:00
-      const start = new Date(week + 'T00:00:00');
-      const end = new Date(start);
-      end.setDate(start.getDate() + 7);
+      // Week range in UTC
+      const startUtc = DateTime.fromISO(week, { zone: 'utc' }).startOf('day');
+      const endUtc = startUtc.plus({ days: 7 });
       
       const queryFilter = {
-        date: { $gte: week, $lte: end.toISOString().slice(0, 10) },
-        available: true // Only available slots for students
+        available: true,
+        dateTimeUtc: { $gte: startUtc.toJSDate(), $lt: endUtc.toJSDate() }
       };
       
       const slotsQuery = await TeacherSlot.find(queryFilter);
@@ -776,22 +804,31 @@ router.get('/slots', async (req, res) => {
         // Get teacher data using the teacherId string
         const teacher = await Teacher.findOne({ teacherId: slotObj.teacherId });
         
+        // Add client-local convenience fields
+        if (slotObj.dateTimeUtc && clientTz) {
+          const dt = DateTime.fromJSDate(slotObj.dateTimeUtc, { zone: 'utc' }).setZone(clientTz);
+          slotObj.localDate = dt.toFormat('yyyy-LL-dd');
+          slotObj.localTime = dt.toFormat('HH:mm');
+          slotObj.localLabel = dt.toFormat('ccc, LLL dd HH:mm');
+          slotObj.clientTz = clientTz;
+        }
+        
         const slotData = {
           ...slotObj,
           teacherId: slotObj.teacherId, // Keep the original teacherId string
           teacherName: teacher ? teacher.username : 'Unknown Teacher'
         };
         
-        console.log('🔍 Student slots API - Slot data:', { date: slotData.date, time: slotData.time, teacherId: slotData.teacherId });
+        console.log('🔍 Student slots API - Slot data:', { dateTimeUtc: slotData.dateTimeUtc, teacherId: slotData.teacherId });
         return slotData;
       }));
       
       // Filter out null slots (those without teacherId)
       const validSlots = slots.filter(slot => slot !== null);
       
-      // Get bookings for these slots
+      // Get bookings for these slots in UTC window
       const bookings = await Booking.find({
-        date: { $gte: week, $lte: end.toISOString().slice(0, 10) },
+        dateTimeUtc: { $gte: startUtc.toJSDate(), $lt: endUtc.toJSDate() },
         status: { $ne: 'cancelled' }
       });
       
@@ -839,6 +876,9 @@ router.get('/slots', async (req, res) => {
       actualTeacherId = teacherId;
     }
     
+    // Determine client timezone for convenience conversion (optional)
+    const clientTz = req.query.tz && DateTime.now().setZone(req.query.tz).isValid ? req.query.tz : null;
+
     // Get all slots for this teacher for the week - use local timezone instead of hardcoded +08:00
     const start = new Date(week + 'T00:00:00');
     const end = new Date(start);
@@ -863,10 +903,25 @@ router.get('/slots', async (req, res) => {
     
     const slotsQuery = await TeacherSlot.find(queryFilter);
     
-    const slots = slotsQuery.map(slot => ({
-      ...slot.toObject(),
-      teacherId: teacherId // Include the original teacherId (email/username) in response
-    }));
+    const slots = slotsQuery.map(slot => {
+      const obj = slot.toObject();
+      // Add UTC and client-local convenience fields
+      if (obj.dateTimeUtc) {
+        const dt = DateTime.fromISO(obj.dateTimeUtc, { zone: 'utc' });
+        obj.utc = obj.dateTimeUtc;
+        if (clientTz) {
+          const local = dt.setZone(clientTz);
+          obj.localDate = local.toFormat('yyyy-LL-dd');
+          obj.localTime = local.toFormat('HH:mm');
+          obj.localLabel = local.toFormat('ccc, LLL dd HH:mm');
+          obj.clientTz = clientTz;
+        }
+      }
+      return {
+        ...obj,
+        teacherId: teacherId // Include the original teacherId (email/username) in response
+      };
+    });
     
     console.log('Found slots:', slots.length); // Debug log
     console.log('Slots data:', slots); // Debug log
@@ -937,7 +992,28 @@ router.get('/slots', async (req, res) => {
       })
     );
 
-    res.json({ slots, bookings: bookingsWithStudentInfo });
+    // Add timezone-friendly fields for bookings (client-provided tz)
+    const bookingsWithTimezone = bookingsWithStudentInfo.map((booking) => {
+      const obj = { ...booking };
+      const utcSource = booking.dateTimeUtc
+        ? (booking.dateTimeUtc instanceof Date ? booking.dateTimeUtc : new Date(booking.dateTimeUtc))
+        : null;
+
+      // Always expose canonical UTC string
+      obj.utc = utcSource ? utcSource.toISOString() : null;
+
+      if (clientTz && utcSource) {
+        const local = DateTime.fromJSDate(utcSource, { zone: 'utc' }).setZone(clientTz);
+        obj.localDate = local.toFormat('yyyy-LL-dd');
+        obj.localTime = local.toFormat('HH:mm');
+        obj.localLabel = local.toFormat('ccc, LLL dd HH:mm');
+        obj.clientTz = clientTz;
+      }
+
+      return obj;
+    });
+
+    res.json({ slots, bookings: bookingsWithTimezone });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -997,12 +1073,13 @@ router.post('/book-class', verifyToken, requireStudent, async (req, res) => {
     console.log('🔍 Booking API called with body:', JSON.stringify(req.body, null, 2));
     console.log('🔍 User from token:', JSON.stringify(req.user, null, 2));
     
-    const { teacherId, date, time, lesson, lessonId, studentLevel } = req.body;
+    const { teacherId, date, time, dateTimeUtc, lesson, lessonId, studentLevel, timezone } = req.body;
     
     console.log('🔍 Extracted fields from request body:', {
       teacherId: teacherId || 'MISSING',
       date: date || 'MISSING',
       time: time || 'MISSING',
+      dateTimeUtc: dateTimeUtc || 'MISSING',
       lesson: lesson || 'MISSING',
       lessonId: lessonId || 'MISSING',
       studentLevel: studentLevel || 'MISSING'
@@ -1025,8 +1102,7 @@ router.post('/book-class', verifyToken, requireStudent, async (req, res) => {
     const missingFields = [];
     if (!studentId) missingFields.push('studentId');
     if (!teacherId) missingFields.push('teacherId');
-    if (!date) missingFields.push('date');
-    if (!time) missingFields.push('time');
+    if (!dateTimeUtc && (!date || !time)) missingFields.push('dateTimeUtc');
     if (!lesson) missingFields.push('lesson');
     if (!studentLevel) missingFields.push('studentLevel');
     
@@ -1069,24 +1145,35 @@ router.post('/book-class', verifyToken, requireStudent, async (req, res) => {
     const teacherObjectId = teacher.teacherId;
     console.log('🔍 Teacher teacherId:', teacherObjectId);
 
+    // Compute canonical UTC datetime
+    let canonicalUtc = dateTimeUtc;
+    let zoneUsed = timezone;
+    if (!canonicalUtc) {
+      const { utcIso, zoneUsed: zu } = toUtcFromLocal(date, time, timezone || teacher.teacherLocalZone || 'Asia/Manila');
+      canonicalUtc = utcIso;
+      zoneUsed = zu;
+    }
+    const dt = DateTime.fromISO(canonicalUtc, { zone: 'utc' });
+    const dateUtc = dt.toISODate();
+    const timeUtc = dt.toFormat('HH:mm');
+    
     // Check if slot is still available and open for booking
-    console.log('🔍 Checking if slot is available:', { teacherId: teacherObjectId, date, time });
+    console.log('🔍 Checking if slot is available:', { teacherId: teacherObjectId, dateTimeUtc: canonicalUtc });
     const existingSlot = await TeacherSlot.findOne({ 
       teacherId: teacherObjectId, 
-      date, 
-      time,
+      dateTimeUtc: canonicalUtc,
       available: true // Must be available for booking
     });
     console.log('🔍 Existing slot found:', existingSlot ? 'YES' : 'NO');
     
     if (!existingSlot) {
-      console.log('❌ Slot not available or not open for booking:', { teacherId: teacherObjectId, date, time });
+      console.log('❌ Slot not available or not open for booking:', { teacherId: teacherObjectId, dateTimeUtc: canonicalUtc });
       return res.status(400).json({ error: 'Selected slot is no longer available or not open for booking' });
     }
 
     // Check if slot is already booked
     console.log('🔍 Checking if slot is already booked');
-    const existingBooking = await Booking.findOne({ teacherId: teacherObjectId, date, time, status: { $ne: 'cancelled' } });
+    const existingBooking = await Booking.findOne({ teacherId: teacherObjectId, dateTimeUtc: canonicalUtc, status: { $ne: 'cancelled' } });
     console.log('🔍 Existing booking found:', existingBooking ? 'YES' : 'NO');
     
     if (existingBooking) {
@@ -1101,15 +1188,25 @@ router.post('/book-class', verifyToken, requireStudent, async (req, res) => {
     // Use only username part before @ if email
     const usernamePart = studentId.includes('@') ? studentId.split('@')[0] : studentId;
     // Format: YYYYMMDDHHMM-username-N
-    const dateStr = date.replace(/-/g, '');
-    const timeStr = time.replace(':', '');
+    const dateStr = dateUtc.replace(/-/g, '');
+    const timeStr = timeUtc.replace(':', '');
     const classroomId = `${dateStr}${timeStr}${usernamePart}${studentBookingCount + 1}`;
     console.log('🔍 Generated classroomId:', classroomId);
 
     // Create booking with auto-generated classroomId
     console.log('🔍 Creating new booking...');
     const booking = new Booking({
-      studentId, teacherId: teacherObjectId, date, time, lesson, lessonId: req.body.lessonId || null, studentLevel, classroomId
+      studentId,
+      teacherId: teacherObjectId,
+      date: dateUtc,
+      time: timeUtc,
+      dateTimeUtc: canonicalUtc,
+      studentLocalZone: timezone || null,
+      teacherLocalZone: teacher?.teacherLocalZone || existingSlot?.teacherLocalZone || null,
+      lesson,
+      lessonId: req.body.lessonId || null,
+      studentLevel,
+      classroomId
     });
     await booking.save();
     console.log('✅ Booking created successfully:', booking._id);
@@ -1117,7 +1214,7 @@ router.post('/book-class', verifyToken, requireStudent, async (req, res) => {
     // MARK THE SLOT AS UNAVAILABLE (CLOSED) WHEN BOOKED
     console.log('🔍 Marking slot as unavailable after booking...');
     const slotUpdateResult = await TeacherSlot.updateOne(
-      { teacherId: teacherObjectId, date, time },
+      { teacherId: teacherObjectId, dateTimeUtc: canonicalUtc },
       { available: false }
     );
     console.log('✅ Slot marked as unavailable:', slotUpdateResult.modifiedCount > 0);
