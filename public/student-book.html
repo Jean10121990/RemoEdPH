@@ -900,6 +900,8 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/luxon@3.5.0/build/global/luxon.min.js"></script>
+    <script src="timezone-utils.js"></script>
     <script>
         // Role-based access control
         const userType = localStorage.getItem('userType');
@@ -915,22 +917,84 @@
             window.location.href = 'student-login.html';
         }
         
-        // Timezone alignment utility
+        // Timezone alignment utility (uses detected/selected timezone)
+        let userTimezone = (window.TimezoneUtils && TimezoneUtils.getDetectedZone()) || 'UTC';
+        
         function getLocalDateString(date) {
-            // Ensure we get the date in the user's local timezone
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
+            // Format a JS Date as yyyy-MM-dd in the user's timezone
+            const { DateTime } = luxon;
+            return DateTime.fromJSDate(date, { zone: userTimezone }).toFormat('yyyy-LL-dd');
+        }
+        
+        function initTimezoneControl() {
+            const container = document.createElement('div');
+            container.style.display = 'flex';
+            container.style.alignItems = 'center';
+            container.style.gap = '8px';
+            container.style.margin = '8px 0';
+            
+            const label = document.createElement('span');
+            label.textContent = 'Timezone:';
+            label.style.fontWeight = '600';
+            label.style.color = '#374151';
+            container.appendChild(label);
+            
+            const select = document.createElement('select');
+            select.id = 'timezone-select';
+            select.style.padding = '6px 10px';
+            select.style.borderRadius = '6px';
+            select.style.border = '1px solid #d1d5db';
+            select.style.minWidth = '200px';
+            
+            const zones = (window.TimezoneUtils && TimezoneUtils.listTimezones()) || ['UTC'];
+            zones.forEach(z => {
+                const opt = document.createElement('option');
+                opt.value = z;
+                opt.textContent = z;
+                select.appendChild(opt);
+            });
+            // Add detected zone if not in list
+            if (!zones.includes(userTimezone)) {
+                const opt = document.createElement('option');
+                opt.value = userTimezone;
+                opt.textContent = `${userTimezone} (detected)`;
+                select.appendChild(opt);
+            }
+            select.value = userTimezone;
+            select.onchange = () => {
+                userTimezone = select.value || 'UTC';
+                console.log('🌐 Timezone changed to:', userTimezone);
+                // Regenerate grid with new timezone
+                updateWeekDisplay();
+                generateWeeklyGrid();
+            };
+            
+            container.appendChild(select);
+            
+            const host = document.getElementById('week-display');
+            if (host && host.parentElement) {
+                host.parentElement.appendChild(container);
+            } else {
+                document.body.prepend(container);
+            }
+        }
+        
+        // Get "now" in Philippine time so users in other timezones (e.g., US) still see PH slots
+        function getManilaNow() {
+            return new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
+        }
+        
+        // Build a Date in Philippine time for a given date/time string
+        function getManilaDate(dateStr, timeStr = '00:00') {
+            return new Date(`${dateStr}T${timeStr}:00+08:00`);
         }
         
         function getWeekStartDate(date) {
-            // Get Monday of the week containing the given date
-            const dayOfWeek = date.getDay();
-            const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Sunday = 0, Monday = 1, etc.
-            const monday = new Date(date);
-            monday.setDate(date.getDate() - daysToMonday);
-            return monday;
+            // Get Monday of the week containing the given date in the user's timezone
+            const { DateTime } = luxon;
+            const dt = DateTime.fromJSDate(date, { zone: userTimezone });
+            const monday = dt.startOf('week').plus({ days: 1 }); // Luxon week starts Sunday; add 1 to get Monday
+            return monday.toJSDate();
         }
         
         // Set sidebar avatar and email
@@ -970,6 +1034,7 @@
                 // Validate token first
                 validateToken().then(() => {
                     console.log('✅ Token validated, initializing components...');
+                    initTimezoneControl();
                     updateWeekDisplay();
                     generateWeeklyGrid();
                     setupEventListeners();
@@ -986,6 +1051,7 @@
                     } else {
                         // Server issue - continue with basic functionality
                         console.warn('⚠️ Server issue detected, continuing with basic functionality');
+                        initTimezoneControl();
                         updateWeekDisplay();
                         generateWeeklyGrid();
                         setupEventListeners();
@@ -1203,7 +1269,11 @@
                     const dateStr = getLocalDateString(date); // Use consistent date formatting
                     const slotKey = `${dateStr}-${timeObj.value}`;
                     
-                    const isPast = new Date(`${dateStr}T${timeObj.value}:00`) < new Date();
+                const { DateTime } = luxon;
+                const now = DateTime.now().setZone(userTimezone);
+                const slotLocal = DateTime.fromISO(`${dateStr}T${timeObj.value}`, { zone: userTimezone });
+                const isPast = slotLocal <= now;
+                    
                     const isSelected = selectedSlots.has(slotKey);
                     
                     let className = 'slot-cell';
@@ -1254,7 +1324,7 @@
                 console.log('🔍 Loading available slots for week:', weekString);
                 
                 // Get all available slots for this week (no specific teacher filter for students)
-                const response = await fetch(`/api/teacher/slots?week=${weekString}`, {
+                const response = await fetch(`/api/teacher/slots?week=${weekString}&tz=${encodeURIComponent(userTimezone)}`, {
                     headers: {
                         'Authorization': `Bearer ${token}`,
                         'Cache-Control': 'no-cache',
@@ -1301,60 +1371,80 @@
                 availableSlots.clear();
                 bookedSlots.clear();
                 
-                if (data.slots) {
+                const tz = userTimezone || 'UTC';
+                const toKey = (utcIso, fallbackDate, fallbackTime, fallbackZone) => {
+                    try {
+                        const parts = TimezoneUtils.utcToLocalParts(utcIso, tz);
+                        return { key: `${parts.date}-${parts.time}`, local: parts };
+                    } catch (e) {
+                        console.warn('⚠️ Failed UTC->local conversion, falling back:', e.message);
+                        const localDate = fallbackDate || '1970-01-01';
+                        const localTime = fallbackTime || '00:00';
+                        return { key: `${localDate}-${localTime}`, local: { date: localDate, time: localTime, label: `${localDate} ${localTime}`, zone: fallbackZone || 'UTC' } };
+                    }
+                };
+                
+                if (Array.isArray(data.slots)) {
                     console.log('🔍 Student booking - Processing', data.slots.length, 'slots from API');
                     data.slots.forEach(slot => {
-                        // Only add slots that are actually available (available: true)
-                        if (slot.available === true) {
-                            const key = `${slot.date}-${slot.time}`;
-                            // Ensure teacherId is present
-                            if (!slot.teacherId) {
-                                console.error('❌ Slot missing teacherId:', slot);
+                        if (slot.available !== true) return;
+                        let utc = slot.dateTimeUtc || null;
+                        if (!utc && slot.date && slot.time) {
+                            try {
+                                utc = TimezoneUtils.toUtcIso(slot.date, slot.time, slot.teacherLocalZone || 'Asia/Manila');
+                            } catch (e) {
+                                console.warn('⚠️ Could not derive UTC for slot:', slot, e.message);
                             }
-                            availableSlots.set(key, slot);
-                            console.log(`🔍 Added available slot: ${key}, teacherId: ${slot.teacherId || 'MISSING'}`);
-                        } else {
-                            console.log(`🔍 Skipped unavailable slot: ${slot.date}-${slot.time} (available: ${slot.available})`);
                         }
+                        if (!utc) return;
+                        const { key, local } = toKey(utc, slot.date, slot.time, slot.teacherLocalZone);
+                        availableSlots.set(key, {
+                            ...slot,
+                            utc,
+                            localDate: local.date,
+                            localTime: local.time,
+                            localLabel: local.label,
+                            clientTz: tz
+                        });
                     });
-                    console.log('🔍 Student booking - Total available slots after processing:', availableSlots.size);
-                    
-                    // If no available slots found, show a message
-                    if (availableSlots.size === 0) {
-                        const grid = document.getElementById('weekly-grid');
-                        if (grid) {
-                            grid.innerHTML = `
-                                <div style="text-align: center; padding: 50px; color: #666;">
-                                    <div style="font-size: 2rem; margin-bottom: 15px;">📅</div>
-                                    <h3>No Available Classes</h3>
-                                    <p>There are currently no available time slots for booking.</p>
-                                    <p>This might be because:</p>
-                                    <ul style="text-align: left; display: inline-block; margin: 15px 0;">
-                                        <li>Teachers haven't opened their schedules yet</li>
-                                        <li>All available slots have been booked</li>
-                                        <li>It's outside of booking hours</li>
-                                    </ul>
-                                    <p>Please check back later or try a different week.</p>
-                                    <button onclick="location.reload()" style="background: #1ca7e7; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; margin-top: 10px;">
-                                        🔄 Refresh Page
-                                    </button>
-                                </div>
-                            `;
-                        }
-                        return;
-                    }
                 } else {
                     console.log('🔍 Student booking - No slots found in API response');
-                    
-                    // Show message when no slots data is returned
+                }
+                
+                if (Array.isArray(data.bookings)) {
+                    data.bookings.forEach(booking => {
+                        let utc = booking.dateTimeUtc || null;
+                        if (!utc && booking.date && booking.time) {
+                            try {
+                                utc = TimezoneUtils.toUtcIso(booking.date, booking.time, booking.teacherLocalZone || booking.studentLocalZone || 'Asia/Manila');
+                            } catch (e) {
+                                console.warn('⚠️ Could not derive UTC for booking:', booking, e.message);
+                            }
+                        }
+                        if (!utc) return;
+                        const { key } = toKey(utc, booking.date, booking.time, booking.teacherLocalZone);
+                        bookedSlots.set(key, true);
+                    });
+                }
+
+                console.log('🔍 Student booking - Total available slots after processing:', availableSlots.size);
+                
+                // If no available slots found, show a message
+                if (availableSlots.size === 0) {
                     const grid = document.getElementById('weekly-grid');
                     if (grid) {
                         grid.innerHTML = `
                             <div style="text-align: center; padding: 50px; color: #666;">
                                 <div style="font-size: 2rem; margin-bottom: 15px;">📅</div>
-                                <h3>No Classes Available</h3>
-                                <p>No class schedules are currently available for this week.</p>
-                                <p>Teachers may not have set up their availability yet.</p>
+                                <h3>No Available Classes</h3>
+                                <p>There are currently no available time slots for booking.</p>
+                                <p>This might be because:</p>
+                                <ul style="text-align: left; display: inline-block; margin: 15px 0;">
+                                    <li>Teachers haven't opened their schedules yet</li>
+                                    <li>All available slots have been booked</li>
+                                    <li>It's outside of booking hours</li>
+                                </ul>
+                                <p>Please check back later or try a different week.</p>
                                 <button onclick="location.reload()" style="background: #1ca7e7; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; margin-top: 10px;">
                                     🔄 Refresh Page
                                 </button>
@@ -1362,13 +1452,6 @@
                         `;
                     }
                     return;
-                }
-                
-                if (data.bookings) {
-                    data.bookings.forEach(booking => {
-                        const key = `${booking.date}-${booking.time}`;
-                        bookedSlots.set(key, booking);
-                    });
                 }
                 
 
@@ -1418,45 +1501,15 @@
                     });
                 }
                 
-                // Check if slot is in the past - use more lenient comparison
-                const slotDateTime = new Date(`${date}T${time}:00`);
-                const currentDateTime = new Date();
+                const { DateTime } = luxon;
+                const now = DateTime.now().setZone(userTimezone);
+                const slotLocal = DateTime.fromISO(`${date}T${time}`, { zone: userTimezone });
+                const isPast = slotLocal <= now;
                 
-                // Allow slots for the current day (don't mark as past if it's today)
-                const slotDate = new Date(date);
-                const today = new Date();
-                today.setHours(0, 0, 0, 0); // Start of today
-                slotDate.setHours(0, 0, 0, 0); // Start of slot date
-                
-                const isPast = slotDate < today; // Only mark as past if it's before today
-                
-                // Check if the specific time has passed today
-                const now = new Date();
-                const currentDate = now.toISOString().split('T')[0];
-                const currentTime = now.toTimeString().split(' ')[0].substring(0, 5); // HH:MM format
-                
-                let isTimePassed = false;
-                if (date === currentDate) {
-                    // If it's today, check if the time has passed
-                    isTimePassed = time <= currentTime;
-                }
-                
-                // Debug time comparison for specific slots
-                if (slotKey === '2025-08-25-10:30' || slotKey === '2025-08-25-11:00') {
-                    console.log(`🔍 Time comparison for ${slotKey}:`, {
-                        slotDateTime: slotDateTime.toISOString(),
-                        currentDateTime: currentDateTime.toISOString(),
-                        isPast,
-                        currentDate,
-                        currentTime,
-                        isTimePassed
-                    });
-                }
-                
-                if (isPast || isTimePassed) {
+                if (isPast) {
                     cell.classList.remove('available', 'unavailable', 'booked');
                     cell.classList.add('past');
-                    cell.textContent = isTimePassed ? 'Past' : '';
+                    cell.textContent = 'Past';
                     cell.style.cursor = 'not-allowed';
                     // Remove click handler for past slots
                     cell.onclick = null;
@@ -1506,23 +1559,11 @@
             const slotKey = `${date}-${time}`;
             const cell = document.querySelector(`[data-date="${date}"][data-time="${time}"]`);
             
-            // Check if slot is available (not past and actually open for booking)
-            const slotDate = new Date(date);
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            slotDate.setHours(0, 0, 0, 0);
-            const isPast = slotDate < today; // Only mark as past if it's before today
-            
-            // Check if the specific time has passed today
-            const now = new Date();
-            const currentDate = now.toISOString().split('T')[0];
-            const currentTime = now.toTimeString().split(' ')[0].substring(0, 5); // HH:MM format
-            
-            let isTimePassed = false;
-            if (date === currentDate) {
-                // If it's today, check if the time has passed
-                isTimePassed = time <= currentTime;
-            }
+            // Check if slot is available (not past) using user's timezone
+            const { DateTime } = luxon;
+            const now = DateTime.now().setZone(userTimezone);
+            const slotLocal = DateTime.fromISO(`${date}T${time}`, { zone: userTimezone });
+            const isPast = slotLocal <= now;
             
             const isAvailable = availableSlots.has(slotKey);
             const isBooked = bookedSlots.has(slotKey);
@@ -1593,8 +1634,9 @@
                     
                     console.log('🔍 Selecting slot:', { date, time, teacherId: availableSlot.teacherId });
                     selectedSlots.set(slotKey, { 
-                        date, 
-                        time, 
+                        date: availableSlot.localDate || date, 
+                        time: availableSlot.localTime || time, 
+                        utc: availableSlot.utc,
                         teacherId: availableSlot.teacherId // use the teacher ID from the slot data
                     });
                     cell.classList.add('selected');
@@ -1931,9 +1973,9 @@
             console.log('🔍 Using token:', token ? 'Token exists' : 'No token');
             
             // Validate slot
-            if (!slot.teacherId || !slot.date || !slot.time) {
+            if (!slot.teacherId || !slot.date || !slot.time || !slot.utc) {
                 console.error('❌ Slot validation failed:', slot);
-                showMessage(`Error: Selected slot is missing required information (teacherId: ${slot.teacherId ? 'OK' : 'MISSING'}, date: ${slot.date ? 'OK' : 'MISSING'}, time: ${slot.time ? 'OK' : 'MISSING'}). Please refresh and try again.`, 'error');
+                showMessage(`Error: Selected slot is missing required information (teacherId: ${slot.teacherId ? 'OK' : 'MISSING'}, date: ${slot.date ? 'OK' : 'MISSING'}, time: ${slot.time ? 'OK' : 'MISSING'}, utc: ${slot.utc ? 'OK' : 'MISSING'}). Please refresh and try again.`, 'error');
                 bookBtn.disabled = false;
                 bookBtnText.textContent = 'Book Class';
                 return;
@@ -1963,8 +2005,10 @@
                 // Book single slot - use trimmed values
                 const requestBody = {
                     teacherId: slot.teacherId,
-                    date: slot.date,
-                    time: slot.time,
+                    date: slot.date, // legacy
+                    time: slot.time, // legacy
+                    dateTimeUtc: slot.utc,
+                    timezone: userTimezone,
                     lesson: finalLessonTitle,
                     lessonId: lessonId,
                     studentLevel: studentLevel

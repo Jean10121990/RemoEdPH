@@ -4,6 +4,9 @@ const bookingSchema = new mongoose.Schema({
   teacherId: { type: String, required: true }, // Use the new teacherId field (e.g., "kjb00000001")
   date: { type: String, required: true }, // YYYY-MM-DD
   time: { type: String, required: true }, // HH:MM
+  dateTimeUtc: { type: Date, default: null }, // canonical UTC datetime for the class
+  studentLocalZone: { type: String, default: null }, // IANA timezone of student at booking time
+  teacherLocalZone: { type: String, default: null }, // IANA timezone of teacher at booking time
   lesson: { type: String, required: true },
   lessonId: { type: mongoose.Schema.Types.ObjectId, ref: 'Lesson', default: null }, // Reference to Lesson document
   studentLevel: { type: String, required: true }, // nursery, kinder, preparatory
