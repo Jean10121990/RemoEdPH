@@ -1236,18 +1236,13 @@
             let html = '<div class="grid-header">';
             html += '<div>Time</div>';
             
-            const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']; // Monday first
-            const months = ["January", "February", "March", "April", "May", "June",
-                "July", "August", "September", "October", "November", "December"
-            ];
-            
+            const { DateTime } = luxon;
+            const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+            const weekStartLuxon = DateTime.fromJSDate(weekStart, { zone: timeZone });
+
             for (let i = 0; i < 7; i++) {
-                const date = new Date(weekStart);
-                date.setDate(weekStart.getDate() + i);
-                const dayName = days[i];
-                const monthName = months[date.getMonth()];
-                const dayNum = date.getDate();
-                html += `<div>${dayName} ${monthName} ${dayNum}</div>`;
+                const day = weekStartLuxon.plus({ days: i });
+                html += `<div>${day.toFormat('ccc LLLL d')}</div>`;
             }
             html += '</div>';
             
