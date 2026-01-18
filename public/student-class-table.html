@@ -1880,9 +1880,30 @@
       loadScheduleData();
     }
 
+    // Luxon helper (with native fallback)
+    function createDateTime(jsDate, timeZone) {
+      const Lux = window.luxon && window.luxon.DateTime;
+      if (Lux) return Lux.fromJSDate(jsDate, { zone: timeZone });
+      const d = new Date(jsDate);
+      return {
+        _d: d,
+        weekday: ((d.getDay() + 6) % 7) + 1, // ISO: Monday=1 ... Sunday=7
+        plus: ({ days = 0 } = {}) => createDateTime(new Date(d.getTime() + days * 86400000), timeZone),
+        minus: ({ days = 0 } = {}) => createDateTime(new Date(d.getTime() - days * 86400000), timeZone),
+        toFormat: (fmt) => {
+          if (fmt === 'ccc') return d.toLocaleDateString(undefined, { weekday: 'short' });
+          if (fmt === 'LLLL d') return d.toLocaleDateString(undefined, { month: 'long', day: 'numeric' });
+          if (fmt === 'ccc LLLL d') {
+            return `${d.toLocaleDateString(undefined, { weekday: 'short' })} ${d.toLocaleDateString(undefined, { month: 'long' })} ${d.getDate()}`;
+          }
+          return d.toLocaleDateString();
+        },
+        toISODate: () => d.toISOString().split('T')[0]
+      };
+    }
+
     // Generate day headers
     function generateDayHeaders() {
-      const { DateTime } = luxon;
       const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
       const dayHeadersRow = document.getElementById('day-headers-row');
 
@@ -1891,7 +1912,7 @@
         dayHeadersRow.removeChild(dayHeadersRow.lastChild);
       }
 
-      const baseWeek = DateTime.fromJSDate(currentWeek, { zone: timeZone });
+      const baseWeek = createDateTime(currentWeek, timeZone);
       const monday = baseWeek.minus({ days: baseWeek.weekday - 1 }); // ISO weekday: 1=Monday, 7=Sunday
 
       for (let i = 0; i < 7; i++) {
