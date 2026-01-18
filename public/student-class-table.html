@@ -1881,28 +1881,25 @@
 
     // Generate day headers
     function generateDayHeaders() {
+      const { DateTime } = luxon;
+      const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
       const dayHeadersRow = document.getElementById('day-headers-row');
-              const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']; // Monday first
-      const monthNames = ["January", "February", "March", "April", "May", "June",
-        "July", "August", "September", "October", "November", "December"
-      ];
 
       // Clear existing day headers, but keep the 'Time' th
       while (dayHeadersRow.children.length > 1) {
         dayHeadersRow.removeChild(dayHeadersRow.lastChild);
       }
 
-              for (let i = 0; i < 7; i++) {
-          const date = new Date(currentWeek);
-          // Calculate Monday as the start of the week
-          const dayOfWeek = currentWeek.getDay();
-          const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-          date.setDate(currentWeek.getDate() - daysToMonday + i);
+      const baseWeek = DateTime.fromJSDate(currentWeek, { zone: timeZone });
+      const monday = baseWeek.minus({ days: baseWeek.weekday - 1 }); // ISO weekday: 1=Monday, 7=Sunday
+
+      for (let i = 0; i < 7; i++) {
+        const day = monday.plus({ days: i });
 
         const dayTh = document.createElement('th');
         dayTh.className = 'day-column';
-        dayTh.innerHTML = `${days[i]}<br>${monthNames[date.getMonth()]} ${date.getDate()}`;
-        dayTh.dataset.date = date.toISOString().split('T')[0];
+        dayTh.innerHTML = `${day.toFormat('ccc')}<br>${day.toFormat('LLLL d')}`;
+        dayTh.dataset.date = day.toISODate();
 
         dayHeadersRow.appendChild(dayTh);
       }
