@@ -618,7 +618,7 @@
       }
       gridBody.innerHTML = '';
       
-      const startHour = 1;
+      const startHour = 0; // include midnight (00:00)
       const endHour = 24;
       
       for (let hour = startHour; hour < endHour; hour++) {
@@ -757,6 +757,15 @@
       const hour = parseInt(hourStr, 10);
       const minute = minuteStr.padStart(2, '0');
       return `${hour.toString().padStart(2, '0')}:${minute}`;
+    }
+
+    // Normalize any time string to HH:mm (ensures 00:00 pads correctly)
+    function normalizeTimeString(timeString) {
+      if (!timeString) return '00:00';
+      const parts = timeString.split(':');
+      const hour = parseInt(parts[0], 10);
+      const minute = parts[1] ? parseInt(parts[1], 10) : 0;
+      return `${isNaN(hour) ? '00' : hour.toString().padStart(2, '0')}:${isNaN(minute) ? '00' : minute.toString().padStart(2, '0')}`;
     }
 
     // Toggle slot selection
@@ -1026,7 +1035,10 @@
         if (data.slots) {
           console.log('🔄 Found', data.slots.length, 'existing slots from database');
           data.slots.forEach(slot => {
-            const slotKey = `${slot.date}-${slot.time}`;
+            const normalizedTime = normalizeTimeString(slot.time);
+            const slotKey = `${slot.date}-${normalizedTime}`;
+            // keep normalized time for downstream usage
+            slot.time = normalizedTime;
             window.existingSlots.add(slotKey);
             
             // Separate available and unavailable slots
@@ -1078,10 +1090,13 @@
         
         if (bookings && bookings.length > 0) {
           bookings.forEach(booking => {
-            const slotId = booking.date + '-' + booking.time;
+            const normalizedTime = normalizeTimeString(booking.time);
+            const slotId = `${booking.date}-${normalizedTime}`;
+            // Keep normalized time for downstream lookups
+            booking.time = normalizedTime;
             
             // Check if this is a past class (finished or absent)
-            const bookingDateTime = new Date(`${booking.date}T${booking.time}:00`);
+            const bookingDateTime = new Date(`${booking.date}T${normalizedTime}:00`);
             const now = new Date();
             
             if (bookingDateTime <= now && (booking.status === 'completed' || booking.status === 'absent')) {
@@ -1133,7 +1148,7 @@
           window.availableSlots.forEach(slotKey => {
           const lastDashIndex = slotKey.lastIndexOf('-');
           const date = slotKey.substring(0, lastDashIndex);
-          const time = slotKey.substring(lastDashIndex + 1);
+          const time = normalizeTimeString(slotKey.substring(lastDashIndex + 1));
           
           // Use a more direct approach to find the slot element
           const slotElement = document.querySelector(`td[data-date="${date}"][data-time="${time}"]`);
@@ -1205,7 +1220,7 @@
         window.unavailableSlots.forEach(slotKey => {
           const lastDashIndex = slotKey.lastIndexOf('-');
           const date = slotKey.substring(0, lastDashIndex);
-          const time = slotKey.substring(lastDashIndex + 1);
+          const time = normalizeTimeString(slotKey.substring(lastDashIndex + 1));
           
           // Use a more direct approach to find the slot element
           const slotElement = document.querySelector(`td[data-date="${date}"][data-time="${time}"]`);
@@ -1414,7 +1429,7 @@
         const selectedSlotsArray = Array.from(selectedSlots).map(slotKey => {
           const lastDashIndex = slotKey.lastIndexOf('-');
           const date = slotKey.substring(0, lastDashIndex);
-          const time = slotKey.substring(lastDashIndex + 1);
+          const time = normalizeTimeString(slotKey.substring(lastDashIndex + 1));
           return { date, time };
         });
         
@@ -1440,7 +1455,8 @@
         const existingSlots = existingData.slots || [];
         
         // Combine existing slots with new selected slots
-        const allSlotsToKeep = [...existingSlots, ...selectedSlotsArray];
+        const normalizedExisting = existingSlots.map(s => ({ ...s, time: normalizeTimeString(s.time) }));
+        const allSlotsToKeep = [...normalizedExisting, ...selectedSlotsArray];
         
         // Remove duplicates
         const uniqueSlots = allSlotsToKeep.filter((slot, index, self) => 

@@ -1591,14 +1591,14 @@
       }
     }
 
-    // Generate time slots (30-minute intervals from 01:00 to 24:00) - 24-hour format
+    // Generate time slots (30-minute intervals from 00:00 to 24:00) - 24-hour format
     function generateTimeSlots() {
       const gridBody = document.getElementById('time-slots-grid');
       gridBody.innerHTML = '';
       
       console.log('🔍 Generating time slots for currentWeek:', currentWeek.toISOString());
       
-      const startHour = 1;
+      const startHour = 0;
       const endHour = 24;
       
       for (let hour = startHour; hour < endHour; hour++) {

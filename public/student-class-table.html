@@ -7,6 +7,7 @@
   <title>Class Schedule - RemoEdPH</title>
       <link rel="stylesheet" href="modern-styles.css">
     <link rel="stylesheet" href="child-friendly-styles.css">
+  <script src="vendor/luxon.min.js"></script>
   <style>
     body { 
       font-family: 'Comic Sans MS', 'Chalkboard SE', 'Trebuchet MS', 'Segoe UI', sans-serif; 
@@ -1904,7 +1905,7 @@
 
     // Generate day headers
     function generateDayHeaders() {
-      const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+      const timeZone = getDisplayZone();
       const dayHeadersRow = document.getElementById('day-headers-row');
 
       // Clear existing day headers, but keep the 'Time' th
@@ -2076,6 +2077,131 @@
       }
     }
 
+    const VIEWER_ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; // viewer's local timezone
+
+    function getDisplayZone() {
+      const first = bookingsData[0] || {};
+      return (
+        first.studentLocalZone ||
+        first.studentTimezone ||
+        first.clientTz ||
+        first.timezone ||
+        VIEWER_ZONE
+      );
+    }
+
+    // Fallback converter when Luxon is unavailable; only supports UTC -> target zone
+    function utcToZoneParts(utcString, targetZone) {
+      try {
+        const d = new Date(utcString);
+        if (Number.isNaN(d.getTime())) return null;
+        const formatter = new Intl.DateTimeFormat('en-CA', {
+          timeZone: targetZone || VIEWER_ZONE,
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false
+        });
+        const parts = formatter.formatToParts(d).reduce((acc, p) => {
+          acc[p.type] = p.value;
+          return acc;
+        }, {});
+        const date = `${parts.year}-${parts.month}-${parts.day}`;
+        const time = `${parts.hour}:${parts.minute}`;
+        return { date, time };
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function bookingDisplayDateTime(booking) {
+      const Lux = window.luxon && window.luxon.DateTime;
+      const normalized = normalizeTimeToHHMM(booking.time);
+      const zone =
+        booking.studentLocalZone ||
+        booking.studentTimezone ||
+        booking.clientTz ||
+        booking.timezone ||
+        getDisplayZone();
+
+      if (!Lux || !normalized) {
+        return { date: booking.date, slot: normalized, label: normalized, zone };
+      }
+
+      // If we have an authoritative UTC, convert directly to the student's zone.
+      const utcString =
+        booking.dateTimeUtc ||
+        booking.dateTimeUTC ||
+        booking.datetimeUtc ||
+        booking.utc ||
+        booking.dateTime;
+
+      if (utcString) {
+        // Try Luxon first
+        if (Lux) {
+          const utcDt = Lux.fromISO(utcString, { zone: 'utc' });
+          if (utcDt.isValid) {
+            const local = utcDt.setZone(zone || VIEWER_ZONE);
+            return {
+              date: local.toISODate(),
+              slot: local.toFormat('HH:mm'),
+              label: local.toFormat('hh:mm a'),
+              zone: zone || VIEWER_ZONE
+            };
+          }
+        }
+        // Fallback using Intl if Luxon missing/invalid
+        const parts = utcToZoneParts(utcString, zone || VIEWER_ZONE);
+        if (parts) {
+          return {
+            date: parts.date,
+            slot: parts.time,
+            label: parts.time,
+            zone: zone || VIEWER_ZONE
+          };
+        }
+      }
+
+      // Fallback: parse booking.date + booking.time using the student's zone (or offset if provided)
+      const isoCandidate = booking.time && booking.time.includes('T')
+        ? booking.time
+        : `${booking.date || ''}T${normalized}`;
+      const hasOffset = /[zZ]|[+\-]\d{2}:?\d{2}$/.test(isoCandidate);
+
+      if (Lux) {
+        const dt = hasOffset
+          ? Lux.fromISO(isoCandidate)
+          : Lux.fromISO(isoCandidate, { zone: zone || VIEWER_ZONE });
+
+        if (!dt.isValid) {
+          return { date: booking.date, slot: normalized, label: normalized, zone };
+        }
+
+        const local = dt.setZone(zone || VIEWER_ZONE);
+        return {
+          date: local.toISODate(),
+          slot: local.toFormat('HH:mm'),
+          label: local.toFormat('hh:mm a'),
+          zone: zone || VIEWER_ZONE
+        };
+      }
+
+      // Intl fallback (no offset parsing beyond UTC strings)
+      const parts = utcToZoneParts(isoCandidate, zone || VIEWER_ZONE);
+      if (parts) {
+        return {
+          date: parts.date,
+          slot: parts.time,
+          label: parts.time,
+          zone: zone || VIEWER_ZONE
+        };
+      }
+
+      return { date: booking.date, slot: normalized, label: normalized, zone };
+    }
+
     // Render the schedule data on the grid
     function renderScheduleData() {
       console.log('🔄 Rendering schedule data...');
@@ -2093,8 +2219,19 @@
 
       // Render booked classes
       bookingsData.forEach(booking => {
-          const normalizedBookingTime = normalizeTimeToHHMM(booking.time);
-          const slotSelector = `[data-date="${booking.date}"][data-time="${normalizedBookingTime}"]`;
+          const timeInfo = bookingDisplayDateTime(booking);
+          console.log('🕒 bookingDisplay', {
+            id: booking._id,
+            utc: booking.dateTimeUtc || booking.dateTimeUTC || booking.datetimeUtc || booking.utc || booking.dateTime,
+            date: booking.date,
+            time: booking.time,
+            zoneUsed: timeInfo.zone,
+            mappedDate: timeInfo.date,
+            mappedSlot: timeInfo.slot,
+            label: timeInfo.label
+          });
+          const normalizedBookingTime = timeInfo.slot;
+          const slotSelector = `[data-date="${timeInfo.date}"][data-time="${normalizedBookingTime}"]`;
           const slotElement = document.querySelector(slotSelector);
           console.log(`🔍 Looking for slot: date="${booking.date}", time="${booking.time}" (normalized: "${normalizedBookingTime}")`);
           console.log(`🔍 Slot selector: ${slotSelector}`);
@@ -2106,15 +2243,27 @@
         }
         if (slotElement) {
           console.log(`📅 Processing booking: ${booking.date} ${booking.time} (ID: ${booking._id})`);
+          if (timeInfo.label) {
+            slotElement.title = `${booking.date} ${timeInfo.label} (${timeInfo.zone})`;
+          }
           
           // Check if the class duration has passed (25 minutes after start time)
-          const now = new Date();
-          const bookingDateTime = new Date(`${booking.date}T${booking.time}`);
-          const endTime = new Date(bookingDateTime);
-          endTime.setMinutes(endTime.getMinutes() + 25); // 25 minutes after start
-          
-                    const isClassDurationPassed = now > endTime;
-          console.log(`⏰ Class end time: ${endTime.toLocaleString()}, Is past: ${isClassDurationPassed}`);
+          const Lux = window.luxon && window.luxon.DateTime;
+          let isClassDurationPassed = false;
+          if (Lux) {
+            const bookingDt = Lux.fromISO(`${timeInfo.date}T${timeInfo.slot || booking.time}`, { zone: timeInfo.zone || VIEWER_ZONE });
+            const endDt = bookingDt.plus({ minutes: 25 });
+            const now = Lux.now().setZone(timeInfo.zone || VIEWER_ZONE);
+            isClassDurationPassed = endDt <= now;
+            console.log(`⏰ Class end time: ${endDt.toISO()} (${timeInfo.zone}), Is past: ${isClassDurationPassed}`);
+          } else {
+            const now = new Date();
+            const bookingDateTime = new Date(`${timeInfo.date}T${timeInfo.slot || booking.time}`);
+            const endTime = new Date(bookingDateTime);
+            endTime.setMinutes(endTime.getMinutes() + 25); // 25 minutes after start
+            isClassDurationPassed = now > endTime;
+            console.log(`⏰ Class end time: ${endTime.toLocaleString()}, Is past: ${isClassDurationPassed}`);
+          }
           
           if (isClassDurationPassed) {
             // Check if feedback already exists for this booking

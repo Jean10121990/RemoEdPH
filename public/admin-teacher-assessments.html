@@ -313,7 +313,8 @@
         let currentFilter = 'all';
 
         async function loadAssessments() {
-            const token = localStorage.getItem('token');
+            // Accept either standard token or adminToken for admin pages
+            const token = localStorage.getItem('token') || localStorage.getItem('adminToken');
             if (!token) {
                 document.getElementById('loading').textContent = 'Authentication required. Please login again.';
                 return;
@@ -434,7 +435,8 @@
             modal.style.display = 'block';
             modalBody.innerHTML = '<div class="loading">Loading assessment details...</div>';
 
-            const token = localStorage.getItem('token');
+            // Accept either standard token or adminToken
+            const token = localStorage.getItem('token') || localStorage.getItem('adminToken');
             try {
                 const response = await fetch(`/api/admin/teacher-assessments/${teacherId}`, {
                     method: 'GET',
@@ -586,7 +588,103 @@
                     `;
                 }
 
+                // Manual grading block
+                const abilityLevel = (skill) => {
+                    const lvl = data.teacher.teachingAbilities && data.teacher.teachingAbilities[skill] && data.teacher.teachingAbilities[skill].level;
+                    return (lvl === undefined || lvl === null) ? '' : String(lvl);
+                };
+                const levelOptions = (selected) => {
+                    const labels = ['0 - Beginner','1 - Basic','2 - Intermediate','3 - Advanced','4 - Expert','5 - Master'];
+                    return labels.map((label, idx) => {
+                        const val = String(idx);
+                        const sel = selected === val ? 'selected' : '';
+                        return `<option value="${val}" ${sel}>${label}</option>`;
+                    }).join('');
+                };
+
+                html += `
+                    <div style="margin-top: 24px; padding: 16px; background: #f8fafc; border-radius: 12px;">
+                        <h4 style="margin: 0 0 12px 0; color: #1E3A5F;">Manual Grade</h4>
+                        <p style="margin: 0 0 12px 0; color: #64748b; font-size: 0.9rem;">
+                            Select a level (0-5) for each skill based on your rubric, add notes, then save.
+                        </p>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); gap: 12px;">
+                            <label style="display:flex; flex-direction:column; gap:6px; font-weight:600; color:#1E3A5F;">
+                                Listening
+                                <select id="grade-listening" class="remoed-form-input">
+                                    ${levelOptions(abilityLevel('listening'))}
+                                </select>
+                            </label>
+                            <label style="display:flex; flex-direction:column; gap:6px; font-weight:600; color:#1E3A5F;">
+                                Reading
+                                <select id="grade-reading" class="remoed-form-input">
+                                    ${levelOptions(abilityLevel('reading'))}
+                                </select>
+                            </label>
+                            <label style="display:flex; flex-direction:column; gap:6px; font-weight:600; color:#1E3A5F;">
+                                Speaking
+                                <select id="grade-speaking" class="remoed-form-input">
+                                    ${levelOptions(abilityLevel('speaking'))}
+                                </select>
+                            </label>
+                            <label style="display:flex; flex-direction:column; gap:6px; font-weight:600; color:#1E3A5F;">
+                                Writing
+                                <select id="grade-writing" class="remoed-form-input">
+                                    ${levelOptions(abilityLevel('writing'))}
+                                </select>
+                            </label>
+                        </div>
+                        <label style="display:flex; flex-direction:column; gap:6px; font-weight:600; color:#1E3A5F; margin-top:12px;">
+                            Notes
+                            <textarea id="grade-notes" class="remoed-form-input" rows="3" placeholder="Add rubric-based notes..."></textarea>
+                        </label>
+                        <button id="save-grade-btn" class="remoed-btn remoed-btn-primary" style="margin-top:12px;">
+                            Save Grade
+                        </button>
+                        <div id="grade-status" style="margin-top:8px; font-size:0.9rem; color:#64748b;"></div>
+                    </div>
+                `;
+
                 modalBody.innerHTML = html;
+
+                // Save-grade handler
+                const gradeBtn = document.getElementById('save-grade-btn');
+                const gradeStatus = document.getElementById('grade-status');
+                gradeBtn.onclick = async () => {
+                    gradeStatus.style.color = '#64748b';
+                    gradeStatus.textContent = 'Saving...';
+                    const tokenSave = localStorage.getItem('token') || localStorage.getItem('adminToken');
+                    const payload = {
+                        skills: {
+                            listening: document.getElementById('grade-listening').value,
+                            reading: document.getElementById('grade-reading').value,
+                            speaking: document.getElementById('grade-speaking').value,
+                            writing: document.getElementById('grade-writing').value
+                        },
+                        notes: document.getElementById('grade-notes').value.trim()
+                    };
+                    try {
+                        const resp = await fetch(`/api/admin/assess-teacher/${teacherId}`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${tokenSave}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(payload)
+                        });
+                        const resData = await resp.json();
+                        if (!resp.ok) {
+                            throw new Error(resData.error || resData.message || 'Failed to save grade');
+                        }
+                        gradeStatus.style.color = '#0f5132';
+                        gradeStatus.textContent = 'Grade saved successfully.';
+                        // Refresh list to reflect status
+                        loadAssessments();
+                    } catch (err) {
+                        gradeStatus.style.color = '#842029';
+                        gradeStatus.textContent = `Error: ${err.message}`;
+                    }
+                };
 
             } catch (error) {
                 console.error('Error loading assessment details:', error);
