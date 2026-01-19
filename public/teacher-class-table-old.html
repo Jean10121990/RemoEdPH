@@ -879,7 +879,7 @@
       const baseWeek = DateTime.fromJSDate(currentWeek, { zone: timeZone });
       const monday = baseWeek.minus({ days: baseWeek.weekday - 1 }); // ISO weekday 1=Mon, 7=Sun
 
-      for (let i = 0; i < 7; i++) {
+              for (let i = 0; i < 7; i++) {
         const day = monday.plus({ days: i });
 
         const dayTh = document.createElement('th');

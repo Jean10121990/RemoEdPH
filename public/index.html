@@ -460,6 +460,20 @@
             color: #FFD700 !important;
             opacity: 0.9;
         }
+
+        /* Subtle admin link */
+        .footer .admin-login {
+            font-size: 0.85rem;
+            opacity: 0.08;
+            color: #cde5ff !important;
+            text-decoration: none;
+            transition: opacity 0.2s ease, color 0.2s ease;
+        }
+        .footer .admin-login:hover,
+        .footer .admin-login:focus {
+            opacity: 0.9;
+            color: #FFD700 !important;
+        }
         
         @media (max-width: 768px) {
             .hero h1 {
@@ -664,6 +678,9 @@
     <!-- Footer -->
     <footer class="footer">
         <p>&copy; 2024 RemoEdPH. All rights reserved. 🌟</p>
+        <p style="margin-top:8px; font-size: 0.95rem;">
+            <a href="admin-login.html" class="admin-login" aria-label="Admin access">Admin Login</a>
+        </p>
     </footer>
 
     <!-- Sign Up Modal -->

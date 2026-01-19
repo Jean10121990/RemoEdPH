@@ -849,16 +849,16 @@ router.get('/slots', async (req, res) => {
       'ETag': `"${Date.now()}-${Math.random()}"`
     });
     
-    // Convert username/email to teacher teacherId if needed
+    // Convert provided identifier to canonical teacherId (Txxxxx)
     let actualTeacherId = teacherId;
     console.log('🔍 Original teacherId received:', teacherId);
     
-    // Check if this is already a valid teacherId format (starts with T)
-    if (teacherId.startsWith('T')) {
+    // If already canonical (starts with T), keep it
+    if (teacherId && teacherId.startsWith('T')) {
       console.log('🔍 TeacherId already in correct format:', teacherId);
       actualTeacherId = teacherId;
-    } else if (teacherId.includes('@') || teacherId.includes('.')) {
-      // If it's an email, look up the teacher
+    } else if (teacherId && (teacherId.includes('@') || teacherId.includes('.'))) {
+      // Email/username -> lookup and use teacher.teacherId
       console.log('🔍 Converting email/username to teacherId:', teacherId);
       const teacher = await Teacher.findOne({ 
         $or: [
@@ -871,8 +871,17 @@ router.get('/slots', async (req, res) => {
       }
       actualTeacherId = teacher.teacherId;
       console.log('🔍 Converted to teacherId:', actualTeacherId);
+    } else if (teacherId && mongoose.Types.ObjectId.isValid(teacherId)) {
+      // ObjectId -> lookup and use teacher.teacherId
+      console.log('🔍 Converting ObjectId to teacherId:', teacherId);
+      const teacher = await Teacher.findById(teacherId);
+      if (!teacher) {
+        return res.status(404).json({ error: 'Teacher not found' });
+      }
+      actualTeacherId = teacher.teacherId;
+      console.log('🔍 Converted ObjectId to teacherId:', actualTeacherId);
     } else {
-      console.log('🔍 Using teacherId as-is:', teacherId);
+      console.log('🔍 Using teacherId as-is (fallback):', teacherId);
       actualTeacherId = teacherId;
     }
     
@@ -4844,7 +4853,54 @@ router.post('/complete-assessment', verifyToken, requireTeacher, async (req, res
     
     teacher.assessmentTests.completed = true;
     teacher.assessmentTests.completedAt = new Date();
-    
+
+    // Auto-grade the teacher based on the submitted assessment tests
+    const ensureAbilities = () => {
+      if (!teacher.teachingAbilities) {
+        teacher.teachingAbilities = {
+          listening: { description: '', level: null },
+          reading: { description: '', level: null },
+          speaking: { description: '', level: null },
+          writing: { description: '', level: null },
+          creativityHobbies: ''
+        };
+      }
+    };
+
+    const levelFromTyping = (wpmVal, accVal) => {
+      if (wpmVal === undefined || accVal === undefined) return '3';
+      const wpm = Number(wpmVal) || 0;
+      const accuracy = Number(accVal) || 0;
+      if (wpm >= 50 && accuracy >= 90) return '5';
+      if (wpm >= 40 && accuracy >= 85) return '4';
+      if (wpm >= 30 && accuracy >= 80) return '3';
+      return '2';
+    };
+
+    // Build skill levels (simple heuristic)
+    ensureAbilities();
+    const skillLevels = {
+      listening: listeningComplete ? '4' : '3',
+      reading: readingComplete ? '4' : '3',
+      speaking: pronunciationComplete ? '4' : '3',
+      writing: typingComplete ? levelFromTyping(tests.typing.wpm, tests.typing.accuracy) : '3'
+    };
+
+    teacher.teachingAbilities.listening.level = skillLevels.listening;
+    teacher.teachingAbilities.reading.level = skillLevels.reading;
+    teacher.teachingAbilities.speaking.level = skillLevels.speaking;
+    teacher.teachingAbilities.writing.level = skillLevels.writing;
+
+    if (!teacher.skillAssessments) {
+      teacher.skillAssessments = [];
+    }
+    teacher.skillAssessments.push({
+      assessmentDate: new Date(),
+      assessedBy: 'System Auto-Grade',
+      skills: skillLevels,
+      notes: 'Auto-generated from completed assessment tests'
+    });
+
     await teacher.save();
     
     res.json({
@@ -4898,6 +4954,91 @@ router.get('/assessed-abilities', verifyToken, requireTeacher, async (req, res) 
       return res.status(404).json({ error: 'Teacher not found' });
     }
     
+    // If no assessed levels yet but assessment tests are completed, auto-grade now
+    const ensureAbilities = () => {
+      if (!teacher.teachingAbilities) {
+        teacher.teachingAbilities = {
+          listening: { description: '', level: null },
+          reading: { description: '', level: null },
+          speaking: { description: '', level: null },
+          writing: { description: '', level: null },
+          creativityHobbies: ''
+        };
+      }
+    };
+
+    const levelFromTyping = (wpmVal, accVal) => {
+      if (wpmVal === undefined || accVal === undefined) return '3';
+      const wpm = Number(wpmVal) || 0;
+      const accuracy = Number(accVal) || 0;
+      if (wpm >= 50 && accuracy >= 90) return '5';
+      if (wpm >= 40 && accuracy >= 85) return '4';
+      if (wpm >= 30 && accuracy >= 80) return '3';
+      return '2';
+    };
+
+    const isMissingLevel = (ability) => {
+      if (!ability) return true;
+      const level = ability.level;
+      return level === undefined || level === null || level === '' || Number.isNaN(Number(level));
+    };
+
+    const abilitiesMissing =
+      !teacher.teachingAbilities ||
+      ['listening', 'reading', 'speaking', 'writing'].some(
+        s => isMissingLevel(teacher.teachingAbilities && teacher.teachingAbilities[s])
+      );
+
+    const hasAnyTest =
+      teacher.assessmentTests &&
+      (
+        (teacher.assessmentTests.listening && Object.keys(teacher.assessmentTests.listening).length > 0) ||
+        (teacher.assessmentTests.typing && Object.keys(teacher.assessmentTests.typing).length > 0) ||
+        (teacher.assessmentTests.reading && Object.keys(teacher.assessmentTests.reading).length > 0) ||
+        (teacher.assessmentTests.pronunciation && Object.keys(teacher.assessmentTests.pronunciation).length > 0)
+      );
+
+    if (abilitiesMissing && teacher.assessmentTests && (teacher.assessmentTests.completed || hasAnyTest)) {
+      ensureAbilities();
+      const tests = teacher.assessmentTests;
+      const listeningComplete = tests.listening && (tests.listening.audioRecording || tests.listening.completedAt);
+      const typingComplete = tests.typing && (tests.typing.wpm !== null || tests.typing.completedAt);
+      const readingComplete = tests.reading && (tests.reading.audioRecording || tests.reading.completedAt);
+      const pronunciationComplete = tests.pronunciation && (tests.pronunciation.audioRecording || tests.pronunciation.words || tests.pronunciation.completedAt);
+
+      const skillLevels = {
+        listening: listeningComplete ? '4' : '3',
+        reading: readingComplete ? '4' : '3',
+        speaking: pronunciationComplete ? '4' : '3',
+        writing: typingComplete ? levelFromTyping(tests.typing.wpm, tests.typing.accuracy) : '3'
+      };
+
+      teacher.teachingAbilities.listening.level = skillLevels.listening;
+      teacher.teachingAbilities.reading.level = skillLevels.reading;
+      teacher.teachingAbilities.speaking.level = skillLevels.speaking;
+      teacher.teachingAbilities.writing.level = skillLevels.writing;
+
+      // Ensure assessment is marked completed so admin view shows it
+      if (!teacher.assessmentTests.completed) {
+        teacher.assessmentTests.completed = true;
+      }
+      if (!teacher.assessmentTests.completedAt) {
+        teacher.assessmentTests.completedAt = new Date();
+      }
+
+      if (!teacher.skillAssessments) {
+        teacher.skillAssessments = [];
+      }
+      teacher.skillAssessments.push({
+        assessmentDate: new Date(),
+        assessedBy: 'System Auto-Grade',
+        skills: skillLevels,
+        notes: 'Auto-generated from completed assessment tests (view)'
+      });
+
+      await teacher.save();
+    }
+
     // Get the latest assessment from skillAssessments history
     const latestAssessment = teacher.skillAssessments && teacher.skillAssessments.length > 0
       ? teacher.skillAssessments[teacher.skillAssessments.length - 1]

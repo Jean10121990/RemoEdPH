@@ -1267,9 +1267,9 @@
             }
             html += '</div>';
             
-            // Generate time slots from 01:00 to 24:00 (30-minute intervals) - 24-hour format
+            // Generate time slots from 00:00 to 24:00 (30-minute intervals) - 24-hour format
             const times = [];
-            for (let hour = 1; hour < 24; hour++) {
+            for (let hour = 0; hour < 24; hour++) {
                 for (let minute = 0; minute < 60; minute += 30) {
                     const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
                     times.push({ value: timeStr });
@@ -1577,10 +1577,19 @@
             const cell = document.querySelector(`[data-date="${date}"][data-time="${time}"]`);
             
             // Check if slot is available (not past) using user's timezone
-            const { DateTime } = luxon;
-            const now = DateTime.now().setZone(userTimezone);
-            const slotLocal = DateTime.fromISO(`${date}T${time}`, { zone: userTimezone });
-            const isPast = slotLocal <= now;
+            const Lux = window.luxon && window.luxon.DateTime;
+            const now = Lux ? Lux.now().setZone(userTimezone) : new Date();
+            const slotLocal = Lux
+                ? Lux.fromISO(`${date}T${time}`, { zone: userTimezone })
+                : new Date(`${date}T${time}`);
+
+            const isPast = Lux ? slotLocal <= now : slotLocal.getTime() <= now.getTime();
+            const currentDate = Lux ? now.toISODate() : now.toISOString().split('T')[0];
+            const currentTime = Lux ? now.toFormat('HH:mm') : now.toTimeString().slice(0,5);
+            const isSameDay = Lux
+                ? slotLocal.toISODate() === currentDate
+                : slotLocal.toISOString().split('T')[0] === currentDate;
+            const isTimePassed = isSameDay && (Lux ? slotLocal <= now : slotLocal.getTime() <= now.getTime());
             
             const isAvailable = availableSlots.has(slotKey);
             const isBooked = bookedSlots.has(slotKey);
