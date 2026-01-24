@@ -738,6 +738,7 @@
             <div class="remoed-logo" style="height:100px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding-top:24px;">
                 <img src="remoed-logo.png" alt="RemoEdPH Logo" style="height:50px; width:auto; display:inline-block; vertical-align:middle; filter: drop-shadow(0 2px 4px rgba(28, 167, 231, 0.3));">
                 <span class="remoed-title" style="font-size:1.4rem; font-weight:800; color:#1CA7E7; letter-spacing:1px; text-shadow: 2px 2px 4px rgba(28, 167, 231, 0.2);">RemoEdPH</span>
+                <div style="font-size: 0.75rem; color: #666;">Student Portal</div>
             </div>
             <div class="remoed-user" style="display:flex; flex-direction:column; align-items:center; margin-bottom:24px;">
                 <div class="remoed-avatar" id="sidebar-avatar" style="position: relative; overflow: hidden; width: 3rem; height: 3rem;"> 
@@ -1194,6 +1195,28 @@
             // This prevents duplicate event listeners
         }
         
+        // Luxon helper (with native fallback for timezone-safe weekday names)
+        function createDateTime(jsDate, timeZone) {
+            const Lux = window.luxon && window.luxon.DateTime;
+            if (Lux) return Lux.fromJSDate(jsDate, { zone: timeZone });
+            const d = new Date(jsDate);
+            return {
+                _d: d,
+                weekday: ((d.getDay() + 6) % 7) + 1, // ISO: Monday=1 ... Sunday=7
+                plus: ({ days = 0 } = {}) => createDateTime(new Date(d.getTime() + days * 86400000), timeZone),
+                minus: ({ days = 0 } = {}) => createDateTime(new Date(d.getTime() - days * 86400000), timeZone),
+                toFormat: (fmt) => {
+                    if (fmt === 'ccc') return d.toLocaleDateString(undefined, { weekday: 'short' });
+                    if (fmt === 'LLLL d') return d.toLocaleDateString(undefined, { month: 'long', day: 'numeric' });
+                    if (fmt === 'ccc LLLL d') {
+                        return `${d.toLocaleDateString(undefined, { weekday: 'short' })} ${d.toLocaleDateString(undefined, { month: 'long' })} ${d.getDate()}`;
+                    }
+                    return d.toLocaleDateString();
+                },
+                toISODate: () => d.toISOString().split('T')[0]
+            };
+        }
+
         function updateWeekDisplay() {
             const weekStart = getWeekStartDate(currentWeek);
             const weekEnd = new Date(weekStart);
@@ -1235,24 +1258,18 @@
             let html = '<div class="grid-header">';
             html += '<div>Time</div>';
             
-            const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']; // Monday first
-            const months = ["January", "February", "March", "April", "May", "June",
-                "July", "August", "September", "October", "November", "December"
-            ];
-            
+            const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+            const weekStartLuxon = createDateTime(weekStart, timeZone);
+
             for (let i = 0; i < 7; i++) {
-                const date = new Date(weekStart);
-                date.setDate(weekStart.getDate() + i);
-                const dayName = days[i];
-                const monthName = months[date.getMonth()];
-                const dayNum = date.getDate();
-                html += `<div>${dayName} ${monthName} ${dayNum}</div>`;
+                const day = weekStartLuxon.plus({ days: i });
+                html += `<div>${day.toFormat('ccc LLLL d')}</div>`;
             }
             html += '</div>';
             
-            // Generate time slots from 01:00 to 24:00 (30-minute intervals) - 24-hour format
+            // Generate time slots from 00:00 to 24:00 (30-minute intervals) - 24-hour format
             const times = [];
-            for (let hour = 1; hour < 24; hour++) {
+            for (let hour = 0; hour < 24; hour++) {
                 for (let minute = 0; minute < 60; minute += 30) {
                     const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
                     times.push({ value: timeStr });
@@ -1560,10 +1577,19 @@
             const cell = document.querySelector(`[data-date="${date}"][data-time="${time}"]`);
             
             // Check if slot is available (not past) using user's timezone
-            const { DateTime } = luxon;
-            const now = DateTime.now().setZone(userTimezone);
-            const slotLocal = DateTime.fromISO(`${date}T${time}`, { zone: userTimezone });
-            const isPast = slotLocal <= now;
+            const Lux = window.luxon && window.luxon.DateTime;
+            const now = Lux ? Lux.now().setZone(userTimezone) : new Date();
+            const slotLocal = Lux
+                ? Lux.fromISO(`${date}T${time}`, { zone: userTimezone })
+                : new Date(`${date}T${time}`);
+
+            const isPast = Lux ? slotLocal <= now : slotLocal.getTime() <= now.getTime();
+            const currentDate = Lux ? now.toISODate() : now.toISOString().split('T')[0];
+            const currentTime = Lux ? now.toFormat('HH:mm') : now.toTimeString().slice(0,5);
+            const isSameDay = Lux
+                ? slotLocal.toISODate() === currentDate
+                : slotLocal.toISOString().split('T')[0] === currentDate;
+            const isTimePassed = isSameDay && (Lux ? slotLocal <= now : slotLocal.getTime() <= now.getTime());
             
             const isAvailable = availableSlots.has(slotKey);
             const isBooked = bookedSlots.has(slotKey);

@@ -472,6 +472,22 @@
             box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
         }
 
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
+        }
+
+        @keyframes celebrate {
+            0% { transform: scale(0.9); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes fadeOut {
+            from { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            to { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+        }
+
         @media (max-width: 768px) {
             .remoed-sidebar {
                 position: relative;
@@ -495,6 +511,7 @@
             <div class="remoed-logo" style="position: relative;">
                 <img src="remoed-logo.png" alt="RemoEdPH Logo" style="height:50px; filter: drop-shadow(0 2px 4px rgba(28, 167, 231, 0.3));">
                 <span class="remoed-title" style="font-size:1.4rem; font-weight:800; color:#1CA7E7; letter-spacing:1px; text-shadow: 2px 2px 4px rgba(28, 167, 231, 0.2);">RemoEdPH</span>
+                <div style="font-size: 0.75rem; color: #666;">Student Portal</div>
             </div>
             <div class="remoed-user">
                 <div class="remoed-avatar" id="student-avatar" onclick="window.location.href='student-profile.html'" style="cursor: pointer;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
@@ -960,12 +977,6 @@
                 setTimeout(() => celebration.remove(), 500);
             }, 2000);
         }
-        
-        @keyframes fadeOut {
-            from { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-            to { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
-        }
-
         function getSpeakingGame(level) {
             const phrases = gameData[level].speaking;
             let currentIndex = 0;

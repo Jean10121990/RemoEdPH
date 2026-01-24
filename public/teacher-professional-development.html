@@ -806,6 +806,7 @@
                 <li onclick="window.location.href='teacher-class-table.html'"><svg fill="none" stroke="#667eea" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M16 3v4M8 3v4"/></svg>Class Schedule</li>
                 <li onclick="window.location.href='teacher-open-class.html'"><svg fill="none" stroke="#667eea" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>Class Configuration</li>
                 <li onclick="window.location.href='device-check.html'"><svg fill="none" stroke="#667eea" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>Device Check</li>
+                <li onclick="window.location.href='teacher-lessons-library.html'"><svg fill="none" stroke="#667eea" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>Lessons Library</li>
                 <li onclick="window.location.href='teacher-service-fee.html'"><svg fill="none" stroke="#667eea" stroke-width="2" viewBox="0 0 24 24"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 10c-4.41 0-8-1.79-8-4V6c0-2.21 3.59-4 8-4s8 1.79 8 4v8c0 2.21-3.59 4-8 4z"/></svg>Teaching Fee</li>
                 <li onclick="window.location.href='teacher-performance-indicator.html'"><svg fill="none" stroke="#667eea" stroke-width="2" viewBox="0 0 24 24"><path d="M3 3v18h18M7 12h10M7 8h6M7 16h4"/></svg>Performance Indicator</li>
                 <li class="active"><svg fill="none" stroke="#667eea" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>Professional Development</li>
@@ -824,6 +825,7 @@
                 <button class="tab-btn active" onclick="showTab('training', this)">📚 Training Portal</button>
                 <button class="tab-btn" onclick="showTab('certifications', this)">🏆 Certifications</button>
                 <button class="tab-btn" onclick="showTab('assessments', this)">📊 Skill Assessments</button>
+                <button class="tab-btn" onclick="showTab('personality', this)">🧭 Personality Assessment</button>
                 <button class="tab-btn" onclick="showTab('peer-learning', this)">👥 Peer Learning</button>
             </div>
             
@@ -875,13 +877,26 @@
                 <div class="section-card">
                     <div class="section-title">📊 Skill Assessments</div>
                     <p style="color: #666; margin-bottom: 24px;">Periodic assessments help update your teaching levels and showcase your growth.</p>
-                    
+                    <div id="abilities-container" style="margin-bottom: 20px;">
+                        <!-- Current teaching abilities will be loaded here -->
+                    </div>
                     <div id="assessments-container">
                         <!-- Assessments will be loaded here -->
                     </div>
                     
                     <div style="text-align: center; margin-top: 32px;">
                         <button class="btn-primary" onclick="requestAssessment()">Request New Assessment</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Personality Assessment Tab -->
+            <div id="personality-tab" class="tab-content">
+                <div class="section-card">
+                    <div class="section-title">🧭 Personality Assessment</div>
+                    <p style="color: #666; margin-bottom: 24px;">Review your scenario-based personality assessment results.</p>
+                    <div id="personality-assessments-container">
+                        <!-- Personality assessment results will be loaded here -->
                     </div>
                 </div>
             </div>
@@ -1018,7 +1033,8 @@
                 document.querySelectorAll('.tab-btn').forEach(btn => {
                     if (btn.textContent.includes(tabName === 'training' ? 'Training' : 
                                                   tabName === 'certifications' ? 'Certifications' :
-                                                  tabName === 'assessments' ? 'Assessments' : 'Peer')) {
+                                                  tabName === 'assessments' ? 'Assessments' :
+                                                  tabName === 'personality' ? 'Personality' : 'Peer')) {
                         btn.classList.add('active');
                     }
                 });
@@ -1036,6 +1052,8 @@
                 loadCertifications();
             } else if (tabName === 'assessments') {
                 loadAssessments();
+            } else if (tabName === 'personality') {
+                loadPersonalityAssessment();
             } else if (tabName === 'peer-learning') {
                 loadPeerTeachers();
             }
@@ -1350,48 +1368,210 @@
         // Skill Assessments
         async function loadAssessments() {
             const container = document.getElementById('assessments-container');
+            const abilitiesContainer = document.getElementById('abilities-container');
             if (!container) return;
             
             try {
-                const response = await fetch('/api/teacher/assessments', {
+                const [assessmentsRes, abilitiesRes] = await Promise.all([
+                    fetch('/api/teacher/assessments', {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    }),
+                    fetch('/api/teacher/assessed-abilities', {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    })
+                ]);
+                
+                if (assessmentsRes.ok) {
+                    const data = await assessmentsRes.json();
+                    displayAssessments(data.assessments || []);
+                } else {
+                    displayAssessments([]);
+                }
+
+                if (abilitiesContainer) {
+                    if (abilitiesRes.ok) {
+                        const abilitiesData = await abilitiesRes.json();
+                        renderAbilities(abilitiesData.assessments || {});
+                    } else {
+                        abilitiesContainer.innerHTML = '';
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading assessments:', error);
+                displayAssessments([]);
+                if (abilitiesContainer) abilitiesContainer.innerHTML = '';
+            }
+        }
+
+        function renderAbilities(assessments) {
+            const abilitiesContainer = document.getElementById('abilities-container');
+            if (!abilitiesContainer) return;
+
+            const levelLabel = (value) => {
+                const map = {
+                    0: 'Beginner',
+                    1: 'Basic',
+                    2: 'Intermediate',
+                    3: 'Advanced',
+                    4: 'Expert',
+                    5: 'Master'
+                };
+                const num = Number(value);
+                return Number.isFinite(num) ? `${num} - ${map[num] || 'Level'}` : String(value);
+            };
+
+            const entries = Object.entries(assessments || {}).filter(([, data]) => data && data.level !== null);
+            if (!entries.length) {
+                abilitiesContainer.innerHTML = `
+                    <div class="assessment-card">
+                        <div class="assessment-header">
+                            <div class="assessment-title">Current Teaching Abilities</div>
+                        </div>
+                        <div style="color: #666; margin-top: 8px;">No assessed abilities yet.</div>
+                    </div>
+                `;
+                return;
+            }
+
+            abilitiesContainer.innerHTML = `
+                <div class="assessment-card">
+                    <div class="assessment-header">
+                        <div class="assessment-title">Current Teaching Abilities</div>
+                    </div>
+                    <div class="skill-levels">
+                        ${entries.map(([skill, data]) => `
+                            <div class="skill-level-item">
+                                <div class="skill-name">${skill.charAt(0).toUpperCase() + skill.slice(1)}</div>
+                                <span class="level-badge level-${String(data.level).toLowerCase()}">${levelLabel(data.level)}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        async function loadPersonalityAssessment() {
+            const container = document.getElementById('personality-assessments-container');
+            if (!container) return;
+
+            try {
+                const response = await fetch('/api/teacher/assessment-results', {
                     method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json'
                     }
                 });
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    displayAssessments(data.assessments || []);
-                } else {
-                    // Mock data for demonstration
-                    displayAssessments([
-                        {
-                            id: 1,
-                            date: '2024-01-15',
-                            skills: {
-                                listening: 'Advanced',
-                                reading: 'Intermediate',
-                                speaking: 'Advanced',
-                                writing: 'Intermediate'
-                            }
-                        },
-                        {
-                            id: 2,
-                            date: '2024-06-20',
-                            skills: {
-                                listening: 'Expert',
-                                reading: 'Advanced',
-                                speaking: 'Expert',
-                                writing: 'Advanced'
-                            }
-                        }
-                    ]);
+
+                const data = response.ok ? await response.json() : null;
+                const personality = data?.tests?.personality;
+
+                if (personality && personality.total !== null && personality.score !== null) {
+                    const percent = personality.percent !== undefined && personality.percent !== null
+                        ? personality.percent
+                        : Math.round((Number(personality.score) / Number(personality.total || 1)) * 100);
+
+                    const categoryScores = personality.categoryScores || {};
+                    const categoryItems = Object.keys(categoryScores).map(key => {
+                        const score = categoryScores[key];
+                        const pct = score && score.total ? Math.round((Number(score.correct || 0) / score.total) * 100) : 0;
+                        return { label: key, pct };
+                    });
+
+                    container.innerHTML = `
+                        <div class="assessment-card">
+                            <div class="assessment-header">
+                                <div class="assessment-title">Latest Personality Assessment</div>
+                                <div class="assessment-date">${personality.completedAt ? new Date(personality.completedAt).toLocaleDateString() : 'N/A'}</div>
+                            </div>
+                            <div style="margin-bottom: 16px; font-weight: 600; color: #1e293b;">
+                                Score: ${personality.score} / ${personality.total} (${percent}%)
+                            </div>
+                            <div class="skill-levels">
+                                ${categoryItems.map(item => `
+                                    <div class="skill-level-item">
+                                        <div class="skill-name">${item.label}</div>
+                                        <span class="level-badge level-${item.pct >= 75 ? 'expert' : item.pct >= 60 ? 'advanced' : item.pct >= 40 ? 'intermediate' : 'basic'}">
+                                            ${item.pct}%
+                                        </span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                    return;
                 }
+
+                const profileResponse = await fetch('/api/teacher/profile', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (profileResponse.ok) {
+                    const profileData = await profileResponse.json();
+                    const levels = profileData.profile?.teachingPersonality || {};
+                    const entries = Object.entries(levels).filter(([, value]) => value && value.level !== null);
+                    const levelLabel = (value) => {
+                        const map = {
+                            0: 'Beginner',
+                            1: 'Basic',
+                            2: 'Intermediate',
+                            3: 'Advanced',
+                            4: 'Expert',
+                            5: 'Master'
+                        };
+                        const num = Number(value);
+                        return Number.isFinite(num) ? `${num} - ${map[num] || 'Level'}` : String(value);
+                    };
+
+                    if (entries.length) {
+                        container.innerHTML = `
+                            <div class="assessment-card">
+                                <div class="assessment-header">
+                                    <div class="assessment-title">Current Personality Levels</div>
+                                </div>
+                                <div class="skill-levels">
+                                    ${entries.map(([key, value]) => `
+                                        <div class="skill-level-item">
+                                            <div class="skill-name">${key.replace(/^\w/, c => c.toUpperCase()).replace(/([A-Z])/g, ' $1').trim()}</div>
+                                            <span class="level-badge level-${String(value.level).toLowerCase()}">${levelLabel(value.level)}</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                                <div style="margin-top: 12px; color: #64748b; font-size: 0.9rem;">
+                                    Test score not available. Showing current assessed levels instead.
+                                </div>
+                            </div>
+                        `;
+                        return;
+                    }
+                }
+
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🧭</div>
+                        <p>No personality assessment results yet.</p>
+                    </div>
+                `;
             } catch (error) {
-                console.error('Error loading assessments:', error);
-                displayAssessments([]);
+                console.error('Error loading personality assessment:', error);
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🧭</div>
+                        <p>Unable to load personality assessment results.</p>
+                    </div>
+                `;
             }
         }
         
@@ -1409,22 +1589,26 @@
                 return;
             }
             
-            container.innerHTML = assessments.map(assessment => `
-                <div class="assessment-card">
-                    <div class="assessment-header">
-                        <div class="assessment-title">Assessment #${assessment.id}</div>
-                        <div class="assessment-date">${new Date(assessment.date).toLocaleDateString()}</div>
+            const historyItems = assessments.slice(-3).reverse();
+            container.innerHTML = `
+                <div class="assessment-card" style="padding: 16px;">
+                    <div class="assessment-header" style="margin-bottom: 8px;">
+                        <div class="assessment-title">Assessment History</div>
                     </div>
-                    <div class="skill-levels">
-                        ${Object.entries(assessment.skills).map(([skill, level]) => `
-                            <div class="skill-level-item">
-                                <div class="skill-name">${skill.charAt(0).toUpperCase() + skill.slice(1)}</div>
-                                <span class="level-badge level-${level.toLowerCase()}">${level}</span>
+                    <div style="display: grid; gap: 8px;">
+                        ${historyItems.map(item => `
+                            <div style="display:flex; justify-content: space-between; align-items:center; padding:10px 12px; background:#f8fafc; border-radius:10px;">
+                                <span style="font-weight:600; color:#1e293b;">
+                                    ${item.assessmentDate || item.date ? new Date(item.assessmentDate || item.date).toLocaleDateString() : 'N/A'}
+                                </span>
+                                <span style="color:#64748b; font-size:0.9rem;">
+                                    ${item.assessedBy ? `By ${item.assessedBy}` : 'Assessment'}
+                                </span>
                             </div>
                         `).join('')}
                     </div>
                 </div>
-            `).join('');
+            `;
         }
         
         async function requestAssessment() {
@@ -1581,12 +1765,13 @@
             const hash = window.location.hash.replace('#', '');
             if (hash) {
                 // Map hash to tab name
-                const tabMap = {
-                    'certifications': 'certifications',
-                    'training': 'training',
-                    'assessments': 'assessments',
-                    'peer-learning': 'peer-learning'
-                };
+            const tabMap = {
+                'certifications': 'certifications',
+                'training': 'training',
+                'assessments': 'assessments',
+                'personality': 'personality',
+                'peer-learning': 'peer-learning'
+            };
                 
                 const tabName = tabMap[hash];
                 if (tabName) {
@@ -1595,7 +1780,8 @@
                         return btn.textContent.includes(
                             tabName === 'certifications' ? 'Certifications' :
                             tabName === 'training' ? 'Training' :
-                            tabName === 'assessments' ? 'Assessments' : 'Peer'
+                            tabName === 'assessments' ? 'Assessments' :
+                            tabName === 'personality' ? 'Personality' : 'Peer'
                         );
                     });
                     
@@ -1614,6 +1800,7 @@
             loadTrainingCourses();
             loadCertifications();
             loadAssessments();
+            loadPersonalityAssessment();
             loadPeerTeachers();
             
             // Handle hash navigation after a short delay to ensure DOM is ready

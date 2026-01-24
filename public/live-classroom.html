@@ -47,6 +47,55 @@
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   </script>
   <style>
+    /* Global lesson loading overlay */
+    .lesson-loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.45);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+    .lesson-loading-card {
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 20px 24px;
+      min-width: 260px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+      text-align: center;
+    }
+    .lesson-loading-title {
+      font-weight: 700;
+      color: #1ca7e7;
+      margin-bottom: 12px;
+    }
+    .lesson-progress-bar {
+      width: 100%;
+      height: 10px;
+      background: #e9ecef;
+      border-radius: 999px;
+      overflow: hidden;
+      position: relative;
+      margin: 8px 0 6px 0;
+    }
+    .lesson-progress-fill {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #1ca7e7, #5cb3ff);
+      transition: width 0.2s ease;
+    }
+    .lesson-loading-text {
+      font-size: 0.9rem;
+      color: #555;
+      margin-top: 8px;
+    }
     .pdf-viewer-container {
       width: 100%;
       height: calc(100vh - 200px);
@@ -105,9 +154,53 @@
       margin-bottom: 20px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
       background: white;
+      position: relative;
+      overflow: hidden;
     }
     .pdf-page canvas {
       display: block;
+    }
+    .pdf-annotation-layer {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 2;
+    }
+    .pdf-annotator-controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      padding: 6px 8px;
+      background: #f8fafc;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      flex-wrap: wrap;
+    }
+    .pdf-annotator-controls input[type="color"] {
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      background: white;
+      cursor: pointer;
+    }
+    .pdf-annotator-controls select {
+      padding: 6px 8px;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      background: white;
+    }
+    .pdf-annotator-indicator {
+      font-size: 0.85rem;
+      color: #0f172a;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
     }
     .pdf-loading {
       display: flex;
@@ -130,6 +223,15 @@
   </style>
 </head>
 <body>
+  <div id="lesson-loading-overlay" class="lesson-loading-overlay">
+    <div class="lesson-loading-card">
+      <div class="lesson-loading-title">Loading lesson content…</div>
+      <div class="lesson-progress-bar">
+        <div id="lesson-progress-fill" class="lesson-progress-fill"></div>
+      </div>
+      <div id="lesson-loading-text" class="lesson-loading-text">Preparing files</div>
+    </div>
+  </div>
   <div class="top-bar">
     <span>Live Classroom</span>
     <div class="top-buttons">
@@ -334,6 +436,32 @@
         reconnectionDelayMax: 5000,
         reconnectionAttempts: 5
       });
+
+      // Loading overlay helpers
+      const lessonLoadingOverlay = () => document.getElementById('lesson-loading-overlay');
+      const lessonProgressFill = () => document.getElementById('lesson-progress-fill');
+      const lessonLoadingText = () => document.getElementById('lesson-loading-text');
+
+      function showLessonLoading(message = 'Loading lesson…', progress = null) {
+        const overlay = lessonLoadingOverlay();
+        if (overlay) overlay.style.display = 'flex';
+        const textEl = lessonLoadingText();
+        if (textEl) textEl.textContent = message;
+        const fill = lessonProgressFill();
+        if (fill) fill.style.width = progress !== null ? `${Math.min(100, Math.max(0, progress))}%` : '20%';
+      }
+
+      function updateLessonProgress(message = null, progress = null) {
+        const textEl = lessonLoadingText();
+        if (textEl && message) textEl.textContent = message;
+        const fill = lessonProgressFill();
+        if (fill && progress !== null) fill.style.width = `${Math.min(100, Math.max(0, progress))}%`;
+      }
+
+      function hideLessonLoading() {
+        const overlay = lessonLoadingOverlay();
+        if (overlay) overlay.style.display = 'none';
+      }
       
       // Log connection events
       socket.on('connect', () => {
@@ -1428,6 +1556,51 @@
           fitToViewerBtn.id = 'pdf-fit-to-viewer-btn';
           fitToViewerBtn.title = 'Fit PDF to viewer width';
           
+          // Annotation controls (teacher draw, students view)
+          const annotateToggle = document.createElement('button');
+          annotateToggle.id = 'pdf-annotate-toggle';
+          annotateToggle.textContent = 'Enable Annotate';
+          annotateToggle.title = 'Toggle drawing on the PDF';
+          
+          const annotationColorPicker = document.createElement('input');
+          annotationColorPicker.type = 'color';
+          annotationColorPicker.id = 'pdf-annotate-color';
+          annotationColorPicker.value = '#ff3b30';
+          annotationColorPicker.title = 'Pen color';
+          
+          const annotationSizeSelect = document.createElement('select');
+          annotationSizeSelect.id = 'pdf-annotate-size';
+          ['2','4','6','8','12'].forEach(size => {
+            const option = document.createElement('option');
+            option.value = size;
+            option.textContent = `${size}px`;
+            if (size === '4') option.selected = true;
+            annotationSizeSelect.appendChild(option);
+          });
+          
+          const eraseBtn = document.createElement('button');
+          eraseBtn.id = 'pdf-annotate-eraser';
+          eraseBtn.textContent = 'Eraser';
+          eraseBtn.title = 'Switch to eraser';
+          
+          const clearPageBtn = document.createElement('button');
+          clearPageBtn.id = 'pdf-annotate-clear';
+          clearPageBtn.textContent = 'Clear Page';
+          clearPageBtn.title = 'Clear annotations on this page';
+          
+          const annotatorIndicator = document.createElement('span');
+          annotatorIndicator.className = 'pdf-annotator-indicator';
+          annotatorIndicator.textContent = 'Annotations ready';
+          
+          const annotatorControls = document.createElement('div');
+          annotatorControls.className = 'pdf-annotator-controls';
+          annotatorControls.appendChild(annotateToggle);
+          annotatorControls.appendChild(annotationColorPicker);
+          annotatorControls.appendChild(annotationSizeSelect);
+          annotatorControls.appendChild(eraseBtn);
+          annotatorControls.appendChild(clearPageBtn);
+          annotatorControls.appendChild(annotatorIndicator);
+          
           const canvasContainer = document.createElement('div');
           canvasContainer.className = 'pdf-canvas-container';
           canvasContainer.id = 'pdf-canvas-container';
@@ -1439,6 +1612,7 @@
           controls.appendChild(zoomOutBtn);
           controls.appendChild(zoomInBtn);
           controls.appendChild(fitToViewerBtn);
+          controls.appendChild(annotatorControls);
           
           pdfContainer.appendChild(controls);
           pdfContainer.appendChild(canvasContainer);
@@ -1447,6 +1621,10 @@
           // Show loading
           canvasContainer.innerHTML = '<div class="pdf-loading">Loading PDF...</div>';
           
+          const userLevel = (localStorage.getItem('user_level') || userType || '').toLowerCase();
+          const isTeacher = userLevel === 'teacher';
+          const isStudent = userLevel === 'student';
+
           // Load PDF using PDF.js
           let pdfDoc = null;
           let pageNum = 1;
@@ -1456,6 +1634,209 @@
           let fitToViewerMode = false;
           let allPagesRendered = false;
           let pageCanvases = {}; // Store canvas elements for each page
+          const pdfEventBus = new EventTarget();
+          
+          // PDF annotation state (per page) - teacher draws, students follow
+          const annotationState = new Map(); // pageNumber -> [strokes]
+          const annotationLayers = new Map(); // pageNumber -> { canvas, ctx, viewport }
+          let annotationEnabled = isTeacher;
+          let annotationMode = 'pen';
+          let annotationColor = annotationColorPicker.value || '#ff3b30';
+          let annotationSize = parseInt(annotationSizeSelect.value, 10) || 4;
+          let activeStroke = null;
+          
+          function setAnnotationInteractivity() {
+            annotationLayers.forEach(({ canvas }) => {
+              if (!canvas) return;
+              canvas.style.pointerEvents = annotationEnabled && isTeacher ? 'auto' : 'none';
+            });
+            if (annotateToggle) {
+              annotateToggle.textContent = annotationEnabled ? 'Annotating' : 'Enable Annotate';
+              annotateToggle.classList.toggle('active', annotationEnabled);
+            }
+            if (annotatorIndicator) {
+              annotatorIndicator.textContent = annotationEnabled
+                ? (isTeacher ? 'Broadcasting live annotations' : 'Following teacher annotations')
+                : 'Annotations paused';
+            }
+          }
+          
+          function drawStrokeOnLayer(layerInfo, stroke) {
+            if (!layerInfo || !stroke || !Array.isArray(stroke.points) || stroke.points.length < 2) return;
+            const { canvas, ctx } = layerInfo;
+            ctx.save();
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.lineWidth = stroke.size || 3;
+            ctx.strokeStyle = stroke.color || '#ff3b30';
+            ctx.globalCompositeOperation = stroke.tool === 'erase' ? 'destination-out' : 'source-over';
+            ctx.beginPath();
+            stroke.points.forEach((pt, idx) => {
+              const x = (pt.x ?? pt[0]) * canvas.width;
+              const y = (pt.y ?? pt[1]) * canvas.height;
+              if (idx === 0) {
+                ctx.moveTo(x, y);
+              } else {
+                ctx.lineTo(x, y);
+              }
+            });
+            ctx.stroke();
+            ctx.restore();
+          }
+          
+          function redrawAnnotations(pageNumber) {
+            const layerInfo = annotationLayers.get(pageNumber);
+            if (!layerInfo) return;
+            const strokes = annotationState.get(pageNumber) || [];
+            const { canvas, ctx } = layerInfo;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            strokes.forEach(stroke => drawStrokeOnLayer(layerInfo, stroke));
+          }
+          
+          function registerAnnotationLayer(pageNumber, viewport, canvasDiv) {
+            if (!canvasDiv || !viewport) return;
+            const annotationCanvas = document.createElement('canvas');
+            annotationCanvas.className = 'pdf-annotation-layer';
+            annotationCanvas.width = viewport.width;
+            annotationCanvas.height = viewport.height;
+            annotationCanvas.style.width = viewport.width + 'px';
+            annotationCanvas.style.height = viewport.height + 'px';
+            annotationCanvas.style.pointerEvents = annotationEnabled && isTeacher ? 'auto' : 'none';
+            canvasDiv.appendChild(annotationCanvas);
+            const ctx = annotationCanvas.getContext('2d');
+            annotationLayers.set(pageNumber, { canvas: annotationCanvas, ctx, viewport });
+            redrawAnnotations(pageNumber);
+            if (isTeacher) {
+              attachAnnotationListeners(annotationCanvas, pageNumber);
+            }
+          }
+          
+          function getNormalizedPos(evt, canvas) {
+            const rect = canvas.getBoundingClientRect();
+            return {
+              x: Math.min(1, Math.max(0, (evt.clientX - rect.left) / rect.width)),
+              y: Math.min(1, Math.max(0, (evt.clientY - rect.top) / rect.height))
+            };
+          }
+          
+          function attachAnnotationListeners(annotationCanvas, pageNumber) {
+            annotationCanvas.addEventListener('pointerdown', (e) => {
+              if (!annotationEnabled || !isTeacher) return;
+              e.preventDefault();
+              annotationMode = annotationMode || 'pen';
+              activeStroke = {
+                tool: annotationMode,
+                color: annotationColor,
+                size: annotationSize,
+                points: [getNormalizedPos(e, annotationCanvas)]
+              };
+              annotationCanvas.setPointerCapture(e.pointerId);
+            });
+            
+            annotationCanvas.addEventListener('pointermove', (e) => {
+              if (!activeStroke || !annotationEnabled || !isTeacher) return;
+              e.preventDefault();
+              const nextPoint = getNormalizedPos(e, annotationCanvas);
+              activeStroke.points.push(nextPoint);
+              const layerInfo = annotationLayers.get(pageNumber);
+              if (!layerInfo) return;
+              const { canvas, ctx } = layerInfo;
+              const pts = activeStroke.points;
+              if (pts.length < 2) return;
+              const prev = pts[pts.length - 2];
+              ctx.save();
+              ctx.lineCap = 'round';
+              ctx.lineJoin = 'round';
+              ctx.lineWidth = activeStroke.size || 3;
+              ctx.strokeStyle = activeStroke.color || '#ff3b30';
+              ctx.globalCompositeOperation = activeStroke.tool === 'erase' ? 'destination-out' : 'source-over';
+              ctx.beginPath();
+              ctx.moveTo(prev.x * canvas.width, prev.y * canvas.height);
+              ctx.lineTo(nextPoint.x * canvas.width, nextPoint.y * canvas.height);
+              ctx.stroke();
+              ctx.restore();
+            });
+            
+            const finishStroke = () => {
+              if (!activeStroke || !annotationEnabled || !isTeacher) return;
+              const strokes = annotationState.get(pageNumber) || [];
+              strokes.push(activeStroke);
+              annotationState.set(pageNumber, strokes);
+              sendAnnotationUpdate({ action: 'stroke', page: pageNumber, stroke: activeStroke });
+              redrawAnnotations(pageNumber);
+              activeStroke = null;
+            };
+            
+            annotationCanvas.addEventListener('pointerup', finishStroke);
+            annotationCanvas.addEventListener('pointercancel', () => { activeStroke = null; });
+            annotationCanvas.addEventListener('pointerleave', finishStroke);
+          }
+          
+          function clearAnnotations(pageNumber, broadcast = false) {
+            annotationState.set(pageNumber, []);
+            redrawAnnotations(pageNumber);
+            if (broadcast) {
+              sendAnnotationUpdate({ action: 'clear-page', page: pageNumber });
+            }
+          }
+          
+          function sendAnnotationUpdate(payload = {}) {
+            if (!socket || !socket.connected || userType !== 'teacher') return;
+            socket.emit('annotation-sync', {
+              room,
+              materialId: window.currentPdfMaterialId || material.id,
+              ...payload
+            });
+          }
+          
+          function broadcastAnnotationState() {
+            if (!socket || !socket.connected || userType !== 'teacher') return;
+            annotationState.forEach((strokes, page) => {
+              socket.emit('annotation-sync', {
+                room,
+                materialId: window.currentPdfMaterialId || material.id,
+                action: 'full-sync',
+                page,
+                strokes
+              });
+            });
+          }
+          
+          function handleRemoteAnnotation(data = {}) {
+            const targetMaterial = window.currentPdfMaterialId || material.id;
+            if (data.materialId && targetMaterial && data.materialId !== targetMaterial) return;
+            const { action = 'stroke', page, stroke, strokes } = data;
+            if (!page) return;
+            if (action === 'clear-page') {
+              annotationState.set(page, []);
+              redrawAnnotations(page);
+              return;
+            }
+            if (action === 'full-sync' && Array.isArray(strokes)) {
+              annotationState.set(page, strokes);
+              redrawAnnotations(page);
+              return;
+            }
+            if (action === 'stroke' && stroke) {
+              const existing = annotationState.get(page) || [];
+              existing.push(stroke);
+              annotationState.set(page, existing);
+              redrawAnnotations(page);
+            }
+          }
+          
+          if (isStudent) {
+            annotationEnabled = true; // allow viewing synced annotations
+            annotateToggle.style.display = 'none';
+            annotationColorPicker.style.display = 'none';
+            annotationSizeSelect.style.display = 'none';
+            eraseBtn.style.display = 'none';
+            clearPageBtn.style.display = 'none';
+            annotatorIndicator.textContent = 'Following teacher annotations';
+          } else {
+            annotatorIndicator.textContent = 'Annotate and sync with students';
+          }
+          setAnnotationInteractivity();
           
           // Calculate scale to fit viewer width
           function calculateFitToViewerScale(page) {
@@ -1496,6 +1877,7 @@
               
               canvasDiv.appendChild(canvas);
               pageCanvases[num] = { canvas, canvasDiv, scale: renderScale };
+              registerAnnotationLayer(num, viewport, canvasDiv);
               
               const renderContext = {
                 canvasContext: ctx,
@@ -1529,6 +1911,7 @@
             
             canvasContainer.innerHTML = '';
             pageCanvases = {};
+            annotationLayers.clear();
             
             // Render all pages
             for (let i = 1; i <= pdfDoc.numPages; i++) {
@@ -1553,6 +1936,7 @@
                 canvasDiv.appendChild(canvas);
                 canvasContainer.appendChild(canvasDiv);
                 pageCanvases[i] = { canvas, canvasDiv, scale: renderScale };
+                registerAnnotationLayer(i, viewport, canvasDiv);
                 
                 const renderContext = {
                   canvasContext: ctx,
@@ -1565,6 +1949,7 @@
                     pageInfo.textContent = `Page ${pageNum} of ${pdfDoc.numPages}`;
                     prevBtn.disabled = pageNum <= 1;
                     nextBtn.disabled = pageNum >= pdfDoc.numPages;
+                    emitPageChange(pageNum);
                     
                     // Scroll to first page
                     const firstPage = document.getElementById(`pdf-page-${pageNum}`);
@@ -1574,6 +1959,25 @@
                   }
                 });
               });
+            }
+          }
+
+          function emitPageChange(page) {
+            try {
+              pdfEventBus.dispatchEvent(new CustomEvent('pagechanging', { detail: { pageNumber: page } }));
+            } catch (e) {
+              console.warn('⚠️ Failed to dispatch pagechanging event', e);
+            }
+          }
+
+          function goToPage(targetPage, useFitScale = true) {
+            if (!pdfDoc) return;
+            const clamped = Math.min(pdfDoc.numPages, Math.max(1, targetPage));
+            pageNum = clamped;
+            queueRenderPage(pageNum, useFitScale);
+            const targetCanvas = pageCanvases[pageNum]?.canvasDiv;
+            if (targetCanvas) {
+              targetCanvas.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
           }
           
@@ -1610,6 +2014,7 @@
                   materialId: window.currentPdfMaterialId
                 };
                 socket.emit('presenter-sync-update', syncData);
+                console.log('📄 [TEACHER] presenter-sync-update (prev)', syncData);
                 if (window.DEBUG_MODE) {
                   console.debug('📺 [TEACHER] Syncing page change:', syncData);
                 }
@@ -1639,6 +2044,7 @@
                   materialId: window.currentPdfMaterialId
                 };
                 socket.emit('presenter-sync-update', syncData);
+                console.log('📄 [TEACHER] presenter-sync-update (next)', syncData);
                 if (window.DEBUG_MODE) {
                   console.debug('📺 [TEACHER] Syncing page change:', syncData);
                 }
@@ -1676,6 +2082,113 @@
           zoomOutBtn.addEventListener('click', onZoomOut);
           fitToViewerBtn.addEventListener('click', onFitToViewer);
           
+          annotateToggle.addEventListener('click', () => {
+            if (!isTeacher) return;
+            annotationEnabled = !annotationEnabled;
+            setAnnotationInteractivity();
+            if (socket && socket.connected) {
+              socket.emit(annotationEnabled ? 'annotation-enable' : 'annotation-disable', {
+                room,
+                materialId: window.currentPdfMaterialId || material.id
+              });
+              if (annotationEnabled) {
+                broadcastAnnotationState();
+              }
+            }
+          });
+          
+          annotationColorPicker.addEventListener('change', (e) => {
+            annotationColor = e.target.value || '#ff3b30';
+            annotationMode = 'pen';
+            eraseBtn.classList.remove('active');
+          });
+          
+          annotationSizeSelect.addEventListener('change', (e) => {
+            annotationSize = parseInt(e.target.value, 10) || 4;
+          });
+          
+          eraseBtn.addEventListener('click', () => {
+            if (!annotationEnabled) annotationEnabled = true;
+            annotationMode = annotationMode === 'erase' ? 'pen' : 'erase';
+            eraseBtn.classList.toggle('active', annotationMode === 'erase');
+            setAnnotationInteractivity();
+          });
+          
+          clearPageBtn.addEventListener('click', () => {
+            if (!isTeacher) return;
+            clearAnnotations(pageNum, true);
+          });
+
+          // Hide/lock controls for students
+          if (isStudent) {
+            [prevBtn, nextBtn, zoomInBtn, zoomOutBtn, fitToViewerBtn, pageInfo].forEach(el => {
+              if (!el) return;
+              el.style.display = 'none';
+            });
+            canvasContainer.style.pointerEvents = 'none';
+            canvasContainer.style.overflow = 'hidden';
+          }
+
+          // Block keyboard navigation for students
+          if (isStudent) {
+            window.addEventListener('keydown', (e) => {
+              const keys = ['ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', ' ', 'Spacebar'];
+              if (keys.includes(e.key)) {
+                e.preventDefault();
+                e.stopPropagation();
+              }
+            }, true);
+          }
+
+          // Lock navigation for students (viewer mode only)
+          if (userType === 'student') {
+            [prevBtn, nextBtn, zoomInBtn, zoomOutBtn, fitToViewerBtn].forEach(btn => {
+              if (!btn) return;
+              btn.disabled = true;
+              btn.style.opacity = '0.6';
+              btn.style.cursor = 'not-allowed';
+            });
+            // Prevent manual scroll/interaction; sync updates will still set scrollTop
+            canvasContainer.style.pointerEvents = 'none';
+            canvasContainer.style.overflow = 'hidden';
+          }
+
+          // Broadcast page changes via event bus (teacher only)
+          pdfEventBus.addEventListener('pagechanging', (evt) => {
+            const pageNumber = evt?.detail?.pageNumber;
+            if (!pageNumber) return;
+            if (isTeacher && socket && socket.connected && presenterModeActive) {
+              const syncData = {
+                room,
+                page: pageNumber,
+                scrollTop: currentPdfContainer ? currentPdfContainer.scrollTop : 0,
+                scrollLeft: currentPdfContainer ? currentPdfContainer.scrollLeft : 0,
+                materialId: window.currentPdfMaterialId
+              };
+              socket.emit('presenter-sync-update', syncData);
+              console.log('📄 [TEACHER] presenter-sync-update (pagechanging)', syncData);
+            }
+          });
+          
+          if (socket) {
+            socket.off('annotation-sync');
+            socket.off('annotation-enable');
+            socket.off('annotation-disable');
+            socket.on('annotation-sync', handleRemoteAnnotation);
+            socket.on('annotation-enable', ({ materialId: incomingId } = {}) => {
+              const targetId = window.currentPdfMaterialId || material.id;
+              if (incomingId && targetId && incomingId !== targetId) return;
+              annotationEnabled = true;
+              setAnnotationInteractivity();
+            });
+            socket.on('annotation-disable', ({ materialId: incomingId } = {}) => {
+              const targetId = window.currentPdfMaterialId || material.id;
+              if (incomingId && targetId && incomingId !== targetId) return;
+              annotationEnabled = false;
+              setAnnotationInteractivity();
+            });
+          }
+          
           // Load PDF document
           let pdfData = material.data;
           
@@ -1703,6 +2216,12 @@
             fitToViewerBtn.textContent = 'Fit to Viewer ✓';
             fitToViewerBtn.style.background = '#d4edda';
             fitToViewerBtn.style.color = '#155724';
+            
+            // Start annotations in sync for students when teacher loads the PDF
+            if (isTeacher && socket && socket.connected) {
+              socket.emit('annotation-enable', { room, materialId: material.id });
+              broadcastAnnotationState();
+            }
           }).catch(function(error) {
             console.error('❌ Error loading PDF:', error);
             canvasContainer.innerHTML = `
@@ -2108,7 +2627,8 @@
                 materialId: window.currentPdfMaterialId
               };
               
-              socket.emit('presenter-sync-update', syncData);
+        socket.emit('presenter-sync-update', syncData);
+        console.log('📄 [TEACHER] presenter-sync-update (scroll)', syncData);
             }
           }, 150); // Throttle to max 6-7 updates per second
         }, { passive: true });
@@ -2520,6 +3040,8 @@
       // Handle real-time presenter sync updates
       socket.on('presenter-sync-update', async ({ page, slideIndex, scrollTop, scrollLeft, zoom, materialId, totalSlides } = {}) => {
         if (userType !== 'student' || !studentPresenterModeActive) return;
+
+        console.log('📄 [STUDENT] presenter-sync-update received', { page, scrollTop, scrollLeft, materialId });
         
         // Legacy converted slides support removed - files are now displayed directly
         // PPTX files loaded directly in iframes cannot be synced via slide index
@@ -2527,13 +3049,39 @@
 
         // PDF fallback
         const iframe = studentPdfIframe || document.getElementById('pdf-iframe-' + (materialId || window.currentPdfMaterialId));
-        if (!iframe) return;
+        if (!iframe) {
+          console.warn('⚠️ [STUDENT] presenter-sync-update: iframe not found for material', materialId || window.currentPdfMaterialId);
+          return;
+        }
 
         if (!studentPdfIframe) studentPdfIframe = iframe;
         if (!studentPdfContainer) {
           studentPdfContainer = iframe.closest('[id^="pdf-"]') || iframe.parentElement;
         }
         
+        if (page !== undefined && page > 0) {
+          // If we have a local PDF render (canvas mode), sync via goToPage
+          const ensurePdfReady = (attempts = 20) => {
+            if (pdfDoc && typeof goToPage === 'function') return Promise.resolve();
+            if (attempts <= 0) return Promise.reject(new Error('PDF not ready'));
+            return new Promise((resolve, reject) => {
+              setTimeout(() => {
+                ensurePdfReady(attempts - 1).then(resolve).catch(reject);
+              }, 200);
+            });
+          };
+          
+          try {
+            await ensurePdfReady();
+            if (pdfDoc && typeof goToPage === 'function') {
+              goToPage(page, true);
+            }
+          } catch (e) {
+            console.warn('⚠️ [STUDENT] PDF not ready for page sync, falling back to iframe method');
+          }
+        }
+
+        // Iframe fallback (kept for compatibility)
         if (page !== undefined && page > 0) {
           let baseUrl = iframe._pdfBaseUrl;
           if (!baseUrl) {
@@ -2556,40 +3104,22 @@
           
           let newUrl = baseUrl.split('#')[0];
           newUrl += '#page=' + page;
-          // Use page-fit zoom to fit content to frame
-          newUrl += '&zoom=page-fit';
-          newUrl += '&toolbar=0&navpanes=0&scrollbar=0';
+          newUrl += '&zoom=page-fit&toolbar=0&navpanes=0&scrollbar=0';
           newUrl += `&ts=${Date.now()}`;
           
-          if (iframe._currentPage !== page) {
-            iframe._currentPage = page;
-            
-            // Use location.hash to update page without reloading iframe (prevents blinking)
-            try {
-              // Try to update via hash first (smoother, no reload)
-              if (iframe.contentWindow && iframe.contentWindow.location) {
-                const currentUrl = iframe.src.split('#')[0];
-                iframe.contentWindow.location.hash = `#page=${page}&zoom=page-fit&toolbar=0&navpanes=0&scrollbar=0`;
-              } else {
-                // Fallback: update src but use a smoother method
-                iframe.src = newUrl;
-              }
-            } catch (e) {
-              // Cross-origin or other error - use src update as fallback
-              // But avoid the blank flash by directly setting new URL
-              iframe.src = newUrl;
-            }
-            
-            // Update page info (outside iframe)
-            const pageInfoEl = document.getElementById('pdf-page-info');
-            if (pageInfoEl) {
-              pageInfoEl.textContent = `Page ${page}`;
-            }
-            
-            // Legacy support for page indicator
-            const pageIndicator = iframe._pageIndicator || document.getElementById('pdf-page-indicator-' + (materialId || window.currentPdfMaterialId));
-            if (pageIndicator) pageIndicator.textContent = `Page ${page}`;
+          iframe._currentPage = page;
+          iframe.src = newUrl; // force update to guarantee navigation on all browsers
+          console.log('📄 [STUDENT] Forcing PDF src update to page', page, newUrl);
+          
+          // Update page info (outside iframe)
+          const pageInfoEl = document.getElementById('pdf-page-info');
+          if (pageInfoEl) {
+            pageInfoEl.textContent = `Page ${page}`;
           }
+          
+          // Legacy support for page indicator
+          const pageIndicator = iframe._pageIndicator || document.getElementById('pdf-page-indicator-' + (materialId || window.currentPdfMaterialId));
+          if (pageIndicator) pageIndicator.textContent = `Page ${page}`;
         }
         
         // Prevent scroll sync conflicts by checking if user is actively scrolling
@@ -3657,7 +4187,7 @@
       });
 
       // Class timer - starts from booked class time, not when user joins
-      let classStartTime = null;
+      let classStartTime = null; // milliseconds since epoch
       const classTimeElement = document.getElementById('class-time');
       
       // Initialize timer with booked class time
@@ -3705,22 +4235,28 @@
           }
           
           if (booking && booking.date && booking.time) {
-            // Parse booked class date and time
-            // date format: "YYYY-MM-DD", time format: "HH:MM" or "HH:MM:SS"
-            const [year, month, day] = booking.date.split('-').map(Number);
-            const timeParts = booking.time.split(':');
-            const hour = parseInt(timeParts[0], 10);
-            const minute = parseInt(timeParts[1] || '0', 10);
-            
-            // Create Date object for booked class start time
-            classStartTime = new Date(year, month - 1, day, hour, minute, 0, 0);
+            // Parse booked class date and time using timezone-aware conversion (default to Asia/Manila)
+            const bookingZone = booking.timezone || booking.timeZone || booking.zone || 'Asia/Manila';
+            const Lux = window.luxon && window.luxon.DateTime;
+            if (Lux) {
+              const dt = Lux.fromISO(`${booking.date}T${booking.time}`, { zone: bookingZone });
+              classStartTime = dt.toMillis();
+            } else {
+              // Fallback: construct Date in given zone offset is not possible; assume local
+              const [year, month, day] = booking.date.split('-').map(Number);
+              const timeParts = booking.time.split(':');
+              const hour = parseInt(timeParts[0], 10);
+              const minute = parseInt(timeParts[1] || '0', 10);
+              classStartTime = new Date(year, month - 1, day, hour, minute, 0, 0).getTime();
+            }
             
             console.log('⏰ Class timer initialized with booked time:', {
               date: booking.date,
               time: booking.time,
-              bookedStartTime: classStartTime.toISOString(),
+              bookingZone,
+              bookedStartTime: new Date(classStartTime).toISOString(),
               currentTime: new Date().toISOString(),
-              elapsedSeconds: Math.floor((Date.now() - classStartTime.getTime()) / 1000)
+              elapsedSeconds: Math.floor((Date.now() - classStartTime) / 1000)
             });
             
             // Auto-load lesson files if lessonId is present
@@ -3832,6 +4368,7 @@
       // Load lesson files from booking's lessonId
       async function loadLessonFilesFromBooking(lessonId) {
         try {
+          showLessonLoading('Loading lesson files…', 5);
           console.log('📚 [AUTO-LOAD] Loading lesson files for lessonId:', lessonId);
           const token = localStorage.getItem('token');
           
@@ -3851,10 +4388,12 @@
           
           if (files.length === 0) {
             console.log('📚 [AUTO-LOAD] No files found in lesson');
+            hideLessonLoading();
             return;
           }
           
           console.log(`📚 [AUTO-LOAD] Loading ${files.length} file(s) from lesson...`);
+          updateLessonProgress(`Preparing ${files.length} file(s)…`, 12);
           
           // Process each file and add to lessonState
           files.forEach((file, index) => {
@@ -3874,6 +4413,8 @@
             if (index === 0) {
               console.log(`📚 [AUTO-LOAD] Processing: ${material.name} (${files.length} file${files.length > 1 ? 's' : ''})`);
             }
+            const percent = 12 + Math.round((index / Math.max(1, files.length - 1)) * 78);
+            updateLessonProgress(`Loading: ${material.name || 'file'}`, percent);
             
             // Add to lessonState
             if (material.id && material.data && material.data.length > 100) {
@@ -3891,6 +4432,7 @@
                     // Switch to lesson content tab for students
                     setActiveTab('lesson-content');
                   }
+                  updateLessonProgress('Displaying lesson…', 96);
                 });
               }
             } else {
@@ -3899,8 +4441,11 @@
           });
           
           console.log(`✅ [AUTO-LOAD] Successfully loaded ${files.length} file(s) from booking`);
+          updateLessonProgress('Done', 100);
+          setTimeout(hideLessonLoading, 400);
         } catch (error) {
           console.error('❌ [AUTO-LOAD] Error loading lesson files:', error);
+          hideLessonLoading();
         }
       }
       

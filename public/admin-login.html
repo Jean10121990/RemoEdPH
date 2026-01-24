@@ -96,13 +96,25 @@
       const username = document.getElementById('admin-username').value.trim();
       const password = document.getElementById('admin-password').value.trim();
       const errorDiv = document.getElementById('admin-login-error');
+      const submitBtn = this.querySelector('button[type="submit"]');
       errorDiv.style.display = 'none';
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Logging in...';
       
-      const response = await fetch('/api/auth/admin-login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
-      });
+      let response;
+      try {
+        response = await fetch('/api/auth/admin-login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+      } catch (error) {
+        errorDiv.textContent = 'Unable to reach the server. Please check if the backend is running.';
+        errorDiv.style.display = 'block';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Login';
+        return;
+      }
       
       // Handle suspended account specifically
       if (response.status === 403) {
@@ -115,7 +127,13 @@
         return;
       }
       
-      const data = await response.json();
+      let data = {};
+      try {
+        data = await response.json();
+      } catch (error) {
+        data = { success: false, message: 'Invalid server response.' };
+      }
+
       if (data.success && data.token) {
         localStorage.setItem('adminToken', data.token);
         localStorage.setItem('adminUsername', data.username);
@@ -124,6 +142,8 @@
       } else {
         errorDiv.textContent = data.message || 'Invalid credentials.';
         errorDiv.style.display = 'block';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Login';
       }
     };
     

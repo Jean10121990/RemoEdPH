@@ -1639,10 +1639,21 @@ io.on('connection', socket => {
         socket.to(room).emit('presenter-mode-stop', { room });
     });
     
-    socket.on('presenter-sync-update', (data) => {
-        const { room } = data;
-        // Forward sync updates to all students in the room (excluding the sender)
-        socket.to(room).emit('presenter-sync-update', data);
+    socket.on('presenter-sync-update', (data = {}) => {
+        const { room, page, scrollTop, scrollLeft, materialId } = data;
+        if (!room) {
+            console.warn('⚠️ [SERVER] presenter-sync-update missing room', data);
+            return;
+        }
+        // Forward sync updates to everyone in the room (including sender for visibility)
+        io.to(room).emit('presenter-sync-update', data);
+        console.log('📄 [SERVER] presenter-sync-update broadcast', {
+            room,
+            page,
+            scrollTop,
+            scrollLeft,
+            materialId
+        });
     });
 
     // Reward animation handler (teacher sends reward to students)

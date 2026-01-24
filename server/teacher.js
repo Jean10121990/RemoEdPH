@@ -849,16 +849,16 @@ router.get('/slots', async (req, res) => {
       'ETag': `"${Date.now()}-${Math.random()}"`
     });
     
-    // Convert username/email to teacher teacherId if needed
+    // Convert provided identifier to canonical teacherId (Txxxxx)
     let actualTeacherId = teacherId;
     console.log('🔍 Original teacherId received:', teacherId);
     
-    // Check if this is already a valid teacherId format (starts with T)
-    if (teacherId.startsWith('T')) {
+    // If already canonical (starts with T), keep it
+    if (teacherId && teacherId.startsWith('T')) {
       console.log('🔍 TeacherId already in correct format:', teacherId);
       actualTeacherId = teacherId;
-    } else if (teacherId.includes('@') || teacherId.includes('.')) {
-      // If it's an email, look up the teacher
+    } else if (teacherId && (teacherId.includes('@') || teacherId.includes('.'))) {
+      // Email/username -> lookup and use teacher.teacherId
       console.log('🔍 Converting email/username to teacherId:', teacherId);
       const teacher = await Teacher.findOne({ 
         $or: [
@@ -871,8 +871,17 @@ router.get('/slots', async (req, res) => {
       }
       actualTeacherId = teacher.teacherId;
       console.log('🔍 Converted to teacherId:', actualTeacherId);
+    } else if (teacherId && mongoose.Types.ObjectId.isValid(teacherId)) {
+      // ObjectId -> lookup and use teacher.teacherId
+      console.log('🔍 Converting ObjectId to teacherId:', teacherId);
+      const teacher = await Teacher.findById(teacherId);
+      if (!teacher) {
+        return res.status(404).json({ error: 'Teacher not found' });
+      }
+      actualTeacherId = teacher.teacherId;
+      console.log('🔍 Converted ObjectId to teacherId:', actualTeacherId);
     } else {
-      console.log('🔍 Using teacherId as-is:', teacherId);
+      console.log('🔍 Using teacherId as-is (fallback):', teacherId);
       actualTeacherId = teacherId;
     }
     
@@ -4760,7 +4769,10 @@ router.post('/save-assessment-test', verifyToken, requireTeacher, async (req, re
         listening: {},
         typing: {},
         reading: {},
-        pronunciation: {}
+        pronunciation: {},
+        grammar: {},
+        vocabulary: {},
+        personality: {}
       };
     }
     
@@ -4768,8 +4780,11 @@ router.post('/save-assessment-test', verifyToken, requireTeacher, async (req, re
       completedAt: new Date()
     };
     
+    const maxBase64Size = 8 * 1024 * 1024; // 8MB guard to avoid BSON limits
+    const safeAudioRecording = audioRecording && audioRecording.length > maxBase64Size ? null : audioRecording;
+
     if (testType === 'listening') {
-      if (audioRecording) testData.audioRecording = audioRecording;
+      if (safeAudioRecording) testData.audioRecording = safeAudioRecording;
       if (audioFileName) testData.audioFileName = audioFileName;
       teacher.assessmentTests.listening = testData;
     } else if (testType === 'typing') {
@@ -4778,15 +4793,36 @@ router.post('/save-assessment-test', verifyToken, requireTeacher, async (req, re
       if (text) testData.text = text;
       teacher.assessmentTests.typing = testData;
     } else if (testType === 'reading') {
-      if (audioRecording) testData.audioRecording = audioRecording;
+      if (safeAudioRecording) testData.audioRecording = safeAudioRecording;
       if (audioFileName) testData.audioFileName = audioFileName;
       if (text) testData.text = text;
       teacher.assessmentTests.reading = testData;
     } else if (testType === 'pronunciation') {
-      if (audioRecording) testData.audioRecording = audioRecording;
+      if (safeAudioRecording) testData.audioRecording = safeAudioRecording;
       if (audioFileName) testData.audioFileName = audioFileName;
-      if (words) testData.words = words;
+      if (words) {
+        testData.words = words.map(wordData => ({
+          word: wordData.word
+        }));
+      }
       teacher.assessmentTests.pronunciation = testData;
+    } else if (testType === 'grammar') {
+      if (req.body.score !== undefined) testData.score = req.body.score;
+      if (req.body.total !== undefined) testData.total = req.body.total;
+      if (req.body.answers) testData.answers = req.body.answers;
+      teacher.assessmentTests.grammar = testData;
+    } else if (testType === 'vocabulary') {
+      if (req.body.score !== undefined) testData.score = req.body.score;
+      if (req.body.total !== undefined) testData.total = req.body.total;
+      if (req.body.answers) testData.answers = req.body.answers;
+      teacher.assessmentTests.vocabulary = testData;
+    } else if (testType === 'personality') {
+      if (req.body.score !== undefined) testData.score = req.body.score;
+      if (req.body.total !== undefined) testData.total = req.body.total;
+      if (req.body.percent !== undefined) testData.percent = req.body.percent;
+      if (req.body.answers) testData.answers = req.body.answers;
+      if (req.body.categoryScores) testData.categoryScores = req.body.categoryScores;
+      teacher.assessmentTests.personality = testData;
     }
     
     await teacher.save();
@@ -4812,6 +4848,27 @@ router.post('/complete-assessment', verifyToken, requireTeacher, async (req, res
     if (!teacher.assessmentTests) {
       return res.status(400).json({ error: 'Assessment tests not found' });
     }
+
+    // Allow grammar/vocabulary results to be attached during completion
+    const { grammar, vocabulary } = req.body || {};
+    if (grammar && (grammar.score !== undefined || grammar.total !== undefined)) {
+      teacher.assessmentTests.grammar = {
+        ...teacher.assessmentTests.grammar,
+        score: grammar.score,
+        total: grammar.total,
+        answers: grammar.answers || teacher.assessmentTests.grammar?.answers,
+        completedAt: new Date()
+      };
+    }
+    if (vocabulary && (vocabulary.score !== undefined || vocabulary.total !== undefined)) {
+      teacher.assessmentTests.vocabulary = {
+        ...teacher.assessmentTests.vocabulary,
+        score: vocabulary.score,
+        total: vocabulary.total,
+        answers: vocabulary.answers || teacher.assessmentTests.vocabulary?.answers,
+        completedAt: new Date()
+      };
+    }
     
     // Check if all tests are completed
     const tests = teacher.assessmentTests;
@@ -4819,8 +4876,11 @@ router.post('/complete-assessment', verifyToken, requireTeacher, async (req, res
     const typingComplete = tests.typing && (tests.typing.wpm !== null || tests.typing.completedAt);
     const readingComplete = tests.reading && (tests.reading.audioRecording || tests.reading.completedAt);
     const pronunciationComplete = tests.pronunciation && (tests.pronunciation.audioRecording || tests.pronunciation.words || tests.pronunciation.completedAt);
+    const grammarComplete = tests.grammar && (tests.grammar.score !== null && tests.grammar.score !== undefined || tests.grammar.completedAt);
+    const vocabularyComplete = tests.vocabulary && (tests.vocabulary.score !== null && tests.vocabulary.score !== undefined || tests.vocabulary.completedAt);
     
-    const allComplete = listeningComplete && typingComplete && readingComplete && pronunciationComplete;
+    const personalityComplete = tests.personality && (tests.personality.score !== null && tests.personality.score !== undefined || tests.personality.completedAt);
+    const allComplete = listeningComplete && typingComplete && readingComplete && pronunciationComplete && grammarComplete && vocabularyComplete && personalityComplete;
     
     if (!allComplete) {
       // Provide detailed error message
@@ -4829,6 +4889,9 @@ router.post('/complete-assessment', verifyToken, requireTeacher, async (req, res
       if (!typingComplete) missing.push('Typing');
       if (!readingComplete) missing.push('Reading');
       if (!pronunciationComplete) missing.push('Pronunciation');
+      if (!grammarComplete) missing.push('Grammar');
+      if (!vocabularyComplete) missing.push('Vocabulary');
+      if (!personalityComplete) missing.push('Personality');
       
       return res.status(400).json({ 
         error: 'Please complete all assessment tests before submitting',
@@ -4837,14 +4900,109 @@ router.post('/complete-assessment', verifyToken, requireTeacher, async (req, res
           listening: !!listeningComplete,
           typing: !!typingComplete,
           reading: !!readingComplete,
-          pronunciation: !!pronunciationComplete
+        pronunciation: !!pronunciationComplete,
+        grammar: !!grammarComplete,
+        vocabulary: !!vocabularyComplete,
+        personality: !!personalityComplete
         }
       });
     }
     
     teacher.assessmentTests.completed = true;
     teacher.assessmentTests.completedAt = new Date();
-    
+
+    // Auto-grade the teacher based on the submitted assessment tests
+    const ensureAbilities = () => {
+      if (!teacher.teachingAbilities) {
+        teacher.teachingAbilities = {
+          listening: { description: '', level: null },
+          reading: { description: '', level: null },
+          speaking: { description: '', level: null },
+          writing: { description: '', level: null },
+          creativityHobbies: ''
+        };
+      }
+    };
+    const ensurePersonality = () => {
+      if (!teacher.teachingPersonality) {
+        teacher.teachingPersonality = {
+          interpersonal: { description: '', level: null },
+          professionalism: { description: '', level: null },
+          cultural: { description: '', level: null },
+          technology: { description: '', level: null },
+          engagement: { description: '', level: null }
+        };
+      }
+    };
+    const levelFromCategoryScore = (score) => {
+      if (!score || score.total === 0) return null;
+      const percent = Math.round((Number(score.correct || 0) / score.total) * 100);
+      if (percent >= 90) return '5';
+      if (percent >= 75) return '4';
+      if (percent >= 60) return '3';
+      if (percent >= 40) return '2';
+      return '1';
+    };
+
+    const levelFromTyping = (wpmVal, accVal) => {
+      if (wpmVal === undefined || accVal === undefined) return '3';
+      const wpm = Number(wpmVal) || 0;
+      const accuracy = Number(accVal) || 0;
+      if (wpm >= 50 && accuracy >= 90) return '5';
+      if (wpm >= 40 && accuracy >= 85) return '4';
+      if (wpm >= 30 && accuracy >= 80) return '3';
+      return '2';
+    };
+
+    // Build skill levels (simple heuristic)
+    ensureAbilities();
+    ensurePersonality();
+    const skillLevels = {
+      listening: listeningComplete ? '4' : '3',
+      reading: readingComplete ? '4' : '3',
+      speaking: pronunciationComplete ? '4' : '3',
+      writing: typingComplete ? levelFromTyping(tests.typing.wpm, tests.typing.accuracy) : '3'
+    };
+    const personalityScores = tests.personality && tests.personality.categoryScores ? tests.personality.categoryScores : {};
+    const personalityLevels = {
+      interpersonal: levelFromCategoryScore(personalityScores['Interpersonal Communication']),
+      professionalism: levelFromCategoryScore(personalityScores.Professionalism),
+      cultural: levelFromCategoryScore(personalityScores['Cultural Awareness']),
+      technology: levelFromCategoryScore(personalityScores['Technology Use']),
+      engagement: levelFromCategoryScore(personalityScores['Student Engagement'])
+    };
+
+    teacher.teachingAbilities.listening.level = skillLevels.listening;
+    teacher.teachingAbilities.reading.level = skillLevels.reading;
+    teacher.teachingAbilities.speaking.level = skillLevels.speaking;
+    teacher.teachingAbilities.writing.level = skillLevels.writing;
+    if (personalityLevels.interpersonal) {
+      teacher.teachingPersonality.interpersonal.level = personalityLevels.interpersonal;
+    }
+    if (personalityLevels.professionalism) {
+      teacher.teachingPersonality.professionalism.level = personalityLevels.professionalism;
+    }
+    if (personalityLevels.cultural) {
+      teacher.teachingPersonality.cultural.level = personalityLevels.cultural;
+    }
+    if (personalityLevels.technology) {
+      teacher.teachingPersonality.technology.level = personalityLevels.technology;
+    }
+    if (personalityLevels.engagement) {
+      teacher.teachingPersonality.engagement.level = personalityLevels.engagement;
+    }
+
+    if (!teacher.skillAssessments) {
+      teacher.skillAssessments = [];
+    }
+    teacher.skillAssessments.push({
+      assessmentDate: new Date(),
+      assessedBy: 'System Auto-Grade',
+      skills: skillLevels,
+      personality: personalityLevels,
+      notes: 'Auto-generated from completed assessment tests'
+    });
+
     await teacher.save();
     
     res.json({
@@ -4881,7 +5039,10 @@ router.get('/assessment-results', verifyToken, requireTeacher, async (req, res) 
         listening: teacher.assessmentTests.listening || null,
         typing: teacher.assessmentTests.typing || null,
         reading: teacher.assessmentTests.reading || null,
-        pronunciation: teacher.assessmentTests.pronunciation || null
+        pronunciation: teacher.assessmentTests.pronunciation || null,
+        grammar: teacher.assessmentTests.grammar || null,
+        vocabulary: teacher.assessmentTests.vocabulary || null,
+        personality: teacher.assessmentTests.personality || null
       }
     });
   } catch (error) {
@@ -4898,6 +5059,91 @@ router.get('/assessed-abilities', verifyToken, requireTeacher, async (req, res) 
       return res.status(404).json({ error: 'Teacher not found' });
     }
     
+    // If no assessed levels yet but assessment tests are completed, auto-grade now
+    const ensureAbilities = () => {
+      if (!teacher.teachingAbilities) {
+        teacher.teachingAbilities = {
+          listening: { description: '', level: null },
+          reading: { description: '', level: null },
+          speaking: { description: '', level: null },
+          writing: { description: '', level: null },
+          creativityHobbies: ''
+        };
+      }
+    };
+
+    const levelFromTyping = (wpmVal, accVal) => {
+      if (wpmVal === undefined || accVal === undefined) return '3';
+      const wpm = Number(wpmVal) || 0;
+      const accuracy = Number(accVal) || 0;
+      if (wpm >= 50 && accuracy >= 90) return '5';
+      if (wpm >= 40 && accuracy >= 85) return '4';
+      if (wpm >= 30 && accuracy >= 80) return '3';
+      return '2';
+    };
+
+    const isMissingLevel = (ability) => {
+      if (!ability) return true;
+      const level = ability.level;
+      return level === undefined || level === null || level === '' || Number.isNaN(Number(level));
+    };
+
+    const abilitiesMissing =
+      !teacher.teachingAbilities ||
+      ['listening', 'reading', 'speaking', 'writing'].some(
+        s => isMissingLevel(teacher.teachingAbilities && teacher.teachingAbilities[s])
+      );
+
+    const hasAnyTest =
+      teacher.assessmentTests &&
+      (
+        (teacher.assessmentTests.listening && Object.keys(teacher.assessmentTests.listening).length > 0) ||
+        (teacher.assessmentTests.typing && Object.keys(teacher.assessmentTests.typing).length > 0) ||
+        (teacher.assessmentTests.reading && Object.keys(teacher.assessmentTests.reading).length > 0) ||
+        (teacher.assessmentTests.pronunciation && Object.keys(teacher.assessmentTests.pronunciation).length > 0)
+      );
+
+    if (abilitiesMissing && teacher.assessmentTests && (teacher.assessmentTests.completed || hasAnyTest)) {
+      ensureAbilities();
+      const tests = teacher.assessmentTests;
+      const listeningComplete = tests.listening && (tests.listening.audioRecording || tests.listening.completedAt);
+      const typingComplete = tests.typing && (tests.typing.wpm !== null || tests.typing.completedAt);
+      const readingComplete = tests.reading && (tests.reading.audioRecording || tests.reading.completedAt);
+      const pronunciationComplete = tests.pronunciation && (tests.pronunciation.audioRecording || tests.pronunciation.words || tests.pronunciation.completedAt);
+
+      const skillLevels = {
+        listening: listeningComplete ? '4' : '3',
+        reading: readingComplete ? '4' : '3',
+        speaking: pronunciationComplete ? '4' : '3',
+        writing: typingComplete ? levelFromTyping(tests.typing.wpm, tests.typing.accuracy) : '3'
+      };
+
+      teacher.teachingAbilities.listening.level = skillLevels.listening;
+      teacher.teachingAbilities.reading.level = skillLevels.reading;
+      teacher.teachingAbilities.speaking.level = skillLevels.speaking;
+      teacher.teachingAbilities.writing.level = skillLevels.writing;
+
+      // Ensure assessment is marked completed so admin view shows it
+      if (!teacher.assessmentTests.completed) {
+        teacher.assessmentTests.completed = true;
+      }
+      if (!teacher.assessmentTests.completedAt) {
+        teacher.assessmentTests.completedAt = new Date();
+      }
+
+      if (!teacher.skillAssessments) {
+        teacher.skillAssessments = [];
+      }
+      teacher.skillAssessments.push({
+        assessmentDate: new Date(),
+        assessedBy: 'System Auto-Grade',
+        skills: skillLevels,
+        notes: 'Auto-generated from completed assessment tests (view)'
+      });
+
+      await teacher.save();
+    }
+
     // Get the latest assessment from skillAssessments history
     const latestAssessment = teacher.skillAssessments && teacher.skillAssessments.length > 0
       ? teacher.skillAssessments[teacher.skillAssessments.length - 1]

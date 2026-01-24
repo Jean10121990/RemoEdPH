@@ -2855,7 +2855,7 @@ router.get('/teacher-assessments', verifyToken, requireAdmin, async (req, res) =
       filteredTeachers = teachers.filter(t => 
         t.assessmentTests && 
         !t.assessmentTests.completed &&
-        (t.assessmentTests.listening || t.assessmentTests.typing || t.assessmentTests.reading || t.assessmentTests.pronunciation)
+        (t.assessmentTests.listening || t.assessmentTests.typing || t.assessmentTests.reading || t.assessmentTests.pronunciation || t.assessmentTests.grammar || t.assessmentTests.vocabulary)
       );
     }
     
@@ -2886,6 +2886,18 @@ router.get('/teacher-assessments', verifyToken, requireAdmin, async (req, res) =
           completed: !!(teacher.assessmentTests?.pronunciation?.words?.length > 0 || teacher.assessmentTests?.pronunciation?.audioRecording || teacher.assessmentTests?.pronunciation?.completedAt),
           wordsCount: teacher.assessmentTests?.pronunciation?.words?.length || 0,
           completedAt: teacher.assessmentTests?.pronunciation?.completedAt || null
+        },
+        grammar: {
+          completed: !!(teacher.assessmentTests?.grammar?.score !== null && teacher.assessmentTests?.grammar?.score !== undefined || teacher.assessmentTests?.grammar?.completedAt),
+          score: teacher.assessmentTests?.grammar?.score || null,
+          total: teacher.assessmentTests?.grammar?.total || null,
+          completedAt: teacher.assessmentTests?.grammar?.completedAt || null
+        },
+        vocabulary: {
+          completed: !!(teacher.assessmentTests?.vocabulary?.score !== null && teacher.assessmentTests?.vocabulary?.score !== undefined || teacher.assessmentTests?.vocabulary?.completedAt),
+          score: teacher.assessmentTests?.vocabulary?.score || null,
+          total: teacher.assessmentTests?.vocabulary?.total || null,
+          completedAt: teacher.assessmentTests?.vocabulary?.completedAt || null
         }
       }
     }));
@@ -2907,7 +2919,7 @@ router.get('/teacher-assessments/:teacherId', verifyToken, requireAdmin, async (
     const { teacherId } = req.params;
     
     const teacher = await Teacher.findOne({ teacherId })
-      .select('teacherId username firstName lastName fullname email assessmentTests');
+      .select('teacherId username firstName lastName fullname email assessmentTests teachingAbilities teachingPersonality skillAssessments');
     
     if (!teacher) {
       return res.status(404).json({ error: 'Teacher not found' });
@@ -2927,7 +2939,9 @@ router.get('/teacher-assessments/:teacherId', verifyToken, requireAdmin, async (
         teacherId: teacher.teacherId,
         name: teacher.fullname || `${teacher.firstName || ''} ${teacher.lastName || ''}`.trim() || teacher.username || 'Unknown',
         email: teacher.email || '',
-        username: teacher.username || ''
+        username: teacher.username || '',
+        teachingAbilities: teacher.teachingAbilities || null,
+        teachingPersonality: teacher.teachingPersonality || null
       },
       completed: teacher.assessmentTests.completed || false,
       completedAt: teacher.assessmentTests.completedAt || null,
@@ -2935,11 +2949,177 @@ router.get('/teacher-assessments/:teacherId', verifyToken, requireAdmin, async (
         listening: teacher.assessmentTests.listening || null,
         typing: teacher.assessmentTests.typing || null,
         reading: teacher.assessmentTests.reading || null,
-        pronunciation: teacher.assessmentTests.pronunciation || null
-      }
+        pronunciation: teacher.assessmentTests.pronunciation || null,
+        grammar: teacher.assessmentTests.grammar || null,
+        vocabulary: teacher.assessmentTests.vocabulary || null,
+        personality: teacher.assessmentTests.personality || null
+      },
+      skillAssessments: teacher.skillAssessments || []
     });
   } catch (error) {
     console.error('Error fetching teacher assessment details:', error);
+    res.status(500).json({ error: 'Server error: ' + error.message });
+  }
+});
+
+// Allow retake: reset assessment tests so teacher can resubmit
+router.post('/teacher-assessments/:teacherId/retake', verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+    const teacher = await Teacher.findOne({ teacherId });
+    if (!teacher) {
+      return res.status(404).json({ error: 'Teacher not found' });
+    }
+
+    teacher.assessmentTests = {
+      completed: false,
+      completedAt: null,
+      listening: {},
+      typing: {},
+      reading: {},
+      pronunciation: {},
+      grammar: {},
+      vocabulary: {},
+      personality: {}
+    };
+
+    await teacher.save();
+
+    await createNotification(
+      teacherId,
+      'assessment-retake',
+      'Your assessment has been reset. Please retake the tests.'
+    );
+
+    res.json({
+      success: true,
+      message: 'Assessment reset. Teacher can retake the tests.'
+    });
+  } catch (error) {
+    console.error('Error enabling retake:', error);
+    res.status(500).json({ error: 'Server error: ' + error.message });
+  }
+});
+
+// Recompute/backfill grammar & vocabulary scores for existing assessments
+router.post('/teacher-assessments/:teacherId/recompute-scores', verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+    const teacher = await Teacher.findOne({ teacherId });
+    if (!teacher) {
+      return res.status(404).json({ error: 'Teacher not found' });
+    }
+
+    if (!teacher.assessmentTests) {
+      return res.status(400).json({ error: 'Assessment tests not found' });
+    }
+
+    const grammarCorrectIndices = [1, 1, 1, 2, 1];
+    const vocabularyCorrectIndices = [1, 0, 1, 1, 0];
+    const computeScoreFromAnswers = (answers, correctIndices) => {
+      if (!answers) return null;
+      const values = Array.isArray(answers) ? answers : Object.values(answers);
+      if (!values.length) return null;
+      let score = 0;
+      values.forEach((val, idx) => {
+        if (Number(val) === Number(correctIndices[idx])) {
+          score += 1;
+        }
+      });
+      return score;
+    };
+
+    const updated = { grammar: false, vocabulary: false, personality: false };
+
+    if (teacher.assessmentTests.grammar) {
+      if (!teacher.assessmentTests.grammar.total) {
+        const answers = teacher.assessmentTests.grammar.answers;
+        const inferredTotal = Array.isArray(answers) ? answers.length : Object.keys(answers || {}).length;
+        if (inferredTotal) {
+          teacher.assessmentTests.grammar.total = inferredTotal;
+          updated.grammar = true;
+        }
+      }
+      const computedScore = computeScoreFromAnswers(teacher.assessmentTests.grammar.answers, grammarCorrectIndices);
+      if (computedScore !== null && computedScore !== undefined) {
+        teacher.assessmentTests.grammar.score = computedScore;
+        updated.grammar = true;
+      }
+      if (teacher.assessmentTests.grammar.score !== null && teacher.assessmentTests.grammar.score !== undefined) {
+        if (!teacher.assessmentTests.grammar.completedAt) {
+          teacher.assessmentTests.grammar.completedAt = new Date();
+          updated.grammar = true;
+        }
+      }
+    }
+
+    if (teacher.assessmentTests.vocabulary) {
+      if (!teacher.assessmentTests.vocabulary.total) {
+        const answers = teacher.assessmentTests.vocabulary.answers;
+        const inferredTotal = Array.isArray(answers) ? answers.length : Object.keys(answers || {}).length;
+        if (inferredTotal) {
+          teacher.assessmentTests.vocabulary.total = inferredTotal;
+          updated.vocabulary = true;
+        }
+      }
+      const computedScore = computeScoreFromAnswers(teacher.assessmentTests.vocabulary.answers, vocabularyCorrectIndices);
+      if (computedScore !== null && computedScore !== undefined) {
+        teacher.assessmentTests.vocabulary.score = computedScore;
+        updated.vocabulary = true;
+      }
+      if (teacher.assessmentTests.vocabulary.score !== null && teacher.assessmentTests.vocabulary.score !== undefined) {
+        if (!teacher.assessmentTests.vocabulary.completedAt) {
+          teacher.assessmentTests.vocabulary.completedAt = new Date();
+          updated.vocabulary = true;
+        }
+      }
+    }
+
+    if (teacher.assessmentTests.personality && teacher.assessmentTests.personality.answers) {
+      const answers = teacher.assessmentTests.personality.answers || {};
+      const categoryScores = {};
+      let total = 0;
+      let score = 0;
+
+      Object.keys(answers).forEach((category) => {
+        const items = Array.isArray(answers[category]) ? answers[category] : [];
+        const totalForCategory = items.length;
+        let correct = 0;
+        items.forEach((val) => {
+          if (val === category) {
+            correct += 1;
+          }
+        });
+        categoryScores[category] = { correct, total: totalForCategory };
+        total += totalForCategory;
+        score += correct;
+      });
+
+      if (total > 0) {
+        teacher.assessmentTests.personality.total = total;
+        teacher.assessmentTests.personality.score = score;
+        teacher.assessmentTests.personality.percent = Math.round((score / total) * 100);
+        teacher.assessmentTests.personality.categoryScores = categoryScores;
+        updated.personality = true;
+      }
+
+      if (!teacher.assessmentTests.personality.completedAt && total > 0) {
+        teacher.assessmentTests.personality.completedAt = new Date();
+        updated.personality = true;
+      }
+    }
+
+    if (updated.grammar || updated.vocabulary || updated.personality) {
+      await teacher.save();
+    }
+
+    res.json({
+      success: true,
+      message: 'Recompute complete.',
+      updated
+    });
+  } catch (error) {
+    console.error('Error recomputing scores:', error);
     res.status(500).json({ error: 'Server error: ' + error.message });
   }
 });
@@ -2948,7 +3128,7 @@ router.get('/teacher-assessments/:teacherId', verifyToken, requireAdmin, async (
 router.post('/assess-teacher/:teacherId', verifyToken, requireAdmin, async (req, res) => {
   try {
     const { teacherId } = req.params;
-    const { skills, notes } = req.body; // skills: { listening: 3, reading: 4, speaking: 3, writing: 2 }
+    const { skills, personality, notes, totals } = req.body; // skills: { speaking, reading, writing, pronunciation, grammar, vocabulary, listening }
     
     const teacher = await Teacher.findOne({ teacherId });
     if (!teacher) {
@@ -2964,12 +3144,23 @@ router.post('/assess-teacher/:teacherId', verifyToken, requireAdmin, async (req,
       assessmentDate: new Date(),
       assessedBy: assessorRole, // Store role instead of user ID
       skills: {
-        listening: skills.listening !== undefined ? String(skills.listening) : null,
-        reading: skills.reading !== undefined ? String(skills.reading) : null,
-        speaking: skills.speaking !== undefined ? String(skills.speaking) : null,
-        writing: skills.writing !== undefined ? String(skills.writing) : null
+        listening: skills?.listening !== undefined ? String(skills.listening) : null,
+        reading: skills?.reading !== undefined ? String(skills.reading) : null,
+        speaking: skills?.speaking !== undefined ? String(skills.speaking) : null,
+        writing: skills?.writing !== undefined ? String(skills.writing) : null,
+        pronunciation: skills?.pronunciation !== undefined ? String(skills.pronunciation) : null,
+        grammar: skills?.grammar !== undefined ? String(skills.grammar) : null,
+        vocabulary: skills?.vocabulary !== undefined ? String(skills.vocabulary) : null
       },
-      notes: notes || ''
+      personality: {
+        interpersonal: personality?.interpersonal !== undefined ? String(personality.interpersonal) : null,
+        professionalism: personality?.professionalism !== undefined ? String(personality.professionalism) : null,
+        cultural: personality?.cultural !== undefined ? String(personality.cultural) : null,
+        technology: personality?.technology !== undefined ? String(personality.technology) : null,
+        engagement: personality?.engagement !== undefined ? String(personality.engagement) : null
+      },
+      notes: notes || '',
+      totals: totals || null
     };
     
     // Add to assessment history
@@ -2984,21 +3175,59 @@ router.post('/assess-teacher/:teacherId', verifyToken, requireAdmin, async (req,
         listening: { description: '', level: null },
         reading: { description: '', level: null },
         speaking: { description: '', level: null },
-        writing: { description: '', level: null }
+        writing: { description: '', level: null },
+        pronunciation: { description: '', level: null },
+        grammar: { description: '', level: null },
+        vocabulary: { description: '', level: null }
+      };
+    }
+
+    if (!teacher.teachingPersonality) {
+      teacher.teachingPersonality = {
+        interpersonal: { description: '', level: null },
+        professionalism: { description: '', level: null },
+        cultural: { description: '', level: null },
+        technology: { description: '', level: null },
+        engagement: { description: '', level: null }
       };
     }
     
-    if (skills.listening !== undefined) {
+    if (skills?.listening !== undefined) {
       teacher.teachingAbilities.listening.level = String(skills.listening);
     }
-    if (skills.reading !== undefined) {
+    if (skills?.reading !== undefined) {
       teacher.teachingAbilities.reading.level = String(skills.reading);
     }
-    if (skills.speaking !== undefined) {
+    if (skills?.speaking !== undefined) {
       teacher.teachingAbilities.speaking.level = String(skills.speaking);
     }
-    if (skills.writing !== undefined) {
+    if (skills?.writing !== undefined) {
       teacher.teachingAbilities.writing.level = String(skills.writing);
+    }
+    if (skills?.pronunciation !== undefined) {
+      teacher.teachingAbilities.pronunciation.level = String(skills.pronunciation);
+    }
+    if (skills?.grammar !== undefined) {
+      teacher.teachingAbilities.grammar.level = String(skills.grammar);
+    }
+    if (skills?.vocabulary !== undefined) {
+      teacher.teachingAbilities.vocabulary.level = String(skills.vocabulary);
+    }
+
+    if (personality?.interpersonal !== undefined) {
+      teacher.teachingPersonality.interpersonal.level = String(personality.interpersonal);
+    }
+    if (personality?.professionalism !== undefined) {
+      teacher.teachingPersonality.professionalism.level = String(personality.professionalism);
+    }
+    if (personality?.cultural !== undefined) {
+      teacher.teachingPersonality.cultural.level = String(personality.cultural);
+    }
+    if (personality?.technology !== undefined) {
+      teacher.teachingPersonality.technology.level = String(personality.technology);
+    }
+    if (personality?.engagement !== undefined) {
+      teacher.teachingPersonality.engagement.level = String(personality.engagement);
     }
     
     await teacher.save();
