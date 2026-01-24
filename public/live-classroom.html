@@ -154,9 +154,53 @@
       margin-bottom: 20px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
       background: white;
+      position: relative;
+      overflow: hidden;
     }
     .pdf-page canvas {
       display: block;
+    }
+    .pdf-annotation-layer {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 2;
+    }
+    .pdf-annotator-controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      padding: 6px 8px;
+      background: #f8fafc;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      flex-wrap: wrap;
+    }
+    .pdf-annotator-controls input[type="color"] {
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      background: white;
+      cursor: pointer;
+    }
+    .pdf-annotator-controls select {
+      padding: 6px 8px;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      background: white;
+    }
+    .pdf-annotator-indicator {
+      font-size: 0.85rem;
+      color: #0f172a;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
     }
     .pdf-loading {
       display: flex;
@@ -1512,6 +1556,51 @@
           fitToViewerBtn.id = 'pdf-fit-to-viewer-btn';
           fitToViewerBtn.title = 'Fit PDF to viewer width';
           
+          // Annotation controls (teacher draw, students view)
+          const annotateToggle = document.createElement('button');
+          annotateToggle.id = 'pdf-annotate-toggle';
+          annotateToggle.textContent = 'Enable Annotate';
+          annotateToggle.title = 'Toggle drawing on the PDF';
+          
+          const annotationColorPicker = document.createElement('input');
+          annotationColorPicker.type = 'color';
+          annotationColorPicker.id = 'pdf-annotate-color';
+          annotationColorPicker.value = '#ff3b30';
+          annotationColorPicker.title = 'Pen color';
+          
+          const annotationSizeSelect = document.createElement('select');
+          annotationSizeSelect.id = 'pdf-annotate-size';
+          ['2','4','6','8','12'].forEach(size => {
+            const option = document.createElement('option');
+            option.value = size;
+            option.textContent = `${size}px`;
+            if (size === '4') option.selected = true;
+            annotationSizeSelect.appendChild(option);
+          });
+          
+          const eraseBtn = document.createElement('button');
+          eraseBtn.id = 'pdf-annotate-eraser';
+          eraseBtn.textContent = 'Eraser';
+          eraseBtn.title = 'Switch to eraser';
+          
+          const clearPageBtn = document.createElement('button');
+          clearPageBtn.id = 'pdf-annotate-clear';
+          clearPageBtn.textContent = 'Clear Page';
+          clearPageBtn.title = 'Clear annotations on this page';
+          
+          const annotatorIndicator = document.createElement('span');
+          annotatorIndicator.className = 'pdf-annotator-indicator';
+          annotatorIndicator.textContent = 'Annotations ready';
+          
+          const annotatorControls = document.createElement('div');
+          annotatorControls.className = 'pdf-annotator-controls';
+          annotatorControls.appendChild(annotateToggle);
+          annotatorControls.appendChild(annotationColorPicker);
+          annotatorControls.appendChild(annotationSizeSelect);
+          annotatorControls.appendChild(eraseBtn);
+          annotatorControls.appendChild(clearPageBtn);
+          annotatorControls.appendChild(annotatorIndicator);
+          
           const canvasContainer = document.createElement('div');
           canvasContainer.className = 'pdf-canvas-container';
           canvasContainer.id = 'pdf-canvas-container';
@@ -1523,6 +1612,7 @@
           controls.appendChild(zoomOutBtn);
           controls.appendChild(zoomInBtn);
           controls.appendChild(fitToViewerBtn);
+          controls.appendChild(annotatorControls);
           
           pdfContainer.appendChild(controls);
           pdfContainer.appendChild(canvasContainer);
@@ -1545,6 +1635,208 @@
           let allPagesRendered = false;
           let pageCanvases = {}; // Store canvas elements for each page
           const pdfEventBus = new EventTarget();
+          
+          // PDF annotation state (per page) - teacher draws, students follow
+          const annotationState = new Map(); // pageNumber -> [strokes]
+          const annotationLayers = new Map(); // pageNumber -> { canvas, ctx, viewport }
+          let annotationEnabled = isTeacher;
+          let annotationMode = 'pen';
+          let annotationColor = annotationColorPicker.value || '#ff3b30';
+          let annotationSize = parseInt(annotationSizeSelect.value, 10) || 4;
+          let activeStroke = null;
+          
+          function setAnnotationInteractivity() {
+            annotationLayers.forEach(({ canvas }) => {
+              if (!canvas) return;
+              canvas.style.pointerEvents = annotationEnabled && isTeacher ? 'auto' : 'none';
+            });
+            if (annotateToggle) {
+              annotateToggle.textContent = annotationEnabled ? 'Annotating' : 'Enable Annotate';
+              annotateToggle.classList.toggle('active', annotationEnabled);
+            }
+            if (annotatorIndicator) {
+              annotatorIndicator.textContent = annotationEnabled
+                ? (isTeacher ? 'Broadcasting live annotations' : 'Following teacher annotations')
+                : 'Annotations paused';
+            }
+          }
+          
+          function drawStrokeOnLayer(layerInfo, stroke) {
+            if (!layerInfo || !stroke || !Array.isArray(stroke.points) || stroke.points.length < 2) return;
+            const { canvas, ctx } = layerInfo;
+            ctx.save();
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.lineWidth = stroke.size || 3;
+            ctx.strokeStyle = stroke.color || '#ff3b30';
+            ctx.globalCompositeOperation = stroke.tool === 'erase' ? 'destination-out' : 'source-over';
+            ctx.beginPath();
+            stroke.points.forEach((pt, idx) => {
+              const x = (pt.x ?? pt[0]) * canvas.width;
+              const y = (pt.y ?? pt[1]) * canvas.height;
+              if (idx === 0) {
+                ctx.moveTo(x, y);
+              } else {
+                ctx.lineTo(x, y);
+              }
+            });
+            ctx.stroke();
+            ctx.restore();
+          }
+          
+          function redrawAnnotations(pageNumber) {
+            const layerInfo = annotationLayers.get(pageNumber);
+            if (!layerInfo) return;
+            const strokes = annotationState.get(pageNumber) || [];
+            const { canvas, ctx } = layerInfo;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            strokes.forEach(stroke => drawStrokeOnLayer(layerInfo, stroke));
+          }
+          
+          function registerAnnotationLayer(pageNumber, viewport, canvasDiv) {
+            if (!canvasDiv || !viewport) return;
+            const annotationCanvas = document.createElement('canvas');
+            annotationCanvas.className = 'pdf-annotation-layer';
+            annotationCanvas.width = viewport.width;
+            annotationCanvas.height = viewport.height;
+            annotationCanvas.style.width = viewport.width + 'px';
+            annotationCanvas.style.height = viewport.height + 'px';
+            annotationCanvas.style.pointerEvents = annotationEnabled && isTeacher ? 'auto' : 'none';
+            canvasDiv.appendChild(annotationCanvas);
+            const ctx = annotationCanvas.getContext('2d');
+            annotationLayers.set(pageNumber, { canvas: annotationCanvas, ctx, viewport });
+            redrawAnnotations(pageNumber);
+            if (isTeacher) {
+              attachAnnotationListeners(annotationCanvas, pageNumber);
+            }
+          }
+          
+          function getNormalizedPos(evt, canvas) {
+            const rect = canvas.getBoundingClientRect();
+            return {
+              x: Math.min(1, Math.max(0, (evt.clientX - rect.left) / rect.width)),
+              y: Math.min(1, Math.max(0, (evt.clientY - rect.top) / rect.height))
+            };
+          }
+          
+          function attachAnnotationListeners(annotationCanvas, pageNumber) {
+            annotationCanvas.addEventListener('pointerdown', (e) => {
+              if (!annotationEnabled || !isTeacher) return;
+              e.preventDefault();
+              annotationMode = annotationMode || 'pen';
+              activeStroke = {
+                tool: annotationMode,
+                color: annotationColor,
+                size: annotationSize,
+                points: [getNormalizedPos(e, annotationCanvas)]
+              };
+              annotationCanvas.setPointerCapture(e.pointerId);
+            });
+            
+            annotationCanvas.addEventListener('pointermove', (e) => {
+              if (!activeStroke || !annotationEnabled || !isTeacher) return;
+              e.preventDefault();
+              const nextPoint = getNormalizedPos(e, annotationCanvas);
+              activeStroke.points.push(nextPoint);
+              const layerInfo = annotationLayers.get(pageNumber);
+              if (!layerInfo) return;
+              const { canvas, ctx } = layerInfo;
+              const pts = activeStroke.points;
+              if (pts.length < 2) return;
+              const prev = pts[pts.length - 2];
+              ctx.save();
+              ctx.lineCap = 'round';
+              ctx.lineJoin = 'round';
+              ctx.lineWidth = activeStroke.size || 3;
+              ctx.strokeStyle = activeStroke.color || '#ff3b30';
+              ctx.globalCompositeOperation = activeStroke.tool === 'erase' ? 'destination-out' : 'source-over';
+              ctx.beginPath();
+              ctx.moveTo(prev.x * canvas.width, prev.y * canvas.height);
+              ctx.lineTo(nextPoint.x * canvas.width, nextPoint.y * canvas.height);
+              ctx.stroke();
+              ctx.restore();
+            });
+            
+            const finishStroke = () => {
+              if (!activeStroke || !annotationEnabled || !isTeacher) return;
+              const strokes = annotationState.get(pageNumber) || [];
+              strokes.push(activeStroke);
+              annotationState.set(pageNumber, strokes);
+              sendAnnotationUpdate({ action: 'stroke', page: pageNumber, stroke: activeStroke });
+              redrawAnnotations(pageNumber);
+              activeStroke = null;
+            };
+            
+            annotationCanvas.addEventListener('pointerup', finishStroke);
+            annotationCanvas.addEventListener('pointercancel', () => { activeStroke = null; });
+            annotationCanvas.addEventListener('pointerleave', finishStroke);
+          }
+          
+          function clearAnnotations(pageNumber, broadcast = false) {
+            annotationState.set(pageNumber, []);
+            redrawAnnotations(pageNumber);
+            if (broadcast) {
+              sendAnnotationUpdate({ action: 'clear-page', page: pageNumber });
+            }
+          }
+          
+          function sendAnnotationUpdate(payload = {}) {
+            if (!socket || !socket.connected || userType !== 'teacher') return;
+            socket.emit('annotation-sync', {
+              room,
+              materialId: window.currentPdfMaterialId || material.id,
+              ...payload
+            });
+          }
+          
+          function broadcastAnnotationState() {
+            if (!socket || !socket.connected || userType !== 'teacher') return;
+            annotationState.forEach((strokes, page) => {
+              socket.emit('annotation-sync', {
+                room,
+                materialId: window.currentPdfMaterialId || material.id,
+                action: 'full-sync',
+                page,
+                strokes
+              });
+            });
+          }
+          
+          function handleRemoteAnnotation(data = {}) {
+            const targetMaterial = window.currentPdfMaterialId || material.id;
+            if (data.materialId && targetMaterial && data.materialId !== targetMaterial) return;
+            const { action = 'stroke', page, stroke, strokes } = data;
+            if (!page) return;
+            if (action === 'clear-page') {
+              annotationState.set(page, []);
+              redrawAnnotations(page);
+              return;
+            }
+            if (action === 'full-sync' && Array.isArray(strokes)) {
+              annotationState.set(page, strokes);
+              redrawAnnotations(page);
+              return;
+            }
+            if (action === 'stroke' && stroke) {
+              const existing = annotationState.get(page) || [];
+              existing.push(stroke);
+              annotationState.set(page, existing);
+              redrawAnnotations(page);
+            }
+          }
+          
+          if (isStudent) {
+            annotationEnabled = true; // allow viewing synced annotations
+            annotateToggle.style.display = 'none';
+            annotationColorPicker.style.display = 'none';
+            annotationSizeSelect.style.display = 'none';
+            eraseBtn.style.display = 'none';
+            clearPageBtn.style.display = 'none';
+            annotatorIndicator.textContent = 'Following teacher annotations';
+          } else {
+            annotatorIndicator.textContent = 'Annotate and sync with students';
+          }
+          setAnnotationInteractivity();
           
           // Calculate scale to fit viewer width
           function calculateFitToViewerScale(page) {
@@ -1585,6 +1877,7 @@
               
               canvasDiv.appendChild(canvas);
               pageCanvases[num] = { canvas, canvasDiv, scale: renderScale };
+              registerAnnotationLayer(num, viewport, canvasDiv);
               
               const renderContext = {
                 canvasContext: ctx,
@@ -1618,6 +1911,7 @@
             
             canvasContainer.innerHTML = '';
             pageCanvases = {};
+            annotationLayers.clear();
             
             // Render all pages
             for (let i = 1; i <= pdfDoc.numPages; i++) {
@@ -1642,6 +1936,7 @@
                 canvasDiv.appendChild(canvas);
                 canvasContainer.appendChild(canvasDiv);
                 pageCanvases[i] = { canvas, canvasDiv, scale: renderScale };
+                registerAnnotationLayer(i, viewport, canvasDiv);
                 
                 const renderContext = {
                   canvasContext: ctx,
@@ -1786,6 +2081,43 @@
           zoomInBtn.addEventListener('click', onZoomIn);
           zoomOutBtn.addEventListener('click', onZoomOut);
           fitToViewerBtn.addEventListener('click', onFitToViewer);
+          
+          annotateToggle.addEventListener('click', () => {
+            if (!isTeacher) return;
+            annotationEnabled = !annotationEnabled;
+            setAnnotationInteractivity();
+            if (socket && socket.connected) {
+              socket.emit(annotationEnabled ? 'annotation-enable' : 'annotation-disable', {
+                room,
+                materialId: window.currentPdfMaterialId || material.id
+              });
+              if (annotationEnabled) {
+                broadcastAnnotationState();
+              }
+            }
+          });
+          
+          annotationColorPicker.addEventListener('change', (e) => {
+            annotationColor = e.target.value || '#ff3b30';
+            annotationMode = 'pen';
+            eraseBtn.classList.remove('active');
+          });
+          
+          annotationSizeSelect.addEventListener('change', (e) => {
+            annotationSize = parseInt(e.target.value, 10) || 4;
+          });
+          
+          eraseBtn.addEventListener('click', () => {
+            if (!annotationEnabled) annotationEnabled = true;
+            annotationMode = annotationMode === 'erase' ? 'pen' : 'erase';
+            eraseBtn.classList.toggle('active', annotationMode === 'erase');
+            setAnnotationInteractivity();
+          });
+          
+          clearPageBtn.addEventListener('click', () => {
+            if (!isTeacher) return;
+            clearAnnotations(pageNum, true);
+          });
 
           // Hide/lock controls for students
           if (isStudent) {
@@ -1838,6 +2170,25 @@
             }
           });
           
+          if (socket) {
+            socket.off('annotation-sync');
+            socket.off('annotation-enable');
+            socket.off('annotation-disable');
+            socket.on('annotation-sync', handleRemoteAnnotation);
+            socket.on('annotation-enable', ({ materialId: incomingId } = {}) => {
+              const targetId = window.currentPdfMaterialId || material.id;
+              if (incomingId && targetId && incomingId !== targetId) return;
+              annotationEnabled = true;
+              setAnnotationInteractivity();
+            });
+            socket.on('annotation-disable', ({ materialId: incomingId } = {}) => {
+              const targetId = window.currentPdfMaterialId || material.id;
+              if (incomingId && targetId && incomingId !== targetId) return;
+              annotationEnabled = false;
+              setAnnotationInteractivity();
+            });
+          }
+          
           // Load PDF document
           let pdfData = material.data;
           
@@ -1865,6 +2216,12 @@
             fitToViewerBtn.textContent = 'Fit to Viewer ✓';
             fitToViewerBtn.style.background = '#d4edda';
             fitToViewerBtn.style.color = '#155724';
+            
+            // Start annotations in sync for students when teacher loads the PDF
+            if (isTeacher && socket && socket.connected) {
+              socket.emit('annotation-enable', { room, materialId: material.id });
+              broadcastAnnotationState();
+            }
           }).catch(function(error) {
             console.error('❌ Error loading PDF:', error);
             canvasContainer.innerHTML = `

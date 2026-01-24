@@ -593,6 +593,29 @@
             }
         }
 
+        // Helper: parse booking date/time as UTC then convert to local
+        function parseBookingDateTime(booking) {
+            const dateStr = booking.date || '';
+            const timeStr = booking.time || '00:00';
+            const hasTZInfo = /[zZ]|[+-]\d\d:?\d\d$/.test(timeStr) || /[zZ]$/.test(dateStr) || /[+-]\d\d:?\d\d$/.test(dateStr);
+            const isoString = hasTZInfo ? `${dateStr}T${timeStr}` : `${dateStr}T${timeStr}Z`;
+            return new Date(isoString);
+        }
+        
+        function formatLocalTime(dateObj) {
+            return dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+        }
+        
+        function getTimeZoneAbbr(dateObj) {
+            try {
+                const parts = new Intl.DateTimeFormat('en-US', { timeZoneName: 'short' }).formatToParts(dateObj);
+                const tz = parts.find(p => p.type === 'timeZoneName');
+                return tz ? tz.value : '';
+            } catch (e) {
+                return '';
+            }
+        }
+        
         // Display bookings based on current filter
         function displayBookings(bookings) {
             const container = document.getElementById('bookings-container');
@@ -619,8 +642,8 @@
 
             // Sort bookings by date and time (newest first)
             const sortedBookings = [...bookings].sort((a, b) => {
-                const dateA = new Date(a.date + 'T' + a.time);
-                const dateB = new Date(b.date + 'T' + b.time);
+                const dateA = parseBookingDateTime(a);
+                const dateB = parseBookingDateTime(b);
                 return dateB - dateA;
             });
 
@@ -638,7 +661,8 @@
                     day: 'numeric', 
                     year: 'numeric' 
                 });
-                const time = booking.time;
+                const localDateTime = parseBookingDateTime(booking);
+                const time = `${formatLocalTime(localDateTime)} ${getTimeZoneAbbr(localDateTime)}`;
                 const duration = calculateDuration(booking);
                 const lesson = booking.lesson || 'N/A';
                 const teacherName = getTeacherName(booking);
@@ -685,7 +709,7 @@
         // Calculate duration
         function calculateDuration(booking) {
             if (booking.finishedAt && booking.date && booking.time) {
-                const startTime = new Date(booking.date + 'T' + booking.time);
+                const startTime = parseBookingDateTime(booking);
                 const endTime = new Date(booking.finishedAt);
                 const diffMs = endTime - startTime;
                 const diffMins = Math.round(diffMs / 60000);
@@ -729,7 +753,7 @@
         // Get booking status
         function getBookingStatus(booking) {
             const now = new Date();
-            const bookingDate = new Date(booking.date + 'T' + booking.time);
+            const bookingDate = parseBookingDateTime(booking);
             const endTime = new Date(bookingDate.getTime() + 25 * 60000); // 25 minutes
             
             // Check for cancelled status

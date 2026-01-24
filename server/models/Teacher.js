@@ -85,7 +85,51 @@ const teacherSchema = new mongoose.Schema({
       level: { type: String, default: null },
       criteria: [{ type: String }]
     },
+    pronunciation: {
+      description: { type: String, default: '' },
+      level: { type: String, default: null },
+      criteria: [{ type: String }]
+    },
+    grammar: {
+      description: { type: String, default: '' },
+      level: { type: String, default: null },
+      criteria: [{ type: String }]
+    },
+    vocabulary: {
+      description: { type: String, default: '' },
+      level: { type: String, default: null },
+      criteria: [{ type: String }]
+    },
     creativityHobbies: { type: String, default: '' }
+  },
+
+  // Personality Assessment
+  teachingPersonality: {
+    interpersonal: {
+      description: { type: String, default: '' },
+      level: { type: String, default: null },
+      criteria: [{ type: String }]
+    },
+    professionalism: {
+      description: { type: String, default: '' },
+      level: { type: String, default: null },
+      criteria: [{ type: String }]
+    },
+    cultural: {
+      description: { type: String, default: '' },
+      level: { type: String, default: null },
+      criteria: [{ type: String }]
+    },
+    technology: {
+      description: { type: String, default: '' },
+      level: { type: String, default: null },
+      criteria: [{ type: String }]
+    },
+    engagement: {
+      description: { type: String, default: '' },
+      level: { type: String, default: null },
+      criteria: [{ type: String }]
+    }
   },
   
   // Professional Development - Certifications with expiration tracking
@@ -107,9 +151,29 @@ const teacherSchema = new mongoose.Schema({
       listening: { type: String, default: null },
       reading: { type: String, default: null },
       speaking: { type: String, default: null },
-      writing: { type: String, default: null }
+      writing: { type: String, default: null },
+      pronunciation: { type: String, default: null },
+      grammar: { type: String, default: null },
+      vocabulary: { type: String, default: null }
+    },
+    personality: {
+      interpersonal: { type: String, default: null },
+      professionalism: { type: String, default: null },
+      cultural: { type: String, default: null },
+      technology: { type: String, default: null },
+      engagement: { type: String, default: null }
     },
     notes: { type: String, default: '' },
+    totals: {
+      skillsTotal: { type: Number, default: null },
+      skillsMax: { type: Number, default: null },
+      personalityTotal: { type: Number, default: null },
+      personalityMax: { type: Number, default: null },
+      total: { type: Number, default: null },
+      max: { type: Number, default: null },
+      normalizedToRubric: { type: Number, default: null },
+      band: { type: String, default: null }
+    },
     levelChange: { type: String, default: null } // e.g., "Intermediate to Advanced"
   }],
   
@@ -175,6 +239,26 @@ const teacherSchema = new mongoose.Schema({
         word: { type: String },
         audio: { type: String } // Individual word recordings
       }],
+      completedAt: { type: Date, default: null }
+    },
+    grammar: {
+      score: { type: Number, default: null },
+      total: { type: Number, default: null },
+      answers: { type: mongoose.Schema.Types.Mixed, default: null },
+      completedAt: { type: Date, default: null }
+    },
+    vocabulary: {
+      score: { type: Number, default: null },
+      total: { type: Number, default: null },
+      answers: { type: mongoose.Schema.Types.Mixed, default: null },
+      completedAt: { type: Date, default: null }
+    },
+    personality: {
+      score: { type: Number, default: null },
+      total: { type: Number, default: null },
+      percent: { type: Number, default: null },
+      answers: { type: mongoose.Schema.Types.Mixed, default: null },
+      categoryScores: { type: mongoose.Schema.Types.Mixed, default: null },
       completedAt: { type: Date, default: null }
     }
   }
