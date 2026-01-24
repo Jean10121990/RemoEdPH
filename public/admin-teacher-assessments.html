@@ -146,6 +146,8 @@
             padding: 32px;
             border-radius: 16px;
             max-width: 900px;
+            max-height: 85vh;
+            overflow-y: auto;
             box-shadow: 0 4px 24px rgba(0,0,0,0.15);
         }
         
@@ -227,6 +229,59 @@
             padding: 40px;
             color: #64748b;
         }
+
+        /* Rubric helper */
+        .rubric-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        .rubric-card h3 {
+            margin: 0 0 8px 0;
+            color: #1e293b;
+            font-size: 1.05rem;
+        }
+        .rubric-card p {
+            margin: 0 0 12px 0;
+            color: #475569;
+            font-size: 0.95rem;
+        }
+        .rubric-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+        .rubric-table th,
+        .rubric-table td {
+            border: 1px solid #e2e8f0;
+            padding: 10px;
+            vertical-align: top;
+            text-align: left;
+        }
+        .rubric-table th {
+            background: #eef2ff;
+            color: #312e81;
+            font-weight: 700;
+        }
+        .rubric-table td strong {
+            color: #1e293b;
+        }
+        .rubric-badges {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+        .rubric-badge {
+            background: #e0e7ff;
+            color: #3730a3;
+            border-radius: 999px;
+            padding: 6px 10px;
+            font-weight: 600;
+            font-size: 0.8rem;
+        }
     </style>
 </head>
 <body>
@@ -260,6 +315,118 @@
         <div class="remoed-content">
             <div class="remoed-section">
                 <div class="remoed-section-title">Teacher Assessment Submissions</div>
+
+                <div class="rubric-card">
+                    <h3>RemoEd Teacher Skills Assessment Rubric 1 (Skills)</h3>
+                    <p>Rate each skills category 1–5 during observation or testing. Add short evidence notes (e.g., “Pronunciation clear in minimal pairs exercise”).</p>
+                    <table class="rubric-table">
+                        <thead>
+                            <tr>
+                                <th>Category</th>
+                                <th>Criteria</th>
+                                <th>Rating Scale (1–5)</th>
+                                <th>Notes / Examples</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Speaking</strong></td>
+                                <td>Fluency, clarity, models natural conversation</td>
+                                <td>1 = Hesitant, 5 = Fluent & confident</td>
+                                <td>Check pace, intonation, coherence</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Reading</strong></td>
+                                <td>Accuracy, comprehension, reading strategies</td>
+                                <td>1 = Struggles, 5 = Excellent comprehension</td>
+                                <td>Observe read-aloud + silent comprehension</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Typing/Writing</strong></td>
+                                <td>Speed, accuracy, grammar in typed responses</td>
+                                <td>1 = Frequent errors, 5 = Fast & accurate</td>
+                                <td>Useful for online teaching platforms</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Pronunciation</strong></td>
+                                <td>Sounds, stress, intonation, clarity</td>
+                                <td>1 = Hard to understand, 5 = Clear & natural</td>
+                                <td>Compare with standard English phonology</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Grammar</strong></td>
+                                <td>Accuracy; ability to explain rules</td>
+                                <td>1 = Frequent mistakes, 5 = Consistently accurate</td>
+                                <td>Assess spoken & written grammar</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Vocabulary Range</strong></td>
+                                <td>Breadth; can simplify/expand for learners</td>
+                                <td>1 = Limited, 5 = Wide & flexible</td>
+                                <td>Check adaptability to student level</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Listening Comprehension</strong></td>
+                                <td>Understands student speech/questions</td>
+                                <td>1 = Often confused, 5 = Always understands</td>
+                                <td>Key for interactive teaching</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="rubric-card">
+                    <h3>RemoEd Teacher Personality Assessment Rubric 2 (Personality)</h3>
+                    <p>Rate each personality category 1–5 based on observation and interaction.</p>
+                    <table class="rubric-table">
+                        <thead>
+                            <tr>
+                                <th>Category</th>
+                                <th>Criteria</th>
+                                <th>Rating Scale (1–5)</th>
+                                <th>Notes / Examples</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Interpersonal Communication</strong></td>
+                                <td>Clarity, encouragement, rapport</td>
+                                <td>1 = Weak, 5 = Strong & supportive</td>
+                                <td>Student feedback helps here</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Professionalism</strong></td>
+                                <td>Reliability, punctuality, responsiveness</td>
+                                <td>1 = Unreliable, 5 = Highly professional</td>
+                                <td>Peer/admin evaluation</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Cultural Awareness</strong></td>
+                                <td>Sensitivity to diverse backgrounds; inclusive language/examples</td>
+                                <td>1 = Insensitive/rigid, 5 = Consistently inclusive</td>
+                                <td>Adjusts content to culture; avoids bias</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Technology Use</strong></td>
+                                <td>Effective use of online tools/platforms</td>
+                                <td>1 = Struggles with tools, 5 = Efficient & resourceful</td>
+                                <td>Uses LMS, breakout rooms, annotations smoothly</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Student Engagement</strong></td>
+                                <td>Motivates learners; interactive tasks</td>
+                                <td>1 = Passive sessions, 5 = Highly interactive</td>
+                                <td>Checks for participation, uses prompts/games</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="rubric-badges">
+                        <span class="rubric-badge">36–45 = Advanced</span>
+                        <span class="rubric-badge">26–35 = Competent</span>
+                        <span class="rubric-badge">16–25 = Developing</span>
+                        <span class="rubric-badge">Below 16 = Needs Improvement</span>
+                    </div>
+                </div>
                 
                 <div class="filters">
                     <button class="filter-btn active" onclick="filterAssessments('all')">All</button>
@@ -312,9 +479,20 @@
         let allAssessments = [];
         let currentFilter = 'all';
 
+        function clearAdminSession(message) {
+            localStorage.removeItem('adminToken');
+            localStorage.removeItem('token');
+            localStorage.removeItem('userType');
+            localStorage.removeItem('adminUsername');
+            if (message) {
+                alert(message);
+            }
+            window.location.href = 'admin-login.html';
+        }
+
         async function loadAssessments() {
             // Accept either standard token or adminToken for admin pages
-            const token = localStorage.getItem('token') || localStorage.getItem('adminToken');
+            const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
             if (!token) {
                 document.getElementById('loading').textContent = 'Authentication required. Please login again.';
                 return;
@@ -331,6 +509,16 @@
                 });
 
                 console.log('Response status:', response.status);
+
+                if (response.status === 401) {
+                    clearAdminSession('Your session has expired. Please login again.');
+                    return;
+                }
+
+                if (response.status === 403) {
+                    clearAdminSession('Admin access required. Please login with an admin account.');
+                    return;
+                }
                 
                 if (response.status === 404) {
                     throw new Error('Assessment endpoint not found. Please restart the server to load the new routes.');
@@ -370,7 +558,9 @@
                     a.tests.listening.completed || 
                     a.tests.typing.completed || 
                     a.tests.reading.completed || 
-                    a.tests.pronunciation.completed
+                    a.tests.pronunciation.completed ||
+                    a.tests.grammar?.completed ||
+                    a.tests.vocabulary?.completed
                 ));
             }
 
@@ -399,7 +589,9 @@
                     assessment.tests.listening.completed ? 'Listening' : null,
                     assessment.tests.typing.completed ? 'Typing' : null,
                     assessment.tests.reading.completed ? 'Reading' : null,
-                    assessment.tests.pronunciation.completed ? 'Pronunciation' : null
+                    assessment.tests.pronunciation.completed ? 'Pronunciation' : null,
+                    assessment.tests.grammar?.completed ? 'Grammar' : null,
+                    assessment.tests.vocabulary?.completed ? 'Vocabulary' : null
                 ].filter(Boolean);
 
                 const testsHtml = testsCompleted.length > 0 
@@ -436,7 +628,7 @@
             modalBody.innerHTML = '<div class="loading">Loading assessment details...</div>';
 
             // Accept either standard token or adminToken
-            const token = localStorage.getItem('token') || localStorage.getItem('adminToken');
+            const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
             try {
                 const response = await fetch(`/api/admin/teacher-assessments/${teacherId}`, {
                     method: 'GET',
@@ -446,10 +638,101 @@
                     }
                 });
 
+                if (response.status === 401) {
+                    clearAdminSession('Your session has expired. Please login again.');
+                    return;
+                }
+
+                if (response.status === 403) {
+                    clearAdminSession('Admin access required. Please login with an admin account.');
+                    return;
+                }
+
                 const data = await response.json();
 
                 if (!response.ok) {
                     throw new Error(data.error || 'Failed to load assessment details');
+                }
+
+                // Rubric fields split into Skills and Personality
+                const skillFields = [
+                    { id: 'grade-speaking', label: 'Speaking', skill: 'speaking' },
+                    { id: 'grade-reading', label: 'Reading', skill: 'reading' },
+                    { id: 'grade-writing', label: 'Typing/Writing', skill: 'writing' },
+                    { id: 'grade-pronunciation', label: 'Pronunciation', skill: 'pronunciation' },
+                    { id: 'grade-grammar', label: 'Grammar', skill: 'grammar' },
+                    { id: 'grade-vocabulary', label: 'Vocabulary Range', skill: 'vocabulary' },
+                    { id: 'grade-listening', label: 'Listening Comprehension', skill: 'listening' }
+                ];
+                const personalityFields = [
+                    { id: 'grade-interpersonal', label: 'Interpersonal Communication', skill: 'interpersonal' },
+                    { id: 'grade-professionalism', label: 'Professionalism', skill: 'professionalism' },
+                    { id: 'grade-cultural', label: 'Cultural Awareness', skill: 'cultural' },
+                    { id: 'grade-technology', label: 'Technology Use', skill: 'technology' },
+                    { id: 'grade-engagement', label: 'Student Engagement', skill: 'engagement' }
+                ];
+                const rubricMaxReference = 45; // Keep band thresholds aligned to 45-point rubric
+
+                const latestAssessment = Array.isArray(data.skillAssessments) && data.skillAssessments.length > 0
+                    ? data.skillAssessments[data.skillAssessments.length - 1]
+                    : null;
+                const savedTotals = latestAssessment?.totals || null;
+                const getLevelValue = (field, source) => {
+                    const raw = source && source[field] && source[field].level;
+                    const val = Number(raw);
+                    return Number.isFinite(val) ? val : 0;
+                };
+                const getLevelFromMap = (field, source) => {
+                    const raw = source && source[field];
+                    const val = Number(raw);
+                    return Number.isFinite(val) ? val : 0;
+                };
+                const computeOverallFromLevels = (skillsSource, personalitySource) => {
+                    const skillsTotal = skillFields.reduce((sum, field) => sum + getLevelValue(field.skill, skillsSource), 0);
+                    const personalityTotal = personalityFields.reduce((sum, field) => sum + getLevelValue(field.skill, personalitySource), 0);
+                    const skillsMax = skillFields.length * 5;
+                    const personalityMax = personalityFields.length * 5;
+                    const total = skillsTotal + personalityTotal;
+                    const max = skillsMax + personalityMax;
+                    const normalizedToRubric = Math.round((total / max) * 45);
+                    let band = 'Needs Improvement';
+                    if (normalizedToRubric >= 36) {
+                        band = 'Advanced';
+                    } else if (normalizedToRubric >= 26) {
+                        band = 'Competent';
+                    } else if (normalizedToRubric >= 16) {
+                        band = 'Developing';
+                    }
+                    return { total, max, band };
+                };
+                const computeOverallFromMaps = (skillsMap, personalityMap) => {
+                    const skillsTotal = skillFields.reduce((sum, field) => sum + getLevelFromMap(field.skill, skillsMap), 0);
+                    const personalityTotal = personalityFields.reduce((sum, field) => sum + getLevelFromMap(field.skill, personalityMap), 0);
+                    const skillsMax = skillFields.length * 5;
+                    const personalityMax = personalityFields.length * 5;
+                    const total = skillsTotal + personalityTotal;
+                    const max = skillsMax + personalityMax;
+                    const normalizedToRubric = Math.round((total / max) * 45);
+                    let band = 'Needs Improvement';
+                    if (normalizedToRubric >= 36) {
+                        band = 'Advanced';
+                    } else if (normalizedToRubric >= 26) {
+                        band = 'Competent';
+                    } else if (normalizedToRubric >= 16) {
+                        band = 'Developing';
+                    }
+                    return { total, max, band };
+                };
+
+                let overallSummaryText = 'Overall Score: Not available';
+                if (savedTotals && savedTotals.total !== undefined && savedTotals.max !== undefined) {
+                    overallSummaryText = `Overall Score: ${savedTotals.total} / ${savedTotals.max}${savedTotals.band ? ` (${savedTotals.band})` : ''}`;
+                } else if (latestAssessment?.skills || latestAssessment?.personality) {
+                    const fallback = computeOverallFromMaps(latestAssessment?.skills, latestAssessment?.personality);
+                    overallSummaryText = `Overall Score: ${fallback.total} / ${fallback.max} (${fallback.band})`;
+                } else {
+                    const fallback = computeOverallFromLevels(data.teacher.teachingAbilities || {}, data.teacher.teachingPersonality || {});
+                    overallSummaryText = `Overall Score: ${fallback.total} / ${fallback.max} (${fallback.band})`;
                 }
 
                 let html = `
@@ -462,6 +745,12 @@
                             </span>
                             ${data.completedAt ? `<span style="margin-left: 12px; color: #64748b;">Submitted: ${new Date(data.completedAt).toLocaleString()}</span>` : ''}
                         </p>
+                        <p id="overall-summary" style="margin-top: 6px; color: #475569; font-weight: 600;">${overallSummaryText}</p>
+                        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:8px;">
+                            <button id="retake-btn" class="btn-view" style="background:#e11d48;">Allow Retake</button>
+                            <button id="recompute-btn" class="btn-view" style="background:#0ea5e9;">Recompute Scores</button>
+                            <span id="retake-status" style="color:#475569; font-size:0.9rem;"></span>
+                        </div>
                     </div>
                 `;
 
@@ -576,10 +865,12 @@
                                     ${data.tests.pronunciation.words.map(wordData => `
                                         <div style="padding: 12px; background: white; border-radius: 8px; text-align: center;">
                                             <div style="font-weight: 600; color: #1e293b; margin-bottom: 8px;">${wordData.word}</div>
-                                            <audio controls style="width: 100%;">
-                                                <source src="data:audio/webm;base64,${wordData.audio}" type="audio/webm">
-                                                <source src="data:audio/mp4;base64,${wordData.audio}" type="audio/mp4">
-                                            </audio>
+                                            ${wordData.audio ? `
+                                                <audio controls style="width: 100%;">
+                                                    <source src="data:audio/webm;base64,${wordData.audio}" type="audio/webm">
+                                                    <source src="data:audio/mp4;base64,${wordData.audio}" type="audio/mp4">
+                                                </audio>
+                                            ` : `<div style="color:#64748b; font-size:0.85rem;">Audio not saved</div>`}
                                         </div>
                                     `).join('')}
                                 </div>
@@ -588,10 +879,141 @@
                     `;
                 }
 
-                // Manual grading block
+                const grammarCorrectIndices = [1, 1, 1, 2, 1];
+                const vocabularyCorrectIndices = [1, 0, 1, 1, 0];
+                const computeScoreFromAnswers = (answers, correctIndices) => {
+                    if (!answers) return null;
+                    const values = Array.isArray(answers) ? answers : Object.values(answers);
+                    if (!values.length) return null;
+                    let score = 0;
+                    values.forEach((val, idx) => {
+                        if (Number(val) === Number(correctIndices[idx])) {
+                            score += 1;
+                        }
+                    });
+                    return score;
+                };
+                const resolveScoreTotal = (test, correctIndices) => {
+                    const total = Number(test?.total)
+                        || (Array.isArray(test?.answers) ? test.answers.length : Object.keys(test?.answers || {}).length)
+                        || correctIndices.length;
+                    const score = (test?.score !== undefined && test?.score !== null)
+                        ? Number(test.score)
+                        : computeScoreFromAnswers(test?.answers, correctIndices);
+                    return { score, total };
+                };
+
+                // Grammar Test
+                const grammarResolved = resolveScoreTotal(data.tests.grammar, grammarCorrectIndices);
+                if (data.tests.grammar && (grammarResolved.score !== null && grammarResolved.score !== undefined)) {
+                    html += `
+                        <div class="test-detail-card">
+                            <h3>🧠 Grammar Test</h3>
+                            <div class="test-info-grid">
+                                <div class="info-item">
+                                    <div class="info-label">Score</div>
+                                    <div class="info-value">${grammarResolved.score} / ${grammarResolved.total || 'N/A'}</div>
+                                </div>
+                                <div class="info-item">
+                                    <div class="info-label">Completed At</div>
+                                    <div class="info-value">${data.tests.grammar.completedAt ? new Date(data.tests.grammar.completedAt).toLocaleString() : 'N/A'}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // Vocabulary Test
+                const vocabularyResolved = resolveScoreTotal(data.tests.vocabulary, vocabularyCorrectIndices);
+                if (data.tests.vocabulary && (vocabularyResolved.score !== null && vocabularyResolved.score !== undefined)) {
+                    html += `
+                        <div class="test-detail-card">
+                            <h3>📚 Vocabulary Test</h3>
+                            <div class="test-info-grid">
+                                <div class="info-item">
+                                    <div class="info-label">Score</div>
+                                    <div class="info-value">${vocabularyResolved.score} / ${vocabularyResolved.total || 'N/A'}</div>
+                                </div>
+                                <div class="info-item">
+                                    <div class="info-label">Completed At</div>
+                                    <div class="info-value">${data.tests.vocabulary.completedAt ? new Date(data.tests.vocabulary.completedAt).toLocaleString() : 'N/A'}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // Manual grading block (adds all rubric categories; some are assessor-only)
+                const levelFromTyping = (typingTest) => {
+                    if (!typingTest || typingTest.wpm === undefined || typingTest.accuracy === undefined) return '';
+                    const wpm = Number(typingTest.wpm) || 0;
+                    const accuracy = Number(typingTest.accuracy) || 0;
+                    if (wpm >= 50 && accuracy >= 90) return '5';
+                    if (wpm >= 40 && accuracy >= 85) return '4';
+                    if (wpm >= 30 && accuracy >= 80) return '3';
+                    return '2';
+                };
+                const levelFromScore = (score, total, answers, correctIndices) => {
+                    const resolvedTotal = Number(total)
+                        || (Array.isArray(answers) ? answers.length : Object.keys(answers || {}).length)
+                        || (Array.isArray(correctIndices) ? correctIndices.length : 0);
+                    const resolvedScore = (score !== undefined && score !== null)
+                        ? Number(score)
+                        : computeScoreFromAnswers(answers, correctIndices);
+                    if (resolvedScore === null || resolvedScore === undefined || !resolvedTotal) return '';
+                    const scaled = Math.round((Number(resolvedScore) / resolvedTotal) * 5);
+                    const clamped = Math.max(0, Math.min(5, scaled));
+                    return String(clamped);
+                };
+                const levelFromPersonalityCategory = (categoryLabel) => {
+                    const categoryScore = data.tests?.personality?.categoryScores?.[categoryLabel];
+                    if (!categoryScore || !categoryScore.total) return '';
+                    const percent = Math.round((Number(categoryScore.correct || 0) / categoryScore.total) * 100);
+                    if (percent >= 90) return '5';
+                    if (percent >= 75) return '4';
+                    if (percent >= 60) return '3';
+                    if (percent >= 40) return '2';
+                    return '1';
+                };
+                const levelFromTest = (skill) => {
+                    const tests = data.tests || {};
+                    if (skill === 'listening') {
+                        return tests.listening && (tests.listening.audioRecording || tests.listening.completedAt) ? '4' : '';
+                    }
+                    if (skill === 'reading') {
+                        return tests.reading && (tests.reading.audioRecording || tests.reading.completedAt) ? '4' : '';
+                    }
+                    if (skill === 'speaking') {
+                        return tests.pronunciation && (tests.pronunciation.audioRecording || tests.pronunciation.words || tests.pronunciation.completedAt) ? '4' : '';
+                    }
+                    if (skill === 'writing') {
+                        return levelFromTyping(tests.typing);
+                    }
+                    if (skill === 'pronunciation') {
+                        return tests.pronunciation && (tests.pronunciation.audioRecording || tests.pronunciation.words || tests.pronunciation.completedAt) ? '4' : '';
+                    }
+                    if (skill === 'grammar') {
+                        return levelFromScore(tests.grammar?.score, tests.grammar?.total, tests.grammar?.answers, grammarCorrectIndices);
+                    }
+                    if (skill === 'vocabulary') {
+                        return levelFromScore(tests.vocabulary?.score, tests.vocabulary?.total, tests.vocabulary?.answers, vocabularyCorrectIndices);
+                    }
+                    return '';
+                };
                 const abilityLevel = (skill) => {
-                    const lvl = data.teacher.teachingAbilities && data.teacher.teachingAbilities[skill] && data.teacher.teachingAbilities[skill].level;
-                    return (lvl === undefined || lvl === null) ? '' : String(lvl);
+                    const abilities = data.teacher.teachingAbilities || {};
+                    const personality = data.teacher.teachingPersonality || {};
+                    const abilityLevelValue = abilities[skill] && abilities[skill].level;
+                    const personalityLevelValue = personality[skill] && personality[skill].level;
+                    const lvl = abilityLevelValue !== undefined ? abilityLevelValue : personalityLevelValue;
+                    if (lvl !== undefined && lvl !== null && String(lvl) !== '') {
+                        return String(lvl);
+                    }
+                    if (personalityFields.some(field => field.skill === skill)) {
+                        const label = personalityFields.find(field => field.skill === skill)?.label;
+                        return levelFromPersonalityCategory(label);
+                    }
+                    return levelFromTest(skill);
                 };
                 const levelOptions = (selected) => {
                     const labels = ['0 - Beginner','1 - Basic','2 - Intermediate','3 - Advanced','4 - Expert','5 - Master'];
@@ -606,38 +1028,47 @@
                     <div style="margin-top: 24px; padding: 16px; background: #f8fafc; border-radius: 12px;">
                         <h4 style="margin: 0 0 12px 0; color: #1E3A5F;">Manual Grade</h4>
                         <p style="margin: 0 0 12px 0; color: #64748b; font-size: 0.9rem;">
-                            Select a level (0-5) for each skill based on your rubric, add notes, then save.
+                            Select a level (0-5) for each category based on the RemoEd rubric, add notes, then save.
                         </p>
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); gap: 12px;">
-                            <label style="display:flex; flex-direction:column; gap:6px; font-weight:600; color:#1E3A5F;">
-                                Listening
-                                <select id="grade-listening" class="remoed-form-input">
-                                    ${levelOptions(abilityLevel('listening'))}
-                                </select>
-                            </label>
-                            <label style="display:flex; flex-direction:column; gap:6px; font-weight:600; color:#1E3A5F;">
-                                Reading
-                                <select id="grade-reading" class="remoed-form-input">
-                                    ${levelOptions(abilityLevel('reading'))}
-                                </select>
-                            </label>
-                            <label style="display:flex; flex-direction:column; gap:6px; font-weight:600; color:#1E3A5F;">
-                                Speaking
-                                <select id="grade-speaking" class="remoed-form-input">
-                                    ${levelOptions(abilityLevel('speaking'))}
-                                </select>
-                            </label>
-                            <label style="display:flex; flex-direction:column; gap:6px; font-weight:600; color:#1E3A5F;">
-                                Writing
-                                <select id="grade-writing" class="remoed-form-input">
-                                    ${levelOptions(abilityLevel('writing'))}
-                                </select>
-                            </label>
+                        <div style="margin-bottom: 16px;">
+                            <h5 style="margin: 0 0 10px 0; color: #1E3A5F;">Skills</h5>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap: 12px;">
+                                ${skillFields.map(field => `
+                                    <label style="display:flex; flex-direction:column; gap:6px; font-weight:600; color:#1E3A5F;">
+                                        ${field.label}
+                                        <select id="${field.id}" class="remoed-form-input">
+                                            ${levelOptions(abilityLevel(field.skill))}
+                                        </select>
+                                    </label>
+                                `).join('')}
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 16px;">
+                            <h5 style="margin: 0 0 10px 0; color: #1E3A5F;">Personality</h5>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap: 12px;">
+                                ${personalityFields.map(field => `
+                                    <label style="display:flex; flex-direction:column; gap:6px; font-weight:600; color:#1E3A5F;">
+                                        ${field.label}
+                                        <select id="${field.id}" class="remoed-form-input">
+                                            ${levelOptions(abilityLevel(field.skill))}
+                                        </select>
+                                    </label>
+                                `).join('')}
+                            </div>
                         </div>
                         <label style="display:flex; flex-direction:column; gap:6px; font-weight:600; color:#1E3A5F; margin-top:12px;">
                             Notes
                             <textarea id="grade-notes" class="remoed-form-input" rows="3" placeholder="Add rubric-based notes..."></textarea>
                         </label>
+                        <div id="grade-summary" style="margin-top:12px; padding:12px; background:#eef2ff; border-radius:8px; color:#1e293b; font-weight:600;">
+                            Skills Total: <span id="grade-skills-total">0</span> / <span id="grade-skills-max">0</span>
+                            <span style="margin-left:12px;">Personality Total: <span id="grade-personality-total">0</span> / <span id="grade-personality-max">0</span></span>
+                            <div style="margin-top:8px; font-weight:500; color:#475569;">
+                                Overall: <span id="grade-total">0</span> / <span id="grade-max">0</span>
+                                <span style="margin-left:12px;">Band: <span id="grade-band">Needs Improvement</span></span>
+                            </div>
+                        </div>
+                        <div id="saved-overall-score" style="margin-top:8px; color:#475569; font-size:0.9rem;"></div>
                         <button id="save-grade-btn" class="remoed-btn remoed-btn-primary" style="margin-top:12px;">
                             Save Grade
                         </button>
@@ -650,18 +1081,191 @@
                 // Save-grade handler
                 const gradeBtn = document.getElementById('save-grade-btn');
                 const gradeStatus = document.getElementById('grade-status');
+                const overallSummaryEl = document.getElementById('overall-summary');
+                const gradeSkillsTotalEl = document.getElementById('grade-skills-total');
+                const gradeSkillsMaxEl = document.getElementById('grade-skills-max');
+                const gradePersonalityTotalEl = document.getElementById('grade-personality-total');
+                const gradePersonalityMaxEl = document.getElementById('grade-personality-max');
+                const gradeTotalEl = document.getElementById('grade-total');
+                const gradeMaxEl = document.getElementById('grade-max');
+                const gradeBandEl = document.getElementById('grade-band');
+                const gradeSummaryEl = document.getElementById('grade-summary');
+                const savedOverallScoreEl = document.getElementById('saved-overall-score');
+                const retakeBtn = document.getElementById('retake-btn');
+                const recomputeBtn = document.getElementById('recompute-btn');
+                const retakeStatus = document.getElementById('retake-status');
+
+                if (savedTotals && savedTotals.total !== undefined && savedTotals.max !== undefined) {
+                    savedOverallScoreEl.textContent = `Saved Overall Score: ${savedTotals.total} / ${savedTotals.max}`;
+                } else {
+                    savedOverallScoreEl.textContent = '';
+                }
+
+                const bandStyles = {
+                    Advanced:   { bg: '#ecfdf3', border: '#bbf7d0', text: '#15803d' },
+                    Competent:  { bg: '#fef9c3', border: '#fde68a', text: '#92400e' },
+                    Developing: { bg: '#fff7ed', border: '#fed7aa', text: '#9a3412' },
+                    'Needs Improvement': { bg: '#fef2f2', border: '#fecdd3', text: '#b91c1c' }
+                };
+
+                function applyBandStyle(band) {
+                    const style = bandStyles[band] || bandStyles['Needs Improvement'];
+                    gradeSummaryEl.style.background = style.bg;
+                    gradeSummaryEl.style.border = `1px solid ${style.border}`;
+                    gradeSummaryEl.style.color = style.text;
+                }
+
+                function getTotalForFields(fields) {
+                    let total = 0;
+                    fields.forEach(({ id }) => {
+                        const val = parseInt(document.getElementById(id).value, 10);
+                        if (!isNaN(val)) total += val;
+                    });
+                    return total;
+                }
+
+                function calculateGradeTotals() {
+                    const skillsTotal = getTotalForFields(skillFields);
+                    const personalityTotal = getTotalForFields(personalityFields);
+                    const skillsMax = skillFields.length * 5;
+                    const personalityMax = personalityFields.length * 5;
+                    const total = skillsTotal + personalityTotal;
+                    const max = skillsMax + personalityMax;
+                    const normalizedToRubric = Math.round(total * (rubricMaxReference / max)); // scale to 45-point rubric
+                    let band = 'Needs Improvement';
+                    if (normalizedToRubric >= 36) {
+                        band = 'Advanced';
+                    } else if (normalizedToRubric >= 26) {
+                        band = 'Competent';
+                    } else if (normalizedToRubric >= 16) {
+                        band = 'Developing';
+                    }
+                    gradeSkillsTotalEl.textContent = skillsTotal;
+                    gradeSkillsMaxEl.textContent = skillsMax;
+                    gradePersonalityTotalEl.textContent = personalityTotal;
+                    gradePersonalityMaxEl.textContent = personalityMax;
+                    gradeTotalEl.textContent = total;
+                    gradeMaxEl.textContent = max;
+                    gradeBandEl.textContent = `${band} (scaled: ${normalizedToRubric}/45)`;
+                    applyBandStyle(band);
+                    return {
+                        skillsTotal,
+                        skillsMax,
+                        personalityTotal,
+                        personalityMax,
+                        total,
+                        max,
+                        normalizedToRubric,
+                        band
+                    };
+                }
+
+                // Run once and hook up changes
+                calculateGradeTotals();
+                [...skillFields, ...personalityFields].forEach(({ id }) => {
+                    document.getElementById(id).addEventListener('change', calculateGradeTotals);
+                });
+
+                // Retake handler
+                retakeBtn.onclick = async () => {
+                    const confirmReset = confirm('Reset this teacher assessment so they can retake the tests? This will clear submitted test data.');
+                    if (!confirmReset) return;
+                    retakeStatus.style.color = '#475569';
+                    retakeStatus.textContent = 'Resetting...';
+                    const tokenRetake = localStorage.getItem('adminToken') || localStorage.getItem('token');
+                    try {
+                        const resp = await fetch(`/api/admin/teacher-assessments/${teacherId}/retake`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${tokenRetake}`,
+                                'Content-Type': 'application/json'
+                            }
+                        });
+
+                        if (resp.status === 401) {
+                            clearAdminSession('Your session has expired. Please login again.');
+                            return;
+                        }
+
+                        if (resp.status === 403) {
+                            clearAdminSession('Admin access required. Please login with an admin account.');
+                            return;
+                        }
+
+                        const resData = await resp.json();
+                        if (!resp.ok) {
+                            throw new Error(resData.error || resData.message || 'Failed to reset assessment');
+                        }
+                        retakeStatus.style.color = '#15803d';
+                        retakeStatus.textContent = 'Reset done. Teacher can retake.';
+                        loadAssessments();
+                    } catch (err) {
+                        retakeStatus.style.color = '#b91c1c';
+                        retakeStatus.textContent = `Error: ${err.message}`;
+                    }
+                };
+
+                // Recompute/backfill handler
+                recomputeBtn.onclick = async () => {
+                    retakeStatus.style.color = '#475569';
+                    retakeStatus.textContent = 'Recomputing...';
+                    const tokenRecompute = localStorage.getItem('adminToken') || localStorage.getItem('token');
+                    try {
+                        const resp = await fetch(`/api/admin/teacher-assessments/${teacherId}/recompute-scores`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${tokenRecompute}`,
+                                'Content-Type': 'application/json'
+                            }
+                        });
+
+                        if (resp.status === 401) {
+                            clearAdminSession('Your session has expired. Please login again.');
+                            return;
+                        }
+
+                        if (resp.status === 403) {
+                            clearAdminSession('Admin access required. Please login with an admin account.');
+                            return;
+                        }
+
+                        const resData = await resp.json();
+                        if (!resp.ok) {
+                            throw new Error(resData.error || resData.message || 'Failed to recompute scores');
+                        }
+                        retakeStatus.style.color = '#0f5132';
+                        retakeStatus.textContent = 'Recompute complete.';
+                        await viewAssessmentDetails(teacherId);
+                    } catch (err) {
+                        retakeStatus.style.color = '#b91c1c';
+                        retakeStatus.textContent = `Error: ${err.message}`;
+                    }
+                };
+
                 gradeBtn.onclick = async () => {
                     gradeStatus.style.color = '#64748b';
                     gradeStatus.textContent = 'Saving...';
-                    const tokenSave = localStorage.getItem('token') || localStorage.getItem('adminToken');
+                    const tokenSave = localStorage.getItem('adminToken') || localStorage.getItem('token');
+                    const totals = calculateGradeTotals();
                     const payload = {
                         skills: {
-                            listening: document.getElementById('grade-listening').value,
-                            reading: document.getElementById('grade-reading').value,
                             speaking: document.getElementById('grade-speaking').value,
-                            writing: document.getElementById('grade-writing').value
+                            reading: document.getElementById('grade-reading').value,
+                            writing: document.getElementById('grade-writing').value,
+                            pronunciation: document.getElementById('grade-pronunciation').value,
+                            grammar: document.getElementById('grade-grammar').value,
+                            vocabulary: document.getElementById('grade-vocabulary').value,
+                            listening: document.getElementById('grade-listening').value
                         },
-                        notes: document.getElementById('grade-notes').value.trim()
+                        personality: {
+                            interpersonal: document.getElementById('grade-interpersonal').value,
+                            professionalism: document.getElementById('grade-professionalism').value,
+                            cultural: document.getElementById('grade-cultural').value,
+                            technology: document.getElementById('grade-technology').value,
+                            engagement: document.getElementById('grade-engagement').value
+                        },
+                        notes: document.getElementById('grade-notes').value.trim(),
+                        totals
                     };
                     try {
                         const resp = await fetch(`/api/admin/assess-teacher/${teacherId}`, {
@@ -672,12 +1276,25 @@
                             },
                             body: JSON.stringify(payload)
                         });
+
+                        if (resp.status === 401) {
+                            clearAdminSession('Your session has expired. Please login again.');
+                            return;
+                        }
+
+                        if (resp.status === 403) {
+                            clearAdminSession('Admin access required. Please login with an admin account.');
+                            return;
+                        }
+
                         const resData = await resp.json();
                         if (!resp.ok) {
                             throw new Error(resData.error || resData.message || 'Failed to save grade');
                         }
                         gradeStatus.style.color = '#0f5132';
-                        gradeStatus.textContent = 'Grade saved successfully.';
+                        gradeStatus.textContent = `Grade saved successfully. Overall Score: ${totals.total} / ${totals.max}`;
+                        savedOverallScoreEl.textContent = `Saved Overall Score: ${totals.total} / ${totals.max}`;
+                        overallSummaryEl.textContent = `Overall Score: ${totals.total} / ${totals.max}${totals.band ? ` (${totals.band})` : ''}`;
                         // Refresh list to reflect status
                         loadAssessments();
                     } catch (err) {
@@ -707,6 +1324,8 @@
         // Logout
         document.getElementById('logout-nav').addEventListener('click', function() {
             localStorage.removeItem('token');
+            localStorage.removeItem('adminToken');
+            localStorage.removeItem('adminUsername');
             localStorage.removeItem('userType');
             window.location.href = 'index.html';
         });

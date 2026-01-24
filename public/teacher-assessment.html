@@ -278,6 +278,40 @@
             color: #64748b;
             margin-top: 4px;
         }
+
+        .question-card {
+            background: #f8f9fa;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .question-title {
+            font-weight: 700;
+            color: #1E3A5F;
+            margin-bottom: 12px;
+        }
+
+        .question-options {
+            display: grid;
+            gap: 8px;
+        }
+
+        .question-options label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            cursor: pointer;
+        }
+
+        .question-options input[type="radio"] {
+            accent-color: #667eea;
+        }
         
         .pronunciation-words {
             display: grid;
@@ -391,7 +425,7 @@
             <div class="progress-bar">
                 <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
             </div>
-            <p id="progress-text" style="color: #64748b; margin-top: 8px;">0 of 4 tests completed</p>
+            <p id="progress-text" style="color: #64748b; margin-top: 8px;">0 of 7 tests completed</p>
         </div>
         
         <div id="error-message" class="error-message"></div>
@@ -409,7 +443,7 @@
                 <ul>
                     <li>Listen to each short sentence by clicking the play button</li>
                     <li>After listening, record your response repeating what you heard</li>
-                    <li>Complete all 3 sentences to finish this test</li>
+                    <li>Record the sentence to finish this test</li>
                     <li>You can replay each audio as many times as needed</li>
                 </ul>
             </div>
@@ -438,7 +472,7 @@
             
             <div class="typing-test">
                 <div class="typing-prompt" id="typing-prompt">
-                    Teaching English as a second language requires patience, creativity, and a deep understanding of how students learn. Effective teachers adapt their methods to meet the diverse needs of learners from different cultural backgrounds. Communication skills are essential, as teachers must explain complex concepts in simple, understandable ways. Building rapport with students creates a positive learning environment where everyone feels comfortable making mistakes and learning from them.
+                    Teaching English takes patience and creativity. Effective teachers adjust lessons for different learners. Clear explanations and a supportive tone help students learn confidently.
                 </div>
                 <textarea class="typing-input" id="typing-input" placeholder="Start typing the text above when you click 'Start Test'..." disabled spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>
                 <div class="typing-stats" id="typing-stats" style="display: none;">
@@ -482,7 +516,7 @@
             </div>
             
             <div class="reading-text" id="reading-text">
-                The art of teaching extends far beyond simply delivering information. Great educators understand that learning is a collaborative journey where both teacher and student grow together. They create environments that encourage curiosity, critical thinking, and a love for continuous learning. When teaching English, it's important to celebrate small victories and provide constructive feedback that motivates students to keep improving. Every student has unique strengths and challenges, and recognizing these individual differences is key to effective instruction.
+                Great teaching is a partnership between teacher and student. Good educators create a calm space that encourages curiosity and confidence. Celebrating progress and giving clear feedback keeps learners motivated.
             </div>
             
             <div style="text-align: center; margin: 24px 0;">
@@ -497,14 +531,63 @@
             
             <div class="navigation-buttons">
                 <button class="btn btn-secondary" onclick="previousTest('typing')">← Previous</button>
-                <button class="btn btn-primary" id="next-reading" onclick="nextTest('pronunciation')" disabled>Next: Pronunciation Test →</button>
+                <button class="btn btn-primary" id="next-reading" onclick="nextTest('grammar')" disabled>Next: Grammar Test →</button>
+            </div>
+        </div>
+
+        <!-- Grammar Test -->
+        <div class="test-card" id="grammar-test">
+            <div class="test-header">
+                <h2 class="test-title">4. Grammar Test</h2>
+                <span class="test-status pending" id="grammar-status">Pending</span>
+            </div>
+            <div class="test-instructions">
+                <h4>Instructions:</h4>
+                <ul>
+                    <li>Answer each grammar question</li>
+                    <li>Choose the best option</li>
+                    <li>Submit when all questions are answered</li>
+                </ul>
+            </div>
+            <div id="grammar-questions"></div>
+            <div style="text-align: center; margin: 24px 0;">
+                <button class="btn btn-success" id="submit-grammar-test" onclick="submitGrammarTest()">Submit Grammar Test</button>
+                <div class="recording-status" id="grammar-result" style="display: none;"></div>
+            </div>
+            <div class="navigation-buttons">
+                <button class="btn btn-secondary" onclick="previousTest('reading')">← Previous</button>
+                <button class="btn btn-primary" id="next-grammar" onclick="nextTest('vocabulary')" disabled>Next: Vocabulary Test →</button>
+            </div>
+        </div>
+
+        <!-- Vocabulary Test -->
+        <div class="test-card" id="vocabulary-test">
+            <div class="test-header">
+                <h2 class="test-title">5. Vocabulary Test</h2>
+                <span class="test-status pending" id="vocabulary-status">Pending</span>
+            </div>
+            <div class="test-instructions">
+                <h4>Instructions:</h4>
+                <ul>
+                    <li>Select the word or phrase closest in meaning</li>
+                    <li>Answer all questions before submitting</li>
+                </ul>
+            </div>
+            <div id="vocabulary-questions"></div>
+            <div style="text-align: center; margin: 24px 0;">
+                <button class="btn btn-success" id="submit-vocabulary-test" onclick="submitVocabularyTest()">Submit Vocabulary Test</button>
+                <div class="recording-status" id="vocabulary-result" style="display: none;"></div>
+            </div>
+            <div class="navigation-buttons">
+                <button class="btn btn-secondary" onclick="previousTest('grammar')">← Previous</button>
+                <button class="btn btn-primary" id="next-vocabulary" onclick="nextTest('pronunciation')" disabled>Next: Pronunciation Test →</button>
             </div>
         </div>
         
         <!-- Pronunciation Test -->
         <div class="test-card" id="pronunciation-test">
             <div class="test-header">
-                <h2 class="test-title">4. Pronunciation Test</h2>
+                <h2 class="test-title">6. Pronunciation Test</h2>
                 <span class="test-status pending" id="pronunciation-status">Pending</span>
             </div>
             
@@ -518,12 +601,46 @@
                 </ul>
             </div>
             
-            <div class="pronunciation-words" id="pronunciation-words">
-                <!-- Words will be generated dynamically -->
+            <div id="pronunciation-slider">
+                <div class="word-card" id="pronunciation-card">
+                    <div class="word-text" id="pronunciation-word-text"></div>
+                    <div class="word-status" id="pronunciation-word-status">Not recorded</div>
+                    <div class="audio-controls">
+                        <button class="btn btn-primary" id="pronunciation-record-btn" onclick="recordCurrentPronunciation()">🎤 Record</button>
+                        <button class="btn btn-secondary" id="pronunciation-play-btn" onclick="playCurrentPronunciation()" disabled>▶️ Play</button>
+                    </div>
+                    <audio id="pronunciation-playback" controls style="display: none; width: 100%; margin-top: 12px;"></audio>
+                </div>
+                <div style="text-align:center; margin-top:12px; color:#64748b;" id="pronunciation-progress"></div>
             </div>
             
             <div class="navigation-buttons">
-                <button class="btn btn-secondary" onclick="previousTest('reading')">← Previous</button>
+                <button class="btn btn-secondary" onclick="previousTest('vocabulary')">← Previous</button>
+                <button class="btn btn-primary" id="next-pronunciation" onclick="nextTest('personality')" disabled>Next: Personality Assessment →</button>
+            </div>
+        </div>
+
+        <!-- Personality Assessment -->
+        <div class="test-card" id="personality-test">
+            <div class="test-header">
+                <h2 class="test-title">7. Personality Assessment</h2>
+                <span class="test-status pending" id="personality-status">Pending</span>
+            </div>
+            <div class="test-instructions">
+                <h4>Instructions:</h4>
+                <ul>
+                    <li>Answer every statement honestly based on how you teach</li>
+                    <li>Select the best matching category for each scenario</li>
+                    <li>All items are required before submitting</li>
+                </ul>
+            </div>
+            <div id="personality-questions"></div>
+            <div style="text-align: center; margin: 24px 0;">
+                <button class="btn btn-success" id="submit-personality-test" onclick="submitPersonalityTest()">Submit Personality Assessment</button>
+                <div class="recording-status" id="personality-result" style="display: none;"></div>
+            </div>
+            <div class="navigation-buttons">
+                <button class="btn btn-secondary" onclick="previousTest('pronunciation')">← Previous</button>
                 <button class="btn btn-success" id="submit-all-tests" onclick="submitAllTests()" disabled>Submit All Tests</button>
             </div>
         </div>
@@ -546,20 +663,215 @@
         let currentTest = 'listening';
         let listeningRecording = null;
         let readingRecording = null;
+        let readingAutoSavePending = false;
         let typingStartTime = null;
         let typingTestActive = false;
         let pronunciationWords = [
-            'pronunciation', 'thorough', 'through', 'though', 'thought',
-            'schedule', 'comfortable', 'vegetable', 'interesting', 'develop',
+            'pronunciation', 'thorough', 'through', 'schedule', 'comfortable',
             'environment', 'opportunity', 'necessary', 'separate', 'definitely'
         ];
         let pronunciationRecordings = {};
+        let pronunciationPlaybackUrl = null;
+        let currentPronunciationIndex = 0;
+        let grammarAnswers = {};
+        let vocabularyAnswers = {};
+        let personalityAnswers = {};
+
+        const grammarQuestions = [
+            {
+                question: 'She ____ to school every day.',
+                options: ['go', 'goes', 'gone', 'going'],
+                correctIndex: 1
+            },
+            {
+                question: 'If I ____ more time, I would travel.',
+                options: ['have', 'had', 'having', 'will have'],
+                correctIndex: 1
+            },
+            {
+                question: 'They have lived here ____ 2018.',
+                options: ['for', 'since', 'during', 'from'],
+                correctIndex: 1
+            },
+            {
+                question: 'The book was ____ by the teacher.',
+                options: ['write', 'wrote', 'written', 'writing'],
+                correctIndex: 2
+            },
+            {
+                question: 'Neither the students nor the teacher ____ late.',
+                options: ['are', 'is', 'were', 'be'],
+                correctIndex: 1
+            }
+        ];
+
+        const vocabularyQuestions = [
+            {
+                question: 'Choose the synonym of “assist”.',
+                options: ['ignore', 'help', 'refuse', 'avoid'],
+                correctIndex: 1
+            },
+            {
+                question: 'Choose the best meaning of “accurate”.',
+                options: ['exact', 'late', 'noisy', 'weak'],
+                correctIndex: 0
+            },
+            {
+                question: 'A “rapid” change means a change that is ____.',
+                options: ['slow', 'quick', 'careful', 'silent'],
+                correctIndex: 1
+            },
+            {
+                question: 'The word “expand” is closest in meaning to ____.',
+                options: ['reduce', 'enlarge', 'hide', 'end'],
+                correctIndex: 1
+            },
+            {
+                question: '“Comprehend” means ____.',
+                options: ['understand', 'forget', 'repeat', 'argue'],
+                correctIndex: 0
+            }
+        ];
+
+        const personalityCategories = [
+            'Interpersonal Communication',
+            'Professionalism',
+            'Cultural Awareness',
+            'Technology Use',
+            'Student Engagement'
+        ];
+
+        const personalityRubric = [
+            {
+                category: 'Interpersonal Communication',
+                items: [
+                    {
+                        text: 'A young learner is shy and avoids speaking. I use gentle encouragement and simple prompts to build their confidence.',
+                        correct: 'Interpersonal Communication'
+                    },
+                    {
+                        text: 'A student seems confused by my instructions. I rephrase clearly and check understanding without frustration.',
+                        correct: 'Interpersonal Communication'
+                    },
+                    {
+                        text: 'A learner asks a personal question. I redirect politely back to the lesson topic.',
+                        correct: 'Interpersonal Communication'
+                    },
+                    {
+                        text: 'A student makes repeated mistakes. I give supportive feedback and model the correct answer calmly.',
+                        correct: 'Interpersonal Communication'
+                    },
+                    {
+                        text: 'I use age-appropriate language and tone so children can follow the lesson.',
+                        correct: 'Interpersonal Communication'
+                    }
+                ]
+            },
+            {
+                category: 'Professionalism',
+                items: [
+                    {
+                        text: 'I arrive on time and have my materials ready before class begins.',
+                        correct: 'Professionalism'
+                    },
+                    {
+                        text: 'A technical issue happens mid-class. I follow RemoEd procedures and keep students calm while fixing it.',
+                        correct: 'Professionalism'
+                    },
+                    {
+                        text: 'A schedule change is announced. I respond promptly and confirm my availability professionally.',
+                        correct: 'Professionalism'
+                    },
+                    {
+                        text: 'I follow RemoEd guidelines consistently, even when no one is watching.',
+                        correct: 'Professionalism'
+                    },
+                    {
+                        text: 'When I need help, I contact support or use approved tools to resolve the issue quickly.',
+                        correct: 'Professionalism'
+                    }
+                ]
+            },
+            {
+                category: 'Cultural Awareness',
+                items: [
+                    {
+                        text: 'A student shares a cultural holiday. I respond respectfully and invite them to share briefly.',
+                        correct: 'Cultural Awareness'
+                    },
+                    {
+                        text: 'I choose examples and topics that feel inclusive for learners from different backgrounds.',
+                        correct: 'Cultural Awareness'
+                    },
+                    {
+                        text: 'I adjust greetings and classroom routines to be culturally sensitive.',
+                        correct: 'Cultural Awareness'
+                    },
+                    {
+                        text: 'A student uses a term that might be offensive. I correct it gently and explain why.',
+                        correct: 'Cultural Awareness'
+                    },
+                    {
+                        text: 'I avoid stereotypes and model respectful, inclusive language at all times.',
+                        correct: 'Cultural Awareness'
+                    }
+                ]
+            },
+            {
+                category: 'Technology Use',
+                items: [
+                    {
+                        text: 'I can confidently use RemoEd’s online platform without delays.',
+                        correct: 'Technology Use'
+                    },
+                    {
+                        text: 'I use tools like annotations or breakout rooms smoothly to support learning.',
+                        correct: 'Technology Use'
+                    },
+                    {
+                        text: 'If a tool fails, I troubleshoot basic issues calmly and continue the lesson.',
+                        correct: 'Technology Use'
+                    },
+                    {
+                        text: 'I use technology to make activities interactive and engaging.',
+                        correct: 'Technology Use'
+                    },
+                    {
+                        text: 'When needed, I ask for technical support using approved channels.',
+                        correct: 'Technology Use'
+                    }
+                ]
+            },
+            {
+                category: 'Student Engagement',
+                items: [
+                    {
+                        text: 'A student loses focus during class. I use a quick interactive task to re-engage them.',
+                        correct: 'Student Engagement'
+                    },
+                    {
+                        text: 'I maintain a calm and respectful tone even when students are noisy or distracted.',
+                        correct: 'Student Engagement'
+                    },
+                    {
+                        text: 'I use games or interactive activities to keep learners motivated.',
+                        correct: 'Student Engagement'
+                    },
+                    {
+                        text: 'I encourage participation with gentle guidance instead of pressuring students.',
+                        correct: 'Student Engagement'
+                    },
+                    {
+                        text: 'I build confidence by praising effort and progress, not just correct answers.',
+                        correct: 'Student Engagement'
+                    }
+                ]
+            }
+        ];
         
         // Listening test sentences
         const listeningSentences = [
-            "Good morning, class.",
-            "Today we will learn English.",
-            "Please listen carefully."
+            "Learning English takes patience, practice, and a positive mindset."
         ];
         let listeningRecordings = {}; // Store recordings for each sentence
         let currentListeningSentenceIndex = 0;
@@ -570,6 +882,9 @@
             // Initialize UI first
             initializeListeningTest();
             initializePronunciationTest();
+            initializeGrammarTest();
+            initializeVocabularyTest();
+            initializePersonalityTest();
             
             // Then load saved status (this will update the UI with saved progress)
             await loadAssessmentStatus();
@@ -621,7 +936,46 @@
                             markTestComplete('reading');
                         }
                         if (tests.pronunciation && tests.pronunciation.audioRecording) {
+                            pronunciationWords.forEach((_, index) => {
+                                pronunciationRecordings[index] = true;
+                            });
                             markTestComplete('pronunciation');
+                            renderPronunciationWord();
+                            const nextPronunciation = document.getElementById('next-pronunciation');
+                            if (nextPronunciation) nextPronunciation.disabled = false;
+                        }
+                        if (tests.grammar && tests.grammar.score !== undefined && tests.grammar.score !== null) {
+                            markTestComplete('grammar');
+                            const grammarResult = document.getElementById('grammar-result');
+                            if (grammarResult) {
+                                grammarResult.style.display = 'block';
+                                grammarResult.textContent = `Score: ${tests.grammar.score} / ${tests.grammar.total || grammarQuestions.length}`;
+                            }
+                            const nextGrammar = document.getElementById('next-grammar');
+                            if (nextGrammar) nextGrammar.disabled = false;
+                        }
+                        if (tests.vocabulary && tests.vocabulary.score !== undefined && tests.vocabulary.score !== null) {
+                            markTestComplete('vocabulary');
+                            const vocabResult = document.getElementById('vocabulary-result');
+                            if (vocabResult) {
+                                vocabResult.style.display = 'block';
+                                vocabResult.textContent = `Score: ${tests.vocabulary.score} / ${tests.vocabulary.total || vocabularyQuestions.length}`;
+                            }
+                            const nextVocabulary = document.getElementById('next-vocabulary');
+                            if (nextVocabulary) nextVocabulary.disabled = false;
+                        }
+                        if (tests.personality && tests.personality.score !== undefined && tests.personality.score !== null) {
+                            markTestComplete('personality');
+                            const personalityResult = document.getElementById('personality-result');
+                            if (personalityResult) {
+                                personalityResult.style.display = 'block';
+                                const avg = tests.personality.average !== undefined && tests.personality.average !== null
+                                    ? tests.personality.average
+                                    : '';
+                                personalityResult.textContent = avg ? `Average: ${avg} / 5` : 'Personality assessment completed';
+                            }
+                            const submitAllBtn = document.getElementById('submit-all-tests');
+                            if (submitAllBtn) submitAllBtn.disabled = false;
                         }
                         
                         // Update progress after loading all states
@@ -769,19 +1123,126 @@
             }
         }
         
-        // Initialize pronunciation test
+        // Initialize pronunciation test (slider)
         function initializePronunciationTest() {
-            const container = document.getElementById('pronunciation-words');
-            pronunciationWords.forEach((word, index) => {
-                const wordCard = document.createElement('div');
-                wordCard.className = 'word-card';
-                wordCard.id = `word-${index}`;
-                wordCard.innerHTML = `
-                    <div class="word-text">${word}</div>
-                    <button class="word-audio-btn" onclick="recordPronunciation(${index})">Record</button>
-                    <div class="word-status" id="word-status-${index}">Not recorded</div>
+            currentPronunciationIndex = 0;
+            renderPronunciationWord();
+        }
+
+        function renderPronunciationWord() {
+            const wordText = document.getElementById('pronunciation-word-text');
+            const statusEl = document.getElementById('pronunciation-word-status');
+            const progressEl = document.getElementById('pronunciation-progress');
+            const playBtn = document.getElementById('pronunciation-play-btn');
+            const playbackEl = document.getElementById('pronunciation-playback');
+            const recordBtn = document.getElementById('pronunciation-record-btn');
+
+            const word = pronunciationWords[currentPronunciationIndex];
+            wordText.textContent = word;
+            progressEl.textContent = `Word ${currentPronunciationIndex + 1} of ${pronunciationWords.length}`;
+
+            const hasRecording = !!pronunciationRecordings[currentPronunciationIndex];
+            statusEl.textContent = hasRecording ? 'Recorded ✓' : 'Not recorded';
+            statusEl.classList.toggle('recorded', hasRecording);
+            playBtn.disabled = !hasRecording;
+            recordBtn.disabled = false;
+            recordBtn.textContent = '🎤 Record';
+
+            playbackEl.style.display = hasRecording ? 'block' : 'none';
+            if (pronunciationPlaybackUrl) {
+                URL.revokeObjectURL(pronunciationPlaybackUrl);
+                pronunciationPlaybackUrl = null;
+            }
+            if (hasRecording) {
+                const blob = pronunciationRecordings[currentPronunciationIndex];
+                if (blob instanceof Blob) {
+                    pronunciationPlaybackUrl = URL.createObjectURL(blob);
+                    playbackEl.src = pronunciationPlaybackUrl;
+                }
+            } else {
+                playbackEl.removeAttribute('src');
+            }
+        }
+
+        function initializeGrammarTest() {
+            const container = document.getElementById('grammar-questions');
+            container.innerHTML = '';
+            grammarQuestions.forEach((q, qIndex) => {
+                const card = document.createElement('div');
+                card.className = 'question-card';
+                card.innerHTML = `
+                    <div class="question-title">${qIndex + 1}. ${q.question}</div>
+                    <div class="question-options">
+                        ${q.options.map((opt, oIndex) => `
+                            <label>
+                                <input type="radio" name="grammar-q-${qIndex}" value="${oIndex}">
+                                ${opt}
+                            </label>
+                        `).join('')}
+                    </div>
                 `;
-                container.appendChild(wordCard);
+                container.appendChild(card);
+            });
+        }
+
+        function initializeVocabularyTest() {
+            const container = document.getElementById('vocabulary-questions');
+            container.innerHTML = '';
+            vocabularyQuestions.forEach((q, qIndex) => {
+                const card = document.createElement('div');
+                card.className = 'question-card';
+                card.innerHTML = `
+                    <div class="question-title">${qIndex + 1}. ${q.question}</div>
+                    <div class="question-options">
+                        ${q.options.map((opt, oIndex) => `
+                            <label>
+                                <input type="radio" name="vocab-q-${qIndex}" value="${oIndex}">
+                                ${opt}
+                            </label>
+                        `).join('')}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function initializePersonalityTest() {
+            const container = document.getElementById('personality-questions');
+            if (!container) return;
+            container.innerHTML = '';
+
+            const scaleLabels = personalityCategories.map(category => ({
+                value: category,
+                label: category
+            }));
+
+            personalityRubric.forEach((section, sectionIndex) => {
+                const sectionEl = document.createElement('div');
+                sectionEl.style.marginBottom = '20px';
+                sectionEl.innerHTML = `
+                    <div class="question-title" style="font-size: 1.05rem; margin-bottom: 10px;">
+                        ${sectionIndex + 1}. ${section.category}
+                    </div>
+                `;
+
+                section.items.forEach((statement, qIndex) => {
+                    const card = document.createElement('div');
+                    card.className = 'question-card';
+                    card.innerHTML = `
+                        <div class="question-title">${sectionIndex + 1}.${qIndex + 1} ${statement.text}</div>
+                        <div class="question-options">
+                            ${scaleLabels.map(opt => `
+                                <label>
+                                    <input type="radio" name="personality-${sectionIndex}-${qIndex}" value="${opt.value}">
+                                    ${opt.label}
+                                </label>
+                            `).join('')}
+                        </div>
+                    `;
+                    sectionEl.appendChild(card);
+                });
+
+                container.appendChild(sectionEl);
             });
         }
         
@@ -886,8 +1347,8 @@
         }
         
         function checkListeningComplete() {
-            const allRecorded = listeningSentences.every((_, index) => listeningRecordings[index]);
-            if (allRecorded) {
+            const anyRecorded = listeningSentences.some((_, index) => listeningRecordings[index]);
+            if (anyRecorded) {
                 document.getElementById('next-listening').disabled = false;
                 // Mark test as complete in UI
                 if (!document.getElementById('listening-status').classList.contains('completed')) {
@@ -1026,6 +1487,12 @@
                     readingRecording = blob;
                     document.getElementById('reading-playback').src = URL.createObjectURL(blob);
                     document.getElementById('reading-playback').style.display = 'block';
+                    
+                    if (readingAutoSavePending) {
+                        readingAutoSavePending = false;
+                        saveTestResult('reading', { text: document.getElementById('reading-text').textContent })
+                            .catch(err => console.error('Error auto-saving reading test:', err));
+                    }
                 };
                 
                 mediaRecorder.start();
@@ -1058,9 +1525,13 @@
                 // Mark reading test as complete
                 if (!document.getElementById('reading-status').classList.contains('completed')) {
                     markTestComplete('reading');
-                    // Auto-save the reading test
-                    saveTestResult('reading', { text: document.getElementById('reading-text').textContent })
-                        .catch(err => console.error('Error auto-saving reading test:', err));
+                    // Auto-save after the recording blob is ready
+                    if (readingRecording instanceof Blob) {
+                        saveTestResult('reading', { text: document.getElementById('reading-text').textContent })
+                            .catch(err => console.error('Error auto-saving reading test:', err));
+                    } else {
+                        readingAutoSavePending = true;
+                    }
                 }
                 
                 // Check if all tests are ready
@@ -1078,27 +1549,28 @@
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 const mediaRecorder = new MediaRecorder(stream);
                 const chunks = [];
+                const recordBtn = document.getElementById('pronunciation-record-btn');
+                const statusEl = document.getElementById('pronunciation-word-status');
                 
                 mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
                 mediaRecorder.onstop = async () => {
                     const blob = new Blob(chunks, { type: 'audio/webm' });
-                    const reader = new FileReader();
-                    reader.onloadend = () => {
-                        const base64 = reader.result.split(',')[1];
-                        pronunciationRecordings[wordIndex] = base64;
-                        
-                        document.getElementById(`word-${wordIndex}`).classList.add('recorded');
-                        document.getElementById(`word-status-${wordIndex}`).textContent = 'Recorded ✓';
-                        document.getElementById(`word-status-${wordIndex}`).classList.add('recorded');
-                        
-                        checkPronunciationComplete();
-                    };
-                    reader.readAsDataURL(blob);
+                    pronunciationRecordings[wordIndex] = blob;
+                    
+                    checkPronunciationComplete();
+                    // Auto-advance to next word
+                    if (currentPronunciationIndex < pronunciationWords.length - 1) {
+                        currentPronunciationIndex += 1;
+                    }
+                    renderPronunciationWord();
+
                     stream.getTracks().forEach(track => track.stop());
                 };
                 
                 mediaRecorder.start();
-                document.getElementById(`word-status-${wordIndex}`).textContent = 'Recording...';
+                statusEl.textContent = 'Recording... (auto-stops)';
+                recordBtn.disabled = true;
+                recordBtn.textContent = 'Recording...';
                 
                 setTimeout(() => {
                     if (mediaRecorder.state !== 'inactive') {
@@ -1107,6 +1579,17 @@
                 }, 5000); // 5 second limit per word
             } catch (error) {
                 showMessage('error', 'Error accessing microphone: ' + error.message);
+            }
+        }
+
+        function recordCurrentPronunciation() {
+            recordPronunciation(currentPronunciationIndex);
+        }
+
+        function playCurrentPronunciation() {
+            const playbackEl = document.getElementById('pronunciation-playback');
+            if (playbackEl && playbackEl.src) {
+                playbackEl.play();
             }
         }
         
@@ -1118,10 +1601,9 @@
                     markTestComplete('pronunciation');
                 }
                 
-                // Enable submit button
-                const submitBtn = document.getElementById('submit-all-tests');
-                if (submitBtn) {
-                    submitBtn.disabled = false;
+                const nextBtn = document.getElementById('next-pronunciation');
+                if (nextBtn) {
+                    nextBtn.disabled = false;
                 }
             }
         }
@@ -1132,12 +1614,175 @@
             const typingComplete = document.getElementById('typing-status')?.textContent === 'Completed';
             const readingComplete = !!readingRecording;
             const pronunciationComplete = pronunciationWords.every((_, index) => pronunciationRecordings[index]);
+            const grammarComplete = document.getElementById('grammar-status')?.textContent === 'Completed';
+            const vocabularyComplete = document.getElementById('vocabulary-status')?.textContent === 'Completed';
+            const personalityComplete = document.getElementById('personality-status')?.textContent === 'Completed';
             
-            if (listeningComplete && typingComplete && readingComplete && pronunciationComplete) {
+            if (listeningComplete && typingComplete && readingComplete && pronunciationComplete && grammarComplete && vocabularyComplete && personalityComplete) {
                 const submitBtn = document.getElementById('submit-all-tests');
                 if (submitBtn) {
                     submitBtn.disabled = false;
                 }
+            }
+        }
+
+        function getGrammarSubmission() {
+            let score = 0;
+            const total = grammarQuestions.length;
+            const answers = {};
+            let allAnswered = true;
+
+            grammarQuestions.forEach((q, qIndex) => {
+                const selected = document.querySelector(`input[name="grammar-q-${qIndex}"]:checked`);
+                if (!selected) {
+                    allAnswered = false;
+                    return;
+                }
+                const val = Number(selected.value);
+                answers[qIndex] = val;
+                if (val === q.correctIndex) {
+                    score += 1;
+                }
+            });
+
+            return { score, total, answers, allAnswered };
+        }
+
+        function getVocabularySubmission() {
+            let score = 0;
+            const total = vocabularyQuestions.length;
+            const answers = {};
+            let allAnswered = true;
+
+            vocabularyQuestions.forEach((q, qIndex) => {
+                const selected = document.querySelector(`input[name="vocab-q-${qIndex}"]:checked`);
+                if (!selected) {
+                    allAnswered = false;
+                    return;
+                }
+                const val = Number(selected.value);
+                answers[qIndex] = val;
+                if (val === q.correctIndex) {
+                    score += 1;
+                }
+            });
+
+            return { score, total, answers, allAnswered };
+        }
+
+        function getPersonalitySubmission() {
+            let score = 0;
+            let total = 0;
+            const answers = {};
+            const categoryScores = {};
+            let allAnswered = true;
+
+            personalityRubric.forEach((section, sectionIndex) => {
+                answers[section.category] = [];
+                categoryScores[section.category] = { correct: 0, total: section.items.length };
+                section.items.forEach((statement, qIndex) => {
+                    total += 1;
+                    const selected = document.querySelector(`input[name="personality-${sectionIndex}-${qIndex}"]:checked`);
+                    if (!selected) {
+                        allAnswered = false;
+                        return;
+                    }
+                    const val = selected.value;
+                    answers[section.category][qIndex] = val;
+                    if (val === statement.correct) {
+                        score += 1;
+                        categoryScores[section.category].correct += 1;
+                    }
+                });
+            });
+
+            const percent = total ? Math.round((score / total) * 100) : 0;
+            return { score, total, percent, answers, categoryScores, allAnswered };
+        }
+
+        async function submitGrammarTest() {
+            const submitBtn = document.getElementById('submit-grammar-test');
+            const resultEl = document.getElementById('grammar-result');
+            submitBtn.disabled = true;
+            const submission = getGrammarSubmission();
+
+            if (!submission.allAnswered) {
+                showMessage('error', 'Please answer all grammar questions.');
+                submitBtn.disabled = false;
+                return;
+            }
+
+            const saved = await saveTestResult('grammar', {
+                score: submission.score,
+                total: submission.total,
+                answers: submission.answers
+            });
+
+            if (saved) {
+                markTestComplete('grammar');
+                resultEl.style.display = 'block';
+                resultEl.textContent = `Score: ${submission.score} / ${submission.total}`;
+                document.getElementById('next-grammar').disabled = false;
+            } else {
+                submitBtn.disabled = false;
+            }
+        }
+
+        async function submitVocabularyTest() {
+            const submitBtn = document.getElementById('submit-vocabulary-test');
+            const resultEl = document.getElementById('vocabulary-result');
+            submitBtn.disabled = true;
+            const submission = getVocabularySubmission();
+
+            if (!submission.allAnswered) {
+                showMessage('error', 'Please answer all vocabulary questions.');
+                submitBtn.disabled = false;
+                return;
+            }
+
+            const saved = await saveTestResult('vocabulary', {
+                score: submission.score,
+                total: submission.total,
+                answers: submission.answers
+            });
+
+            if (saved) {
+                markTestComplete('vocabulary');
+                resultEl.style.display = 'block';
+                resultEl.textContent = `Score: ${submission.score} / ${submission.total}`;
+                document.getElementById('next-vocabulary').disabled = false;
+            } else {
+                submitBtn.disabled = false;
+            }
+        }
+
+        async function submitPersonalityTest() {
+            const submitBtn = document.getElementById('submit-personality-test');
+            const resultEl = document.getElementById('personality-result');
+            submitBtn.disabled = true;
+            const submission = getPersonalitySubmission();
+
+            if (!submission.allAnswered) {
+                showMessage('error', 'Please answer all personality questions.');
+                submitBtn.disabled = false;
+                return;
+            }
+
+            const saved = await saveTestResult('personality', {
+                score: submission.score,
+                total: submission.total,
+                percent: submission.percent,
+                answers: submission.answers,
+                categoryScores: submission.categoryScores
+            });
+
+            if (saved) {
+                markTestComplete('personality');
+                resultEl.style.display = 'block';
+                resultEl.textContent = `Score: ${submission.score} / ${submission.total} (${submission.percent}%)`;
+                checkAllTestsReady();
+            } else {
+                submitBtn.disabled = false;
             }
         }
         
@@ -1213,12 +1858,13 @@
                 if (testType === 'listening') {
                     // Combine all listening recordings into one
                     const allRecordings = Object.values(listeningRecordings);
-                    if (allRecordings.length > 0) {
+                    const firstRecording = allRecordings.find(r => typeof r === 'string' || r instanceof Blob);
+                    if (firstRecording) {
                         // Check if it's already base64 (from saved state) or a blob
-                        if (typeof allRecordings[0] === 'string') {
-                            audioData = allRecordings[0]; // Already base64
+                        if (typeof firstRecording === 'string') {
+                            audioData = firstRecording; // Already base64
                         } else {
-                            audioData = await blobToBase64(allRecordings[0]);
+                            audioData = await blobToBase64(firstRecording);
                         }
                         audioFileName = 'listening-response.webm';
                     }
@@ -1319,16 +1965,68 @@
                     submitBtn.textContent = 'Submit All Tests';
                     return;
                 }
+
+                // Ensure grammar test is completed
+                const grammarStatus = document.getElementById('grammar-status');
+                const grammarSubmission = getGrammarSubmission();
+                if (!grammarSubmission.allAnswered) {
+                    showMessage('error', 'Please complete the grammar test first.');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Submit All Tests';
+                    return;
+                }
+                // Save grammar test again to ensure backend has it
+                const grammarSaved = await saveTestResult('grammar', {
+                    score: grammarSubmission.score,
+                    total: grammarSubmission.total,
+                    answers: grammarSubmission.answers
+                });
+                if (!grammarSaved) {
+                    showMessage('error', 'Unable to save grammar test. Please try again.');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Submit All Tests';
+                    return;
+                }
+                if (grammarStatus && grammarStatus.textContent !== 'Completed') {
+                    markTestComplete('grammar');
+                }
+
+                // Ensure vocabulary test is completed
+                const vocabularyStatus = document.getElementById('vocabulary-status');
+                const vocabularySubmission = getVocabularySubmission();
+                if (!vocabularySubmission.allAnswered) {
+                    showMessage('error', 'Please complete the vocabulary test first.');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Submit All Tests';
+                    return;
+                }
+                // Save vocabulary test again to ensure backend has it
+                const vocabularySaved = await saveTestResult('vocabulary', {
+                    score: vocabularySubmission.score,
+                    total: vocabularySubmission.total,
+                    answers: vocabularySubmission.answers
+                });
+                if (!vocabularySaved) {
+                    showMessage('error', 'Unable to save vocabulary test. Please try again.');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Submit All Tests';
+                    return;
+                }
+                if (vocabularyStatus && vocabularyStatus.textContent !== 'Completed') {
+                    markTestComplete('vocabulary');
+                }
                 
                 // Save pronunciation test - save words array with audio data
                 const allPronunciationRecorded = pronunciationWords.every((_, index) => pronunciationRecordings[index]);
                 if (allPronunciationRecorded) {
                     // Get the first word's audio as the main recording for backend validation
-                    const firstWordAudio = pronunciationRecordings[0];
+                    let firstWordAudio = pronunciationRecordings[0];
+                    if (firstWordAudio instanceof Blob) {
+                        firstWordAudio = await blobToBase64(firstWordAudio);
+                    }
                     if (firstWordAudio) {
-                        const words = pronunciationWords.map((word, index) => ({
-                            word: word,
-                            audio: pronunciationRecordings[index] || null
+                        const words = pronunciationWords.map((word) => ({
+                            word: word
                         }));
                         
                         // Save pronunciation with both words array and main audioRecording
@@ -1352,17 +2050,54 @@
                     submitBtn.textContent = 'Submit All Tests';
                     return;
                 }
+
+                // Ensure personality assessment is completed
+                const personalityStatus = document.getElementById('personality-status');
+                const personalitySubmission = getPersonalitySubmission();
+                if (!personalitySubmission.allAnswered) {
+                    showMessage('error', 'Please complete the personality assessment first.');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Submit All Tests';
+                    return;
+                }
+                const personalitySaved = await saveTestResult('personality', {
+                    score: personalitySubmission.score,
+                    total: personalitySubmission.total,
+                    average: personalitySubmission.average,
+                    answers: personalitySubmission.answers
+                });
+                if (!personalitySaved) {
+                    showMessage('error', 'Unable to save personality assessment. Please try again.');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Submit All Tests';
+                    return;
+                }
+                if (personalityStatus && personalityStatus.textContent !== 'Completed') {
+                    markTestComplete('personality');
+                }
                 
                 // Wait a moment for all saves to complete
                 await new Promise(resolve => setTimeout(resolve, 500));
                 
-                // Mark all as complete
+                // Mark all as complete (send grammar/vocabulary results to avoid missing tests)
                 const response = await fetch('/api/teacher/complete-assessment', {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json'
-                    }
+                    },
+                    body: JSON.stringify({
+                        grammar: {
+                            score: grammarSubmission.score,
+                            total: grammarSubmission.total,
+                            answers: grammarSubmission.answers
+                        },
+                        vocabulary: {
+                            score: vocabularySubmission.score,
+                            total: vocabularySubmission.total,
+                            answers: vocabularySubmission.answers
+                        }
+                    })
                 });
                 
                 if (response.ok) {
@@ -1414,6 +2149,12 @@
             } else if (testName === 'reading') {
                 const nextBtn = document.getElementById('next-reading');
                 if (nextBtn) nextBtn.disabled = false;
+            } else if (testName === 'grammar') {
+                const nextBtn = document.getElementById('next-grammar');
+                if (nextBtn) nextBtn.disabled = false;
+            } else if (testName === 'vocabulary') {
+                const nextBtn = document.getElementById('next-vocabulary');
+                if (nextBtn) nextBtn.disabled = false;
             }
             
             updateProgress();
@@ -1423,7 +2164,7 @@
         }
         
         function updateProgress() {
-            const tests = ['listening', 'typing', 'reading', 'pronunciation'];
+            const tests = ['listening', 'typing', 'reading', 'grammar', 'vocabulary', 'pronunciation', 'personality'];
             let completed = 0;
             
             tests.forEach(test => {
@@ -1445,6 +2186,15 @@
                         } else if (test === 'pronunciation') {
                             const allRecorded = pronunciationWords.every((_, index) => pronunciationRecordings[index]);
                             if (allRecorded) completed++;
+                        } else if (test === 'grammar') {
+                            const grammarStatus = document.getElementById('grammar-status');
+                            if (grammarStatus && grammarStatus.textContent === 'Completed') completed++;
+                        } else if (test === 'vocabulary') {
+                            const vocabularyStatus = document.getElementById('vocabulary-status');
+                            if (vocabularyStatus && vocabularyStatus.textContent === 'Completed') completed++;
+                        } else if (test === 'personality') {
+                            const personalityStatus = document.getElementById('personality-status');
+                            if (personalityStatus && personalityStatus.textContent === 'Completed') completed++;
                         }
                     }
                 }
@@ -1460,6 +2210,10 @@
         
         function blobToBase64(blob) {
             return new Promise((resolve, reject) => {
+                if (!(blob instanceof Blob)) {
+                    reject(new Error('Invalid recording data.'));
+                    return;
+                }
                 const reader = new FileReader();
                 reader.onloadend = () => {
                     const base64 = reader.result.split(',')[1];
