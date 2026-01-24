@@ -6,107 +6,141 @@
   <title>Student Registration - RemoEdPH</title>
   <link rel="stylesheet" href="modern-styles.css">
   <style>
-    body { 
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    :root {
+      --primary: #1c7ed6;
+      --primary-dark: #0b7285;
+      --accent: #f4d03f;
+      --surface: #ffffff;
+      --text: #1e2a4a;
+      --muted: #6b7280;
+      --stroke: #e7eaf3;
+    }
+
+    body {
       margin: 0;
-      padding: 20px;
+      padding: 24px;
       min-height: 100vh;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      position: relative;
-      overflow-x: hidden;
-      overflow-y: auto;
-    }
-    
-    /* Floating educational elements */
-    .floating-elements {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-      z-index: 1;
-    }
-    
-    .floating-element {
-      position: absolute;
-      font-size: 2rem;
-      animation: float 6s ease-in-out infinite;
-      opacity: 0.2;
-    }
-    
-    .floating-element:nth-child(1) { top: 10%; left: 10%; animation-delay: 0s; }
-    .floating-element:nth-child(2) { top: 20%; right: 15%; animation-delay: 1s; }
-    .floating-element:nth-child(3) { bottom: 30%; left: 20%; animation-delay: 2s; }
-    .floating-element:nth-child(4) { bottom: 20%; right: 10%; animation-delay: 3s; }
-    .floating-element:nth-child(5) { top: 50%; left: 5%; animation-delay: 4s; }
-    .floating-element:nth-child(6) { top: 60%; right: 5%; animation-delay: 5s; }
-    
-    @keyframes float {
-      0%, 100% { transform: translateY(0px) rotate(0deg); }
-      50% { transform: translateY(-20px) rotate(10deg); }
-    }
-    
-    .register-container {
-      background: rgba(255, 255, 255, 0.95);
-      border-radius: 20px;
-      padding: 2.5rem;
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-      backdrop-filter: blur(10px);
-      border: 2px solid #667eea;
-      position: relative;
-      z-index: 2;
-      max-width: 450px;
-      width: 90%;
-      margin: 50px auto;
-      animation: slideIn 0.8s ease-out;
       display: flex;
-      flex-direction: column;
       align-items: center;
-    }
-    
-    @keyframes slideIn {
-      0% { transform: translateY(30px); opacity: 0; }
-      100% { transform: translateY(0); opacity: 1; }
-    }
-    
-    .remoed-logo {
       justify-content: center;
-      margin-bottom: 1.5rem;
-      animation: pulse 2s infinite;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg,
+                  rgba(28, 126, 214, 0.22) 0%,
+                  rgba(28, 126, 214, 0.22) 60%,
+                  rgba(11, 114, 133, 0.2) 60%,
+                  rgba(11, 114, 133, 0.2) 90%,
+                  rgba(244, 208, 63, 0.22) 90%,
+                  rgba(244, 208, 63, 0.22) 100%);
+      color: var(--text);
+      overflow-x: hidden;
     }
-    
-    @keyframes pulse {
-      0% { transform: scale(1); }
-      50% { transform: scale(1.05); }
-      100% { transform: scale(1); }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(22px); }
+      to { opacity: 1; transform: translateY(0); }
     }
-    
-    .remoed-title {
-      color: #667eea !important;
-      font-size: 1.8rem !important;
-      font-weight: bold !important;
-      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+
+    .login-shell {
+      position: relative;
+      width: min(1050px, 100%);
     }
-    
-    .register-title {
-      color: #667eea !important;
-      font-size: 1.8rem !important;
-      font-weight: bold !important;
-      text-align: center;
-      margin-bottom: 1.5rem;
-      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+
+    .login-card {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      background: var(--surface);
+      border-radius: 28px;
+      overflow: hidden;
+      box-shadow: 0 30px 60px rgba(31, 41, 55, 0.18);
+      border: 1px solid rgba(102, 126, 234, 0.1);
+      animation: slideUp 0.7s ease-out;
     }
-    
-    .welcome-message {
-      text-align: center;
-      color: #667eea;
+
+    .login-panel {
+      padding: 44px 52px;
+    }
+
+    .login-visual {
+      background: linear-gradient(135deg,
+                  var(--primary) 0%,
+                  var(--primary) 60%,
+                  var(--primary-dark) 60%,
+                  var(--primary-dark) 90%,
+                  var(--accent) 90%,
+                  var(--accent) 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      padding: 32px;
+    }
+
+    .intro-card {
+      width: min(320px, 82%);
+      border-radius: 24px;
+      background: #f8fafc;
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      padding: 28px;
+      color: #1e2a4a;
+      box-shadow: 0 18px 36px rgba(15, 23, 42, 0.15);
+    }
+
+    .intro-card h3 {
+      margin: 0 0 14px;
+      font-size: 1.5rem;
+      font-weight: 800;
+    }
+
+    .intro-card p {
+      margin: 0 0 18px;
+      color: #334155;
+      line-height: 1.7;
+      font-size: 1.05rem;
+    }
+
+    .intro-card ul {
+      margin: 0;
+      padding-left: 18px;
+      color: #334155;
+      line-height: 1.7;
+      font-size: 1.02rem;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .brand img {
+      height: 44px;
+    }
+
+    .brand-name {
+      font-weight: 800;
+      color: var(--primary);
+      font-size: 1.4rem;
+      letter-spacing: 0.5px;
+    }
+
+    .brand-subtitle {
       font-size: 0.9rem;
-      font-weight: 600;
-      margin-bottom: 1rem;
-      text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+      color: var(--muted);
     }
-    
+
+    .login-title {
+      font-size: 1.9rem;
+      margin: 6px 0 6px;
+      color: var(--text);
+    }
+
+    .login-subtitle {
+      margin: 0 0 24px;
+      color: var(--muted);
+      font-size: 0.98rem;
+    }
+
     .register-form {
       width: 100%;
       display: flex;
@@ -114,150 +148,136 @@
       gap: 16px;
       margin-bottom: 10px;
     }
-    
+
     .form-group {
       position: relative;
     }
-    
+
     .form-group label {
-      color: #667eea !important;
+      color: var(--text) !important;
       font-weight: 600 !important;
-      font-size: 1rem !important;
+      font-size: 0.95rem !important;
       margin-bottom: 0.5rem !important;
       display: block;
     }
-    
+
     .form-group input {
       width: 100%;
       padding: 12px 16px;
-      border: 2px solid #e1e8ed;
-      border-radius: 12px;
+      border: 1px solid var(--stroke);
+      border-radius: 14px;
       font-size: 1rem;
-      transition: all 0.3s ease;
-      background: rgba(255, 255, 255, 0.9);
+      transition: all 0.2s ease;
+      background: #fbfbff;
       box-sizing: border-box;
     }
-    
+
     .form-group input:focus {
-      border-color: #667eea;
-      box-shadow: 0 0 15px rgba(102, 126, 234, 0.3);
-      transform: scale(1.02);
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(28, 126, 214, 0.2);
       outline: none;
     }
-    
-    /* Password input container */
+
     .password-input-container {
       position: relative;
       display: flex;
       align-items: center;
     }
-    
+
     .password-input-container input {
       padding-right: 50px;
     }
-    
+
     .password-toggle {
       position: absolute;
-      right: 12px;
+      right: 10px;
       background: none;
       border: none;
       cursor: pointer;
-      padding: 8px;
+      padding: 6px;
       border-radius: 6px;
-      transition: all 0.3s ease;
+      transition: all 0.2s ease;
       display: flex;
       align-items: center;
       justify-content: center;
     }
-    
+
     .password-toggle:hover {
-      background: rgba(102, 126, 234, 0.1);
-      transform: scale(1.1);
+      background: rgba(28, 126, 214, 0.12);
     }
-    
-    .password-toggle:active {
-      transform: scale(0.95);
-    }
-    
+
     .eye-icon {
-      font-size: 1.2rem;
-      color: #667eea;
+      font-size: 1.1rem;
+      color: var(--primary);
       transition: all 0.3s ease;
     }
-    
+
     .password-toggle.show-password .eye-icon {
-      color: #764ba2;
+      color: var(--primary-dark);
     }
-    
-    /* Password requirements */
+
     .password-requirements {
       margin-top: 8px;
       padding: 12px;
-      background: rgba(255, 255, 255, 0.8);
-      border-radius: 8px;
-      border: 1px solid rgba(102, 126, 234, 0.2);
+      background: #f8fafc;
+      border-radius: 10px;
+      border: 1px solid rgba(28, 126, 214, 0.18);
       font-size: 0.85rem;
     }
-    
+
     .requirement {
       display: flex;
       align-items: center;
       gap: 8px;
       margin-bottom: 4px;
-      color: #666;
+      color: #4b5563;
       transition: all 0.3s ease;
     }
-    
+
     .requirement:last-child {
       margin-bottom: 0;
     }
-    
+
     .requirement-icon {
       font-size: 0.9rem;
       transition: all 0.3s ease;
     }
-    
+
     .requirement.met {
       color: #16a34a;
     }
-    
+
     .requirement.met .requirement-icon {
       color: #16a34a;
     }
-    
+
     .register-btn {
-      background: linear-gradient(45deg, #667eea, #764ba2);
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
       color: white;
       border: none;
-      border-radius: 12px;
+      border-radius: 14px;
       padding: 14px 30px;
-      font-size: 1.1rem;
+      font-size: 1rem;
       font-weight: 600;
       cursor: pointer;
       transition: all 0.3s ease;
-      box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
-      letter-spacing: 0.5px;
+      box-shadow: 0 14px 24px rgba(28, 126, 214, 0.25);
       width: 100%;
       display: block !important;
       margin-top: 10px;
     }
-    
+
     .register-btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 12px 25px rgba(102, 126, 234, 0.4);
-      background: linear-gradient(45deg, #764ba2, #667eea);
+      transform: translateY(-1px);
+      box-shadow: 0 18px 28px rgba(28, 126, 214, 0.3);
     }
-    
-    .register-btn:active {
-      transform: translateY(0);
-    }
-    
+
     .register-btn:disabled {
       opacity: 0.6;
       cursor: not-allowed;
       transform: none;
     }
-    
+
     .register-error {
       font-size: 1rem;
       margin-top: 8px;
@@ -271,53 +291,48 @@
       border: 2px solid #fecaca;
       color: #dc2626;
     }
-    
+
     .register-success {
       background: #f0fdf4;
       border: 2px solid #bbf7d0;
       color: #16a34a;
     }
-    
+
     .links-container {
-      margin-top: 2rem;
-      text-align: center;
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem;
-      padding: 1rem;
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 15px;
-      border: 1px solid rgba(102, 126, 234, 0.2);
+      margin-top: 1.5rem;
+      text-align: left;
+      display: grid;
+      gap: 10px;
     }
-    
+
     .links-container a {
-      color: #667eea;
+      color: var(--primary);
       text-decoration: none;
-      font-size: 0.9rem;
+      font-size: 0.95rem;
       font-weight: 600;
-      transition: all 0.3s ease;
-      padding: 0.75rem 1rem;
+      transition: all 0.2s ease;
+      padding: 10px 14px;
       border-radius: 10px;
-      border: 2px solid transparent;
-      background: rgba(102, 126, 234, 0.05);
-      display: block;
-      margin: 0.25rem 0;
-      text-align: center;
-      box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+      background: rgba(28, 126, 214, 0.08);
+      display: inline-flex;
+      align-items: center;
     }
-    
+
     .links-container a:hover {
-      background: rgba(102, 126, 234, 0.15);
-      transform: translateY(-2px);
-      text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
-      border-color: rgba(102, 126, 234, 0.3);
-      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+      background: rgba(28, 126, 214, 0.15);
+      transform: translateX(2px);
     }
-    
-    .links-container a:active {
-      transform: translateY(0);
+
+    @media (max-width: 900px) {
+      .login-card {
+        grid-template-columns: 1fr;
+      }
+
+      .login-panel {
+        padding: 32px 28px;
+      }
     }
-    
+
     /* Plan Selection Modal */
     .plan-modal {
       position: fixed;
@@ -452,123 +467,95 @@
       box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
     }
     
-    /* Responsive design for different screen sizes and zoom levels */
     @media (max-width: 768px) {
       body {
         padding: 10px;
       }
-      
-      .register-container {
-        margin: 20px auto;
-        padding: 1.5rem;
-        max-width: 95%;
-      }
-      
-      .remoed-title {
-        font-size: 1.5rem !important;
-      }
-      
-      .register-title {
-        font-size: 1.5rem !important;
-      }
     }
-    
+
     @media (max-width: 480px) {
-      .register-container {
-        margin: 10px auto;
-        padding: 1rem;
-      }
-      
-      .remoed-title {
-        font-size: 1.3rem !important;
-      }
-      
-      .register-title {
-        font-size: 1.3rem !important;
-      }
-      
-      .links-container {
-        padding: 0.75rem;
-        gap: 0.5rem;
-      }
-      
       .links-container a {
         padding: 0.5rem 0.75rem;
-        font-size: 0.8rem;
+        font-size: 0.85rem;
       }
     }
   </style>
 </head>
 <body>
-  <!-- Floating educational elements -->
-  <div class="floating-elements">
-    <div class="floating-element">📚</div>
-    <div class="floating-element">✏️</div>
-    <div class="floating-element">🎨</div>
-    <div class="floating-element">🔢</div>
-    <div class="floating-element">🌍</div>
-    <div class="floating-element">⭐</div>
-  </div>
+  <div class="login-shell">
+    <div class="login-card">
+      <div class="login-panel">
+        <div class="brand">
+          <img src="remoed-logo.png" alt="RemoEdPH Logo">
+          <div>
+            <div class="brand-name">RemoEdPH</div>
+            <div class="brand-subtitle">Student Portal</div>
+          </div>
+        </div>
 
-  <div class="register-container">
-    <div class="remoed-logo">
-      <img src="remoed-logo.png" alt="RemoEdPH Logo" style="height: 50px;">
-      <span class="remoed-title">RemoEdPH</span>
-      <div style="font-size: 0.9rem; color: #37517e; font-weight: 600;">Student Portal</div>
-    </div>
-    
-    <div class="welcome-message">
-      📝 Join Our Learning Community 📝
-    </div>
-    
-    <div class="register-title">Student Registration</div>
-    <form class="register-form" id="student-register-form">
-      <div class="form-group">
-        <label for="student-register-username">👤 Username</label>
-        <input type="text" id="student-register-username" placeholder="Enter your username" required autocomplete="on">
-      </div>
-      <div class="form-group">
-        <label for="student-register-email">📧 Email Address</label>
-        <input type="email" id="student-register-email" placeholder="Enter your email address" required autocomplete="on">
-      </div>
-      <div class="form-group">
-        <label for="student-register-password">🔐 Password</label>
-        <div class="password-input-container">
-          <input type="password" id="student-register-password" placeholder="Enter your password" required autocomplete="on">
-          <button type="button" class="password-toggle" id="password-toggle" onclick="togglePassword()">
-            <span class="eye-icon">👁️</span>
+        <h1 class="login-title">Student Registration</h1>
+        <p class="login-subtitle">Create your account and start learning with RemoEdPH.</p>
+
+        <form class="register-form" id="student-register-form">
+          <div class="form-group">
+            <label for="student-register-username">Username</label>
+            <input type="text" id="student-register-username" placeholder="Enter your username" required autocomplete="on">
+          </div>
+          <div class="form-group">
+            <label for="student-register-email">Email Address</label>
+            <input type="email" id="student-register-email" placeholder="Enter your email address" required autocomplete="on">
+          </div>
+          <div class="form-group">
+            <label for="student-register-password">Password</label>
+            <div class="password-input-container">
+              <input type="password" id="student-register-password" placeholder="Enter your password" required autocomplete="on">
+              <button type="button" class="password-toggle" id="password-toggle" onclick="togglePassword()" aria-label="Show password">
+                <span class="eye-icon">👁️</span>
+              </button>
+            </div>
+            <div class="password-requirements" id="password-requirements">
+              <div class="requirement" id="req-length">
+                <span class="requirement-icon">❌</span>
+                <span>At least 8 characters</span>
+              </div>
+              <div class="requirement" id="req-uppercase">
+                <span class="requirement-icon">❌</span>
+                <span>One uppercase letter</span>
+              </div>
+              <div class="requirement" id="req-lowercase">
+                <span class="requirement-icon">❌</span>
+                <span>One lowercase letter</span>
+              </div>
+              <div class="requirement" id="req-number">
+                <span class="requirement-icon">❌</span>
+                <span>One number</span>
+              </div>
+            </div>
+          </div>
+          <button type="submit" class="register-btn" id="register-btn">
+            Create Account
           </button>
-        </div>
-        <div class="password-requirements" id="password-requirements">
-          <div class="requirement" id="req-length">
-            <span class="requirement-icon">❌</span>
-            <span>At least 8 characters</span>
-          </div>
-          <div class="requirement" id="req-uppercase">
-            <span class="requirement-icon">❌</span>
-            <span>One uppercase letter</span>
-          </div>
-          <div class="requirement" id="req-lowercase">
-            <span class="requirement-icon">❌</span>
-            <span>One lowercase letter</span>
-          </div>
-          <div class="requirement" id="req-number">
-            <span class="requirement-icon">❌</span>
-            <span>One number</span>
-          </div>
+        </form>
+        <div class="register-error" id="student-register-error"></div>
+        
+        <div class="links-container">
+          <a href="student-login.html">Back to Student Login</a>
+          <a href="student-forgot-password.html">Forgot Password?</a>
+          <a href="index.html">Back to Home</a>
         </div>
       </div>
-      <button type="submit" class="register-btn" id="register-btn">
-        📝 Create Account
-      </button>
-    </form>
-    <div class="register-error" id="student-register-error"></div>
-    
-    <div class="links-container">
-      <div style="margin-bottom: 0.5rem; font-weight: 600; color: #667eea; font-size: 0.9rem;">📋 Quick Navigation</div>
-      <a href="student-login.html">👈 Back to Student Login</a>
-      <a href="student-forgot-password.html">🔑 Forgot Password?</a>
-      <a href="index.html">🏠 Back to Home</a>
+
+      <div class="login-visual">
+        <div class="intro-card">
+          <h3>Welcome to RemoEdPH</h3>
+          <p>Your learning hub for classes, games, and progress tracking.</p>
+          <ul>
+            <li>Join live classes and activities.</li>
+            <li>Track your achievements.</li>
+            <li>Practice with interactive tools.</li>
+          </ul>
+        </div>
+      </div>
     </div>
   </div>
 
