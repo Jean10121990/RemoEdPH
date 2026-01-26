@@ -7,7 +7,7 @@ const MONGO_URI = process.env.MONGODB_URI || (!isCloudRun ? 'mongodb://localhost
 
 // Connection options for modern Mongoose versions
 const connectionOptions = {
-  serverSelectionTimeoutMS: 10000, // Timeout after 10s (increased for localhost)
+  serverSelectionTimeoutMS: 5000, // Timeout after 5s (reduced to fail faster if wrong URI)
   socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
   maxPoolSize: 10, // Maintain up to 10 socket connections
 };
@@ -76,7 +76,6 @@ const connectDB = async () => {
       console.error('⚠️  Connection timeout. Check network connectivity and MongoDB server status.');
     }
     console.warn('⚠️  Server will continue without database connection. Some features may not work.');
-    console.warn('⚠️  Database-dependent features (login, registration, etc.) will fail.');
     // Don't exit the process - allow server to start without DB
     return false;
   }
