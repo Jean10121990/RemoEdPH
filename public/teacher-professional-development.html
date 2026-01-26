@@ -1144,18 +1144,33 @@
             
             // Create a simple modal to show course details
             const modal = document.createElement('div');
+            modal.className = 'training-modal';
             modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;';
             modal.innerHTML = `
                 <div style="background: white; border-radius: 16px; padding: 32px; max-width: 500px; width: 90%;">
                     <h2 style="margin: 0 0 16px 0; color: #667eea;">${courseName}</h2>
                     <p style="color: #666; margin-bottom: 24px;">Ready to start this course? Click "Start Course" to begin your learning journey.</p>
                     <div style="display: flex; gap: 12px;">
-                        <button class="btn-primary" onclick="this.closest('div[style*=\"position: fixed\"]').remove()">Close</button>
-                        <button class="btn-secondary" onclick="startCourse(${courseId}); this.closest('div[style*=\"position: fixed\"]').remove();">Start Course</button>
+                        <button class="btn-primary" data-action="close">Close</button>
+                        <button class="btn-secondary" data-action="start">Start Course</button>
                     </div>
                 </div>
             `;
             document.body.appendChild(modal);
+            
+            const closeButton = modal.querySelector('[data-action="close"]');
+            const startButton = modal.querySelector('[data-action="start"]');
+            if (closeButton) {
+                closeButton.addEventListener('click', () => {
+                    modal.remove();
+                });
+            }
+            if (startButton) {
+                startButton.addEventListener('click', () => {
+                    startCourse(courseId);
+                    modal.remove();
+                });
+            }
             
             // Close on background click
             modal.addEventListener('click', function(e) {
@@ -1719,6 +1734,7 @@
             const safePeerId = peerIdStr.replace(/'/g, "\\'");
             
             const modal = document.createElement('div');
+            modal.className = 'peer-profile-modal';
             modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;';
             modal.innerHTML = `
                 <div style="background: white; border-radius: 16px; padding: 32px; max-width: 500px; width: 90%;">
@@ -1726,12 +1742,26 @@
                     <p style="color: #666; margin-bottom: 24px;">${peerInfo}</p>
                     <p style="color: #666; margin-bottom: 24px;">View their full profile, teaching experience, and connect for peer learning opportunities.</p>
                     <div style="display: flex; gap: 12px;">
-                        <button class="btn-primary" onclick="this.closest('div[style*=\"position: fixed\"]').remove()">Close</button>
-                        <button class="btn-secondary" onclick="connectWithPeer('${safePeerId}'); this.closest('div[style*=\"position: fixed\"]').remove();">Connect</button>
+                        <button class="btn-primary" data-action="close">Close</button>
+                        <button class="btn-secondary" data-action="connect">Connect</button>
                     </div>
                 </div>
             `;
             document.body.appendChild(modal);
+            
+            const closeButton = modal.querySelector('[data-action="close"]');
+            const connectButton = modal.querySelector('[data-action="connect"]');
+            if (closeButton) {
+                closeButton.addEventListener('click', () => {
+                    modal.remove();
+                });
+            }
+            if (connectButton) {
+                connectButton.addEventListener('click', () => {
+                    connectWithPeer(safePeerId);
+                    modal.remove();
+                });
+            }
             
             // Close on background click
             modal.addEventListener('click', function(e) {

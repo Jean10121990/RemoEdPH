@@ -6,7 +6,11 @@
   <title>Live Classroom</title>
   <link rel="stylesheet" href="live-classroom.css" />
   <!-- PDF.js library for embedded free PDF viewer -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script type="module">
+    import * as pdfjsLib from '/vendor/pdfjs/pdf.min.mjs';
+    window.pdfjsLib = pdfjsLib;
+    pdfjsLib.GlobalWorkerOptions.workerSrc = '/vendor/pdfjs/pdf.worker.min.mjs';
+  </script>
   <script>
     // Suppress console warnings from third-party libraries and expected errors
     (function() {
@@ -43,59 +47,8 @@
         originalError.apply(console, args);
       };
     })();
-    
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   </script>
   <style>
-    /* Global lesson loading overlay */
-    .lesson-loading-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.45);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      z-index: 9999;
-    }
-    .lesson-loading-card {
-      background: #ffffff;
-      border-radius: 12px;
-      padding: 20px 24px;
-      min-width: 260px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-      text-align: center;
-    }
-    .lesson-loading-title {
-      font-weight: 700;
-      color: #1ca7e7;
-      margin-bottom: 12px;
-    }
-    .lesson-progress-bar {
-      width: 100%;
-      height: 10px;
-      background: #e9ecef;
-      border-radius: 999px;
-      overflow: hidden;
-      position: relative;
-      margin: 8px 0 6px 0;
-    }
-    .lesson-progress-fill {
-      position: absolute;
-      top: 0;
-      left: 0;
-      height: 100%;
-      width: 0%;
-      background: linear-gradient(90deg, #1ca7e7, #5cb3ff);
-      transition: width 0.2s ease;
-    }
-    .lesson-loading-text {
-      font-size: 0.9rem;
-      color: #555;
-      margin-top: 8px;
-    }
     .pdf-viewer-container {
       width: 100%;
       height: calc(100vh - 200px);
@@ -110,21 +63,32 @@
       position: sticky;
       top: 0;
       background: white;
-      padding: 10px;
+      padding: 6px;
       border-bottom: 1px solid #ddd;
       display: flex;
-      gap: 10px;
+      gap: 6px;
       align-items: center;
       z-index: 10;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
     }
     .pdf-viewer-controls button {
-      padding: 6px 12px;
+      padding: 4px 8px;
       border: 1px solid #ccc;
       border-radius: 4px;
       background: white;
       cursor: pointer;
-      font-size: 0.9rem;
+      font-size: 0.85rem;
+    }
+    .pdf-viewer-controls .action-btn {
+      width: 28px;
+      height: 28px;
+      font-size: 14px;
+      border-radius: 4px;
+      box-shadow: none;
+      transform: none;
+    }
+    .pdf-viewer-controls .action-btn:hover {
+      transform: none;
     }
     .pdf-viewer-controls button:hover {
       background: #f0f0f0;
@@ -139,8 +103,8 @@
       border-color: #c3e6cb;
     }
     .pdf-page-info {
-      padding: 6px 12px;
-      font-size: 0.9rem;
+      padding: 4px 8px;
+      font-size: 0.8rem;
       color: #666;
     }
     .pdf-canvas-container {
@@ -171,13 +135,24 @@
     }
     .pdf-annotator-controls {
       display: flex;
-      gap: 8px;
+      gap: 6px;
       align-items: center;
-      padding: 6px 8px;
+      padding: 4px 6px;
       background: #f8fafc;
       border: 1px solid #e5e7eb;
       border-radius: 6px;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
+    }
+    .pdf-annotator-controls select {
+      padding: 4px 6px;
+      font-size: 0.8rem;
+    }
+    .pdf-annotator-controls .pdf-annotator-indicator {
+      display: inline-flex;
+      min-width: auto;
+      font-size: 0.8rem;
+      padding-left: 2px;
+      padding-right: 2px;
     }
     .pdf-annotator-controls input[type="color"] {
       width: 32px;
@@ -223,15 +198,6 @@
   </style>
 </head>
 <body>
-  <div id="lesson-loading-overlay" class="lesson-loading-overlay">
-    <div class="lesson-loading-card">
-      <div class="lesson-loading-title">Loading lesson content…</div>
-      <div class="lesson-progress-bar">
-        <div id="lesson-progress-fill" class="lesson-progress-fill"></div>
-      </div>
-      <div id="lesson-loading-text" class="lesson-loading-text">Preparing files</div>
-    </div>
-  </div>
   <div class="top-bar">
     <span>Live Classroom</span>
     <div class="top-buttons">
@@ -255,10 +221,7 @@
 
     <!-- Main Content Area -->
     <div class="center-panel">
-      <div class="action-buttons-top-right">
-        <button class="action-btn flag-btn" title="Flag">🚩</button>
-        <button class="action-btn cookie-btn" title="Cookie">🍪</button>
-      </div>
+      <!-- Action buttons moved into PDF control row -->
       
       <div class="tabs">
         <button class="active" data-tab="lesson-content">Lesson Content</button>
@@ -268,13 +231,11 @@
       <!-- Lesson Content Tab -->
       <div class="panel-content active" id="lesson-content-panel" style="padding: 12px;">
         <div class="lesson-viewer">
-          <h3 class="lesson-viewer-title">Lesson Content Viewer (PDF/PPT/Video)</h3>
+          <!-- Lesson Content Viewer title removed -->
           <!-- Lesson content viewer dropdown removed - lesson loads automatically from booking -->
           <!-- Presenter Mode Status and Navigation Controls -->
-          <div id="presenter-mode-controls" style="display:none; gap:8px; align-items:center; justify-content:center; margin:12px 0;">
-            <span id="presenter-status-indicator" style="padding:8px 12px; background:#17a2b8; color:#fff; border-radius:6px; font-size:0.85rem; font-weight:600;">
-              🔴 Live Sync Active
-            </span>
+          <div id="presenter-mode-controls" style="display:none; gap:8px; align-items:center; justify-content:center; margin:8px 0;">
+            <span id="presenter-status-indicator" style="font-size:18px; color:#e11d48;" title="Live Sync Active">●</span>
             <!-- Navigation buttons for PDF (moved outside iframe) -->
             <div id="pdf-navigation-controls" style="display:none; gap:4px; align-items:center;">
               <button id="pdf-prev-btn" title="Previous Page" style="padding:6px 10px; background:#1ca7e7; color:#fff; border:none; border-radius:4px; cursor:pointer; font-size:1.2rem; font-weight:bold; min-width:36px; height:36px; display:flex; align-items:center; justify-content:center;">◀</button>
@@ -437,31 +398,7 @@
         reconnectionAttempts: 5
       });
 
-      // Loading overlay helpers
-      const lessonLoadingOverlay = () => document.getElementById('lesson-loading-overlay');
-      const lessonProgressFill = () => document.getElementById('lesson-progress-fill');
-      const lessonLoadingText = () => document.getElementById('lesson-loading-text');
-
-      function showLessonLoading(message = 'Loading lesson…', progress = null) {
-        const overlay = lessonLoadingOverlay();
-        if (overlay) overlay.style.display = 'flex';
-        const textEl = lessonLoadingText();
-        if (textEl) textEl.textContent = message;
-        const fill = lessonProgressFill();
-        if (fill) fill.style.width = progress !== null ? `${Math.min(100, Math.max(0, progress))}%` : '20%';
-      }
-
-      function updateLessonProgress(message = null, progress = null) {
-        const textEl = lessonLoadingText();
-        if (textEl && message) textEl.textContent = message;
-        const fill = lessonProgressFill();
-        if (fill && progress !== null) fill.style.width = `${Math.min(100, Math.max(0, progress))}%`;
-      }
-
-      function hideLessonLoading() {
-        const overlay = lessonLoadingOverlay();
-        if (overlay) overlay.style.display = 'none';
-      }
+      // Lesson loading overlay removed for faster start
       
       // Log connection events
       socket.on('connect', () => {
@@ -692,7 +629,6 @@
       // Queue for ICE candidates received before remote description is set
       const queuedIceCandidates = [];
       
-      // Video recording removed - using external software like OBS instead
       
       // Cross-browser compatibility for RTCPeerConnection
       const RTCPeerConnection = window.RTCPeerConnection || window.mozRTCPeerConnection || window.webkitRTCPeerConnection;
@@ -721,6 +657,18 @@
         rtcpMuxPolicy: 'require'
       };
 
+      function addLocalTracksToPeerConnection() {
+        if (!peerConnection || !localStream) return;
+        const tracks = localStream.getTracks().slice().sort((a, b) => a.kind.localeCompare(b.kind));
+        tracks.forEach(track => {
+          const sender = peerConnection.getSenders().find(s => s.track === track);
+          if (!sender) {
+            peerConnection.addTrack(track, localStream);
+            console.log('➕ Added local track:', track.kind, track.id, 'enabled:', track.enabled);
+          }
+        });
+      }
+
       function ensurePeerConnection() {
         // If peer connection exists, check if it's in a valid state
         if (peerConnection) {
@@ -741,15 +689,7 @@
             isSettingRemoteDescription = false;
           } else {
             // Connection exists and is valid, just ensure tracks are added
-            if (localStream) {
-              localStream.getTracks().forEach(track => {
-                const sender = peerConnection.getSenders().find(s => s.track === track);
-                if (!sender) {
-                  peerConnection.addTrack(track, localStream);
-                  console.log('➕ Added track to existing peer connection:', track.kind);
-                }
-              });
-            }
+            addLocalTracksToPeerConnection();
             return;
           }
         }
@@ -925,10 +865,7 @@
           }
         };
         if (localStream) {
-          localStream.getTracks().forEach(track => {
-            peerConnection.addTrack(track, localStream);
-            console.log('➕ Added local track:', track.kind, track.id, 'enabled:', track.enabled);
-          });
+          addLocalTracksToPeerConnection();
           
           // Force ICE gathering to start by creating a data channel
           // This helps establish connection faster, especially for students
@@ -976,36 +913,6 @@
           console.log('👤 Student: Waiting for offer from teacher...');
           // Ensure peer connection is ready for when offer arrives
           ensurePeerConnection();
-          
-          // Force ICE gathering to start even before offer arrives
-          // Create a temporary offer to trigger ICE candidate gathering immediately
-          if (peerConnection && localStream && !peerConnection.localDescription && !peerConnection.remoteDescription) {
-            // Add tracks if not already added
-            const senders = peerConnection.getSenders();
-            localStream.getTracks().forEach(track => {
-              const sender = senders.find(s => s.track === track);
-              if (!sender) {
-                peerConnection.addTrack(track, localStream);
-                console.log('➕ Student: Added track before offer:', track.kind);
-              }
-            });
-            
-            // Create a temporary offer to force ICE gathering to start
-            // This will be replaced when the real offer arrives
-            console.log('📡 Student: Creating temporary offer to force ICE gathering...');
-            peerConnection.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true })
-              .then(tempOffer => {
-                return peerConnection.setLocalDescription(tempOffer);
-              })
-              .then(() => {
-                console.log('✅ Student: Temporary offer set - ICE gathering started');
-                // Don't send this offer, it's just to trigger ICE gathering
-                // The real offer from teacher will replace it
-              })
-              .catch(err => {
-                console.warn('⚠️ Student: Could not create temporary offer:', err);
-              });
-          }
           return;
         }
         console.log('👨‍🏫 Teacher: Creating offer...');
@@ -1101,26 +1008,8 @@
             }
             
             // Make sure all tracks are added BEFORE creating offer
-            const senders = peerConnection.getSenders();
-            const tracks = localStream.getTracks();
-            console.log('📊 Before offer - tracks:', tracks.length, 'senders:', senders.length);
-            
-            tracks.forEach(track => {
-              const sender = senders.find(s => s.track === track);
-              if (!sender) {
-                peerConnection.addTrack(track, localStream);
-                console.log('➕ Added track to peer connection:', track.kind, track.id);
-              } else {
-                console.log('✓ Track already in peer connection:', track.kind, track.id);
-              }
-            });
-            
-            // Verify tracks are added
-            const updatedSenders = peerConnection.getSenders();
-            console.log('📊 After adding tracks - senders:', updatedSenders.length);
-            updatedSenders.forEach(sender => {
-              console.log('  - Sender track:', sender.track?.kind, sender.track?.id, 'enabled:', sender.track?.enabled);
-            });
+            addLocalTracksToPeerConnection();
+            console.log('📊 Before offer - tracks:', localStream.getTracks().length, 'senders:', peerConnection.getSenders().length);
             
             isCreatingOffer = true;
             
@@ -1291,19 +1180,8 @@
           return;
         }
         // Make sure all tracks are added BEFORE setting remote description
-        let tracksAdded = 0;
-        const senders = peerConnection.getSenders();
-        localStream.getTracks().forEach(track => {
-          const sender = senders.find(s => s.track === track);
-          if (!sender) {
-            peerConnection.addTrack(track, localStream);
-            tracksAdded++;
-            console.log('➕ Added track to peer connection:', track.kind, track.id, 'enabled:', track.enabled);
-          } else {
-            console.log('✓ Track already in peer connection:', track.kind, track.id);
-          }
-        });
-        console.log(`📊 Total tracks in localStream: ${localStream.getTracks().length}, senders: ${peerConnection.getSenders().length}, added: ${tracksAdded}`);
+        addLocalTracksToPeerConnection();
+        console.log(`📊 Tracks ensured: local=${localStream.getTracks().length}, senders=${peerConnection.getSenders().length}`);
         
         // Verify tracks are in senders
         const updatedSenders = peerConnection.getSenders();
@@ -1531,35 +1409,39 @@
           controls.className = 'pdf-viewer-controls';
           
           const prevBtn = document.createElement('button');
-          prevBtn.textContent = '◀ Previous';
+          prevBtn.textContent = '◀';
           prevBtn.id = 'pdf-prev-btn-custom';
+          prevBtn.title = 'Previous page';
           
           const nextBtn = document.createElement('button');
-          nextBtn.textContent = 'Next ▶';
+          nextBtn.textContent = '▶';
           nextBtn.id = 'pdf-next-btn-custom';
+          nextBtn.title = 'Next page';
           
           const pageInfo = document.createElement('span');
           pageInfo.className = 'pdf-page-info';
           pageInfo.id = 'pdf-page-info-custom';
-          pageInfo.textContent = 'Page 1 of 1';
+          pageInfo.textContent = '1/1';
           
           const zoomOutBtn = document.createElement('button');
-          zoomOutBtn.textContent = '− Zoom Out';
+          zoomOutBtn.textContent = '−';
           zoomOutBtn.id = 'pdf-zoom-out-btn';
+          zoomOutBtn.title = 'Zoom out';
           
           const zoomInBtn = document.createElement('button');
-          zoomInBtn.textContent = 'Zoom In +';
+          zoomInBtn.textContent = '+';
           zoomInBtn.id = 'pdf-zoom-in-btn';
+          zoomInBtn.title = 'Zoom in';
           
           const fitToViewerBtn = document.createElement('button');
-          fitToViewerBtn.textContent = 'Fit to Viewer';
+          fitToViewerBtn.textContent = '⤢';
           fitToViewerBtn.id = 'pdf-fit-to-viewer-btn';
-          fitToViewerBtn.title = 'Fit PDF to viewer width';
+          fitToViewerBtn.title = 'Fit to viewer';
           
           // Annotation controls (teacher draw, students view)
           const annotateToggle = document.createElement('button');
           annotateToggle.id = 'pdf-annotate-toggle';
-          annotateToggle.textContent = 'Enable Annotate';
+          annotateToggle.textContent = '✏️';
           annotateToggle.title = 'Toggle drawing on the PDF';
           
           const annotationColorPicker = document.createElement('input');
@@ -1580,17 +1462,48 @@
           
           const eraseBtn = document.createElement('button');
           eraseBtn.id = 'pdf-annotate-eraser';
-          eraseBtn.textContent = 'Eraser';
+          eraseBtn.textContent = '🩹';
           eraseBtn.title = 'Switch to eraser';
           
           const clearPageBtn = document.createElement('button');
           clearPageBtn.id = 'pdf-annotate-clear';
-          clearPageBtn.textContent = 'Clear Page';
+          clearPageBtn.textContent = '🧹';
           clearPageBtn.title = 'Clear annotations on this page';
           
           const annotatorIndicator = document.createElement('span');
           annotatorIndicator.className = 'pdf-annotator-indicator';
-          annotatorIndicator.textContent = 'Annotations ready';
+          annotatorIndicator.textContent = '●';
+          annotatorIndicator.title = 'Annotations status';
+          
+          const flagBtn = document.createElement('button');
+          flagBtn.className = 'action-btn flag-btn';
+          flagBtn.textContent = '🚩';
+          flagBtn.title = 'Flag reward';
+          
+          const cookieBtn = document.createElement('button');
+          cookieBtn.className = 'action-btn cookie-btn';
+          cookieBtn.textContent = '🍪';
+          cookieBtn.title = 'Cookie reward';
+          
+          const starBtn = document.createElement('button');
+          starBtn.className = 'action-btn star-btn';
+          starBtn.textContent = '⭐';
+          starBtn.title = 'Star reward';
+          
+          const bindRewardButton = (btn, type) => {
+            btn.addEventListener('click', () => {
+              if (userType === 'teacher') {
+                showRewardAnimation(type);
+                if (socket && socket.connected) {
+                  socket.emit('reward-animation', { type, room });
+                }
+              }
+            });
+          };
+          
+          bindRewardButton(flagBtn, 'flag');
+          bindRewardButton(cookieBtn, 'cookie');
+          bindRewardButton(starBtn, 'star');
           
           const annotatorControls = document.createElement('div');
           annotatorControls.className = 'pdf-annotator-controls';
@@ -1600,15 +1513,32 @@
           annotatorControls.appendChild(eraseBtn);
           annotatorControls.appendChild(clearPageBtn);
           annotatorControls.appendChild(annotatorIndicator);
+          annotatorControls.appendChild(flagBtn);
+          annotatorControls.appendChild(cookieBtn);
+          annotatorControls.appendChild(starBtn);
+          if (presenterStatusIndicator) {
+            presenterStatusIndicator.style.marginLeft = '4px';
+            annotatorControls.appendChild(presenterStatusIndicator);
+          }
           
           const canvasContainer = document.createElement('div');
           canvasContainer.className = 'pdf-canvas-container';
           canvasContainer.id = 'pdf-canvas-container';
           
+          if (!window.pdfViewerState) {
+            window.pdfViewerState = {
+              pdfDoc: null,
+              pageNum: 1,
+              scale: 1.5,
+              canvasContainer: null,
+              goToPage: null
+            };
+          }
+          window.pdfViewerState.canvasContainer = pdfContainer;
+          
           controls.appendChild(prevBtn);
           controls.appendChild(nextBtn);
           controls.appendChild(pageInfo);
-          controls.appendChild(document.createTextNode(' | '));
           controls.appendChild(zoomOutBtn);
           controls.appendChild(zoomInBtn);
           controls.appendChild(fitToViewerBtn);
@@ -1617,6 +1547,11 @@
           pdfContainer.appendChild(controls);
           pdfContainer.appendChild(canvasContainer);
           lessonFileViewer.appendChild(pdfContainer);
+          
+          // Set presenter sync references for PDF.js viewer
+          currentPdfContainer = pdfContainer;
+          currentPdfIframe = null;
+          window.currentPdfMaterialId = material.id;
           
           // Show loading
           canvasContainer.innerHTML = '<div class="pdf-loading">Loading PDF...</div>';
@@ -1636,10 +1571,18 @@
           let pageCanvases = {}; // Store canvas elements for each page
           const pdfEventBus = new EventTarget();
           
+          // Expose PDF state for presenter sync (teacher/student)
+          window.pdfViewerState.pdfDoc = null;
+          window.pdfViewerState.pageNum = pageNum;
+          window.pdfViewerState.scale = scale;
+          window.pdfViewerState.canvasContainer = pdfContainer;
+          window.pdfViewerState.goToPage = null;
+          
           // PDF annotation state (per page) - teacher draws, students follow
           const annotationState = new Map(); // pageNumber -> [strokes]
           const annotationLayers = new Map(); // pageNumber -> { canvas, ctx, viewport }
-          let annotationEnabled = isTeacher;
+          const allowStudentAnnotations = true;
+          let annotationEnabled = isTeacher || (allowStudentAnnotations && isStudent);
           let annotationMode = 'pen';
           let annotationColor = annotationColorPicker.value || '#ff3b30';
           let annotationSize = parseInt(annotationSizeSelect.value, 10) || 4;
@@ -1648,15 +1591,18 @@
           function setAnnotationInteractivity() {
             annotationLayers.forEach(({ canvas }) => {
               if (!canvas) return;
-              canvas.style.pointerEvents = annotationEnabled && isTeacher ? 'auto' : 'none';
+              canvas.style.pointerEvents = annotationEnabled && (isTeacher || allowStudentAnnotations) ? 'auto' : 'none';
             });
             if (annotateToggle) {
-              annotateToggle.textContent = annotationEnabled ? 'Annotating' : 'Enable Annotate';
+              annotateToggle.textContent = annotationEnabled ? '✏️' : '✏️';
               annotateToggle.classList.toggle('active', annotationEnabled);
             }
             if (annotatorIndicator) {
               annotatorIndicator.textContent = annotationEnabled
-                ? (isTeacher ? 'Broadcasting live annotations' : 'Following teacher annotations')
+                ? '●'
+                : '○';
+              annotatorIndicator.title = annotationEnabled
+                ? (isTeacher ? 'Broadcasting annotations' : 'Following annotations')
                 : 'Annotations paused';
             }
           }
@@ -1701,12 +1647,12 @@
             annotationCanvas.height = viewport.height;
             annotationCanvas.style.width = viewport.width + 'px';
             annotationCanvas.style.height = viewport.height + 'px';
-            annotationCanvas.style.pointerEvents = annotationEnabled && isTeacher ? 'auto' : 'none';
+            annotationCanvas.style.pointerEvents = annotationEnabled && (isTeacher || allowStudentAnnotations) ? 'auto' : 'none';
             canvasDiv.appendChild(annotationCanvas);
             const ctx = annotationCanvas.getContext('2d');
             annotationLayers.set(pageNumber, { canvas: annotationCanvas, ctx, viewport });
             redrawAnnotations(pageNumber);
-            if (isTeacher) {
+            if (isTeacher || allowStudentAnnotations) {
               attachAnnotationListeners(annotationCanvas, pageNumber);
             }
           }
@@ -1721,7 +1667,7 @@
           
           function attachAnnotationListeners(annotationCanvas, pageNumber) {
             annotationCanvas.addEventListener('pointerdown', (e) => {
-              if (!annotationEnabled || !isTeacher) return;
+              if (!annotationEnabled || !(isTeacher || allowStudentAnnotations)) return;
               e.preventDefault();
               annotationMode = annotationMode || 'pen';
               activeStroke = {
@@ -1734,7 +1680,7 @@
             });
             
             annotationCanvas.addEventListener('pointermove', (e) => {
-              if (!activeStroke || !annotationEnabled || !isTeacher) return;
+              if (!activeStroke || !annotationEnabled || !(isTeacher || allowStudentAnnotations)) return;
               e.preventDefault();
               const nextPoint = getNormalizedPos(e, annotationCanvas);
               activeStroke.points.push(nextPoint);
@@ -1758,7 +1704,7 @@
             });
             
             const finishStroke = () => {
-              if (!activeStroke || !annotationEnabled || !isTeacher) return;
+              if (!activeStroke || !annotationEnabled || !(isTeacher || allowStudentAnnotations)) return;
               const strokes = annotationState.get(pageNumber) || [];
               strokes.push(activeStroke);
               annotationState.set(pageNumber, strokes);
@@ -1781,7 +1727,7 @@
           }
           
           function sendAnnotationUpdate(payload = {}) {
-            if (!socket || !socket.connected || userType !== 'teacher') return;
+            if (!socket || !socket.connected) return;
             socket.emit('annotation-sync', {
               room,
               materialId: window.currentPdfMaterialId || material.id,
@@ -1826,13 +1772,9 @@
           }
           
           if (isStudent) {
-            annotationEnabled = true; // allow viewing synced annotations
-            annotateToggle.style.display = 'none';
-            annotationColorPicker.style.display = 'none';
-            annotationSizeSelect.style.display = 'none';
-            eraseBtn.style.display = 'none';
-            clearPageBtn.style.display = 'none';
-            annotatorIndicator.textContent = 'Following teacher annotations';
+            annotatorIndicator.textContent = allowStudentAnnotations
+              ? 'Annotating with teacher'
+              : 'Following teacher annotations';
           } else {
             annotatorIndicator.textContent = 'Annotate and sync with students';
           }
@@ -1892,7 +1834,7 @@
                 }
                 
                 // Update page info
-                pageInfo.textContent = `Page ${pageNum} of ${pdfDoc.numPages}`;
+                pageInfo.textContent = `${pageNum}/${pdfDoc.numPages}`;
                 
                 // Update buttons
                 prevBtn.disabled = pageNum <= 1;
@@ -1946,7 +1888,7 @@
                 page.render(renderContext).promise.then(function() {
                   if (i === pdfDoc.numPages) {
                     allPagesRendered = true;
-                    pageInfo.textContent = `Page ${pageNum} of ${pdfDoc.numPages}`;
+                    pageInfo.textContent = `${pageNum}/${pdfDoc.numPages}`;
                     prevBtn.disabled = pageNum <= 1;
                     nextBtn.disabled = pageNum >= pdfDoc.numPages;
                     emitPageChange(pageNum);
@@ -1974,12 +1916,15 @@
             if (!pdfDoc) return;
             const clamped = Math.min(pdfDoc.numPages, Math.max(1, targetPage));
             pageNum = clamped;
+            window.pdfViewerState.pageNum = pageNum;
             queueRenderPage(pageNum, useFitScale);
             const targetCanvas = pageCanvases[pageNum]?.canvasDiv;
             if (targetCanvas) {
               targetCanvas.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
           }
+          
+          window.pdfViewerState.goToPage = goToPage;
           
           function queueRenderPage(num, useFitScale = false) {
             if (pageRendering) {
@@ -1997,10 +1942,12 @@
           function onPrevPage() {
             if (pageNum <= 1) return;
             pageNum--;
+            window.pdfViewerState.pageNum = pageNum;
             const targetPage = document.getElementById(`pdf-page-${pageNum}`);
             if (targetPage) {
               targetPage.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              pageInfo.textContent = `Page ${pageNum} of ${pdfDoc.numPages}`;
+              pageInfo.textContent = `${pageNum}/${pdfDoc.numPages}`;
+              window.pdfViewerState.pageNum = pageNum;
               prevBtn.disabled = pageNum <= 1;
               nextBtn.disabled = pageNum >= pdfDoc.numPages;
               
@@ -2027,10 +1974,11 @@
           function onNextPage() {
             if (pageNum >= pdfDoc.numPages) return;
             pageNum++;
+            window.pdfViewerState.pageNum = pageNum;
             const targetPage = document.getElementById(`pdf-page-${pageNum}`);
             if (targetPage) {
               targetPage.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              pageInfo.textContent = `Page ${pageNum} of ${pdfDoc.numPages}`;
+              pageInfo.textContent = `${pageNum}/${pdfDoc.numPages}`;
               prevBtn.disabled = pageNum <= 1;
               nextBtn.disabled = pageNum >= pdfDoc.numPages;
               
@@ -2207,6 +2155,8 @@
             console.log('✅ PDF loaded successfully:', pdf.numPages, 'pages');
             pdfDoc = pdf;
             pageNum = 1;
+            window.pdfViewerState.pdfDoc = pdfDoc;
+            window.pdfViewerState.pageNum = pageNum;
             
             // Auto-fit to viewer on load
             fitToViewerMode = true;
@@ -2426,7 +2376,7 @@
         // Update presenter mode references if PDF is displayed and auto-start sync for teachers
         if (isPDF && userType === 'teacher') {
           currentPdfIframe = document.getElementById('pdf-iframe-' + material.id);
-          currentPdfContainer = document.getElementById('pdf-container-' + material.id);
+          currentPdfContainer = document.getElementById('pdf-container-' + material.id) || currentPdfContainer || window.pdfViewerState?.canvasContainer;
           
           // Automatically start presenter mode if not already active
           if (!presenterModeActive) {
@@ -2471,7 +2421,7 @@
         if (userType !== 'teacher') return;
         
         // Check if we have PDF or PPTX file loaded
-        const hasPDF = currentPdfIframe && currentPdfContainer;
+        const hasPDF = !!currentPdfContainer || !!window.pdfViewerState?.canvasContainer;
         const hasPPT = document.getElementById('ppt-iframe-' + (window.currentMaterialId || window.currentPdfMaterialId));
         
         if (!hasPDF && !hasPPT) {
@@ -2522,7 +2472,11 @@
       // startSlidesSync function removed - no longer needed
       
       function startPresenterSync() {
-        if (!presenterModeActive || !currentPdfIframe || !currentPdfContainer) return;
+        const syncContainer = currentPdfContainer || window.pdfViewerState?.canvasContainer;
+        if (!presenterModeActive || !syncContainer) return;
+        if (!currentPdfContainer) {
+          currentPdfContainer = syncContainer;
+        }
         
         // Clear any existing interval
         if (presenterSyncInterval) {
@@ -2531,7 +2485,7 @@
         
         // Sync every 100ms for smooth real-time updates
         presenterSyncInterval = setInterval(() => {
-          if (!presenterModeActive || !currentPdfIframe || !currentPdfContainer) {
+          if (!presenterModeActive || !currentPdfContainer) {
             if (presenterSyncInterval) {
               clearInterval(presenterSyncInterval);
               presenterSyncInterval = null;
@@ -2545,13 +2499,8 @@
             const scrollLeft = currentPdfContainer.scrollLeft;
             
             // Try to get page number from iframe src
-            let page = null;
-            const iframeSrc = currentPdfIframe.src;
-            const pageMatch = iframeSrc.match(/#page[=:](\d+)/i);
-            if (pageMatch) {
-              page = parseInt(pageMatch[1]);
-            } else {
-              // Estimate page from scroll position (fallback)
+            let page = window.pdfViewerState?.pageNum || null;
+            if (!page) {
               const estimatedPageHeight = 1100;
               page = Math.max(1, Math.floor(scrollTop / estimatedPageHeight) + 1);
             }
@@ -3043,6 +2992,8 @@
 
         console.log('📄 [STUDENT] presenter-sync-update received', { page, scrollTop, scrollLeft, materialId });
         
+        const viewerState = window.pdfViewerState || {};
+        
         // Legacy converted slides support removed - files are now displayed directly
         // PPTX files loaded directly in iframes cannot be synced via slide index
         // Students will see the PPTX file in the iframe but won't have slide-by-slide sync
@@ -3050,19 +3001,24 @@
         // PDF fallback
         const iframe = studentPdfIframe || document.getElementById('pdf-iframe-' + (materialId || window.currentPdfMaterialId));
         if (!iframe) {
-          console.warn('⚠️ [STUDENT] presenter-sync-update: iframe not found for material', materialId || window.currentPdfMaterialId);
-          return;
+          // Fall back to PDF.js canvas container
+          if (!studentPdfContainer && viewerState.canvasContainer) {
+            studentPdfContainer = viewerState.canvasContainer;
+          }
         }
 
-        if (!studentPdfIframe) studentPdfIframe = iframe;
-        if (!studentPdfContainer) {
+        if (iframe && !studentPdfIframe) studentPdfIframe = iframe;
+        if (!studentPdfContainer && iframe) {
           studentPdfContainer = iframe.closest('[id^="pdf-"]') || iframe.parentElement;
+        }
+        if (!studentPdfContainer && viewerState.canvasContainer) {
+          studentPdfContainer = viewerState.canvasContainer;
         }
         
         if (page !== undefined && page > 0) {
           // If we have a local PDF render (canvas mode), sync via goToPage
           const ensurePdfReady = (attempts = 20) => {
-            if (pdfDoc && typeof goToPage === 'function') return Promise.resolve();
+            if (viewerState.pdfDoc && typeof viewerState.goToPage === 'function') return Promise.resolve();
             if (attempts <= 0) return Promise.reject(new Error('PDF not ready'));
             return new Promise((resolve, reject) => {
               setTimeout(() => {
@@ -3073,8 +3029,8 @@
           
           try {
             await ensurePdfReady();
-            if (pdfDoc && typeof goToPage === 'function') {
-              goToPage(page, true);
+            if (viewerState.pdfDoc && typeof viewerState.goToPage === 'function') {
+              viewerState.goToPage(page, true);
             }
           } catch (e) {
             console.warn('⚠️ [STUDENT] PDF not ready for page sync, falling back to iframe method');
@@ -3082,7 +3038,7 @@
         }
 
         // Iframe fallback (kept for compatibility)
-        if (page !== undefined && page > 0) {
+        if (iframe && page !== undefined && page > 0) {
           let baseUrl = iframe._pdfBaseUrl;
           if (!baseUrl) {
             const currentSrc = iframe.src;
@@ -4195,6 +4151,7 @@
         try {
           const bookingId = getQueryParam('bookingId') || getQueryParam('bookingid');
           const classroomId = getQueryParam('room') || getQueryParam('classroomId') || room;
+          const slotParam = getQueryParam('slot');
           const token = localStorage.getItem('token');
           
           let booking = null;
@@ -4234,11 +4191,14 @@
             }
           }
           
-          if (booking && booking.date && booking.time) {
+          if (booking && (booking.dateTimeUtc || (booking.date && booking.time))) {
             // Parse booked class date and time using timezone-aware conversion (default to Asia/Manila)
             const bookingZone = booking.timezone || booking.timeZone || booking.zone || 'Asia/Manila';
             const Lux = window.luxon && window.luxon.DateTime;
-            if (Lux) {
+            if (Lux && booking.dateTimeUtc) {
+              const dt = Lux.fromISO(booking.dateTimeUtc, { zone: 'utc' }).setZone(bookingZone);
+              classStartTime = dt.toMillis();
+            } else if (Lux) {
               const dt = Lux.fromISO(`${booking.date}T${booking.time}`, { zone: bookingZone });
               classStartTime = dt.toMillis();
             } else {
@@ -4268,6 +4228,29 @@
             // Fallback to current time if booking not found
             console.warn('⚠️ Could not fetch booking data, using current time as fallback');
             classStartTime = Date.now();
+          }
+
+          // If slot param is present and differs significantly, prefer slot time for testing
+          if (slotParam) {
+            const Lux = window.luxon && window.luxon.DateTime;
+            let slotStartTime = null;
+            const timeParts = slotParam.split(':');
+            if (timeParts.length >= 2) {
+              const hour = parseInt(timeParts[0], 10);
+              const minute = parseInt(timeParts[1], 10);
+              if (!Number.isNaN(hour) && !Number.isNaN(minute)) {
+                if (Lux) {
+                  const dt = Lux.local().set({ hour, minute, second: 0, millisecond: 0 });
+                  slotStartTime = dt.toMillis();
+                } else {
+                  const now = new Date();
+                  slotStartTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minute, 0, 0).getTime();
+                }
+              }
+            }
+            if (slotStartTime && (!classStartTime || Math.abs(slotStartTime - classStartTime) > 30 * 60 * 1000)) {
+              classStartTime = slotStartTime;
+            }
           }
         } catch (error) {
           console.error('❌ Error initializing class timer:', error);
@@ -4368,7 +4351,6 @@
       // Load lesson files from booking's lessonId
       async function loadLessonFilesFromBooking(lessonId) {
         try {
-          showLessonLoading('Loading lesson files…', 5);
           console.log('📚 [AUTO-LOAD] Loading lesson files for lessonId:', lessonId);
           const token = localStorage.getItem('token');
           
@@ -4393,7 +4375,6 @@
           }
           
           console.log(`📚 [AUTO-LOAD] Loading ${files.length} file(s) from lesson...`);
-          updateLessonProgress(`Preparing ${files.length} file(s)…`, 12);
           
           // Process each file and add to lessonState
           files.forEach((file, index) => {
@@ -4413,8 +4394,6 @@
             if (index === 0) {
               console.log(`📚 [AUTO-LOAD] Processing: ${material.name} (${files.length} file${files.length > 1 ? 's' : ''})`);
             }
-            const percent = 12 + Math.round((index / Math.max(1, files.length - 1)) * 78);
-            updateLessonProgress(`Loading: ${material.name || 'file'}`, percent);
             
             // Add to lessonState
             if (material.id && material.data && material.data.length > 100) {
@@ -4432,7 +4411,6 @@
                     // Switch to lesson content tab for students
                     setActiveTab('lesson-content');
                   }
-                  updateLessonProgress('Displaying lesson…', 96);
                 });
               }
             } else {
@@ -4441,11 +4419,9 @@
           });
           
           console.log(`✅ [AUTO-LOAD] Successfully loaded ${files.length} file(s) from booking`);
-          updateLessonProgress('Done', 100);
-          setTimeout(hideLessonLoading, 400);
+          // Lesson loading overlay removed
         } catch (error) {
           console.error('❌ [AUTO-LOAD] Error loading lesson files:', error);
-          hideLessonLoading();
         }
       }
       
@@ -4468,9 +4444,6 @@
         });
       }
 
-      // ==================== VIDEO RECORDING FUNCTIONS REMOVED ====================
-      // Recording functionality removed - using external software like OBS instead
-      // All recording functions (setupRecordingCanvas, updateRecordingCanvas, startRecording, stopRecording, uploadRecording, scheduleRecording) have been removed
 
       // Class Info and Setting button handlers
       const classInfoBtn = document.getElementById('class-info-btn');
@@ -4581,9 +4554,6 @@
         });
       }
 
-      // Stop recording button handler (teacher only)
-      // Recording button event listener removed - using external software like OBS instead
-
       // Button handlers - show/hide based on user type
       const finishBtn = document.getElementById('finish-btn');
       const absentBtn = document.getElementById('absent-btn');
@@ -4680,80 +4650,6 @@
                 console.log('✅ Class finished event emitted to room:', room);
               }
 
-              // Stop recording if active and wait for upload to complete
-              if (isRecording || mediaRecorder) {
-                console.log('🎬 Stopping and saving recording before finishing class...');
-                
-                // Hide recording indicator
-                const recordingStatusEl = document.getElementById('recording-status');
-                const stopRecordingBtn = document.getElementById('stop-recording-btn');
-                if (recordingStatusEl) recordingStatusEl.style.display = 'none';
-                if (stopRecordingBtn) stopRecordingBtn.style.display = 'none';
-                
-                // Stop the MediaRecorder first
-                if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-                  console.log('🛑 Stopping MediaRecorder...');
-                  mediaRecorder.stop();
-                  isRecording = false;
-                  
-                  // Wait for onstop handler to complete upload
-                  console.log('⏳ Waiting for recording upload to complete...');
-                  let uploadComplete = false;
-                  let uploadAttempts = 0;
-                  const maxWaitTime = 60000; // 60 seconds max wait
-                  const startWait = Date.now();
-                  
-                  await new Promise(resolve => {
-                    const checkUpload = setInterval(() => {
-                      uploadAttempts++;
-                      const elapsed = Date.now() - startWait;
-                      
-                      // Check if upload is complete
-                      if (!isUploading && recordedChunks.length === 0) {
-                        uploadComplete = true;
-                        clearInterval(checkUpload);
-                        console.log(`✅ Upload completed after ${(elapsed / 1000).toFixed(1)} seconds`);
-                        resolve();
-                        return;
-                      }
-                      
-                      // Log progress every 5 seconds
-                      if (uploadAttempts % 10 === 0) {
-                        console.log(`⏳ Still uploading... (${(elapsed / 1000).toFixed(1)}s elapsed, ${recordedChunks.length} chunks remaining, isUploading: ${isUploading})`);
-                      }
-                      
-                      // Timeout after max wait time
-                      if (elapsed > maxWaitTime) {
-                        clearInterval(checkUpload);
-                        if (!uploadComplete) {
-                          console.warn(`⚠️ Upload timeout after ${(maxWaitTime / 1000).toFixed(0)} seconds - proceeding anyway`);
-                        }
-                        resolve();
-                      }
-                    }, 500);
-                  });
-                  
-                  if (uploadComplete) {
-                    console.log('✅ Recording upload completed successfully');
-                  } else {
-                    console.warn('⚠️ Upload may not have completed, but proceeding to close classroom');
-                  }
-                } else if (recordedChunks.length > 0) {
-                  // If MediaRecorder is already stopped but we have chunks, upload them
-                  console.log('📤 Uploading remaining chunks...');
-                  try {
-                    await uploadRecording(bookingId);
-                    console.log('✅ Recording upload completed');
-                  } catch (e) {
-                    console.error('❌ Upload failed:', e);
-                  }
-                }
-                
-                // Wait a bit more to ensure server has saved the recording
-                await new Promise(resolve => setTimeout(resolve, 2000));
-                console.log('✅ Recording should be saved to server');
-              }
-
               // Cleanup: Close peer connection and stop streams
               if (peerConnection) {
                 peerConnection.close();
@@ -4824,7 +4720,12 @@
 
       // Reward animation function
       function showRewardAnimation(type) {
-        const emoji = type === 'flag' ? '🚩' : '🍪';
+        const emojiMap = {
+          flag: '🚩',
+          cookie: '🍪',
+          star: '⭐'
+        };
+        const emoji = emojiMap[type] || '⭐';
         const rewardElement = document.createElement('div');
         rewardElement.style.cssText = `
           position: fixed;
@@ -4887,7 +4788,7 @@
         socket.on('reward-animation', (data) => {
           console.log('🎁 [CLIENT] Received reward animation event:', data);
           console.log('🎁 [CLIENT] Current room:', room, 'User type:', userType, 'Socket ID:', socket.id);
-          if (data && (data.type === 'flag' || data.type === 'cookie')) {
+          if (data && (data.type === 'flag' || data.type === 'cookie' || data.type === 'star')) {
             console.log('🎁 [CLIENT] Showing reward animation:', data.type);
             try {
               showRewardAnimation(data.type);
