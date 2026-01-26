@@ -84,6 +84,44 @@ app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 // Serve static files from the public directory
 app.use(express.static(path.join(__dirname, '../public')));
 
+// Ensure PDF.js assets are available under public/vendor/pdfjs
+const ensurePdfjsAssets = () => {
+  const pdfjsSourceDirs = [
+    path.join(__dirname, '../node_modules/pdfjs-dist/build'),
+    path.join(__dirname, '../node_modules/pdfjs-dist/legacy/build')
+  ];
+  const pdfjsDestDir = path.join(__dirname, '../public/vendor/pdfjs');
+  const assetNames = ['pdf.min.mjs', 'pdf.worker.min.mjs'];
+
+  try {
+    if (!fs.existsSync(pdfjsDestDir)) {
+      fs.mkdirSync(pdfjsDestDir, { recursive: true });
+    }
+
+    assetNames.forEach((assetName) => {
+      const destPath = path.join(pdfjsDestDir, assetName);
+      if (fs.existsSync(destPath)) {
+        return;
+      }
+
+      const sourceDir = pdfjsSourceDirs.find((dir) => fs.existsSync(path.join(dir, assetName)));
+      if (!sourceDir) {
+        console.warn(`⚠️ PDF.js asset not found: ${assetName}`);
+        return;
+      }
+
+      fs.copyFileSync(path.join(sourceDir, assetName), destPath);
+    });
+  } catch (error) {
+    console.warn('⚠️ Failed to prepare PDF.js assets:', error);
+  }
+};
+
+ensurePdfjsAssets();
+
+// Serve PDF.js assets from node_modules to avoid third-party CDN warnings
+app.use('/vendor/pdfjs', express.static(path.join(__dirname, '../node_modules/pdfjs-dist/build')));
+
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
@@ -926,241 +964,6 @@ app.get('/student-waiting-room', (req, res) => {
 
 app.get('/admin-login', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/admin-login.html'));
-});
-
-// ==================== VIDEO RECORDING ENDPOINTS ====================
-
-// Ensure recordings directory exists
-const recordingsDir = path.join(__dirname, '../uploads/recordings');
-if (!fs.existsSync(recordingsDir)) {
-  fs.mkdirSync(recordingsDir, { recursive: true });
-  console.log('📁 Created recordings directory');
-}
-
-// Start recording session
-app.post('/api/recording/start', verifyToken, async (req, res) => {
-  console.log('🎬 [RECORDING START] Endpoint called with body:', req.body);
-  try {
-    const { bookingId } = req.body;
-    if (!bookingId) {
-      return res.status(400).json({ success: false, error: 'Missing bookingId' });
-    }
-
-    const booking = await Booking.findById(bookingId);
-    if (!booking) {
-      return res.status(404).json({ success: false, error: 'Booking not found' });
-    }
-
-    // Check if already recording
-    if (booking.recording && booking.recording.isRecording) {
-      return res.status(400).json({ success: false, error: 'Recording already in progress' });
-    }
-
-    // Initialize recording
-    booking.recording = {
-      isRecording: true,
-      recordingStartedAt: new Date(),
-      recordingStoppedAt: null,
-      videoPath: null,
-      videoGeneratedAt: null,
-      videoSize: null,
-      duration: null
-    };
-    await booking.save();
-
-    console.log(`🎬 Recording started for booking ${bookingId}`);
-    res.json({ success: true, message: 'Recording started' });
-  } catch (error) {
-    console.error('❌ Error starting recording:', error);
-    res.status(500).json({ success: false, error: 'Failed to start recording: ' + error.message });
-  }
-});
-
-// Stop recording and generate video
-app.post('/api/recording/stop', verifyToken, async (req, res) => {
-  try {
-    const { bookingId, videoChunks } = req.body;
-    if (!bookingId) {
-      return res.status(400).json({ success: false, error: 'Missing bookingId' });
-    }
-
-    const booking = await Booking.findById(bookingId);
-    if (!booking) {
-      return res.status(404).json({ success: false, error: 'Booking not found' });
-    }
-
-    // If no recording exists, initialize it
-    if (!booking.recording) {
-      booking.recording = {
-        isRecording: false,
-        recordingStartedAt: null,
-        recordingStoppedAt: null,
-        videoPath: null,
-        videoGeneratedAt: null,
-        videoSize: null,
-        duration: null
-      };
-    }
-    
-    // If recording wasn't marked as active, but we have chunks, still save them
-    if (!booking.recording.isRecording && videoChunks && videoChunks.length > 0) {
-      console.log('⚠️ Recording was not marked as active, but video chunks provided. Saving anyway...');
-      // Set a start time if not exists (use current time minus estimated duration)
-      if (!booking.recording.recordingStartedAt) {
-        booking.recording.recordingStartedAt = new Date(Date.now() - (25 * 60 * 1000)); // Assume 25 min recording
-      }
-    } else if (!booking.recording.isRecording && (!videoChunks || videoChunks.length === 0)) {
-      return res.status(400).json({ success: false, error: 'No active recording found and no video data provided' });
-    }
-
-    // Save video chunks to file
-    const videoFileName = `recording-${bookingId}-${Date.now()}.webm`;
-    const videoPath = path.join(recordingsDir, videoFileName);
-    
-    if (videoChunks && videoChunks.length > 0) {
-      // Combine chunks into single buffer
-      const buffers = videoChunks.map(chunk => Buffer.from(chunk, 'base64'));
-      const combinedBuffer = Buffer.concat(buffers);
-      await fsp.writeFile(videoPath, combinedBuffer);
-      
-      const stats = await fsp.stat(videoPath);
-      const duration = booking.recording.recordingStartedAt 
-        ? Math.floor((Date.now() - booking.recording.recordingStartedAt.getTime()) / 1000)
-        : 0;
-
-      // Update booking with recording info
-      booking.recording.isRecording = false;
-      booking.recording.recordingStoppedAt = new Date();
-      booking.recording.videoPath = `/uploads/recordings/${videoFileName}`;
-      booking.recording.videoGeneratedAt = new Date();
-      booking.recording.videoSize = stats.size;
-      booking.recording.duration = duration;
-      await booking.save();
-
-      console.log(`✅ Recording stopped and saved for booking ${bookingId}, size: ${(stats.size / 1024 / 1024).toFixed(2)} MB`);
-      res.json({ 
-        success: true, 
-        message: 'Recording stopped and saved',
-        videoPath: booking.recording.videoPath,
-        videoSize: stats.size,
-        duration
-      });
-    } else {
-      // No chunks provided, just stop recording
-      booking.recording.isRecording = false;
-      booking.recording.recordingStoppedAt = new Date();
-      await booking.save();
-      res.json({ success: true, message: 'Recording stopped (no video data)' });
-    }
-  } catch (error) {
-    console.error('❌ Error stopping recording:', error);
-    res.status(500).json({ success: false, error: 'Failed to stop recording: ' + error.message });
-  }
-});
-
-// Get recording status
-app.get('/api/recording/status/:bookingId', verifyToken, async (req, res) => {
-  try {
-    const { bookingId } = req.params;
-    console.log('🔍 [RECORDING STATUS] Fetching recording status for booking:', bookingId);
-    
-    const booking = await Booking.findById(bookingId);
-    
-    if (!booking) {
-      console.log('❌ [RECORDING STATUS] Booking not found:', bookingId);
-      return res.status(404).json({ success: false, error: 'Booking not found' });
-    }
-
-    let recording = booking.recording || null;
-    
-    // If recording exists with a videoPath, verify the file actually exists
-    if (recording && recording.videoPath) {
-      const videoPath = path.join(__dirname, '..', recording.videoPath);
-      if (!fs.existsSync(videoPath)) {
-        console.warn('⚠️ [RECORDING STATUS] Video file not found at path:', recording.videoPath);
-        // Don't return null, but mark that file is missing
-        recording = {
-          ...recording,
-          fileExists: false
-        };
-      } else {
-        recording = {
-          ...recording,
-          fileExists: true
-        };
-      }
-    } else {
-      // Check if there are any video files in the recordings directory for this booking
-      const recordingsDir = path.join(__dirname, '../uploads/recordings');
-      if (fs.existsSync(recordingsDir)) {
-        const files = fs.readdirSync(recordingsDir);
-        const bookingVideos = files.filter(f => f.includes(bookingId));
-        if (bookingVideos.length > 0) {
-          console.log('📹 [RECORDING STATUS] Found video files for booking:', bookingVideos);
-          // Found video files but not in database - might be orphaned
-          recording = {
-            isRecording: false,
-            videoPath: `/uploads/recordings/${bookingVideos[0]}`,
-            videoGeneratedAt: null,
-            fileExists: true,
-            orphaned: true // File exists but not in database
-          };
-        }
-      }
-    }
-
-    console.log('✅ [RECORDING STATUS] Returning recording status:', {
-      hasRecording: !!recording,
-      hasVideoPath: !!(recording && recording.videoPath),
-      fileExists: recording?.fileExists
-    });
-
-    res.json({
-      success: true,
-      recording: recording || {
-        isRecording: false,
-        videoPath: null,
-        videoGeneratedAt: null,
-        fileExists: false
-      }
-    });
-  } catch (error) {
-    console.error('❌ Error getting recording status:', error);
-    res.status(500).json({ success: false, error: 'Failed to get recording status: ' + error.message });
-  }
-});
-
-// Download/preview video
-app.get('/api/recording/video/:bookingId', verifyToken, async (req, res) => {
-  try {
-    const { bookingId } = req.params;
-    const booking = await Booking.findById(bookingId);
-    
-    if (!booking) {
-      return res.status(404).json({ success: false, error: 'Booking not found' });
-    }
-
-    if (!booking.recording || !booking.recording.videoPath) {
-      return res.status(404).json({ success: false, error: 'No recording found for this booking' });
-    }
-
-    const videoPath = path.join(__dirname, '..', booking.recording.videoPath);
-    
-    if (!fs.existsSync(videoPath)) {
-      return res.status(404).json({ success: false, error: 'Video file not found' });
-    }
-
-    // Set headers for video streaming/download
-    res.setHeader('Content-Type', 'video/webm');
-    res.setHeader('Content-Disposition', `attachment; filename="lesson-recording-${bookingId}.webm"`);
-    
-    // Stream the file
-    const fileStream = fs.createReadStream(videoPath);
-    fileStream.pipe(res);
-  } catch (error) {
-    console.error('❌ Error serving video:', error);
-    res.status(500).json({ success: false, error: 'Failed to serve video: ' + error.message });
-  }
 });
 
 // Error handling middleware
@@ -2178,64 +1981,6 @@ async function cleanupExpiredMaterials() {
 // This will be scheduled after DB connection in startServer()
 let cleanupInterval = null;
 
-// Cleanup old recordings (older than 7 days)
-async function cleanupOldRecordings() {
-  try {
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    
-    // Find bookings with recordings older than 7 days
-    const oldBookings = await Booking.find({
-      'recording.videoGeneratedAt': { $lt: sevenDaysAgo },
-      'recording.videoPath': { $exists: true, $ne: null }
-    });
-
-    let deletedCount = 0;
-    for (const booking of oldBookings) {
-      if (booking.recording && booking.recording.videoPath) {
-        const videoPath = path.join(__dirname, '..', booking.recording.videoPath);
-        try {
-          if (fs.existsSync(videoPath)) {
-            await fsp.unlink(videoPath);
-            deletedCount++;
-            console.log(`🗑️ Deleted old recording: ${booking.recording.videoPath}`);
-          }
-          
-          // Clear recording path from database
-          booking.recording.videoPath = null;
-          booking.recording.videoSize = null;
-          await booking.save();
-        } catch (err) {
-          console.error(`❌ Error deleting recording for booking ${booking._id}:`, err);
-        }
-      }
-    }
-
-    if (deletedCount > 0) {
-      console.log(`✅ Cleaned up ${deletedCount} old recording(s)`);
-    }
-  } catch (error) {
-    console.error('❌ Error cleaning up old recordings:', error);
-  }
-}
-
-// Run cleanup daily at 2 AM (will be scheduled after DB connection)
-const scheduleCleanup = () => {
-  const now = new Date();
-  const tomorrow = new Date(now);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  tomorrow.setHours(2, 0, 0, 0);
-  
-  const msUntilCleanup = tomorrow.getTime() - now.getTime();
-  
-  setTimeout(() => {
-    cleanupOldRecordings();
-    // Schedule next cleanup (every 24 hours)
-    setInterval(cleanupOldRecordings, 24 * 60 * 60 * 1000);
-  }, msUntilCleanup);
-  
-  console.log(`🧹 Recording cleanup scheduled (daily at 2 AM)`);
-};
 
 // Start server - listen immediately, connect DB in background
 const startServer = () => {
@@ -2281,8 +2026,6 @@ const startServer = () => {
           cleanupInterval = setInterval(cleanupExpiredMaterials, 60 * 60 * 1000); // Every hour
           console.log(`🧹 Cleanup jobs scheduled (every hour)`);
           
-          // Schedule recording cleanup (daily at 2 AM)
-          scheduleCleanup();
         }
       }).catch((err) => {
         console.error('❌ Database connection failed in background:', err.message);

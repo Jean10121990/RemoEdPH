@@ -183,6 +183,18 @@
                 <h2>⌨️ Typing Test</h2>
                 <div id="typing-content"></div>
             </div>
+
+            <!-- Grammar Test -->
+            <div class="test-card" id="grammar-card">
+                <h2>📘 Grammar Test</h2>
+                <div id="grammar-content"></div>
+            </div>
+
+            <!-- Vocabulary Test -->
+            <div class="test-card" id="vocabulary-card">
+                <h2>📗 Vocabulary Test</h2>
+                <div id="vocabulary-content"></div>
+            </div>
             
             <!-- Reading Test -->
             <div class="test-card" id="reading-card">
@@ -332,6 +344,54 @@
                     `;
                 } else {
                     document.getElementById('reading-card').style.display = 'none';
+                }
+
+                // Display Grammar Test
+                if (data.tests.grammar && data.tests.grammar.score !== undefined && data.tests.grammar.score !== null) {
+                    const grammarContent = document.getElementById('grammar-content');
+                    const grammarTotal = data.tests.grammar.total || 0;
+                    grammarContent.innerHTML = `
+                        <div class="test-info">
+                            <div class="info-item">
+                                <div class="info-label">Status</div>
+                                <div class="info-value">✅ Completed</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Score</div>
+                                <div class="info-value">${data.tests.grammar.score} / ${grammarTotal}</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Completed At</div>
+                                <div class="info-value">${data.tests.grammar.completedAt ? new Date(data.tests.grammar.completedAt).toLocaleString() : 'N/A'}</div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    document.getElementById('grammar-card').style.display = 'none';
+                }
+
+                // Display Vocabulary Test
+                if (data.tests.vocabulary && data.tests.vocabulary.score !== undefined && data.tests.vocabulary.score !== null) {
+                    const vocabularyContent = document.getElementById('vocabulary-content');
+                    const vocabTotal = data.tests.vocabulary.total || 0;
+                    vocabularyContent.innerHTML = `
+                        <div class="test-info">
+                            <div class="info-item">
+                                <div class="info-label">Status</div>
+                                <div class="info-value">✅ Completed</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Score</div>
+                                <div class="info-value">${data.tests.vocabulary.score} / ${vocabTotal}</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Completed At</div>
+                                <div class="info-value">${data.tests.vocabulary.completedAt ? new Date(data.tests.vocabulary.completedAt).toLocaleString() : 'N/A'}</div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    document.getElementById('vocabulary-card').style.display = 'none';
                 }
 
                 // Display Pronunciation Test

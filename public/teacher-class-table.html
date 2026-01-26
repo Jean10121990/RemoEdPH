@@ -2326,54 +2326,26 @@
     async function showClassInfo(booking, ev) {
       currentBooking = booking;
       
-      // Fetch fresh booking data to ensure we have the latest recording information
+      // Fetch fresh booking data to keep modal in sync
       try {
         const token = localStorage.getItem('token');
         if (token && booking._id) {
-          // Fetch both booking details and recording status
-          const [freshBookingResp, recordingStatusResp] = await Promise.all([
-            fetch(`/api/teacher/booking/${booking._id}`, {
-              headers: {
-                'Authorization': `Bearer ${token}`
-              }
-            }),
-            fetch(`/api/recording/status/${booking._id}`, {
-              headers: {
-                'Authorization': `Bearer ${token}`
-              }
-            }).catch(() => null) // Don't fail if recording status endpoint fails
-          ]);
+          const freshBookingResp = await fetch(`/api/teacher/booking/${booking._id}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
           
           if (freshBookingResp.ok) {
             const freshData = await freshBookingResp.json();
-            // Merge fresh booking data (especially recording field)
             if (freshData.booking) {
               booking = { ...booking, ...freshData.booking };
               currentBooking = booking;
             }
           }
-          
-          // Also check recording status endpoint as fallback
-          if (recordingStatusResp && recordingStatusResp.ok) {
-            const recordingData = await recordingStatusResp.json();
-            if (recordingData.success && recordingData.recording) {
-              // Ensure recording field exists in booking
-              if (!booking.recording) {
-                booking.recording = {};
-              }
-              // Merge recording data
-              booking.recording = {
-                ...booking.recording,
-                ...recordingData.recording
-              };
-              currentBooking.recording = booking.recording;
-              console.log('✅ Updated booking with recording status:', booking.recording);
-            }
-          }
         }
       } catch (e) {
         console.warn('Could not fetch fresh booking data:', e);
-        // Continue with existing booking data
       }
       
               // Check if class has a resolved issue
@@ -2444,161 +2416,16 @@
       console.log('  - Current time:', buttonNow.toISOString());
       console.log('  - Elapsed minutes:', buttonElapsedMinutes);
       console.log('  - Elapsed hours:', buttonElapsedHours.toFixed(2));
-      console.log('  - Has recording field:', 'recording' in booking);
-      console.log('  - Recording value:', booking.recording);
-      console.log('  - Has videoPath:', !!(booking.recording && booking.recording.videoPath));
-      if (booking.recording) {
-        console.log('  - Recording details:', {
-          isRecording: booking.recording.isRecording,
-          videoPath: booking.recording.videoPath,
-          videoGeneratedAt: booking.recording.videoGeneratedAt,
-          duration: booking.recording.duration
-        });
-      }
-      
       // Function to update button
-      const updateButton = async () => { // Made async to allow fetching recording status
+      const updateButton = () => {
         const joinBtn = document.getElementById('join-classroom-btn');
         if (!joinBtn) return;
-        
-        // Check for test mode (bypass 1-hour wait for testing)
-        const testMode = localStorage.getItem('recordingTestMode') === 'true' || 
-                        new URLSearchParams(window.location.search).get('testRecording') === 'true';
-        
-        // Recalculate time in case it's been updated
-        const startTime2 = getManilaDate(booking.date, booking.time);
-        const buttonNow2 = getManilaNow();
-        const buttonElapsedHours2 = (buttonNow2 - startTime2) / (1000 * 60 * 60);
-        
-        let hasVideo = booking.recording && booking.recording.videoPath;
-        
-        // Always check the API for video status if we don't have a videoPath yet
-        // This ensures we catch videos that were just generated
-        if (!hasVideo && booking._id) {
-          try {
-            const token = localStorage.getItem('token');
-            const recordingStatusResp = await fetch(`/api/recording/status/${booking._id}`, {
-              headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (recordingStatusResp.ok) {
-              const statusData = await recordingStatusResp.json();
-              if (statusData.success && statusData.recording && statusData.recording.videoPath) {
-                hasVideo = true;
-                booking.recording = statusData.recording;
-                currentBooking = booking;
-                if (testMode) {
-                  console.log('🧪 [TEST MODE] Found video via API check:', statusData.recording);
-                } else {
-                  console.log('✅ Found video via API check:', statusData.recording);
-                }
-              } else if (statusData.success && statusData.recording) {
-                // Update booking with recording data even if no videoPath yet
-                if (!booking.recording) {
-                  booking.recording = {};
-                }
-                booking.recording = {
-                  ...booking.recording,
-                  ...statusData.recording
-                };
-                currentBooking.recording = booking.recording;
-                console.log('📹 Recording status updated (no video yet):', statusData.recording);
-              }
-            }
-          } catch (e) {
-            console.warn('Could not fetch recording status:', e);
-          }
-        }
-        
-        // In test mode, bypass the 1-hour wait - only check if video exists
-        const oneHourPassed = testMode ? true : (buttonElapsedHours2 >= 1);
-        
-        console.log('🔄 Updating button - One hour passed:', oneHourPassed, 'Has video:', hasVideo, 'Test mode:', testMode);
-        
-        if (oneHourPassed && hasVideo) {
-          // After 1 hour (or in test mode) and video is available, show Preview Video and auto-download
-          joinBtn.textContent = 'Preview Video';
-          joinBtn.onclick = () => previewLesson(booking._id, true); // true = auto-download
-          if (testMode) {
-            console.log('🧪 [TEST MODE] Button changed to Preview Video (bypassing 1-hour wait)');
-          } else {
-            console.log('✅ Button changed to Preview Video (auto-download)');
-          }
-        } else {
-          // Before 1 hour or no video, show Enter Live Classroom
-          joinBtn.textContent = 'Enter Live Classroom';
-          joinBtn.onclick = () => joinClassroom();
-          if (!oneHourPassed && !testMode) {
-            const remainingMinutes = Math.ceil((1 - buttonElapsedHours2) * 60);
-            console.log(`⏰ Button shows Enter Live Classroom - ${remainingMinutes} minutes until preview available`);
-          } else if (!hasVideo) {
-            if (testMode) {
-              console.log('🧪 [TEST MODE] No video available yet - recording may still be processing');
-            } else {
-              console.log('⚠️ Button shows Enter Live Classroom - no video available (recording may still be processing)');
-            }
-          }
-        }
+        joinBtn.textContent = 'Enter Live Classroom';
+        joinBtn.onclick = () => joinClassroom();
       };
       
       // Update button immediately
-      await updateButton();
-      
-      // Set up periodic check to update button if conditions change (every 30 seconds)
-      // Clear any existing interval
-      if (window.classInfoButtonInterval) {
-        clearInterval(window.classInfoButtonInterval);
-      }
-      
-      // Set up new interval to check and update button
-      window.classInfoButtonInterval = setInterval(async () => {
-        // Try to fetch fresh booking data and recording status
-        try {
-          const token = localStorage.getItem('token');
-          if (token && booking._id) {
-            const [freshBookingResp, recordingStatusResp] = await Promise.all([
-              fetch(`/api/teacher/booking/${booking._id}`, {
-                headers: {
-                  'Authorization': `Bearer ${token}`
-                }
-              }),
-              fetch(`/api/recording/status/${booking._id}`, {
-                headers: {
-                  'Authorization': `Bearer ${token}`
-                }
-              }).catch(() => null)
-            ]);
-            
-            if (freshBookingResp.ok) {
-              const freshData = await freshBookingResp.json();
-              if (freshData.booking) {
-                booking = { ...booking, ...freshData.booking };
-                currentBooking = booking;
-              }
-            }
-            
-            // Also check recording status endpoint
-            if (recordingStatusResp && recordingStatusResp.ok) {
-              const recordingData = await recordingStatusResp.json();
-              if (recordingData.success && recordingData.recording) {
-                if (!booking.recording) {
-                  booking.recording = {};
-                }
-                booking.recording = {
-                  ...booking.recording,
-                  ...recordingData.recording
-                };
-                currentBooking.recording = booking.recording;
-                console.log('🔄 Updated booking with recording status in interval:', booking.recording);
-              }
-            }
-          }
-        } catch (e) {
-          console.warn('Could not fetch fresh booking data in interval:', e);
-        }
-        
-        // Update button with current data
-        await updateButton();
-      }, 30000); // Check every 30 seconds
+      updateButton();
       
       // Show class management buttons for classes that have started (15+ minutes) or are completed/absent
       // Removed 'past' status since we disabled automatic past marking
@@ -2649,13 +2476,6 @@
     function closeClassInfo() {
       document.getElementById('class-info-modal').classList.remove('show');
       currentBooking = null;
-      
-      // Clear the interval when modal is closed
-      if (window.classInfoButtonInterval) {
-        clearInterval(window.classInfoButtonInterval);
-        window.classInfoButtonInterval = null;
-        console.log('🧹 Cleared class info button update interval');
-      }
     }
 
     async function joinClassroom() {
@@ -2670,60 +2490,6 @@
       window.open(roomUrl, '_blank');
     }
     
-    async function previewLesson(bookingId, autoDownload = true) {
-      try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          alert('Please log in to preview the lesson.');
-          return;
-        }
-        
-        // Show loading message
-        if (autoDownload) {
-          const notification = document.createElement('div');
-          notification.textContent = '📥 Downloading lesson video...';
-          notification.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #667eea; color: white; padding: 12px 20px; border-radius: 8px; z-index: 10000; box-shadow: 0 4px 6px rgba(0,0,0,0.1);';
-          document.body.appendChild(notification);
-          setTimeout(() => notification.remove(), 3000);
-        }
-        
-        // Download the video
-        const response = await fetch(`/api/recording/video/${bookingId}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        
-        if (!response.ok) {
-          const error = await response.json();
-          alert('Failed to load video: ' + (error.error || 'Unknown error'));
-          return;
-        }
-        
-        // Create blob and automatically download
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `lesson-recording-${bookingId}-${new Date().toISOString().split('T')[0]}.webm`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-        
-        if (autoDownload) {
-          const successNotification = document.createElement('div');
-          successNotification.textContent = '✅ Video downloaded successfully!';
-          successNotification.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #28a745; color: white; padding: 12px 20px; border-radius: 8px; z-index: 10000; box-shadow: 0 4px 6px rgba(0,0,0,0.1);';
-          document.body.appendChild(successNotification);
-          setTimeout(() => successNotification.remove(), 3000);
-        }
-      } catch (error) {
-        console.error('Error previewing lesson:', error);
-        alert('Failed to download video: ' + error.message);
-      }
-    }
-
     // Close modal when clicking outside
     window.onclick = function(event) {
       const modal = document.getElementById('class-info-modal');
@@ -2873,22 +2639,6 @@
     // Initialize when page loads
     document.addEventListener('DOMContentLoaded', () => {
       console.log('🔄 Page loaded - Loading fresh data');
-      
-      // Check for test mode (bypass 1-hour wait for video preview)
-      const testMode = new URLSearchParams(window.location.search).get('testRecording') === 'true';
-      if (testMode) {
-        localStorage.setItem('recordingTestMode', 'true');
-        console.log('🧪 TEST MODE ENABLED: Video preview button will appear immediately if video exists (bypassing 1-hour wait)');
-        console.log('🧪 To disable test mode, add ?testRecording=false to URL or run: localStorage.removeItem("recordingTestMode")');
-      } else if (new URLSearchParams(window.location.search).get('testRecording') === 'false') {
-        localStorage.removeItem('recordingTestMode');
-        console.log('🧪 TEST MODE DISABLED');
-      }
-      
-      // Show test mode status in console
-      if (localStorage.getItem('recordingTestMode') === 'true') {
-        console.log('🧪 RECORDING TEST MODE IS ACTIVE - Preview button will show immediately if video exists');
-      }
       
       // Clear only slot-related cache, preserve login and time log data
       localStorage.removeItem('last_slot_update');

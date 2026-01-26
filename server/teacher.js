@@ -994,9 +994,7 @@ router.get('/slots', async (req, res) => {
             firstName: student.firstName,
             lastName: student.lastName
           } : { username: booking.studentId },
-          hasResolvedIssue: resolvedIssues.length > 0,
-          // Explicitly ensure recording field is included
-          recording: bookingObj.recording || booking.recording || null
+          hasResolvedIssue: resolvedIssues.length > 0
         };
       })
     );
@@ -1480,7 +1478,6 @@ router.get('/booking/:bookingId', verifyToken, requireTeacher, async (req, res) 
         studentName: studentName,
         teacherName: teacherName,
         status: booking.status,
-        recording: booking.recording || null, // Include recording field
         finishedAt: booking.finishedAt,
         attendance: booking.attendance
       }

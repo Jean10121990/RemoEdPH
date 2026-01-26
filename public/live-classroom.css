@@ -171,6 +171,11 @@ body {
   color: white;
 }
 
+.star-btn {
+  background: #f59e0b;
+  color: white;
+}
+
 .tabs {
   display: flex;
   border-bottom: 2px solid #e0e6ed;

@@ -690,7 +690,6 @@
                     }
                     return response.json();
                 })
-                .then(response => response.json())
                 .then(data => {
                     const connections = data.connections || [];
                     
@@ -771,7 +770,6 @@
                     }
                     return response.json();
                 })
-                .then(response => response.json())
                 .then(data => {
                     const pendingRequests = data.requests || [];
                     
@@ -855,7 +853,6 @@
                     }
                     return response.json();
                 })
-                .then(response => response.json())
                 .then(data => {
                     const sentRequests = data.requests || [];
                     
@@ -975,13 +972,14 @@
                     message: message
                 })
             })
-            .then(response => {
+            .then(async response => {
                 if (!response.ok) {
-                    throw new Error('Failed to send connection request');
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || 'Failed to send connection request');
                 }
                 return response.json();
             })
-            .then(data => {
+            .then(() => {
                 alert('Connection request sent! The teacher will be notified.');
                 // Remove peerId from URL
                 window.history.replaceState({}, document.title, window.location.pathname);
@@ -991,7 +989,7 @@
             })
             .catch(error => {
                 console.error('Error sending connection request:', error);
-                alert('Failed to send connection request. Please try again.');
+                alert(error.message || 'Failed to send connection request. Please try again.');
             });
         }
         

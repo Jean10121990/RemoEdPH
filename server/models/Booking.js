@@ -35,16 +35,6 @@ const bookingSchema = new mongoose.Schema({
     reason: { type: String },
     rejected: { type: Boolean, default: false }
   },
-  // Video recording tracking
-  recording: {
-    isRecording: { type: Boolean, default: false },
-    recordingStartedAt: { type: Date },
-    recordingStoppedAt: { type: Date },
-    videoPath: { type: String }, // Path to the recorded video file
-    videoGeneratedAt: { type: Date }, // When video was fully generated
-    videoSize: { type: Number }, // Video file size in bytes
-    duration: { type: Number } // Recording duration in seconds
-  },
   createdAt: { type: Date, default: Date.now }
 });
 module.exports = mongoose.model('Booking', bookingSchema); 

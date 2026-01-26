@@ -1135,10 +1135,6 @@
             <label>Join Classroom:</label>
             <button class="btn-join" id="join-classroom-btn">Enter Live Classroom</button>
           </div>
-          <div class="detail-row" id="preview-lesson-row" style="display: none;">
-            <label>Preview Video:</label>
-            <button class="btn-join" id="preview-lesson-btn" style="background: #17a2b8;">Preview Video</button>
-          </div>
           <div class="detail-row" id="cancel-booking-row" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #e0e6ed;">
             <label>Actions:</label>
             <button class="btn-cancel" id="cancel-booking-btn" style="background: #dc3545; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; transition: all 0.3s ease;">
@@ -2358,25 +2354,8 @@
       const now = new Date();
       const isPastOrStarted = classDateTime <= now;
       const isCancelled = booking.status === 'cancelled';
-      const elapsedHours = (now - classDateTime) / (1000 * 60 * 60);
-      
-      // Show Preview Video button if 1 hour has passed and video is available
-      const previewRow = document.getElementById('preview-lesson-row');
-      const previewBtn = document.getElementById('preview-lesson-btn');
       const joinBtn = document.getElementById('join-classroom-btn');
-      
-      if (elapsedHours >= 1 && booking.recording && booking.recording.videoPath) {
-        // After 1 hour, show Preview Video instead
-        if (previewRow) previewRow.style.display = 'flex';
-        if (joinBtn) joinBtn.style.display = 'none';
-        if (previewBtn) {
-          previewBtn.onclick = () => previewLesson(booking._id, true); // true = auto-download
-        }
-      } else {
-        // Before 1 hour, show Enter Live Classroom
-        if (previewRow) previewRow.style.display = 'none';
-        if (joinBtn) joinBtn.style.display = 'inline-block';
-      }
+      if (joinBtn) joinBtn.style.display = 'inline-block';
       
       if (isCancelled || isPastOrStarted) {
         cancelRow.style.display = 'none';
@@ -2403,61 +2382,6 @@
     document.getElementById('booking-info-modal').onclick = function(e) {
       if (e.target === this) closeBookingInfo();
     };
-    // Preview lesson function
-    async function previewLesson(bookingId, autoDownload = true) {
-      try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          alert('Please log in to preview the lesson.');
-          return;
-        }
-        
-        // Show loading message
-        if (autoDownload) {
-          const notification = document.createElement('div');
-          notification.textContent = '📥 Downloading lesson video...';
-          notification.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #667eea; color: white; padding: 12px 20px; border-radius: 8px; z-index: 10000; box-shadow: 0 4px 6px rgba(0,0,0,0.1);';
-          document.body.appendChild(notification);
-          setTimeout(() => notification.remove(), 3000);
-        }
-        
-        // Download the video
-        const response = await fetch(`/api/recording/video/${bookingId}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        
-        if (!response.ok) {
-          const error = await response.json();
-          alert('Failed to load video: ' + (error.error || 'Unknown error'));
-          return;
-        }
-        
-        // Create blob and automatically download
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `lesson-recording-${bookingId}-${new Date().toISOString().split('T')[0]}.webm`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-        
-        if (autoDownload) {
-          const successNotification = document.createElement('div');
-          successNotification.textContent = '✅ Video downloaded successfully!';
-          successNotification.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #28a745; color: white; padding: 12px 20px; border-radius: 8px; z-index: 10000; box-shadow: 0 4px 6px rgba(0,0,0,0.1);';
-          document.body.appendChild(successNotification);
-          setTimeout(() => successNotification.remove(), 3000);
-        }
-      } catch (error) {
-        console.error('Error previewing lesson:', error);
-        alert('Failed to download video: ' + error.message);
-      }
-    }
-    
     document.getElementById('join-classroom-btn').onclick = function() {
       if (!currentBookingInfo) return;
       const classroomId = currentBookingInfo.classroomId;
