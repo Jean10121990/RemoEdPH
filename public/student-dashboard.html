@@ -15,8 +15,6 @@
             padding: 0;
         }
         
-<<<<<<< HEAD
-=======
         /* Floating Fun Elements */
         .fun-floating-elements {
             position: fixed;
@@ -176,7 +174,6 @@
         }
         
         
->>>>>>> 82021f05c965758b36140a1a8099d60eb2ea224f
         /* Navigation Header */
         .nav-header {
             position: fixed;
@@ -417,9 +414,6 @@
         
         /* Main content adjustment */
         .remoed-content {
-<<<<<<< HEAD
-            margin-top: 60px;
-=======
             margin-top: 55px;
             display: flex;
             flex-direction: column;
@@ -452,7 +446,6 @@
         
         .upcoming-classes-container {
             max-height: none;
->>>>>>> 82021f05c965758b36140a1a8099d60eb2ea224f
         }
         
         /* Notification and Upcoming Classes Container */
@@ -600,9 +593,6 @@
         <!-- Navigation Header -->
         <div class="nav-header">
             <div class="nav-left">
-<<<<<<< HEAD
-                <h1 style="margin: 0; font-size: 1.5rem; color: #1a202c;">Dashboard</h1>
-=======
                 <h1 style="margin: 0; font-size: 1.4rem; font-weight: 700; color: #1CA7E7; display: flex; align-items: center; gap: 8px;">
                     <span>🎮 My Learning Adventure</span>
                 </h1>
@@ -612,7 +602,6 @@
                     <span id="points-count">0</span> ⭐
                 </div>
                 <div class="badge" id="level-badge" style="font-size: 0.85rem; padding: 6px 12px;">Level 1 🌱</div>
->>>>>>> 82021f05c965758b36140a1a8099d60eb2ea224f
             </div>
             <div class="nav-right">
                 <!-- Quick Actions Icons -->
@@ -683,14 +672,9 @@
         
         <nav class="remoed-sidebar">
             <div class="remoed-logo" style="height:100px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding-top:5px;">
-<<<<<<< HEAD
-                <img src="remoed-logo.png" alt="RemoEdPH Logo" style="height:40px; width:auto; display:inline-block; vertical-align:middle;">
-                <span class="remoed-title" style="font-size:1.3rem; font-weight:700; color:#667eea; letter-spacing:1px;">RemoEdPH</span>
-=======
                 <img src="remoed-logo.png" alt="RemoEdPH Logo" style="height:50px; width:auto; display:inline-block; vertical-align:middle; filter: drop-shadow(0 2px 4px rgba(28, 167, 231, 0.3));">
                 <span class="remoed-title" style="font-size:1.4rem; font-weight:800; color:#1CA7E7; letter-spacing:1px; text-shadow: 2px 2px 4px rgba(28, 167, 231, 0.2);">RemoEdPH</span>
                 <div style="font-size: 0.75rem; color: #666;">Student Portal</div>
->>>>>>> b40055add8af816a7f885203a8d91f0866510313
             </div>
             <div class="remoed-user" style="display:flex; flex-direction:column; align-items:center; margin-bottom:24px;">
         <div class="remoed-avatar" id="student-avatar" onclick="window.location.href='student-profile.html'" style="cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
@@ -708,9 +692,6 @@
                 <li id="logout-nav" style="margin-top:auto; color:#e74c3c; cursor:pointer;"><svg fill="none" stroke="#e74c3c" stroke-width="2" viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7"/><path d="M3 12a9 9 0 0118 0 9 9 0 01-18 0z"/></svg>Logout</li>
             </ul>
         </nav>
-<<<<<<< HEAD
-        <div class="remoed-content">
-=======
         <div class="remoed-content" style="position: relative; z-index: 2; overflow-y: auto; overflow-x: visible;">
             <!-- Games & Activities Quick Access with Characters -->
             <div class="fun-card" style="margin-top: 70px; margin-bottom: 2rem; cursor: pointer; border-color: #1CA7E7; padding: 2rem; padding-top: 2.5rem; position: relative; overflow: visible; min-height: 280px;" onclick="window.location.href='student-games-activities.html'">
@@ -834,7 +815,6 @@
                 </div>
             </div>
             
->>>>>>> 82021f05c965758b36140a1a8099d60eb2ea224f
             <!-- Primary Charts Grid (Total Classes & Completed Classes) -->
             <div class="charts-grid">
                 <!-- Total Classes Booked Chart -->
@@ -1704,408 +1684,6 @@
       loadRescheduleNotifications();
     });
   </script>
-<<<<<<< HEAD
-    <script src="avatar-helper.js"></script>
-    
-    <script>
-        // Gamification System
-        async function loadGamificationData() {
-            // Load points from localStorage or calculate from activities
-            let points = parseInt(localStorage.getItem('studentPoints') || '0');
-            
-            // Add points for completed classes
-            const completedClasses = parseInt(document.getElementById('completed-classes')?.textContent || '0');
-            points = Math.max(points, completedClasses * 10);
-            
-            // Update UI
-            const pointsDisplay = document.getElementById('student-points');
-            const pointsCount = document.getElementById('points-count');
-            const levelBadge = document.getElementById('level-badge');
-            
-            if (pointsCount) {
-                pointsCount.textContent = points;
-            }
-            
-            // Always fetch fresh CEFR level from API (not from localStorage)
-            let cefrLevel = null;
-            try {
-                const token = localStorage.getItem('token');
-                if (token) {
-                    const response = await fetch('/api/student/profile', {
-                        method: 'GET',
-                        headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'Cache-Control': 'no-cache',
-                            'Pragma': 'no-cache'
-                        }
-                    });
-                    
-                    if (response.ok) {
-                        const data = await response.json();
-                        cefrLevel = data?.profile?.cefrLevel || data?.profile?.leveling;
-                        console.log('✅ Fetched CEFR level from API:', cefrLevel);
-                        
-                        // Update localStorage for reference
-                        if (cefrLevel) {
-                            localStorage.setItem('studentCEFRLevel', cefrLevel);
-                        } else {
-                            // Clear if no level found
-                            localStorage.removeItem('studentCEFRLevel');
-                        }
-                    } else {
-                        console.error('❌ Failed to fetch profile:', response.status);
-                    }
-                }
-            } catch (error) {
-                console.error('❌ Error loading CEFR level:', error);
-                // Fallback to localStorage if API fails
-                cefrLevel = localStorage.getItem('studentCEFRLevel');
-            }
-            
-            // Display CEFR level if available
-            if (cefrLevel && levelBadge) {
-                const levelLabels = {
-                    'A1': 'A1 Beginner',
-                    'A2': 'A2 Elementary',
-                    'A3': 'A3 Upper Elementary', // Handle A3 if user got it
-                    'B1': 'B1 Intermediate',
-                    'B2': 'B2 Upper Intermediate',
-                    'C1': 'C1 Advanced',
-                    'C2': 'C2 Proficient'
-                };
-                const levelLabel = levelLabels[cefrLevel] || cefrLevel;
-                levelBadge.textContent = `Level ${levelLabel} 🌟`;
-                console.log('✅ CEFR level displayed:', levelLabel);
-                return;
-            }
-            
-            // Fallback to calculated level if no CEFR level found
-            const level = Math.floor(points / 100) + 1;
-            const levelNames = ['🌱 Explorer', '🌟 Learner', '⭐ Star', '🏆 Champion', '👑 Master'];
-            const levelName = levelNames[Math.min(level - 1, levelNames.length - 1)];
-            
-            if (levelBadge) {
-                levelBadge.textContent = `Level ${level} ${levelName}`;
-            }
-            
-            // Save to localStorage
-            localStorage.setItem('studentPoints', points.toString());
-            localStorage.setItem('studentLevel', level.toString());
-        }
-        
-        // Note: Cultural Exploration feature removed - focusing on Play & Learn activities instead
-        
-        // Remo the AI Chatbot
-        function initRemoAI() {
-            if (!document.getElementById('remo-ai-chatbot')) {
-                const chatbot = document.createElement('div');
-                chatbot.id = 'remo-ai-chatbot';
-                chatbot.innerHTML = `
-                    <div class="remo-chat-button" id="remo-chat-button" onclick="toggleRemoChat()">
-                        <div class="remo-avatar-mini">
-                            <svg width="40" height="50" viewBox="0 0 120 150" xmlns="http://www.w3.org/2000/svg">
-                                <rect x="30" y="10" width="60" height="50" rx="8" fill="#FFFFFF" stroke="#1CA7E7" stroke-width="2"/>
-                                <rect x="20" y="20" width="12" height="30" rx="6" fill="#1CA7E7"/>
-                                <rect x="88" y="20" width="12" height="30" rx="6" fill="#1CA7E7"/>
-                                <circle cx="45" cy="30" r="4" fill="#1CA7E7"/>
-                                <circle cx="75" cy="30" r="4" fill="#1CA7E7"/>
-                                <path d="M 45 42 Q 60 48 75 42" stroke="#1CA7E7" stroke-width="2" fill="none"/>
-                                <rect x="35" y="60" width="50" height="60" rx="8" fill="#FFFFFF" stroke="#1CA7E7" stroke-width="2"/>
-                                <rect x="42" y="70" width="36" height="28" rx="4" fill="#FFD700"/>
-                            </svg>
-                        </div>
-                        <div class="remo-pulse"></div>
-                        <span class="remo-chat-label">Remo AI</span>
-                    </div>
-                    <div class="remo-chat-window" id="remo-chat-window" style="display: none;">
-                        <div class="remo-chat-header">
-                            <div class="remo-chat-title">
-                                <div class="remo-avatar-small">
-                                    <svg width="30" height="38" viewBox="0 0 120 150" xmlns="http://www.w3.org/2000/svg">
-                                        <rect x="30" y="10" width="60" height="50" rx="8" fill="#FFFFFF" stroke="#1CA7E7" stroke-width="2"/>
-                                        <circle cx="45" cy="30" r="4" fill="#1CA7E7"/>
-                                        <circle cx="75" cy="30" r="4" fill="#1CA7E7"/>
-                                        <path d="M 45 42 Q 60 48 75 42" stroke="#1CA7E7" stroke-width="2" fill="none"/>
-                                        <rect x="35" y="60" width="50" height="60" rx="8" fill="#FFFFFF" stroke="#1CA7E7" stroke-width="2"/>
-                                        <rect x="42" y="70" width="36" height="28" rx="4" fill="#FFD700"/>
-                                    </svg>
-                                </div>
-                                <div>
-                                    <div style="font-weight: 800; color: #1CA7E7;">Remo the AI</div>
-                                    <div style="font-size: 0.7rem; color: #4A6FA5;">Your Learning Assistant</div>
-                                </div>
-                            </div>
-                            <button class="remo-close-btn" onclick="toggleRemoChat()">×</button>
-                        </div>
-                        <div class="remo-chat-messages" id="remo-chat-messages">
-                            <div class="remo-message remo-bot-message">
-                                <div class="remo-message-avatar">🤖</div>
-                                <div class="remo-message-content">
-                                    <p>Hi! I'm Remo the AI! 👋</p>
-                                    <p>I'm here to help you with:</p>
-                                    <ul style="margin: 8px 0; padding-left: 20px;">
-                                        <li>🌐 Web tech issues</li>
-                                        <li>📚 Student portal navigation</li>
-                                        <li>⏰ Late/absent questions</li>
-                                        <li>❓ Any questions about your classes!</li>
-                                    </ul>
-                                    <p>What can I help you with today? 😊</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="remo-chat-input-container">
-                            <input type="text" id="remo-chat-input" class="remo-chat-input" placeholder="Ask Remo anything..." onkeypress="handleRemoChatKeyPress(event)">
-                            <button class="remo-send-btn" onclick="sendRemoMessage()">📤</button>
-                        </div>
-                        <div class="remo-quick-actions">
-                            <button class="remo-quick-btn" onclick="askRemoQuick('How do I book a class?')">📅 Book Class</button>
-                            <button class="remo-quick-btn" onclick="askRemoQuick('How do I check my schedule?')">📆 My Schedule</button>
-                            <button class="remo-quick-btn" onclick="askRemoQuick('What if I am late or absent?')">⏰ Late/Absent</button>
-                            <button class="remo-quick-btn" onclick="askRemoQuick('Website not working')">🌐 Tech Help</button>
-                        </div>
-                    </div>
-                `;
-                document.body.appendChild(chatbot);
-            }
-        }
-        
-        function toggleRemoChat() {
-            const chatWindow = document.getElementById('remo-chat-window');
-            const chatButton = document.getElementById('remo-chat-button');
-            if (chatWindow.style.display === 'none') {
-                chatWindow.style.display = 'flex';
-                chatButton.style.display = 'none';
-                document.getElementById('remo-chat-input').focus();
-            } else {
-                chatWindow.style.display = 'none';
-                chatButton.style.display = 'flex';
-            }
-        }
-        
-        function handleRemoChatKeyPress(event) {
-            if (event.key === 'Enter') {
-                sendRemoMessage();
-            }
-        }
-        
-        function askRemoQuick(question) {
-            document.getElementById('remo-chat-input').value = question;
-            sendRemoMessage();
-        }
-        
-        function sendRemoMessage() {
-            const input = document.getElementById('remo-chat-input');
-            const message = input.value.trim();
-            if (!message) return;
-            
-            const messagesContainer = document.getElementById('remo-chat-messages');
-            
-            // Add user message
-            messagesContainer.innerHTML += `
-                <div class="remo-message remo-user-message">
-                    <div class="remo-message-content">
-                        <p>${escapeHtml(message)}</p>
-                    </div>
-                    <div class="remo-message-avatar">👤</div>
-                </div>
-            `;
-            
-            input.value = '';
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            
-            // Show typing indicator
-            const typingIndicator = document.createElement('div');
-            typingIndicator.className = 'remo-message remo-bot-message remo-typing';
-            typingIndicator.innerHTML = `
-                <div class="remo-message-avatar">🤖</div>
-                <div class="remo-message-content">
-                    <div class="remo-typing-dots">
-                        <span></span><span></span><span></span>
-                    </div>
-                </div>
-            `;
-            messagesContainer.appendChild(typingIndicator);
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            
-            // Get AI response
-            setTimeout(() => {
-                typingIndicator.remove();
-                const response = getRemoResponse(message);
-                messagesContainer.innerHTML += `
-                    <div class="remo-message remo-bot-message">
-                        <div class="remo-message-avatar">🤖</div>
-                        <div class="remo-message-content">
-                            ${response}
-                        </div>
-                    </div>
-                `;
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            }, 1000);
-        }
-        
-        function getRemoResponse(message) {
-            const lowerMessage = message.toLowerCase();
-            
-            // Web tech issues
-            if (lowerMessage.includes('not working') || lowerMessage.includes('error') || lowerMessage.includes('broken') || lowerMessage.includes('tech') || lowerMessage.includes('website')) {
-                return `
-                    <p><strong>🌐 Web Tech Help:</strong></p>
-                    <p>Let me help you fix that! Try these steps:</p>
-                    <ol style="margin: 8px 0; padding-left: 20px;">
-                        <li><strong>Refresh the page:</strong> Press F5 or click the refresh button 🔄</li>
-                        <li><strong>Clear cache:</strong> Press Ctrl+Shift+Delete (Windows) or Cmd+Shift+Delete (Mac)</li>
-                        <li><strong>Check internet:</strong> Make sure you're connected to WiFi 📶</li>
-                        <li><strong>Try different browser:</strong> Chrome, Firefox, or Edge</li>
-                        <li><strong>Log out and back in:</strong> Sometimes that fixes everything! 🔐</li>
-                    </ol>
-                    <p>If it still doesn't work, tell me what page you're on and what's happening! 😊</p>
-                `;
-            }
-            
-            // Booking classes
-            if (lowerMessage.includes('book') || lowerMessage.includes('schedule') || lowerMessage.includes('class')) {
-                if (lowerMessage.includes('how') || lowerMessage.includes('where')) {
-                    return `
-                        <p><strong>📅 How to Book a Class:</strong></p>
-                        <ol style="margin: 8px 0; padding-left: 20px;">
-                            <li>Click <strong>"➕ Book a Class"</strong> in the sidebar menu 📋</li>
-                            <li>You'll see a weekly calendar with available time slots 📆</li>
-                            <li>Click on a <strong>green slot</strong> (available time) 🟢</li>
-                            <li>Choose your teacher and class type 👨‍🏫</li>
-                            <li>Click <strong>"Book Now"</strong> to confirm! ✅</li>
-                        </ol>
-                        <p><strong>💡 Tip:</strong> Book early to get your favorite time slots! ⭐</p>
-                    `;
-                }
-            }
-            
-            // Schedule/Calendar
-            if (lowerMessage.includes('schedule') || lowerMessage.includes('calendar') || lowerMessage.includes('when') || lowerMessage.includes('upcoming')) {
-                return `
-                    <p><strong>📆 Viewing Your Schedule:</strong></p>
-                    <ol style="margin: 8px 0; padding-left: 20px;">
-                        <li>Click <strong>"📅 My Schedule"</strong> in the sidebar 📋</li>
-                        <li>You'll see all your booked classes in a calendar view 📅</li>
-                        <li>Check the <strong>header badges</strong> for quick info about upcoming classes 🏷️</li>
-                        <li>Click on any class to see more details! 👆</li>
-                    </ol>
-                    <p><strong>💡 Tip:</strong> You can also see your schedule in "📜 My Classes" to see past classes too! 📚</p>
-                `;
-            }
-            
-            // Late/Absent
-            if (lowerMessage.includes('late') || lowerMessage.includes('absent') || lowerMessage.includes('miss') || lowerMessage.includes('can\'t make it')) {
-                return `
-                    <p><strong>⏰ About Being Late or Absent:</strong></p>
-                    <p><strong>If you're going to be late:</strong></p>
-                    <ul style="margin: 8px 0; padding-left: 20px;">
-                        <li>Try to join the class as soon as you can! 🏃</li>
-                        <li>Your teacher will understand 😊</li>
-                    </ul>
-                    <p><strong>If you can't make it (absent):</strong></p>
-                    <ul style="margin: 8px 0; padding-left: 20px;">
-                        <li>Try to <strong>cancel or reschedule</strong> before the class starts 🔄</li>
-                        <li>Go to <strong>"📜 My Classes"</strong> and find your class</li>
-                        <li>Click <strong>"Cancel"</strong> or <strong>"Reschedule"</strong> button</li>
-                        <li>This helps your teacher plan better! 📋</li>
-                    </ul>
-                    <p><strong>💡 Remember:</strong> It's okay if something comes up! Just try to let your teacher know when possible. 😊</p>
-                `;
-            }
-            
-            // Profile/Settings
-            if (lowerMessage.includes('profile') || lowerMessage.includes('settings') || lowerMessage.includes('change') || lowerMessage.includes('update')) {
-                return `
-                    <p><strong>👤 Profile & Settings:</strong></p>
-                    <ol style="margin: 8px 0; padding-left: 20px;">
-                        <li>Click <strong>"👤 My Profile"</strong> in the sidebar</li>
-                        <li>You can update your:
-                            <ul style="margin: 4px 0; padding-left: 20px;">
-                                <li>Profile picture 📸</li>
-                                <li>Name and information ✏️</li>
-                                <li>Password 🔐</li>
-                            </ul>
-                        </li>
-                        <li>Click <strong>"Save"</strong> when you're done! 💾</li>
-                    </ol>
-                `;
-            }
-            
-            // Games/Activities
-            if (lowerMessage.includes('game') || lowerMessage.includes('play') || lowerMessage.includes('activity') || lowerMessage.includes('practice')) {
-                return `
-                    <p><strong>🎮 Play & Learn Activities:</strong></p>
-                    <ol style="margin: 8px 0; padding-left: 20px;">
-                        <li>Click <strong>"🎮 Play & Learn"</strong> in the sidebar</li>
-                        <li>Choose your level: 🌱 Nursery, 🌟 Kinder, or 🚀 Preparatory</li>
-                        <li>Pick a skill to practice:
-                            <ul style="margin: 4px 0; padding-left: 20px;">
-                                <li>📖 Reading</li>
-                                <li>🗣️ Speaking</li>
-                                <li>✍️ Writing</li>
-                                <li>👂 Listening</li>
-                                <li>❤️ Good Moral Activities</li>
-                            </ul>
-                        </li>
-                        <li>Have fun and earn stars! ⭐</li>
-                    </ol>
-                    <p><strong>💡 Tip:</strong> The more you practice, the more stars you earn! 🌟</p>
-                `;
-            }
-            
-            // General greeting
-            if (lowerMessage.includes('hi') || lowerMessage.includes('hello') || lowerMessage.includes('hey')) {
-                return `
-                    <p>Hello! 👋 I'm Remo the AI, your learning assistant!</p>
-                    <p>I can help you with:</p>
-                    <ul style="margin: 8px 0; padding-left: 20px;">
-                        <li>🌐 Website and tech problems</li>
-                        <li>📚 Finding your way around the student portal</li>
-                        <li>⏰ Questions about being late or absent</li>
-                        <li>📅 Booking and managing classes</li>
-                        <li>🎮 Games and activities</li>
-                    </ul>
-                    <p>What would you like to know? 😊</p>
-                `;
-            }
-            
-            // Default response
-            return `
-                <p>I'm here to help! 😊</p>
-                <p>You can ask me about:</p>
-                <ul style="margin: 8px 0; padding-left: 20px;">
-                    <li>🌐 Website or tech issues</li>
-                    <li>📅 How to book classes</li>
-                    <li>📆 Viewing your schedule</li>
-                    <li>⏰ What to do if you're late or absent</li>
-                    <li>🎮 Games and activities</li>
-                    <li>👤 Profile settings</li>
-                </ul>
-                <p>Or click the quick action buttons below! 👇</p>
-            `;
-        }
-        
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-        
-        // Initialize on page load
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => {
-                loadGamificationData();
-                initRemoAI();
-            });
-        } else {
-            loadGamificationData();
-            initRemoAI();
-        }
-    </script>
-    
-    <!-- Remo AI Chatbot will be added here by JavaScript -->
-=======
   <script src="avatar-helper.js"></script>
->>>>>>> 4ed6dbc6a50245d43b735813fefa12f88df3e21d
 </body>
 </html> 
