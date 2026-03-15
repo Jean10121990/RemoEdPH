@@ -537,6 +537,7 @@
       let presenterModeActive = false;
       let currentPdfIframe = null;
       let currentPdfContainer = null;
+      let lastBroadcastMaterialId = null; // avoid duplicate lesson-file-select for same material
       let presenterSyncInterval = null;
       let lastSyncState = { page: null, scrollTop: null, scrollLeft: null, zoom: null };
       
@@ -625,6 +626,11 @@
       let reconnectTimeout = null;
       let isPageVisible = true;
       let connectionCheckInterval = null;
+      // Throttle health-check console spam: only warn once per period
+      let lastStuckNewWarn = 0;
+      let iceForceAttemptedForNew = false;
+      let lastSocketDisconnectWarn = 0;
+      let lastSocketConnectedLog = 0;
       
       // Queue for ICE candidates received before remote description is set
       const queuedIceCandidates = [];
@@ -1358,9 +1364,8 @@
       function showLessonFile(material) {
         if (!lessonFileViewer || !material) return;
         
-        // Prevent duplicate rendering of the same material
-        if (currentDisplayedMaterialId === material.id && isRenderingLesson) {
-          console.log('📚 Skipping duplicate showLessonFile call for:', material.id);
+        // Prevent duplicate rendering of the same material (stops blinking from repeated sync/broadcast)
+        if (currentDisplayedMaterialId === material.id) {
           return;
         }
         
@@ -1958,7 +1963,8 @@
                   page: pageNum,
                   scrollTop: currentPdfContainer ? currentPdfContainer.scrollTop : 0,
                   scrollLeft: currentPdfContainer ? currentPdfContainer.scrollLeft : 0,
-                  materialId: window.currentPdfMaterialId
+                  materialId: window.currentPdfMaterialId,
+                  totalSlides: pdfDoc.numPages
                 };
                 socket.emit('presenter-sync-update', syncData);
                 console.log('📄 [TEACHER] presenter-sync-update (prev)', syncData);
@@ -1989,7 +1995,8 @@
                   page: pageNum,
                   scrollTop: currentPdfContainer ? currentPdfContainer.scrollTop : 0,
                   scrollLeft: currentPdfContainer ? currentPdfContainer.scrollLeft : 0,
-                  materialId: window.currentPdfMaterialId
+                  materialId: window.currentPdfMaterialId,
+                  totalSlides: pdfDoc.numPages
                 };
                 socket.emit('presenter-sync-update', syncData);
                 console.log('📄 [TEACHER] presenter-sync-update (next)', syncData);
@@ -2111,7 +2118,8 @@
                 page: pageNumber,
                 scrollTop: currentPdfContainer ? currentPdfContainer.scrollTop : 0,
                 scrollLeft: currentPdfContainer ? currentPdfContainer.scrollLeft : 0,
-                materialId: window.currentPdfMaterialId
+                materialId: window.currentPdfMaterialId,
+                totalSlides: pdfDoc.numPages
               };
               socket.emit('presenter-sync-update', syncData);
               console.log('📄 [TEACHER] presenter-sync-update (pagechanging)', syncData);
@@ -2391,23 +2399,24 @@
             }
           }
           
-          // Ensure PDF is broadcast to students (backup in case onload doesn't fire)
-          setTimeout(() => {
-            if (socket && socket.connected && material.data && material.data.length > 100) {
-              const materialToBroadcast = {
-                id: material.id,
-                materialId: material.id,
-                name: material.name,
-                type: material.type,
-                size: material.size || material.data.length,
-                data: material.data,
-                uploader: material.uploader || 'Teacher'
-              };
-              
-              console.log('📚 [TEACHER] Ensuring PDF broadcast to students:', materialToBroadcast.name);
-              socket.emit('lesson-file-select', { room, materialId: material.id, material: materialToBroadcast });
-            }
-          }, 1000); // 1 second delay to ensure iframe has loaded
+          // Ensure PDF is broadcast to students once (backup in case first emit was missed)
+          if (material.id !== lastBroadcastMaterialId) {
+            lastBroadcastMaterialId = material.id;
+            setTimeout(() => {
+              if (socket && socket.connected && material.data && material.data.length > 100 && lastBroadcastMaterialId === material.id) {
+                const materialToBroadcast = {
+                  id: material.id,
+                  materialId: material.id,
+                  name: material.name,
+                  type: material.type,
+                  size: material.size || material.data.length,
+                  data: material.data,
+                  uploader: material.uploader || 'Teacher'
+                };
+                socket.emit('lesson-file-select', { room, materialId: material.id, material: materialToBroadcast });
+              }
+            }, 1000);
+          }
           
           // Start sync if we have the iframe
           if (currentPdfIframe) {
@@ -2528,7 +2537,8 @@
                 scrollTop,
                 scrollLeft,
                 zoom,
-                materialId: window.currentPdfMaterialId
+                materialId: window.currentPdfMaterialId,
+                totalSlides: window.pdfViewerState?.pdfDoc?.numPages
               };
               
               if (socket && socket.connected) {
@@ -2573,7 +2583,8 @@
                 page,
                 scrollTop,
                 scrollLeft,
-                materialId: window.currentPdfMaterialId
+                materialId: window.currentPdfMaterialId,
+                totalSlides: window.pdfViewerState?.pdfDoc?.numPages
               };
               
         socket.emit('presenter-sync-update', syncData);
@@ -2695,9 +2706,11 @@
           console.log('📚 Adding new material to lessonState');
           renderLessonMaterial(material);
         } else {
-          console.log('📚 Material already in lessonState, updating if needed');
-          // Update if data might be newer
+          // Update if data might be newer; skip re-display if already showing this material (prevents blinking)
           lessonState.set(materialId, material);
+          if (currentDisplayedMaterialId === materialId) {
+            return;
+          }
         }
         
         // Lesson file select dropdown removed - no need to update dropdown
@@ -2916,6 +2929,8 @@
             // Verify material has valid data before displaying
             if (materialToDisplay.data && materialToDisplay.data.length > 100) {
               setTimeout(() => {
+                // Skip if already displaying this material (prevents blink from repeated sync)
+                if (currentDisplayedMaterialId === materialToDisplay.id) return;
                 console.log('📚 [STUDENT] Auto-displaying material from sync:', materialToDisplay.name);
                 showLessonFile(materialToDisplay);
                 // Lesson file select dropdown removed - no need to update dropdown
@@ -2988,7 +3003,16 @@
       
       // Handle real-time presenter sync updates
       socket.on('presenter-sync-update', async ({ page, slideIndex, scrollTop, scrollLeft, zoom, materialId, totalSlides } = {}) => {
-        if (userType !== 'student' || !studentPresenterModeActive) return;
+        if (userType !== 'student') return;
+        // If we missed presenter-mode-start (e.g. joined after teacher loaded PDF), accept sync and activate follow mode
+        if (!studentPresenterModeActive) {
+          studentPresenterModeActive = true;
+          studentPdfIframe = document.querySelector('#lesson-file-viewer iframe');
+          studentPdfContainer = document.querySelector('#lesson-file-viewer [id^="pdf-"]') || (window.pdfViewerState && window.pdfViewerState.canvasContainer);
+          showStudentPresenterIndicator(true);
+          lockStudentPdfControls(true);
+          console.log('📺 [STUDENT] Presenter sync active (caught up from sync update)');
+        }
 
         console.log('📄 [STUDENT] presenter-sync-update received', { page, scrollTop, scrollLeft, materialId });
         
@@ -3067,9 +3091,11 @@
           iframe.src = newUrl; // force update to guarantee navigation on all browsers
           console.log('📄 [STUDENT] Forcing PDF src update to page', page, newUrl);
           
-          // Update page info (outside iframe)
-          const pageInfoEl = document.getElementById('pdf-page-info');
-          if (pageInfoEl) {
+          // Update page info (outside iframe) – support both legacy id and PDF.js embedded viewer id
+          const pageInfoEl = document.getElementById('pdf-page-info') || document.getElementById('pdf-page-info-custom');
+          if (pageInfoEl && totalSlides) {
+            pageInfoEl.textContent = `${page}/${totalSlides}`;
+          } else if (pageInfoEl) {
             pageInfoEl.textContent = `Page ${page}`;
           }
           
@@ -3817,44 +3843,53 @@
             const signalingState = peerConnection.signalingState;
             const iceGatheringState = peerConnection.iceGatheringState;
             
-            // Only log detailed state if connection is stuck or there's an issue
+            // When connection leaves "new", allow force-ICE again next time we get stuck
+            if (state !== 'new' || iceState !== 'new') {
+              iceForceAttemptedForNew = false;
+            }
+            // Only log and act when stuck in "new" – throttle to once per 60s and run force-ICE at most once per stuck period
             if (state === 'new' && iceState === 'new' && iceGatheringState === 'new' && localStream) {
-              console.warn('⚠️ Connection health check: Connection stuck in "new" state - forcing ICE gathering');
-              // Force ICE gathering by creating a temporary offer (for students) or ensuring tracks are added
-              // This will trigger ICE candidate gathering immediately
-              if (userType === 'student' && !peerConnection.localDescription && !peerConnection.remoteDescription) {
-                // For students, create a dummy offer to trigger ICE gathering
-                // This will be replaced when the real offer arrives
-                console.log('📡 Student: Creating temporary offer to force ICE gathering...');
-                peerConnection.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true })
-                  .then(dummyOffer => {
-                    // Set it locally to trigger ICE gathering, but don't send it
-                    return peerConnection.setLocalDescription(dummyOffer);
-                  })
-                  .then(() => {
-                    console.log('✅ Student: Temporary offer set - ICE gathering should start');
-                    // Clear the local description when real offer arrives (handled in offer handler)
-                  })
-                  .catch(err => {
-                    console.warn('⚠️ Student: Could not create temporary offer:', err);
-                  });
-              } else if (userType === 'teacher' && !peerConnection.localDescription) {
-                // For teacher, ensure tracks are added and trigger ready event
-                ensurePeerConnection();
-                if (socket && socket.connected) {
-                  socket.emit('ready', { room });
+              const now = Date.now();
+              const throttleMs = 60000;
+              if (now - lastStuckNewWarn >= throttleMs) {
+                lastStuckNewWarn = now;
+                console.warn('⚠️ Connection health check: Connection stuck in "new" state - forcing ICE gathering');
+              }
+              if (!iceForceAttemptedForNew) {
+                iceForceAttemptedForNew = true;
+                if (userType === 'student' && !peerConnection.localDescription && !peerConnection.remoteDescription) {
+                  console.log('📡 Student: Creating temporary offer to force ICE gathering...');
+                  peerConnection.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true })
+                    .then(dummyOffer => {
+                      return peerConnection.setLocalDescription(dummyOffer);
+                    })
+                    .then(() => {
+                      console.log('✅ Student: Temporary offer set - ICE gathering should start');
+                    })
+                    .catch(err => {
+                      console.warn('⚠️ Student: Could not create temporary offer:', err);
+                      iceForceAttemptedForNew = false;
+                    });
+                } else if (userType === 'teacher' && !peerConnection.localDescription) {
+                  ensurePeerConnection();
+                  if (socket && socket.connected) {
+                    socket.emit('ready', { room });
+                  }
                 }
               }
             } else if (state !== 'new' || iceState !== 'new') {
-              // Only log if not in initial state
-              console.log('📊 Connection health check:', {
-                connectionState: state,
-                iceConnectionState: iceState,
-                iceGatheringState: iceGatheringState,
-                signalingState: signalingState,
-                senders: peerConnection.getSenders().length,
-                receivers: peerConnection.getReceivers().length
-              });
+              const now = Date.now();
+              if (now - lastStuckNewWarn >= 60000) {
+                lastStuckNewWarn = now;
+                console.log('📊 Connection health check:', {
+                  connectionState: state,
+                  iceConnectionState: iceState,
+                  iceGatheringState: iceGatheringState,
+                  signalingState: signalingState,
+                  senders: peerConnection.getSenders().length,
+                  receivers: peerConnection.getReceivers().length
+                });
+              }
             }
             
             // Check if connection is unhealthy
@@ -3909,14 +3944,21 @@
             }
           }
           
-          // Check socket connection
+          // Check socket connection – throttle disconnect warning to once per 60s to avoid console spam
           if (socket) {
             if (!socket.connected) {
-              console.warn('⚠️ Socket disconnected, reconnecting...');
+              const now = Date.now();
+              if (now - lastSocketDisconnectWarn >= 60000) {
+                lastSocketDisconnectWarn = now;
+                console.warn('⚠️ Socket disconnected, reconnecting...');
+              }
               socket.connect();
             } else {
-              // Log socket health
-              console.log('✅ Socket health check: Connected, ID:', socket.id);
+              lastSocketDisconnectWarn = 0;
+              if (Date.now() - lastSocketConnectedLog >= 60000) {
+                lastSocketConnectedLog = Date.now();
+                console.log('✅ Socket health check: Connected, ID:', socket.id);
+              }
             }
           }
         }, 10000); // Check every 10 seconds
