@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Teacher Profile - RemoEdPH</title>
     <link rel="stylesheet" href="modern-styles.css">
+    <link rel="stylesheet" href="css/teacher-sidebar.css">
     <style>
         body { 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
@@ -18,54 +19,7 @@
             min-height: 100vh;
         }
         
-        .remoed-sidebar {
-            width: 260px;
-            min-width: 260px;
-            background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
-            box-shadow: 4px 0 20px rgba(102, 126, 234, 0.1);
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            position: fixed;
-            height: 100vh;
-            overflow: hidden;
-            z-index: 100;
-        }
-        
-        .remoed-menu {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-        
-        .remoed-menu li {
-            padding: 14px 32px;
-            color: #64748b;
-            font-weight: 500;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            border-left: 4px solid transparent;
-            transition: background 0.2s, border-color 0.2s;
-        }
-
-        .remoed-menu li.active,
-        .remoed-menu li:hover {
-            background: linear-gradient(90deg, #667eea 0%, #5a67d8 100%);
-            border-left: 4px solid #667eea;
-            color: white;
-            transform: translateX(4px);
-            transition: all 0.3s ease;
-            border-radius: 0 8px 8px 0;
-        }
-        
-        .remoed-menu svg {
-            width: 20px;
-            height: 20px;
-            stroke: currentColor;
-        }
-        
+        /* Sidebar: see css/teacher-sidebar.css */
         .remoed-content {
             flex: 1;
             padding: 24px 32px;
@@ -164,6 +118,20 @@
             display: flex;
             gap: 12px;
             flex-wrap: wrap;
+        }
+        
+        /* Sticky footer actions so Edit/Save are always visible */
+        .profile-footer-actions {
+            position: sticky;
+            bottom: 0;
+            margin-top: 24px;
+            padding-top: 12px;
+            padding-bottom: 12px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            background: linear-gradient(to top, rgba(255,255,255,0.95), rgba(255,255,255,0.85));
+            z-index: 5;
         }
         
         .back-btn {
@@ -1737,7 +1705,7 @@
 <body>
     <div class="remoed-main">
         <!-- Sidebar will be loaded via JavaScript -->
-        <div class="remoed-sidebar" id="sidebar"></div>
+        <div id="sidebar"></div>
         
         <div class="remoed-content">
             <div class="profile-container">
@@ -1754,9 +1722,6 @@
                         <p class="profile-email-large" id="profile-email-large">teacher@remoedph.com</p>
                         <div class="profile-actions">
                             <button class="back-btn" onclick="window.location.href='teacher-dashboard.html'">← Back to Dashboard</button>
-                            <button class="edit-btn" id="edit-profile-btn" onclick="enableEditing()">Edit Profile</button>
-                            <button class="cancel-btn" id="cancel-edit-btn" onclick="cancelEditing()" style="display: none;">Cancel</button>
-                            <button class="save-btn" id="save-profile-btn" onclick="saveProfile()" style="display: none;">Save Changes</button>
                         </div>
                     </div>
                 </div>
@@ -1925,6 +1890,13 @@
                              <label class="form-label">Teaching Experience</label>
                              <textarea class="form-textarea" id="experience" name="experience" rows="3" placeholder="Describe your teaching experience, subjects taught, years of experience..." disabled></textarea>
                          </div>
+
+                        <!-- Edit / Save below personal information only -->
+                        <div class="profile-footer-actions">
+                            <button class="edit-btn" id="edit-profile-btn" onclick="enableEditing()">Edit Profile</button>
+                            <button class="cancel-btn" id="cancel-edit-btn" onclick="cancelEditing()" style="display: none;">Cancel</button>
+                            <button class="save-btn" id="save-profile-btn" onclick="saveProfile()" style="display: none;">Save Changes</button>
+                        </div>
                     </div>
                     
                     <!-- Education Tab -->
@@ -1940,13 +1912,19 @@
                             <!-- Work experience items will be added here -->
                         </div>
                         <button type="button" class="add-btn" id="add-work-experience-btn" onclick="addWorkExperienceItem()" disabled>+ Add Work Experience</button>
+                        
+                        <div class="profile-footer-actions" style="margin-top: 24px;">
+                            <button class="edit-btn" id="edit-education-btn" onclick="enableEditing()">Edit</button>
+                            <button class="cancel-btn" id="cancel-education-btn" onclick="cancelEditing()" style="display: none;">Cancel</button>
+                            <button class="save-btn" id="save-education-btn" onclick="saveProfile()" style="display: none;">Save Changes</button>
+                        </div>
                     </div>
                     
                     <!-- Documents Tab -->
                     <div id="documents-tab" class="tab-content">
                         <div class="section-title">Documents & Certificates</div>
                         <div style="background: #e3f2fd; border-left: 4px solid #667eea; padding: 12px 16px; margin-bottom: 24px; border-radius: 8px; color: #1976d2; font-size: 0.95rem;">
-                            <strong>💡 Note:</strong> After uploading files, click the <strong>"Save Changes"</strong> button at the top to save all documents.
+                            <strong>💡 Note:</strong> Click <strong>"Edit"</strong> to enable uploads, then click <strong>"Save Changes"</strong> below to save all documents.
                         </div>
                         
                         <!-- Bulk Upload Section -->
@@ -1995,7 +1973,7 @@
                                     🏆 Certificates <span id="certificate-count-badge" class="doc-count-badge">0</span>
                                 </button>
                                 <button type="button" class="doc-category-btn" onclick="showDocumentCategory('valid-id')" data-category="valid-id">
-                                    🆔 Valid ID
+                                    🆔 Valid ID <span id="valid-id-count-badge" class="doc-count-badge">0</span>
                                 </button>
                             </div>
                         </div>
@@ -2024,19 +2002,22 @@
                             <button type="button" class="add-btn" id="add-certificate-btn" onclick="addCertificateItem()" style="margin-top: 12px;">+ Add Certificate</button>
                         </div>
                         
-                        <!-- Valid ID Section (single upload) -->
+                        <!-- Valid ID Section (multi-upload, up to 5 like Diplomas) -->
                         <div class="info-section document-category" id="valid-id-category" style="display: none; margin-top: 32px;">
-                            <div class="info-section-title">🆔 Valid ID</div>
-                            <div class="form-group">
-                                <div class="file-upload" id="valid-id-upload">
-                                    <input type="file" id="valid-id" name="valid-id" accept=".pdf,.jpg,.jpeg,.png" disabled>
-                                    <label class="file-upload-label" for="valid-id">🆔 Upload Valid ID</label>
-                                </div>
-                                <div class="file-preview" id="valid-id-preview" style="display: none;">
-                                    <img src="" alt="Valid ID Preview">
-                                    <div class="file-info">No file selected</div>
-                                </div>
+                            <div class="info-section-title">
+                                <span>🆔 Valid ID</span>
+                                <span style="font-size: 0.9rem; color: #666; font-weight: 400;">(Up to 5)</span>
                             </div>
+                            <div id="valid-ids-container">
+                                <!-- Valid ID items will be added here dynamically -->
+                            </div>
+                            <button type="button" class="add-btn" id="add-valid-id-btn" onclick="addValidIdItem()" style="margin-top: 12px;">+ Add Valid ID</button>
+                        </div>
+                        
+                        <div class="profile-footer-actions" style="margin-top: 24px;">
+                            <button class="edit-btn" id="edit-documents-btn" onclick="enableEditing()">Edit</button>
+                            <button class="cancel-btn" id="cancel-documents-btn" onclick="cancelEditing()" style="display: none;">Cancel</button>
+                            <button class="save-btn" id="save-documents-btn" onclick="saveProfile()" style="display: none;">Save Changes</button>
                         </div>
                     </div>
                     
@@ -2288,6 +2269,7 @@
         let workExperienceCounter = 0;
         let diplomaCounter = 0;
         let certificateCounter = 0;
+        let validIdCounter = 0;
         let isEditingProfile = false;
 
         // Global variables for bulk upload
@@ -2449,33 +2431,17 @@
                 }
             }
             
-            // Load sidebar
-            fetch('teacher-dashboard.html')
-                .then(r => r.text())
-                .then(html => {
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(html, 'text/html');
-                    const sidebar = doc.querySelector('.remoed-sidebar');
-                    if (sidebar) {
-                        document.getElementById('sidebar').innerHTML = sidebar.innerHTML;
-                        
-                        // Setup all navigation links
-                        setupSidebarNavigation();
-                        
-                        // Update active menu item - remove active from all first, then add to current page only
-                        const menuItems = document.querySelectorAll('.remoed-menu li');
-                        menuItems.forEach(item => {
-                            item.classList.remove('active');
-                            if (item.textContent.includes('Profile')) {
-                                item.classList.add('active');
-                            }
-                        });
-                        
-                        // Update sidebar profile (username and picture)
-                        updateSidebarProfile();
-                    }
-                })
-                .catch(err => console.error('Error loading sidebar:', err));
+            // Load sidebar (shared component)
+            (function() {
+                var script = document.createElement('script');
+                script.src = 'js/teacher-sidebar.js';
+                script.onload = function() {
+                    TeacherSidebar.render('sidebar', 'profile');
+                    setupSidebarNavigation();
+                    updateSidebarProfile();
+                };
+                document.head.appendChild(script);
+            })();
             
             loadProfileData();
             setupFileUploads();
@@ -2690,10 +2656,20 @@
                             console.log('No certificates found in profile.documents:', profile.documents);
                         }
                         
-                        // Load valid ID (single)
-                        if (profile.documents.validId) {
-                            showDocumentPreview('valid-id-preview', profile.documents.validId, 'Valid ID');
+                        // Load valid IDs (multi, up to 5)
+                        const validIdsContainer = document.getElementById('valid-ids-container');
+                        if (validIdsContainer) validIdsContainer.innerHTML = '';
+                        validIdCounter = 0;
+                        if (profile.documents.validIds && Array.isArray(profile.documents.validIds) && profile.documents.validIds.length > 0) {
+                            profile.documents.validIds.forEach((vid, index) => {
+                                if (vid && vid.fileData && index < 5) {
+                                    addValidIdItem({ fileData: vid.fileData, fileName: vid.fileName || `Valid ID ${index + 1}` });
+                                }
+                            });
+                        } else if (profile.documents.validId) {
+                            addValidIdItem({ fileData: profile.documents.validId, fileName: 'Valid ID' });
                         }
+                        updateDocumentCounts();
                     }
                     
                     // Populate settings fields
@@ -2790,9 +2766,6 @@
                 }
             });
             
-                         // Document uploads with preview (valid-id only, diplomas and certificates are handled dynamically)
-             setupDocumentUpload('valid-id', 'valid-id-preview');
-             
              // Video introduction upload
              setupVideoUpload();
              
@@ -2987,6 +2960,7 @@
                         <input type="number" class="form-input" name="gpa" value="${data ? data.gpa : ''}" step="0.01" min="1.0" max="4.0" placeholder="e.g., 3.5" ${disabledAttr}>
                     </div>
                 </div>
+
             `;
             
             container.appendChild(educationItem);
@@ -3214,24 +3188,88 @@
                 }
             }
         }
+        
+        // Valid ID management functions (multi-upload like Diplomas)
+        function addValidIdItem(data = null) {
+            if (!isEditingProfile && data === null) {
+                enableEditing();
+            }
+            const container = document.getElementById('valid-ids-container');
+            if (!container) return;
+            const currentCount = container.children.length;
+            if (currentCount >= 5 && data === null) {
+                showMessage('Maximum of 5 Valid IDs allowed', 'error');
+                return;
+            }
+            const itemId = `valid-id-${validIdCounter++}`;
+            const disabledAttr = isEditingProfile ? '' : 'disabled';
+            const displayNumber = currentCount + 1;
+            const validIdItem = document.createElement('div');
+            validIdItem.className = 'document-item';
+            validIdItem.id = itemId;
+            validIdItem.innerHTML = `
+                <div class="document-header">
+                    <strong>Valid ID ${displayNumber}</strong>
+                    <button type="button" class="remove-btn" onclick="removeValidIdItem('${itemId}')" style="padding: 4px 8px; font-size: 0.75rem;">Remove</button>
+                </div>
+                <div class="document-content">
+                    <div class="document-upload-compact">
+                        <div class="file-upload" id="valid-id-upload-${itemId}">
+                            <input type="file" id="valid-id-file-${itemId}" name="valid-id-${itemId}" accept=".pdf,.jpg,.jpeg,.png" ${disabledAttr}>
+                            <label class="file-upload-label-compact" for="valid-id-file-${itemId}">🆔 Upload</label>
+                        </div>
+                    </div>
+                    <div class="document-preview-compact" id="valid-id-preview-${itemId}" style="display: ${data && data.fileData ? 'block' : 'none'};">
+                        <img src="${data && data.fileData ? data.fileData : ''}" alt="Valid ID Preview">
+                        <div class="file-info">${data && data.fileName ? data.fileName : 'No file selected'}</div>
+                    </div>
+                </div>
+            `;
+            container.appendChild(validIdItem);
+            if (data && data.fileData) {
+                setTimeout(() => {
+                    const preview = document.getElementById(`valid-id-preview-${itemId}`);
+                    if (preview) {
+                        const previewImg = preview.querySelector('img');
+                        const fileInfo = preview.querySelector('.file-info');
+                        if (previewImg) previewImg.src = data.fileData;
+                        if (fileInfo) fileInfo.textContent = data.fileName || 'Valid ID';
+                        preview.style.display = 'block';
+                    }
+                }, 50);
+            }
+            setTimeout(() => {
+                setupDocumentUpload(`valid-id-file-${itemId}`, `valid-id-preview-${itemId}`);
+            }, 150);
+            updateDocumentCounts();
+        }
+        
+        function removeValidIdItem(itemId) {
+            const item = document.getElementById(itemId);
+            if (item) {
+                item.remove();
+                const container = document.getElementById('valid-ids-container');
+                if (container) validIdCounter = container.children.length;
+                updateDocumentCounts();
+            }
+        }
 
         function saveProfile() {
             console.log('🔍 saveProfile function called');
-            const saveBtn = document.getElementById('save-profile-btn');
-            if (!saveBtn) {
+            const saveIds = ['save-profile-btn', 'save-education-btn', 'save-documents-btn'];
+            const saveBtns = saveIds.map(id => document.getElementById(id)).filter(Boolean);
+            if (saveBtns.length === 0) {
                 console.error('Save button not found');
                 return;
             }
-            saveBtn.disabled = true;
-            saveBtn.textContent = 'Saving...';
+            saveBtns.forEach(btn => { btn.disabled = true; btn.textContent = 'Saving...'; });
             
             const token = localStorage.getItem('token');
             console.log('Profile save - Token:', token ? 'Present' : 'Missing');
             
             if (!token) {
                 showMessage('Authentication required. Please login again.', 'error');
-                saveBtn.disabled = false;
-                saveBtn.textContent = 'Save Changes';
+                saveBtns.forEach(btn => { btn.disabled = false; btn.textContent = 'Save Changes'; });
                 return;
             }
             
@@ -3268,66 +3306,13 @@
                     console.log('=== COLLECTING DOCUMENTS ===');
                     const diplomas = collectDiplomasData();
                     const certificates = collectCertificatesData();
-                    
-                    // Collect valid ID
-                    const validIdPreview = document.getElementById('valid-id-preview');
-                    console.log('Valid ID preview element:', {
-                        found: !!validIdPreview,
-                        id: validIdPreview ? validIdPreview.id : 'not found',
-                        display: validIdPreview ? validIdPreview.style.display : 'N/A',
-                        offsetParent: validIdPreview ? (validIdPreview.offsetParent !== null) : 'N/A'
-                    });
-                    
-                    const validIdImg = validIdPreview ? validIdPreview.querySelector('img') : null;
-                    console.log('Valid ID img element:', {
-                        found: !!validIdImg,
-                        hasSrc: validIdImg ? !!validIdImg.src : false,
-                        srcLength: validIdImg && validIdImg.src ? validIdImg.src.length : 0,
-                        srcStart: validIdImg && validIdImg.src ? validIdImg.src.substring(0, 50) : 'no src',
-                        startsWithData: validIdImg && validIdImg.src ? validIdImg.src.startsWith('data:') : false
-                    });
-                    
-                    // Collect valid ID if image has valid base64 data (same logic as diplomas/certificates)
-                    let validId = null;
-                    if (validIdImg && validIdImg.src) {
-                        const src = validIdImg.src;
-                        const isValid = src.startsWith('data:') && 
-                                   !src.includes('data:image/svg+xml') &&
-                                   src.length > 100;
-                        
-                        console.log('Valid ID validation:', {
-                            hasSrc: true,
-                            startsWithData: src.startsWith('data:'),
-                            notSvg: !src.includes('data:image/svg+xml'),
-                            hasLength: src.length > 100,
-                            isValid: isValid,
-                            srcLength: src.length
-                        });
-                        
-                        if (isValid) {
-                            validId = src;
-                            console.log('✓ Valid ID collected successfully - Data length:', validId.length);
-                        } else {
-                            console.log('✗ Valid ID failed validation checks');
-                        }
-                    } else {
-                        console.log('✗ Valid ID not collected - no image element or no src');
-                    }
-                    
+                    const validIds = collectValidIdsData();
                     console.log('=== FINAL DOCUMENTS SUMMARY ===');
-                    console.log('Diplomas:', diplomas.length);
-                    console.log('Certificates:', certificates.length);
-                    console.log('Valid ID:', validId ? `Present (${validId.length} chars)` : 'Missing');
-                    console.log('Final documents object structure:', {
-                        diplomas: diplomas.length,
-                        certificates: certificates.length,
-                        hasValidId: !!validId
-                    });
-                    
+                    console.log('Diplomas:', diplomas.length, 'Certificates:', certificates.length, 'Valid IDs:', validIds.length);
                     return {
                         diplomas: diplomas,
                         certificates: certificates,
-                        validId: validId
+                        validIds: validIds
                     };
                 })()
             };
@@ -3493,10 +3478,13 @@
                     document.getElementById('add-education-btn').disabled = true;
                     document.getElementById('add-work-experience-btn').disabled = true;
                     
-                    // Show/hide buttons in header
-                    document.getElementById('edit-profile-btn').style.display = 'inline-block';
-                    document.getElementById('cancel-edit-btn').style.display = 'none';
-                    document.getElementById('save-profile-btn').style.display = 'none';
+                    // Show/hide buttons in all tabs
+                    const editIds = ['edit-profile-btn', 'edit-education-btn', 'edit-documents-btn'];
+                    const cancelIds = ['cancel-edit-btn', 'cancel-education-btn', 'cancel-documents-btn'];
+                    const saveIds = ['save-profile-btn', 'save-education-btn', 'save-documents-btn'];
+                    editIds.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'inline-block'; });
+                    cancelIds.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+                    saveIds.forEach(id => { const el = document.getElementById(id); if (el) { el.style.display = 'none'; el.disabled = false; el.textContent = (id === 'save-profile-btn' ? 'Save Changes' : (id === 'save-education-btn' ? 'Save Changes' : 'Save Changes')); } });
                     
                     // Show success message
                     showMessage('Profile updated successfully!', 'success');
@@ -3553,6 +3541,21 @@
                             } else {
                                 console.log('No certificates in response');
                             }
+                            
+                            // Load valid IDs from response data
+                            const validIdsContainer = document.getElementById('valid-ids-container');
+                            if (validIdsContainer) validIdsContainer.innerHTML = '';
+                            validIdCounter = 0;
+                            const validIds = data.profile.documents.validIds || 
+                                (data.profile.documents.validId ? [{ fileData: data.profile.documents.validId, fileName: 'Valid ID' }] : []);
+                            if (Array.isArray(validIds) && validIds.length > 0) {
+                                validIds.forEach((vid) => {
+                                    if (vid && vid.fileData) {
+                                        addValidIdItem({ fileData: vid.fileData, fileName: vid.fileName || 'Valid ID' });
+                                    }
+                                });
+                            }
+                            updateDocumentCounts();
                         } else {
                             console.log('No documents object in response profile');
                         }
@@ -3578,8 +3581,10 @@
             })
             .finally(() => {
                 clearTimeout(timeoutId);
-                saveBtn.disabled = false;
-                saveBtn.textContent = 'Save Changes';
+                ['save-profile-btn', 'save-education-btn', 'save-documents-btn'].forEach(id => {
+                    const btn = document.getElementById(id);
+                    if (btn) { btn.disabled = false; btn.textContent = 'Save Changes'; }
+                });
             });
         }
 
@@ -3733,6 +3738,23 @@
             console.log('Collected certificates:', certificates.length, certificates);
             return certificates;
         }
+        
+        function collectValidIdsData() {
+            const validIds = [];
+            document.querySelectorAll('[id^="valid-id-preview-"]').forEach(preview => {
+                const previewImg = preview.querySelector('img');
+                const fileInfo = preview.querySelector('.file-info');
+                if (!preview || !previewImg) return;
+                const hasImage = previewImg.src && previewImg.src.startsWith('data:') && 
+                    !previewImg.src.includes('data:image/svg+xml') && previewImg.src.length > 100;
+                if (hasImage) {
+                    const fileName = fileInfo && fileInfo.textContent && fileInfo.textContent !== 'No file selected' 
+                        ? fileInfo.textContent : `Valid ID ${validIds.length + 1}`;
+                    validIds.push({ fileData: previewImg.src, fileName: fileName });
+                }
+            });
+            return validIds;
+        }
 
         function enableEditing() {
             isEditingProfile = true;
@@ -3766,14 +3788,19 @@
                 const previewId = id.replace('certificate-file-', 'certificate-preview-');
                 setupDocumentUpload(id, previewId);
             });
+            document.querySelectorAll('[id^="valid-id-file-"]').forEach(input => {
+                const id = input.id;
+                const previewId = id.replace('valid-id-file-', 'valid-id-preview-');
+                setupDocumentUpload(id, previewId);
+            });
             
-            // Re-setup valid ID upload when editing is enabled (ensures event listener is active)
-            setupDocumentUpload('valid-id', 'valid-id-preview');
-            
-            // Show/hide buttons in header
-            document.getElementById('edit-profile-btn').style.display = 'none';
-            document.getElementById('cancel-edit-btn').style.display = 'inline-block';
-            document.getElementById('save-profile-btn').style.display = 'inline-block';
+            // Show/hide buttons in all tabs
+            const editIds = ['edit-profile-btn', 'edit-education-btn', 'edit-documents-btn'];
+            const cancelIds = ['cancel-edit-btn', 'cancel-education-btn', 'cancel-documents-btn'];
+            const saveIds = ['save-profile-btn', 'save-education-btn', 'save-documents-btn'];
+            editIds.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+            cancelIds.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'inline-block'; });
+            saveIds.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'inline-block'; });
         }
         
         function cancelEditing() {
@@ -3797,10 +3824,13 @@
             const educationInputs = document.querySelectorAll('.education-item input, .education-item select, .work-experience-item input, .work-experience-item select');
             educationInputs.forEach(input => input.disabled = true);
             
-            // Show/hide buttons in header
-            document.getElementById('edit-profile-btn').style.display = 'inline-block';
-            document.getElementById('cancel-edit-btn').style.display = 'none';
-            document.getElementById('save-profile-btn').style.display = 'none';
+            // Show/hide buttons in all tabs
+            const editIds = ['edit-profile-btn', 'edit-education-btn', 'edit-documents-btn'];
+            const cancelIds = ['cancel-edit-btn', 'cancel-education-btn', 'cancel-documents-btn'];
+            const saveIds = ['save-profile-btn', 'save-education-btn', 'save-documents-btn'];
+            editIds.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'inline-block'; });
+            cancelIds.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+            saveIds.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
             
             // Reload profile data to restore original values
             loadProfileData();
@@ -4751,8 +4781,8 @@
                         completedOptional++;
                     }
                 } else if (fieldId === 'validId') {
-                    const preview = document.getElementById('valid-id-preview');
-                    if (preview && preview.style.display !== 'none') {
+                    const container = document.getElementById('valid-ids-container');
+                    if (container && container.children.length > 0) {
                         completedOptional++;
                     }
                 } else if (fieldId === 'education' || fieldId === 'workExperience') {
@@ -4940,30 +4970,13 @@
                         addCertificateItemWithFile(file);
                     }, index * 150);
                 });
-            } else if (categoryNum === 3 && bulkUploadFiles.length === 1) {
-                // Add as valid ID - process file immediately
-                const file = bulkUploadFiles[0];
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const fileData = e.target.result;
-                    const preview = document.getElementById('valid-id-preview');
-                    if (preview) {
-                        const previewImg = preview.querySelector('img');
-                        const fileInfo = preview.querySelector('.file-info');
-                        
-                        if (previewImg && file.type.startsWith('image/')) {
-                            previewImg.src = fileData;
-                            previewImg.style.display = 'block';
-                        }
-                        if (fileInfo) {
-                            fileInfo.textContent = file.name;
-                        }
-                        preview.style.display = 'block';
-                    }
-                };
-                reader.readAsDataURL(file);
+            } else if (categoryNum === 3) {
+                // Add as valid IDs (multi-upload like diplomas)
+                bulkUploadFiles.forEach((file, index) => {
+                    setTimeout(() => addValidIdItemWithFile(file), index * 150);
+                });
             } else {
-                showMessage('Invalid category or too many files for Valid ID', 'error');
+                showMessage('Invalid category. Type 1 for Diplomas, 2 for Certificates, or 3 for Valid ID.', 'error');
                 return;
             }
             
@@ -5097,6 +5110,24 @@
             reader.readAsDataURL(file);
         }
         
+        // Helper function to add valid ID with file already processed
+        function addValidIdItemWithFile(file) {
+            if (!isEditingProfile) enableEditing();
+            const container = document.getElementById('valid-ids-container');
+            if (!container) return;
+            const currentCount = container.children.length;
+            if (currentCount >= 5) {
+                showMessage('Maximum of 5 Valid IDs allowed', 'error');
+                return;
+            }
+            const fileData = file.type.startsWith('image/') || file.type === 'application/pdf' ? null : null;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                addValidIdItem({ fileData: e.target.result, fileName: file.name });
+            };
+            reader.readAsDataURL(file);
+        }
+        
         // ========== DOCUMENT CATEGORY TABS ==========
         function showDocumentCategory(category) {
             // Hide all categories
@@ -5125,9 +5156,11 @@
         function updateDocumentCounts() {
             const diplomaCount = document.getElementById('diplomas-container')?.children.length || 0;
             const certificateCount = document.getElementById('certificates-container')?.children.length || 0;
+            const validIdCount = document.getElementById('valid-ids-container')?.children.length || 0;
             
             const diplomaBadge = document.getElementById('diploma-count-badge');
             const certificateBadge = document.getElementById('certificate-count-badge');
+            const validIdBadge = document.getElementById('valid-id-count-badge');
             
             if (diplomaBadge) {
                 diplomaBadge.textContent = diplomaCount;
@@ -5136,6 +5169,10 @@
             if (certificateBadge) {
                 certificateBadge.textContent = certificateCount;
                 certificateBadge.style.display = certificateCount > 0 ? 'inline-block' : 'none';
+            }
+            if (validIdBadge) {
+                validIdBadge.textContent = validIdCount;
+                validIdBadge.style.display = validIdCount > 0 ? 'inline-block' : 'none';
             }
         }
         
@@ -5205,7 +5242,7 @@
             const certificates = [];
             
             document.querySelectorAll('#diplomas-container .document-item').forEach(item => {
-                const preview = item.querySelector('.file-preview img');
+                const preview = item.querySelector('.file-preview img, .document-preview-compact img');
                 if (preview && preview.src && preview.src.startsWith('data:')) {
                     diplomas.push({
                         fileData: preview.src,
@@ -5215,7 +5252,7 @@
             });
             
             document.querySelectorAll('#certificates-container .document-item').forEach(item => {
-                const preview = item.querySelector('.file-preview img');
+                const preview = item.querySelector('.file-preview img, .document-preview-compact img');
                 if (preview && preview.src && preview.src.startsWith('data:')) {
                     certificates.push({
                         fileData: preview.src,
@@ -5223,6 +5260,8 @@
                     });
                 }
             });
+            
+            const validIds = collectValidIdsData();
             
             // Collect teaching abilities
             const teachingAbilities = {
@@ -5282,6 +5321,7 @@
                 })).filter(work => work.company || work.position),
                 diplomas: diplomas,
                 certificates: certificates,
+                validIds: validIds,
                 teachingAbilities: teachingAbilities,
                 videoIntroduction: videoIntro,
                 hobbies: document.getElementById('hobbies')?.value || ''

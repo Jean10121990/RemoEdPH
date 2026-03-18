@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Performance Indicator - RemoEdPH</title>
     <link rel="stylesheet" href="modern-styles.css">
+    <link rel="stylesheet" href="css/teacher-sidebar.css">
     <style>
         body { 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
@@ -17,54 +18,6 @@
         .remoed-main {
             display: flex;
             min-height: 100vh;
-        }
-        
-        .remoed-sidebar {
-            width: 260px;
-            min-width: 260px;
-            background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
-            box-shadow: 4px 0 20px rgba(102, 126, 234, 0.1);
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            position: fixed;
-            height: 100vh;
-            overflow: hidden;
-            z-index: 100;
-        }
-        
-        .remoed-menu {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-        
-        .remoed-menu li {
-            padding: 14px 32px;
-            color: #64748b;
-            font-weight: 500;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            border-left: 4px solid transparent;
-            transition: background 0.2s, border-color 0.2s;
-        }
-
-        .remoed-menu li.active,
-        .remoed-menu li:hover {
-            background: linear-gradient(90deg, #667eea 0%, #5a67d8 100%);
-            border-left: 4px solid #667eea;
-            color: white;
-            transform: translateX(4px);
-            transition: all 0.3s ease;
-            border-radius: 0 8px 8px 0;
-        }
-        
-        .remoed-menu svg {
-            width: 20px;
-            height: 20px;
-            stroke: currentColor;
         }
         
         .remoed-content {
@@ -722,9 +675,9 @@
 </head>
 <body>
     <div class="remoed-main">
-        <!-- Sidebar will be loaded via JavaScript -->
-        <div class="remoed-sidebar" id="sidebar"></div>
-        
+        <div id="sidebar"></div>
+        <script src="js/teacher-sidebar.js"></script>
+        <script>TeacherSidebar.render('sidebar', 'performance-indicator');</script>
         <div class="remoed-content">
             <div class="page-header">
                 <h1>Performance Indicator</h1>
@@ -965,33 +918,8 @@
             }
         }
         
-        // Load sidebar
-        fetch('teacher-dashboard.html')
-            .then(r => r.text())
-            .then(html => {
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(html, 'text/html');
-                const sidebar = doc.querySelector('.remoed-sidebar');
-                if (sidebar) {
-                    document.getElementById('sidebar').innerHTML = sidebar.innerHTML;
-
-                    // Setup all navigation links
-                    setupSidebarNavigation();
-
-                    // Update active menu item - remove active from all first, then add to current page only
-                    const menuItems = document.querySelectorAll('.remoed-menu li');
-                    menuItems.forEach(item => {
-                        item.classList.remove('active');
-                        if (item.textContent.includes('Performance Indicator')) {
-                            item.classList.add('active');
-                        }
-                    });
-                    
-                    // Update sidebar profile (username and picture)
-                    updateSidebarProfile();
-                }
-            })
-            .catch(err => console.error('Error loading sidebar:', err));
+        // Sidebar is rendered by TeacherSidebar component; update profile (username + picture) after DOM ready
+        if (typeof updateSidebarProfile === 'function') updateSidebarProfile();
         
         let currentPeriod = 'weekly';
         

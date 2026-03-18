@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Attendance Analysis - RemoEdPH</title>
     <link rel="stylesheet" href="modern-styles.css">
+    <link rel="stylesheet" href="css/teacher-sidebar.css">
     <style>
         body { 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
@@ -17,19 +18,6 @@
         .remoed-main {
             display: flex;
             min-height: 100vh;
-        }
-        
-        .remoed-sidebar {
-            width: 260px;
-            min-width: 260px;
-            background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
-            box-shadow: 4px 0 20px rgba(102, 126, 234, 0.1);
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            position: fixed;
-            height: 100vh;
-            z-index: 100;
         }
         
         .remoed-content {
@@ -518,9 +506,9 @@
 </head>
 <body>
     <div class="remoed-main">
-        <!-- Sidebar will be loaded via JavaScript -->
-        <div class="remoed-sidebar" id="sidebar"></div>
-        
+        <div id="sidebar"></div>
+        <script src="js/teacher-sidebar.js"></script>
+        <script>TeacherSidebar.render('sidebar', 'performance-indicator');</script>
         <div class="remoed-content">
             <div class="page-header">
                 <h1>Attendance Analysis</h1>
@@ -668,33 +656,8 @@
             }
         }
         
-        // Load sidebar
-        fetch('teacher-dashboard.html')
-            .then(r => r.text())
-            .then(html => {
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(html, 'text/html');
-                const sidebar = doc.querySelector('.remoed-sidebar');
-                if (sidebar) {
-                    document.getElementById('sidebar').innerHTML = sidebar.innerHTML;
-                    
-                    // Setup all navigation links
-                    setupSidebarNavigation();
-                    
-                    // Update active menu item - remove active from all first, then add to current page only
-                    const menuItems = document.querySelectorAll('.remoed-menu li');
-                    menuItems.forEach(item => {
-                        item.classList.remove('active');
-                        if (item.textContent.includes('Attendance')) {
-                            item.classList.add('active');
-                        }
-                    });
-                    
-                    // Update sidebar profile (username and picture)
-                    updateSidebarProfile();
-                }
-            })
-            .catch(err => console.error('Error loading sidebar:', err));
+        // Sidebar rendered by TeacherSidebar component; update profile after DOM ready
+        if (typeof updateSidebarProfile === 'function') updateSidebarProfile();
         
         let currentPeriod = 'weekly';
         

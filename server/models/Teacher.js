@@ -60,7 +60,11 @@ const teacherSchema = new mongoose.Schema({
       fileData: { type: String },
       fileName: { type: String }
     }],
-    validId: { type: String, default: null }
+    validId: { type: String, default: null }, // Legacy single valid ID support
+    validIds: [{
+      fileData: { type: String },
+      fileName: { type: String }
+    }]
   },
   
   // Teaching Abilities
