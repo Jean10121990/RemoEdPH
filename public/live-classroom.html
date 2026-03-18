@@ -634,6 +634,10 @@
       
       // Queue for ICE candidates received before remote description is set
       const queuedIceCandidates = [];
+      // Watchdogs: restart ICE if stuck in new/checking 5s; force reconnect if failed or disconnected 3s
+      let iceRestartWatchdogId = null;
+      let disconnectedWatchdogId = null;
+      let disconnectedSince = null;
       
       
       // Cross-browser compatibility for RTCPeerConnection
@@ -643,23 +647,22 @@
       
       const rtcConfig = { 
         iceServers: [
-          // Google STUN servers (free, public)
+          // Google STUN (multiple for faster path finding in dev tunnel)
           { urls: 'stun:stun.l.google.com:19302' },
           { urls: 'stun:stun1.l.google.com:19302' },
           { urls: 'stun:stun2.l.google.com:19302' },
           { urls: 'stun:stun3.l.google.com:19302' },
           { urls: 'stun:stun4.l.google.com:19302' },
-          // Additional STUN servers for redundancy
+          // Mozilla STUN for redundancy
+          { urls: 'stun:stun.services.mozilla.com' },
           { urls: 'stun:stun.stunprotocol.org:3478' },
           { urls: 'stun:stun.voiparound.com' },
           { urls: 'stun:stun.voipbuster.com' },
           { urls: 'stun:stun.voipstunt.com' }
         ],
-        // Connection timeout settings
-        iceCandidatePoolSize: 10, // Pre-gather ICE candidates
-        // Enable bundle policy for better connection stability
+        iceTransportPolicy: 'all', // Aggressive: use all candidates (relay + srflx + host) for faster handshake in tunnel
+        iceCandidatePoolSize: 10,
         bundlePolicy: 'max-bundle',
-        // Enable RTCP mux for better performance
         rtcpMuxPolicy: 'require'
       };
 
@@ -684,13 +687,15 @@
           // If connection is closed or in an invalid state, recreate it
           if (state === 'closed' || signalingState === 'closed') {
             console.log('🔄 Peer connection is closed, recreating...');
+            if (iceRestartWatchdogId) { clearTimeout(iceRestartWatchdogId); iceRestartWatchdogId = null; }
+            if (disconnectedWatchdogId) { clearTimeout(disconnectedWatchdogId); disconnectedWatchdogId = null; }
+            disconnectedSince = null;
             try {
               peerConnection.close();
             } catch (e) {
               console.warn('Error closing peer connection:', e);
             }
             peerConnection = null;
-            // Reset flags
             isCreatingOffer = false;
             isSettingRemoteDescription = false;
           } else {
@@ -863,33 +868,81 @@
         peerConnection.oniceconnectionstatechange = () => {
           const iceState = peerConnection.iceConnectionState;
           console.log('🧊 ICE connection state:', iceState, 'userType:', userType);
-          if (iceState === 'failed' || iceState === 'disconnected') {
-            console.warn('⚠️ ICE connection failed/disconnected');
-            attemptReconnect();
-          } else if (iceState === 'connected' || iceState === 'completed') {
+          // Clear 5s ICE restart watchdog when we leave new/checking
+          if (iceState !== 'new' && iceState !== 'checking') {
+            if (iceRestartWatchdogId) {
+              clearTimeout(iceRestartWatchdogId);
+              iceRestartWatchdogId = null;
+            }
+          }
+          if (iceState === 'failed') {
+            if (disconnectedWatchdogId) {
+              clearTimeout(disconnectedWatchdogId);
+              disconnectedWatchdogId = null;
+            }
+            disconnectedSince = null;
+            console.warn('⚠️ ICE failed - forcing new offer/answer in 1s');
+            setTimeout(() => { if (peerConnection && peerConnection.iceConnectionState === 'failed') attemptReconnect(); }, 1000);
+          } else if (iceState === 'disconnected') {
+            disconnectedSince = disconnectedSince || Date.now();
+            if (disconnectedWatchdogId) clearTimeout(disconnectedWatchdogId);
+            disconnectedWatchdogId = setTimeout(() => {
+              disconnectedWatchdogId = null;
+              if (peerConnection && peerConnection.iceConnectionState === 'disconnected') {
+                console.warn('⚠️ ICE disconnected 3s - forcing new offer/answer');
+                attemptReconnect();
+              }
+            }, 3000);
+          } else {
+            if (disconnectedWatchdogId) {
+              clearTimeout(disconnectedWatchdogId);
+              disconnectedWatchdogId = null;
+            }
+            disconnectedSince = null;
+          }
+          if (iceState === 'connected' || iceState === 'completed') {
             console.log('✅ ICE connection established');
           }
         };
         if (localStream) {
           addLocalTracksToPeerConnection();
-          
-          // Force ICE gathering to start by creating a data channel
-          // This helps establish connection faster, especially for students
-          try {
-            if (!peerConnection.getDataChannel('init')) {
-              const dataChannel = peerConnection.createDataChannel('init', { ordered: true });
-              dataChannel.onopen = () => {
-                console.log('✅ Data channel opened - connection ready');
-              };
-              dataChannel.onerror = (err) => {
-                // Silently ignore - data channel is just for ICE gathering
-              };
-              console.log('📡 Created data channel to initiate ICE gathering');
-            }
-          } catch (e) {
-            // Data channel might already exist, ignore
-          }
         }
+      }
+
+      function startIceRestartWatchdog() {
+        if (iceRestartWatchdogId) clearTimeout(iceRestartWatchdogId);
+        iceRestartWatchdogId = setTimeout(() => {
+          iceRestartWatchdogId = null;
+          if (!peerConnection) return;
+          const s = peerConnection.iceConnectionState;
+          if (s !== 'new' && s !== 'checking') return;
+          console.warn('🧊 ICE stuck in', s, 'for 5s - triggering restart');
+          if (userType === 'teacher') {
+            createOfferWithIceRestart();
+          } else {
+            if (socket && socket.connected) {
+              socket.emit('request-ice-restart', { room });
+              console.log('📤 Student requested ICE restart from teacher');
+            }
+          }
+        }, 5000);
+      }
+
+      function createOfferWithIceRestart() {
+        if (!peerConnection || !localStream || isCreatingOffer) return;
+        isCreatingOffer = true;
+        peerConnection.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true, voiceActivityDetection: true, iceRestart: true })
+          .then(offer => peerConnection.setLocalDescription(offer))
+          .then(() => {
+            socket.emit('offer', { room, offer: peerConnection.localDescription });
+            console.log('📤 ICE restart: new offer sent by teacher');
+            isCreatingOffer = false;
+            startIceRestartWatchdog();
+          })
+          .catch(err => {
+            console.error('❌ ICE restart offer failed:', err);
+            isCreatingOffer = false;
+          });
       }
 
       socket.on('joined', () => {
@@ -1012,6 +1065,11 @@
               }, 1000);
               return;
             }
+            // Perfect negotiation: do not create a new offer if already stable (avoids InvalidStateError)
+            if (signalingState === 'stable') {
+              console.log('⚠️ Teacher: already stable, ignoring duplicate ready');
+              return;
+            }
             
             // Make sure all tracks are added BEFORE creating offer
             addLocalTracksToPeerConnection();
@@ -1060,6 +1118,7 @@
                 socket.emit('offer', { room, offer: peerConnection.localDescription });
                 console.log('📤 Offer sent by teacher');
                 isCreatingOffer = false;
+                startIceRestartWatchdog();
               })
               .catch(err => {
                 // Suppress expected errors during reconnection
@@ -1123,89 +1182,22 @@
         }, 300); // Small delay to ensure tracks are added
       });
 
-      socket.on('offer', ({ offer } = {}) => {
-        if (!offer) return;
-        console.log('📨 Received offer, userType:', userType, 'current signaling state:', peerConnection ? peerConnection.signalingState : 'no peer connection');
-        ensurePeerConnection();
-        if (!peerConnection || !localStream) {
-          console.warn('⚠️ Cannot handle offer: peerConnection or localStream missing', {
-            hasPeerConnection: !!peerConnection,
-            hasLocalStream: !!localStream
-          });
-          // Wait and retry
-          setTimeout(() => {
-            if (peerConnection && localStream) {
-              socket.emit('offer', { offer });
-            }
-          }, 1000);
+      // Shared handler so we can retry locally without re-emitting to server (which would send to wrong peer)
+      function handleIncomingOffer(offer) {
+        if (!offer || !peerConnection || !localStream) return;
+        if (peerConnection.signalingState === 'stable') {
+          console.log('⚠️ Ignoring stale offer in handler - already stable');
           return;
         }
-        
-        // If student has a temporary local description (from forced ICE gathering), clear it first
-        if (userType === 'student' && peerConnection.localDescription && 
-            peerConnection.signalingState === 'have-local-offer') {
-          console.log('📡 Student: Clearing temporary offer to accept real offer from teacher');
-          // We need to reset the connection to clear the temporary offer
-          try {
-            peerConnection.close();
-          } catch (e) {
-            console.warn('Error closing peer connection:', e);
-          }
-          peerConnection = null;
-          isSettingRemoteDescription = false;
-          ensurePeerConnection();
-          // Wait a moment for connection to be ready, then handle the offer
-          setTimeout(() => {
-            if (peerConnection && localStream) {
-              // Re-handle the offer
-              socket.emit('offer', { offer });
-            }
-          }, 500);
-          return;
-        }
-        
-        // Check if we already have a remote description
-        // If we do, we need to reset the connection to avoid SDP errors
-        if (peerConnection.remoteDescription) {
-          console.warn('⚠️ Already have remote description - resetting to avoid SDP errors');
-          try {
-            peerConnection.close();
-          } catch (e) {
-            console.warn('Error closing peer connection:', e);
-          }
-          peerConnection = null;
-          isSettingRemoteDescription = false;
-          ensurePeerConnection();
-          // Retry handling the offer after recreating connection
-          setTimeout(() => {
-            if (peerConnection && localStream) {
-              // Re-emit the offer event to handle it again
-              socket.emit('offer', { offer });
-            }
-          }, 1000);
-          return;
-        }
-        // Make sure all tracks are added BEFORE setting remote description
         addLocalTracksToPeerConnection();
         console.log(`📊 Tracks ensured: local=${localStream.getTracks().length}, senders=${peerConnection.getSenders().length}`);
-        
-        // Verify tracks are in senders
-        const updatedSenders = peerConnection.getSenders();
-        updatedSenders.forEach(sender => {
-          console.log('  - Sender track:', sender.track?.kind, sender.track?.id);
-        });
-        
-        // Prevent concurrent remote description setting
-        if (isSettingRemoteDescription) {
-          console.log('⚠️ Already setting remote description, skipping...');
-          return;
-        }
+        if (isSettingRemoteDescription) return;
         isSettingRemoteDescription = true;
         peerConnection.setRemoteDescription(new RTCSessionDescription(offer))
           .then(() => {
             console.log('✅ Remote description set, creating answer');
-            // Process any queued ICE candidates now that remote description is set
             processQueuedIceCandidates();
+            startIceRestartWatchdog();
             return peerConnection.createAnswer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
           })
           .then(answer => {
@@ -1219,7 +1211,58 @@
             console.error('❌ Error handling offer:', err);
             isSettingRemoteDescription = false;
           });
+      }
+
+      socket.on('offer', ({ offer } = {}) => {
+        if (!offer) return;
+        console.log('📨 Received offer, userType:', userType, 'current signaling state:', peerConnection ? peerConnection.signalingState : 'no peer connection');
+        ensurePeerConnection();
+        if (!peerConnection || !localStream) {
+          console.warn('⚠️ Cannot handle offer: peerConnection or localStream missing');
+          setTimeout(() => { if (peerConnection && localStream) handleIncomingOffer(offer); }, 1000);
+          return;
+        }
+        // Perfect negotiation: ignore stale offers when already stable to avoid InvalidStateError
+        if (peerConnection.signalingState === 'stable') {
+          console.log('⚠️ Ignoring stale offer - connection already stable');
+          return;
+        }
+        if (peerConnection.remoteDescription) {
+          console.warn('⚠️ Already have remote description - resetting to avoid SDP errors');
+          try { peerConnection.close(); } catch (e) {}
+          peerConnection = null;
+          isSettingRemoteDescription = false;
+          ensurePeerConnection();
+          setTimeout(() => { if (peerConnection && localStream) handleIncomingOffer(offer); }, 1000);
+          return;
+        }
+        handleIncomingOffer(offer);
       });
+
+      function handleIncomingAnswer(answer) {
+        if (!answer || !peerConnection) return;
+        if (isSettingRemoteDescription) return;
+        isSettingRemoteDescription = true;
+        peerConnection.setRemoteDescription(new RTCSessionDescription(answer))
+          .then(() => {
+            console.log('✅ Remote description (answer) set successfully by', userType);
+            isSettingRemoteDescription = false;
+            processQueuedIceCandidates();
+            setTimeout(() => {
+              if (peerConnection) {
+                console.log('📊 Connection state after answer:', {
+                  connectionState: peerConnection.connectionState,
+                  iceConnectionState: peerConnection.iceConnectionState,
+                  signalingState: peerConnection.signalingState
+                });
+              }
+            }, 500);
+          })
+          .catch(err => {
+            console.error('❌ Error setting remote description:', err);
+            isSettingRemoteDescription = false;
+          });
+      }
 
       socket.on('answer', ({ answer } = {}) => {
         if (!answer) return;
@@ -1227,74 +1270,34 @@
         if (!peerConnection) {
           console.warn('⚠️ No peer connection, cannot set remote description');
           ensurePeerConnection();
-          // Retry after a moment
-          setTimeout(() => {
-            if (peerConnection) {
-              socket.emit('answer', { answer });
-            }
-          }, 500);
+          setTimeout(() => { if (peerConnection) handleIncomingAnswer(answer); }, 500);
           return;
         }
-        // Check if we already have a remote description
-        // If we do, we might need to reset (but this is less critical for answers)
         if (peerConnection.remoteDescription) {
           const currentState = peerConnection.signalingState;
-          // Only ignore if we're in the right state
           if (currentState === 'have-remote-answer' || currentState === 'stable') {
             console.log('⚠️ Already have remote description in stable state, ignoring duplicate answer');
             return;
-          } else {
-            console.warn('⚠️ Remote description exists but in wrong state:', currentState, '- resetting...');
-            try {
-              peerConnection.close();
-            } catch (e) {
-              console.warn('Error closing peer connection:', e);
-            }
-            peerConnection = null;
-            isSettingRemoteDescription = false;
-            ensurePeerConnection();
-            // Retry after recreating
-            setTimeout(() => {
-              if (peerConnection && localStream) {
-                socket.emit('answer', { answer });
-              }
-            }, 1000);
-            return;
           }
-        }
-        // Check if we're in the right state (should be "have-local-offer")
-        if (peerConnection.signalingState !== 'have-local-offer') {
-          console.warn('⚠️ Wrong signaling state for answer:', peerConnection.signalingState, 'expected: have-local-offer');
-          // Try to continue anyway - sometimes the state can be different
-          console.log('⚠️ Attempting to set remote description anyway...');
-        }
-        // Prevent concurrent remote description setting
-        if (isSettingRemoteDescription) {
-          console.log('⚠️ Already setting remote description, skipping...');
+          console.warn('⚠️ Remote description exists but in wrong state:', currentState, '- resetting...');
+          try { peerConnection.close(); } catch (e) {}
+          peerConnection = null;
+          isSettingRemoteDescription = false;
+          ensurePeerConnection();
+          setTimeout(() => { if (peerConnection) handleIncomingAnswer(answer); }, 1000);
           return;
         }
-        isSettingRemoteDescription = true;
-        peerConnection.setRemoteDescription(new RTCSessionDescription(answer))
-          .then(() => {
-            console.log('✅ Remote description (answer) set successfully by', userType);
-            isSettingRemoteDescription = false;
-            
-            // Process any queued ICE candidates now that remote description is set
-            processQueuedIceCandidates();
-            
-            // Check connection state after answer is set
-            setTimeout(() => {
-              console.log('📊 Connection state after answer:', {
-                connectionState: peerConnection.connectionState,
-                iceConnectionState: peerConnection.iceConnectionState,
-                signalingState: peerConnection.signalingState
-              });
-            }, 500);
-          })
-          .catch(err => {
-            console.error('❌ Error setting remote description:', err);
-            isSettingRemoteDescription = false;
-          });
+        if (peerConnection.signalingState !== 'have-local-offer') {
+          console.warn('⚠️ Wrong signaling state for answer:', peerConnection.signalingState, '- attempting anyway');
+        }
+        handleIncomingAnswer(answer);
+      });
+
+      socket.on('request-ice-restart', () => {
+        if (userType === 'teacher' && peerConnection && localStream) {
+          console.log('📨 Teacher: ICE restart requested by student, creating new offer');
+          createOfferWithIceRestart();
+        }
       });
 
       // Function to add queued ICE candidates after remote description is set
@@ -1482,7 +1485,7 @@
           
           const flagBtn = document.createElement('button');
           flagBtn.className = 'action-btn flag-btn';
-          flagBtn.textContent = '🚩';
+          flagBtn.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" style="display:block;margin:0 auto" aria-hidden="true"><path fill="#666" d="M2 2h2v20H2z"/><path fill="#28a745" d="M4 2v10l10-5L4 2z"/></svg>';
           flagBtn.title = 'Flag reward';
           
           const cookieBtn = document.createElement('button');
@@ -1922,6 +1925,9 @@
             const clamped = Math.min(pdfDoc.numPages, Math.max(1, targetPage));
             pageNum = clamped;
             window.pdfViewerState.pageNum = pageNum;
+            if (pageInfo) pageInfo.textContent = `${pageNum}/${pdfDoc.numPages}`;
+            if (prevBtn) prevBtn.disabled = pageNum <= 1;
+            if (nextBtn) nextBtn.disabled = pageNum >= pdfDoc.numPages;
             queueRenderPage(pageNum, useFitScale);
             const targetCanvas = pageCanvases[pageNum]?.canvasDiv;
             if (targetCanvas) {
@@ -1963,8 +1969,7 @@
                   page: pageNum,
                   scrollTop: currentPdfContainer ? currentPdfContainer.scrollTop : 0,
                   scrollLeft: currentPdfContainer ? currentPdfContainer.scrollLeft : 0,
-                  materialId: window.currentPdfMaterialId,
-                  totalSlides: pdfDoc.numPages
+                  materialId: window.currentPdfMaterialId
                 };
                 socket.emit('presenter-sync-update', syncData);
                 console.log('📄 [TEACHER] presenter-sync-update (prev)', syncData);
@@ -1995,8 +2000,7 @@
                   page: pageNum,
                   scrollTop: currentPdfContainer ? currentPdfContainer.scrollTop : 0,
                   scrollLeft: currentPdfContainer ? currentPdfContainer.scrollLeft : 0,
-                  materialId: window.currentPdfMaterialId,
-                  totalSlides: pdfDoc.numPages
+                  materialId: window.currentPdfMaterialId
                 };
                 socket.emit('presenter-sync-update', syncData);
                 console.log('📄 [TEACHER] presenter-sync-update (next)', syncData);
@@ -2118,8 +2122,7 @@
                 page: pageNumber,
                 scrollTop: currentPdfContainer ? currentPdfContainer.scrollTop : 0,
                 scrollLeft: currentPdfContainer ? currentPdfContainer.scrollLeft : 0,
-                materialId: window.currentPdfMaterialId,
-                totalSlides: pdfDoc.numPages
+                materialId: window.currentPdfMaterialId
               };
               socket.emit('presenter-sync-update', syncData);
               console.log('📄 [TEACHER] presenter-sync-update (pagechanging)', syncData);
@@ -2507,18 +2510,22 @@
             const scrollTop = currentPdfContainer.scrollTop;
             const scrollLeft = currentPdfContainer.scrollLeft;
             
-            // Try to get page number from iframe src
+            // Try to get page number from viewer state or estimate from scroll
             let page = window.pdfViewerState?.pageNum || null;
             if (!page) {
               const estimatedPageHeight = 1100;
               page = Math.max(1, Math.floor(scrollTop / estimatedPageHeight) + 1);
             }
             
-            // Try to get zoom level
+            // Try to get zoom level from iframe (if using legacy iframe) or from viewer state
             let zoom = null;
-            const zoomMatch = iframeSrc.match(/zoom[=:](\d+)/i);
-            if (zoomMatch) {
-              zoom = parseInt(zoomMatch[1]);
+            const iframeSrc = (currentPdfIframe && currentPdfIframe.src) || '';
+            if (iframeSrc) {
+              const zoomMatch = iframeSrc.match(/zoom[=:](\d+)/i);
+              if (zoomMatch) zoom = parseInt(zoomMatch[1]);
+            }
+            if (zoom == null && window.pdfViewerState && typeof window.pdfViewerState.scale === 'number') {
+              zoom = Math.round(window.pdfViewerState.scale * 100);
             }
             
             // Only send if state changed significantly (increased thresholds to reduce jitter)
@@ -2537,8 +2544,7 @@
                 scrollTop,
                 scrollLeft,
                 zoom,
-                materialId: window.currentPdfMaterialId,
-                totalSlides: window.pdfViewerState?.pdfDoc?.numPages
+                materialId: window.currentPdfMaterialId
               };
               
               if (socket && socket.connected) {
@@ -2583,8 +2589,7 @@
                 page,
                 scrollTop,
                 scrollLeft,
-                materialId: window.currentPdfMaterialId,
-                totalSlides: window.pdfViewerState?.pdfDoc?.numPages
+                materialId: window.currentPdfMaterialId
               };
               
         socket.emit('presenter-sync-update', syncData);
@@ -2974,6 +2979,15 @@
       let studentPdfIframe = null;
       let studentPdfContainer = null;
       
+      // When a student joins, teacher re-broadcasts presenter mode so the new student gets it
+      socket.on('user-joined', ({ userType: joinedUserType, room: eventRoom } = {}) => {
+        if (userType !== 'teacher' || eventRoom !== room || joinedUserType !== 'student') return;
+        if (presenterModeActive && socket && socket.connected) {
+          socket.emit('presenter-mode-start', { room });
+          console.log('📺 [TEACHER] Re-sent presenter-mode-start for new student');
+        }
+      });
+      
       socket.on('presenter-mode-start', ({ room: eventRoom } = {}) => {
         if (userType !== 'student' || eventRoom !== room) return;
         
@@ -3004,14 +3018,15 @@
       // Handle real-time presenter sync updates
       socket.on('presenter-sync-update', async ({ page, slideIndex, scrollTop, scrollLeft, zoom, materialId, totalSlides } = {}) => {
         if (userType !== 'student') return;
-        // If we missed presenter-mode-start (e.g. joined after teacher loaded PDF), accept sync and activate follow mode
+        // If we missed presenter-mode-start (e.g. joined after teacher), enable sync on first update
+        // Don't require PDF to be ready yet - we'll wait in ensurePdfReady below
         if (!studentPresenterModeActive) {
           studentPresenterModeActive = true;
-          studentPdfIframe = document.querySelector('#lesson-file-viewer iframe');
-          studentPdfContainer = document.querySelector('#lesson-file-viewer [id^="pdf-"]') || (window.pdfViewerState && window.pdfViewerState.canvasContainer);
+          const vs = window.pdfViewerState || {};
+          if (!studentPdfContainer && vs.canvasContainer) studentPdfContainer = vs.canvasContainer;
           showStudentPresenterIndicator(true);
           lockStudentPdfControls(true);
-          console.log('📺 [STUDENT] Presenter sync active (caught up from sync update)');
+          console.log('📺 [STUDENT] Presenter sync enabled (from sync update)');
         }
 
         console.log('📄 [STUDENT] presenter-sync-update received', { page, scrollTop, scrollLeft, materialId });
@@ -3041,8 +3056,10 @@
         
         if (page !== undefined && page > 0) {
           // If we have a local PDF render (canvas mode), sync via goToPage
-          const ensurePdfReady = (attempts = 20) => {
-            if (viewerState.pdfDoc && typeof viewerState.goToPage === 'function') return Promise.resolve();
+          // Check window.pdfViewerState each attempt so we see when PDF finishes loading
+          const ensurePdfReady = (attempts = 25) => {
+            const state = window.pdfViewerState || {};
+            if (state.pdfDoc && typeof state.goToPage === 'function') return Promise.resolve();
             if (attempts <= 0) return Promise.reject(new Error('PDF not ready'));
             return new Promise((resolve, reject) => {
               setTimeout(() => {
@@ -3053,11 +3070,12 @@
           
           try {
             await ensurePdfReady();
-            if (viewerState.pdfDoc && typeof viewerState.goToPage === 'function') {
-              viewerState.goToPage(page, true);
+            const state = window.pdfViewerState || {};
+            if (state.pdfDoc && typeof state.goToPage === 'function') {
+              state.goToPage(page, true);
             }
           } catch (e) {
-            console.warn('⚠️ [STUDENT] PDF not ready for page sync, falling back to iframe method');
+            console.warn('⚠️ [STUDENT] PDF not ready for page sync after wait');
           }
         }
 
@@ -3091,11 +3109,9 @@
           iframe.src = newUrl; // force update to guarantee navigation on all browsers
           console.log('📄 [STUDENT] Forcing PDF src update to page', page, newUrl);
           
-          // Update page info (outside iframe) – support both legacy id and PDF.js embedded viewer id
-          const pageInfoEl = document.getElementById('pdf-page-info') || document.getElementById('pdf-page-info-custom');
-          if (pageInfoEl && totalSlides) {
-            pageInfoEl.textContent = `${page}/${totalSlides}`;
-          } else if (pageInfoEl) {
+          // Update page info (outside iframe)
+          const pageInfoEl = document.getElementById('pdf-page-info');
+          if (pageInfoEl) {
             pageInfoEl.textContent = `Page ${page}`;
           }
           
@@ -3498,31 +3514,25 @@
             return;
           }
 
-          // Try with simpler constraints first, then upgrade if needed
-          let constraints = {
-            video: true, 
-            audio: true 
+          // 360p (640x360) for faster connection on dev tunnel / slower bitrate
+          const constraints = {
+            video: { 
+              width: { ideal: 640, max: 640 },
+              height: { ideal: 360, max: 360 },
+              facingMode: 'user'
+            }, 
+            audio: {
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true
+            }
           };
 
-          // Try to get media
           try {
             localStream = await getUserMedia(constraints);
           } catch (err) {
-            // If that fails, try with more specific constraints
-            console.warn('Simple constraints failed, trying with specific settings...', err);
-            constraints = {
-              video: { 
-                width: { ideal: 1280 },
-                height: { ideal: 720 },
-                facingMode: 'user'
-              }, 
-              audio: {
-                echoCancellation: true,
-                noiseSuppression: true,
-                autoGainControl: true
-              }
-            };
-            localStream = await getUserMedia(constraints);
+            console.warn('360p constraints failed, trying video: true...', err);
+            localStream = await getUserMedia({ video: true, audio: true });
           }
 
           if (localVideo && localStream) {
@@ -3622,7 +3632,7 @@
               // Wait for socket to connect, with timeout
               const connectTimeout = setTimeout(() => {
                 console.error('❌ Socket connection timeout - please check if server is running');
-                alert('Cannot connect to server. Please ensure the server is running on port 5000.');
+                alert('Cannot connect to server. Please ensure the server is running at ' + (SIGNALING_SERVER_URL || window.location.origin) + ' and try refreshing.');
               }, 10000); // 10 second timeout
               
               socket.once('connect', () => {
@@ -3747,34 +3757,27 @@
               peerConnection.connectionState === 'disconnected' ||
               peerConnection.connectionState === 'closed')) {
             console.log('🔄 Reconnecting WebRTC...');
-            // Reinitialize peer connection
             if (peerConnection) {
               peerConnection.close();
               peerConnection = null;
             }
-            // Reset flags
             isCreatingOffer = false;
             isSettingRemoteDescription = false;
-            
-            // Recreate peer connection
-            ensurePeerConnection();
-            
-            // Rejoin room to trigger signaling
-            if (socket && socket.connected && localStream) {
-              setTimeout(() => {
+            // Wait 2s before re-establishing to allow signaling server to clear old session (e.g. after refresh)
+            console.log('⏳ Waiting 2s before re-establishing RTCPeerConnection...');
+            setTimeout(() => {
+              ensurePeerConnection();
+              if (socket && socket.connected && localStream) {
                 socket.emit('join', { room, userType, userId, username });
                 console.log('🔄 Rejoined room after peer connection reset');
-                
-                // Trigger ready event after a moment
                 setTimeout(() => {
                   socket.emit('ready', { room });
                 }, 1000);
-              }, 500);
-            } else if (socket && socket.connected) {
-              // If no local stream, try to reinitialize
-              console.log('🔄 No local stream, attempting to reinitialize...');
-              initializeWebcam();
-            }
+              } else if (socket && socket.connected) {
+                console.log('🔄 No local stream, attempting to reinitialize...');
+                initializeWebcam();
+              }
+            }, 2000);
           }
         }, delay);
       }
@@ -3847,7 +3850,8 @@
             if (state !== 'new' || iceState !== 'new') {
               iceForceAttemptedForNew = false;
             }
-            // Only log and act when stuck in "new" – throttle to once per 60s and run force-ICE at most once per stuck period
+            // Only log and act when stuck in "new" – throttle to once per 60s and run force-ICE at most once per stuck period.
+            // Role-based: only Teacher creates offers; Student only listens for offer and creates answer (no student offer).
             if (state === 'new' && iceState === 'new' && iceGatheringState === 'new' && localStream) {
               const now = Date.now();
               const throttleMs = 60000;
@@ -3857,25 +3861,13 @@
               }
               if (!iceForceAttemptedForNew) {
                 iceForceAttemptedForNew = true;
-                if (userType === 'student' && !peerConnection.localDescription && !peerConnection.remoteDescription) {
-                  console.log('📡 Student: Creating temporary offer to force ICE gathering...');
-                  peerConnection.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true })
-                    .then(dummyOffer => {
-                      return peerConnection.setLocalDescription(dummyOffer);
-                    })
-                    .then(() => {
-                      console.log('✅ Student: Temporary offer set - ICE gathering should start');
-                    })
-                    .catch(err => {
-                      console.warn('⚠️ Student: Could not create temporary offer:', err);
-                      iceForceAttemptedForNew = false;
-                    });
-                } else if (userType === 'teacher' && !peerConnection.localDescription) {
+                if (userType === 'teacher' && !peerConnection.localDescription) {
                   ensurePeerConnection();
                   if (socket && socket.connected) {
                     socket.emit('ready', { room });
                   }
                 }
+                // Student never creates an offer; they only wait for teacher's offer and create answer
               }
             } else if (state !== 'new' || iceState !== 'new') {
               const now = Date.now();
@@ -4030,7 +4022,7 @@
       
       socket.on('reconnect_failed', () => {
         console.error('❌ Socket reconnection failed after all attempts');
-        alert('Cannot connect to server. Please refresh the page or check if the server is running.');
+        alert('Cannot connect to server. Please ensure the server is running at ' + (SIGNALING_SERVER_URL || window.location.origin) + ' and refresh the page.');
       });
 
       socket.on('connect', () => {
@@ -4184,45 +4176,81 @@
         }
       });
 
-      // Class timer - starts from booked class time, not when user joins
-      let classStartTime = null; // milliseconds since epoch
+      // Class timer: every lesson is 25 minutes — applies to all booked classes (all time slots, not just one). Timezone-agnostic; use Unix ms only.
+      const SLOT_DURATION_MS = 1500000; // 25 minutes in ms (all lessons)
+      let startTs = null; // raw Unix ms; set once from DB/API or fallback
+      let classTimerIntervalId = null;
       const classTimeElement = document.getElementById('class-time');
-      
-      // Initialize timer with booked class time
+
+      // Standardize input: if string from DB doesn't end in 'Z', append 'Z' so browser treats it as UTC.
+      function toUtcIso(value) {
+        if (value == null) return null;
+        if (value instanceof Date) return value.toISOString();
+        const s = String(value).trim();
+        if (!s) return null;
+        return /Z$/i.test(s) ? s : s + 'Z';
+      }
+
+      // Convert scheduledStartTime (or any API date) to raw Unix ms immediately. Uses UTC (appends Z if missing).
+      function parseToUnixMs(value) {
+        if (value == null) return null;
+        if (typeof value === 'number' && Number.isFinite(value)) return value;
+        if (value instanceof Date) return value.getTime();
+        const iso = toUtcIso(value);
+        if (!iso) return null;
+        const ms = new Date(iso).getTime();
+        return Number.isFinite(ms) ? ms : null;
+      }
+
+      // Get scheduled start as Unix ms only. Prefer API scheduledStartTime/dateTimeUtc (append Z if missing); fallback date+time as local.
+      function getScheduledStartMs(booking) {
+        const fromApi = booking.scheduledStartTime ?? booking.dateTimeUtc ?? null;
+        if (fromApi != null) {
+          const ms = parseToUnixMs(fromApi);
+          if (ms != null) return ms;
+        }
+        if (booking.date && booking.time) {
+          const t = booking.time.trim();
+          const localIso = `${booking.date}T${t.length <= 5 ? t + ':00' : t}`;
+          const ms = new Date(localIso).getTime();
+          return Number.isFinite(ms) ? ms : null;
+        }
+        return null;
+      }
+
+      // Format a UTC ISO or Unix ms as local time for display (e.g. Class Info modal).
+      function formatScheduledTimeLocal(utcIsoOrMs) {
+        if (utcIsoOrMs == null) return '--:--';
+        const iso = toUtcIso(utcIsoOrMs);
+        if (!iso) return '--:--';
+        const d = new Date(iso);
+        if (!Number.isFinite(d.getTime())) return '--:--';
+        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
+
       async function initializeClassTimer() {
         try {
           const bookingId = getQueryParam('bookingId') || getQueryParam('bookingid');
           const classroomId = getQueryParam('room') || getQueryParam('classroomId') || room;
           const slotParam = getQueryParam('slot');
           const token = localStorage.getItem('token');
-          
           let booking = null;
-          
-          // Try to fetch booking data
+
           if (bookingId) {
-            // Try student endpoint first (works for both)
             try {
-              const headers = {};
-              if (token) {
-                headers['Authorization'] = `Bearer ${token}`;
-              }
+              const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
               const resp = await fetch(`/api/student/booking/${bookingId}`, { headers });
               if (resp.ok) {
                 const data = await resp.json();
-                booking = data.booking || data; // Handle both formats
+                booking = data.booking || data;
               }
             } catch (e) {
               console.warn('Failed to fetch booking via student endpoint:', e);
             }
           }
-          
-          // If no booking yet, try classroom endpoint
           if (!booking && classroomId && classroomId !== 'default-room') {
             try {
-              const headers = {};
-              if (token) {
-                headers['Authorization'] = `Bearer ${token}`;
-              }
+              const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
               const resp = await fetch(`/api/teacher/booking/by-classroom/${classroomId}`, { headers });
               if (resp.ok) {
                 const data = await resp.json();
@@ -4232,98 +4260,67 @@
               console.warn('Failed to fetch booking via classroom endpoint:', e);
             }
           }
-          
-          if (booking && (booking.dateTimeUtc || (booking.date && booking.time))) {
-            // Parse booked class date and time using timezone-aware conversion (default to Asia/Manila)
-            const bookingZone = booking.timezone || booking.timeZone || booking.zone || 'Asia/Manila';
-            const Lux = window.luxon && window.luxon.DateTime;
-            if (Lux && booking.dateTimeUtc) {
-              const dt = Lux.fromISO(booking.dateTimeUtc, { zone: 'utc' }).setZone(bookingZone);
-              classStartTime = dt.toMillis();
-            } else if (Lux) {
-              const dt = Lux.fromISO(`${booking.date}T${booking.time}`, { zone: bookingZone });
-              classStartTime = dt.toMillis();
-            } else {
-              // Fallback: construct Date in given zone offset is not possible; assume local
-              const [year, month, day] = booking.date.split('-').map(Number);
-              const timeParts = booking.time.split(':');
-              const hour = parseInt(timeParts[0], 10);
-              const minute = parseInt(timeParts[1] || '0', 10);
-              classStartTime = new Date(year, month - 1, day, hour, minute, 0, 0).getTime();
+
+          if (booking) {
+            startTs = getScheduledStartMs(booking);
+            if (startTs != null) {
+              console.log('⏰ Class timer (25-min slot, Unix ms):', {
+                startTs,
+                diffMs: Date.now() - startTs
+              });
             }
-            
-            console.log('⏰ Class timer initialized with booked time:', {
-              date: booking.date,
-              time: booking.time,
-              bookingZone,
-              bookedStartTime: new Date(classStartTime).toISOString(),
-              currentTime: new Date().toISOString(),
-              elapsedSeconds: Math.floor((Date.now() - classStartTime) / 1000)
-            });
-            
-            // Auto-load lesson files if lessonId is present
             if (booking.lessonId) {
               console.log('📚 [AUTO-LOAD] Booking has lessonId, loading lesson files:', booking.lessonId);
               loadLessonFilesFromBooking(booking.lessonId);
             }
-          } else {
-            // Fallback to current time if booking not found
-            console.warn('⚠️ Could not fetch booking data, using current time as fallback');
-            classStartTime = Date.now();
           }
 
-          // If slot param is present and differs significantly, prefer slot time for testing
-          if (slotParam) {
-            const Lux = window.luxon && window.luxon.DateTime;
-            let slotStartTime = null;
-            const timeParts = slotParam.split(':');
-            if (timeParts.length >= 2) {
-              const hour = parseInt(timeParts[0], 10);
-              const minute = parseInt(timeParts[1], 10);
-              if (!Number.isNaN(hour) && !Number.isNaN(minute)) {
-                if (Lux) {
-                  const dt = Lux.local().set({ hour, minute, second: 0, millisecond: 0 });
-                  slotStartTime = dt.toMillis();
-                } else {
-                  const now = new Date();
-                  slotStartTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minute, 0, 0).getTime();
-                }
-              }
+          // Use URL slot only when we have no start time from the database (never override API/booking).
+          if (startTs == null && slotParam && slotParam.split(':').length >= 2) {
+            const [h, m] = slotParam.split(':').map(n => parseInt(n, 10));
+            if (!Number.isNaN(h) && !Number.isNaN(m)) {
+              const d = new Date();
+              d.setHours(h, m, 0, 0);
+              startTs = d.getTime();
+              console.log('⏰ Class timer fallback: URL slot', slotParam, '→ startTs', startTs);
             }
-            if (slotStartTime && (!classStartTime || Math.abs(slotStartTime - classStartTime) > 30 * 60 * 1000)) {
-              classStartTime = slotStartTime;
-            }
+          }
+
+          if (startTs == null) {
+            console.warn('⚠️ No scheduled start for class timer, using current time');
+            startTs = Date.now();
           }
         } catch (error) {
           console.error('❌ Error initializing class timer:', error);
-          // Fallback to current time
-          classStartTime = Date.now();
+          startTs = Date.now();
         }
-        
-        // Start the timer update interval
-        if (classStartTime) {
+
+        if (classTimeElement) {
+          if (classTimerIntervalId != null) clearInterval(classTimerIntervalId);
           updateClassTimer();
-          setInterval(updateClassTimer, 1000);
+          classTimerIntervalId = setInterval(updateClassTimer, 1000);
         }
       }
-      
+
       function updateClassTimer() {
-        if (!classTimeElement || !classStartTime) return;
-        
-        // Calculate elapsed time from booked class start time
-        const now = Date.now();
-        const bookedTime = classStartTime instanceof Date ? classStartTime.getTime() : classStartTime;
-        const elapsed = Math.floor((now - bookedTime) / 1000);
-        
-        // If class hasn't started yet, show 00:00
-        if (elapsed < 0) {
+        if (!classTimeElement || startTs == null) return;
+        const diff = Date.now() - startTs; // timezone-agnostic: only raw ms, no getHours/getMinutes
+
+        if (diff < 0) {
           classTimeElement.textContent = '00:00';
+          classTimeElement.title = 'Waiting to Start';
           return;
         }
-        
-        const minutes = Math.floor(elapsed / 60);
-        const seconds = elapsed % 60;
+        if (diff > SLOT_DURATION_MS) {
+          classTimeElement.textContent = 'Class Finished';
+          classTimeElement.title = '25-minute slot ended';
+          return;
+        }
+        const elapsedSec = Math.floor(diff / 1000);
+        const minutes = Math.floor(elapsedSec / 60);
+        const seconds = elapsedSec % 60;
         classTimeElement.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        classTimeElement.title = '';
       }
       
       // Auto-load lesson from booking
@@ -4497,7 +4494,6 @@
         if (!classInfoOverlay) return;
         const bookingId = getQueryParam('bookingId') || getQueryParam('bookingid');
         const classroomId = getQueryParam('room') || getQueryParam('classroomId') || room;
-        const timeText = getQueryParam('slot') || (classTimeElement ? classTimeElement.textContent : '--:--');
         const token = localStorage.getItem('token');
 
         const setText = (id, value) => {
@@ -4509,38 +4505,26 @@
         setText('ci-booking', bookingId || 'N/A');
         setText('ci-user-type', userType || '-');
         setText('ci-username', username || '-');
-        setText('ci-class-time', timeText);
+        setText('ci-class-time', '...');
         setText('ci-student-level', 'Loading...');
 
-        // Fetch booking data to get student level
-        let studentLevel = '-';
+        let booking = null;
         try {
-          let booking = null;
-          
-          // Try to fetch booking data
           if (bookingId) {
             try {
-              const headers = {};
-              if (token) {
-                headers['Authorization'] = `Bearer ${token}`;
-              }
+              const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
               const resp = await fetch(`/api/student/booking/${bookingId}`, { headers });
               if (resp.ok) {
                 const data = await resp.json();
-                booking = data.booking || data; // Handle both formats
+                booking = data.booking || data;
               }
             } catch (e) {
               console.warn('Failed to fetch booking via student endpoint:', e);
             }
           }
-          
-          // If no booking yet, try classroom endpoint
           if (!booking && classroomId && classroomId !== 'default-room') {
             try {
-              const headers = {};
-              if (token) {
-                headers['Authorization'] = `Bearer ${token}`;
-              }
+              const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
               const resp = await fetch(`/api/teacher/booking/by-classroom/${classroomId}`, { headers });
               if (resp.ok) {
                 const data = await resp.json();
@@ -4550,25 +4534,36 @@
               console.warn('Failed to fetch booking via classroom endpoint:', e);
             }
           }
-          
-          if (booking && booking.studentLevel) {
-            // Capitalize first letter and format
-            const level = booking.studentLevel.toLowerCase();
-            if (level === 'nursery') {
-              studentLevel = 'Nursery';
-            } else if (level === 'kinder' || level === 'kindergarten') {
-              studentLevel = 'Kinder';
-            } else if (level === 'preparatory' || level === 'primary') {
-              studentLevel = 'Preparatory';
-            } else {
-              studentLevel = booking.studentLevel.charAt(0).toUpperCase() + booking.studentLevel.slice(1);
-            }
+
+          if (booking) {
+            const scheduledUtc = booking.scheduledStartTime ?? booking.dateTimeUtc ?? null;
+            const timeDisplay = scheduledUtc != null
+              ? formatScheduledTimeLocal(scheduledUtc)
+              : (booking.date && booking.time
+                ? (() => {
+                    const d = new Date(`${booking.date}T${booking.time.trim().length <= 5 ? booking.time.trim() + ':00' : booking.time.trim()}`);
+                    return Number.isFinite(d.getTime()) ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--';
+                  })()
+                : (getQueryParam('slot') || (classTimeElement ? classTimeElement.textContent : '--:--')));
+            setText('ci-class-time', timeDisplay);
+          } else {
+            setText('ci-class-time', getQueryParam('slot') || (classTimeElement ? classTimeElement.textContent : '--:--'));
           }
+
+          let studentLevel = '-';
+          if (booking && booking.studentLevel) {
+            const level = booking.studentLevel.toLowerCase();
+            if (level === 'nursery') studentLevel = 'Nursery';
+            else if (level === 'kinder' || level === 'kindergarten') studentLevel = 'Kinder';
+            else if (level === 'preparatory' || level === 'primary') studentLevel = 'Preparatory';
+            else studentLevel = booking.studentLevel.charAt(0).toUpperCase() + booking.studentLevel.slice(1);
+          }
+          setText('ci-student-level', studentLevel);
         } catch (error) {
-          console.error('Error fetching student level:', error);
+          console.error('Error fetching class info:', error);
+          setText('ci-class-time', getQueryParam('slot') || (classTimeElement ? classTimeElement.textContent : '--:--'));
+          setText('ci-student-level', '-');
         }
-        
-        setText('ci-student-level', studentLevel);
 
         classInfoOverlay.style.display = 'flex';
       }
@@ -4760,14 +4755,8 @@
         });
       }
 
-      // Reward animation function
+      // Reward animation function (flag = green flag SVG, others = emoji)
       function showRewardAnimation(type) {
-        const emojiMap = {
-          flag: '🚩',
-          cookie: '🍪',
-          star: '⭐'
-        };
-        const emoji = emojiMap[type] || '⭐';
         const rewardElement = document.createElement('div');
         rewardElement.style.cssText = `
           position: fixed;
@@ -4780,7 +4769,13 @@
           animation: rewardPop 2s ease-out forwards;
           text-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
         `;
-        rewardElement.textContent = emoji;
+        if (type === 'flag') {
+          rewardElement.innerHTML = '<svg viewBox="0 0 24 24" width="120" height="120" style="filter: drop-shadow(0 0 20px rgba(40,167,69,0.8));"><path fill="#666" d="M2 2h2v20H2z"/><path fill="#28a745" d="M4 2v10l10-5L4 2z"/></svg>';
+          rewardElement.style.fontSize = '0';
+        } else {
+          const emojiMap = { cookie: '🍪', star: '⭐' };
+          rewardElement.textContent = emojiMap[type] || '⭐';
+        }
         document.body.appendChild(rewardElement);
 
         // Remove after animation

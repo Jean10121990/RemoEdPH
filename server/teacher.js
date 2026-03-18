@@ -19,6 +19,7 @@ const Reward = require('./models/Reward');
 // LessonSlides model removed - PPTX conversion still works but slides are not saved to database
 const Feedback = require('./models/Feedback');
 const IssueReport = require('./models/IssueReport');
+const PeerMessage = require('./models/PeerMessage');
 const { verifyToken, requireTeacher, requireStudent, requireOwnTeacherData, requireOwnStudentData, logAccess } = require('./authMiddleware');
 const { io } = require('./index');
 
@@ -222,6 +223,123 @@ const upload = multer({
 // Test route to verify teacher routes are working
 router.get('/test', (req, res) => {
   res.json({ message: 'Teacher routes are working!' });
+});
+
+// Peer message - must be early to avoid being shadowed by param routes
+router.post('/peer-message', verifyToken, requireTeacher, async (req, res) => {
+  try {
+    const senderId = req.user.teacherId;
+    const { recipientId, message } = req.body;
+    if (!recipientId || !message || !message.trim()) {
+      return res.status(400).json({ error: 'Recipient and message are required' });
+    }
+    const sender = await Teacher.findOne({ teacherId: senderId });
+    const senderName = sender?.fullname || `${sender?.firstName || ''} ${sender?.lastName || ''}`.trim() || 'A teacher';
+    // Persist message for chat history
+    await PeerMessage.create({
+      senderId,
+      recipientId,
+      message: message.trim()
+    });
+    // Also create a notification for the recipient
+    await Notification.create({
+      teacherId: recipientId,
+      type: 'peer-message',
+      message: `${senderName}: ${message.trim()}`,
+      senderId: senderId,
+      read: false
+    });
+    res.json({ success: true, message: 'Message sent successfully' });
+  } catch (err) {
+    console.error('Error sending peer message:', err);
+    res.status(500).json({ error: 'Failed to send message' });
+  }
+});
+
+// List recent peer chats (Messenger-style list)
+router.get('/peer-chats', verifyToken, requireTeacher, async (req, res) => {
+  try {
+    const me = req.user.teacherId;
+    const msgs = await PeerMessage.find({
+      $or: [{ senderId: me }, { recipientId: me }]
+    }).sort({ createdAt: -1 }).limit(200);
+
+    const byPeer = new Map();
+    for (const m of msgs) {
+      const peerId = m.senderId === me ? m.recipientId : m.senderId;
+      if (!byPeer.has(peerId)) {
+        byPeer.set(peerId, {
+          peerId,
+          lastMessage: m.message,
+          lastAt: m.createdAt,
+          unreadCount: 0
+        });
+      }
+      if (m.recipientId === me && !m.readAt) {
+        const row = byPeer.get(peerId);
+        row.unreadCount += 1;
+      }
+    }
+
+    const peers = await Teacher.find({ teacherId: { $in: Array.from(byPeer.keys()) } })
+      .select('teacherId fullname firstName lastName profilePicture');
+    const peerMap = new Map(peers.map(t => [t.teacherId, t]));
+
+    const chats = Array.from(byPeer.values()).map(c => {
+      const t = peerMap.get(c.peerId);
+      const name = t?.fullname || `${t?.firstName || ''} ${t?.lastName || ''}`.trim() || c.peerId;
+      return {
+        peerId: c.peerId,
+        name,
+        profilePicture: t?.profilePicture || null,
+        lastMessage: c.lastMessage,
+        lastAt: c.lastAt,
+        unreadCount: c.unreadCount
+      };
+    }).sort((a, b) => new Date(b.lastAt) - new Date(a.lastAt));
+
+    res.json({ success: true, chats });
+  } catch (err) {
+    console.error('Error listing peer chats:', err);
+    res.status(500).json({ error: 'Failed to load chats' });
+  }
+});
+
+// Get conversation messages with a specific peer
+router.get('/peer-messages/:peerId', verifyToken, requireTeacher, async (req, res) => {
+  try {
+    const me = req.user.teacherId;
+    const peerId = String(req.params.peerId || '');
+    if (!peerId) return res.status(400).json({ error: 'Missing peerId' });
+
+    const messages = await PeerMessage.find({
+      $or: [
+        { senderId: me, recipientId: peerId },
+        { senderId: peerId, recipientId: me }
+      ]
+    }).sort({ createdAt: 1 }).limit(1000);
+
+    // Mark incoming as read
+    await PeerMessage.updateMany(
+      { senderId: peerId, recipientId: me, readAt: null },
+      { $set: { readAt: new Date() } }
+    );
+
+    res.json({
+      success: true,
+      messages: messages.map(m => ({
+        id: m._id.toString(),
+        senderId: m.senderId,
+        recipientId: m.recipientId,
+        message: m.message,
+        createdAt: m.createdAt,
+        readAt: m.readAt
+      }))
+    });
+  } catch (err) {
+    console.error('Error loading peer messages:', err);
+    res.status(500).json({ error: 'Failed to load messages' });
+  }
 });
 
 // File conversion endpoints removed - files are now displayed directly without conversion
@@ -591,6 +709,28 @@ function toUtcFromLocal(dateStr, timeStr, zone) {
   const dt = DateTime.fromISO(`${dateStr}T${timeStr}`, { zone: z });
   if (!dt.isValid) throw new Error(`Invalid date/time: ${dateStr} ${timeStr} in zone ${z}`);
   return { utcIso: dt.toUTC().toISO(), zoneUsed: z };
+}
+
+// Canonical scheduled start time for classroom timer (UTC ISO string). If string from DB doesn't end in 'Z', append 'Z' so it's treated as UTC.
+function getScheduledStartTime(booking) {
+  if (!booking) return null;
+  if (booking.dateTimeUtc) {
+    let utc = booking.dateTimeUtc;
+    if (typeof utc === 'string') {
+      utc = utc.trim();
+      if (!/Z$/i.test(utc)) utc = utc + 'Z';
+    }
+    const d = utc instanceof Date ? utc : new Date(utc);
+    return isNaN(d.getTime()) ? null : d.toISOString();
+  }
+  if (booking.date && booking.time) {
+    const zone = booking.teacherLocalZone || booking.studentLocalZone || 'Asia/Manila';
+    const timeNorm = booking.time.length <= 5 ? booking.time + ':00' : booking.time;
+    const dt = DateTime.fromISO(`${booking.date}T${timeNorm}`, { zone });
+    if (!dt.isValid) return null;
+    return dt.toUTC().toISO();
+  }
+  return null;
 }
 
 // Save open slots - Protected: Only authenticated teachers can access their own data
@@ -1691,11 +1831,12 @@ router.get('/booking/by-classroom/:classroomId', async (req, res) => {
       });
     }
 
-    // Prepare booking data with student and teacher names
+    // Prepare booking data with student and teacher names and canonical scheduled start for timer
     const bookingData = {
       ...booking.toObject(),
       studentName: studentName,
-      teacherName: teacherName
+      teacherName: teacherName,
+      scheduledStartTime: getScheduledStartTime(booking)
     };
 
     console.log('✅ API: Sending booking data:', bookingData);
@@ -1793,15 +1934,12 @@ router.post('/profile', verifyToken, requireTeacher, async (req, res) => {
     // Prepare documents data - ensure arrays are properly formatted
     const diplomasArray = Array.isArray(profileData.documents?.diplomas) ? profileData.documents.diplomas : [];
     const certificatesArray = Array.isArray(profileData.documents?.certificates) ? profileData.documents.certificates : [];
-    const validIdData = profileData.documents?.validId || null;
+    const validIdsArray = Array.isArray(profileData.documents?.validIds) ? profileData.documents.validIds : [];
     
     console.log('=== BACKEND: Documents data received ===');
     console.log('Diplomas count:', diplomasArray.length);
     console.log('Certificates count:', certificatesArray.length);
-    console.log('Valid ID:', validIdData ? `Present (${validIdData.length} chars, starts with: ${validIdData.substring(0, 50)}...)` : 'MISSING/NULL');
-    console.log('Valid ID type:', typeof validIdData);
-    console.log('Valid ID is string:', typeof validIdData === 'string');
-    console.log('Valid ID starts with data:', validIdData ? validIdData.startsWith('data:') : false);
+    console.log('Valid IDs count:', validIdsArray.length);
     
     if (diplomasArray.length > 0) {
       console.log('Diploma sample:', { fileData: diplomasArray[0].fileData?.substring(0, 50) + '...', fileName: diplomasArray[0].fileName });
@@ -1836,7 +1974,8 @@ router.post('/profile', verifyToken, requireTeacher, async (req, res) => {
         'documents.diplomas': diplomasArray,
         'documents.certifications': Array.isArray(profileData.documents?.certifications) ? profileData.documents.certifications : [],
         'documents.certificates': certificatesArray,
-        'documents.validId': profileData.documents?.validId || null
+        'documents.validId': null,
+        'documents.validIds': validIdsArray
       }
     };
     
@@ -1863,10 +2002,7 @@ router.post('/profile', verifyToken, requireTeacher, async (req, res) => {
     console.log('=== BACKEND: Update data prepared ===');
     console.log('Diplomas in update:', updateData.$set['documents.diplomas']?.length || 0);
     console.log('Certificates in update:', updateData.$set['documents.certificates']?.length || 0);
-    console.log('Valid ID in update:', updateData.$set['documents.validId'] ? `Present (${updateData.$set['documents.validId'].length} chars)` : 'MISSING/NULL');
-    console.log('Diplomas is array:', Array.isArray(updateData.$set['documents.diplomas']));
-    console.log('Certificates is array:', Array.isArray(updateData.$set['documents.certificates']));
-    console.log('Valid ID type:', typeof updateData.$set['documents.validId']);
+    console.log('Valid IDs in update:', updateData.$set['documents.validIds']?.length || 0);
     
     const updatedTeacher = await Teacher.findOneAndUpdate(
       { teacherId },
@@ -1881,27 +2017,20 @@ router.post('/profile', verifyToken, requireTeacher, async (req, res) => {
     
     console.log('=== BACKEND: Profile updated successfully ===');
     console.log('Teacher ID:', teacherId);
-    console.log('Updated documents object:', JSON.stringify(updatedTeacher.documents, null, 2));
     console.log('Diplomas count:', updatedTeacher.documents?.diplomas?.length || 0);
     console.log('Certificates count:', updatedTeacher.documents?.certificates?.length || 0);
-    console.log('Valid ID:', updatedTeacher.documents?.validId ? `Present (${updatedTeacher.documents.validId.length} chars)` : 'MISSING/NULL');
+    console.log('Valid IDs count:', updatedTeacher.documents?.validIds?.length || 0);
     
     // Verify the documents were saved correctly
     if (updatedTeacher.documents) {
       if (Array.isArray(updatedTeacher.documents.diplomas)) {
         console.log('✓ Diplomas array is valid, length:', updatedTeacher.documents.diplomas.length);
-      } else {
-        console.error('✗ Diplomas is not an array:', typeof updatedTeacher.documents.diplomas);
       }
       if (Array.isArray(updatedTeacher.documents.certificates)) {
         console.log('✓ Certificates array is valid, length:', updatedTeacher.documents.certificates.length);
-      } else {
-        console.error('✗ Certificates is not an array:', typeof updatedTeacher.documents.certificates);
       }
-      if (updatedTeacher.documents.validId) {
-        console.log('✓ Valid ID is present, length:', updatedTeacher.documents.validId.length);
-      } else {
-        console.error('✗ Valid ID is MISSING in saved documents!');
+      if (Array.isArray(updatedTeacher.documents.validIds)) {
+        console.log('✓ Valid IDs array is valid, length:', updatedTeacher.documents.validIds.length);
       }
     } else {
       console.error('✗ Documents object is missing from updated teacher');
@@ -5242,6 +5371,33 @@ router.get('/peers', verifyToken, requireTeacher, async (req, res) => {
 // Peer Learning Connection Endpoints
 const Connection = require('./models/Connection');
 
+// Get public teacher profile (for viewing another teacher's profile - no auth required)
+router.get('/public-profile/:teacherId', async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+    const teacher = await Teacher.findOne({ teacherId })
+      .select('teacherId fullname firstName lastName profilePicture introduction experience education workExperience teachingAbilities');
+    if (!teacher) {
+      return res.status(404).json({ error: 'Teacher not found' });
+    }
+    const expertise = [];
+    if (teacher.teachingAbilities?.listening?.level) expertise.push('Listening');
+    if (teacher.teachingAbilities?.reading?.level) expertise.push('Reading');
+    if (teacher.teachingAbilities?.speaking?.level) expertise.push('Speaking');
+    if (teacher.teachingAbilities?.writing?.level) expertise.push('Writing');
+    res.json({
+      success: true,
+      profile: {
+        ...teacher.toObject(),
+        expertise: expertise.length > 0 ? expertise : ['General English']
+      }
+    });
+  } catch (err) {
+    console.error('Error fetching public profile:', err);
+    res.status(500).json({ error: 'Failed to load profile' });
+  }
+});
+
 // Send connection request
 router.post('/connection-requests', verifyToken, requireTeacher, async (req, res) => {
   try {
@@ -5332,6 +5488,7 @@ router.get('/connections', verifyToken, requireTeacher, async (req, res) => {
         id: teacher.teacherId,
         connectionId: conn._id.toString(),
         name: teacher.fullname || `${teacher.firstName || ''} ${teacher.lastName || ''}`.trim() || 'Teacher',
+        email: teacher.email || '',
         expertise: expertise.length > 0 ? expertise : ['General English'],
         experience: teacher.experience || 'Not specified',
         rating: 4.5,
@@ -5372,6 +5529,7 @@ router.get('/connection-requests/pending', verifyToken, requireTeacher, async (r
       
       return {
         id: req._id.toString(),
+        teacherId: req.requesterId,
         name: teacher.fullname || `${teacher.firstName || ''} ${teacher.lastName || ''}`.trim() || 'Teacher',
         expertise: expertise.length > 0 ? expertise : ['General English'],
         experience: teacher.experience || 'Not specified',
@@ -5414,6 +5572,7 @@ router.get('/connection-requests/sent', verifyToken, requireTeacher, async (req,
       
       return {
         id: req._id.toString(),
+        teacherId: req.recipientId,
         name: teacher.fullname || `${teacher.firstName || ''} ${teacher.lastName || ''}`.trim() || 'Teacher',
         expertise: expertise.length > 0 ? expertise : ['General English'],
         experience: teacher.experience || 'Not specified',

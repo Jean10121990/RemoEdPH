@@ -16,6 +16,7 @@ const announcementRoutes = require('./announcement');
 const lessonRoutes = require('./lessons');
 const Booking = require('./models/Booking');
 const LessonMaterial = require('./models/LessonMaterial');
+const { DateTime } = require('luxon');
 // LessonSlides model removed - PPTX conversion still works but slides are not saved to database
 const fs = require('fs');
 const fsp = require('fs').promises;
@@ -865,6 +866,28 @@ app.post('/api/class/check-time-access', async (req, res) => {
   }
 });
 
+// Canonical scheduled start time for classroom timer (UTC ISO string). If string from DB doesn't end in 'Z', append 'Z' so it's treated as UTC.
+function getScheduledStartTime(booking) {
+  if (!booking) return null;
+  if (booking.dateTimeUtc) {
+    let utc = booking.dateTimeUtc;
+    if (typeof utc === 'string') {
+      utc = utc.trim();
+      if (!/Z$/i.test(utc)) utc = utc + 'Z';
+    }
+    const d = utc instanceof Date ? utc : new Date(utc);
+    return isNaN(d.getTime()) ? null : d.toISOString();
+  }
+  if (booking.date && booking.time) {
+    const zone = booking.teacherLocalZone || booking.studentLocalZone || 'Asia/Manila';
+    const timeNorm = booking.time.length <= 5 ? booking.time + ':00' : booking.time;
+    const dt = DateTime.fromISO(`${booking.date}T${timeNorm}`, { zone });
+    if (!dt.isValid) return null;
+    return dt.toUTC().toISO();
+  }
+  return null;
+}
+
 // Get student booking information
 app.get('/api/student/booking/:bookingId', verifyToken, async (req, res) => {
   try {
@@ -875,7 +898,6 @@ app.get('/api/student/booking/:bookingId', verifyToken, async (req, res) => {
       return res.status(400).json({ success: false, error: 'Missing booking ID' });
     }
 
-    const Booking = require('./models/Booking');
     const booking = await Booking.findById(bookingId);
     
     if (!booking) {
@@ -883,8 +905,10 @@ app.get('/api/student/booking/:bookingId', verifyToken, async (req, res) => {
       return res.status(404).json({ success: false, error: 'Booking not found' });
     }
 
+    const bookingObj = booking.toObject ? booking.toObject() : { ...booking };
+    bookingObj.scheduledStartTime = getScheduledStartTime(booking);
     console.log('✅ [STUDENT BOOKING] Booking found:', bookingId);
-    res.json({ success: true, booking });
+    res.json({ success: true, booking: bookingObj });
   } catch (error) {
     console.error('❌ [STUDENT BOOKING] Error fetching student booking:', error);
     res.status(500).json({ success: false, error: 'Failed to fetch booking information: ' + error.message });
@@ -1261,6 +1285,11 @@ io.on('connection', socket => {
     socket.on('ice-candidate', ({ room, candidate }) => {
         console.log('📤 Forwarding ICE candidate to room:', room);
         socket.to(room).emit('ice-candidate', { candidate });
+    });
+
+    socket.on('request-ice-restart', ({ room }) => {
+        console.log('🔄 ICE restart requested in room:', room);
+        socket.to(room).emit('request-ice-restart');
     });
     
     // Handle chat messages

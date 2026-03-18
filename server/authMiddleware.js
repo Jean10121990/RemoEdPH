@@ -10,7 +10,10 @@ const verifyToken = (req, res, next) => {
   console.log('Verifying token...');
   console.log('Authorization header:', req.headers.authorization);
   
-  const token = req.headers.authorization?.split(' ')[1] || req.body.token || req.query.token;
+  const token =
+    req.headers.authorization?.split(' ')[1] ||
+    req.body?.token ||
+    req.query?.token;
   console.log('Extracted token:', token ? 'Token found' : 'No token');
   
   if (!token) {

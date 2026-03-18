@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Messages - RemoEdPH</title>
+    <link rel="stylesheet" href="modern-styles.css">
+    <link rel="stylesheet" href="css/teacher-sidebar.css">
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f8fafc; color: #1a202c; margin: 0; padding: 0; }
+        .remoed-main { display: flex; min-height: 100vh; }
+        .remoed-content { flex: 1; padding: 18px 20px; margin-left: 260px; max-width: calc(100vw - 260px); }
+
+        .messenger {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            border: 1px solid #e8f4fd;
+            overflow: hidden;
+            display: grid;
+            grid-template-columns: 30% 70%;
+            min-height: calc(100vh - 36px);
+        }
+
+        /* Left column */
+        .chat-list {
+            border-right: 1px solid #e8f4fd;
+            display: flex;
+            flex-direction: column;
+            min-width: 280px;
+        }
+        .chat-list-header {
+            padding: 16px;
+            border-bottom: 1px solid #e8f4fd;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .chat-list-header h1 {
+            margin: 0;
+            font-size: 1.1rem;
+            color: #667eea;
+            font-weight: 800;
+        }
+        .chat-search {
+            padding: 12px 16px;
+            border-bottom: 1px solid #e8f4fd;
+        }
+        .chat-search input {
+            width: 100%;
+            border: 2px solid #e8f4fd;
+            border-radius: 999px;
+            padding: 10px 14px;
+            outline: none;
+        }
+        .chat-search input:focus { border-color: #667eea; }
+
+        .chat-items { overflow-y: auto; flex: 1; }
+        .chat-item {
+            padding: 14px 16px;
+            display: flex;
+            gap: 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #f1f5f9;
+            transition: background 0.15s ease;
+        }
+        .chat-item:hover { background: #f8faff; }
+        .chat-item.active { background: #eef2ff; }
+        .avatar {
+            width: 44px; height: 44px; border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white; display: flex; align-items: center; justify-content: center;
+            font-weight: 800; flex-shrink: 0; overflow: hidden;
+        }
+        .avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .chat-item-main { flex: 1; min-width: 0; }
+        .chat-item-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+        .chat-name { font-weight: 800; color: #1a202c; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .chat-time { font-size: 0.8rem; color: #94a3b8; flex-shrink: 0; }
+        .chat-snippet { font-size: 0.9rem; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 4px; }
+        .unread-pill {
+            margin-left: 8px;
+            background: #667eea;
+            color: white;
+            font-size: 0.75rem;
+            font-weight: 800;
+            padding: 2px 8px;
+            border-radius: 999px;
+        }
+
+        /* Right column */
+        .chat-pane { display: flex; flex-direction: column; min-width: 0; }
+        .chat-pane-header {
+            padding: 14px 16px;
+            border-bottom: 1px solid #e8f4fd;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .back-btn {
+            display: none;
+            border: none;
+            background: #e8f4fd;
+            color: #667eea;
+            padding: 8px 12px;
+            border-radius: 999px;
+            cursor: pointer;
+            font-weight: 800;
+        }
+        .pane-title { display: flex; flex-direction: column; min-width: 0; }
+        .pane-title .name { font-weight: 900; color: #1a202c; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .pane-title .sub { font-size: 0.85rem; color: #94a3b8; }
+
+        .chat-scroll {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            background: linear-gradient(180deg, #fbfdff, #f8fafc);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        /* Parent container fix: column flow for margin auto */
+        .message-wrap {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+        }
+        .bubble {
+            max-width: 75%;
+            padding: 10px 16px;
+            border-radius: 18px;
+            font-size: 0.95rem;
+            line-height: 1.35;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            word-wrap: break-word;
+            white-space: pre-wrap;
+            text-align: left;
+            position: relative;
+        }
+        /* OVERRIDES (requested): sent vs received */
+        .message-sent {
+            margin-left: auto !important;
+            margin-right: 0 !important;
+            background-color: #4A90E2 !important;
+            color: #fff !important;
+            border-radius: 18px 18px 2px 18px !important;
+            text-align: left !important;
+        }
+        .message-received {
+            margin-right: auto !important;
+            margin-left: 0 !important;
+            background-color: #F0F0F0 !important;
+            color: #333 !important;
+            border-radius: 18px 18px 18px 2px !important;
+            text-align: left !important;
+        }
+
+        /* Bubble tails */
+        .message-sent::after {
+            content: '';
+            position: absolute;
+            right: -6px;
+            bottom: 8px;
+            width: 0;
+            height: 0;
+            border-left: 8px solid #4A90E2;
+            border-top: 8px solid transparent;
+            border-bottom: 8px solid transparent;
+        }
+        .message-received::after {
+            content: '';
+            position: absolute;
+            left: -6px;
+            bottom: 8px;
+            width: 0;
+            height: 0;
+            border-right: 8px solid #F0F0F0;
+            border-top: 8px solid transparent;
+            border-bottom: 8px solid transparent;
+        }
+
+        .bubble-meta.meta-sent { text-align: right; }
+        .bubble-meta.meta-received { text-align: left; }
+        .bubble-meta {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            margin-top: 4px;
+        }
+
+        .composer {
+            position: sticky;
+            bottom: 0;
+            padding: 12px 14px;
+            border-top: 1px solid #e8f4fd;
+            background: white;
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+        .attach-btn {
+            width: 42px; height: 42px;
+            border-radius: 999px;
+            border: 2px solid #e8f4fd;
+            background: #fbfdff;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #667eea;
+            flex-shrink: 0;
+        }
+        .attach-btn:hover { border-color: #667eea; }
+        .composer textarea {
+            flex: 1;
+            min-height: 42px;
+            max-height: 120px;
+            border: 2px solid #e8f4fd;
+            border-radius: 14px;
+            padding: 10px 12px;
+            resize: none;
+            outline: none;
+            font-family: inherit;
+            font-size: 0.95rem;
+        }
+        .composer textarea:focus { border-color: #667eea; }
+        .send-btn {
+            padding: 11px 18px;
+            border: none;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: 900;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .send-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        .empty-pane {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            color: #64748b;
+            text-align: center;
+        }
+
+        /* Mobile */
+        @media (max-width: 900px) {
+            .remoed-content { margin-left: 0; max-width: 100vw; padding: 12px; }
+            .messenger { grid-template-columns: 1fr; min-height: calc(100vh - 24px); }
+            .chat-list { border-right: none; }
+            .chat-pane { display: none; }
+            .messenger.show-chat .chat-list { display: none; }
+            .messenger.show-chat .chat-pane { display: flex; }
+            .back-btn { display: inline-flex; }
+        }
+    </style>
+</head>
+<body>
+    <div class="remoed-main">
+        <div id="teacher-sidebar-root"></div>
+        <script src="js/teacher-sidebar.js"></script>
+        <script>TeacherSidebar.render('teacher-sidebar-root', 'messages');</script>
+
+        <main class="remoed-content">
+            <div class="messenger" id="messenger">
+                <aside class="chat-list">
+                    <div class="chat-list-header">
+                        <h1>Messages</h1>
+                    </div>
+                    <div class="chat-search">
+                        <input id="chat-search" placeholder="Search chats..." />
+                    </div>
+                    <div class="chat-items" id="chat-items">
+                        <div style="padding:16px;color:#64748b;">Loading chats...</div>
+                    </div>
+                </aside>
+
+                <section class="chat-pane">
+                    <div class="chat-pane-header">
+                        <button class="back-btn" id="back-btn">←</button>
+                        <div class="avatar" id="pane-avatar">?</div>
+                        <div class="pane-title">
+                            <div class="name" id="pane-name">Select a chat</div>
+                            <div class="sub" id="pane-sub"></div>
+                        </div>
+                    </div>
+                    <div class="chat-scroll" id="chat-scroll">
+                        <div class="empty-pane">Choose a conversation on the left to start chatting.</div>
+                    </div>
+                    <div class="composer" id="composer" style="display:none;">
+                        <button class="attach-btn" title="Attach (coming soon)" aria-label="Attach">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.2a2 2 0 11-2.83-2.83l8.49-8.48"/>
+                            </svg>
+                        </button>
+                        <textarea id="composer-text" placeholder="Type a message..."></textarea>
+                        <button class="send-btn" id="send-btn">Send</button>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        (function () {
+            const token = localStorage.getItem('token');
+            const me = localStorage.getItem('teacherId');
+            const messengerEl = document.getElementById('messenger');
+            const chatItemsEl = document.getElementById('chat-items');
+            const chatScrollEl = document.getElementById('chat-scroll');
+            const paneAvatarEl = document.getElementById('pane-avatar');
+            const paneNameEl = document.getElementById('pane-name');
+            const paneSubEl = document.getElementById('pane-sub');
+            const composerEl = document.getElementById('composer');
+            const composerTextEl = document.getElementById('composer-text');
+            const sendBtnEl = document.getElementById('send-btn');
+            const searchEl = document.getElementById('chat-search');
+            const backBtnEl = document.getElementById('back-btn');
+
+            let chats = [];
+            let activePeerId = null;
+
+            function esc(s) { return String(s || '').replace(/</g, '&lt;'); }
+            function fmtTime(ts) { return ts ? new Date(ts).toLocaleString() : ''; }
+            function fmtShort(ts) { return ts ? new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''; }
+            function scrollToBottom() { chatScrollEl.scrollTop = chatScrollEl.scrollHeight; }
+            function normalizeImg(src) {
+                const s = String(src || '').trim();
+                if (!s) return '';
+                if (s.startsWith('http://') || s.startsWith('https://') || s.startsWith('data:')) return s;
+                if (s.startsWith('/')) return s;
+                return '/' + s;
+            }
+            function lastSeenText(lastAt) {
+                if (!lastAt) return 'Offline';
+                const d = new Date(lastAt);
+                if (Number.isNaN(d.getTime())) return 'Offline';
+                return `Last seen ${d.toLocaleString()}`;
+            }
+
+            function renderChatList(filter = '') {
+                const f = filter.trim().toLowerCase();
+                const rows = chats.filter(c => !f || (c.name || '').toLowerCase().includes(f));
+                if (rows.length === 0) {
+                    chatItemsEl.innerHTML = '<div style="padding:16px;color:#64748b;">No chats found.</div>';
+                    return;
+                }
+                chatItemsEl.innerHTML = rows.map(c => {
+                    const active = c.peerId === activePeerId ? 'active' : '';
+                    const initial = (c.name || 'T')[0].toUpperCase();
+                    const img = normalizeImg(c.profilePicture);
+                    const avatar = img ? `<img src="${img}" alt="${esc(c.name)}">` : initial;
+                    const unread = c.unreadCount > 0 ? `<span class="unread-pill">${c.unreadCount}</span>` : '';
+                    return `
+                        <div class="chat-item ${active}" data-peer-id="${c.peerId}">
+                            <div class="avatar">${avatar}</div>
+                            <div class="chat-item-main">
+                                <div class="chat-item-top">
+                                    <div class="chat-name">${esc(c.name)} ${unread}</div>
+                                    <div class="chat-time">${fmtShort(c.lastAt)}</div>
+                                </div>
+                                <div class="chat-snippet">${esc(c.lastMessage || '')}</div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                chatItemsEl.querySelectorAll('.chat-item').forEach(el => {
+                    el.addEventListener('click', () => openChat(el.getAttribute('data-peer-id')));
+                });
+            }
+
+            function renderMessages(messages) {
+                if (!messages || messages.length === 0) {
+                    chatScrollEl.innerHTML = '<div class="empty-pane">No messages yet. Say hi!</div>';
+                    return;
+                }
+                chatScrollEl.innerHTML = messages.map(m => {
+                    const isMe = String(m.senderId || '') === String(me || '');
+                    const bubbleClass = isMe ? 'message-sent' : 'message-received';
+                    const metaClass = isMe ? 'meta-sent' : 'meta-received';
+                    return `
+                        <div class="message-wrap">
+                            <div class="bubble ${bubbleClass}">${esc(m.message)}</div>
+                            <div class="bubble-meta ${metaClass}">${fmtTime(m.createdAt)}</div>
+                        </div>
+                    `;
+                }).join('');
+                scrollToBottom();
+            }
+
+            async function loadChats() {
+                const res = await fetch('/api/teacher/peer-chats', { headers: { 'Authorization': `Bearer ${token}` } });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Failed to load chats');
+                chats = data.chats || [];
+                renderChatList(searchEl.value);
+            }
+
+            async function openChat(peerId) {
+                activePeerId = peerId;
+                const peer = chats.find(c => c.peerId === peerId) || { peerId, name: peerId };
+                paneNameEl.textContent = peer.name || peerId;
+                paneSubEl.textContent = lastSeenText(peer.lastAt);
+                const initial = (peer.name || 'T')[0].toUpperCase();
+                const img = normalizeImg(peer.profilePicture);
+                paneAvatarEl.innerHTML = img ? `<img src="${img}" alt="${esc(peer.name)}">` : initial;
+                composerEl.style.display = '';
+                messengerEl.classList.add('show-chat');
+                renderChatList(searchEl.value);
+
+                const res = await fetch(`/api/teacher/peer-messages/${encodeURIComponent(peerId)}`, { headers: { 'Authorization': `Bearer ${token}` } });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Failed to load messages');
+                renderMessages(data.messages || []);
+
+                chats = chats.map(c => c.peerId === peerId ? { ...c, unreadCount: 0 } : c);
+                renderChatList(searchEl.value);
+            }
+
+            async function sendMessage() {
+                const msg = (composerTextEl.value || '').trim();
+                if (!msg || !activePeerId) return;
+                sendBtnEl.disabled = true;
+                const res = await fetch('/api/teacher/peer-message', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ recipientId: activePeerId, message: msg })
+                });
+                const data = await res.json();
+                sendBtnEl.disabled = false;
+                if (!res.ok || !data.success) throw new Error(data.error || 'Failed to send');
+
+                composerTextEl.value = '';
+                const now = new Date().toISOString();
+                const empty = chatScrollEl.querySelector('.empty-pane');
+                if (empty) empty.remove();
+                const row = document.createElement('div');
+                row.className = 'message-wrap';
+                row.innerHTML = `<div class="bubble message-sent">${esc(msg)}</div><div class="bubble-meta meta-sent">${fmtTime(now)}</div>`;
+                chatScrollEl.appendChild(row);
+                scrollToBottom();
+
+                await loadChats();
+            }
+
+            if (!token || !me) {
+                chatItemsEl.innerHTML = '<div style="padding:16px;color:#64748b;">Please log in to view messages.</div>';
+                return;
+            }
+
+            searchEl.addEventListener('input', () => renderChatList(searchEl.value));
+            sendBtnEl.addEventListener('click', () => sendMessage().catch(e => alert(e.message)));
+            composerTextEl.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage().catch(err => alert(err.message)); }
+            });
+            backBtnEl.addEventListener('click', () => messengerEl.classList.remove('show-chat'));
+
+            const params = new URLSearchParams(window.location.search);
+            const peerIdFromUrl = params.get('peerId');
+
+            loadChats().then(() => {
+                if (peerIdFromUrl) openChat(peerIdFromUrl);
+            }).catch(err => {
+                console.error(err);
+                chatItemsEl.innerHTML = '<div style="padding:16px;color:#64748b;">Failed to load chats.</div>';
+            });
+        })();
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Profile - RemoEdPH</title>
+    <link rel="stylesheet" href="modern-styles.css">
+    <link rel="stylesheet" href="css/teacher-sidebar.css">
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f8fafc; color: #1a202c; margin: 0; padding: 0; }
+        .remoed-main { display: flex; min-height: 100vh; }
+        .remoed-content { flex: 1; padding: 24px 32px; margin-left: 260px; max-width: calc(100vw - 260px); }
+        .profile-container { max-width: 900px; margin: 0 auto; }
+        .back-btn {
+            padding: 10px 20px; background: #e8f4fd; color: #667eea; border: none; border-radius: 8px;
+            cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; margin-bottom: 24px;
+        }
+        .back-btn:hover { background: #667eea; color: white; }
+        .profile-header {
+            background: white; border-radius: 16px; padding: 32px; margin-bottom: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08); display: flex; align-items: center; gap: 24px;
+        }
+        .profile-avatar-large {
+            width: 120px; height: 120px; border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2); color: white;
+            display: flex; align-items: center; justify-content: center; font-size: 3rem; font-weight: bold;
+            flex-shrink: 0; overflow: hidden;
+        }
+        .profile-avatar-large img { width: 100%; height: 100%; object-fit: cover; }
+        .profile-header-info { flex: 1; }
+        .profile-name-large { font-size: 1.8rem; font-weight: 800; color: #667eea; margin: 0 0 8px 0; }
+        .profile-id { color: #64748b; font-size: 0.95rem; margin: 0 0 12px 0; }
+        .profile-intro { color: #475569; line-height: 1.6; margin: 0; }
+        .section-card {
+            background: white; border-radius: 16px; padding: 24px; margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08); border: 1px solid #e8f4fd;
+        }
+        .section-title { font-size: 1.2rem; font-weight: 700; color: #667eea; margin: 0 0 16px 0; padding-bottom: 8px; border-bottom: 2px solid #e8f4fd; }
+        .profile-item { margin-bottom: 12px; }
+        .profile-item:last-child { margin-bottom: 0; }
+        .profile-label { font-weight: 600; color: #64748b; font-size: 0.9rem; }
+        .profile-value { color: #1a202c; margin-top: 4px; }
+        .expertise-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+        .expertise-tag { background: #e8f4fd; color: #667eea; padding: 6px 12px; border-radius: 8px; font-size: 0.9rem; font-weight: 600; }
+        .loading, .error { text-align: center; padding: 60px 20px; color: #64748b; }
+        .error { color: #e74c3c; }
+    </style>
+</head>
+<body>
+    <div class="remoed-main">
+        <div id="teacher-sidebar-root"></div>
+        <script src="js/teacher-sidebar.js"></script>
+        <script>TeacherSidebar.render('teacher-sidebar-root', 'professional-development');</script>
+        <main class="remoed-content">
+            <div class="profile-container">
+                <button class="back-btn" onclick="history.back()">← Back</button>
+                <div id="profile-content">
+                    <div class="loading">Loading profile...</div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script>
+        (function() {
+            const params = new URLSearchParams(window.location.search);
+            const teacherId = params.get('teacherId');
+            const container = document.getElementById('profile-content');
+
+            if (!teacherId) {
+                container.innerHTML = '<div class="error">No teacher specified. <a href="teacher-peer-learning-connections.html">Go to Connections</a></div>';
+                return;
+            }
+
+            fetch(`/api/teacher/public-profile/${encodeURIComponent(teacherId)}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.success || !data.profile) {
+                        container.innerHTML = '<div class="error">Profile not found. The teacher may have been removed.</div>';
+                        return;
+                    }
+                    const p = data.profile;
+                    const name = p.fullname || `${(p.firstName || '')} ${(p.lastName || '')}`.trim() || 'Teacher';
+                    const initial = (name || 'T').charAt(0).toUpperCase();
+                    const avatarHtml = p.profilePicture
+                        ? `<img src="${p.profilePicture}" alt="${name}">`
+                        : initial;
+
+                    let educationHtml = '';
+                    if (p.education && p.education.length > 0) {
+                        educationHtml = p.education.map(ed => `
+                            <div class="profile-item">
+                                <div class="profile-label">${ed.degree || 'Degree'} ${ed.school ? 'at ' + ed.school : ''} ${ed.yearGraduated ? '(' + ed.yearGraduated + ')' : ''}</div>
+                                ${ed.gpa ? '<div class="profile-value">GPA: ' + ed.gpa + '</div>' : ''}
+                            </div>
+                        `).join('');
+                    } else {
+                        educationHtml = '<p class="profile-value" style="color:#64748b;">Not specified</p>';
+                    }
+
+                    let workHtml = '';
+                    if (p.workExperience && p.workExperience.length > 0) {
+                        workHtml = p.workExperience.map(w => `
+                            <div class="profile-item">
+                                <div class="profile-label">${w.jobTitle || 'Role'} ${w.company ? 'at ' + w.company : ''}</div>
+                                ${w.duration ? '<div class="profile-value">' + w.duration + '</div>' : ''}
+                                ${w.jobDescription ? '<div class="profile-value">' + w.jobDescription + '</div>' : ''}
+                            </div>
+                        `).join('');
+                    } else {
+                        workHtml = '<p class="profile-value" style="color:#64748b;">Not specified</p>';
+                    }
+
+                    const expertise = p.expertise && p.expertise.length > 0 ? p.expertise : ['General English'];
+                    const expertiseTags = expertise.map(e => `<span class="expertise-tag">${e}</span>`).join('');
+
+                    container.innerHTML = `
+                        <div class="profile-header">
+                            <div class="profile-avatar-large">${avatarHtml}</div>
+                            <div class="profile-header-info">
+                                <h1 class="profile-name-large">${name}</h1>
+                                <p class="profile-id">Teacher ID: ${p.teacherId || teacherId}</p>
+                                ${p.introduction ? '<p class="profile-intro">' + p.introduction + '</p>' : ''}
+                                <div class="expertise-tags" style="margin-top:12px;">${expertiseTags}</div>
+                            </div>
+                        </div>
+                        <div class="section-card">
+                            <h2 class="section-title">Experience</h2>
+                            <p class="profile-value">${p.experience || 'Not specified'}</p>
+                        </div>
+                        <div class="section-card">
+                            <h2 class="section-title">Education</h2>
+                            ${educationHtml}
+                        </div>
+                        <div class="section-card">
+                            <h2 class="section-title">Work Experience</h2>
+                            ${workHtml}
+                        </div>
+                    `;
+                })
+                .catch(err => {
+                    console.error(err);
+                    container.innerHTML = '<div class="error">Failed to load profile. Please try again later.</div>';
+                });
+        })();
+    </script>
+</body>
+</html>

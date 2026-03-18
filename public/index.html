@@ -18,7 +18,11 @@
             background: linear-gradient(135deg, #FFF0F5 0%, #E8F8F5 50%, #FFF9E6 100%);
             background-attachment: fixed;
             color: #1E3A5F;
-            line-height: 1.8;
+            line-height: 1.6;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            font-weight: 800;
         }
         
         /* Navigation */
@@ -57,8 +61,8 @@
         }
         
         .nav-btn {
-            padding: 12px 24px;
-            border-radius: 25px;
+            padding: 14px 28px;
+            border-radius: 50px;
             border: 2px solid #1CA7E7;
             background: white;
             color: #1CA7E7;
@@ -67,12 +71,16 @@
             transition: all 0.3s ease;
             text-decoration: none;
             font-size: 1rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transform-origin: center;
         }
         
         .nav-btn:hover {
             background: #1CA7E7;
             color: white;
-            transform: translateY(-2px);
+            transform: translateY(-2px) scale(1.05);
         }
         
         .nav-btn.primary {
@@ -83,7 +91,7 @@
         
         /* Hero Section */
         .hero {
-            padding: 80px 40px;
+            padding: 120px 40px;
             text-align: center;
             background: linear-gradient(135deg, rgba(28, 167, 231, 0.1), rgba(255, 215, 0, 0.1));
         }
@@ -113,8 +121,8 @@
         }
         
         .cta-btn {
-            padding: 18px 40px;
-            border-radius: 30px;
+            padding: 18px 44px;
+            border-radius: 50px;
             font-size: 1.2rem;
             font-weight: 800;
             cursor: pointer;
@@ -122,6 +130,7 @@
             transition: all 0.3s ease;
             text-decoration: none;
             display: inline-block;
+            transform-origin: center;
         }
         
         .cta-btn.primary {
@@ -145,6 +154,7 @@
         .cta-btn.secondary:hover {
             background: #1CA7E7;
             color: white;
+            transform: translateY(-2px) scale(1.05);
         }
         
         /* Benefits Section */
@@ -170,13 +180,16 @@
         }
         
         .benefit-card {
-            background: white;
+            background: rgba(255, 255, 255, 0.62);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.45);
             padding: 40px;
             border-radius: 20px;
             box-shadow: 0 8px 24px rgba(0,0,0,0.1);
             text-align: center;
             transition: all 0.3s ease;
-            border: 3px solid transparent;
+            overflow: hidden;
         }
         
         .benefit-card:hover {
@@ -282,26 +295,67 @@
         /* Subscription Plans */
         .plans-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 30px;
+            grid-template-columns: repeat(4, minmax(220px, 1fr));
+            gap: 24px;
             margin-top: 40px;
+            align-items: stretch; /* ensure equal-height cards per row */
         }
         
         .plan-card {
-            background: white;
+            background: var(--plan-bg, white);
             padding: 40px;
             border-radius: 20px;
             box-shadow: 0 8px 24px rgba(0,0,0,0.1);
             text-align: center;
             transition: all 0.3s ease;
-            border: 3px solid transparent;
+            border: 3px solid var(--plan-border, transparent);
             position: relative;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
         }
         
-        .plan-card.featured {
-            border-color: #FFD700;
-            transform: scale(1.05);
-            box-shadow: 0 12px 32px rgba(255, 215, 0, 0.3);
+        .plan-card.plan-spark {
+            --plan-bg: linear-gradient(180deg, rgba(232, 244, 253, 0.95), rgba(255,255,255,1));
+            --plan-border: rgba(28, 167, 231, 0.18);
+        }
+
+        .plan-card.plan-steady {
+            --plan-bg: linear-gradient(180deg, rgba(214, 241, 255, 0.92), rgba(255,255,255,1));
+            --plan-border: rgba(28, 167, 231, 0.26);
+        }
+
+        .plan-card.plan-scholar {
+            --plan-bg: linear-gradient(180deg, rgba(200, 232, 255, 0.90), rgba(255,255,255,1));
+            --plan-border: rgba(28, 167, 231, 0.36);
+        }
+
+        .plan-card.plan-summit {
+            --plan-bg: linear-gradient(180deg, rgba(30, 58, 95, 0.08), rgba(255,255,255,1));
+            --plan-border: rgba(30, 58, 95, 0.38);
+        }
+
+        .plan-card.plan-popular {
+            border-color: rgba(255, 215, 0, 0.9);
+            box-shadow: 0 12px 32px rgba(255, 215, 0, 0.18);
+        }
+
+        .plan-card.plan-recommended {
+            border-color: rgba(28, 167, 231, 0.65);
+            box-shadow: 0 14px 36px rgba(28, 167, 231, 0.18);
+        }
+
+        .plan-tag {
+            position: absolute;
+            top: -14px;
+            left: 20px;
+            background: linear-gradient(135deg, #1CA7E7, #5CB3FF);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 999px;
+            font-weight: 800;
+            font-size: 0.85rem;
+            letter-spacing: 0.2px;
         }
         
         .plan-card:hover {
@@ -309,8 +363,9 @@
             border-color: #1CA7E7;
         }
         
-        .plan-card.featured:hover {
-            transform: scale(1.08) translateY(-10px);
+        .plan-card.plan-popular:hover,
+        .plan-card.plan-recommended:hover {
+            transform: translateY(-10px);
         }
         
         .plan-badge {
@@ -325,29 +380,106 @@
             font-size: 0.9rem;
         }
         
+        .plan-icon {
+            width: 56px;
+            height: 56px;
+            margin: 0 auto 14px auto;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.85);
+            border: 2px solid rgba(28, 167, 231, 0.14);
+            color: var(--plan-accent, #1CA7E7);
+        }
+
+        .plan-icon svg {
+            width: 30px;
+            height: 30px;
+        }
+
+        .plan-label {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 6px 12px;
+            border-radius: 999px;
+            background: #f8faff;
+            border: 2px solid #e8f4fd;
+            color: #1E3A5F;
+            font-weight: 800;
+            font-size: 0.9rem;
+            margin: 0 auto 12px auto;
+            width: fit-content;
+        }
+
         .plan-name {
             font-size: 1.8rem;
             font-weight: 800;
-            color: #1CA7E7;
-            margin-bottom: 12px;
+            color: var(--plan-title, #1CA7E7);
+            margin-bottom: 10px;
         }
         
         .plan-price {
             font-size: 3rem;
             font-weight: 800;
-            color: #1CA7E7;
+            color: var(--plan-title, #1CA7E7);
             margin-bottom: 8px;
         }
         
         .plan-period {
             color: #4A6FA5;
-            margin-bottom: 24px;
+            margin-bottom: 14px;
         }
         
+        .plan-tagline {
+            color: #1E3A5F;
+            font-weight: 700;
+            margin: 0 0 14px 0;
+        }
+
+        .plan-totals {
+            margin-top: 14px;
+            padding: 14px 14px;
+            border-radius: 14px;
+            border: 2px solid #e8f4fd;
+            background: #fbfdff;
+            text-align: left;
+        }
+
+        .plan-totals .totals-title {
+            font-weight: 800;
+            color: #1E3A5F;
+            font-size: 0.95rem;
+            margin-bottom: 10px;
+        }
+
+        .totals-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 6px 0;
+            color: #1E3A5F;
+            font-weight: 600;
+            border-top: 1px dashed rgba(28, 167, 231, 0.18);
+        }
+
+        .totals-row:first-of-type {
+            border-top: none;
+            padding-top: 0;
+        }
+
+        .totals-row .muted {
+            color: #64748b;
+            font-weight: 700;
+        }
+
         .plan-features {
             list-style: none;
             margin: 24px 0;
             text-align: left;
+            flex-grow: 1; /* fill space so button aligns at bottom */
         }
         
         .plan-features li {
@@ -376,12 +508,31 @@
             font-weight: 700;
             cursor: pointer;
             transition: all 0.3s ease;
+            margin-top: auto; /* push to bottom in flex column */
+            align-self: center;
+        }
+
+        /* Keep consistent spacing above the button even with margin-top:auto */
+        .plan-meta + .plan-btn,
+        .plan-features + .plan-btn {
             margin-top: 24px;
         }
         
         .plan-btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 6px 20px rgba(28, 167, 231, 0.4);
+        }
+
+        @media (max-width: 1100px) {
+            .plans-grid {
+                grid-template-columns: repeat(2, minmax(220px, 1fr));
+            }
+        }
+
+        @media (max-width: 560px) {
+            .plans-grid {
+                grid-template-columns: 1fr;
+            }
         }
         
         /* Modal */
@@ -610,67 +761,80 @@
     <section class="section" id="plans">
         <h2 class="section-title">📚 Choose Your Learning Plan 📚</h2>
         <div class="plans-grid">
-            <div class="plan-card">
-                <div class="plan-name">1 Month</div>
-                <div class="plan-price">$0</div>
-                <div class="plan-period">per month</div>
-                <div style="color: #4CAF50; font-weight: 700; margin-bottom: 16px; font-size: 1.1rem;">🆓 Testing Mode - FREE!</div>
+            <div class="plan-card plan-spark">
+                <div class="plan-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                    </svg>
+                </div>
+                <div class="plan-name">RemoSpark (1 Month)</div>
+                <div class="plan-price">₱250</div>
+                <div class="plan-period"><strong>Price Per Class</strong></div>
+                <p class="plan-tagline">Spark their curiosity.</p>
                 <ul class="plan-features">
-                    <li>Unlimited Classes</li>
-                    <li>All Learning Games</li>
-                    <li>Progress Tracking</li>
-                    <li>Email Support</li>
+                    <li>Perfect for beginners</li>
+                    <li>Access to digital library</li>
                 </ul>
-                <button class="plan-btn" onclick="selectPlan('1month', 0)">Choose Plan</button>
+                <button class="plan-btn" onclick="selectPlan('1month', 250)">Enroll Now</button>
             </div>
             
-            <div class="plan-card featured">
-                <div class="plan-badge">Popular</div>
-                <div class="plan-name">3 Months</div>
-                <div class="plan-price">$0</div>
-                <div class="plan-period">per month</div>
-                <div style="color: #4CAF50; font-weight: 700; margin-bottom: 16px; font-size: 1.1rem;">🆓 Testing Mode - FREE!</div>
+            <div class="plan-card plan-steady plan-popular">
+                <div class="plan-badge">Save 2%</div>
+                <div class="plan-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                        <path d="M8 6h10M8 10h10M8 14h10"/>
+                    </svg>
+                </div>
+                <div class="plan-name">RemoSteady (3 Months)</div>
+                <div class="plan-price">₱245</div>
+                <div class="plan-period"><strong>Price Per Class</strong></div>
+                <p class="plan-tagline">Building a routine.</p>
                 <ul class="plan-features">
-                    <li>Unlimited Classes</li>
-                    <li>All Learning Games</li>
-                    <li>Progress Tracking</li>
-                    <li>Priority Support</li>
-                    <li>Free Assessment</li>
+                    <li>Digital print outs</li>
                 </ul>
-                <button class="plan-btn" onclick="selectPlan('3months', 0)">Choose Plan</button>
+                <button class="plan-btn" onclick="selectPlan('3months', 245)">Enroll Now</button>
             </div>
             
-            <div class="plan-card">
-                <div class="plan-name">6 Months</div>
-                <div class="plan-price">$0</div>
-                <div class="plan-period">per month</div>
-                <div style="color: #4CAF50; font-weight: 700; margin-bottom: 16px; font-size: 1.1rem;">🆓 Testing Mode - FREE!</div>
+            <div class="plan-card plan-scholar">
+                <div class="plan-badge">Save 4%</div>
+                <div class="plan-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M7 4h10a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-4 3V6a2 2 0 0 1 2-2z"/>
+                        <path d="M9 8h8M9 11h6"/>
+                        <path d="M14.5 14.5l1.2 1.2 2.3-2.3"/>
+                    </svg>
+                </div>
+                <div class="plan-name">RemoScholar (6 Months)</div>
+                <div class="plan-price">₱240</div>
+                <div class="plan-period"><strong>Price Per Class</strong></div>
+                <p class="plan-tagline">Mastering the basics.</p>
                 <ul class="plan-features">
-                    <li>Unlimited Classes</li>
-                    <li>All Learning Games</li>
-                    <li>Progress Tracking</li>
-                    <li>Priority Support</li>
-                    <li>Free Assessment</li>
-                    <li>Bonus Learning Materials</li>
+                    <li>Mid-term progress report</li>
                 </ul>
-                <button class="plan-btn" onclick="selectPlan('6months', 0)">Choose Plan</button>
+                <button class="plan-btn" onclick="selectPlan('6months', 240)">Enroll Now</button>
             </div>
             
-            <div class="plan-card">
-                <div class="plan-name">1 Year</div>
-                <div class="plan-price">$0</div>
-                <div class="plan-period">per month</div>
-                <div style="color: #4CAF50; font-weight: 700; margin-bottom: 16px; font-size: 1.1rem;">🆓 Testing Mode - FREE!</div>
+            <div class="plan-card plan-summit plan-recommended">
+                <div class="plan-tag">Recommended</div>
+                <div class="plan-badge">Save 6%</div>
+                <div class="plan-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 10l-10-5-10 5 10 5 10-5z"/>
+                        <path d="M6 12v5c0 1 3 3 6 3s6-2 6-3v-5"/>
+                        <path d="M22 10v6"/>
+                    </svg>
+                </div>
+                <div class="plan-name">RemoSummit (12 Months)</div>
+                <div class="plan-price">₱235</div>
+                <div class="plan-period"><strong>Price Per Class</strong></div>
+                <p class="plan-tagline">Reaching the peak.</p>
                 <ul class="plan-features">
-                    <li>Unlimited Classes</li>
-                    <li>All Learning Games</li>
-                    <li>Progress Tracking</li>
-                    <li>Priority Support</li>
-                    <li>Free Assessment</li>
-                    <li>Bonus Learning Materials</li>
-                    <li>Certificate of Completion</li>
+                    <li>End-of-year certificate</li>
                 </ul>
-                <button class="plan-btn" onclick="selectPlan('1year', 0)">Choose Plan</button>
+                <button class="plan-btn" onclick="selectPlan('1year', 235)">Enroll Now</button>
             </div>
         </div>
     </section>
