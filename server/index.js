@@ -40,6 +40,8 @@ const io = new Server(http, {
   pingInterval: 25000,
   pingTimeout: 60000
 });
+const realtime = require('./realtime');
+realtime.setIo(io);
 // Do NOT hardcode 5000 or 3000
 const PORT = process.env.PORT || 8080;
 
@@ -70,15 +72,12 @@ app.get('/startup', (req, res) => {
 app.use(cors({
   origin: ["*", "https://*.devtunnels.ms", "https://*.ngrok.io", "http://localhost:5000"],
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
-
-// Serve static files from the public directory
-app.use(express.static(path.join(__dirname, '../public')));
 
 // Ensure PDF.js assets are available under public/vendor/pdfjs
 const ensurePdfjsAssets = () => {
@@ -131,6 +130,35 @@ app.use('/api/upload', fileRoutes); // Add alias for upload endpoint
 app.use('/api', announcementRoutes); // Mount announcement routes directly under /api
 app.use('/api', fileRoutes); // Add direct access to file routes (moved after announcement routes)
 app.use('/api/lessons', lessonRoutes);
+
+/**
+ * WebRTC ICE servers for live-classroom.html
+ * STUN helps with NAT; TURN relays traffic when P2P fails (common on strict networks / dev tunnels).
+ * Set TURN_URLS + TURN_USERNAME + TURN_CREDENTIAL in .env for production reliability.
+ */
+app.get('/api/rtc-config', (req, res) => {
+  const iceServers = [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' }
+  ];
+  const turnUrls = process.env.TURN_URLS || process.env.TURN_URI;
+  if (turnUrls) {
+    const urls = turnUrls.split(',').map((s) => s.trim()).filter(Boolean);
+    if (urls.length) {
+      const turnEntry = urls.length === 1 ? { urls: urls[0] } : { urls };
+      if (process.env.TURN_USERNAME) {
+        turnEntry.username = process.env.TURN_USERNAME;
+        turnEntry.credential = process.env.TURN_CREDENTIAL || '';
+      }
+      iceServers.push(turnEntry);
+    }
+  }
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+  res.json({ iceServers });
+});
+
+// Static files after core /api mounts so API paths are never shadowed by public files
+app.use(express.static(path.join(__dirname, '../public')));
 
 // Email diagnostic endpoint (for debugging)
 app.get('/api/email/status', (req, res) => {
@@ -353,6 +381,19 @@ app.post('/api/booking/:bookingId/complete', verifyToken, requireTeacher, async 
     await booking.save();
     
     console.log('✅ Class completed successfully:', bookingId);
+
+    try {
+      realtime.emitAll('bookingsUpdated', {
+        teacherId,
+        bookingId: booking._id.toString(),
+        date: booking.date,
+        time: booking.time,
+        status: booking.status,
+        ts: Date.now()
+      });
+    } catch (emitErr) {
+      console.warn('bookingsUpdated emit (complete):', emitErr);
+    }
     
     res.json({
       success: true,
@@ -967,6 +1008,10 @@ app.post('/api/attendance/mark', async (req, res) => {
 // Serve the main HTML files
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/index.html'));
+});
+
+app.get('/teachers', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/teachers.html'));
 });
 
 app.get('/teacher-login', (req, res) => {

@@ -21,7 +21,7 @@ const Feedback = require('./models/Feedback');
 const IssueReport = require('./models/IssueReport');
 const PeerMessage = require('./models/PeerMessage');
 const { verifyToken, requireTeacher, requireStudent, requireOwnTeacherData, requireOwnStudentData, logAccess } = require('./authMiddleware');
-const { io } = require('./index');
+const realtime = require('./realtime');
 
 async function ensureDir(dirPath) {
   await fsp.mkdir(dirPath, { recursive: true });
@@ -188,6 +188,46 @@ async function createNotification(teacherId, type, message) {
 
 const router = express.Router();
 
+// --- Teacher referral link (commission) ---
+function generateReferralCode() {
+  // Short, URL-friendly code
+  return Math.random().toString(36).slice(2, 8).toUpperCase() + Math.random().toString(36).slice(2, 6).toUpperCase();
+}
+
+router.get('/referral-link', verifyToken, requireTeacher, async (req, res) => {
+  try {
+    const teacherId = req.user.teacherId;
+    const teacher = await Teacher.findOne({ teacherId });
+    if (!teacher) {
+      return res.status(404).json({ success: false, message: 'Teacher not found' });
+    }
+
+    if (!teacher.referralCode) {
+      // Ensure uniqueness
+      let code = generateReferralCode();
+      for (let i = 0; i < 5; i++) {
+        const exists = await Teacher.findOne({ referralCode: code }).lean();
+        if (!exists) break;
+        code = generateReferralCode();
+      }
+      teacher.referralCode = code;
+      await teacher.save();
+    }
+
+    const code = teacher.referralCode;
+    res.json({
+      success: true,
+      teacherId: teacher.teacherId,
+      referralCode: code,
+      // Single referral link (subscription): bring users to plans section on landing page
+      subscriptionLink: `/index.html?ref=${encodeURIComponent(code)}#plans`
+    });
+  } catch (err) {
+    console.error('Teacher referral-link error:', err);
+    res.status(500).json({ success: false, message: 'Failed to generate referral link' });
+  }
+});
+
 // Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -223,6 +263,71 @@ const upload = multer({
 // Test route to verify teacher routes are working
 router.get('/test', (req, res) => {
   res.json({ message: 'Teacher routes are working!' });
+});
+
+/** Public marketing directory (no auth) — active teachers only, safe fields */
+router.get('/public/directory', async (req, res) => {
+  try {
+    const rows = await Teacher.find({ status: { $ne: 'suspended' } })
+      .select(
+        'teacherId username firstName middleName lastName fullname profilePicture introduction intro videoIntroduction language professionalCertifications documents.certifications'
+      )
+      .lean()
+      .limit(300);
+
+    const teachers = rows.map((t) => {
+      const displayName =
+        (t.fullname && String(t.fullname).trim()) ||
+        [t.firstName, t.middleName, t.lastName].filter(Boolean).join(' ').trim() ||
+        t.username ||
+        t.teacherId;
+      const introFull = (t.introduction || t.intro || '').trim();
+      const certNames = [];
+      if (Array.isArray(t.professionalCertifications)) {
+        t.professionalCertifications.forEach((c) => {
+          if (c && c.name) certNames.push(c.name);
+        });
+      }
+      if (t.documents?.certifications?.length) {
+        t.documents.certifications.forEach((x) => {
+          if (x && !certNames.includes(x)) certNames.push(x);
+        });
+      }
+      if (certNames.length === 0) {
+        certNames.push('TESOL Certified', 'TEYL Specialist');
+      }
+      const lang = t.language ? String(t.language) : 'English';
+      const subjects = ['English for Kids', lang !== 'English' ? `${lang} support` : 'Phonics & Reading'].filter(
+        Boolean
+      );
+      const bioSnippet =
+        introFull.length > 0
+          ? introFull.replace(/\s+/g, ' ').slice(0, 140) + (introFull.length > 140 ? '…' : '')
+          : 'Friendly, patient educator who makes every class fun and engaging!';
+
+      return {
+        teacherId: t.teacherId,
+        displayName,
+        photo: t.profilePicture || null,
+        intro: introFull || bioSnippet,
+        bioSnippet,
+        rating: 4.9,
+        reviewCount: 0,
+        certifications: certNames.slice(0, 8),
+        subjects,
+        videoIntroduction: t.videoIntroduction || null
+      };
+    });
+
+    teachers.sort((a, b) =>
+      a.displayName.localeCompare(b.displayName, undefined, { sensitivity: 'base' })
+    );
+
+    res.json({ teachers });
+  } catch (err) {
+    console.error('public/directory:', err);
+    res.status(500).json({ error: 'Failed to load teachers' });
+  }
 });
 
 // Peer message - must be early to avoid being shadowed by param routes
@@ -817,7 +922,7 @@ router.post('/open-slot', async (req, res) => {
       // Get the teacher's teacherId string for the socket emission
       const teacher = await Teacher.findOne({ teacherId: actualTeacherId });
       const teacherIdString = teacher ? teacher.teacherId : actualTeacherId;
-      io.emit('slotsUpdated', { teacherId: teacherIdString, ts: Date.now() });
+      realtime.emitAll('slotsUpdated', { teacherId: teacherIdString, ts: Date.now() });
       console.log('Emitted slotsUpdated for teacherId:', teacherIdString);
     } catch (error) {
       console.error('Error emitting slotsUpdated:', error);
@@ -896,7 +1001,7 @@ router.post('/close-slot', async (req, res) => {
       // Get the teacher's teacherId string for the socket emission
       const teacher = await Teacher.findOne({ teacherId: actualTeacherId });
       const teacherIdString = teacher ? teacher.teacherId : actualTeacherId;
-      io.emit('slotsUpdated', { teacherId: teacherIdString, ts: Date.now() });
+      realtime.emitAll('slotsUpdated', { teacherId: teacherIdString, ts: Date.now() });
       console.log('Emitted slotsUpdated for teacherId:', teacherIdString);
     } catch (error) {
       console.error('Error emitting slotsUpdated:', error);
@@ -941,8 +1046,12 @@ router.get('/slots', async (req, res) => {
           return null; // Skip slots without teacherId
         }
         
-        // Get teacher data using the teacherId string
-        const teacher = await Teacher.findOne({ teacherId: slotObj.teacherId });
+        const canonicalTid = await resolveToCanonicalTeacherId(slotObj.teacherId);
+        if (!canonicalTid) {
+          console.warn('⚠️ Could not resolve teacher for slot:', slotObj._id);
+          return null;
+        }
+        const teacher = await Teacher.findOne({ teacherId: canonicalTid });
         
         // Add client-local convenience fields
         if (slotObj.dateTimeUtc && clientTz) {
@@ -955,7 +1064,7 @@ router.get('/slots', async (req, res) => {
         
         const slotData = {
           ...slotObj,
-          teacherId: slotObj.teacherId, // Keep the original teacherId string
+          teacherId: canonicalTid,
           teacherName: teacher ? teacher.username : 'Unknown Teacher'
         };
         
@@ -1040,23 +1149,33 @@ router.get('/slots', async (req, res) => {
 
     // Use inclusive end date to include the last day of the week
     // Return all slots or only available slots based on allSlots parameter
+    const teacherRow = await Teacher.findOne({ teacherId: actualTeacherId });
+    const teacherIdOr = [{ teacherId: actualTeacherId }];
+    if (teacherRow && teacherRow._id) {
+      teacherIdOr.push({ teacherId: teacherRow._id });
+      teacherIdOr.push({ teacherId: teacherRow._id.toString() });
+    }
+
     const queryFilter = {
-      teacherId: actualTeacherId,
+      $or: teacherIdOr,
       date: { $gte: week, $lte: end.toISOString().slice(0, 10) }
     };
-    
+
     // If allSlots is not specified, only return available slots (for student booking)
     if (!allSlots) {
       queryFilter.available = true;
     }
-    
+
     const slotsQuery = await TeacherSlot.find(queryFilter);
-    
-    const slots = slotsQuery.map(slot => {
+
+    const slots = slotsQuery.map((slot) => {
       const obj = slot.toObject();
       // Add UTC and client-local convenience fields
       if (obj.dateTimeUtc) {
-        const dt = DateTime.fromISO(obj.dateTimeUtc, { zone: 'utc' });
+        const dt = DateTime.fromISO(
+          obj.dateTimeUtc instanceof Date ? obj.dateTimeUtc.toISOString() : String(obj.dateTimeUtc),
+          { zone: 'utc' }
+        );
         obj.utc = obj.dateTimeUtc;
         if (clientTz) {
           const local = dt.setZone(clientTz);
@@ -1068,7 +1187,8 @@ router.get('/slots', async (req, res) => {
       }
       return {
         ...obj,
-        teacherId: teacherId // Include the original teacherId (email/username) in response
+        teacherId: actualTeacherId,
+        slotStatus: obj.available ? 'Open' : 'Booked'
       };
     });
     
@@ -1127,8 +1247,13 @@ router.get('/slots', async (req, res) => {
         });
         
         const bookingObj = booking.toObject();
+        const studentName = student
+          ? `${student.firstName || ''} ${student.lastName || ''}`.trim() || student.username
+          : String(booking.studentId);
         return {
           ...bookingObj,
+          studentName,
+          lessonTopic: booking.lesson || '',
           studentId: student ? {
             username: student.username,
             firstName: student.firstName,
@@ -1166,46 +1291,138 @@ router.get('/slots', async (req, res) => {
   }
 });
 
-// Get available teachers for a specific date and time
+/** Normalize slot storage (ObjectId or string) to Teacher.teacherId string */
+async function resolveToCanonicalTeacherId(rawTeacherId) {
+  if (rawTeacherId == null || rawTeacherId === '') return null;
+  if (typeof rawTeacherId === 'string') {
+    const s = rawTeacherId.trim();
+    const byField = await Teacher.findOne({ teacherId: s });
+    if (byField) return byField.teacherId;
+    const byUsername = await Teacher.findOne({ $or: [{ username: s }, { email: s }] });
+    if (byUsername) return byUsername.teacherId;
+  }
+  if (mongoose.Types.ObjectId.isValid(rawTeacherId)) {
+    const byOid = await Teacher.findById(rawTeacherId);
+    if (byOid) return byOid.teacherId;
+  }
+  return null;
+}
+
+/** Find open slots for a booking instant (handles Date vs ISO string in DB). */
+async function findOpenSlotsByUtcInstant(canonicalUtcIso) {
+  const utcInstant = new Date(canonicalUtcIso);
+  if (isNaN(utcInstant.getTime())) return [];
+  let slots = await TeacherSlot.find({
+    dateTimeUtc: utcInstant,
+    available: true
+  }).lean();
+  if (slots.length > 0) return slots;
+  const t0 = utcInstant.getTime();
+  return TeacherSlot.find({
+    available: true,
+    dateTimeUtc: { $gte: new Date(t0 - 2000), $lte: new Date(t0 + 2000) }
+  }).lean();
+}
+
+/** All teachers with an open slot at this UTC instant and no conflicting booking */
+async function getCandidateTeachersForSlotUtc(canonicalUtcIso) {
+  const slots = await findOpenSlotsByUtcInstant(canonicalUtcIso);
+  const candidates = [];
+  const utcD = new Date(canonicalUtcIso);
+  for (const slot of slots) {
+    const tid = await resolveToCanonicalTeacherId(slot.teacherId);
+    if (!tid) continue;
+    let existing = await Booking.findOne({
+      teacherId: tid,
+      dateTimeUtc: utcD,
+      status: { $ne: 'cancelled' }
+    });
+    if (!existing) {
+      existing = await Booking.findOne({
+        teacherId: tid,
+        dateTimeUtc: canonicalUtcIso,
+        status: { $ne: 'cancelled' }
+      });
+    }
+    if (!existing) candidates.push(tid);
+  }
+  return [...new Set(candidates)].sort((a, b) => a.localeCompare(b));
+}
+
+async function pickRoundRobinTeacher(candidates) {
+  if (!candidates.length) return null;
+  const total = await Booking.countDocuments({});
+  return candidates[total % candidates.length];
+}
+
+// Get available teachers for a specific date and time (optional dateTimeUtc for precision)
 router.get('/available-teachers', async (req, res) => {
   try {
-    const { date, time } = req.query;
-    if (!date || !time) return res.status(400).json({ error: 'Missing date or time' });
-    
-    // Find available slots for this date/time
-    const slots = await TeacherSlot.find({ 
-      date, 
-      time, 
-      available: true // Only return available slots
-    }).populate('teacherId', 'username photo intro');
-    
-    // Filter out teachers who already have bookings for this slot
+    const { date, time, dateTimeUtc } = req.query;
+    if (dateTimeUtc) {
+      const candidates = await getCandidateTeachersForSlotUtc(dateTimeUtc);
+      const teachers = await Promise.all(
+        candidates.map(async (tid) => {
+          const t = await Teacher.findOne({ teacherId: tid });
+          const displayName =
+            (t && t.fullname && String(t.fullname).trim()) ||
+            (t &&
+              [t.firstName, t.middleName, t.lastName].filter(Boolean).join(' ').trim()) ||
+            (t && t.username) ||
+            tid;
+          const certNames = [];
+          if (t?.professionalCertifications?.length) {
+            t.professionalCertifications.forEach((c) => {
+              if (c && c.name) certNames.push(c.name);
+            });
+          }
+          if (t?.documents?.certifications?.length) {
+            t.documents.certifications.forEach((x) => {
+              if (x && !certNames.includes(x)) certNames.push(x);
+            });
+          }
+          return {
+            teacherId: tid,
+            name: t ? t.username : tid,
+            displayName,
+            photo: t?.profilePicture || null,
+            intro: t?.introduction || t?.intro || '',
+            videoIntroduction: t?.videoIntroduction || null,
+            certifications: certNames,
+            rating: 4.9,
+            reviewCount: 0
+          };
+        })
+      );
+      return res.json({ teachers });
+    }
+    if (!date || !time) return res.status(400).json({ error: 'Missing date/time or dateTimeUtc' });
+
+    const slots = await TeacherSlot.find({
+      date,
+      time,
+      available: true
+    }).lean();
+
     const availableTeachers = [];
     for (const slot of slots) {
-      // Skip slots with null teacherId
-      if (!slot.teacherId) {
-        console.log('Skipping slot with null teacherId:', slot._id);
-        continue;
-      }
-      
-      const existingBooking = await Booking.findOne({ 
-        teacherId: slot.teacherId._id, 
-        date, 
-        time, 
-        status: { $ne: 'cancelled' } 
+      if (!slot.teacherId) continue;
+      const tid = await resolveToCanonicalTeacherId(slot.teacherId);
+      if (!tid) continue;
+      const utcKey = slot.dateTimeUtc ? slot.dateTimeUtc.toISOString?.() || slot.dateTimeUtc : null;
+      const existingBooking = utcKey
+        ? await Booking.findOne({ teacherId: tid, dateTimeUtc: utcKey, status: { $ne: 'cancelled' } })
+        : await Booking.findOne({ teacherId: tid, date, time, status: { $ne: 'cancelled' } });
+      if (existingBooking) continue;
+      const t = await Teacher.findOne({ teacherId: tid });
+      availableTeachers.push({
+        teacherId: tid,
+        name: t ? t.username : tid,
+        photo: t?.profilePicture || null,
+        intro: t?.introduction || t?.intro || 'No introduction available'
       });
-      
-      if (!existingBooking) {
-        availableTeachers.push({
-          teacherId: slot.teacherId._id,
-          name: slot.teacherId.username,
-          photo: slot.teacherId.photo || null,
-          intro: slot.teacherId.intro || 'No introduction available'
-        });
-      }
     }
-    
-    console.log(`Found ${availableTeachers.length} available teachers for ${date} ${time}`);
+
     res.json({ teachers: availableTeachers });
   } catch (err) {
     console.error('Error in available-teachers:', err);
@@ -1213,180 +1430,305 @@ router.get('/available-teachers', async (req, res) => {
   }
 });
 
-// Book a class
+// Book a class — optional preferred teacher; otherwise first-available or round-robin among open slots
 router.post('/book-class', verifyToken, requireStudent, async (req, res) => {
   try {
     console.log('🔍 ========== BOOKING REQUEST RECEIVED ==========');
-    console.log('🔍 Booking API called with body:', JSON.stringify(req.body, null, 2));
-    console.log('🔍 User from token:', JSON.stringify(req.user, null, 2));
-    
-    const { teacherId, date, time, dateTimeUtc, lesson, lessonId, studentLevel, timezone } = req.body;
-    
-    console.log('🔍 Extracted fields from request body:', {
-      teacherId: teacherId || 'MISSING',
-      date: date || 'MISSING',
-      time: time || 'MISSING',
-      dateTimeUtc: dateTimeUtc || 'MISSING',
-      lesson: lesson || 'MISSING',
-      lessonId: lessonId || 'MISSING',
-      studentLevel: studentLevel || 'MISSING'
-    });
-    
-    // Get student username from the authenticated user's ObjectId
-    console.log('🔍 Looking for student with ID:', req.user.studentId);
+    const {
+      teacherId,
+      preferredTeacherId,
+      date,
+      time,
+      dateTimeUtc,
+      lesson,
+      lessonId,
+      studentLevel,
+      timezone,
+      assignmentMode = 'firstAvailable'
+    } = req.body;
+    const preferredRaw = preferredTeacherId != null && preferredTeacherId !== '' ? preferredTeacherId : teacherId;
+
     const student = await Student.findById(req.user.studentId);
-    console.log('🔍 Student found:', student ? 'YES' : 'NO');
-    
     if (!student) {
-      console.log('❌ Student not found for ID:', req.user.studentId);
       return res.status(400).json({ error: 'Student not found' });
     }
-    
-    const studentId = student.username; // Use username/email as string
-    console.log('🔍 Using studentId (username):', studentId);
-    
-    // Check all required fields
+    const studentId = student.username;
+
     const missingFields = [];
     if (!studentId) missingFields.push('studentId');
-    if (!teacherId) missingFields.push('teacherId');
     if (!dateTimeUtc && (!date || !time)) missingFields.push('dateTimeUtc');
     if (!lesson) missingFields.push('lesson');
     if (!studentLevel) missingFields.push('studentLevel');
-    
+
     if (missingFields.length > 0) {
-      console.log('❌ Missing required fields:', missingFields);
-      console.log('❌ Field values:', { 
-        studentId: studentId || 'MISSING', 
-        teacherId: teacherId || 'MISSING', 
-        date: date || 'MISSING', 
-        time: time || 'MISSING', 
-        lesson: lesson || 'MISSING', 
-        studentLevel: studentLevel || 'MISSING' 
-      });
-      return res.status(400).json({ 
-        error: 'Missing required fields: ' + missingFields.join(', '), 
+      return res.status(400).json({
+        error: 'Missing required fields: ' + missingFields.join(', '),
         details: {
           studentId: !!studentId,
-          teacherId: !!teacherId,
           date: !!date,
           time: !!time,
           lesson: !!lesson,
           studentLevel: !!studentLevel
         },
-        missingFields: missingFields
+        missingFields
       });
     }
-    
-    // Payment is handled via subscription - no paymentMethod required
 
-    // Convert teacher ID to teacher object
-    console.log('🔍 Looking for teacher with teacherId:', teacherId);
-    const teacher = await Teacher.findOne({ teacherId: teacherId });
-    console.log('🔍 Teacher found:', teacher ? 'YES' : 'NO');
-    
-    if (!teacher) {
-      console.log('❌ Teacher not found for teacherId:', teacherId);
-      return res.status(400).json({ error: 'Teacher not found' });
-    }
-    
-    const teacherObjectId = teacher.teacherId;
-    console.log('🔍 Teacher teacherId:', teacherObjectId);
-
-    // Compute canonical UTC datetime
     let canonicalUtc = dateTimeUtc;
     let zoneUsed = timezone;
     if (!canonicalUtc) {
-      const { utcIso, zoneUsed: zu } = toUtcFromLocal(date, time, timezone || teacher.teacherLocalZone || 'Asia/Manila');
+      const { utcIso, zoneUsed: zu } = toUtcFromLocal(date, time, timezone || 'Asia/Manila');
       canonicalUtc = utcIso;
       zoneUsed = zu;
     }
     const dt = DateTime.fromISO(canonicalUtc, { zone: 'utc' });
     const dateUtc = dt.toISODate();
     const timeUtc = dt.toFormat('HH:mm');
-    
-    // Check if slot is still available and open for booking
-    console.log('🔍 Checking if slot is available:', { teacherId: teacherObjectId, dateTimeUtc: canonicalUtc });
-    const existingSlot = await TeacherSlot.findOne({ 
-      teacherId: teacherObjectId, 
-      dateTimeUtc: canonicalUtc,
-      available: true // Must be available for booking
-    });
-    console.log('🔍 Existing slot found:', existingSlot ? 'YES' : 'NO');
-    
+
+    const candidates = await getCandidateTeachersForSlotUtc(canonicalUtc);
+    console.log('🔍 Candidate teachers for slot:', candidates);
+
+    if (candidates.length === 0) {
+      return res.status(400).json({
+        error: 'No teacher has an open slot for this time, or all are already booked.'
+      });
+    }
+
+    let chosenTeacherId = null;
+    if (preferredRaw != null && String(preferredRaw).trim() !== '') {
+      const resolvedPref = await resolveToCanonicalTeacherId(preferredRaw);
+      if (!resolvedPref) {
+        return res.status(400).json({ error: 'Preferred teacher not found.' });
+      }
+      if (!candidates.includes(resolvedPref)) {
+        return res.status(400).json({
+          error: 'That teacher is not available for this time slot. Choose another teacher or use auto-assign.',
+          candidates
+        });
+      }
+      chosenTeacherId = resolvedPref;
+    } else {
+      chosenTeacherId =
+        assignmentMode === 'roundRobin'
+          ? await pickRoundRobinTeacher(candidates)
+          : candidates[0];
+    }
+
+    const teacher = await Teacher.findOne({ teacherId: chosenTeacherId });
+    if (!teacher) {
+      return res.status(400).json({ error: 'Assigned teacher record not found' });
+    }
+
+    let existingSlot = null;
+    const slotRows = await findOpenSlotsByUtcInstant(canonicalUtc);
+    for (const s of slotRows) {
+      const tid = await resolveToCanonicalTeacherId(s.teacherId);
+      if (tid === chosenTeacherId) {
+        existingSlot = s;
+        break;
+      }
+    }
+
     if (!existingSlot) {
-      console.log('❌ Slot not available or not open for booking:', { teacherId: teacherObjectId, dateTimeUtc: canonicalUtc });
       return res.status(400).json({ error: 'Selected slot is no longer available or not open for booking' });
     }
 
-    // Check if slot is already booked
-    console.log('🔍 Checking if slot is already booked');
-    const existingBooking = await Booking.findOne({ teacherId: teacherObjectId, dateTimeUtc: canonicalUtc, status: { $ne: 'cancelled' } });
-    console.log('🔍 Existing booking found:', existingBooking ? 'YES' : 'NO');
-    
-    if (existingBooking) {
-      console.log('❌ Slot already booked');
-      return res.status(400).json({ error: 'Selected slot is already booked' });
+    const slotOwnerId = await resolveToCanonicalTeacherId(existingSlot.teacherId);
+    if (slotOwnerId !== chosenTeacherId) {
+      return res.status(400).json({ error: 'Slot does not match assigned teacher' });
     }
 
-    // Count previous bookings for this student
-    const studentBookingCount = await Booking.countDocuments({ studentId });
-    console.log('🔍 Student booking count:', studentBookingCount);
-    
-    // Use only username part before @ if email
-    const usernamePart = studentId.includes('@') ? studentId.split('@')[0] : studentId;
-    // Format: YYYYMMDDHHMM-username-N
-    const dateStr = dateUtc.replace(/-/g, '');
-    const timeStr = timeUtc.replace(':', '');
-    const classroomId = `${dateStr}${timeStr}${usernamePart}${studentBookingCount + 1}`;
-    console.log('🔍 Generated classroomId:', classroomId);
+    const utcInstant = new Date(canonicalUtc);
 
-    // Create booking with auto-generated classroomId
-    console.log('🔍 Creating new booking...');
-    const booking = new Booking({
-      studentId,
-      teacherId: teacherObjectId,
-      date: dateUtc,
-      time: timeUtc,
-      dateTimeUtc: canonicalUtc,
-      studentLocalZone: timezone || null,
-      teacherLocalZone: teacher?.teacherLocalZone || existingSlot?.teacherLocalZone || null,
-      lesson,
-      lessonId: req.body.lessonId || null,
-      studentLevel,
-      classroomId
-    });
-    await booking.save();
-    console.log('✅ Booking created successfully:', booking._id);
+    /** Local / standalone MongoDB: off. Replica set (e.g. Atlas): set USE_TRANSACTIONS=true if you want multi-doc transactions. */
+    const useTransactions =
+      String(process.env.USE_TRANSACTIONS || '').toLowerCase() === 'true';
 
-    // MARK THE SLOT AS UNAVAILABLE (CLOSED) WHEN BOOKED
-    console.log('🔍 Marking slot as unavailable after booking...');
-    const slotUpdateResult = await TeacherSlot.updateOne(
-      { teacherId: teacherObjectId, dateTimeUtc: canonicalUtc },
-      { available: false }
-    );
-    console.log('✅ Slot marked as unavailable:', slotUpdateResult.modifiedCount > 0);
+    /**
+     * Lock slot (atomic findOneAndUpdate) + create booking.
+     * When session is null, no Mongo session/transactions — works on standalone mongod.
+     */
+    async function createBookingAtomic(session) {
+      const findOpts = { new: true };
+      if (session) findOpts.session = session;
 
-    // Create notification for new booking
-    const studentName = student ? `${student.firstName} ${student.lastName}` : studentId;
-    await createNotification(teacherObjectId, 'booking', `New class booked for ${date} at ${time} with ${studentName}.`);
-    console.log('✅ Notification created');
-
-    // Get the teacher's teacherId string for the socket emission
-    try {
-      const teacher = await Teacher.findOne({ teacherId: teacherObjectId });
-      const teacherIdString = teacher ? teacher.teacherId : teacherObjectId;
-      if (io) {
-        io.emit('bookingsUpdated', { teacherId: teacherIdString, date, time, ts: Date.now() });
-        console.log('✅ Emitted bookingsUpdated for teacherId:', teacherIdString);
+      let dupQ = Booking.findOne({
+        teacherId: chosenTeacherId,
+        $or: [{ dateTimeUtc: utcInstant }, { dateTimeUtc: canonicalUtc }],
+        status: { $nin: ['cancelled'] }
+      });
+      if (session) dupQ = dupQ.session(session);
+      const dup = await dupQ;
+      if (dup) {
+        const err = new Error('Selected slot is already booked');
+        err.statusCode = 400;
+        err.code = 'ALREADY_BOOKED';
+        throw err;
       }
-    } catch (socketError) {
-      console.error('⚠️ Error emitting bookingsUpdated (non-critical):', socketError);
+
+      const lockedSlot = await TeacherSlot.findOneAndUpdate(
+        {
+          _id: existingSlot._id,
+          teacherId: existingSlot.teacherId,
+          available: true
+        },
+        { $set: { available: false } },
+        findOpts
+      );
+
+      if (!lockedSlot) {
+        const err = new Error(
+          'This time slot was just booked by another student. Please choose a different time.'
+        );
+        err.statusCode = 409;
+        err.code = 'SLOT_NOT_AVAILABLE';
+        throw err;
+      }
+
+      let countQ = Booking.countDocuments({ studentId });
+      if (session) countQ = countQ.session(session);
+      const studentBookingCount = await countQ;
+      const usernamePart = studentId.includes('@') ? studentId.split('@')[0] : studentId;
+      const dateStr = dateUtc.replace(/-/g, '');
+      const timeStr = timeUtc.replace(':', '');
+      const classroomId = `${dateStr}${timeStr}${usernamePart}${studentBookingCount + 1}`;
+
+      const b = new Booking({
+        studentId,
+        teacherId: chosenTeacherId,
+        date: dateUtc,
+        time: timeUtc,
+        dateTimeUtc: utcInstant,
+        studentLocalZone: timezone || null,
+        teacherLocalZone: teacher?.teacherLocalZone || lockedSlot?.teacherLocalZone || null,
+        lesson,
+        lessonId: lessonId || null,
+        studentLevel,
+        classroomId,
+        status: 'Booked'
+      });
+      try {
+        if (session) {
+          await b.save({ session });
+        } else {
+          await b.save();
+        }
+      } catch (saveErr) {
+        if (!session) {
+          await TeacherSlot.updateOne(
+            { _id: existingSlot._id, teacherId: existingSlot.teacherId },
+            { $set: { available: true } }
+          );
+        }
+        throw saveErr;
+      }
+      return b;
     }
 
-    res.json({ success: true, bookingId: booking._id, message: 'Class booked successfully' });
+    function isTransactionUnsupportedError(err) {
+      const msg = (err && err.message) || String(err);
+      return (
+        msg.includes('Transaction numbers are only allowed') ||
+        msg.includes('transactions are not supported') ||
+        msg.includes('replica set') ||
+        msg.includes('ReplicaSet') ||
+        /transaction.*not.*support/i.test(msg)
+      );
+    }
+
+    let booking;
+    try {
+      if (!useTransactions) {
+        booking = await createBookingAtomic(null);
+      } else {
+        const session = await mongoose.startSession();
+        let sessionHandled = false;
+        try {
+          await session.withTransaction(async () => {
+            booking = await createBookingAtomic(session);
+          });
+        } catch (txnErr) {
+          const e =
+            txnErr && txnErr.statusCode
+              ? txnErr
+              : txnErr && txnErr.cause && txnErr.cause.statusCode
+                ? txnErr.cause
+                : txnErr;
+          if (e && e.statusCode && e.message) {
+            await session.endSession().catch(() => {});
+            sessionHandled = true;
+            return res.status(e.statusCode).json({
+              error: e.message,
+              code: e.code || undefined
+            });
+          }
+          if (isTransactionUnsupportedError(txnErr)) {
+            await session.endSession().catch(() => {});
+            sessionHandled = true;
+            console.warn(
+              '⚠️ USE_TRANSACTIONS=true but MongoDB rejected the transaction; using atomic slot-lock fallback'
+            );
+            booking = await createBookingAtomic(null);
+          } else {
+            await session.endSession().catch(() => {});
+            sessionHandled = true;
+            throw txnErr;
+          }
+        } finally {
+          if (!sessionHandled) await session.endSession().catch(() => {});
+        }
+      }
+    } catch (bookErr) {
+      const e =
+        bookErr && bookErr.statusCode
+          ? bookErr
+          : bookErr && bookErr.cause && bookErr.cause.statusCode
+            ? bookErr.cause
+            : bookErr;
+      if (e && e.statusCode && e.message) {
+        return res.status(e.statusCode).json({
+          error: e.message,
+          code: e.code || undefined
+        });
+      }
+      throw bookErr;
+    }
+
+    console.log('✅ Booking created:', booking._id, 'teacher:', chosenTeacherId, 'mode:', preferredRaw ? 'preferred' : assignmentMode);
+
+    const studentName = student ? `${student.firstName} ${student.lastName}` : studentId;
+    await createNotification(
+      chosenTeacherId,
+      'booking',
+      `New class booked for ${dateUtc} at ${timeUtc} with ${studentName}.`
+    );
+
+    try {
+      const payload = {
+        teacherId: chosenTeacherId,
+        date: dateUtc,
+        time: timeUtc,
+        dateTimeUtc: canonicalUtc,
+        bookingId: booking._id.toString(),
+        ts: Date.now()
+      };
+      realtime.emitAll('bookingsUpdated', payload);
+      realtime.emitAll('slotsUpdated', payload);
+    } catch (socketError) {
+      console.error('⚠️ bookingsUpdated/slotsUpdated emit:', socketError);
+    }
+
+    res.json({
+      success: true,
+      bookingId: booking._id,
+      teacherId: chosenTeacherId,
+      assignmentMode: preferredRaw ? 'preferred' : assignmentMode,
+      message: 'Class booked successfully',
+      bookingMode: useTransactions ? 'transaction' : 'atomic-slot-lock',
+      useTransactions
+    });
   } catch (err) {
     console.error('❌ Error booking class:', err);
-    console.error('❌ Error stack:', err.stack);
     res.status(500).json({ error: err.message });
   }
 });
@@ -2209,14 +2551,34 @@ router.post('/remove-video', verifyToken, requireTeacher, async (req, res) => {
 
 
 // Timezone-safe helpers for Philippines (Asia/Manila)
-function getPhilippineDate() {
+function getPhilippineDate(date = new Date()) {
   // Returns YYYY-MM-DD in Asia/Manila regardless of server locale
   return new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Asia/Manila',
     year: 'numeric',
     month: '2-digit',
     day: '2-digit'
-  }).format(new Date());
+  }).format(date);
+}
+
+function getPhilippineHour(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Manila',
+    hour12: false,
+    hour: '2-digit'
+  }).formatToParts(date);
+  const hourPart = parts.find(p => p.type === 'hour');
+  return Number(hourPart ? hourPart.value : '0');
+}
+
+function getPhilippineBusinessDate(cutoffHour = 7) {
+  // Defines the "time log day" as 7:00 AM to 6:59 AM (Asia/Manila)
+  const now = new Date();
+  const phHour = getPhilippineHour(now);
+  const effective = phHour < cutoffHour
+    ? new Date(now.getTime() - (24 * 60 * 60 * 1000))
+    : now;
+  return getPhilippineDate(effective);
 }
 
 function getPhilippineTimeString() {
@@ -2230,6 +2592,11 @@ function getPhilippineTimeString() {
   }).format(new Date());
 }
 
+// Only match teacher logs (exclude admin time logs stored under admin:* ids)
+const teacherTimeLogTypeClause = {
+  $or: [{ logOwnerType: 'teacher' }, { logOwnerType: { $exists: false } }]
+};
+
 // Clock in
 router.post('/time-tracking/clock-in', verifyToken, requireTeacher, async (req, res) => {
   try {
@@ -2239,7 +2606,7 @@ router.post('/time-tracking/clock-in', verifyToken, requireTeacher, async (req, 
     const teacherId = req.user.teacherId;
     console.log('Teacher ID:', teacherId);
     
-    const phDate = getPhilippineDate();
+    const phDate = getPhilippineBusinessDate(7);
     const currentTime = getPhilippineTimeString();
     
     console.log('Philippine Date:', phDate);
@@ -2255,7 +2622,8 @@ router.post('/time-tracking/clock-in', verifyToken, requireTeacher, async (req, 
     // Check if already clocked in today
     const existingLog = await TimeLog.findOne({
       teacherId,
-      date: phDate
+      date: phDate,
+      ...teacherTimeLogTypeClause
     });
     
     if (existingLog) {
@@ -2269,6 +2637,7 @@ router.post('/time-tracking/clock-in', verifyToken, requireTeacher, async (req, 
     // Create new time log
     const timeLog = await TimeLog.create({
       teacherId,
+      logOwnerType: 'teacher',
       date: phDate,
       clockIn: {
         time: currentTime,
@@ -2297,15 +2666,15 @@ router.post('/time-tracking/clock-in', verifyToken, requireTeacher, async (req, 
 router.post('/time-tracking/clock-out', verifyToken, requireTeacher, async (req, res) => {
   try {
     const teacherId = req.user.teacherId;
-    const phDate = getPhilippineDate();
     const currentTime = getPhilippineTimeString();
     
     // Find current clock-in log
     const timeLog = await TimeLog.findOne({
       teacherId,
-      date: phDate,
-      status: 'clocked-in'
-    });
+      status: 'clocked-in',
+      ...teacherTimeLogTypeClause
+    })
+      .sort({ 'clockIn.timestamp': -1 });
     
     if (!timeLog) {
       return res.status(400).json({ 
@@ -2347,12 +2716,21 @@ router.post('/time-tracking/clock-out', verifyToken, requireTeacher, async (req,
 router.get('/time-tracking/status', verifyToken, requireTeacher, async (req, res) => {
   try {
     const teacherId = req.user.teacherId;
-    const phDate = getPhilippineDate();
+    const phDate = getPhilippineBusinessDate(7);
     
-    // Check if there's a time log for today
+    // Check if there's an open log (clocked-in) regardless of date
+    const openLog = await TimeLog.findOne({
+      teacherId,
+      status: 'clocked-in',
+      ...teacherTimeLogTypeClause
+    })
+      .sort({ 'clockIn.timestamp': -1 });
+
+    // Check if there's a time log for the current business day
     const todayLog = await TimeLog.findOne({
       teacherId,
-      date: phDate
+      date: phDate,
+      ...teacherTimeLogTypeClause
     });
     
     let isClockedIn = false;
@@ -2361,14 +2739,12 @@ router.get('/time-tracking/status', verifyToken, requireTeacher, async (req, res
     let canTimeOut = false;
     let dailyCompleted = false;
     
-    if (todayLog) {
-      if (todayLog.status === 'clocked-in') {
-        isClockedIn = true;
-        currentLog = todayLog;
-        canTimeOut = true;
-      } else if (todayLog.status === 'clocked-out') {
-        dailyCompleted = true;
-      }
+    if (openLog) {
+      isClockedIn = true;
+      currentLog = openLog;
+      canTimeOut = true;
+    } else if (todayLog) {
+      if (todayLog.status === 'clocked-out') dailyCompleted = true;
     } else {
       // No log for today, can time in
       canTimeIn = true;
@@ -2395,7 +2771,7 @@ router.get('/time-tracking/history', verifyToken, requireTeacher, async (req, re
     const teacherId = req.user.teacherId;
     const { startDate, endDate } = req.query;
     
-    let query = { teacherId };
+    let query = { teacherId, ...teacherTimeLogTypeClause };
     
     // Add date range filter if provided
     if (startDate && endDate) {
@@ -2741,7 +3117,7 @@ router.get('/completed-classes', verifyToken, requireTeacher, async (req, res) =
           // Teacher was absent - count for deduction
           teacherAbsentClasses++;
         } else {
-          // Student was absent but teacher was present - count for 50% payment
+          // Student was absent but teacher was present - no payment (no-class, no-pay policy)
           studentAbsentClasses++;
         }
       }
@@ -3431,9 +3807,9 @@ router.get('/weekly-payment-summary', verifyToken, requireTeacher, async (req, r
           absentClasses++;
           console.log(`Teacher absent for class ${booking.date} ${booking.time} - counting for deduction`);
         } else {
-          // Student was absent but teacher was present - count for 50% payment
+          // Student was absent but teacher was present - no payment (no-class, no-pay policy)
           studentAbsentClasses++;
-          console.log(`Student absent but teacher present for class ${booking.date} ${booking.time} - counting for 50% payment`);
+          console.log(`Student absent but teacher present for class ${booking.date} ${booking.time} - counting for no payment`);
         }
       } else if (booking.status === 'pending') {
         // Check if pending class should be counted as teacher absent
@@ -3455,7 +3831,7 @@ router.get('/weekly-payment-summary', verifyToken, requireTeacher, async (req, r
           // Class is more than 15 minutes past scheduled time, teacher entered but student didn't
           // This is student absent, not teacher absent (15-minute rule for student entry)
           studentAbsentClasses++;
-          console.log(`Student absent for pending class ${booking.date} ${booking.time} - teacher entered but student didn't enter within 15 minutes (${timeDiffMinutes.toFixed(1)} minutes past) - counting for 50% payment`);
+          console.log(`Student absent for pending class ${booking.date} ${booking.time} - teacher entered but student didn't enter within 15 minutes (${timeDiffMinutes.toFixed(1)} minutes past) - counting for no payment`);
         } else {
           console.log(`Pending class ${booking.date} ${booking.time} - ${timeDiffMinutes.toFixed(1)} minutes past, teacher: ${teacherEntered}, student: ${studentEntered}`);
         }
@@ -3472,8 +3848,8 @@ router.get('/weekly-payment-summary', verifyToken, requireTeacher, async (req, r
     // Calculate absent deductions: absent count × rate
     absentDeductions = absentClasses * ratePerClass;
 
-    // Calculate student absent payments: student absent count × 50% of rate
-    const studentAbsentPayment = studentAbsentClasses * (ratePerClass * 0.5);
+    // Calculate student absent payments: no-class, no-pay => 0 payment
+    const studentAbsentPayment = 0;
 
     const weeklyFee = completedClasses * ratePerClass;
     const totalDeductions = lateDeductions + cancellationDeductions + absentDeductions;
@@ -3709,7 +4085,7 @@ router.post('/give-reward', verifyToken, requireTeacher, async (req, res) => {
     await reward.save();
     
     // Emit reward to student via socket
-    io.to(bookingId).emit('reward-received', {
+    realtime.emitToRoom(bookingId, 'reward-received', {
       type,
       teacherId,
       studentId,
@@ -4089,6 +4465,19 @@ router.post('/booking/:bookingId/complete', verifyToken, requireTeacher, async (
     await booking.save();
     
     console.log('✅ Class completed successfully:', bookingId);
+
+    try {
+      realtime.emitAll('bookingsUpdated', {
+        teacherId,
+        bookingId: booking._id.toString(),
+        date: booking.date,
+        time: booking.time,
+        status: booking.status,
+        ts: Date.now()
+      });
+    } catch (emitErr) {
+      console.warn('bookingsUpdated emit (complete):', emitErr);
+    }
     
     // Create notification
     const notificationMessage = `Class completed for ${booking.date} at ${booking.time}`;

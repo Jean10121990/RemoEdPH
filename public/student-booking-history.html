@@ -396,8 +396,9 @@
             }
         }
     </style>
+    <link rel="stylesheet" href="css/student-sidebar-unified.css">
 </head>
-<body>
+<body class="student-portal">
     <div class="remoed-main">
         <nav class="remoed-sidebar">
             <div class="remoed-logo" style="height:100px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding-top:5px;">
@@ -406,7 +407,7 @@
                 <div style="font-size: 0.75rem; color: #666;">Student Portal</div>
             </div>
             <div class="remoed-user" style="display:flex; flex-direction:column; align-items:center; margin-bottom:24px;">
-                <div class="remoed-avatar" id="student-avatar" onclick="window.location.href='student-profile.html'" style="cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+                <div class="remoed-avatar" id="student-avatar" onclick="window.location.href='student-profile.html'" style="cursor: pointer;">
                     <img id="profile-image" class="avatar-img" src="" alt="Profile" style="display: none;">
                     <span id="avatar-text" class="avatar-text">S</span>
                 </div>
@@ -420,6 +421,7 @@
                 <li onclick="window.location.href='student-games-activities.html'">🎮 <span>Play & Learn</span></li>
                 <li onclick="window.location.href='student-profile.html'">👤 <span>My Profile</span></li>
                 <li onclick="window.location.href='student-assessment.html'">🎯 <span>My Level</span></li>
+                <li onclick="window.location.href='student-credits.html'">🎫 <span>My Credits</span></li>
                 <li id="logout-nav" style="margin-top:auto; color:#e74c3c; cursor:pointer;"><svg fill="none" stroke="#e74c3c" stroke-width="2" viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7"/><path d="M3 12a9 9 0 0118 0 9 9 0 01-18 0z"/></svg>Logout</li>
             </ul>
         </nav>

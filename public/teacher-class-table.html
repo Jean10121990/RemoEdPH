@@ -1205,10 +1205,6 @@
             <span class="remoed-legend-text">Finished</span>
           </div>
           <div class="remoed-legend-item">
-            <div class="remoed-legend-color" style="background: #28a745; color: white;">R</div>
-            <span class="remoed-legend-text">Resolved</span>
-          </div>
-          <div class="remoed-legend-item">
             <div class="remoed-legend-color" style="background: #f8fafc; color: #64748b;">U</div>
             <span class="remoed-legend-text">Unbooked</span>
           </div>
@@ -2291,7 +2287,7 @@
             indicator.className = 'resolved-indicator';
             indicator.style.cssText = 'position: absolute; top: 2px; right: 2px; background: #28a745; color: white; font-size: 10px; padding: 2px 4px; border-radius: 3px; z-index: 10;';
             indicator.title = 'Class issue marked as resolved by admin';
-            indicator.textContent = 'Resolved';
+            indicator.textContent = 'Resolved Issue';
             cell.appendChild(indicator);
           }
         }
@@ -2300,7 +2296,7 @@
       if (booking.status === 'completed') {
         showNotification('💡 Tip: This class has already been completed. You can still view its details here.', 'info');
       } else if (booking.status === 'absent' || booking.absentMarkedAt) {
-        showNotification('💡 Tip: This class was marked as student absent. You received 50% payment for this session.', 'info');
+        showNotification('💡 Tip: This class was marked as student absent. Under the no-class, no-pay policy, there is no payment for this session.', 'info');
       }
       
       // Format date
@@ -2794,7 +2790,7 @@
             return;
         }
         
-        if (!confirm('Are you sure you want to mark the student as absent? This will result in 50% pay deduction.')) {
+        if (!confirm('Are you sure you want to mark the student as absent? Under the no-class, no-pay policy, there will be no payment for this session.')) {
             return;
         }
         
@@ -3325,7 +3321,7 @@
                             indicator.className = 'resolved-indicator';
                             indicator.style.cssText = 'position: absolute; top: 2px; right: 2px; background: #28a745; color: white; font-size: 10px; padding: 2px 4px; border-radius: 3px; z-index: 10;';
                             indicator.title = 'Class issue marked as resolved by admin';
-                            indicator.textContent = 'Resolved';
+                            indicator.textContent = 'Resolved Issue';
                             cell.appendChild(indicator);
                         }
                     }
@@ -3365,7 +3361,7 @@
                         indicator.className = 'resolved-indicator';
                         indicator.style.cssText = 'position: absolute; top: 2px; right: 2px; background: #28a745; color: white; font-size: 10px; padding: 2px 4px; border-radius: 3px; z-index: 10;';
                         indicator.title = 'Class issue marked as resolved by admin';
-                        indicator.textContent = 'Resolved';
+                        indicator.textContent = 'Resolved Issue';
                         cell.appendChild(indicator);
                     }
                 }
@@ -3742,7 +3738,7 @@
               { text: "How to Create a Lesson", icon: "➕", topic: "create lesson" }
             ]);
           } else if (lower.includes('lesson structure') || lower.includes('lesson format')) {
-            this.addBotMessage("**Standard Lesson Structure (50-60 min):**\n\n1️⃣ **Warm-up (5-10 min)** - Engage students\n2️⃣ **Introduction (5-10 min)** - Present objectives\n3️⃣ **Practice (15-20 min)** - Interactive exercises\n4️⃣ **Production (10-15 min)** - Apply learning\n5️⃣ **Wrap-up (5 min)** - Review and homework\n\n**Tips:** Keep it interactive, use multimedia!");
+            this.addBotMessage("**Standard Lesson Structure (25 min):**\n\n1️⃣ **Warm-up (5 min)** - Engage students\n2️⃣ **Introduction (5 min)** - Present objectives\n3️⃣ **Practice (10 min)** - Interactive exercises\n4️⃣ **Production (3 min)** - Apply learning\n5️⃣ **Wrap-up (2 min)** - Quick review and homework\n\n**Tips:** Keep it interactive, use multimedia, and focus on high-impact activities!");
           } else if (lower.includes('teaching tip') || lower.includes('effective teaching')) {
             this.addBotMessage("**Top Tips for Online Teaching:**\n\n🎯 **Engagement**: Use polls, games, breakout rooms\n💬 **Communication**: Speak clearly, use visuals\n⏰ **Time Management**: Plan with time allocations\n👥 **Interaction**: Encourage participation, give feedback\n🔧 **Technical**: Test equipment, have backup plans\n\nRemember: Adaptability and creativity are key!");
           } else if (lower.includes('create lesson')) {

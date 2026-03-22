@@ -14,6 +14,8 @@ const adminSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   },
+  // Referral link code (used for commission tracking)
+  referralCode: { type: String, default: null, unique: true, sparse: true },
   status: { type: String, enum: ['active', 'suspended'], default: 'active' },
   hasGeneratedPassword: { type: Boolean, default: false }
 });

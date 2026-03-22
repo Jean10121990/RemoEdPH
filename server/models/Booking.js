@@ -1,7 +1,8 @@
 const mongoose = require('mongoose');
 const bookingSchema = new mongoose.Schema({
   studentId: { type: String, required: true }, // student email/username
-  teacherId: { type: String, required: true }, // Use the new teacherId field (e.g., "kjb00000001")
+  /** Logical FK to Teacher.teacherId (e.g. Txxxxx / kjb…) — indexed for lookups */
+  teacherId: { type: String, required: true, index: true }, // matches Teacher.teacherId (logical FK)
   date: { type: String, required: true }, // YYYY-MM-DD
   time: { type: String, required: true }, // HH:MM
   dateTimeUtc: { type: Date, default: null }, // canonical UTC datetime for the class
@@ -11,7 +12,7 @@ const bookingSchema = new mongoose.Schema({
   lessonId: { type: mongoose.Schema.Types.ObjectId, ref: 'Lesson', default: null }, // Reference to Lesson document
   studentLevel: { type: String, required: true }, // nursery, kinder, preparatory
   paymentMethod: { type: String, default: null }, // Optional - payment handled separately
-  status: { type: String, default: 'pending' }, // pending, confirmed, completed, cancelled, absent
+  status: { type: String, default: 'Booked' }, // Booked, pending, confirmed, completed, cancelled, absent
   classroomId: { type: String }, // unique classroom/room ID for the live lesson
   attendance: {
     teacherEntered: { type: Boolean, default: false },

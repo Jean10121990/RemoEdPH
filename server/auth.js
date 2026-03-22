@@ -324,7 +324,7 @@ router.post('/student-login', async (req, res) => {
 
 // Student registration endpoint
 router.post('/student-register', async (req, res) => {
-  const { username, email, password } = req.body;
+  const { username, email, password, referralCode } = req.body;
   if (!username || !password) {
     return res.status(400).json({ success: false, message: 'Username and password required' });
   }
@@ -360,9 +360,35 @@ router.post('/student-register', async (req, res) => {
       username, 
       email: email,
       password: hashedPassword,
-      parentName: req.body.parentName || ''
+      parentName: req.body.parentName || '',
+      contact: req.body.contact || ''
       // firstName and lastName will be set when they update their profile
     });
+
+    // Attach referral if provided (teacher referral link)
+    if (referralCode && String(referralCode).trim()) {
+      const code = String(referralCode).trim();
+      try {
+        const teacher = await Teacher.findOne({ referralCode: code }).lean();
+        if (teacher) {
+          student.referralCode = code;
+          student.referredByTeacherId = teacher.teacherId; // legacy
+          student.referredByOwnerType = 'teacher';
+          student.referredByOwnerId = teacher.teacherId;
+        } else {
+          const admin = await Admin.findOne({ referralCode: code }).lean();
+          if (admin) {
+            student.referralCode = code;
+            student.referredByOwnerType = 'admin';
+            student.referredByOwnerId = admin.username;
+          }
+        }
+      } catch (e) {
+        // Don't fail registration if referral lookup fails
+        console.warn('Referral lookup failed during student registration:', e.message);
+      }
+    }
+
     await student.save();
     res.json({ success: true, message: 'Student registered successfully', studentId: student._id });
   } catch (err) {

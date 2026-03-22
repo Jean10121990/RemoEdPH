@@ -42,7 +42,38 @@ const studentSchema = new mongoose.Schema({
   subscriptionPlan: { type: String }, // '1month', '3months', '6months', '1year'
   subscriptionStartDate: { type: Date },
   subscriptionEndDate: { type: Date },
-  subscriptionStatus: { type: String, enum: ['active', 'expired', 'cancelled'], default: 'active' },
+  subscriptionStatus: { type: String, enum: ['pending', 'active', 'expired', 'cancelled'], default: 'pending' },
+  paymentStatus: { type: String, enum: ['unpaid', 'pending', 'paid'], default: 'unpaid' },
+  paymentMethod: { type: String, enum: ['bank', 'gcash', 'paypal', null], default: null },
+  paymentReference: { type: String, default: '' },
+  paymentDetails: {
+    bankName: { type: String, default: '' },
+    accountName: { type: String, default: '' },
+    gcashNumber: { type: String, default: '' },
+    paypalEmail: { type: String, default: '' }
+  },
+  paymentPaidAt: { type: Date, default: null },
+  pendingCheckout: {
+    sessionId: { type: String, default: '' },
+    createdAt: { type: Date, default: null }
+  },
+  // Lesson credits (used for flexible scheduling)
+  creditBalance: { type: Number, default: 0 }, // remaining lesson credits
+  totalCreditsEarned: { type: Number, default: 0 }, // total credits ever purchased
+  creditTransactions: [{
+    date: { type: Date, default: Date.now },
+    type: { type: String, enum: ['purchase', 'adjustment', 'use'], default: 'purchase' },
+    plan: { type: String, default: '' },
+    description: { type: String, default: '' },
+    credits: { type: Number, default: 0 }, // positive for add, negative for use
+    balanceAfter: { type: Number, default: 0 },
+    amountPaid: { type: Number, default: 0 }
+  }],
+  // Referral tracking (teacher referral link -> student signup/subscription)
+  referralCode: { type: String, default: null },
+  referredByTeacherId: { type: String, default: null }, // legacy (teacher only)
+  referredByOwnerType: { type: String, enum: ['teacher', 'admin', null], default: null },
+  referredByOwnerId: { type: String, default: null }, // teacherId or admin username
   createdAt: { type: Date, default: Date.now }
 }, { timestamps: true });
 

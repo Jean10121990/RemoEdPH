@@ -999,7 +999,7 @@
                 studentName: booking.studentName || booking.studentId?.firstName || booking.studentId?.username || 'Unknown',
                 hasResolvedIssue: booking.hasResolvedIssue || false
               });
-            } else if (booking.status === 'confirmed' || booking.status === 'pending') {
+            } else if (booking.status === 'confirmed' || booking.status === 'pending' || booking.status === 'Booked') {
               // Store as booked slot
               window.bookedSlots.add(slotId);
             }

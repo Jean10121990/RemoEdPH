@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - RemoEdPH</title>
     <link rel="stylesheet" href="modern-styles.css">
+    <link rel="stylesheet" href="css/teacher-sidebar.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
 
@@ -52,6 +53,29 @@
             margin-bottom: 8px;
         }
 
+        .metric-header-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .metric-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #1ca7e7 0%, #0ea5e9 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            flex: 0 0 auto;
+        }
+
+        .metric-icon svg {
+            width: 22px;
+            height: 22px;
+        }
+
         .metric-header h3 {
             margin: 0;
             font-size: 0.85rem;
@@ -71,6 +95,49 @@
 
         .star.filled {
             color: #fbbf24;
+        }
+
+        /* Community & Social Responsibility (match Teacher Dashboard) */
+        .community-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+        @media (max-width: 768px) {
+            .community-grid { grid-template-columns: 1fr; }
+        }
+        .community-item {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid #e0e6ed;
+            background: #fafdff;
+        }
+        .community-icon {
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(102, 126, 234, 0.12);
+            color: #667eea;
+            flex-shrink: 0;
+            font-size: 1.05rem;
+        }
+        .community-item h4 {
+            margin: 0;
+            font-size: 0.95rem;
+            color: #1a202c;
+            font-weight: 700;
+        }
+        .community-item p {
+            margin: 4px 0 0 0;
+            font-size: 0.85rem;
+            color: #64748b;
+            line-height: 1.5;
         }
 
         .metric-value {
@@ -429,6 +496,55 @@
             align-items: center;
             gap: 1rem;
         }
+
+        /* Time tracking (match teacher dashboard header) */
+        .time-tracking-mini {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 4px 10px;
+            background: #f8fafc;
+            border-radius: 999px;
+            border: 1px solid #e2e8f0;
+        }
+        .time-status-mini {
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 999px;
+        }
+        .time-status-mini.clocked-in {
+            background: #dcfce7;
+            color: #166534;
+        }
+        .time-status-mini.not-clocked {
+            background: #f1f5f9;
+            color: #64748b;
+        }
+        .time-btn-mini {
+            border: none;
+            border-radius: 8px;
+            padding: 6px 14px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+        .time-btn-mini.clock-in.primary {
+            background: linear-gradient(90deg, #667eea, #5a67d8);
+            color: #fff;
+        }
+        .time-btn-mini.clock-in.primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.35);
+        }
+        .time-btn-mini.clock-out {
+            background: #dc3545;
+            color: #fff;
+        }
+        .time-btn-mini.clock-out:hover {
+            background: #c82333;
+        }
         .nav-icon {
             position: relative;
             width: 40px;
@@ -691,6 +807,10 @@
                 <h1 style="margin: 0; font-size: 1.5rem; color: #1a202c;">Admin Dashboard</h1>
             </div>
             <div class="nav-right">
+                <div class="time-tracking-mini">
+                    <span class="time-status-mini not-clocked" id="time-status-mini">Not Clocked In</span>
+                    <button type="button" class="time-btn-mini clock-in primary" id="time-btn-mini">Time In</button>
+                </div>
                 <!-- Admin notifications icon -->
                 <div class="nav-icon" id="admin-notifications-icon">
                     <svg viewBox="0 0 24 24" fill="currentColor">
@@ -698,8 +818,9 @@
                     </svg>
                     <div class="nav-badge" id="admin-notifications-badge" style="display:none;">0</div>
                     <div class="nav-dropdown" id="admin-notifications-dropdown">
-                        <div class="nav-dropdown-header">
+                        <div class="nav-dropdown-header" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
                             <span>Notifications</span>
+                            <button type="button" id="admin-notifications-mark-read" style="font-size:0.75rem;padding:4px 8px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;cursor:pointer;color:#334155;">Mark all read</button>
                         </div>
                         <div class="nav-dropdown-content" id="admin-notifications-dropdown-content">
                             <!-- Admin notifications will be loaded here -->
@@ -709,41 +830,61 @@
             </div>
         </div>
 
-        <nav class="remoed-sidebar">
-            <div class="remoed-logo" style="height:100px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding-top:5px;">
-                <img src="remoed-logo.png" alt="RemoEdPH Logo" style="height:40px; width:auto; display:inline-block; vertical-align:middle;">
-                <span class="remoed-title" style="font-size:1.3rem; font-weight:700; color:#667eea; letter-spacing:1px;">RemoEdPH</span>
-                <div style="font-size: 0.75rem; color: #666;">Admin Portal</div>
-            </div>
-            <div class="remoed-user" style="display:flex; flex-direction:column; align-items:center; margin-bottom:24px;">
-                <div class="remoed-avatar" id="remoed-avatar">
-                    <span id="avatar-text">A</span>
-                </div>
-                <span class="remoed-username" id="remoed-username">Admin</span>
-            </div>
-            <ul class="remoed-menu">
-                <li class="active"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/></svg>Dashboard</li>
-                <li onclick="window.location.href='admin-users.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"/></svg>User Management</li>
-                <li onclick="window.location.href='admin-teacher-assessments.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Teacher Assessments</li>
-                <li onclick="window.location.href='admin-announcements.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg>Announcements</li>
-                <li onclick="window.location.href='admin-payroll.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 10c-4.41 0-8-1.79-8-4V6c0-2.21 3.59-4 8-4s8 1.79 8 4v8c0 2.21-3.59 4-8 4z"/></svg>Payroll Management</li>
-                <li onclick="window.location.href='admin-reports.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>Reports</li>
-                <li onclick="window.location.href='admin-issue-management.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Issue Management</li>
-                <li onclick="window.location.href='admin-lessons-library.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>Lesson Library</li>
-                <li onclick="window.location.href='admin-settings.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Settings</li>
-                <li id="logout-nav" style="margin-top:auto; color:#e74c3c; cursor:pointer;"><svg fill="none" stroke="#e74c3c" stroke-width="2" viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7"/><path d="M3 12a9 9 0 0118 0 9 9 0 01-18 0z"/></svg>Logout</li>
-            </ul>
-        </nav>
+        <div id="admin-sidebar-root"></div>
+        <script src="js/admin-sidebar.js"></script>
+        <script>AdminSidebar.render('admin-sidebar-root', 'dashboard');</script>
         <div class="remoed-content" style="margin-top:60px;">
             
 
                         <!-- Main Dashboard Content -->
             <div class="dashboard-main">
+                <!-- Admin time tracking (same flow as teacher) -->
+                <div class="remoed-section" id="admin-time-tracking-card" style="margin-bottom: 12px;">
+                    <div class="remoed-section-title" style="display: flex; align-items: center; gap: 10px; color: #1ca7e7; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"/><path d="M12.5 7H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
+                        Time Tracking
+                    </div>
+                    <div style="background: #f8f9fa; border: 1px solid #e0e6ed; border-radius: 8px; padding: 12px;">
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="#667eea"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                            <div style="font-size: 1rem; font-weight: 600; color: #333;">Admin Time Log</div>
+                        </div>
+                        <p style="color:#666;font-size:0.85rem;margin:0 0 12px 0;">Track your working hours and view recent logs (Philippine time).</p>
+                        <div style="display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap;">
+                            <div style="flex: 1; min-width: 200px; background: #fff; border: 1px solid #e9ecef; border-radius: 6px; padding: 10px;">
+                                <div id="time-status" style="margin-bottom: 6px; font-weight: 600; font-size: 0.9rem; color: #333;">
+                                    Status: <span id="current-status" style="color: #dc3545;">Not Clocked In</span>
+                                </div>
+                                <div id="current-time" style="margin-bottom: 6px; font-size: 1rem; font-weight: bold; color: #333;">
+                                    Current Time: <span id="time-display">--:--:--</span>
+                                </div>
+                                <div id="session-time" style="margin-bottom: 6px; font-size: 0.85rem; display: none; color: #333;">
+                                    Session Duration: <span id="duration-display">00:00:00</span>
+                                </div>
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 8px; flex-shrink: 0;">
+                                <button type="button" id="time-in-btn" style="background: #28a745; color: white; padding: 8px 14px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem;">Time In</button>
+                                <button type="button" id="time-out-btn" style="background: #dc3545; color: white; padding: 8px 14px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; display: none;">Time Out</button>
+                                <button type="button" id="view-log-btn" style="background: #667eea; color: white; padding: 8px 14px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem;">View Logs</button>
+                            </div>
+                        </div>
+                        <div id="time-status-message" style="margin-top: 10px; font-size: 0.8rem; display: none; padding: 8px; border-radius: 4px;"></div>
+                    </div>
+                </div>
                 <!-- First Row - Main Metrics -->
                 <div class="metrics-row">
                     <div class="metric-card registered-users">
                         <div class="metric-header">
-                            <h3>Registered Users</h3>
+                            <div class="metric-header-left">
+                                <div class="metric-icon" aria-hidden="true" title="Registered Users">
+                                    <!-- user silhouette -->
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                        <circle cx="12" cy="7" r="4"/>
+                                    </svg>
+                                </div>
+                                <h3>Registered Users</h3>
+                            </div>
                         </div>
                         <div class="metric-value" id="total-users">0</div>
                         <div class="metric-stats">
@@ -760,7 +901,16 @@
 
                     <div class="metric-card class-bookings">
                         <div class="metric-header">
-                            <h3>Class Bookings</h3>
+                            <div class="metric-header-left">
+                                <div class="metric-icon" aria-hidden="true" title="Class Bookings">
+                                    <!-- calendar -->
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="3" y="4" width="18" height="18" rx="2"/>
+                                        <path d="M16 2v4M8 2v4M3 10h18"/>
+                                    </svg>
+                                </div>
+                                <h3>Class Bookings</h3>
+                            </div>
                         </div>
                         <div class="metric-value" id="total-bookings">0</div>
                         <div class="metric-stats">
@@ -777,7 +927,17 @@
 
                     <div class="metric-card income-earned">
                         <div class="metric-header">
-                            <h3>Income Earned</h3>
+                            <div class="metric-header-left">
+                                <div class="metric-icon" aria-hidden="true" title="Income Earned">
+                                    <!-- peso / money -->
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M9 4v16"/>
+                                        <path d="M9 5h7a4 4 0 0 1 0 8H9"/>
+                                        <path d="M9 13h8"/>
+                                    </svg>
+                                </div>
+                                <h3>Income Earned</h3>
+                            </div>
                         </div>
                         <div class="metric-value" id="total-income">₱0</div>
                         <div class="metric-stats">
@@ -785,19 +945,21 @@
                                 <span class="stat-label">This Month</span>
                                 <span class="stat-value" id="monthly-income">₱0</span>
                             </div>
-                            <div class="stat-item">
-                                <span class="stat-label">Per Class</span>
-                                <span class="stat-value" id="per-class-income">₱0</span>
-                            </div>
                         </div>
                     </div>
 
-                    <div class="content-card income-trend">
-                        <div class="card-header">
-                            <h3>Income Trend</h3>
-                        </div>
-                        <div class="income-chart-container">
-                            <canvas id="incomeTrendChart" width="200" height="100"></canvas>
+                    <div class="content-card stat-card" style="padding: 0;">
+                        <div class="stat-item-large" style="min-height: 180px; align-items: center;">
+                            <div class="stat-icon" aria-hidden="true">
+                                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                                    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                                </svg>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-number" id="dashboard-total-classes">0</div>
+                                <div class="stat-label">Total Classes</div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -854,47 +1016,115 @@
                         <div class="card-header">
                             <h3>Recent Activity</h3>
                         </div>
+                        <!-- Referral Link (Admin) -->
+                        <div style="background:#ffffff;border:1px solid #e5e7eb;border-radius:10px;padding:10px;margin-bottom:10px;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+                                <div style="font-weight:800;color:#0f172a;">🔗 Your Unique Referral Link</div>
+                                <div style="font-size:0.8rem;color:#64748b;">Earn <strong>₱25</strong> per successful subscription</div>
+                            </div>
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+                                <div style="flex:1;min-width:220px;">
+                                    <div style="font-size:0.75rem;font-weight:800;color:#334155;margin-bottom:4px;">Subscription referral link</div>
+                                    <div style="display:flex;gap:8px;align-items:center;">
+                                        <input id="admin-ref-link" readonly style="flex:1;padding:9px;border:1px solid #d1d5db;border-radius:8px;font-size:0.85rem;" value="Loading…" />
+                                        <button type="button" onclick="copyAdminRef('admin-ref-link')" style="padding:9px 12px;border:none;border-radius:8px;background:#1ca7e7;color:#fff;font-weight:900;cursor:pointer;">Copy</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                         <div class="activity-list" id="recent-activity-list">
                             <!-- Recent activity will be loaded here -->
                         </div>
                     </div>
                 </div>
 
-                <!-- Third Row - Platform Stats -->
-                <div class="content-row">
-                    <div class="content-card stat-card">
-                        <div class="stat-item-large">
-                            <div class="stat-icon">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
-                                    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
-                                </svg>
-                            </div>
-                            <div class="stat-content">
-                                <div class="stat-number" id="total-classes-stat">0</div>
-                                <div class="stat-label">Total Classes</div>
+                <!-- Community & Social Responsibility -->
+                <div class="remoed-section" id="community-responsibility" style="margin-bottom: 12px;">
+                    <div class="remoed-section-title" style="display: flex; align-items: center; gap: 10px;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="color: #667eea;">
+                            <path d="M12 12c2.21 0 4-1.79 4-4S14.21 4 12 4 8 5.79 8 8s1.79 4 4 4zm0 2c-3.33 0-8 1.67-8 5v1h16v-1c0-3.33-4.67-5-8-5z"/>
+                        </svg>
+                        Community & Social Responsibility
+                    </div>
+                    <div class="community-grid">
+                        <div class="community-item">
+                            <div class="community-icon">👨‍👩‍👧</div>
+                            <div>
+                                <h4>Family Day</h4>
+                                <p>Activities that encourage parent involvement and celebrate learning together.</p>
                             </div>
                         </div>
-                    </div>
-                    <div class="content-card stat-card">
-                        <div class="stat-item-large">
-                            <div class="stat-icon">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <line x1="12" y1="1" x2="12" y2="23"/>
-                                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-                                </svg>
+                        <div class="community-item">
+                            <div class="community-icon">👩‍🏫</div>
+                            <div>
+                                <h4>Teachers’ Day</h4>
+                                <p>Recognizing teacher dedication through appreciation and community events.</p>
                             </div>
-                            <div class="stat-content">
-                                <div class="stat-number" id="total-revenue-stat">₱0</div>
-                                <div class="stat-label">Total Revenue</div>
+                        </div>
+                        <div class="community-item">
+                            <div class="community-icon">🧒</div>
+                            <div>
+                                <h4>Students’ Day</h4>
+                                <p>Celebrating student progress and building confidence through fun events.</p>
+                            </div>
+                        </div>
+                        <div class="community-item">
+                            <div class="community-icon">🥣</div>
+                            <div>
+                                <h4>Feeding Program</h4>
+                                <p>Supporting learner wellness through food assistance and community outreach.</p>
+                            </div>
+                        </div>
+                        <div class="community-item">
+                            <div class="community-icon">♻️</div>
+                            <div>
+                                <h4>Waste Management</h4>
+                                <p>Promoting proper segregation and eco-friendly habits at home and in school.</p>
+                            </div>
+                        </div>
+                        <div class="community-item">
+                            <div class="community-icon">🧠</div>
+                            <div>
+                                <h4>Mental Health Support</h4>
+                                <p>Resources and awareness activities to support a safe, positive learning environment.</p>
+                            </div>
+                        </div>
+                        <div class="community-item">
+                            <div class="community-icon">🌱</div>
+                            <div>
+                                <h4>Sustainability Projects</h4>
+                                <p>Simple projects and activities that build care for the environment.</p>
                             </div>
                         </div>
                     </div>
                 </div>
+
+                <!-- (Removed) Third Row - Platform Stats -->
             </div>
         </div>
     </div>
 
+    <!-- Admin time log modal -->
+    <div id="admin-time-log-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1100;">
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:12px;padding:24px;max-width:720px;width:92%;max-height:85vh;overflow:auto;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                <h2 style="margin:0;color:#1ca7e7;">Admin Time Logs</h2>
+                <button type="button" id="admin-close-time-log" style="background:none;border:none;font-size:24px;cursor:pointer;color:#666;">&times;</button>
+            </div>
+            <div style="margin-bottom:16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+                <label style="font-weight:600;color:#374151;">Range:</label>
+                <select id="admin-filter-type" style="padding:8px 12px;border:1px solid #e2e8f0;border-radius:6px;">
+                    <option value="week">This week</option>
+                    <option value="month">This month</option>
+                    <option value="all">All (recent 50)</option>
+                </select>
+                <button type="button" id="admin-apply-filter" style="padding:8px 16px;background:#667eea;color:#fff;border:none;border-radius:6px;font-weight:600;cursor:pointer;">Apply</button>
+            </div>
+            <div id="admin-time-log-content"></div>
+        </div>
+    </div>
+
+    <script src="js/admin-time-tracking.js"></script>
     <script>
         // Role-based access control
         const userType = localStorage.getItem('userType');
@@ -904,13 +1134,6 @@
         }
         
         document.addEventListener('DOMContentLoaded', function() {
-            const username = localStorage.getItem('adminUsername');
-            
-            if (username) {
-                document.getElementById('remoed-username').textContent = username;
-                document.getElementById('avatar-text').textContent = username[0].toUpperCase();
-            }
-            
             // Load dashboard data
             loadDashboardData();
             loadTopPerformers();
@@ -928,12 +1151,33 @@
 
             // Setup admin notifications
             setupAdminNotifications();
+
+            // Referral links
+            loadAdminReferralLinks();
         });
 
-        document.getElementById('logout-nav').onclick = function() {
-            localStorage.clear();
-            window.location.href = 'admin-login.html';
-        };
+        async function loadAdminReferralLinks() {
+            try {
+                const token = localStorage.getItem('adminToken');
+                if (!token) return;
+                const res = await fetch('/api/admin/referral-link', { headers: { Authorization: 'Bearer ' + token } });
+                const data = await res.json();
+                if (!res.ok || !data.success) return;
+                const origin = window.location.origin;
+                const linkEl = document.getElementById('admin-ref-link');
+                if (linkEl) linkEl.value = origin + (data.subscriptionLink || '');
+            } catch (e) {
+                console.warn('Admin referral link load failed:', e);
+            }
+        }
+
+        function copyAdminRef(inputId) {
+            const el = document.getElementById(inputId);
+            if (!el) return;
+            el.select();
+            el.setSelectionRange(0, 99999);
+            try { document.execCommand('copy'); } catch (e) {}
+        }
 
         function setupAdminNotifications() {
             const icon = document.getElementById('admin-notifications-icon');
@@ -944,10 +1188,35 @@
             icon.addEventListener('click', function(event) {
                 event.stopPropagation();
                 dropdown.classList.toggle('show');
+                if (dropdown.classList.contains('show')) {
+                    loadAdminNotifications();
+                }
             });
 
             document.addEventListener('click', function() {
                 dropdown.classList.remove('show');
+            });
+
+            const markAllBtn = document.getElementById('admin-notifications-mark-read');
+            if (markAllBtn) {
+                markAllBtn.addEventListener('click', async function (e) {
+                    e.stopPropagation();
+                    const token = localStorage.getItem('adminToken');
+                    if (!token) return;
+                    try {
+                        const r = await fetch('/api/admin/notifications/mark-all-read', {
+                            method: 'PATCH',
+                            headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }
+                        });
+                        if (r.ok) await loadAdminNotifications();
+                    } catch (err) {
+                        console.error('Mark all read failed:', err);
+                    }
+                });
+            }
+
+            document.addEventListener('admin-refresh-notifications', function () {
+                loadAdminNotifications();
             });
 
             // Initial load
@@ -959,35 +1228,69 @@
 
         async function loadAdminNotifications() {
             try {
-                // For now, reuse recent announcements as admin notifications
-                const response = await fetch('/api/announcement');
-                const announcements = await response.json();
-
+                const token = localStorage.getItem('adminToken');
                 const badge = document.getElementById('admin-notifications-badge');
                 const container = document.getElementById('admin-notifications-dropdown-content');
-
                 if (!badge || !container) return;
 
-                const latest = announcements.slice(0, 5);
-                badge.textContent = latest.length;
-                badge.style.display = latest.length > 0 ? 'flex' : 'none';
-
-                if (latest.length === 0) {
-                    container.innerHTML = '<div class="nav-dropdown-item">No recent announcements</div>';
+                if (!token) {
+                    badge.style.display = 'none';
+                    container.innerHTML = '<div class="nav-dropdown-item">Sign in to see notifications</div>';
                     return;
                 }
 
-                container.innerHTML = latest.map(ann => {
-                    const time = ann.updatedAt ? new Date(ann.updatedAt).toLocaleString() : '';
+                const response = await fetch('/api/admin/notifications', {
+                    headers: { Authorization: 'Bearer ' + token }
+                });
+                const data = response.ok ? await response.json() : null;
+
+                if (!response.ok || !data || !data.success) {
+                    badge.style.display = 'none';
+                    container.innerHTML = '<div class="nav-dropdown-item">Could not load notifications</div>';
+                    return;
+                }
+
+                const unread = typeof data.unreadCount === 'number' ? data.unreadCount : (data.notifications || []).filter(n => !n.read).length;
+                badge.textContent = unread > 99 ? '99+' : String(unread);
+                badge.style.display = unread > 0 ? 'flex' : 'none';
+
+                const list = (data.notifications || []).slice(0, 15);
+                if (list.length === 0) {
+                    container.innerHTML = '<div class="nav-dropdown-item">No notifications yet</div>';
+                    return;
+                }
+
+                container.innerHTML = list.map(n => {
+                    const time = n.createdAt ? new Date(n.createdAt).toLocaleString() : '';
+                    const type = (n.type || 'info').replace(/-/g, ' ');
+                    const unreadStyle = !n.read ? 'font-weight:600;background:#f0f9ff;' : '';
+                    const esc = (s) => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
                     return `
-                        <div class="nav-dropdown-item">
-                            <div style="font-size: 0.9rem;">${ann.content}</div>
-                            <div style="font-size: 0.75rem; color: #6b7280; margin-top: 2px;">
-                                Audience: ${ann.audience ? ann.audience.charAt(0).toUpperCase() + ann.audience.slice(1) : 'All'} • ${time}
+                        <div class="nav-dropdown-item admin-notif-item" data-id="${n._id}" data-read="${n.read ? '1' : '0'}" style="${unreadStyle}cursor:pointer;padding:10px 12px;border-bottom:1px solid #f1f5f9;">
+                            <div style="font-size: 0.85rem;">${esc(n.message)}</div>
+                            <div style="font-size: 0.7rem; color: #64748b; margin-top: 4px; text-transform: capitalize;">
+                                ${esc(type)} • ${esc(time)}
                             </div>
                         </div>
                     `;
                 }).join('');
+
+                container.querySelectorAll('.admin-notif-item').forEach(function (el) {
+                    el.addEventListener('click', async function (e) {
+                        e.stopPropagation();
+                        const id = el.getAttribute('data-id');
+                        if (!id || el.getAttribute('data-read') === '1') return;
+                        try {
+                            await fetch('/api/admin/notifications/' + id + '/read', {
+                                method: 'PATCH',
+                                headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }
+                            });
+                            await loadAdminNotifications();
+                        } catch (err) {
+                            console.error(err);
+                        }
+                    });
+                });
             } catch (error) {
                 console.error('Error loading admin notifications:', error);
             }
@@ -1026,14 +1329,15 @@
                 
                 // Update income earned
                 document.getElementById('total-income').textContent = '₱' + totalIncome.toLocaleString();
-                document.getElementById('monthly-income').textContent = '₱' + Math.round(totalIncome / 12).toLocaleString();
-                document.getElementById('per-class-income').textContent = '₱' + globalRate.toLocaleString();
+                const monthKey = new Date().toISOString().slice(0, 7);
+                const teachersThisMonth = (financialData.data && financialData.data.monthlyEarnings && financialData.data.monthlyEarnings[monthKey]) || 0;
+                document.getElementById('monthly-income').textContent = '₱' + Number(teachersThisMonth).toLocaleString();
                 
                 // Update platform stats
                 document.getElementById('total-teachers-stat').textContent = (teachersCount.count || 0).toLocaleString();
                 document.getElementById('total-students-stat').textContent = (studentsCount.count || 0).toLocaleString();
-                document.getElementById('total-classes-stat').textContent = totalBookings.toLocaleString();
-                document.getElementById('total-revenue-stat').textContent = '₱' + totalIncome.toLocaleString();
+                const dashTotalClasses = document.getElementById('dashboard-total-classes');
+                if (dashTotalClasses) dashTotalClasses.textContent = totalBookings.toLocaleString();
                 
             } catch (error) {
                 console.error('Error loading dashboard data:', error);
@@ -1405,180 +1709,104 @@
                 const bookingsData = bookingsResponse.ok ? await bookingsResponse.json() : { count: 0, active: 0, completed: 0, bookings: [] };
                 const financialData = financialResponse.ok ? await financialResponse.json() : { data: { totalEarnings: 0, globalRate: 100 } };
 
-                // Users chart
-                const usersCtx = document.getElementById('usersChart').getContext('2d');
-                const totalUsers = (teachersCount.count || 0) + (studentsCount.count || 0);
-                const monthlyUsers = Array(12).fill(0).map((_, index) => {
-                    if (totalUsers === 0) return Math.floor(Math.random() * 2);
-                    return Math.floor((totalUsers / 12) * (0.3 + Math.random() * 0.7));
-                });
-                
-                new Chart(usersCtx, {
-                    type: 'line',
-                    data: {
-                        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-                        datasets: [{
-                            data: monthlyUsers,
-                            borderColor: '#1ca7e7',
-                            backgroundColor: 'rgba(28, 167, 231, 0.1)',
-                            borderWidth: 2,
-                            fill: true,
-                            tension: 0.4,
-                            pointRadius: 0
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: { legend: { display: false } },
-                        scales: {
-                            x: { display: false },
-                            y: { display: false }
+                // Optional mini charts (only if canvas elements exist on the page)
+                const usersEl = document.getElementById('usersChart');
+                if (usersEl) {
+                    const usersCtx = usersEl.getContext('2d');
+                    const totalUsers = (teachersCount.count || 0) + (studentsCount.count || 0);
+                    const monthlyUsers = Array(12).fill(0).map((_, index) => {
+                        if (totalUsers === 0) return Math.floor(Math.random() * 2);
+                        return Math.floor((totalUsers / 12) * (0.3 + Math.random() * 0.7));
+                    });
+                    new Chart(usersCtx, {
+                        type: 'line',
+                        data: {
+                            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                            datasets: [{
+                                data: monthlyUsers,
+                                borderColor: '#1ca7e7',
+                                backgroundColor: 'rgba(28, 167, 231, 0.1)',
+                                borderWidth: 2,
+                                fill: true,
+                                tension: 0.4,
+                                pointRadius: 0
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                x: { display: false },
+                                y: { display: false }
+                            }
                         }
-                    }
-                });
-
-                // Bookings chart
-                const bookingsCtx = document.getElementById('bookingsChart').getContext('2d');
-                const totalBookings = (bookingsData.active || 0) + (bookingsData.completed || 0);
-                const monthlyBookings = Array(12).fill(0).map((_, index) => {
-                    if (totalBookings === 0) return Math.floor(Math.random() * 3);
-                    return Math.floor((totalBookings / 12) * (0.5 + Math.random() * 0.5));
-                });
-                
-                new Chart(bookingsCtx, {
-                    type: 'bar',
-                    data: {
-                        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-                        datasets: [{
-                            data: monthlyBookings,
-                            backgroundColor: ['#9ca3af', '#9ca3af', '#9ca3af', '#9ca3af', '#9ca3af', '#9ca3af', '#10b981', '#10b981', '#10b981', '#10b981', '#10b981', '#10b981'],
-                            borderRadius: 4
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: { legend: { display: false } },
-                        scales: {
-                            x: { display: false },
-                            y: { display: false }
-                        }
-                    }
-                });
-
-                // Income chart
-                const incomeCtx = document.getElementById('incomeChart').getContext('2d');
-                const totalIncome = financialData.data?.totalEarnings || 0;
-                const monthlyIncome = Array(12).fill(0).map((_, index) => {
-                    if (totalIncome === 0) return Math.floor(Math.random() * 1000);
-                    return Math.floor((totalIncome / 12) * (0.4 + Math.random() * 0.6));
-                });
-                
-                new Chart(incomeCtx, {
-                    type: 'line',
-                    data: {
-                        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-                        datasets: [{
-                            data: monthlyIncome,
-                            borderColor: '#10b981',
-                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                            borderWidth: 2,
-                            fill: true,
-                            tension: 0.4,
-                            pointRadius: 0
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: { legend: { display: false } },
-                        scales: {
-                            x: { display: false },
-                            y: { display: false }
-                        }
-                    }
-                });
-
-                // Income trend chart (main chart)
-                const incomeTrendCtx = document.getElementById('incomeTrendChart').getContext('2d');
-                
-                // Calculate real monthly income based on actual data
-                const monthlyIncomeData = Array(12).fill(0).map((_, monthIndex) => {
-                    const month = monthIndex + 1;
-                    const currentYear = new Date().getFullYear();
-                    
-                    // Filter bookings for this specific month and year
-                    const monthBookings = bookingsData.bookings?.filter(booking => {
-                        const bookingDate = new Date(booking.createdAt || booking.date);
-                        return bookingDate.getMonth() === monthIndex && 
-                               bookingDate.getFullYear() === currentYear &&
-                               booking.status === 'completed';
-                    }) || [];
-                    
-                    // Calculate income for this month
-                    const globalRate = financialData.data?.globalRate || 500;
-                    return monthBookings.length * globalRate;
-                });
-                
-                // If no real data, create realistic trend based on total bookings
-                let finalMonthlyData = monthlyIncomeData;
-                if (monthlyIncomeData.every(income => income === 0)) {
-                    const totalBookings = (bookingsData.active || 0) + (bookingsData.completed || 0);
-                    const globalRate = financialData.data?.globalRate || 500;
-                    const totalIncome = totalBookings * globalRate;
-                    
-                    // Distribute income across months with realistic variation
-                    finalMonthlyData = Array(12).fill(0).map((_, index) => {
-                        const baseIncome = totalIncome / 12;
-                        const variation = 0.3 + Math.random() * 0.4; // 30-70% variation
-                        return Math.floor(baseIncome * variation);
                     });
                 }
-                
-                new Chart(incomeTrendCtx, {
-                    type: 'line',
-                    data: {
-                        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-                        datasets: [{
-                            label: 'Monthly Income (₱)',
-                            data: finalMonthlyData,
-                            borderColor: '#10b981',
-                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                            borderWidth: 3,
-                            fill: true,
-                            tension: 0.4
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                display: true,
-                                position: 'top'
-                            }
+
+                const bookingsEl = document.getElementById('bookingsChart');
+                if (bookingsEl) {
+                    const bookingsCtx = bookingsEl.getContext('2d');
+                    const totalBookings = (bookingsData.active || 0) + (bookingsData.completed || 0);
+                    const monthlyBookings = Array(12).fill(0).map((_, index) => {
+                        if (totalBookings === 0) return Math.floor(Math.random() * 3);
+                        return Math.floor((totalBookings / 12) * (0.5 + Math.random() * 0.5));
+                    });
+                    new Chart(bookingsCtx, {
+                        type: 'bar',
+                        data: {
+                            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                            datasets: [{
+                                data: monthlyBookings,
+                                backgroundColor: ['#9ca3af', '#9ca3af', '#9ca3af', '#9ca3af', '#9ca3af', '#9ca3af', '#10b981', '#10b981', '#10b981', '#10b981', '#10b981', '#10b981'],
+                                borderRadius: 4
+                            }]
                         },
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                grid: {
-                                    color: 'rgba(0,0,0,0.1)'
-                                },
-                                ticks: {
-                                    callback: function(value) {
-                                        return '₱' + value.toLocaleString();
-                                    }
-                                }
-                            },
-                            x: {
-                                grid: {
-                                    display: false
-                                }
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                x: { display: false },
+                                y: { display: false }
                             }
                         }
-                    }
-                });
+                    });
+                }
+
+                const incomeEl = document.getElementById('incomeChart');
+                if (incomeEl) {
+                    const incomeCtx = incomeEl.getContext('2d');
+                    const totalIncome = financialData.data?.totalEarnings || 0;
+                    const monthlyIncome = Array(12).fill(0).map((_, index) => {
+                        if (totalIncome === 0) return Math.floor(Math.random() * 1000);
+                        return Math.floor((totalIncome / 12) * (0.4 + Math.random() * 0.6));
+                    });
+                    new Chart(incomeCtx, {
+                        type: 'line',
+                        data: {
+                            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                            datasets: [{
+                                data: monthlyIncome,
+                                borderColor: '#10b981',
+                                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                                borderWidth: 2,
+                                fill: true,
+                                tension: 0.4,
+                                pointRadius: 0
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                x: { display: false },
+                                y: { display: false }
+                            }
+                        }
+                    });
+                }
             } catch (error) {
                 console.error('Error creating charts:', error);
             }

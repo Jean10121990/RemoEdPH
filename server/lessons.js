@@ -43,6 +43,14 @@ const requireStudent = (req, res, next) => {
   next();
 };
 
+/** Teachers and admins (curriculum specialists) — can see/edit internal lesson notes */
+function isStaffUser(req) {
+  if (!req.user) return false;
+  if (req.user.isAdmin === true || req.user.role === 'admin' || req.user.username === 'admin') return true;
+  if (req.user.teacherId || req.user.userType === 'teacher') return true;
+  return false;
+}
+
 // Get all curricula (for dropdown/selection)
 router.get('/curricula', authenticateToken, async (req, res) => {
   try {
@@ -127,6 +135,70 @@ router.post('/curriculum', authenticateToken, requireTeacher, async (req, res) =
   }
 });
 
+// Update an existing curriculum - Admin/Teacher only
+router.put('/curriculum/:curriculumId', authenticateToken, requireTeacher, async (req, res) => {
+  try {
+    const { curriculumId } = req.params;
+    const { title, description, level, order } = req.body;
+
+    const curriculum = await Curriculum.findById(curriculumId);
+    if (!curriculum || !curriculum.isActive) {
+      return res.status(404).json({ error: 'Curriculum not found' });
+    }
+
+    const validLevels = ['nursery', 'kinder', 'preparatory', 'elementary', 'intermediate', 'advanced'];
+    const nextTitle = title !== undefined ? String(title).trim() : curriculum.title;
+    const nextLevel = level !== undefined ? level : curriculum.level;
+    const nextDescription = description !== undefined ? String(description) : curriculum.description;
+    const nextOrder = order !== undefined ? parseInt(order, 10) : curriculum.order;
+
+    if (!nextTitle) {
+      return res.status(400).json({ error: 'Title is required' });
+    }
+    if (!validLevels.includes(nextLevel)) {
+      return res.status(400).json({ error: `Invalid level. Must be one of: ${validLevels.join(', ')}` });
+    }
+    if (Number.isNaN(nextOrder)) {
+      return res.status(400).json({ error: 'Display order must be a number' });
+    }
+
+    const duplicate = await Curriculum.findOne({
+      _id: { $ne: curriculum._id },
+      title: nextTitle,
+      level: nextLevel,
+      isActive: true
+    });
+    if (duplicate) {
+      return res.status(400).json({
+        error: `A curriculum with title "${nextTitle}" already exists for level "${nextLevel}"`
+      });
+    }
+
+    curriculum.title = nextTitle;
+    curriculum.description = nextDescription;
+    curriculum.level = nextLevel;
+    curriculum.order = nextOrder;
+    await curriculum.save();
+
+    console.log(`✏️ [UPDATE CURRICULUM] Updated curriculum: ${curriculum._id}`);
+
+    res.json({
+      success: true,
+      message: 'Curriculum updated successfully',
+      curriculum: {
+        _id: curriculum._id,
+        title: curriculum.title,
+        description: curriculum.description,
+        level: curriculum.level,
+        order: curriculum.order
+      }
+    });
+  } catch (error) {
+    console.error('❌ [UPDATE CURRICULUM] Error:', error);
+    res.status(500).json({ error: 'Failed to update curriculum: ' + error.message });
+  }
+});
+
 // Create a new lesson - Admin/Teacher only
 // NOTE: This route must come BEFORE /curriculum/:curriculumId/lessons to avoid route conflicts
 router.post('/curriculum/:curriculumId/lesson', authenticateToken, requireTeacher, async (req, res) => {
@@ -167,6 +239,7 @@ router.post('/curriculum/:curriculumId/lesson', authenticateToken, requireTeache
       curriculumId,
       title,
       description: description || '',
+      teacherNotes: teacherNotes != null ? String(teacherNotes) : '',
       lessonNumber: parseInt(lessonNumber, 10),
       order: parseInt(lessonNumber, 10), // Use lesson number as order
       estimatedDuration: estimatedDuration ? parseInt(estimatedDuration, 10) : 30,
@@ -184,6 +257,7 @@ router.post('/curriculum/:curriculumId/lesson', authenticateToken, requireTeache
         _id: lesson._id,
         title: lesson.title,
         description: lesson.description,
+        teacherNotes: lesson.teacherNotes || '',
         lessonNumber: lesson.lessonNumber,
         estimatedDuration: lesson.estimatedDuration
       }
@@ -198,16 +272,45 @@ router.post('/curriculum/:curriculumId/lesson', authenticateToken, requireTeache
 router.get('/curriculum/:curriculumId/lessons', authenticateToken, async (req, res) => {
   try {
     const { curriculumId } = req.params;
-    const lessons = await Lesson.find({ 
+    const staff = isStaffUser(req);
+    const selectFields = staff
+      ? '_id title description lessonNumber order estimatedDuration teacherNotes'
+      : '_id title description lessonNumber order estimatedDuration';
+    let lessons = await Lesson.find({ 
       curriculumId, 
       isActive: true 
     })
       .sort({ order: 1, lessonNumber: 1 })
-      .select('_id title description lessonNumber order estimatedDuration');
+      .select(selectFields)
+      .lean();
+    if (!staff) {
+      lessons = lessons.map(({ teacherNotes: _omit, ...rest }) => rest);
+    }
     res.json(lessons);
   } catch (error) {
     console.error('Error fetching lessons:', error);
     res.status(500).json({ error: 'Failed to fetch lessons' });
+  }
+});
+
+// Get lesson metadata (teacherNotes only for staff — not exposed to students)
+router.get('/lesson/:lessonId', authenticateToken, async (req, res) => {
+  try {
+    const { lessonId } = req.params;
+    const lesson = await Lesson.findById(lessonId)
+      .select('_id title description lessonNumber order estimatedDuration teacherNotes')
+      .lean();
+    if (!lesson) {
+      return res.status(404).json({ error: 'Lesson not found' });
+    }
+    const staff = isStaffUser(req);
+    if (!staff) {
+      delete lesson.teacherNotes;
+    }
+    res.json(lesson);
+  } catch (error) {
+    console.error('Error fetching lesson:', error);
+    res.status(500).json({ error: 'Failed to fetch lesson' });
   }
 });
 
@@ -280,7 +383,7 @@ router.delete('/lesson/:lessonId', authenticateToken, requireTeacher, async (req
 router.put('/lesson/:lessonId', authenticateToken, requireTeacher, async (req, res) => {
   try {
     const { lessonId } = req.params;
-    const { title, description, estimatedDuration } = req.body;
+    const { title, description, estimatedDuration, teacherNotes } = req.body;
 
     console.log(`📝 [UPDATE] Updating lesson: ${lessonId}`);
     console.log(`📝 [UPDATE] Title: ${title}`);
@@ -297,6 +400,7 @@ router.put('/lesson/:lessonId', authenticateToken, requireTeacher, async (req, r
     if (title !== undefined) lesson.title = title;
     if (description !== undefined) lesson.description = description;
     if (estimatedDuration !== undefined) lesson.estimatedDuration = estimatedDuration;
+    if (teacherNotes !== undefined) lesson.teacherNotes = String(teacherNotes);
 
     await lesson.save();
     console.log(`✅ [UPDATE] Lesson updated successfully: ${lessonId}`);
@@ -308,6 +412,7 @@ router.put('/lesson/:lessonId', authenticateToken, requireTeacher, async (req, r
         _id: lesson._id,
         title: lesson.title,
         description: lesson.description,
+        teacherNotes: lesson.teacherNotes || '',
         estimatedDuration: lesson.estimatedDuration
       }
     });

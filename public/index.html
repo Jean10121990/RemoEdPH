@@ -679,6 +679,7 @@
             <span>RemoEdPH</span>
         </div>
         <div class="nav-buttons">
+            <a href="/teachers" class="nav-btn">Our Teachers</a>
             <a href="#assessment" class="nav-btn">Free Assessment</a>
             <a href="#plans" class="nav-btn">Plans</a>
             <a href="teacher-login.html" class="nav-btn">Teacher Login</a>
@@ -877,6 +878,7 @@
         </div>
     </div>
 
+    <script src="js/referral-tracking.js"></script>
     <script>
         let selectedPlan = '';
         let selectedPlanPrice = 0;
@@ -977,7 +979,9 @@
                         username,
                         email,
                         password,
-                        parentName: parentName || assessmentData?.parentEmail || ''
+                        parentName: parentName || assessmentData?.parentEmail || '',
+                        contact: assessmentData?.contactNumber || '',
+                        referralCode: localStorage.getItem('referralCode') || ''
                     })
                 });
                 
@@ -989,7 +993,7 @@
                     throw new Error(errorMsg);
                 }
                 
-                // Save subscription if plan was selected
+                // Save subscription if plan was selected (creates checkout session; payment required)
                 if (plan) {
                     const subscribeResponse = await fetch('/api/student/subscribe', {
                         method: 'POST',
@@ -1004,8 +1008,13 @@
                         })
                     });
                     
-                    if (!subscribeResponse.ok) {
+                    const subscribeResult = await subscribeResponse.json().catch(() => ({}));
+                    if (!subscribeResponse.ok || !subscribeResult.success) {
                         console.warn('Subscription save failed, but registration succeeded');
+                    } else if (subscribeResult.checkout && subscribeResult.checkout.sessionId) {
+                        alert('✅ Account created! Please complete payment to activate your subscription.');
+                        window.location.href = `student-payment.html?session=${encodeURIComponent(subscribeResult.checkout.sessionId)}`;
+                        return;
                     }
                 }
                 

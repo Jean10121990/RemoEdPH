@@ -484,7 +484,6 @@
                     <div class="tab-content" id="tools-tab">
                         <h3>🛠️ Tools</h3>
                         <div class="tools-grid">
-                            <button class="tool-btn" id="screen-share-btn">Share Screen</button>
                             <button class="tool-btn" id="file-upload-btn">Upload File</button>
                         </div>
                     </div>
@@ -910,69 +909,6 @@
             });
         }
         
-        // Screen sharing functionality
-        function setupScreenSharing() {
-            const screenShareBtn = document.getElementById('screen-share-btn');
-            let isScreenSharing = false;
-            let screenStream = null;
-            
-            if (screenShareBtn) {
-                screenShareBtn.addEventListener('click', async () => {
-                    try {
-                        if (!isScreenSharing) {
-                            // Start screen sharing
-                            screenStream = await navigator.mediaDevices.getDisplayMedia({ 
-                                video: { 
-                                    cursor: "always" 
-                                }, 
-                                audio: false 
-                            });
-                            
-                            const localVideo = document.getElementById('local-video');
-                            if (localVideo) {
-                                localVideo.srcObject = screenStream;
-                            }
-                            
-                            screenShareBtn.textContent = 'Stop Sharing';
-                            screenShareBtn.style.background = '#f44336';
-                            isScreenSharing = true;
-                            showNotification('Screen sharing started', 'success');
-                            
-                            // Stop screen sharing when user clicks "Stop sharing"
-                            screenStream.getVideoTracks()[0].onended = () => {
-                                stopScreenSharing();
-                            };
-                        } else {
-                            stopScreenSharing();
-                        }
-                    } catch (error) {
-                        console.error('Screen sharing error:', error);
-                        showNotification('Screen sharing failed: ' + error.message, 'error');
-                    }
-                });
-            }
-            
-            function stopScreenSharing() {
-                if (screenStream) {
-                    screenStream.getTracks().forEach(track => track.stop());
-                    screenStream = null;
-                }
-                
-                // Restore camera stream
-                if (stream) {
-                    const localVideo = document.getElementById('local-video');
-                    if (localVideo) {
-                        localVideo.srcObject = stream;
-                    }
-                }
-                
-                screenShareBtn.textContent = 'Share Screen';
-                screenShareBtn.style.background = '#2196F3';
-                isScreenSharing = false;
-                showNotification('Screen sharing stopped', 'info');
-            }
-        }
-        
         // File upload functionality
         function setupFileUpload() {
             const fileUploadBtn = document.getElementById('file-upload-btn');
@@ -1056,7 +992,6 @@
             // Setup additional tools
             setupWhiteboard();
             setupTabs();
-            setupScreenSharing();
             setupFileUpload();
         });
 

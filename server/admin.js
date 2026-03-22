@@ -7,6 +7,8 @@ const CancellationRequest = require('./models/CancellationRequest');
 const Booking = require('./models/Booking');
 const Notification = require('./models/Notification');
 const IssueReport = require('./models/IssueReport');
+const TimeLog = require('./models/TimeLog');
+const Referral = require('./models/Referral');
 const { verifyToken, requireAdmin } = require('./authMiddleware');
 const bcrypt = require('bcrypt');
 const { sendTeacherRegistrationEmail } = require('./emailService');
@@ -14,10 +16,12 @@ const { sendTeacherRegistrationEmail } = require('./emailService');
 // Function to create notifications
 async function createNotification(userId, type, message) {
   try {
+    // Notification model uses teacherId for all recipients (teachers, students, admin username, etc.)
     const notification = new Notification({
-      userId,
+      teacherId: String(userId),
       type,
       message,
+      read: false,
       createdAt: new Date()
     });
     await notification.save();
@@ -65,6 +69,365 @@ async function generateTemporaryUsername() {
 
 // Import GlobalSettings model
 const GlobalSettings = require('./models/GlobalSettings');
+
+// ——— Admin time tracking (registered early; 7 AM PHT business day) ———
+function adminTimeWorkerId(username) {
+  return `admin:${String(username || 'unknown').toLowerCase()}`;
+}
+
+function getPhilippineDateAdmin(date = new Date()) {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Manila',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(date);
+}
+
+function getPhilippineHourAdmin(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Manila',
+    hour12: false,
+    hour: '2-digit'
+  }).formatToParts(date);
+  const hourPart = parts.find(p => p.type === 'hour');
+  return Number(hourPart ? hourPart.value : '0');
+}
+
+function getPhilippineBusinessDateAdmin(cutoffHour = 7) {
+  const now = new Date();
+  const phHour = getPhilippineHourAdmin(now);
+  const effective = phHour < cutoffHour
+    ? new Date(now.getTime() - (24 * 60 * 60 * 1000))
+    : now;
+  return getPhilippineDateAdmin(effective);
+}
+
+function getPhilippineTimeStringAdmin() {
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Manila',
+    hour12: true,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  }).format(new Date());
+}
+
+router.post('/time-tracking/clock-in', verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const workerId = adminTimeWorkerId(req.user.username);
+    const phDate = getPhilippineBusinessDateAdmin(7);
+    const currentTime = getPhilippineTimeStringAdmin();
+
+    const existingLog = await TimeLog.findOne({
+      teacherId: workerId,
+      date: phDate,
+      logOwnerType: 'admin'
+    });
+
+    if (existingLog) {
+      return res.status(400).json({
+        success: false,
+        error: 'Already clocked in today. You can only time in once per day.'
+      });
+    }
+
+    const timeLog = await TimeLog.create({
+      teacherId: workerId,
+      logOwnerType: 'admin',
+      date: phDate,
+      clockIn: { time: currentTime, timestamp: new Date() },
+      status: 'clocked-in'
+    });
+
+    await createNotification(req.user.username, 'time-tracking', `Admin clocked in at ${currentTime}`);
+
+    res.json({ success: true, message: 'Successfully clocked in', timeLog });
+  } catch (err) {
+    console.error('Admin clock-in error:', err);
+    res.status(500).json({ error: 'Failed to clock in', details: err.message });
+  }
+});
+
+router.post('/time-tracking/clock-out', verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const workerId = adminTimeWorkerId(req.user.username);
+    const currentTime = getPhilippineTimeStringAdmin();
+
+    const timeLog = await TimeLog.findOne({
+      teacherId: workerId,
+      logOwnerType: 'admin',
+      status: 'clocked-in'
+    }).sort({ 'clockIn.timestamp': -1 });
+
+    if (!timeLog) {
+      return res.status(400).json({ success: false, error: 'Not currently clocked in' });
+    }
+
+    const clockInTime = new Date(timeLog.clockIn.timestamp);
+    const clockOutTime = new Date();
+    const totalHours = (clockOutTime - clockInTime) / (1000 * 60 * 60);
+
+    timeLog.clockOut = { time: currentTime, timestamp: clockOutTime };
+    timeLog.totalHours = Math.round(totalHours * 100) / 100;
+    timeLog.status = 'clocked-out';
+    await timeLog.save();
+
+    await createNotification(req.user.username, 'time-tracking', `Admin clocked out at ${currentTime} (${timeLog.totalHours} hours)`);
+
+    res.json({ success: true, message: 'Successfully clocked out', timeLog });
+  } catch (err) {
+    console.error('Admin clock-out error:', err);
+    res.status(500).json({ error: 'Failed to clock out' });
+  }
+});
+
+router.get('/time-tracking/status', verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const workerId = adminTimeWorkerId(req.user.username);
+    const phDate = getPhilippineBusinessDateAdmin(7);
+
+    const openLog = await TimeLog.findOne({
+      teacherId: workerId,
+      logOwnerType: 'admin',
+      status: 'clocked-in'
+    }).sort({ 'clockIn.timestamp': -1 });
+
+    const todayLog = await TimeLog.findOne({
+      teacherId: workerId,
+      logOwnerType: 'admin',
+      date: phDate
+    });
+
+    let isClockedIn = false;
+    let currentLog = null;
+    let canTimeIn = false;
+    let canTimeOut = false;
+    let dailyCompleted = false;
+
+    if (openLog) {
+      isClockedIn = true;
+      currentLog = openLog;
+      canTimeOut = true;
+    } else if (todayLog && todayLog.status === 'clocked-out') {
+      dailyCompleted = true;
+    } else {
+      canTimeIn = true;
+    }
+
+    res.json({
+      success: true,
+      isClockedIn,
+      currentLog,
+      canTimeIn,
+      canTimeOut,
+      dailyCompleted,
+      phDate
+    });
+  } catch (err) {
+    console.error('Admin time status error:', err);
+    res.status(500).json({ error: 'Failed to fetch time tracking status' });
+  }
+});
+
+router.get('/time-tracking/history', verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const workerId = adminTimeWorkerId(req.user.username);
+    const { startDate, endDate } = req.query;
+
+    let query = { teacherId: workerId, logOwnerType: 'admin' };
+    if (startDate && endDate) {
+      query.date = { $gte: startDate, $lte: endDate };
+    }
+
+    const timeLogs = await TimeLog.find(query)
+      .sort({ date: -1, 'clockIn.timestamp': -1 })
+      .limit(50)
+      .lean();
+
+    res.json({ success: true, timeLogs });
+  } catch (err) {
+    console.error('Admin time history error:', err);
+    res.status(500).json({ error: 'Failed to fetch time log history' });
+  }
+});
+
+// ——— Admin notifications (same Notification collection; teacherId = admin username) ———
+router.get('/notifications', verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const username = req.user.username;
+    const notifications = await Notification.find({ teacherId: username })
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .lean();
+    const unreadCount = notifications.filter(n => !n.read).length;
+    res.json({ success: true, notifications, unreadCount });
+  } catch (err) {
+    console.error('Admin notifications list error:', err);
+    res.status(500).json({ error: 'Failed to load notifications' });
+  }
+});
+
+// --- Referral / Commission tracking ---
+function generateReferralCodeAdmin() {
+  return (
+    Math.random().toString(36).slice(2, 8).toUpperCase() +
+    Math.random().toString(36).slice(2, 6).toUpperCase()
+  );
+}
+
+async function ensureTeacherReferralCode(teacher) {
+  if (teacher.referralCode) return teacher.referralCode;
+  let code = generateReferralCodeAdmin();
+  for (let i = 0; i < 5; i++) {
+    const exists = await Teacher.findOne({ referralCode: code }).lean();
+    if (!exists) break;
+    code = generateReferralCodeAdmin();
+  }
+  teacher.referralCode = code;
+  await teacher.save();
+  return code;
+}
+
+router.get('/referrals', verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const { teacherId, from, to } = req.query;
+    const filter = {};
+    if (teacherId) filter.teacherId = String(teacherId);
+    if (from || to) {
+      filter.createdAt = {};
+      if (from) filter.createdAt.$gte = new Date(from);
+      if (to) filter.createdAt.$lte = new Date(to);
+    }
+
+    const referrals = await Referral.find(filter).sort({ createdAt: -1 }).limit(500).lean();
+    const teacherIds = Array.from(new Set(referrals.map(r => r.teacherId)));
+    const teachers = await Teacher.find({ teacherId: { $in: teacherIds } })
+      .select('teacherId firstName lastName fullname username referralCode')
+      .lean();
+    const teacherMap = new Map(teachers.map(t => [t.teacherId, t]));
+
+    const rows = referrals.map(r => {
+      const t = teacherMap.get(r.teacherId);
+      const teacherName =
+        (t?.fullname || `${t?.firstName || ''} ${t?.lastName || ''}`.trim() || t?.username || r.teacherId);
+      return { ...r, teacherName };
+    });
+
+    const totals = rows.reduce(
+      (acc, r) => {
+        acc.count += 1;
+        acc.totalAmountPaid += Number(r.amountPaid || 0) || 0;
+        acc.totalCommission += Number(r.commissionAmount || 0) || 0;
+        return acc;
+      },
+      { count: 0, totalAmountPaid: 0, totalCommission: 0 }
+    );
+
+    res.json({ success: true, referrals: rows, totals });
+  } catch (err) {
+    console.error('Admin referrals error:', err);
+    res.status(500).json({ success: false, message: 'Failed to load referrals' });
+  }
+});
+
+router.get('/referrals/teachers', verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const teachers = await Teacher.find({})
+      .select('teacherId firstName lastName fullname username referralCode')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // Backfill referral codes for existing teachers (best-effort; do sequential to avoid unique collisions)
+    const out = [];
+    for (const t of teachers) {
+      if (!t.referralCode) {
+        const teacherDoc = await Teacher.findOne({ teacherId: t.teacherId });
+        if (teacherDoc) {
+          t.referralCode = await ensureTeacherReferralCode(teacherDoc);
+        }
+      }
+      const teacherName = t.fullname || `${t.firstName || ''} ${t.lastName || ''}`.trim() || t.username || t.teacherId;
+      out.push({
+        teacherId: t.teacherId,
+        teacherName,
+        referralCode: t.referralCode || '',
+        // Single referral link (subscription): bring users to plans section on landing page
+        subscriptionLink: `/index.html?ref=${encodeURIComponent(t.referralCode || '')}#plans`
+      });
+    }
+
+    res.json({ success: true, teachers: out });
+  } catch (err) {
+    console.error('Admin referrals teachers error:', err);
+    res.status(500).json({ success: false, message: 'Failed to load teachers referral links' });
+  }
+});
+
+router.get('/referral-link', verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const username = req.user.username;
+    const admin = await Admin.findOne({ username });
+    if (!admin) {
+      return res.status(404).json({ success: false, message: 'Admin not found' });
+    }
+
+    if (!admin.referralCode) {
+      let code = generateReferralCodeAdmin();
+      for (let i = 0; i < 5; i++) {
+        const existsTeacher = await Teacher.findOne({ referralCode: code }).lean();
+        const existsAdmin = await Admin.findOne({ referralCode: code }).lean();
+        if (!existsTeacher && !existsAdmin) break;
+        code = generateReferralCodeAdmin();
+      }
+      admin.referralCode = code;
+      await admin.save();
+    }
+
+    const code = admin.referralCode;
+    res.json({
+      success: true,
+      ownerType: 'admin',
+      ownerId: admin.username,
+      referralCode: code,
+      // Single referral link (subscription): bring users to plans section on landing page
+      subscriptionLink: `/index.html?ref=${encodeURIComponent(code)}#plans`
+    });
+  } catch (err) {
+    console.error('Admin referral-link error:', err);
+    res.status(500).json({ success: false, message: 'Failed to generate referral link' });
+  }
+});
+
+router.patch('/notifications/mark-all-read', verifyToken, requireAdmin, async (req, res) => {
+  try {
+    await Notification.updateMany(
+      { teacherId: req.user.username, read: false },
+      { $set: { read: true } }
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Admin mark-all-read error:', err);
+    res.status(500).json({ error: 'Failed to mark notifications read' });
+  }
+});
+
+router.patch('/notifications/:notificationId/read', verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const n = await Notification.findOneAndUpdate(
+      { _id: req.params.notificationId, teacherId: req.user.username },
+      { read: true },
+      { new: true }
+    );
+    if (!n) {
+      return res.status(404).json({ error: 'Notification not found' });
+    }
+    res.json({ success: true, notification: n });
+  } catch (err) {
+    console.error('Admin notification read error:', err);
+    res.status(500).json({ error: 'Failed to update notification' });
+  }
+});
 
 // GET global rate
 router.get('/global-rate', async (req, res) => {
@@ -901,33 +1264,36 @@ router.get('/teacher-rate/:teacherId', async (req, res) => {
   }
 });
 
-// GET all teachers weekly salaries
+function parsePayPeriodKey(periodKey) {
+  const m = String(periodKey || '').match(/^(\d{4})-(\d{2})-(1|2)$/);
+  if (!m) return null;
+  return { year: Number(m[1]), month: Number(m[2]), half: Number(m[3]) };
+}
+
+function getPayPeriodBoundsFromKey(periodKey) {
+  const p = parsePayPeriodKey(periodKey);
+  if (!p) return null;
+  const start = new Date(p.year, p.month - 1, p.half === 1 ? 1 : 16);
+  const end = p.half === 1 ? new Date(p.year, p.month - 1, 15) : new Date(p.year, p.month, 0);
+  return { start, end };
+}
+
+function getCurrentPayPeriodKey(date = new Date()) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const half = date.getDate() <= 15 ? '1' : '2';
+  return `${y}-${m}-${half}`;
+}
+
+// GET all teachers salaries for selected pay period (bi-weekly: 1–15 and 16–end)
+// Backward-compatible route name kept for existing frontend.
 router.get('/teachers-weekly-salaries', async (req, res) => {
   try {
-    // Get week from query parameter or use current week
-    let startDate, endDate;
-    
-    if (req.query.week) {
-      // Use the provided week start date
-      const weekStart = new Date(req.query.week);
-      const monday = new Date(weekStart);
-      monday.setDate(weekStart.getDate() - weekStart.getDay() + 1); // Ensure it's Monday
-      const sunday = new Date(monday);
-      sunday.setDate(monday.getDate() + 6); // Sunday (7-day week)
-      
-      startDate = monday.toISOString().split('T')[0];
-      endDate = sunday.toISOString().split('T')[0];
-    } else {
-      // Get current week (Monday to Sunday) - Global format
-      const now = new Date();
-      const monday = new Date(now);
-      monday.setDate(now.getDate() - now.getDay() + 1); // Monday
-      const sunday = new Date(monday);
-      sunday.setDate(monday.getDate() + 6); // Sunday (7-day week)
-      
-      startDate = monday.toISOString().split('T')[0];
-      endDate = sunday.toISOString().split('T')[0];
-    }
+    // periodKey format: YYYY-MM-1 (1st–15th) or YYYY-MM-2 (16th–end)
+    const periodKey = req.query.period || getCurrentPayPeriodKey(new Date());
+    const bounds = getPayPeriodBoundsFromKey(periodKey) || getPayPeriodBoundsFromKey(getCurrentPayPeriodKey(new Date()));
+    const startDate = bounds.start.toISOString().split('T')[0];
+    const endDate = bounds.end.toISOString().split('T')[0];
     
     // Get global rate from database
     const settings = await GlobalSettings.findOne({});
@@ -983,8 +1349,8 @@ router.get('/teachers-weekly-salaries', async (req, res) => {
       // Calculate base weekly fee (completed classes × rate)
       const baseWeeklyFee = completedClasses * (teacher.hourlyRate || globalRate);
       
-      // Calculate student absent payment (50% of rate)
-      const studentAbsentPayment = studentAbsentClasses * (teacher.hourlyRate || globalRate) * 0.5;
+      // Calculate student absent payment (no-class, no-pay policy => 0)
+      const studentAbsentPayment = 0;
       
       // Calculate net payable amount (same as teacher service fee)
       const netPayableAmount = Math.max(0, baseWeeklyFee + studentAbsentPayment - lateDeductions - teacherAbsentDeductions);
@@ -1022,6 +1388,7 @@ router.get('/teachers-weekly-salaries', async (req, res) => {
     res.json({
       success: true,
       teachers: teachersWithSalaries,
+      periodKey,
       weekPeriod: `${startDate} to ${endDate}`
     });
   } catch (error) {
@@ -1033,37 +1400,16 @@ router.get('/teachers-weekly-salaries', async (req, res) => {
   }
 });
 
-// POST dispense salaries to all teachers
+// POST dispense salaries to all teachers for selected pay period (bi-weekly)
 router.post('/dispense-salaries', async (req, res) => {
   try {
-    // Get week from request body or use current week
-    let startDate, endDate, issueDate;
-    
-    if (req.body.week) {
-      // Use the provided week start date
-      const weekStart = new Date(req.body.week);
-      const monday = new Date(weekStart);
-      monday.setDate(weekStart.getDate() - weekStart.getDay() + 1); // Ensure it's Monday
-      const sunday = new Date(monday);
-      sunday.setDate(monday.getDate() + 6); // Sunday (7-day week)
-      
-      startDate = monday.toISOString().split('T')[0];
-      endDate = sunday.toISOString().split('T')[0];
-      issueDate = new Date(sunday);
-      issueDate.setDate(sunday.getDate() + 1); // Monday
-    } else {
-      // Get current week (Monday to Sunday) - Global format
-      const now = new Date();
-      const monday = new Date(now);
-      monday.setDate(now.getDate() - now.getDay() + 1); // Monday
-      const sunday = new Date(monday);
-      sunday.setDate(monday.getDate() + 6); // Sunday (7-day week)
-      
-      startDate = monday.toISOString().split('T')[0];
-      endDate = sunday.toISOString().split('T')[0];
-      issueDate = new Date(sunday);
-      issueDate.setDate(sunday.getDate() + 1); // Monday
-    }
+    const periodKey = req.body.period || getCurrentPayPeriodKey(new Date());
+    const bounds = getPayPeriodBoundsFromKey(periodKey) || getPayPeriodBoundsFromKey(getCurrentPayPeriodKey(new Date()));
+    const startDate = bounds.start.toISOString().split('T')[0];
+    const endDate = bounds.end.toISOString().split('T')[0];
+    // Issue date = next day after endDate
+    const issueDate = new Date(bounds.end);
+    issueDate.setDate(issueDate.getDate() + 1);
     
     // Get global rate from database
     const settings = await GlobalSettings.findOne({});
@@ -1119,8 +1465,8 @@ router.post('/dispense-salaries', async (req, res) => {
       // Calculate base weekly fee (completed classes × rate)
       const baseWeeklyFee = completedClasses * (teacher.hourlyRate || globalRate);
       
-      // Calculate student absent payment (50% of rate)
-      const studentAbsentPayment = studentAbsentClasses * (teacher.hourlyRate || globalRate) * 0.5;
+      // Calculate student absent payment (no-class, no-pay policy => 0)
+      const studentAbsentPayment = 0;
       
       // Calculate net payable amount (same as teacher service fee)
       const netPayableAmount = Math.max(0, baseWeeklyFee + studentAbsentPayment - lateDeductions - teacherAbsentDeductions);
@@ -1148,7 +1494,7 @@ router.post('/dispense-salaries', async (req, res) => {
           await createNotification(
             teacher.teacherId,
             'salary',
-            `Your weekly salary of ₱${weeklySalary.toFixed(2)} for ${startDate} - ${endDate} has been credited.`
+            `Your salary of ₱${weeklySalary.toFixed(2)} for ${startDate} - ${endDate} has been credited.`
           );
         } catch (notifError) {
           console.error('❌ Error creating salary notification for teacher:', teacher.teacherId, notifError);
@@ -1204,7 +1550,7 @@ router.get('/students-count', async (req, res) => {
 // GET bookings count
 router.get('/bookings-count', async (req, res) => {
   try {
-    const active = await Booking.countDocuments({ status: { $in: ['booked', 'confirmed'] } });
+    const active = await Booking.countDocuments({ status: { $in: ['booked', 'Booked', 'confirmed'] } });
     const completed = await Booking.countDocuments({ status: 'finished' });
     res.json({ active, completed });
   } catch (error) {

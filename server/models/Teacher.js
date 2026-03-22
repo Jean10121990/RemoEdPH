@@ -193,6 +193,9 @@ const teacherSchema = new mongoose.Schema({
   
   // Rate Information
   hourlyRate: { type: Number, default: 100 },
+
+  // Referral link code (used for teacher commission tracking)
+  referralCode: { type: String, default: null, unique: true, sparse: true },
   
   // Payment History
   paymentHistory: [{
