@@ -868,6 +868,10 @@
                 <div style="margin-bottom: 16px;">
                     <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #667eea;">Expiration Date</label>
                     <input type="date" id="cert-expiry-date" style="width: 100%; padding: 12px; border: 2px solid #e8f4fd; border-radius: 8px; font-size: 0.9rem;">
+                    <label style="display:flex; align-items:center; gap:10px; margin-top: 10px; font-size: 0.9rem; color:#1E3A5F; font-weight:600; cursor:pointer;">
+                        <input type="radio" name="cert-expiry-option" id="cert-no-expiration" value="no-expiration" style="transform: scale(1.1);">
+                        No Expiration
+                    </label>
                     <small style="color: #666; font-size: 0.85rem;">Leave blank if certification doesn't expire</small>
                 </div>
                 <div style="margin-bottom: 16px;">
@@ -1225,16 +1229,54 @@
         function closeAddCertificationModal() {
             document.getElementById('add-certification-modal').style.display = 'none';
             document.getElementById('certification-form').reset();
+            toggleCertNoExpiration(false);
         }
+
+        function toggleCertNoExpiration(enabled) {
+            const expiryInput = document.getElementById('cert-expiry-date');
+            const noExpRadio = document.getElementById('cert-no-expiration');
+            if (!expiryInput || !noExpRadio) return;
+            if (enabled) {
+                expiryInput.value = '';
+                expiryInput.disabled = true;
+                expiryInput.style.opacity = '0.6';
+                expiryInput.style.cursor = 'not-allowed';
+                noExpRadio.checked = true;
+            } else {
+                expiryInput.disabled = false;
+                expiryInput.style.opacity = '';
+                expiryInput.style.cursor = '';
+                if (noExpRadio.checked) noExpRadio.checked = false;
+            }
+        }
+
+        // Wire up no-expiration option
+        document.addEventListener('DOMContentLoaded', function () {
+            const noExpRadio = document.getElementById('cert-no-expiration');
+            const expiryInput = document.getElementById('cert-expiry-date');
+            if (noExpRadio) {
+                noExpRadio.addEventListener('change', function () {
+                    toggleCertNoExpiration(!!noExpRadio.checked);
+                });
+            }
+            if (expiryInput) {
+                expiryInput.addEventListener('input', function () {
+                    // If user picks an expiry date, ensure no-expiration is turned off
+                    const v = String(expiryInput.value || '').trim();
+                    if (v) toggleCertNoExpiration(false);
+                });
+            }
+        });
         
         async function saveCertification(event) {
             event.preventDefault();
             
+            const noExpiration = !!document.getElementById('cert-no-expiration')?.checked;
             const certData = {
                 name: document.getElementById('cert-name').value,
                 organization: document.getElementById('cert-organization').value,
                 issueDate: document.getElementById('cert-issue-date').value,
-                expiryDate: document.getElementById('cert-expiry-date').value || null,
+                expiryDate: noExpiration ? null : (document.getElementById('cert-expiry-date').value || null),
                 certificateNumber: document.getElementById('cert-number').value || null
             };
             
@@ -2154,7 +2196,7 @@
                 { text: "How to Create a Lesson", icon: "➕", topic: "create lesson" }
               ]);
             } else if (lower.includes('lesson structure') || lower.includes('lesson format')) {
-              this.addBotMessage("**Standard Lesson Structure (50-60 min):**\n\n1️⃣ **Warm-up (5-10 min)** - Engage students\n2️⃣ **Introduction (5-10 min)** - Present objectives\n3️⃣ **Practice (15-20 min)** - Interactive exercises\n4️⃣ **Production (10-15 min)** - Apply learning\n5️⃣ **Wrap-up (5 min)** - Review and homework\n\n**Tips:** Keep it interactive, use multimedia!");
+              this.addBotMessage("**Standard Lesson Structure (25 min):**\n\n1️⃣ **Warm-up (5 min)** - Engage students\n2️⃣ **Introduction (5 min)** - Present objectives\n3️⃣ **Practice (10 min)** - Interactive exercises\n4️⃣ **Production (3 min)** - Apply learning\n5️⃣ **Wrap-up (2 min)** - Quick review and homework\n\n**Tips:** Keep it interactive, use multimedia, and focus on a 25-minute class!");
             } else if (lower.includes('teaching tip') || lower.includes('effective teaching')) {
               this.addBotMessage("**Top Tips for Online Teaching:**\n\n🎯 **Engagement**: Use polls, games, breakout rooms\n💬 **Communication**: Speak clearly, use visuals\n⏰ **Time Management**: Plan with time allocations\n👥 **Interaction**: Encourage participation, give feedback\n🔧 **Technical**: Test equipment, have backup plans\n\nRemember: Adaptability and creativity are key!");
             } else if (lower.includes('create lesson')) {

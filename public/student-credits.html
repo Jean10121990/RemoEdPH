@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Lesson Credits - RemoEdPH</title>
+  <link rel="stylesheet" href="modern-styles.css">
+  <style>
+    body{
+      margin:0;
+      font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;
+      background:linear-gradient(135deg,#f0f9ff,#fffbeb);
+      min-height:100vh;
+      padding:24px 16px;
+      color:#0f172a;
+    }
+    .shell{max-width:1040px;margin:0 auto;}
+    .header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+      margin-bottom:18px;
+    }
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+    .brand img{height:42px;}
+    .brand-title{
+      font-weight:900;
+      font-size:1.4rem;
+      color:#1ca7e7;
+    }
+    .tagline{
+      font-size:.9rem;
+      color:#64748b;
+      font-weight:600;
+    }
+    .btn-link{
+      border:none;
+      padding:8px 14px;
+      border-radius:999px;
+      background:#e0f2fe;
+      color:#0369a1;
+      cursor:pointer;
+      font-weight:700;
+      font-size:.9rem;
+    }
+    .grid{
+      display:grid;
+      grid-template-columns:2fr 3fr;
+      gap:18px;
+    }
+    @media(max-width:900px){.grid{grid-template-columns:1fr;}}
+    .card{
+      background:rgba(255,255,255,.9);
+      border-radius:18px;
+      padding:18px;
+      box-shadow:0 18px 40px rgba(15,23,42,.08);
+      border:1px solid rgba(148,163,184,.3);
+    }
+    .card h2{
+      margin:0 0 8px;
+      font-size:1.25rem;
+      font-weight:900;
+      color:#0f172a;
+    }
+    .balance{
+      font-size:2.4rem;
+      font-weight:900;
+      color:#0ea5e9;
+      margin:4px 0;
+    }
+    .muted{color:#64748b;font-size:.9rem;}
+    .stats{
+      display:flex;
+      gap:14px;
+      margin-top:10px;
+      flex-wrap:wrap;
+    }
+    .stat-pill{
+      padding:8px 12px;
+      border-radius:999px;
+      background:#eff6ff;
+      font-size:.85rem;
+      font-weight:700;
+      color:#1d4ed8;
+    }
+    table{
+      width:100%;
+      border-collapse:collapse;
+      font-size:.9rem;
+    }
+    th,td{
+      padding:8px 10px;
+      border-bottom:1px solid #e2e8f0;
+      text-align:left;
+      white-space:nowrap;
+    }
+    th{
+      font-size:.8rem;
+      text-transform:uppercase;
+      letter-spacing:.06em;
+      color:#64748b;
+    }
+    tbody tr:nth-child(even){background:#f9fafb;}
+    .credits-pos{color:#16a34a;font-weight:700;}
+    .credits-neg{color:#b91c1c;font-weight:700;}
+    .actions{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      margin-top:14px;
+    }
+    .primary-btn,.secondary-btn{
+      border:none;
+      border-radius:12px;
+      padding:10px 14px;
+      font-weight:800;
+      cursor:pointer;
+      font-size:.95rem;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:6px;
+    }
+    .primary-btn{
+      background:linear-gradient(135deg,#1ca7e7,#2563eb);
+      color:white;
+      border:2px solid #facc15;
+    }
+    .secondary-btn{
+      background:white;
+      color:#0f172a;
+      border:1px solid #cbd5f5;
+    }
+    .table-wrap{
+      max-height:420px;
+      overflow:auto;
+      border-radius:14px;
+      border:1px solid #e2e8f0;
+      background:white;
+      margin-top:8px;
+    }
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding:4px 10px;
+      border-radius:999px;
+      font-size:.75rem;
+      font-weight:700;
+    }
+    .badge.green{background:#ecfdf3;color:#15803d;}
+    .badge.yellow{background:#fffbeb;color:#92400e;}
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="header">
+      <div>
+        <div class="brand">
+          <img src="RemoEdPH Logo.png" alt="RemoEdPH">
+          <div>
+            <div class="brand-title">My Lesson Credits</div>
+            <div class="tagline" id="credits-greeting">Track how many classes are used and what’s left.</div>
+          </div>
+        </div>
+      </div>
+      <button class="btn-link" onclick="window.location.href='student-dashboard.html'">← Back to Dashboard</button>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h2>Current Balance</h2>
+        <div class="balance" id="credits-balance">0</div>
+        <div class="muted">Lesson credits available to book future classes.</div>
+        <div class="stats">
+          <div class="stat-pill">Used: <span id="credits-used">0</span></div>
+          <div class="stat-pill">Total purchased: <span id="credits-total">0</span></div>
+        </div>
+        <div style="margin-top:10px;">
+          <span id="subscription-pill" class="badge yellow" style="display:none;"></span>
+        </div>
+        <div class="actions">
+          <button class="primary-btn" onclick="goToPlans()">
+            <span>Refill Credits / Subscribe</span>
+          </button>
+          <button class="secondary-btn" onclick="window.location.href='student-booking-history.html'">
+            View class booking history
+          </button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Credit History</h2>
+        <div class="muted">Every time you buy or use credits, it appears here.</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Description</th>
+                <th>Credits</th>
+                <th>Balance</th>
+              </tr>
+            </thead>
+            <tbody id="credits-tbody">
+            </tbody>
+          </table>
+        </div>
+        <div id="credits-empty" class="muted" style="margin-top:8px;display:none;">No credit activity yet.</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function getStudentToken() {
+      return localStorage.getItem('studentToken') || localStorage.getItem('token') || '';
+    }
+
+    function goToPlans() {
+      // Go to landing plans section; referral code (if any) is already handled there
+      window.location.href = 'index.html#plans';
+    }
+
+    function fmtDate(iso) {
+      if (!iso) return '—';
+      const d = new Date(iso);
+      return d.toLocaleString(undefined, { month:'short', day:'numeric', year:'numeric', hour:'2-digit', minute:'2-digit' });
+    }
+
+    async function loadCredits() {
+      const token = getStudentToken();
+      if (!token) {
+        alert('Please log in as a student to view credits.');
+        window.location.href = 'student-login.html';
+        return;
+      }
+      try {
+        const res = await fetch('/api/student/credits', {
+          headers: { Authorization: 'Bearer ' + token }
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || 'Failed to load credits');
+        }
+
+        const name = localStorage.getItem('remoedUsername') || localStorage.getItem('studentName') || '';
+        const greet = document.getElementById('credits-greeting');
+        if (name && greet) {
+          greet.textContent = `Hi, ${name}! Here are your lesson credits.`;
+        }
+
+        document.getElementById('credits-balance').textContent = data.balance || 0;
+        document.getElementById('credits-total').textContent = data.totalEarned || 0;
+        document.getElementById('credits-used').textContent = data.used || 0;
+
+        const pill = document.getElementById('subscription-pill');
+        if (data.subscriptionPlan) {
+          const label =
+            data.subscriptionPlan === '1month' ? '1 Month plan' :
+            data.subscriptionPlan === '3months' ? '3 Months plan' :
+            data.subscriptionPlan === '6months' ? '6 Months plan' :
+            data.subscriptionPlan === '1year' ? '12 Months plan' :
+            data.subscriptionPlan;
+          pill.textContent = `${label} • ${data.subscriptionStatus || 'status unknown'}`;
+          pill.style.display = 'inline-flex';
+          pill.className = 'badge ' + ((data.subscriptionStatus === 'active') ? 'green' : 'yellow');
+        } else {
+          pill.style.display = 'none';
+        }
+
+        const tbody = document.getElementById('credits-tbody');
+        const empty = document.getElementById('credits-empty');
+        const list = Array.isArray(data.credits) ? data.credits : [];
+        if (!list.length) {
+          tbody.innerHTML = '';
+          empty.style.display = 'block';
+          return;
+        }
+        empty.style.display = 'none';
+        tbody.innerHTML = list.map(row => {
+          const cls = row.credits >= 0 ? 'credits-pos' : 'credits-neg';
+          const label =
+            row.type === 'purchase' ? 'Purchase' :
+            row.type === 'use' ? 'Used' :
+            'Adjust';
+          return `
+            <tr>
+              <td>${fmtDate(row.date)}</td>
+              <td>${label}</td>
+              <td>${row.description || ''}</td>
+              <td><span class="${cls}">${row.credits > 0 ? '+' : ''}${row.credits}</span></td>
+              <td>${row.balanceAfter ?? ''}</td>
+            </tr>
+          `;
+        }).join('');
+      } catch (err) {
+        console.error('Credits load error:', err);
+        alert('Error loading credits: ' + err.message);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadCredits);
+  </script>
+</body>
+</html>
+

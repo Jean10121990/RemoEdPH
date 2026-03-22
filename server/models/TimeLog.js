@@ -1,10 +1,16 @@
 const mongoose = require('mongoose');
 
 const timeLogSchema = new mongoose.Schema({
-  // Store the permanent teacherId string (e.g., "kjb00000001")
+  // Store the permanent teacherId string (e.g., "kjb00000001"), or "admin:<username>" for admins
   teacherId: {
     type: String,
     required: true
+  },
+  logOwnerType: {
+    type: String,
+    enum: ['teacher', 'admin'],
+    default: 'teacher',
+    index: true
   },
   date: {
     type: String,

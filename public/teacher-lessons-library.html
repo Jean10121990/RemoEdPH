@@ -109,6 +109,23 @@
             cursor: not-allowed;
             color: #9ca3af;
         }
+
+        .form-control {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            background: white;
+            color: #1a202c;
+            box-sizing: border-box;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
         
         .lesson-info {
             background: #f8fafc;
@@ -856,10 +873,52 @@
         <div class="library-container">
             <div class="selection-panel">
                 <div class="form-group">
-                    <label for="curriculum-select">Select Curriculum</label>
-                    <select id="curriculum-select" onchange="loadLessons()">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
+                        <label for="curriculum-select" style="margin: 0;">Select Curriculum</label>
+                        <button type="button" class="btn-icon edit" onclick="toggleEditCurriculumForm()" title="Edit selected curriculum" id="edit-curriculum-open-btn" disabled style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">
+                            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="margin-right: 4px;">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            </svg>
+                            Edit Curriculum
+                        </button>
+                    </div>
+                    <select id="curriculum-select" onchange="onCurriculumSelectChange()">
                         <option value="">-- Select a curriculum --</option>
                     </select>
+                </div>
+
+                <div id="edit-curriculum-section" style="display: none; margin-top: 1rem; padding: 1rem; background: #f0fdf4; border-radius: 8px; border: 1px solid #86efac;">
+                    <h3 style="margin: 0 0 1rem 0; color: #166534; font-weight: 600; font-size: 1rem;">Edit Curriculum</h3>
+                    <p style="margin: 0 0 1rem 0; font-size: 0.9rem; color: #15803d;">Update the name, description, level, or display order.</p>
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label for="edit-curriculum-title">Curriculum Title *</label>
+                        <input type="text" id="edit-curriculum-title" class="form-control" required placeholder="e.g., Basic Math, English Fundamentals">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label for="edit-curriculum-description">Description</label>
+                        <textarea id="edit-curriculum-description" class="form-control" rows="3" placeholder="Brief description of the curriculum"></textarea>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label for="edit-curriculum-level">Level *</label>
+                        <select id="edit-curriculum-level" class="form-control" required>
+                            <option value="nursery">Nursery</option>
+                            <option value="kinder">Kinder</option>
+                            <option value="preparatory">Preparatory</option>
+                            <option value="elementary">Elementary</option>
+                            <option value="intermediate">Intermediate</option>
+                            <option value="advanced">Advanced</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label for="edit-curriculum-order">Display Order</label>
+                        <input type="number" id="edit-curriculum-order" class="form-control" min="0" value="0" placeholder="0">
+                        <small style="color: #64748b; display: block; margin-top: 0.25rem;">Lower numbers appear first</small>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="upload-btn" onclick="saveCurriculumEdits()" id="save-curriculum-btn" style="flex: 1; margin: 0; background: #16a34a;">Save Changes</button>
+                        <button class="upload-btn" onclick="closeEditCurriculumForm()" style="flex: 1; margin: 0; background: #6b7280;">Cancel</button>
+                    </div>
                 </div>
 
                 <div class="form-group">
@@ -932,6 +991,7 @@
     <script>
         let selectedFiles = [];
         let currentLessonId = null;
+        let curriculaCache = [];
         const token = localStorage.getItem('token');
         const teacherId = localStorage.getItem('teacherId');
 
@@ -945,7 +1005,113 @@
             loadUserInfo();
             loadCurricula();
             setupFileUpload();
+            updateEditCurriculumButtonState();
         });
+
+        function onCurriculumSelectChange() {
+            closeEditCurriculumForm();
+            updateEditCurriculumButtonState();
+            loadLessons();
+        }
+
+        function updateEditCurriculumButtonState() {
+            const btn = document.getElementById('edit-curriculum-open-btn');
+            const sel = document.getElementById('curriculum-select');
+            if (btn && sel) {
+                btn.disabled = !sel.value;
+            }
+        }
+
+        function closeEditCurriculumForm() {
+            const section = document.getElementById('edit-curriculum-section');
+            if (section) section.style.display = 'none';
+        }
+
+        function toggleEditCurriculumForm() {
+            const curriculumId = document.getElementById('curriculum-select').value;
+            if (!curriculumId) {
+                showAlert('error', 'Select a curriculum first, then click Edit Curriculum.');
+                return;
+            }
+            const data = curriculaCache.find(c => String(c._id) === String(curriculumId));
+            if (!data) {
+                showAlert('error', 'Could not load curriculum details. Refresh the page and try again.');
+                return;
+            }
+            document.getElementById('edit-curriculum-title').value = data.title || '';
+            document.getElementById('edit-curriculum-description').value = data.description || '';
+            document.getElementById('edit-curriculum-level').value = data.level || '';
+            document.getElementById('edit-curriculum-order').value = data.order != null ? data.order : 0;
+
+            const section = document.getElementById('edit-curriculum-section');
+            section.style.display = 'block';
+            section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        async function saveCurriculumEdits() {
+            const curriculumId = document.getElementById('curriculum-select').value;
+            const title = document.getElementById('edit-curriculum-title').value.trim();
+            const description = document.getElementById('edit-curriculum-description').value.trim();
+            const level = document.getElementById('edit-curriculum-level').value;
+            const order = document.getElementById('edit-curriculum-order').value || 0;
+
+            if (!curriculumId) {
+                showAlert('error', 'No curriculum selected.');
+                return;
+            }
+            if (!title) {
+                showAlert('error', 'Curriculum title is required');
+                document.getElementById('edit-curriculum-title').focus();
+                return;
+            }
+            if (!level) {
+                showAlert('error', 'Level is required');
+                return;
+            }
+
+            const saveBtn = document.getElementById('save-curriculum-btn');
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Saving...';
+
+            try {
+                const currentToken = localStorage.getItem('token') || token;
+                if (!currentToken) {
+                    showAlert('error', 'Authentication required. Please log in again.');
+                    return;
+                }
+
+                const response = await fetch(`/api/lessons/curriculum/${encodeURIComponent(curriculumId)}?token=${encodeURIComponent(currentToken)}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${currentToken}`
+                    },
+                    body: JSON.stringify({
+                        title,
+                        description,
+                        level,
+                        order: parseInt(order, 10)
+                    })
+                });
+
+                if (!response.ok) {
+                    const err = await response.json().catch(() => ({ error: 'Failed to update curriculum' }));
+                    throw new Error(err.error || `Server error: ${response.status}`);
+                }
+
+                showAlert('success', 'Curriculum updated successfully.');
+                closeEditCurriculumForm();
+                await loadCurricula();
+                document.getElementById('curriculum-select').value = curriculumId;
+                updateEditCurriculumButtonState();
+                loadLessons();
+            } catch (error) {
+                showAlert('error', 'Failed to update curriculum: ' + error.message);
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Save Changes';
+            }
+        }
 
         async function loadUserInfo() {
             // First, try to load from API to get the actual firstName
@@ -1020,6 +1186,7 @@
                     throw new Error(`Failed to load curricula: ${response.status} ${errorText}`);
                 }
                 const curricula = await response.json();
+                curriculaCache = curricula;
                 const select = document.getElementById('curriculum-select');
                 select.innerHTML = '<option value="">-- Select a curriculum --</option>';
                 curricula.forEach(curriculum => {
@@ -1031,6 +1198,7 @@
             } catch (error) {
                 showAlert('error', 'Failed to load curricula: ' + error.message);
             }
+            updateEditCurriculumButtonState();
         }
 
         async function loadLessons() {
@@ -1994,7 +2162,7 @@
                 { text: "How to Create a Lesson", icon: "➕", topic: "create lesson" }
               ]);
             } else if (lower.includes('lesson structure') || lower.includes('lesson format')) {
-              this.addBotMessage("**Standard Lesson Structure (50-60 min):**\n\n1️⃣ **Warm-up (5-10 min)** - Engage students\n2️⃣ **Introduction (5-10 min)** - Present objectives\n3️⃣ **Practice (15-20 min)** - Interactive exercises\n4️⃣ **Production (10-15 min)** - Apply learning\n5️⃣ **Wrap-up (5 min)** - Review and homework\n\n**Tips:** Keep it interactive, use multimedia!");
+              this.addBotMessage("**Standard Lesson Structure (25 min):**\n\n1️⃣ **Warm-up (5 min)** - Engage students\n2️⃣ **Introduction (5 min)** - Present objectives\n3️⃣ **Practice (10 min)** - Interactive exercises\n4️⃣ **Production (3 min)** - Apply learning\n5️⃣ **Wrap-up (2 min)** - Quick review and homework\n\n**Tips:** Keep it interactive, use multimedia, and focus on a 25-minute class!");
             } else if (lower.includes('teaching tip') || lower.includes('effective teaching')) {
               this.addBotMessage("**Top Tips for Online Teaching:**\n\n🎯 **Engagement**: Use polls, games, breakout rooms\n💬 **Communication**: Speak clearly, use visuals\n⏰ **Time Management**: Plan with time allocations\n👥 **Interaction**: Encourage participation, give feedback\n🔧 **Technical**: Test equipment, have backup plans\n\nRemember: Adaptability and creativity are key!");
             } else if (lower.includes('create lesson')) {

@@ -15,6 +15,11 @@ const lessonSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  /** Internal notes for teachers (cheat sheet / Q&A). Not shown to students. */
+  teacherNotes: {
+    type: String,
+    default: ''
+  },
   lessonNumber: {
     type: Number,
     required: true

@@ -1,0 +1,220 @@
+/**
+ * Student portal sidebar — stacked logo, caption, title, "Student Portal",
+ * divider, centered avatar + "Hi, Name!" (sky blue, playful but static).
+ * Load this AFTER each page's inline <style> so it wins over purple/row rules.
+ */
+@import url("https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap");
+
+nav.remoed-sidebar .remoed-logo {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  height: auto !important;
+  min-height: 0 !important;
+  padding: 1rem 0.85rem 0.85rem !important;
+  margin: 0 !important;
+  border-bottom: 1px solid #e5e7eb !important;
+  box-sizing: border-box !important;
+  position: static !important;
+}
+
+nav.remoed-sidebar .remoed-logo img {
+  height: 52px !important;
+  width: auto !important;
+  display: block !important;
+  vertical-align: unset !important;
+  filter: drop-shadow(0 2px 4px rgba(28, 167, 231, 0.22)) !important;
+}
+
+nav.remoed-sidebar .student-brand-caption {
+  display: none !important;
+}
+
+nav.remoed-sidebar .remoed-title {
+  font-family: "Fredoka", "Comic Sans MS", "Segoe UI", sans-serif !important;
+  font-size: 1.55rem !important;
+  font-weight: 700 !important;
+  color: #1ca7e7 !important;
+  letter-spacing: 0.02em !important;
+  text-shadow: 2px 2px 5px rgba(28, 167, 231, 0.25) !important;
+  line-height: 1.15 !important;
+  margin: 0 !important;
+}
+
+nav.remoed-sidebar .student-portal-label {
+  font-size: 0.78rem;
+  color: #64748b;
+  font-weight: 600;
+  margin-top: 2px;
+  letter-spacing: 0.02em;
+}
+
+nav.remoed-sidebar .remoed-user {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  text-align: center !important;
+  gap: 10px !important;
+  padding: 1rem 0.85rem 1.1rem !important;
+  margin: 0 0 0.35rem !important;
+  border-bottom: 1px solid #e5e7eb !important;
+}
+
+nav.remoed-sidebar .remoed-avatar {
+  width: 56px !important;
+  height: 56px !important;
+  min-width: 56px !important;
+  min-height: 56px !important;
+  border-radius: 50% !important;
+  background: #1ca7e7 !important;
+  background-image: none !important;
+  color: #fff !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-weight: 800 !important;
+  font-size: 1.35rem !important;
+  margin: 0 !important;
+  cursor: pointer;
+  animation: none !important;
+  transition: background 0.2s ease, opacity 0.2s ease !important;
+}
+
+nav.remoed-sidebar .remoed-avatar:hover {
+  transform: none !important;
+  opacity: 0.95;
+}
+
+nav.remoed-sidebar .remoed-avatar img,
+nav.remoed-sidebar .remoed-avatar .avatar-img {
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 50% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+nav.remoed-sidebar .remoed-avatar img[style*="display: none"] {
+  display: none !important;
+}
+
+nav.remoed-sidebar .remoed-username {
+  color: #1ca7e7 !important;
+  font-weight: 700 !important;
+  font-size: 1rem !important;
+  line-height: 1.3 !important;
+}
+
+/* Menu: sky-blue theme, no slide/bounce */
+nav.remoed-sidebar .remoed-menu li {
+  color: #1e3a5f !important;
+  transform: none !important;
+}
+
+nav.remoed-sidebar .remoed-menu li.active,
+nav.remoed-sidebar .remoed-menu li:hover {
+  background: linear-gradient(90deg, #1ca7e7 0%, #5cb3ff 100%) !important;
+  border-left-color: #1ca7e7 !important;
+  color: #fff !important;
+  transform: none !important;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease !important;
+}
+
+/* -------------------------------------------------------------------------- */
+/* No motion — animations & hover “lift” off (less dizzying for students)      */
+/* Applies to logged-in student portal + optional .student-no-motion pages   */
+/* -------------------------------------------------------------------------- */
+
+body.student-portal *,
+body.student-portal *::before,
+body.student-portal *::after,
+body.student-no-motion *,
+body.student-no-motion *::before,
+body.student-no-motion *::after {
+  animation: none !important;
+  animation-duration: 0s !important;
+  animation-delay: 0s !important;
+  animation-iteration-count: 1 !important;
+}
+
+/* Extra bounce row above logo from child-friendly-styles — hide (static) */
+body.student-portal nav.remoed-sidebar .remoed-logo::before,
+body.student-no-motion nav.remoed-sidebar .remoed-logo::before {
+  content: none !important;
+  display: none !important;
+}
+
+/* Child-friendly: stop slide/scale on menu, buttons, badges */
+body.student-portal nav.remoed-sidebar .remoed-menu li,
+body.student-portal nav.remoed-sidebar .remoed-menu li:hover,
+body.student-portal nav.remoed-sidebar .remoed-menu li.active,
+body.student-no-motion nav.remoed-sidebar .remoed-menu li,
+body.student-no-motion nav.remoed-sidebar .remoed-menu li:hover,
+body.student-no-motion nav.remoed-sidebar .remoed-menu li.active {
+  animation: none !important;
+  transform: none !important;
+}
+
+body.student-portal .fun-btn,
+body.student-portal .fun-btn:hover,
+body.student-portal .fun-btn:active,
+body.student-no-motion .fun-btn,
+body.student-no-motion .fun-btn:hover,
+body.student-no-motion .fun-btn:active {
+  transform: none !important;
+  animation: none !important;
+}
+
+body.student-portal .badge,
+body.student-portal .star,
+body.student-no-motion .badge,
+body.student-no-motion .star {
+  animation: none !important;
+}
+
+/* Main content: common hover lifts / pulses (games, dashboard, etc.) */
+body.student-portal .remoed-content .selection-card:hover,
+body.student-portal .remoed-content .option-btn:hover,
+body.student-portal .remoed-content .record-btn,
+body.student-portal .remoed-content .record-btn:hover,
+body.student-portal .remoed-content .record-btn.recording,
+body.student-portal .remoed-content .audio-btn:hover,
+body.student-portal .remoed-content .nav-btn:hover,
+body.student-portal .remoed-content .fun-card:hover,
+body.student-portal .character-container,
+body.student-portal .character-remo,
+body.student-portal .character-ed,
+body.student-portal .character-sophia,
+body.student-portal .remo-screen {
+  transform: none !important;
+  animation: none !important;
+}
+
+/* Speech bubbles keep translateX(-50%) for layout; only stop motion */
+body.student-portal .character-speech,
+body.student-portal .character-message {
+  animation: none !important;
+}
+
+/* Login page mascots — keep bubbles visible, no tilt / slide */
+body.student-no-motion .peek-boy:hover,
+body.student-no-motion .peek-robot:hover {
+  transform: none !important;
+}
+
+body.student-no-motion .peek-character {
+  transition: none !important;
+}
+
+body.student-no-motion .peek-boy .chat-bubble,
+body.student-no-motion .peek-robot .chat-bubble {
+  opacity: 1 !important;
+  transform: translateX(-50%) translateY(0) !important;
+  transition: none !important;
+}
+
+body.student-no-motion .peek-character:hover .chat-bubble {
+  transform: translateX(-50%) translateY(0) !important;
+}

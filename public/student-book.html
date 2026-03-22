@@ -730,22 +730,359 @@
         .floating-slot-remove:hover {
             background: #c82333;
         }
+
+        /* Custom teacher selector (replaces native dropdown) */
+        .custom-teacher-select {
+            position: relative;
+            width: 100%;
+        }
+        .custom-teacher-select__trigger {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 10px 12px;
+            min-height: 44px;
+            border: 1px solid #ced4da;
+            border-radius: 8px;
+            background: #fff;
+            font: inherit;
+            cursor: pointer;
+            text-align: left;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .custom-teacher-select__trigger:hover {
+            border-color: #667eea;
+        }
+        .custom-teacher-select__trigger:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        }
+        .custom-teacher-select__value {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+            flex: 1;
+        }
+        .custom-teacher-select__avatar-wrap {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            overflow: hidden;
+            flex-shrink: 0;
+            background: linear-gradient(135deg, #e8ecf7, #f0f4ff);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+        }
+        .custom-teacher-select__avatar-wrap img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .cts-trigger-placeholder { line-height: 1; }
+        .custom-teacher-select__text {
+            font-size: 0.95rem;
+            color: #333;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .custom-teacher-select__chevron {
+            width: 0;
+            height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-top: 6px solid #6c757d;
+            flex-shrink: 0;
+            transition: transform 0.2s;
+        }
+        .custom-teacher-select__trigger[aria-expanded="true"] .custom-teacher-select__chevron {
+            transform: rotate(180deg);
+        }
+        .custom-teacher-select__list {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: calc(100% + 4px);
+            z-index: 50;
+            margin: 0;
+            padding: 6px;
+            list-style: none;
+            background: #fff;
+            border: 1px solid #dee2e6;
+            border-radius: 10px;
+            box-shadow: 0 12px 40px rgba(40, 50, 80, 0.15);
+            max-height: 280px;
+            overflow-y: auto;
+        }
+        .custom-teacher-select__list[hidden] {
+            display: none !important;
+        }
+        .cts-item {
+            display: flex;
+            align-items: stretch;
+            gap: 4px;
+            border-radius: 8px;
+            margin-bottom: 4px;
+        }
+        .cts-item:last-child { margin-bottom: 0; }
+        .cts-item__main {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 10px;
+            border: none;
+            background: #f8f9fc;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: left;
+            font: inherit;
+            min-width: 0;
+            transition: background 0.15s;
+        }
+        .cts-item__main:hover {
+            background: #eef1ff;
+        }
+        .cts-item__photo-wrap {
+            width: 40px;
+            height: 40px;
+            flex-shrink: 0;
+            border-radius: 50%;
+            overflow: hidden;
+            background: #e2e8f0;
+        }
+        .cts-item__photo {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .cts-item__photo--placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #e8ecf7, #dbe4ff);
+            font-size: 1.1rem;
+        }
+        .cts-item__center { min-width: 0; flex: 1; }
+        .cts-item__name {
+            font-weight: 600;
+            color: #2d3748;
+            font-size: 0.9rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .cts-item__rating {
+            font-size: 0.8rem;
+            color: #667eea;
+            margin-top: 2px;
+        }
+        .cts-item__rating--muted {
+            color: #718096;
+            font-weight: 500;
+        }
+        .cts-item__info {
+            width: 40px;
+            flex-shrink: 0;
+            border: none;
+            background: transparent;
+            color: #667eea;
+            font-size: 1.15rem;
+            cursor: pointer;
+            border-radius: 8px;
+            line-height: 1;
+            transition: background 0.15s;
+        }
+        .cts-item__info:hover {
+            background: rgba(102, 126, 234, 0.12);
+        }
+
+        /* Glassmorphism teacher profile modal */
+        .teacher-glass-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: rgba(30, 41, 59, 0.35);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.25s ease, visibility 0.25s;
+        }
+        .teacher-glass-overlay.is-open {
+            visibility: visible;
+            opacity: 1;
+        }
+        .teacher-glass-modal {
+            width: 100%;
+            max-width: 420px;
+            max-height: min(88vh, 640px);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.72);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.85);
+            box-shadow: 0 25px 50px -12px rgba(30, 41, 59, 0.35), 0 0 0 1px rgba(255,255,255,0.5) inset;
+        }
+        .teacher-glass-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 16px 16px 0;
+        }
+        .teacher-glass-close {
+            border: none;
+            background: rgba(255,255,255,0.6);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            font-size: 1.4rem;
+            line-height: 1;
+            cursor: pointer;
+            color: #64748b;
+            flex-shrink: 0;
+        }
+        .teacher-glass-close:hover { background: rgba(255,255,255,0.95); color: #334155; }
+        .teacher-glass-body {
+            padding: 12px 18px 18px;
+            overflow-y: auto;
+            flex: 1;
+            min-height: 0;
+        }
+        .teacher-glass-hero {
+            display: flex;
+            gap: 14px;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .teacher-glass-hero img {
+            width: 88px;
+            height: 88px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid rgba(255,255,255,0.9);
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.2);
+        }
+        .teacher-glass-hero-placeholder {
+            width: 88px;
+            height: 88px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #c7d2fe, #e9d5ff);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+        }
+        .teacher-glass-title {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #1e293b;
+            margin: 0 0 4px;
+        }
+        .teacher-glass-rating { color: #667eea; font-weight: 600; font-size: 0.95rem; }
+        .teacher-glass-section { margin-top: 14px; }
+        .teacher-glass-section h4 {
+            margin: 0 0 8px;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #64748b;
+        }
+        .teacher-glass-bio {
+            font-size: 0.9rem;
+            color: #475569;
+            line-height: 1.5;
+        }
+        .teacher-glass-video {
+            margin-top: 10px;
+            border-radius: 12px;
+            overflow: hidden;
+            background: rgba(0,0,0,0.06);
+            aspect-ratio: 16/9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .teacher-glass-video video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .teacher-glass-video-placeholder {
+            padding: 20px;
+            text-align: center;
+            color: #94a3b8;
+            font-size: 0.85rem;
+        }
+        .teacher-glass-certs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .teacher-glass-cert-pill {
+            font-size: 0.75rem;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: rgba(102, 126, 234, 0.15);
+            color: #4c51bf;
+            font-weight: 600;
+        }
+        .teacher-glass-footer {
+            padding: 12px 18px 18px;
+            border-top: 1px solid rgba(148, 163, 184, 0.25);
+        }
+        .teacher-glass-select-btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #667eea, #5a67d8);
+            color: #fff;
+            font-weight: 700;
+            font-size: 0.95rem;
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(102, 126, 234, 0.4);
+        }
+        .teacher-glass-select-btn:hover {
+            filter: brightness(1.05);
+        }
     </style>
+    <link rel="stylesheet" href="css/student-sidebar-unified.css">
 </head>
-<body>
+<body class="student-portal">
     <div class="remoed-main">
         <nav class="remoed-sidebar">
-            <div class="remoed-logo" style="height:100px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding-top:24px;">
-                <img src="remoed-logo.png" alt="RemoEdPH Logo" style="height:50px; width:auto; display:inline-block; vertical-align:middle; filter: drop-shadow(0 2px 4px rgba(28, 167, 231, 0.3));">
-                <span class="remoed-title" style="font-size:1.4rem; font-weight:800; color:#1CA7E7; letter-spacing:1px; text-shadow: 2px 2px 4px rgba(28, 167, 231, 0.2);">RemoEdPH</span>
-                <div style="font-size: 0.75rem; color: #666;">Student Portal</div>
+            <div class="remoed-logo">
+                <img src="remoed-logo.png" alt="RemoEdPH Logo">
+                <span class="student-brand-caption">RemoEdPH</span>
+                <span class="remoed-title">RemoEdPH</span>
+                <div class="student-portal-label">Student Portal</div>
             </div>
-            <div class="remoed-user" style="display:flex; flex-direction:column; align-items:center; margin-bottom:24px;">
-                <div class="remoed-avatar" id="sidebar-avatar" style="position: relative; overflow: hidden; width: 3rem; height: 3rem;"> 
+            <div class="remoed-user">
+                <div class="remoed-avatar" id="student-avatar" onclick="window.location.href='student-profile.html'" style="cursor:pointer;">
                     <img id="profile-image" class="avatar-img" src="" alt="Profile" style="display: none;">
                     <span id="avatar-text" class="avatar-text">S</span>
                 </div>
-                <span class="remoed-username" id="sidebar-email">student@remoedph.com</span>
+                <span class="remoed-username" id="remoed-username"></span>
             </div>
             <ul class="remoed-menu">
                 <li onclick="window.location.href='student-dashboard.html'">🏠 <span>My Home</span></li>
@@ -755,6 +1092,7 @@
                 <li onclick="window.location.href='student-games-activities.html'">🎮 <span>Play & Learn</span></li>
                 <li onclick="window.location.href='student-profile.html'">👤 <span>My Profile</span></li>
                 <li onclick="window.location.href='student-assessment.html'">🎯 <span>My Level</span></li>
+                <li onclick="window.location.href='student-credits.html'">🎫 <span>My Credits</span></li>
                 <li id="logout-nav" style="margin-top:auto; color:#e74c3c; cursor:pointer;">🚪 <span>Exit</span></li>
             </ul>
         </nav>
@@ -887,6 +1225,30 @@
                                     <div class="error-message" id="lesson-error"></div>
                                     <small style="color: #666; font-size: 0.8rem; margin-top: 4px; display: block;">Select your level above to see available lessons</small>
                                 </div>
+
+                                <div class="form-group" id="teacher-preference-group" style="display: none;">
+                                    <label id="teacher-preference-label" for="custom-teacher-trigger">Choose teacher</label>
+                                    <div class="custom-teacher-select" id="custom-teacher-select">
+                                        <input type="hidden" id="booked-teacher-id" name="bookedTeacherId" value="" autocomplete="off">
+                                        <button type="button" class="custom-teacher-select__trigger" id="custom-teacher-trigger" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="teacher-preference-label">
+                                            <span class="custom-teacher-select__value">
+                                                <span class="custom-teacher-select__avatar-wrap" id="custom-teacher-trigger-avatar"><span class="cts-trigger-placeholder">⚡</span></span>
+                                                <span class="custom-teacher-select__text" id="custom-teacher-trigger-text">First available (default)</span>
+                                            </span>
+                                            <span class="custom-teacher-select__chevron" aria-hidden="true"></span>
+                                        </button>
+                                        <ul class="custom-teacher-select__list" id="custom-teacher-list" role="listbox" hidden></ul>
+                                    </div>
+                                    <small style="color: #666; font-size: 0.8rem; margin-top: 4px; display: block;">Tap the box to choose a teacher or “First available”. Use ⓘ to view full profile without selecting yet.</small>
+                                </div>
+
+                                <div class="form-group" id="assignment-mode-group" style="display: none;">
+                                    <label for="assignment-mode">When using “First available”</label>
+                                    <select id="assignment-mode">
+                                        <option value="firstAvailable">First available (alphabetical)</option>
+                                        <option value="roundRobin">Round robin (fair rotation)</option>
+                                    </select>
+                                </div>
                                 
                                 <button type="submit" class="book-btn" id="book-btn">
                                     <span id="book-btn-text">Book Class</span>
@@ -998,15 +1360,15 @@
             return monday.toJSDate();
         }
         
-        // Set sidebar avatar and email
+        // Set sidebar avatar and greeting
         const username = localStorage.getItem('remoedUsername') || 'Student';
         const studentId = localStorage.getItem('studentId');
 
         // Set fallback initials into the avatar-text element (do not overwrite the container)
         const avatarTextEl = document.getElementById('avatar-text');
         if (avatarTextEl) avatarTextEl.textContent = username[0].toUpperCase();
-        const sidebarEmailEl = document.getElementById('sidebar-email');
-        if (sidebarEmailEl) sidebarEmailEl.textContent = username;
+        const sidebarNameEl = document.getElementById('remoed-username');
+        if (sidebarNameEl) sidebarNameEl.textContent = 'Hi, ' + username + '!';
         
         // Load profile picture if available
         if (studentId) {
@@ -1030,6 +1392,18 @@
         // Initialize the page
         document.addEventListener('DOMContentLoaded', function() {
             console.log('🚀 DOM loaded, starting initialization...');
+
+            try {
+                const pt = new URLSearchParams(window.location.search).get('preferredTeacher');
+                if (pt && String(pt).trim()) {
+                    sessionStorage.setItem('prefillPreferredTeacherId', String(pt).trim());
+                    const u = new URL(window.location.href);
+                    u.searchParams.delete('preferredTeacher');
+                    window.history.replaceState({}, '', u.pathname + u.search + u.hash);
+                }
+            } catch (e) {
+                console.warn('preferredTeacher query', e);
+            }
             
             try {
                 // Validate token first
@@ -1040,6 +1414,7 @@
                     generateWeeklyGrid();
                     setupEventListeners();
                     setupModalEventListeners();
+                    setupCustomTeacherSelectorListeners();
                 }).catch((error) => {
                     console.error('❌ Token validation failed:', error);
                     
@@ -1415,14 +1790,38 @@
                         }
                         if (!utc) return;
                         const { key, local } = toKey(utc, slot.date, slot.time, slot.teacherLocalZone);
-                        availableSlots.set(key, {
-                            ...slot,
-                            utc,
-                            localDate: local.date,
-                            localTime: local.time,
-                            localLabel: local.label,
-                            clientTz: tz
-                        });
+                        const tid = slot.teacherId;
+                        const tname = slot.teacherName || tid;
+                        const existing = availableSlots.get(key);
+                        if (existing) {
+                            const ids = new Set(existing.candidateTeacherIds || (existing.teacherId ? [existing.teacherId] : []));
+                            if (tid) ids.add(tid);
+                            const names = { ...(existing.teacherNames || {}) };
+                            if (tid) names[tid] = tname;
+                            availableSlots.set(key, {
+                                ...existing,
+                                ...slot,
+                                utc: existing.utc || utc,
+                                teacherId: tid || existing.teacherId,
+                                candidateTeacherIds: [...ids],
+                                teacherNames: names,
+                                localDate: local.date,
+                                localTime: local.time,
+                                localLabel: local.label,
+                                clientTz: tz
+                            });
+                        } else {
+                            availableSlots.set(key, {
+                                ...slot,
+                                utc,
+                                localDate: local.date,
+                                localTime: local.time,
+                                localLabel: local.label,
+                                clientTz: tz,
+                                candidateTeacherIds: tid ? [tid] : [],
+                                teacherNames: tid ? { [tid]: tname } : {}
+                            });
+                        }
                     });
                 } else {
                     console.log('🔍 Student booking - No slots found in API response');
@@ -1652,18 +2051,21 @@
                 const availableSlot = availableSlots.get(slotKey);
                 if (availableSlot) {
                     // Validate that teacherId exists
-                    if (!availableSlot.teacherId) {
-                        console.error('❌ Available slot missing teacherId:', availableSlot);
+                    const cand = availableSlot.candidateTeacherIds || (availableSlot.teacherId ? [availableSlot.teacherId] : []);
+                    if (!cand.length) {
+                        console.error('❌ Available slot has no teachers:', availableSlot);
                         showMessage('Error: This slot is missing teacher information. Please refresh the page and try again.', 'error');
                         return;
                     }
                     
-                    console.log('🔍 Selecting slot:', { date, time, teacherId: availableSlot.teacherId });
+                    console.log('🔍 Selecting slot:', { date, time, teacherId: availableSlot.teacherId, candidates: availableSlot.candidateTeacherIds });
                     selectedSlots.set(slotKey, { 
                         date: availableSlot.localDate || date, 
                         time: availableSlot.localTime || time, 
                         utc: availableSlot.utc,
-                        teacherId: availableSlot.teacherId // use the teacher ID from the slot data
+                        teacherId: availableSlot.teacherId,
+                        candidateTeacherIds: availableSlot.candidateTeacherIds || (availableSlot.teacherId ? [availableSlot.teacherId] : []),
+                        teacherNames: availableSlot.teacherNames || {}
                     });
                     cell.classList.add('selected');
                     cell.textContent = '✓';
@@ -1705,6 +2107,7 @@
             // Clear selected slots and reset form
             selectedSlots.clear();
             document.getElementById('booking-form').reset();
+            resetCustomTeacherSelector();
             updateBookingPanel();
             
             // Clear selected cells
@@ -1732,6 +2135,357 @@
         function setupFloatingPanelListeners() {
             // SINGLE BOOKING: Floating panels removed - no listeners needed
         }
+
+        let customTeacherListTeachers = [];
+        let teacherGlassPending = null;
+
+        function teacherPhotoUrl(photo) {
+            if (!photo) return '';
+            if (/^https?:\/\//i.test(photo)) return photo;
+            if (/^data:/i.test(photo)) return photo;
+            const base = window.location.origin;
+            return base + (photo.startsWith('/') ? photo : '/' + photo);
+        }
+
+        function escapeHtmlTeacher(s) {
+            if (s == null) return '';
+            const d = document.createElement('div');
+            d.textContent = s;
+            return d.innerHTML;
+        }
+
+        function updateAssignmentModeFromTeacherInput() {
+            const modeGroup = document.getElementById('assignment-mode-group');
+            const hid = document.getElementById('booked-teacher-id');
+            if (!modeGroup) return;
+            const slot = selectedSlots.size ? Array.from(selectedSlots.values())[0] : null;
+            const rawIds = slot ? (slot.candidateTeacherIds || (slot.teacherId ? [slot.teacherId] : [])) : [];
+            const ids = [...new Set(rawIds.map((id) => (id != null ? String(id).trim() : '')).filter(Boolean))];
+            const useAuto = !(hid && hid.value && String(hid.value).trim());
+            modeGroup.style.display = useAuto && ids.length > 1 ? 'block' : 'none';
+        }
+
+        function setTeacherTriggerFromSelection(teacherId, label, photo) {
+            const hid = document.getElementById('booked-teacher-id');
+            const textEl = document.getElementById('custom-teacher-trigger-text');
+            const av = document.getElementById('custom-teacher-trigger-avatar');
+            const tid = teacherId != null ? String(teacherId).trim() : '';
+            if (hid) hid.value = tid;
+            if (textEl) textEl.textContent = label || 'First available (default)';
+            if (av) {
+                if (photo && tid) {
+                    const url = teacherPhotoUrl(photo);
+                    av.innerHTML = `<img src="${escapeHtmlTeacher(url)}" alt="" width="28" height="28" loading="lazy" />`;
+                } else {
+                    av.innerHTML = tid
+                        ? '<span class="cts-trigger-placeholder" aria-hidden="true">👤</span>'
+                        : '<span class="cts-trigger-placeholder" aria-hidden="true">⚡</span>';
+                }
+            }
+            updateAssignmentModeFromTeacherInput();
+        }
+
+        function closeCustomTeacherDropdown() {
+            const list = document.getElementById('custom-teacher-list');
+            const tr = document.getElementById('custom-teacher-trigger');
+            if (list) {
+                list.hidden = true;
+                list.classList.remove('is-open');
+            }
+            if (tr) tr.setAttribute('aria-expanded', 'false');
+        }
+
+        function openCustomTeacherDropdown() {
+            const list = document.getElementById('custom-teacher-list');
+            const tr = document.getElementById('custom-teacher-trigger');
+            if (list) {
+                list.hidden = false;
+                list.classList.add('is-open');
+            }
+            if (tr) tr.setAttribute('aria-expanded', 'true');
+        }
+
+        function resetCustomTeacherSelector() {
+            setTeacherTriggerFromSelection('', 'First available (default)', null);
+            closeCustomTeacherDropdown();
+            const listEl = document.getElementById('custom-teacher-list');
+            if (listEl) listEl.innerHTML = '';
+            customTeacherListTeachers = [];
+        }
+
+        function openTeacherGlassModal(t) {
+            teacherGlassPending = t;
+            const overlay = document.getElementById('teacher-profile-glass-overlay');
+            const body = document.getElementById('teacher-glass-body');
+            if (!overlay || !body || !t) return;
+            const display = t.displayName || t.name || t.teacherId;
+            const photo = teacherPhotoUrl(t.photo);
+            const rating = t.rating != null ? Number(t.rating).toFixed(1) : '4.9';
+            const intro = (t.intro || '').trim() || 'This teacher hasn’t added a bio yet.';
+            const certs = Array.isArray(t.certifications) ? t.certifications.filter(Boolean) : [];
+            const certHtml = certs.length
+                ? `<div class="teacher-glass-certs">${certs.map((c) => `<span class="teacher-glass-cert-pill">${escapeHtmlTeacher(c)}</span>`).join('')}</div>`
+                : '<p class="teacher-glass-bio" style="opacity:0.7">No certificates listed yet.</p>';
+
+            let videoBlock = '';
+            const v = t.videoIntroduction;
+            if (v && (String(v).startsWith('http') || String(v).startsWith('data:') || String(v).startsWith('/'))) {
+                const vsrc = teacherPhotoUrl(v) || v;
+                videoBlock = `<div class="teacher-glass-section"><h4>Intro video</h4><div class="teacher-glass-video"><video controls playsinline preload="metadata" src="${escapeHtmlTeacher(vsrc)}"></video></div></div>`;
+            } else {
+                videoBlock = `<div class="teacher-glass-section"><h4>Intro video</h4><div class="teacher-glass-video teacher-glass-video-placeholder">Your teacher may add a short introduction clip here.</div></div>`;
+            }
+
+            const heroImg = photo
+                ? `<img src="${escapeHtmlTeacher(photo)}" alt="">`
+                : `<div class="teacher-glass-hero-placeholder" aria-hidden="true">👤</div>`;
+
+            body.innerHTML = `
+                <div class="teacher-glass-hero">
+                    ${heroImg}
+                    <div>
+                        <h3 class="teacher-glass-title" id="teacher-glass-title">${escapeHtmlTeacher(display)}</h3>
+                        <div class="teacher-glass-rating">⭐️ ${escapeHtmlTeacher(rating)} <span style="font-weight:500;color:#94a3b8;font-size:0.8rem;">(${t.reviewCount || 0} reviews)</span></div>
+                    </div>
+                </div>
+                <div class="teacher-glass-section"><h4>About</h4><div class="teacher-glass-bio">${escapeHtmlTeacher(intro)}</div></div>
+                <div class="teacher-glass-section"><h4>Certificates</h4>${certHtml}</div>
+                ${videoBlock}`;
+
+            overlay.classList.add('is-open');
+            overlay.setAttribute('aria-hidden', 'false');
+        }
+
+        function closeTeacherGlassModal() {
+            const overlay = document.getElementById('teacher-profile-glass-overlay');
+            if (!overlay) return;
+            overlay.querySelectorAll('video').forEach((v) => {
+                try {
+                    v.pause();
+                } catch (e) { /* ignore */ }
+            });
+            overlay.classList.remove('is-open');
+            overlay.setAttribute('aria-hidden', 'true');
+        }
+
+        function setupCustomTeacherSelectorListeners() {
+            const trigger = document.getElementById('custom-teacher-trigger');
+            const root = document.getElementById('custom-teacher-select');
+            if (!trigger || trigger.dataset.bound === '1') return;
+            trigger.dataset.bound = '1';
+            trigger.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const list = document.getElementById('custom-teacher-list');
+                if (!list || list.children.length === 0) return;
+                if (list.hidden) openCustomTeacherDropdown();
+                else closeCustomTeacherDropdown();
+            });
+            document.addEventListener('click', (e) => {
+                if (root && !e.target.closest('.custom-teacher-select')) closeCustomTeacherDropdown();
+            });
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    closeCustomTeacherDropdown();
+                    closeTeacherGlassModal();
+                }
+            });
+
+            const glassClose = document.getElementById('teacher-glass-close');
+            const glassOverlay = document.getElementById('teacher-profile-glass-overlay');
+            const glassSelect = document.getElementById('teacher-glass-select-btn');
+            if (glassClose) glassClose.addEventListener('click', () => closeTeacherGlassModal());
+            if (glassOverlay) {
+                glassOverlay.addEventListener('click', (e) => {
+                    if (e.target === glassOverlay) closeTeacherGlassModal();
+                });
+            }
+            if (glassSelect) {
+                glassSelect.addEventListener('click', () => {
+                    if (!teacherGlassPending) return;
+                    const t = teacherGlassPending;
+                    const display = t.displayName || t.name || t.teacherId;
+                    setTeacherTriggerFromSelection(t.teacherId, display, t.photo);
+                    closeTeacherGlassModal();
+                    closeCustomTeacherDropdown();
+                });
+            }
+        }
+
+        /**
+         * When several teachers share the same open slot, show custom teacher selector + hidden booked-teacher-id.
+         * Empty booked-teacher-id = first available (server uses assignmentMode).
+         */
+        async function syncTeacherPreferenceControls() {
+            setupCustomTeacherSelectorListeners();
+            const prefGroup = document.getElementById('teacher-preference-group');
+            const modeGroup = document.getElementById('assignment-mode-group');
+            const listEl = document.getElementById('custom-teacher-list');
+            if (!prefGroup || !modeGroup || !listEl) return;
+
+            if (selectedSlots.size === 0) {
+                prefGroup.style.display = 'none';
+                modeGroup.style.display = 'none';
+                resetCustomTeacherSelector();
+                return;
+            }
+
+            const slot = Array.from(selectedSlots.values())[0];
+            const rawIds = slot.candidateTeacherIds || (slot.teacherId ? [slot.teacherId] : []);
+            const ids = [...new Set(rawIds.map((id) => (id != null ? String(id).trim() : '')).filter(Boolean))].sort(
+                (a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })
+            );
+            const names = slot.teacherNames || {};
+
+            let teachers = [];
+            if (slot.utc) {
+                try {
+                    const res = await fetch('/api/teacher/available-teachers?dateTimeUtc=' + encodeURIComponent(slot.utc));
+                    if (res.ok) {
+                        const data = await res.json();
+                        teachers = (data.teachers || []).filter((x) => ids.includes(x.teacherId));
+                    }
+                } catch (e) {
+                    console.warn('available-teachers', e);
+                }
+            }
+            if (teachers.length === 0) {
+                teachers = ids.map((tid) => ({
+                    teacherId: tid,
+                    displayName: names[tid] || names[String(tid)] || tid,
+                    name: tid,
+                    photo: null,
+                    intro: '',
+                    certifications: [],
+                    rating: 4.9,
+                    reviewCount: 0,
+                    videoIntroduction: null
+                }));
+            }
+            customTeacherListTeachers = teachers;
+            listEl.innerHTML = '';
+            closeCustomTeacherDropdown();
+
+            if (ids.length > 1) {
+                prefGroup.style.display = 'block';
+                const liFirst = document.createElement('li');
+                liFirst.className = 'cts-item cts-item--first';
+                liFirst.setAttribute('role', 'option');
+                const btnFirst = document.createElement('button');
+                btnFirst.type = 'button';
+                btnFirst.className = 'cts-item__main';
+                btnFirst.innerHTML =
+                    '<div class="cts-item__photo cts-item__photo--placeholder" aria-hidden="true">⚡</div>' +
+                    '<div class="cts-item__center"><div class="cts-item__name">First available (default)</div>' +
+                    '<div class="cts-item__rating cts-item__rating--muted">Auto-assign from open teachers</div></div>';
+                btnFirst.addEventListener('click', () => {
+                    setTeacherTriggerFromSelection('', 'First available (default)', null);
+                    closeCustomTeacherDropdown();
+                });
+                liFirst.appendChild(btnFirst);
+                listEl.appendChild(liFirst);
+
+                teachers.forEach((t) => {
+                    const display = t.displayName || t.name || t.teacherId;
+                    const rating = t.rating != null ? Number(t.rating).toFixed(1) : '4.9';
+                    const li = document.createElement('li');
+                    li.className = 'cts-item';
+                    li.setAttribute('role', 'option');
+
+                    const btnMain = document.createElement('button');
+                    btnMain.type = 'button';
+                    btnMain.className = 'cts-item__main';
+                    const wrap = document.createElement('div');
+                    wrap.className = 'cts-item__photo-wrap';
+                    const purl = teacherPhotoUrl(t.photo);
+                    if (purl) {
+                        const img = document.createElement('img');
+                        img.className = 'cts-item__photo';
+                        img.src = purl;
+                        img.alt = '';
+                        wrap.appendChild(img);
+                    } else {
+                        const ph = document.createElement('div');
+                        ph.className = 'cts-item__photo cts-item__photo--placeholder';
+                        ph.textContent = '👤';
+                        wrap.appendChild(ph);
+                    }
+                    const center = document.createElement('div');
+                    center.className = 'cts-item__center';
+                    const nm = document.createElement('div');
+                    nm.className = 'cts-item__name';
+                    nm.textContent = display;
+                    const rt = document.createElement('div');
+                    rt.className = 'cts-item__rating';
+                    rt.textContent = '⭐️ ' + rating;
+                    center.appendChild(nm);
+                    center.appendChild(rt);
+                    btnMain.appendChild(wrap);
+                    btnMain.appendChild(center);
+                    btnMain.addEventListener('click', () => {
+                        setTeacherTriggerFromSelection(t.teacherId, display, t.photo);
+                        closeCustomTeacherDropdown();
+                    });
+
+                    const btnInfo = document.createElement('button');
+                    btnInfo.type = 'button';
+                    btnInfo.className = 'cts-item__info';
+                    btnInfo.setAttribute('aria-label', 'View profile for ' + display);
+                    btnInfo.textContent = 'ⓘ';
+                    btnInfo.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        openTeacherGlassModal(t);
+                    });
+
+                    li.appendChild(btnMain);
+                    li.appendChild(btnInfo);
+                    listEl.appendChild(li);
+                });
+
+                setTeacherTriggerFromSelection('', 'First available (default)', null);
+                updateAssignmentModeFromTeacherInput();
+            } else if (ids.length === 1) {
+                prefGroup.style.display = 'none';
+                modeGroup.style.display = 'none';
+                const only = teachers[0];
+                if (only) {
+                    setTeacherTriggerFromSelection(only.teacherId, only.displayName || only.name, only.photo);
+                } else {
+                    const tid = ids[0];
+                    setTeacherTriggerFromSelection(tid, names[tid] || names[String(tid)] || tid, null);
+                }
+            } else {
+                prefGroup.style.display = 'none';
+                modeGroup.style.display = 'none';
+                resetCustomTeacherSelector();
+            }
+
+            try {
+                const prefill = sessionStorage.getItem('prefillPreferredTeacherId');
+                if (prefill && ids.includes(prefill)) {
+                    if (ids.length > 1) {
+                        const t = teachers.find((x) => x.teacherId === prefill);
+                        if (t) {
+                            setTeacherTriggerFromSelection(
+                                t.teacherId,
+                                t.displayName || t.name || t.teacherId,
+                                t.photo
+                            );
+                        } else {
+                            setTeacherTriggerFromSelection(
+                                prefill,
+                                names[prefill] || names[String(prefill)] || prefill,
+                                null
+                            );
+                        }
+                        updateAssignmentModeFromTeacherInput();
+                    }
+                    sessionStorage.removeItem('prefillPreferredTeacherId');
+                }
+            } catch (e) {
+                console.warn('prefillPreferredTeacherId', e);
+            }
+        }
         
         function updateBookingPanel() {
             const slotsContainer = document.getElementById('selected-slots-list');
@@ -1746,6 +2500,7 @@
                 headerContainer.style.display = 'flex';
                 countElement.textContent = 'No class selected';
                 slotsContainer.innerHTML = '<div style="text-align: center; color: #666; font-style: italic; padding: 20px;">Click on an available time slot (green cells) to select it.</div>';
+                void syncTeacherPreferenceControls();
                 return;
             }
             
@@ -1786,6 +2541,7 @@
             `;
             
             slotsContainer.appendChild(slotDiv);
+            syncTeacherPreferenceControls();
         }
         
         function removeSlot(slotKey) {
@@ -1829,6 +2585,8 @@
             // SINGLE BOOKING: Show single slot info
             const slot = Array.from(selectedSlots.values())[0];
             const date = new Date(slot.date);
+            const cands = slot.candidateTeacherIds || (slot.teacherId ? [slot.teacherId] : []);
+            const nTeachers = new Set(cands.filter(Boolean).map((x) => String(x))).size;
             
             summaryContainer.style.display = 'block';
             dateElement.textContent = date.toLocaleDateString('en-US', { 
@@ -1837,7 +2595,11 @@
                 day: 'numeric',
                 year: 'numeric'
             });
-            timeElement.textContent = slot.time;
+            let timeLine = slot.time;
+            if (nTeachers > 1) {
+                timeLine += ` · ${nTeachers} teachers available — choose below`;
+            }
+            timeElement.textContent = timeLine;
         }
         
         // Clear field error highlighting
@@ -1999,9 +2761,16 @@
             console.log('🔍 Using token:', token ? 'Token exists' : 'No token');
             
             // Validate slot
-            if (!slot.teacherId || !slot.date || !slot.time || !slot.utc) {
+            if (!slot.date || !slot.time || !slot.utc) {
                 console.error('❌ Slot validation failed:', slot);
-                showMessage(`Error: Selected slot is missing required information (teacherId: ${slot.teacherId ? 'OK' : 'MISSING'}, date: ${slot.date ? 'OK' : 'MISSING'}, time: ${slot.time ? 'OK' : 'MISSING'}, utc: ${slot.utc ? 'OK' : 'MISSING'}). Please refresh and try again.`, 'error');
+                showMessage(`Error: Selected slot is missing required information (date/time/UTC). Please refresh and try again.`, 'error');
+                bookBtn.disabled = false;
+                bookBtnText.textContent = 'Book Class';
+                return;
+            }
+            const hasTeacher = (slot.candidateTeacherIds && slot.candidateTeacherIds.length) || slot.teacherId;
+            if (!hasTeacher) {
+                showMessage('Error: No teacher is linked to this slot. Please refresh and pick another time.', 'error');
                 bookBtn.disabled = false;
                 bookBtnText.textContent = 'Book Class';
                 return;
@@ -2029,20 +2798,31 @@
             
             try {
                 // Book single slot - use trimmed values
+                const bookedHid = document.getElementById('booked-teacher-id');
+                const modeEl = document.getElementById('assignment-mode');
+                const preferredTeacherId =
+                    bookedHid && bookedHid.value ? String(bookedHid.value).trim() : '';
+                const assignmentMode = modeEl && modeEl.value ? modeEl.value : 'firstAvailable';
+
                 const requestBody = {
-                    teacherId: slot.teacherId,
-                    date: slot.date, // legacy
-                    time: slot.time, // legacy
+                    date: slot.date,
+                    time: slot.time,
                     dateTimeUtc: slot.utc,
                     timezone: userTimezone,
                     lesson: finalLessonTitle,
                     lessonId: lessonId,
                     studentLevel: studentLevel
                 };
+                if (preferredTeacherId) {
+                    requestBody.teacherId = preferredTeacherId;
+                    requestBody.preferredTeacherId = preferredTeacherId;
+                } else {
+                    requestBody.assignmentMode = assignmentMode;
+                }
                 
                 console.log('🔍 Sending booking request:', requestBody);
                 console.log('🔍 Request body fields:', {
-                    teacherId: requestBody.teacherId ? '✓' : '✗ MISSING',
+                    teacherId: requestBody.teacherId ? '✓' : '(auto)',
                     date: requestBody.date ? '✓' : '✗ MISSING',
                     time: requestBody.time ? '✓' : '✗ MISSING',
                     lesson: requestBody.lesson ? '✓' : '✗ MISSING',
@@ -2405,6 +3185,20 @@
             }
         }
     </script>
+
+    <div id="teacher-profile-glass-overlay" class="teacher-glass-overlay" aria-hidden="true">
+        <div class="teacher-glass-modal" role="dialog" aria-modal="true" aria-labelledby="teacher-glass-title">
+            <div class="teacher-glass-head">
+                <div style="flex:1"></div>
+                <button type="button" class="teacher-glass-close" id="teacher-glass-close" aria-label="Close">&times;</button>
+            </div>
+            <div class="teacher-glass-body" id="teacher-glass-body"></div>
+            <div class="teacher-glass-footer">
+                <button type="button" class="teacher-glass-select-btn" id="teacher-glass-select-btn">Select this teacher</button>
+            </div>
+        </div>
+    </div>
+
     <script src="avatar-helper.js"></script>
 </body>
 </html>

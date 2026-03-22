@@ -225,6 +225,88 @@ Please do not reply to this email.
 © 2025 RemoEdPH. All rights reserved.
     `
   }),
+  subscriptionConfirmation: (email, username, plan, planPrice) => {
+    const planLabel =
+      plan === '1month' ? 'RemoSpark (1 Month)' :
+      plan === '3months' ? 'RemoSteady (3 Months)' :
+      plan === '6months' ? 'RemoScholar (6 Months)' :
+      plan === '1year' ? 'RemoSummit (12 Months)' :
+      String(plan || 'Subscription');
+
+    const amount = Number(planPrice || 0) || 0;
+    const amountText = amount ? `₱${amount.toLocaleString()}` : '₱0';
+    const loginUrl = `${process.env.FRONTEND_URL || 'http://localhost:5000'}/student-login.html`;
+
+    return {
+      subject: `RemoEdPH - Subscription Activated`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Subscription Activated - RemoEdPH</title>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: #1ca7e7; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
+            .box { background: #fff; border: 2px solid #1ca7e7; border-radius: 8px; padding: 16px; margin: 18px 0; }
+            .label { color: #64748b; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; }
+            .value { font-weight: 800; font-size: 16px; color: #0f172a; margin-top: 4px; }
+            .btn { display: inline-block; background: #1ca7e7; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 800; }
+            .footer { text-align: center; margin-top: 26px; color: #666; font-size: 14px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>✅ Subscription Activated</h1>
+              <p>Welcome to RemoEdPH</p>
+            </div>
+            <div class="content">
+              <p>Hello ${username || (email ? email.split('@')[0] : 'Student')}!</p>
+              <p>Your payment has been confirmed and your subscription is now active.</p>
+
+              <div class="box">
+                <div class="label">Plan</div>
+                <div class="value">${planLabel}</div>
+              </div>
+              <div class="box">
+                <div class="label">Amount Paid</div>
+                <div class="value">${amountText}</div>
+              </div>
+
+              <p style="margin-top: 18px;">You can now log in and click <strong>Start Learning</strong>.</p>
+              <div style="text-align:center; margin: 22px 0;">
+                <a class="btn" href="${loginUrl}">Go to Student Login</a>
+              </div>
+
+              <p>If you have questions, please contact support.</p>
+            </div>
+            <div class="footer">
+              <p>This is an automated message from RemoEdPH. Please do not reply.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+      text: `
+RemoEdPH - Subscription Activated
+
+Hello ${username || (email ? email.split('@')[0] : 'Student')}!
+
+Your payment has been confirmed and your subscription is now active.
+
+Plan: ${planLabel}
+Amount Paid: ${amountText}
+
+Login to start learning: ${loginUrl}
+
+This is an automated message from RemoEdPH. Please do not reply.
+      `.trim()
+    };
+  },
   passwordReset: (username, newPassword, userType) => ({
     subject: `RemoEdPH - New Password Generated`,
     html: `
@@ -582,6 +664,64 @@ async function sendTeacherRegistrationEmail(email, username, password, firstName
   }
 }
 
+// Send subscription confirmation email
+async function sendSubscriptionEmail(email, username, plan, planPrice) {
+  try {
+    if (!isEmailConfigured) {
+      console.log('⚠️  Email not configured - subscription email not sent');
+      return {
+        success: false,
+        fallback: true,
+        error: 'Email service not configured'
+      };
+    }
+
+    const template = emailTemplates.subscriptionConfirmation(email, username, plan, planPrice);
+    console.log(`📧 Attempting to send subscription confirmation email to: ${email} via ${activeEmailService.toUpperCase()}`);
+
+    let result;
+    if (activeEmailService === 'sendgrid') {
+      result = await sendEmailViaSendGrid(email, template.subject, template.html, template.text);
+    } else if (activeEmailService === 'mailgun') {
+      result = await sendEmailViaMailgun(email, template.subject, template.html, template.text);
+    } else if (activeEmailService === 'smtp') {
+      if (!transporterVerified) {
+        console.log('🔍 Verifying SMTP connection before sending subscription email...');
+        try {
+          await transporter.verify();
+          transporterVerified = true;
+          console.log('✅ SMTP connection verified');
+        } catch (verifyError) {
+          const safeError = String(verifyError).replace(/(password|pass|pwd)=[^\s&"']*/gi, '$1=***');
+          console.error('❌ SMTP verification failed:', safeError);
+          return { success: false, error: `SMTP connection failed: ${verifyError.message || 'Connection verification failed'}` };
+        }
+      }
+
+      const info = await transporter.sendMail({
+        from: `"RemoEdPH" <${emailConfig.auth.user}>`,
+        to: email,
+        subject: template.subject,
+        html: template.html,
+        text: template.text
+      });
+      result = { success: true, messageId: info.messageId };
+    } else {
+      return { success: false, error: 'No email service configured' };
+    }
+
+    console.log('✅ Subscription email sent successfully:', result.messageId);
+    return result;
+  } catch (error) {
+    const errorMessage = error.message || String(error);
+    const safeErrorMessage = errorMessage
+      .replace(/(password|pass|pwd|api[_-]?key)=[^\s&"']*/gi, '$1=***')
+      .replace(/auth[^}]*pass[^}]*}/gi, 'auth:{...}');
+    console.error(`❌ Error sending subscription email via ${activeEmailService}:`, safeErrorMessage);
+    return { success: false, error: errorMessage };
+  }
+}
+
 // Send password reset email
 async function sendPasswordResetEmail(email, username, newPassword, userType) {
   return await sendEmail(email, 'passwordReset', {
@@ -658,6 +798,7 @@ async function testEmailSending(testEmail) {
 module.exports = {
   sendPasswordResetEmail,
   sendTeacherRegistrationEmail,
+  sendSubscriptionEmail,
   sendEmail,
   getEmailConfigStatus,
   testEmailSending

@@ -427,6 +427,49 @@
         .notification-item:last-child, .upcoming-class-item:last-child {
             border-bottom: none;
         }
+
+        /* Community & Social Responsibility */
+        .community-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+        @media (max-width: 768px) {
+            .community-grid { grid-template-columns: 1fr; }
+        }
+        .community-item {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid #e0e6ed;
+            background: #fafdff;
+        }
+        .community-icon {
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(102, 126, 234, 0.12);
+            color: #667eea;
+            flex-shrink: 0;
+            font-size: 1.05rem;
+        }
+        .community-item h4 {
+            margin: 0;
+            font-size: 0.95rem;
+            color: #1a202c;
+            font-weight: 700;
+        }
+        .community-item p {
+            margin: 4px 0 0 0;
+            font-size: 0.85rem;
+            color: #64748b;
+            line-height: 1.5;
+        }
         
         /* Fix class schedule table overlap */
         .remoed-class-table-preview { 
@@ -1165,21 +1208,63 @@
             <!-- Main Content Grid -->
             <div class="remoed-grid">
                 <div>
-                    <!-- Attendance Analysis Section -->
-                    <div class="remoed-section">
-                        <div class="remoed-section-title" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; padding-bottom: 0.5rem;">
-                            <div style="display: flex; align-items: center; gap: 10px;">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="color: #667eea;">
-                                    <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
-                                </svg>
-                                <span>Attendance Analysis (This Week)</span>
-                            </div>
-                            <a href="teacher-attendance-analysis.html" style="color: #667eea; text-decoration: none; font-size: 0.8rem; font-weight: 600;">View Full →</a>
+                    <!-- Community & Social Responsibility -->
+                    <div class="remoed-section" id="community-responsibility">
+                        <div class="remoed-section-title" style="display: flex; align-items: center; gap: 10px;">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="color: #667eea;">
+                                <path d="M12 12c2.21 0 4-1.79 4-4S14.21 4 12 4 8 5.79 8 8s1.79 4 4 4zm0 2c-3.33 0-8 1.67-8 5v1h16v-1c0-3.33-4.67-5-8-5z"/>
+                            </svg>
+                            Community & Social Responsibility
                         </div>
-                        <!-- Pie Chart Container -->
-                        <div style="display: flex; align-items: center; justify-content: center; padding: 20px;">
-                            <div id="attendance-pie-chart" style="position: relative; width: 280px; height: 280px;">
-                                <!-- Pie chart will be generated here -->
+                        <div class="community-grid">
+                            <div class="community-item">
+                                <div class="community-icon">👨‍👩‍👧</div>
+                                <div>
+                                    <h4>Family Day</h4>
+                                    <p>Activities that encourage parent involvement and celebrate learning together.</p>
+                                </div>
+                            </div>
+                            <div class="community-item">
+                                <div class="community-icon">👩‍🏫</div>
+                                <div>
+                                    <h4>Teachers’ Day</h4>
+                                    <p>Recognizing teacher dedication through appreciation and community events.</p>
+                                </div>
+                            </div>
+                            <div class="community-item">
+                                <div class="community-icon">🧒</div>
+                                <div>
+                                    <h4>Students’ Day</h4>
+                                    <p>Celebrating student progress and building confidence through fun events.</p>
+                                </div>
+                            </div>
+                            <div class="community-item">
+                                <div class="community-icon">🥣</div>
+                                <div>
+                                    <h4>Feeding Program</h4>
+                                    <p>Supporting learner wellness through food assistance and community outreach.</p>
+                                </div>
+                            </div>
+                            <div class="community-item">
+                                <div class="community-icon">♻️</div>
+                                <div>
+                                    <h4>Waste Management</h4>
+                                    <p>Promoting proper segregation and eco-friendly habits at home and in school.</p>
+                                </div>
+                            </div>
+                            <div class="community-item">
+                                <div class="community-icon">🧠</div>
+                                <div>
+                                    <h4>Mental Health Support</h4>
+                                    <p>Resources and awareness activities to support a safe, positive learning environment.</p>
+                                </div>
+                            </div>
+                            <div class="community-item">
+                                <div class="community-icon">🌱</div>
+                                <div>
+                                    <h4>Sustainability Projects</h4>
+                                    <p>Simple projects and activities that build care for the environment.</p>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1195,6 +1280,26 @@
                         </div>
                         <div id="announcement-content" style="background: #fafdff; border-radius: 8px; padding: 10px; margin-bottom: 8px; max-height: 300px; overflow-y: auto;">
                             <!-- Announcements will be loaded here -->
+                        </div>
+                    </div>
+                    <!-- Referral Link (Teacher) -->
+                    <div class="remoed-section" id="teacher-referral-box">
+                        <div class="remoed-section-title" style="display:flex;align-items:center;gap:10px;">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="color:#667eea;">
+                                <path d="M10 13a5 5 0 0 1 0-7l1-1a5 5 0 0 1 7 7l-1 1"/>
+                                <path d="M14 11a5 5 0 0 1 0 7l-1 1a5 5 0 0 1-7-7l1-1"/>
+                            </svg>
+                            Your Unique Referral Link
+                        </div>
+                        <div style="font-size:0.85rem;color:#64748b;margin:-4px 0 10px 0;">Earn <strong>₱25</strong> per successful subscription</div>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                            <div style="flex:1;min-width:240px;">
+                                <div style="font-size:0.75rem;font-weight:700;color:#334155;margin-bottom:4px;">Subscription referral link</div>
+                                <div style="display:flex;gap:8px;align-items:center;">
+                                    <input id="teacher-ref-link" readonly style="flex:1;padding:10px;border:1px solid #d1d5db;border-radius:8px;font-size:0.85rem;" value="Loading…" />
+                                    <button type="button" onclick="copyRefLink('teacher-ref-link')" style="padding:10px 12px;border:none;border-radius:8px;background:#667eea;color:#fff;font-weight:800;cursor:pointer;">Copy</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1247,8 +1352,34 @@
     <script src="script.js"></script>
   <script src="avatar-helper.js"></script>
   <script>
+        async function loadTeacherReferralLinks() {
+            try {
+                const token = localStorage.getItem('token');
+                if (!token) return;
+                const res = await fetch('/api/teacher/referral-link', { headers: { Authorization: 'Bearer ' + token } });
+                const data = await res.json();
+                if (!res.ok || !data.success) return;
+                const origin = window.location.origin;
+                const linkEl = document.getElementById('teacher-ref-link');
+                if (linkEl) linkEl.value = origin + (data.subscriptionLink || '');
+            } catch (e) {
+                console.warn('Referral link load failed:', e);
+            }
+        }
+
+        function copyRefLink(inputId) {
+            const el = document.getElementById(inputId);
+            if (!el) return;
+            el.select();
+            el.setSelectionRange(0, 99999);
+            try {
+                document.execCommand('copy');
+            } catch (e) {}
+        }
+
         // Dropdown functionality
         document.addEventListener('DOMContentLoaded', function() {
+            loadTeacherReferralLinks();
             // Notifications dropdown
             const notificationsIcon = document.getElementById('notifications-icon');
             const notificationsDropdown = document.getElementById('notifications-dropdown');
@@ -2694,8 +2825,8 @@
       console.log('Checking daily completion status:', status.dailyCompleted);
       if (status.dailyCompleted) {
         console.log('Daily log completed, showing warning message');
-        alert('You cannot time in. Daily time log is already completed. It will refresh at 9 AM Philippine time.');
-        showTimeMessage('You cannot time in. Daily time log is already completed. It will refresh at 9 AM Philippine time.', 'warning');
+        alert('You cannot time in. Daily time log is already completed. It will refresh at 7 AM Philippine time.');
+        showTimeMessage('You cannot time in. Daily time log is already completed. It will refresh at 7 AM Philippine time.', 'warning');
         return;
       }
       
@@ -2846,7 +2977,7 @@
       sessionTimeDiv.style.display = 'none';
       
       // Show status message
-      statusMessage.innerHTML = '<strong>You have already completed your time log for today.</strong> New time logs will be available tomorrow at 9 AM Philippine time.';
+      statusMessage.innerHTML = '<strong>You have already completed your time log for today.</strong> New time logs will be available tomorrow at 7 AM Philippine time.';
       statusMessage.style.display = 'block';
       statusMessage.style.color = '#f44336';
       statusMessage.style.background = '#ffebee';
@@ -3822,34 +3953,30 @@
                 ]);
             } else if (lowerMessage.includes('lesson structure') || lowerMessage.includes('lesson format') || lowerMessage.includes('structure and format')) {
                 // SPECIFIC: Lesson structure - provide detailed help
-                this.addBotMessage("Here's a complete guide to lesson structure:\n\n" +
-                    "**Standard Lesson Structure (50-60 minutes):**\n\n" +
-                    "1️⃣ **Warm-up (5-10 min)**\n" +
+            this.addBotMessage("Here's a complete guide to lesson structure:\n\n" +
+                    "**Standard Lesson Structure (25 minutes):**\n\n" +
+                    "1️⃣ **Warm-up (5 min)**\n" +
                     "   • Greet students and check in\n" +
-                    "   • Review previous lesson briefly\n" +
-                    "   • Use icebreakers or quick games\n" +
+                    "   • Quick recap of the previous lesson\n" +
                     "   • Goal: Engage and prepare students\n\n" +
-                    "2️⃣ **Introduction (5-10 min)**\n" +
+                    "2️⃣ **Introduction (5 min)**\n" +
                     "   • Present learning objectives clearly\n" +
                     "   • Introduce new vocabulary/concepts\n" +
-                    "   • Use visual aids (images, videos)\n" +
+                    "   • Use a simple visual or example\n" +
                     "   • Goal: Set context and expectations\n\n" +
-                    "3️⃣ **Practice (15-20 min)**\n" +
+                    "3️⃣ **Practice (10 min)**\n" +
                     "   • Guided exercises and activities\n" +
-                    "   • Interactive games or quizzes\n" +
-                    "   • Pair or group work\n" +
+                    "   • Interactive games or short quizzes\n" +
                     "   • Goal: Reinforce learning through practice\n\n" +
-                    "4️⃣ **Production (10-15 min)**\n" +
+                    "4️⃣ **Production (3 min)**\n" +
                     "   • Students apply what they learned\n" +
-                    "   • Creative tasks or presentations\n" +
-                    "   • Real-world application\n" +
+                    "   • Very short role-play / mini task\n" +
                     "   • Goal: Demonstrate understanding\n\n" +
-                    "5️⃣ **Wrap-up (5 min)**\n" +
+                    "5️⃣ **Wrap-up (2 min)**\n" +
                     "   • Review key points\n" +
-                    "   • Assign homework if needed\n" +
-                    "   • Preview next lesson\n" +
+                    "   • Quick closing question\n" +
                     "   • Goal: Consolidate learning\n\n" +
-                    "**Tips:** Keep it interactive, use multimedia, and adapt to student needs!");
+                    "**Tips:** Keep it high-impact and focused for a 25-minute class!");
             } else if (lowerMessage.includes('teaching tip') || lowerMessage.includes('effective teaching') || lowerMessage.includes('online teaching')) {
                 // SPECIFIC: Teaching tips - provide detailed help
                 this.addBotMessage("**Top Tips for Effective Online Teaching:**\n\n" +

@@ -207,16 +207,23 @@
   </div>
         
   <div class="main-container">
-    <!-- Left Navigation Bar -->
-    <div class="left-nav-bar">
-      <div class="nav-buttons-top">
-        <button class="nav-action-btn finish-btn" id="finish-btn" title="Finish Class" style="display:none;">Finish</button>
-        <button class="nav-action-btn absent-btn" id="absent-btn" title="Mark Absent" style="display:none;">Absent</button>
-        <button class="nav-action-btn leave-btn" id="leave-btn" title="Leave Classroom" style="display:none; background:#e74c3c;">Leave</button>
+    <!-- Left rail: nav + teacher-only internal notes (curriculum cheat sheet) -->
+    <div class="left-rail" id="left-rail">
+      <div class="left-nav-bar">
+        <div class="nav-buttons-top">
+          <button class="nav-action-btn finish-btn" id="finish-btn" title="Finish Class" style="display:none;">Finish</button>
+          <button class="nav-action-btn absent-btn" id="absent-btn" title="Mark Absent" style="display:none;">Absent</button>
+          <button class="nav-action-btn leave-btn" id="leave-btn" title="Leave Classroom" style="display:none; background:#e74c3c;">Leave</button>
+        </div>
+        <div class="nav-icons">
+          <!-- Lessons tab removed - moved to admin side -->
+        </div>
       </div>
-      <div class="nav-icons">
-        <!-- Lessons tab removed - moved to admin side -->
-      </div>
+      <aside class="teacher-notes-rail" id="teacher-notes-rail" aria-label="Internal teacher notes">
+        <div class="teacher-notes-rail-header">Teacher notes</div>
+        <p class="teacher-notes-rail-hint">For teachers only. Answers &amp; tips from curriculum specialists.</p>
+        <div class="teacher-notes-rail-body" id="teacher-notes-body"></div>
+      </aside>
     </div>
 
     <!-- Main Content Area -->
@@ -645,26 +652,31 @@
       const RTCSessionDescription = window.RTCSessionDescription || window.mozRTCSessionDescription;
       const RTCIceCandidate = window.RTCIceCandidate || window.mozRTCIceCandidate;
       
-      const rtcConfig = { 
+      // Default STUN; merged from GET /api/rtc-config (adds TURN when env is set) before first RTCPeerConnection
+      const rtcConfig = {
         iceServers: [
-          // Google STUN (multiple for faster path finding in dev tunnel)
           { urls: 'stun:stun.l.google.com:19302' },
           { urls: 'stun:stun1.l.google.com:19302' },
-          { urls: 'stun:stun2.l.google.com:19302' },
-          { urls: 'stun:stun3.l.google.com:19302' },
-          { urls: 'stun:stun4.l.google.com:19302' },
-          // Mozilla STUN for redundancy
-          { urls: 'stun:stun.services.mozilla.com' },
-          { urls: 'stun:stun.stunprotocol.org:3478' },
-          { urls: 'stun:stun.voiparound.com' },
-          { urls: 'stun:stun.voipbuster.com' },
-          { urls: 'stun:stun.voipstunt.com' }
+          { urls: 'stun:stun2.l.google.com:19302' }
         ],
-        iceTransportPolicy: 'all', // Aggressive: use all candidates (relay + srflx + host) for faster handshake in tunnel
+        iceTransportPolicy: 'all',
         iceCandidatePoolSize: 10,
         bundlePolicy: 'max-bundle',
         rtcpMuxPolicy: 'require'
       };
+      let rtcConfigReady = false;
+      const rtcConfigPromise = fetch('/api/rtc-config', { cache: 'no-store' })
+        .then((r) => (r.ok ? r.json() : {}))
+        .then((j) => {
+          if (j.iceServers && Array.isArray(j.iceServers) && j.iceServers.length) {
+            rtcConfig.iceServers = j.iceServers;
+            console.log('🔧 ICE servers loaded from /api/rtc-config:', j.iceServers.length);
+          }
+        })
+        .catch((e) => console.warn('⚠️ /api/rtc-config failed, using defaults:', e && e.message))
+        .finally(() => {
+          rtcConfigReady = true;
+        });
 
       function addLocalTracksToPeerConnection() {
         if (!peerConnection || !localStream) return;
@@ -679,6 +691,10 @@
       }
 
       function ensurePeerConnection() {
+        if (!rtcConfigReady) {
+          rtcConfigPromise.then(() => ensurePeerConnection());
+          return;
+        }
         // If peer connection exists, check if it's in a valid state
         if (peerConnection) {
           const state = peerConnection.connectionState;
@@ -707,8 +723,16 @@
         peerConnection = new RTCPeerConnection(rtcConfig);
         peerConnection.onicecandidate = (event) => {
           if (event.candidate) {
-            socket.emit('ice-candidate', { room, candidate: event.candidate });
-            console.log('📤 ICE candidate sent:', event.candidate.type, event.candidate.protocol);
+            const c = event.candidate.toJSON
+              ? event.candidate.toJSON()
+              : {
+                  candidate: event.candidate.candidate,
+                  sdpMid: event.candidate.sdpMid,
+                  sdpMLineIndex: event.candidate.sdpMLineIndex,
+                  usernameFragment: event.candidate.usernameFragment
+                };
+            socket.emit('ice-candidate', { room, candidate: c });
+            console.log('📤 ICE candidate sent:', c.candidate ? c.candidate.substring(0, 40) + '…' : c);
           } else {
             // null candidate means gathering is complete
             console.log('✅ ICE candidate gathering complete');
@@ -1184,12 +1208,16 @@
 
       // Shared handler so we can retry locally without re-emitting to server (which would send to wrong peer)
       function handleIncomingOffer(offer) {
-        if (!offer || !peerConnection || !localStream) return;
+        if (!offer || !peerConnection) return;
         if (peerConnection.signalingState === 'stable') {
           console.log('⚠️ Ignoring stale offer in handler - already stable');
           return;
         }
-        addLocalTracksToPeerConnection();
+        if (localStream) {
+          addLocalTracksToPeerConnection();
+        } else {
+          console.warn('📥 Answering offer without local camera/mic (receive-only remote video)');
+        }
         console.log(`📊 Tracks ensured: local=${localStream.getTracks().length}, senders=${peerConnection.getSenders().length}`);
         if (isSettingRemoteDescription) return;
         isSettingRemoteDescription = true;
@@ -1217,10 +1245,13 @@
         if (!offer) return;
         console.log('📨 Received offer, userType:', userType, 'current signaling state:', peerConnection ? peerConnection.signalingState : 'no peer connection');
         ensurePeerConnection();
-        if (!peerConnection || !localStream) {
-          console.warn('⚠️ Cannot handle offer: peerConnection or localStream missing');
-          setTimeout(() => { if (peerConnection && localStream) handleIncomingOffer(offer); }, 1000);
+        if (!peerConnection) {
+          console.warn('⚠️ Cannot handle offer: peer connection not ready');
+          setTimeout(() => { if (peerConnection) handleIncomingOffer(offer); }, 500);
           return;
+        }
+        if (!localStream) {
+          console.warn('⚠️ Handling offer without local stream (recv-only answer)');
         }
         // Perfect negotiation: ignore stale offers when already stable to avoid InvalidStateError
         if (peerConnection.signalingState === 'stable') {
@@ -3850,9 +3881,18 @@
             if (state !== 'new' || iceState !== 'new') {
               iceForceAttemptedForNew = false;
             }
+            // Student with no remote SDP yet: ICE stays "new" until teacher's offer arrives — not a fault.
+            const waitingForTeacherOffer =
+              userType === 'student' && peerConnection && !peerConnection.remoteDescription;
             // Only log and act when stuck in "new" – throttle to once per 60s and run force-ICE at most once per stuck period.
             // Role-based: only Teacher creates offers; Student only listens for offer and creates answer (no student offer).
-            if (state === 'new' && iceState === 'new' && iceGatheringState === 'new' && localStream) {
+            if (
+              !waitingForTeacherOffer &&
+              state === 'new' &&
+              iceState === 'new' &&
+              iceGatheringState === 'new' &&
+              localStream
+            ) {
               const now = Date.now();
               const throttleMs = 60000;
               if (now - lastStuckNewWarn >= throttleMs) {
@@ -4387,10 +4427,40 @@
         }
       }
       
+      // Internal teacher notes (staff-only from API) — cheat sheet next to Finish / Absent
+      async function loadTeacherNotesForClassroom(lessonId) {
+        const rail = document.getElementById('teacher-notes-rail');
+        const body = document.getElementById('teacher-notes-body');
+        if (userType !== 'teacher') {
+          if (rail) rail.classList.remove('is-visible');
+          return;
+        }
+        if (!rail || !body || !lessonId) return;
+        rail.classList.add('is-visible');
+        body.textContent = 'Loading…';
+        try {
+          const token = localStorage.getItem('token');
+          const headers = {};
+          if (token) headers['Authorization'] = `Bearer ${token}`;
+          const res = await fetch(`/api/lessons/lesson/${encodeURIComponent(lessonId)}`, { headers });
+          if (!res.ok) throw new Error('Failed to load lesson');
+          const data = await res.json();
+          const notes = data && data.teacherNotes != null ? String(data.teacherNotes).trim() : '';
+          body.textContent =
+            notes ||
+            'No internal notes for this lesson yet. Curriculum specialists can add them in Admin → Lessons Library when editing the lesson.';
+        } catch (e) {
+          console.warn('Teacher notes:', e);
+          body.textContent = 'Could not load teacher notes. Try refreshing the page.';
+        }
+      }
+
       // Load lesson files from booking's lessonId
       async function loadLessonFilesFromBooking(lessonId) {
         try {
           console.log('📚 [AUTO-LOAD] Loading lesson files for lessonId:', lessonId);
+          loadTeacherNotesForClassroom(lessonId);
+
           const token = localStorage.getItem('token');
           
           const headers = {};
@@ -4612,6 +4682,8 @@
         }
         if (leaveBtn) leaveBtn.style.display = 'none';
       } else {
+        const notesRail = document.getElementById('teacher-notes-rail');
+        if (notesRail) notesRail.classList.remove('is-visible');
         if (finishBtn) finishBtn.style.display = 'none';
         if (absentBtn) absentBtn.style.display = 'none';
         if (leaveBtn) {

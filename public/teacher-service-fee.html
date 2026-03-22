@@ -1264,7 +1264,7 @@
       // Each completed class counts as 1 lesson (25 minutes)
       const baseSum = ratePer25Minutes * actualCompletedClasses;
       
-      // Startup policy: do NOT pay additional 50% for student absences for now.
+      // Startup policy (no-class, no-pay): student absences get 0 additional payment.
       const studentAbsentPayment = 0;
       
       // Update display
@@ -1277,7 +1277,7 @@
       console.log(`📊 STUDENT ABSENT CALCULATION (TEMPORARILY DISABLED):`);
       console.log(`   Student absent classes: ${actualStudentAbsentClasses}`);
       console.log(`   Rate per class: ₱${ratePer25Minutes}`);
-      console.log(`   50% of rate (not applied): ₱${(ratePer25Minutes * 0.5).toFixed(2)}`);
+      console.log(`   Student absent payment (not applied): ₱0.00`);
       console.log(`   Student absent payment set to: ₱${studentAbsentPayment.toFixed(2)}`);
       document.getElementById('late-deductions').value = deductions.late.toFixed(2);
       document.getElementById('absent-deductions').value = deductions.absent.toFixed(2);
@@ -1359,7 +1359,7 @@
           // Check for student absent classes (marked by teacher with absentMarkedAt)
           if (classItem.absentMarkedAt) {
             studentAbsentCount++;
-            console.log(`✅ STUDENT ABSENT FOUND: Class ${classItem.date} ${classItem.time} - Teacher marked student absent, counting for 50% payment`);
+            console.log(`✅ STUDENT ABSENT FOUND: Class ${classItem.date} ${classItem.time} - Teacher marked student absent, counting for no payment`);
             console.log(`   📅 Date: ${classItem.date}`);
             console.log(`   🕐 Time: ${classItem.time}`);
             console.log(`   📊 Status: ${classItem.status}`);
@@ -1385,9 +1385,9 @@
               console.log(`   👨‍🏫 Teacher Entered: ${teacherEntered}`);
               console.log(`   👨‍🎓 Student Entered: ${studentEntered}`);
             } else {
-              // Student was absent but teacher was present - count for 50% payment
+              // Student was absent but teacher was present - no payment (no-class, no-pay)
               studentAbsentCount++;
-              console.log(`Student absent but teacher present for class ${classItem.date} ${classItem.time} - counting for 50% payment`);
+              console.log(`Student absent but teacher present for class ${classItem.date} ${classItem.time} - counting for no payment`);
             }
           } else if (classItem.status === 'completed') {
             // Completed classes should be counted as completed regardless of duration
@@ -1419,7 +1419,7 @@
               // Class is more than 15 minutes past scheduled time, teacher entered but student didn't
               // This is student absent, not teacher absent (15-minute rule for student entry)
               studentAbsentCount++;
-              console.log(`⚠️ Student absent for pending class ${classItem.date} ${classItem.time} - teacher entered but student didn't enter within 15 minutes (${timeDiffMinutes.toFixed(1)} minutes past) - counting for 50% payment`);
+              console.log(`⚠️ Student absent for pending class ${classItem.date} ${classItem.time} - teacher entered but student didn't enter within 15 minutes (${timeDiffMinutes.toFixed(1)} minutes past) - counting for no payment`);
             } else {
               console.log(`⏳ Pending class ${classItem.date} ${classItem.time} - ${timeDiffMinutes.toFixed(1)} minutes past, teacher: ${teacherEntered}, student: ${studentEntered}`);
             }
@@ -1456,13 +1456,13 @@
         // Calculate absent deductions: absent count × rate
         absentDeductions = absentCount * ratePer25Minutes;
         
-        // Calculate student absent payments: student absent count × 50% of rate
-        const studentAbsentPayment = studentAbsentCount * (ratePer25Minutes * 0.5);
+        // Calculate student absent payments: no-class, no-pay => 0
+        const studentAbsentPayment = 0;
         
         console.log(`📊 CALCULATION SUMMARY:`);
         console.log(`   Completed classes: ${completedCount}`);
         console.log(`   Teacher absent classes: ${absentCount} × ${ratePer25Minutes} = ${absentDeductions}`);
-        console.log(`   Student absent classes: ${studentAbsentCount} × ${ratePer25Minutes * 0.5} = ${studentAbsentPayment}`);
+        console.log(`   Student absent classes: ${studentAbsentCount} × ₱0 = ${studentAbsentPayment}`);
         console.log(`   Late deductions: ${lateDeductions}`);
         console.log(`   Cancelled deductions: ${cancelledDeductions}`);
         console.log(`   Total deductions: ${lateDeductions + absentDeductions + cancelledDeductions}`);
@@ -3359,7 +3359,7 @@
               `Student absent classes: ${studentAbsentClasses.length}\n` +
               `Teacher absent classes: ${teacherAbsentClasses.length}\n` +
               `Rate per class: ₱${ratePerClass}\n` +
-              `50% rate (not applied): ₱${(ratePerClass * 0.5).toFixed(2)}\n` +
+              `No-class, no-pay: ₱0.00\n` +
               `Expected student absent payment (disabled): ₱${studentAbsentPayment.toFixed(2)}\n\n` +
               `Check console for detailed breakdown.`);
         
@@ -3706,7 +3706,7 @@
               { text: "How to Create a Lesson", icon: "➕", topic: "create lesson" }
             ]);
           } else if (lower.includes('lesson structure') || lower.includes('lesson format')) {
-            this.addBotMessage("**Standard Lesson Structure (50-60 min):**\n\n1️⃣ **Warm-up (5-10 min)** - Engage students\n2️⃣ **Introduction (5-10 min)** - Present objectives\n3️⃣ **Practice (15-20 min)** - Interactive exercises\n4️⃣ **Production (10-15 min)** - Apply learning\n5️⃣ **Wrap-up (5 min)** - Review and homework\n\n**Tips:** Keep it interactive, use multimedia!");
+            this.addBotMessage("**Standard Lesson Structure (25 min):**\n\n1️⃣ **Warm-up (5 min)** - Engage students\n2️⃣ **Introduction (5 min)** - Present objectives\n3️⃣ **Practice (10 min)** - Interactive exercises\n4️⃣ **Production (3 min)** - Apply learning\n5️⃣ **Wrap-up (2 min)** - Quick review and homework\n\n**Tips:** Keep it interactive, use multimedia, and focus on a 25-minute class!");
           } else if (lower.includes('teaching tip') || lower.includes('effective teaching')) {
             this.addBotMessage("**Top Tips for Online Teaching:**\n\n🎯 **Engagement**: Use polls, games, breakout rooms\n💬 **Communication**: Speak clearly, use visuals\n⏰ **Time Management**: Plan with time allocations\n👥 **Interaction**: Encourage participation, give feedback\n🔧 **Technical**: Test equipment, have backup plans\n\nRemember: Adaptability and creativity are key!");
           } else if (lower.includes('create lesson')) {

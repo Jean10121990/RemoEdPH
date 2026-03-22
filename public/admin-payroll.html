@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Payroll Management - RemoEdPH Admin</title>
     <link rel="stylesheet" href="modern-styles.css">
+    <link rel="stylesheet" href="css/teacher-sidebar.css">
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f6fbff; }
         .remoed-main { display: flex; min-height: calc(100vh - 70px); }
@@ -42,30 +43,9 @@
 </head>
 <body>
     <div class="remoed-main">
-        <nav class="remoed-sidebar">
-            <div class="remoed-logo" style="height:100px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding-top:5px;">
-                <img src="remoed-logo.png" alt="RemoEdPH Logo" style="height:40px; width:auto; display:inline-block; vertical-align:middle;">
-                <span class="remoed-title" style="font-size:1.3rem; font-weight:700; color:#667eea; letter-spacing:1px;">RemoEdPH</span>
-                <div style="font-size: 0.75rem; color: #666;">Admin Portal</div>
-            </div>
-            <div class="remoed-user" style="display:flex; flex-direction:column; align-items:center; margin-bottom:24px;">
-                <div class="remoed-avatar" id="remoed-avatar">
-                    <span id="avatar-text">A</span>
-                </div>
-                <span class="remoed-username" id="remoed-username">Admin</span>
-            </div>
-            <ul class="remoed-menu">
-                <li onclick="window.location.href='admin-dashboard.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/></svg>Dashboard</li>
-                <li onclick="window.location.href='admin-users.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"/></svg>User Management</li>
-                <li onclick="window.location.href='admin-announcements.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg>Announcements</li>
-                <li class="active"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 10c-4.41 0-8-1.79-8-4V6c0-2.21 3.59-4 8-4s8 1.79 8 4v8c0 2.21-3.59 4-8 4z"/></svg>Payroll Management</li>
-                <li onclick="window.location.href='admin-reports.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>Reports</li>
-                <li onclick="window.location.href='admin-issue-management.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Issue Management</li>
-                <li onclick="window.location.href='admin-lessons-library.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>Lesson Library</li>
-                <li onclick="window.location.href='admin-settings.html'"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Settings</li>
-                <li id="logout-nav" style="margin-top:auto; color:#e74c3c; cursor:pointer;"><svg fill="none" stroke="#e74c3c" stroke-width="2" viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7"/><path d="M3 12a9 9 0 0118 0 9 9 0 01-18 0z"/></svg>Logout</li>
-            </ul>
-        </nav>
+        <div id="admin-sidebar-root"></div>
+        <script src="js/admin-sidebar.js"></script>
+        <script>AdminSidebar.render('admin-sidebar-root', 'payroll');</script>
         <div class="remoed-content">
             <div class="remoed-section">
                 <div class="remoed-section-title">Global Rate Settings</div>
@@ -80,24 +60,27 @@
             </div>
             
             <div class="remoed-section">
-                <div class="remoed-section-title">Weekly Salary Disbursement</div>
+                <div class="remoed-section-title">Bi-weekly Salary Disbursement</div>
+                <div style="margin: 6px 0 14px 0; color: #64748b; font-size: 0.85rem;">
+                    Pay periods start on the <strong>1st</strong> and <strong>16th</strong> of each month.
+                </div>
                 
-                <!-- Week Navigation Controls -->
+                <!-- Period Navigation Controls -->
                 <div style="margin-bottom: 20px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
-                    <button class="btn btn-primary" onclick="previousWeek()" style="padding: 8px 16px; font-size: 14px;">
-                        ← Previous Week
+                    <button class="btn btn-primary" onclick="previousPeriod()" style="padding: 8px 16px; font-size: 14px;">
+                        ← Previous Period
                     </button>
                     
                     <div style="text-align: center; flex: 1; min-width: 200px;">
-                        <strong>Selected Week:</strong> <span id="current-week-display">Loading...</span>
+                        <strong>Selected Period:</strong> <span id="current-week-display">Loading...</span>
                     </div>
                     
-                    <button class="btn btn-primary" onclick="nextWeek()" style="padding: 8px 16px; font-size: 14px;">
-                        Next Week →
+                    <button class="btn btn-primary" onclick="nextPeriod()" style="padding: 8px 16px; font-size: 14px;">
+                        Next Period →
                     </button>
                     
-                    <button class="btn btn-success" onclick="goToCurrentWeek()" style="padding: 8px 16px; font-size: 14px; background: #28a745;">
-                        📅 Current Week
+                    <button class="btn btn-success" onclick="goToCurrentPeriod()" style="padding: 8px 16px; font-size: 14px; background: #28a745;">
+                        📅 Current Period
                     </button>
                 </div>
                 
@@ -107,7 +90,7 @@
                 <div id="disbursement-status" style="margin-top: 10px; font-weight: 600;"></div>
                 
                 <div id="teachers-list-container" style="margin-top: 20px; display: none;">
-                    <h3 style="color: #1ca7e7; margin-bottom: 15px;">Teachers Weekly Salaries</h3>
+                    <h3 style="color: #1ca7e7; margin-bottom: 15px;">Teachers Bi-weekly Salaries</h3>
                     <div id="teachers-list">
                         <!-- Teachers will be loaded here -->
                     </div>
@@ -157,56 +140,76 @@
         }
         
         document.addEventListener('DOMContentLoaded', function() {
-            const username = localStorage.getItem('adminUsername');
-            
-            if (username) {
-                document.getElementById('remoed-username').textContent = username;
-                document.getElementById('avatar-text').textContent = username[0].toUpperCase();
+            if (window.AdminSidebar && typeof AdminSidebar.applyGreetingFromStorage === 'function') {
+                AdminSidebar.applyGreetingFromStorage();
             }
-            
+
             // Load current global rate
             loadGlobalRate();
             
-            // Display current week
-            displayCurrentWeek();
+            // Display current pay period
+            displayCurrentPeriod();
             
             // Load teacher list for filter
             loadTeacherFilterOptions();
         });
 
-        document.getElementById('logout-nav').onclick = function() {
-            localStorage.clear();
-            window.location.href = 'admin-login.html';
-        };
+        // Global variable to track selected pay period
+        // periodKey format: YYYY-MM-1 (1st–15th) or YYYY-MM-2 (16th–end)
+        let selectedPeriodKey = null;
 
-        // Global variable to track selected week
-        let selectedWeekStart = null;
-
-        function displayCurrentWeek() {
-            if (!selectedWeekStart) {
-                // Initialize with current week
-                const now = new Date();
-                const monday = new Date(now);
-                monday.setDate(now.getDate() - now.getDay() + 1);
-                selectedWeekStart = monday;
-            }
-            
-            const monday = selectedWeekStart;
-            const friday = new Date(monday);
-            friday.setDate(monday.getDate() + 4);
-            
-            const weekDisplay = `${monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${friday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
-            document.getElementById('current-week-display').textContent = weekDisplay;
+        function getPeriodKeyForDate(d) {
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const half = d.getDate() <= 15 ? '1' : '2';
+            return `${year}-${month}-${half}`;
         }
 
-        function previousWeek() {
-            if (!selectedWeekStart) {
-                selectedWeekStart = new Date();
-                selectedWeekStart.setDate(selectedWeekStart.getDate() - selectedWeekStart.getDay() + 1);
+        function parsePeriodKey(key) {
+            const m = String(key || '').match(/^(\d{4})-(\d{2})-(1|2)$/);
+            if (!m) return null;
+            return { year: Number(m[1]), month: Number(m[2]), half: Number(m[3]) };
+        }
+
+        function getPeriodBounds(key) {
+            const p = parsePeriodKey(key);
+            if (!p) return null;
+            const start = new Date(p.year, p.month - 1, p.half === 1 ? 1 : 16);
+            const end = p.half === 1
+                ? new Date(p.year, p.month - 1, 15)
+                : new Date(p.year, p.month, 0); // last day of month
+            return { start, end };
+        }
+
+        function displayCurrentPeriod() {
+            if (!selectedPeriodKey) {
+                selectedPeriodKey = getPeriodKeyForDate(new Date());
             }
-            
-            selectedWeekStart.setDate(selectedWeekStart.getDate() - 7);
-            displayCurrentWeek();
+            const bounds = getPeriodBounds(selectedPeriodKey);
+            if (!bounds) {
+                document.getElementById('current-week-display').textContent = 'Invalid period';
+                return;
+            }
+            const { start, end } = bounds;
+            const display = `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+            document.getElementById('current-week-display').textContent = display;
+        }
+
+        function previousPeriod() {
+            if (!selectedPeriodKey) selectedPeriodKey = getPeriodKeyForDate(new Date());
+            const p = parsePeriodKey(selectedPeriodKey);
+            if (!p) return;
+
+            // Move to previous half-month
+            if (p.half === 2) {
+                selectedPeriodKey = `${p.year}-${String(p.month).padStart(2, '0')}-1`;
+            } else {
+                const prevMonthDate = new Date(p.year, p.month - 2, 1);
+                const py = prevMonthDate.getFullYear();
+                const pm = String(prevMonthDate.getMonth() + 1).padStart(2, '0');
+                selectedPeriodKey = `${py}-${pm}-2`;
+            }
+            displayCurrentPeriod();
             
             // Reload teachers if they were already loaded
             if (document.getElementById('teachers-list-container').style.display !== 'none') {
@@ -214,14 +217,20 @@
             }
         }
 
-        function nextWeek() {
-            if (!selectedWeekStart) {
-                selectedWeekStart = new Date();
-                selectedWeekStart.setDate(selectedWeekStart.getDate() - selectedWeekStart.getDay() + 1);
+        function nextPeriod() {
+            if (!selectedPeriodKey) selectedPeriodKey = getPeriodKeyForDate(new Date());
+            const p = parsePeriodKey(selectedPeriodKey);
+            if (!p) return;
+
+            if (p.half === 1) {
+                selectedPeriodKey = `${p.year}-${String(p.month).padStart(2, '0')}-2`;
+            } else {
+                const nextMonthDate = new Date(p.year, p.month, 1);
+                const ny = nextMonthDate.getFullYear();
+                const nm = String(nextMonthDate.getMonth() + 1).padStart(2, '0');
+                selectedPeriodKey = `${ny}-${nm}-1`;
             }
-            
-            selectedWeekStart.setDate(selectedWeekStart.getDate() + 7);
-            displayCurrentWeek();
+            displayCurrentPeriod();
             
             // Reload teachers if they were already loaded
             if (document.getElementById('teachers-list-container').style.display !== 'none') {
@@ -229,12 +238,9 @@
             }
         }
 
-        function goToCurrentWeek() {
-            const now = new Date();
-            const monday = new Date(now);
-            monday.setDate(now.getDate() - now.getDay() + 1);
-            selectedWeekStart = monday;
-            displayCurrentWeek();
+        function goToCurrentPeriod() {
+            selectedPeriodKey = getPeriodKeyForDate(new Date());
+            displayCurrentPeriod();
             
             // Reload teachers if they were already loaded
             if (document.getElementById('teachers-list-container').style.display !== 'none') {
@@ -306,19 +312,11 @@
 
         async function loadTeachersSalaries() {
             try {
-                // Get the selected week start date
-                if (!selectedWeekStart) {
-                    // Initialize with current week if not set
-                    const now = new Date();
-                    const monday = new Date(now);
-                    monday.setDate(now.getDate() - now.getDay() + 1);
-                    selectedWeekStart = monday;
+                if (!selectedPeriodKey) {
+                    selectedPeriodKey = getPeriodKeyForDate(new Date());
                 }
                 
-                // Format the week start date for the API
-                const weekStart = selectedWeekStart.toISOString().split('T')[0];
-                
-                const response = await fetch(`/api/admin/teachers-weekly-salaries?week=${weekStart}`);
+                const response = await fetch(`/api/admin/teachers-weekly-salaries?period=${encodeURIComponent(selectedPeriodKey)}`);
                 const data = await response.json();
                 
                 if (data.success) {
@@ -409,22 +407,14 @@
             }
             
             try {
-                // Get the selected week start date
-                if (!selectedWeekStart) {
-                    // Initialize with current week if not set
-                    const now = new Date();
-                    const monday = new Date(now);
-                    monday.setDate(now.getDate() - now.getDay() + 1);
-                    selectedWeekStart = monday;
+                if (!selectedPeriodKey) {
+                    selectedPeriodKey = getPeriodKeyForDate(new Date());
                 }
-                
-                // Format the week start date for the API
-                const weekStart = selectedWeekStart.toISOString().split('T')[0];
                 
                 const response = await fetch('/api/admin/dispense-salaries', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ week: weekStart })
+                    body: JSON.stringify({ period: selectedPeriodKey })
                 });
                 
                 const data = await response.json();

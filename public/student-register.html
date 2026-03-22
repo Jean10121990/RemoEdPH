@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
   <title>Student Registration - RemoEdPH</title>
   <link rel="stylesheet" href="modern-styles.css">
+  <script src="js/referral-tracking.js"></script>
   <style>
     :root {
       --primary: #1c7ed6;
@@ -480,8 +481,9 @@
       }
     }
   </style>
+  <link rel="stylesheet" href="css/student-sidebar-unified.css">
 </head>
-<body>
+<body class="student-no-motion">
   <div class="login-shell">
     <div class="login-card">
       <div class="login-panel">
@@ -626,7 +628,7 @@
             <li>Bonus Learning Materials</li>
             <li>Certificate of Completion</li>
           </ul>
-          <button class="plan-btn-modal" onclick="selectSubscriptionPlan('1year', 0)">Choose Plan</button>
+          <button class="plan-btn-modal" onclick="selectSubscriptionPlan('1year', 235)">Choose Plan</button>
         </div>
       </div>
     </div>
@@ -707,7 +709,12 @@
         const response = await fetch('/api/auth/student-register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, email, password })
+          body: JSON.stringify({
+            username,
+            email,
+            password,
+            referralCode: localStorage.getItem('referralCode') || ''
+          })
         });
         
         const data = await response.json();
@@ -782,55 +789,16 @@
         if (!subscribeResponse.ok) {
           throw new Error(subscribeResult.error || 'Subscription failed');
         }
-        
-        // Send subscription confirmation email
-        try {
-          const emailResponse = await fetch('/api/student/send-subscription-email', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              email: email,
-              username: username,
-              plan: plan,
-              planPrice: price
-            })
-          });
-          
-          if (!emailResponse.ok) {
-            console.warn('Email sending failed, but subscription succeeded');
-          }
-        } catch (emailError) {
-          console.warn('Email error:', emailError);
+
+        if (subscribeResult && subscribeResult.checkout && subscribeResult.checkout.sessionId) {
+          // Clear temporary data used for plan selection
+          localStorage.removeItem('newStudentEmail');
+          localStorage.removeItem('newStudentUsername');
+          window.location.href = `student-payment.html?session=${encodeURIComponent(subscribeResult.checkout.sessionId)}`;
+          return;
         }
-        
-        // Show success message
-        const modalContent = document.querySelector('.plan-modal-content');
-        modalContent.innerHTML = `
-          <div style="text-align: center; padding: 40px;">
-            <div style="font-size: 4rem; margin-bottom: 20px;">✅</div>
-            <h2 style="color: #667eea; margin-bottom: 20px;">Subscription Confirmed! 🎉</h2>
-            <p style="color: #666; margin-bottom: 30px; font-size: 1.1rem;">
-              Your subscription has been activated successfully!<br>
-              A confirmation email has been sent to <strong>${email}</strong>
-            </p>
-            <p style="color: #4CAF50; font-weight: 700; margin-bottom: 30px;">
-              Plan: ${plan === '1month' ? '1 Month' : plan === '3months' ? '3 Months' : plan === '6months' ? '6 Months' : '1 Year'}
-            </p>
-            <button onclick="goToLogin()" style="
-              padding: 14px 40px;
-              background: linear-gradient(45deg, #667eea, #764ba2);
-              color: white;
-              border: none;
-              border-radius: 10px;
-              font-size: 1.1rem;
-              font-weight: 700;
-              cursor: pointer;
-              transition: all 0.3s ease;
-            ">Go to Login 🚀</button>
-          </div>
-        `;
+
+        throw new Error('Checkout session missing. Please try again.');
         
       } catch (error) {
         console.error('Subscription error:', error);

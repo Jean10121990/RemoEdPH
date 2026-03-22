@@ -5,7 +5,10 @@ const Booking = require('./models/Booking');
 const CancellationRequest = require('./models/CancellationRequest');
 const Feedback = require('./models/Feedback');
 const StudentNotification = require('./models/StudentNotification');
+const Teacher = require('./models/Teacher');
+const Referral = require('./models/Referral');
 const { verifyToken, requireStudent } = require('./authMiddleware');
+const crypto = require('crypto');
 
 const router = express.Router();
 
@@ -808,7 +811,22 @@ router.post('/subscribe', async (req, res) => {
     student.subscriptionPlan = plan;
     student.subscriptionStartDate = startDate;
     student.subscriptionEndDate = endDate;
-    student.subscriptionStatus = 'active';
+    // Payment flow: subscription is pending until payment is confirmed
+    student.subscriptionStatus = 'pending';
+    student.paymentStatus = 'pending';
+    student.paymentPaidAt = null;
+    student.paymentMethod = null;
+    student.paymentReference = '';
+    student.paymentDetails = student.paymentDetails || {};
+
+    // Create a short-lived checkout session id so we can confirm payment without requiring login.
+    const sessionId = crypto.randomBytes(16).toString('hex');
+    student.pendingCheckout = { sessionId, createdAt: new Date() };
+
+    // If we have assessment contact number and student contact is empty, store it
+    if (!student.contact && assessmentData && assessmentData.contactNumber) {
+      student.contact = String(assessmentData.contactNumber);
+    }
     
     await student.save();
     
@@ -821,16 +839,238 @@ router.post('/subscribe', async (req, res) => {
     
     res.json({
       success: true,
-      message: 'Subscription activated successfully',
+      message: 'Subscription created. Payment required to activate.',
       subscription: {
         plan,
         startDate,
         endDate
+      },
+      checkout: {
+        sessionId
       }
     });
   } catch (error) {
     console.error('❌ Error processing subscription:', error);
     res.status(500).json({ error: 'Server error: ' + error.message });
+  }
+});
+
+// Get checkout session info (for payment page)
+router.get('/checkout-session', async (req, res) => {
+  try {
+    const session = String(req.query.session || '').trim();
+    if (!session) return res.status(400).json({ success: false, error: 'session is required' });
+
+    const student = await Student.findOne({ 'pendingCheckout.sessionId': session }).lean();
+    if (!student) return res.status(404).json({ success: false, error: 'Checkout session not found' });
+
+    res.json({
+      success: true,
+      checkout: {
+        sessionId: session,
+        email: student.email || '',
+        username: student.username || '',
+        plan: student.subscriptionPlan || '',
+        planPrice: null,
+        paymentStatus: student.paymentStatus || 'unpaid',
+        subscriptionStatus: student.subscriptionStatus || 'pending'
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Server error: ' + error.message });
+  }
+});
+
+// Confirm payment for a checkout session (activates subscription + sends email)
+router.post('/confirm-payment', async (req, res) => {
+  try {
+    const {
+      sessionId,
+      method,
+      reference,
+      bankName,
+      accountName,
+      gcashNumber,
+      paypalEmail,
+      planPrice
+    } = req.body || {};
+
+    const sid = String(sessionId || '').trim();
+    if (!sid) return res.status(400).json({ success: false, error: 'sessionId is required' });
+
+    const allowed = new Set(['bank', 'gcash', 'paypal']);
+    const m = String(method || '').trim().toLowerCase();
+    if (!allowed.has(m)) return res.status(400).json({ success: false, error: 'Invalid payment method' });
+
+    const student = await Student.findOne({ 'pendingCheckout.sessionId': sid });
+    if (!student) return res.status(404).json({ success: false, error: 'Checkout session not found' });
+
+    // Mark paid + activate subscription
+    student.paymentStatus = 'paid';
+    student.paymentMethod = m;
+    student.paymentReference = String(reference || '').trim();
+    student.paymentPaidAt = new Date();
+    student.subscriptionStatus = 'active';
+    student.paymentDetails = {
+      bankName: String(bankName || '').trim(),
+      accountName: String(accountName || '').trim(),
+      gcashNumber: String(gcashNumber || '').trim(),
+      paypalEmail: String(paypalEmail || '').trim()
+    };
+
+    // Clear pending checkout so session can't be reused
+    student.pendingCheckout = { sessionId: '', createdAt: null };
+
+    // Award lesson credits based on plan
+    const priceNumber = Number(planPrice || 0) || 0;
+    let creditsToAdd = 0;
+    let planLabel = student.subscriptionPlan || '';
+    switch (student.subscriptionPlan) {
+      case '1month':
+        creditsToAdd = 20;
+        break;
+      case '3months':
+        creditsToAdd = 60;
+        break;
+      case '6months':
+        creditsToAdd = 120;
+        break;
+      case '1year':
+        creditsToAdd = 240;
+        break;
+      default:
+        creditsToAdd = 0;
+    }
+    if (creditsToAdd > 0) {
+      const newBalance = (student.creditBalance || 0) + creditsToAdd;
+      student.creditBalance = newBalance;
+      student.totalCreditsEarned = (student.totalCreditsEarned || 0) + creditsToAdd;
+      student.creditTransactions = student.creditTransactions || [];
+      student.creditTransactions.push({
+        date: new Date(),
+        type: 'purchase',
+        plan: planLabel,
+        description: `Subscription purchase (${planLabel})`,
+        credits: creditsToAdd,
+        balanceAfter: newBalance,
+        amountPaid: priceNumber
+      });
+    }
+
+    await student.save();
+
+    // Send subscription confirmation email (best-effort)
+    let emailStatus = { attempted: true, success: false, fallback: false };
+    try {
+      const emailService = require('./emailService');
+      const r = await emailService.sendSubscriptionEmail(
+        student.email,
+        student.username || (student.email ? student.email.split('@')[0] : 'Student'),
+        student.subscriptionPlan,
+        Number(planPrice || 0) || 0
+      );
+      emailStatus = {
+        attempted: true,
+        success: !!r?.success,
+        fallback: !!r?.fallback
+      };
+    } catch (e) {
+      console.warn('Subscription email failed:', e.message);
+      emailStatus = { attempted: true, success: false, fallback: false };
+    }
+
+    // Referral commission: credit only after paid
+    try {
+      const referralCode = student.referralCode;
+      const ownerType = student.referredByOwnerType || (student.referredByTeacherId ? 'teacher' : null);
+      const ownerId = student.referredByOwnerId || student.referredByTeacherId || null;
+      if (referralCode && ownerType && ownerId) {
+        let refOk = false;
+        if (ownerType === 'teacher') {
+          const teacher = await Teacher.findOne({ teacherId: ownerId, referralCode }).lean();
+          refOk = !!teacher;
+        } else if (ownerType === 'admin') {
+          const admin = await require('./models/Admin').findOne({ username: ownerId, referralCode }).lean();
+          refOk = !!admin;
+        }
+
+        if (refOk) {
+          const studentName =
+            [student.firstName, student.lastName].filter(Boolean).join(' ').trim() ||
+            student.username ||
+            '';
+          const paid = Number(planPrice || 0) || 0;
+
+          await Referral.updateOne(
+            { ownerType, ownerId: String(ownerId), studentId: String(student._id) },
+            {
+              $setOnInsert: {
+                referralCode,
+                ownerType,
+                ownerId: String(ownerId),
+                teacherId: String(ownerId), // legacy mirror
+                studentId: String(student._id),
+                studentName,
+                studentEmail: student.email || '',
+                studentContact: student.contact || '',
+                subscriptionPlan: student.subscriptionPlan || '',
+                amountPaid: paid,
+                commissionAmount: 25,
+                status: 'successful'
+              }
+            },
+            { upsert: true }
+          );
+        }
+      }
+    } catch (refErr) {
+      console.warn('Referral commission tracking failed:', refErr.message);
+    }
+
+    res.json({
+      success: true,
+      message: 'Payment confirmed. Subscription activated.',
+      email: emailStatus,
+      next: 'student-login.html'
+    });
+  } catch (error) {
+    console.error('❌ Error confirming payment:', error);
+    res.status(500).json({ success: false, error: 'Server error: ' + error.message });
+  }
+});
+
+// Get credit summary + history for logged-in student
+router.get('/credits', verifyToken, requireStudent, async (req, res) => {
+  try {
+    const student = await Student.findById(req.user.studentId).lean();
+    if (!student) {
+      return res.status(404).json({ success: false, error: 'Student not found' });
+    }
+
+    const credits = student.creditTransactions || [];
+    credits.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+
+    res.json({
+      success: true,
+      balance: student.creditBalance || 0,
+      totalEarned: student.totalCreditsEarned || 0,
+      used: (student.totalCreditsEarned || 0) - (student.creditBalance || 0),
+      subscriptionPlan: student.subscriptionPlan || null,
+      subscriptionStatus: student.subscriptionStatus || null,
+      paymentStatus: student.paymentStatus || null,
+      credits: credits.map(c => ({
+        date: c.date,
+        type: c.type,
+        plan: c.plan,
+        description: c.description,
+        credits: c.credits,
+        balanceAfter: c.balanceAfter,
+        amountPaid: c.amountPaid
+      }))
+    });
+  } catch (error) {
+    console.error('❌ Error fetching student credits:', error);
+    res.status(500).json({ success: false, error: 'Server error: ' + error.message });
   }
 });
 

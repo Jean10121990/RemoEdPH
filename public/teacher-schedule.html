@@ -278,6 +278,34 @@
       color: #667eea !important;
       font-weight: 600;
     }
+
+    /* Active booked class (status Booked) — high visibility */
+    .time-slot.booked-status-active {
+      background: #dc3545 !important;
+      color: #fff !important;
+      font-weight: 600;
+      vertical-align: top;
+    }
+
+    .slot-booked-inner {
+      line-height: 1.25;
+      text-align: center;
+      font-size: 0.78rem;
+    }
+
+    .slot-booked-inner .slot-student {
+      font-weight: 700;
+      margin-top: 2px;
+      word-break: break-word;
+    }
+
+    .slot-booked-inner .slot-lesson {
+      font-size: 0.72rem;
+      opacity: 0.95;
+      margin-top: 3px;
+      font-weight: 500;
+      word-break: break-word;
+    }
     
     .time-slot.finished {
       background: #cce5ff !important;
@@ -906,7 +934,7 @@
         </div>
         <div style="display: flex; align-items: center; gap: 4px; white-space: nowrap; flex-shrink: 0;">
           <span style="display: inline-block; width: 18px; height: 18px; background: #28a745; color: white; text-align: center; font-weight: bold; border-radius: 3px; font-size: 0.75rem; line-height: 18px;">R</span>
-          <span style="white-space: nowrap;">Resolved</span>
+          <span style="white-space: nowrap;">Resolved Issue</span>
         </div>
         <div style="display: flex; align-items: center; gap: 4px; white-space: nowrap; flex-shrink: 0;">
           <span style="display: inline-block; width: 18px; height: 18px; background: #f8f9fa; color: #6c757d; text-align: center; font-weight: bold; border-radius: 3px; font-size: 0.75rem; line-height: 18px;">U</span>
@@ -1108,12 +1136,65 @@
       }
     }
 
+    function getScheduleTimeZone() {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+    }
+
+    /** Match booking to grid: prefer API local fields, else convert UTC instant to local calendar + time */
+    function getBookingCellDateTime(booking) {
+      if (booking.localDate && booking.localTime) {
+        return { date: booking.localDate, time: booking.localTime };
+      }
+      const utcIso = booking.utc || booking.dateTimeUtc;
+      if (utcIso && typeof luxon !== 'undefined') {
+        try {
+          const { DateTime } = luxon;
+          const raw = typeof utcIso === 'string' ? utcIso : new Date(utcIso).toISOString();
+          const dt = DateTime.fromISO(raw, { zone: 'utc' }).setZone(getScheduleTimeZone());
+          return { date: dt.toFormat('yyyy-LL-dd'), time: dt.toFormat('HH:mm') };
+        } catch (e) {
+          console.warn('getBookingCellDateTime UTC convert failed:', e);
+        }
+      }
+      return { date: booking.date, time: booking.time };
+    }
+
+    function getBookingStudentDisplayName(booking) {
+      if (booking.studentName) return booking.studentName;
+      const s = booking.studentId;
+      if (s && typeof s === 'object') {
+        const first = s.firstName || '';
+        const last = s.lastName || '';
+        const combined = `${first} ${last}`.trim();
+        if (combined) return combined;
+        return s.username || s.email || 'Student';
+      }
+      return typeof s === 'string' ? s : 'Student';
+    }
+
+    function formatBookedCellHtml(statusLabel, studentName, lessonTopic) {
+      const esc = (s) => String(s == null ? '' : s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+      const lesson = (lessonTopic && String(lessonTopic).trim())
+        ? `<div class="slot-lesson">${esc(String(lessonTopic).slice(0, 48))}${String(lessonTopic).length > 48 ? '…' : ''}</div>`
+        : '';
+      return `<div class="slot-booked-inner"><strong>${esc(statusLabel)}</strong><div class="slot-student">${esc(studentName)}</div>${lesson}</div>`;
+    }
+
     // Generate time slots (30-minute intervals from 01:00 to 24:00) - 24-hour format
     function generateTimeSlots() {
       const gridBody = document.getElementById('time-slots-grid');
       gridBody.innerHTML = '';
       
       console.log('🔍 Generating time slots for currentWeek:', currentWeek.toISOString());
+      
+      const { DateTime } = luxon;
+      const timeZone = getScheduleTimeZone();
+      const baseWeek = DateTime.fromJSDate(currentWeek, { zone: timeZone });
+      const monday = baseWeek.minus({ days: baseWeek.weekday - 1 });
       
       const startHour = 1;
       const endHour = 24;
@@ -1130,14 +1211,10 @@
           timeColumn.textContent = timeString;
           timeRow.appendChild(timeColumn);
           
-          // Day columns
-                  for (let day = 0; day < 7; day++) {
-          const date = new Date(currentWeek);
-          // Calculate Monday as the start of the week (Monday = 1, Sunday = 0)
-          const dayOfWeek = currentWeek.getDay();
-          const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // If Sunday, go back 6 days; if Monday, go back 0 days, etc.
-          date.setDate(currentWeek.getDate() - daysToMonday + day);
-            const dateString = date.toISOString().split('T')[0];
+          // Day columns — same local dates as header row (fixes UTC/offset mismatch with bookings)
+          for (let day = 0; day < 7; day++) {
+            const dayDt = monday.plus({ days: day });
+            const dateString = dayDt.toISODate();
             
             // Debug: Log the first few slots to see what dates are being generated
             if (timeString === '09:00' && day < 3) {
@@ -1199,7 +1276,8 @@
         // Force fresh data with multiple cache-busting parameters
         const timestamp = Date.now();
         const random = Math.random();
-        const url = `/api/teacher/slots?teacherId=${teacherId}&week=${weekString}&allSlots=true&t=${timestamp}&v=${random}&fresh=true&nocache=${timestamp}&force=${timestamp}&clear=${random}&update=${Date.now()}&refresh=${Math.random()}`;
+        const tz = encodeURIComponent(getScheduleTimeZone());
+        const url = `/api/teacher/slots?teacherId=${teacherId}&week=${weekString}&allSlots=true&tz=${tz}&t=${timestamp}&v=${random}&fresh=true&nocache=${timestamp}&force=${timestamp}&clear=${random}&update=${Date.now()}&refresh=${Math.random()}`;
         console.log('🔍 Making fetch request to:', url);
         
         const response = await fetch(url, {
@@ -1283,10 +1361,11 @@
       const allSlots = document.querySelectorAll('.time-slot[data-date]');
       console.log('Found', allSlots.length, 'slots to clear');
       
-      // Create a set of booked slots to check against
+      // Create a set of booked slots (keys must match grid data-date + data-time in local TZ)
       const bookedSlots = new Set();
       bookingsData.forEach(booking => {
-        bookedSlots.add(`${booking.date}-${booking.time}`);
+        const { date: bd, time: bt } = getBookingCellDateTime(booking);
+        bookedSlots.add(`${bd}-${bt}`);
       });
       
       allSlots.forEach(slot => {
@@ -1544,38 +1623,48 @@
           console.log('🔍 FOUND COMPLETED BOOKING:', booking.date, booking.time, booking.status);
         }
         console.log('🔄 Booking details:', booking.finishedAt, booking.studentLevel, booking.studentTechnicalIssues);
-        
-        const slotElement = document.querySelector(`[data-date="${booking.date}"][data-time="${booking.time}"]`);
+
+        const { date: bd, time: bt } = getBookingCellDateTime(booking);
+        let slotElement = document.querySelector(`[data-date="${bd}"][data-time="${bt}"]`);
+        if (!slotElement && booking.date && booking.time) {
+          slotElement = document.querySelector(`[data-date="${booking.date}"][data-time="${booking.time}"]`);
+        }
         if (slotElement) {
-          console.log('✅ Found slot element for booking:', booking.date, booking.time);
+          console.log('✅ Found slot element for booking:', bd, bt, '(raw:', booking.date, booking.time, ')');
           slotElement.classList.remove('unavailable'); // Remove unavailable class if slot is booked
         } else {
-          console.log('❌ Slot element NOT found for booking:', booking.date, booking.time);
+          console.log('❌ Slot element NOT found for booking:', bd, bt, 'raw:', booking.date, booking.time);
           console.log('🔍 Available slot elements:');
           const allSlots = document.querySelectorAll('[data-date][data-time]');
           console.log('🔍 Total slot elements found:', allSlots.length);
           allSlots.forEach(el => {
-            if (el.dataset.date === booking.date) {
+            if (el.dataset.date === bd || el.dataset.date === booking.date) {
               console.log(`  - Date: ${el.dataset.date}, Time: ${el.dataset.time}`);
             }
           });
           return; // Skip processing if slot element not found
         }
-          
-          // Check if the class duration has passed (25 minutes after start time)
-          const now = new Date();
-          const currentDate = now.toISOString().split('T')[0];
-          const currentTime = now.toTimeString().split(' ')[0].substring(0, 5); // HH:MM format
-          
+
+          // Class duration passed (25 min after start) — use grid-local date/time (bd/bt), not raw DB fields
           let isClassDurationPassed = false;
-          if (booking.date === currentDate) {
-              // If it's today, check if the class duration has passed (25 minutes after start)
-              const [startHour, startMinute] = booking.time.split(':').map(Number);
+          if (typeof luxon !== 'undefined') {
+            const { DateTime } = luxon;
+            const tz = getScheduleTimeZone();
+            const todayLocal = DateTime.now().setZone(tz).toFormat('yyyy-LL-dd');
+            if (bd === todayLocal) {
+              const slotEnd = DateTime.fromFormat(`${bd} ${bt}`, 'yyyy-LL-dd HH:mm', { zone: tz }).plus({ minutes: 25 });
+              isClassDurationPassed = DateTime.now().setZone(tz) > slotEnd;
+            }
+          } else {
+            const now = new Date();
+            const currentDate = now.toISOString().split('T')[0];
+            const currentTime = now.toTimeString().split(' ')[0].substring(0, 5);
+            if (bd === currentDate) {
+              const [startHour, startMinute] = bt.split(':').map(Number);
               const endTime = new Date();
-              endTime.setHours(startHour, startMinute + 25, 0, 0); // 25 minutes after start
-              
-              const currentDateTime = new Date();
-              isClassDurationPassed = currentDateTime > endTime;
+              endTime.setHours(startHour, startMinute + 25, 0, 0);
+              isClassDurationPassed = new Date() > endTime;
+            }
           }
           
           // Check if class has resolved issue first (highest priority)
@@ -1636,6 +1725,31 @@
             
             console.log('✅ Completed class marked as finished with text:', slotElement.textContent);
             return; // Skip further processing for completed classes
+          }
+
+          // Active reservation — red "Booked" cell with student + lesson (matches grid-local bd/bt)
+          const statusNorm = (booking.status || '').toLowerCase();
+          if (statusNorm === 'booked') {
+            const lessonTopic = (booking.lessonTopic || booking.lesson || '').trim();
+            slotElement.classList.remove(
+              'unavailable', 'past', 'unbooked', 'open', 'finished', 'absent', 'student-absent', 'resolved-issue'
+            );
+            slotElement.classList.add('booked', 'booked-status-active');
+            slotElement.style.background = '';
+            slotElement.style.color = '';
+            slotElement.style.border = '';
+            slotElement.style.boxShadow = '';
+            slotElement.innerHTML = formatBookedCellHtml(
+              'Booked',
+              getBookingStudentDisplayName(booking),
+              lessonTopic
+            );
+            slotElement.title = `Booked — ${getBookingStudentDisplayName(booking)}${lessonTopic ? ' — ' + lessonTopic : ''}`;
+            slotElement.style.cursor = 'pointer';
+            slotElement.style.fontWeight = 'bold';
+            slotElement.style.fontSize = '1.1em';
+            slotElement.onclick = () => showClassInfo(booking);
+            return;
           }
           
           // Only check for "Past" status if the class is not completed
@@ -2156,24 +2270,30 @@
       }
     }
 
-    // Realtime updates via Socket.IO
+    // Realtime updates via Socket.IO (invalidates schedule cache immediately)
     (function initRealtime(){
+      function scheduleForThisTeacher(payload) {
+        if (!payload || payload.teacherId == null) return false;
+        const myId = localStorage.getItem('teacherId');
+        if (!myId) return false;
+        const a = String(payload.teacherId).trim();
+        const b = String(myId).trim();
+        return a === b;
+      }
       try {
         const socket = io();
+        socket.on('connect', () => {
+          console.log('🔌 Schedule socket connected; cache revalidated on events');
+        });
         socket.on('slotsUpdated', (payload) => {
-          if (!payload || !payload.teacherId) return;
-          const myId = localStorage.getItem('teacherId');
-          if (payload.teacherId === myId || String(payload.teacherId) === String(myId)) {
-            console.log('🔔 Realtime slotsUpdated received, refreshing schedule...', payload);
-            loadScheduleData();
-          }
+          if (!scheduleForThisTeacher(payload)) return;
+          console.log('🔔 Realtime slotsUpdated received, refreshing schedule...', payload);
+          loadScheduleData();
         });
         socket.on('bookingsUpdated', (payload) => {
-          const myId = localStorage.getItem('teacherId');
-          if (payload && (payload.teacherId === myId || String(payload.teacherId) === String(myId))) {
-            console.log('🔔 Realtime bookingsUpdated received, refreshing schedule...', payload);
-            loadScheduleData();
-          }
+          if (!scheduleForThisTeacher(payload)) return;
+          console.log('🔔 Realtime bookingsUpdated received, refreshing schedule...', payload);
+          loadScheduleData();
         });
       } catch (e) { console.log('Socket init failed', e); }
     })();
@@ -2735,7 +2855,7 @@
               { text: "How to Create a Lesson", icon: "➕", topic: "create lesson" }
             ]);
           } else if (lower.includes('lesson structure') || lower.includes('lesson format')) {
-            this.addBotMessage("**Standard Lesson Structure (50-60 min):**\n\n1️⃣ **Warm-up (5-10 min)** - Engage students\n2️⃣ **Introduction (5-10 min)** - Present objectives\n3️⃣ **Practice (15-20 min)** - Interactive exercises\n4️⃣ **Production (10-15 min)** - Apply learning\n5️⃣ **Wrap-up (5 min)** - Review and homework\n\n**Tips:** Keep it interactive, use multimedia!");
+            this.addBotMessage("**Standard Lesson Structure (25 min):**\n\n1️⃣ **Warm-up (5 min)** - Engage students\n2️⃣ **Introduction (5 min)** - Present objectives\n3️⃣ **Practice (10 min)** - Interactive exercises\n4️⃣ **Production (3 min)** - Apply learning\n5️⃣ **Wrap-up (2 min)** - Quick review and homework\n\n**Tips:** Keep it interactive, use multimedia, and focus on a 25-minute class!");
           } else if (lower.includes('teaching tip') || lower.includes('effective teaching')) {
             this.addBotMessage("**Top Tips for Online Teaching:**\n\n🎯 **Engagement**: Use polls, games, breakout rooms\n💬 **Communication**: Speak clearly, use visuals\n⏰ **Time Management**: Plan with time allocations\n👥 **Interaction**: Encourage participation, give feedback\n🔧 **Technical**: Test equipment, have backup plans\n\nRemember: Adaptability and creativity are key!");
           } else if (lower.includes('create lesson')) {
