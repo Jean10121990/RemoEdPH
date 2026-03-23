@@ -15,8 +15,11 @@ const fileRoutes = require('./fileRoutes');
 const announcementRoutes = require('./announcement');
 const lessonRoutes = require('./lessons');
 const classroomRecordingRouter = require('./classroomRecordingApi');
+const applicationRoutes = require('./applications');
 const Booking = require('./models/Booking');
 const LessonMaterial = require('./models/LessonMaterial');
+const InvitationToken = require('./models/InvitationToken');
+const Application = require('./models/Application');
 const { DateTime } = require('luxon');
 // LessonSlides model removed - PPTX conversion still works but slides are not saved to database
 const fs = require('fs');
@@ -133,6 +136,7 @@ app.use('/api/upload', fileRoutes); // Add alias for upload endpoint
 app.use('/api', announcementRoutes); // Mount announcement routes directly under /api
 app.use('/api', fileRoutes); // Add direct access to file routes (moved after announcement routes)
 app.use('/api/lessons', lessonRoutes);
+app.use('/api', applicationRoutes);
 
 /**
  * WebRTC ICE servers for live-classroom.html
@@ -158,6 +162,46 @@ app.get('/api/rtc-config', (req, res) => {
   }
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
   res.json({ iceServers });
+});
+
+// Protected teacher signup route: requires a valid invitation token in URL.
+app.get('/teacher-signup', async (req, res) => {
+  try {
+    const token = String(req.query.invitation || '').trim();
+    if (!token) {
+      return res.redirect('/');
+    }
+
+    const invitation = await InvitationToken.findOne({ token, isUsed: false }).lean();
+    if (!invitation) {
+      return res.redirect('/');
+    }
+
+    if (!invitation.expiresAt || new Date(invitation.expiresAt) <= new Date()) {
+      return res.redirect('/');
+    }
+
+    const application = await Application.findById(invitation.applicationId).lean();
+    if (!application || application.currentStage !== 'passed') {
+      return res.redirect('/');
+    }
+
+    return res.sendFile(path.join(__dirname, '../public/teacher-signup.html'));
+  } catch (error) {
+    console.error('Protected /teacher-signup route failed:', error);
+    return res.redirect('/');
+  }
+});
+
+// Prevent bypassing invitation checks via direct file URL.
+app.get('/teacher-signup.html', (req, res) => res.redirect('/'));
+
+// Public teacher application form (React build output).
+const applicationFormDist = path.join(__dirname, '../application-form/dist');
+const applicationFormAssets = path.join(applicationFormDist, 'assets');
+app.use('/assets', express.static(applicationFormAssets));
+app.get('/application-form', (req, res) => {
+  return res.sendFile(path.join(applicationFormDist, 'index.html'));
 });
 
 // Static files after core /api mounts so API paths are never shadowed by public files

@@ -3,6 +3,8 @@ const bcrypt = require('bcrypt');
 const Teacher = require('./models/Teacher');
 const Student = require('./models/Student');
 const Admin = require('./models/Admin');
+const Application = require('./models/Application');
+const InvitationToken = require('./models/InvitationToken');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret'; // Use a strong secret in production
@@ -231,6 +233,139 @@ router.post('/register', async (req, res) => {
       return res.status(409).json({ success: false, message: `${field} already exists.` });
     }
     res.status(500).json({ success: false, message: 'Server error: ' + (err.message || 'Failed to create account') });
+  }
+});
+
+// Validate teacher signup invitation token
+router.get('/teacher-signup/validate', async (req, res) => {
+  try {
+    const token = String(req.query.token || '').trim();
+    if (!token) {
+      return res.status(400).json({ success: false, message: 'Invitation token is required.' });
+    }
+
+    const invitation = await InvitationToken.findOne({ token, isUsed: false }).lean();
+    if (!invitation) {
+      return res.status(401).json({ success: false, message: 'Invalid invitation token.' });
+    }
+
+    if (!invitation.expiresAt || new Date(invitation.expiresAt) <= new Date()) {
+      return res.status(401).json({ success: false, message: 'Invitation token has expired.' });
+    }
+
+    const application = await Application.findById(invitation.applicationId).lean();
+    if (!application || application.currentStage !== 'passed') {
+      return res.status(401).json({ success: false, message: 'Invitation is no longer valid.' });
+    }
+
+    return res.json({
+      success: true,
+      applicant: {
+        id: application._id,
+        fullName: application.fullName || '',
+        email: application.email || ''
+      }
+    });
+  } catch (error) {
+    console.error('Teacher signup token validation failed:', error);
+    return res.status(500).json({ success: false, message: 'Failed to validate invitation token.' });
+  }
+});
+
+// Complete teacher signup with a valid invitation token
+router.post('/teacher-signup/complete', async (req, res) => {
+  try {
+    const {
+      token,
+      username,
+      password,
+      firstName = '',
+      middleName = '',
+      lastName = '',
+      contact = '',
+      address = ''
+    } = req.body || {};
+
+    if (!token || !username || !password) {
+      return res.status(400).json({ success: false, message: 'Token, username, and password are required.' });
+    }
+
+    const invitation = await InvitationToken.findOne({ token: String(token).trim(), isUsed: false });
+    if (!invitation) {
+      return res.status(401).json({ success: false, message: 'Invalid invitation token.' });
+    }
+
+    if (!invitation.expiresAt || new Date(invitation.expiresAt) <= new Date()) {
+      return res.status(401).json({ success: false, message: 'Invitation token has expired.' });
+    }
+
+    const application = await Application.findById(invitation.applicationId);
+    if (!application || application.currentStage !== 'passed') {
+      return res.status(401).json({ success: false, message: 'Invitation is no longer valid.' });
+    }
+
+    // Enforce email match between invitation and application.
+    if (
+      String(invitation.email || '').toLowerCase() !== String(application.email || '').toLowerCase()
+    ) {
+      return res.status(401).json({ success: false, message: 'Invitation email mismatch.' });
+    }
+
+    const existingUsername = await Teacher.findOne({ username: String(username).trim() }).lean();
+    if (existingUsername) {
+      return res.status(409).json({ success: false, message: 'Username already exists.' });
+    }
+
+    const existingEmail = await Teacher.findOne({ email: String(application.email).trim() }).lean();
+    if (existingEmail) {
+      return res.status(409).json({ success: false, message: 'A teacher account already exists for this email.' });
+    }
+
+    const teacherId = await generateTeacherIdFor({
+      firstName,
+      middleName,
+      lastName,
+      username: String(username).trim()
+    });
+
+    const hashedPassword = await bcrypt.hash(String(password), 10);
+    const teacher = await Teacher.create({
+      teacherId,
+      username: String(username).trim(),
+      password: hashedPassword,
+      firstName: String(firstName || '').trim(),
+      middleName: String(middleName || '').trim(),
+      lastName: String(lastName || '').trim(),
+      fullname:
+        `${String(firstName || '').trim()} ${String(lastName || '').trim()}`.trim() ||
+        application.fullName ||
+        '',
+      email: String(application.email || '').trim(),
+      contact: String(contact || '').trim(),
+      address: String(address || '').trim(),
+      status: 'active'
+    });
+
+    // Flip applicant status to Active Teacher and consume invitation token.
+    application.teacherActivationStatus = 'Active Teacher';
+    application.status = true;
+    await application.save();
+
+    invitation.isUsed = true;
+    invitation.usedAt = new Date();
+    await invitation.save();
+
+    return res.json({
+      success: true,
+      message: 'Teacher account activated successfully.',
+      teacherId: teacher.teacherId
+    });
+  } catch (error) {
+    console.error('Teacher signup completion failed:', error);
+    if (error && error.code === 11000) {
+      return res.status(409).json({ success: false, message: 'Duplicate account data detected.' });
+    }
+    return res.status(500).json({ success: false, message: 'Failed to complete teacher signup.' });
   }
 });
 

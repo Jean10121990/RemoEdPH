@@ -280,15 +280,15 @@
         .charts-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 1.5rem;
-            margin-bottom: 2rem;
+            gap: 0.9rem;
+            margin-bottom: 1rem;
         }
         
         .charts-grid-secondary {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 1.5rem;
-            margin-bottom: 2rem;
+            gap: 0.9rem;
+            margin-bottom: 1rem;
         }
         
         @media (max-width: 1400px) {
@@ -307,7 +307,7 @@
         .chart-card {
             background: white;
             border-radius: 12px;
-            padding: 1.25rem;
+            padding: 0.85rem;
             box-shadow: 0 2px 8px rgba(0,0,0,0.06);
             border: 1px solid #e0e6ed;
             transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -326,21 +326,21 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 1rem;
+            margin-bottom: 0.45rem;
         }
         
         .chart-title {
-            font-size: 0.85rem;
+            font-size: 0.74rem;
             font-weight: 600;
             color: #64748b;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.35px;
         }
         
         .chart-icon {
-            width: 36px;
-            height: 36px;
-            border-radius: 8px;
+            width: 30px;
+            height: 30px;
+            border-radius: 7px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -352,9 +352,9 @@
         }
         
         .chart-value {
-            font-size: 1.75rem;
+            font-size: 1.3rem;
             font-weight: 700;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.2rem;
         }
         
         .chart-value.primary {
@@ -362,7 +362,7 @@
         }
         
         .chart-change {
-            font-size: 0.8rem;
+            font-size: 0.72rem;
             display: flex;
             align-items: center;
             gap: 0.25rem;
@@ -381,8 +381,8 @@
             margin-top: 55px;
             display: flex;
             flex-direction: column;
-            padding: 1.5rem;
-            padding-top: 2rem;
+            padding: 1rem;
+            padding-top: 1.15rem;
             min-height: calc(100vh - 55px);
             overflow-x: visible;
         }
@@ -390,9 +390,52 @@
         .remoed-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 1.5rem;
+            gap: 0.9rem;
             flex: 1;
             min-height: 0;
+        }
+
+        /* Community & Social Responsibility */
+        .community-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+        @media (max-width: 768px) {
+            .community-grid { grid-template-columns: 1fr; }
+        }
+        .community-item {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid #e0e6ed;
+            background: #fafdff;
+        }
+        .community-icon {
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(102, 126, 234, 0.12);
+            color: #667eea;
+            flex-shrink: 0;
+            font-size: 1.05rem;
+        }
+        .community-item h4 {
+            margin: 0;
+            font-size: 0.95rem;
+            color: #1a202c;
+            font-weight: 700;
+        }
+        .community-item p {
+            margin: 4px 0 0 0;
+            font-size: 0.85rem;
+            color: #64748b;
+            line-height: 1.5;
         }
         
         .remoed-section {
@@ -549,6 +592,15 @@
             height: 20px; 
             stroke: currentColor; 
         }
+
+        /* Remove decorative motion/noise on dashboard */
+        .fun-card::before,
+        .safe-content-badge,
+        .fun-floating-elements,
+        .floating-element {
+            display: none !important;
+            animation: none !important;
+        }
     </style>
     <link rel="stylesheet" href="css/teacher-sidebar.css">
 </head>
@@ -562,12 +614,7 @@
                     <span>🎮 My Learning Adventure</span>
                 </h1>
             </div>
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <div class="points-display" id="student-points" style="font-size: 0.9rem; padding: 6px 12px;">
-                    <span id="points-count">0</span> ⭐
-                </div>
-                <div class="badge" id="level-badge" style="font-size: 0.85rem; padding: 6px 12px;">Level 1 🌱</div>
-            </div>
+            <div style="display: flex; align-items: center; gap: 12px;"></div>
             <div class="nav-right">
                 <!-- Profile Icon -->
                 <div class="nav-icon" onclick="window.location.href='student-profile.html'" title="My Profile">
@@ -624,127 +671,6 @@
         <script src="js/student-sidebar.js"></script>
         <script>StudentSidebar.render('student-sidebar-root', 'dashboard');</script>
         <div class="remoed-content" style="position: relative; z-index: 2; overflow-y: auto; overflow-x: visible;">
-            <!-- Games & Activities Quick Access with Characters -->
-            <div class="fun-card" style="margin-top: 70px; margin-bottom: 2rem; cursor: pointer; border-color: #1CA7E7; padding: 2rem; padding-top: 2.5rem; position: relative; overflow: visible; min-height: 280px;" onclick="window.location.href='student-games-activities.html'">
-                <!-- Characters - Using Separate Images -->
-                <div style="position: absolute; top: -50px; right: 40px; display: flex; gap: 15px; z-index: 5; pointer-events: none; align-items: flex-end;">
-                    <!-- Remo the Robot -->
-                    <div class="character-container" style="pointer-events: auto;" onclick="event.stopPropagation(); window.location.href='student-games-activities.html';" title="Click me to play games!">
-                        <div class="character-speech">Let's Play! 🎮</div>
-                        <div class="character-message">Tap to Start!</div>
-                        <div class="character-remo" style="width: 110px; height: 140px; position: relative;">
-                            <img src="images/remo-robot.png" alt="Remo the Robot" style="width: 100%; height: 100%; object-fit: contain; display: block;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                            <!-- Fallback SVG if image not found -->
-                            <svg class="remo-robot" width="140" height="180" viewBox="0 0 120 150" xmlns="http://www.w3.org/2000/svg" style="display: none; transform: scale(1.2);">
-                                <rect x="30" y="10" width="60" height="50" rx="8" fill="#FFFFFF" stroke="#1CA7E7" stroke-width="3"/>
-                                <rect x="20" y="20" width="12" height="30" rx="6" fill="#1CA7E7"/>
-                                <rect x="88" y="20" width="12" height="30" rx="6" fill="#1CA7E7"/>
-                                <circle cx="45" cy="30" r="6" fill="#1CA7E7"/>
-                                <circle cx="75" cy="30" r="6" fill="#1CA7E7"/>
-                                <path d="M 45 42 Q 60 48 75 42" stroke="#1CA7E7" stroke-width="2" fill="none"/>
-                                <rect x="35" y="60" width="50" height="60" rx="8" fill="#FFFFFF" stroke="#1CA7E7" stroke-width="3"/>
-                                <rect x="42" y="70" width="36" height="28" rx="4" fill="#FFD700"/>
-                                <rect x="20" y="70" width="15" height="8" rx="4" fill="#1CA7E7"/>
-                                <rect x="85" y="70" width="15" height="8" rx="4" fill="#1CA7E7"/>
-                                <rect x="40" y="120" width="12" height="20" rx="6" fill="#1CA7E7"/>
-                                <rect x="68" y="120" width="12" height="20" rx="6" fill="#1CA7E7"/>
-                            </svg>
-                        </div>
-                    </div>
-                    
-                    <!-- Ed the Curious Boy -->
-                    <div class="character-container" style="pointer-events: auto;" onclick="event.stopPropagation(); window.location.href='student-games-activities.html';" title="Join me for fun activities!">
-                        <div class="character-speech" style="animation-delay: 0.5s;">So Fun! 🎨</div>
-                        <div class="character-message" style="animation-delay: 0.5s;">Let's Go!</div>
-                        <div class="character-ed" style="width: 100px; height: 140px; position: relative;">
-                            <img src="images/ed-boy.png" alt="Ed the Curious Boy" style="width: 100%; height: 100%; object-fit: contain; display: block;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                            <!-- Fallback SVG if image not found -->
-                            <svg class="ed-boy" width="130" height="180" viewBox="0 0 100 140" xmlns="http://www.w3.org/2000/svg" style="display: none; transform: scale(1.3);">
-                                <circle cx="50" cy="30" r="22" fill="#F4C2A1" stroke="#D4A574" stroke-width="2"/>
-                                <path d="M 35 20 Q 30 10 35 15 Q 40 8 45 18 Q 50 5 55 18 Q 60 8 65 15 Q 70 10 65 20" fill="#1A1A1A"/>
-                                <circle cx="43" cy="28" r="3" fill="#1A1A1A"/>
-                                <circle cx="57" cy="28" r="3" fill="#1A1A1A"/>
-                                <circle cx="38" cy="32" r="3" fill="#FF6B9D" opacity="0.6"/>
-                                <circle cx="62" cy="32" r="3" fill="#FF6B9D" opacity="0.6"/>
-                                <path d="M 42 36 Q 50 40 58 36" stroke="#1A1A1A" stroke-width="2" fill="none"/>
-                                <path d="M 30 50 L 30 100 L 70 100 L 70 50 L 65 50 L 65 90 L 35 90 L 35 50 Z" fill="#FF8C42" stroke="#E67E22" stroke-width="2"/>
-                                <rect x="32" y="52" width="12" height="20" rx="2" fill="#1CA7E7"/>
-                                <rect x="56" y="52" width="12" height="20" rx="2" fill="#1CA7E7"/>
-                                <path d="M 35 50 Q 50 45 65 50 L 65 60 L 35 60 Z" fill="#E74C3C"/>
-                                <rect x="22" y="60" width="10" height="25" rx="5" fill="#FF8C42"/>
-                                <rect x="68" y="60" width="10" height="25" rx="5" fill="#FF8C42"/>
-                                <circle cx="27" cy="88" r="4" fill="#F4C2A1"/>
-                                <circle cx="73" cy="88" r="4" fill="#F4C2A1"/>
-                                <rect x="35" y="100" width="30" height="30" rx="4" fill="#1CA7E7"/>
-                                <ellipse cx="42" cy="135" rx="8" ry="5" fill="#1CA7E7"/>
-                                <ellipse cx="58" cy="135" rx="8" ry="5" fill="#1CA7E7"/>
-                            </svg>
-                        </div>
-                    </div>
-                    
-                    <!-- Sophia the Cute Doll -->
-                    <div class="character-container" style="pointer-events: auto;" onclick="event.stopPropagation(); window.location.href='student-games-activities.html';" title="Join me for fun learning!">
-                        <div class="character-speech" style="animation-delay: 0.8s;">Let's Learn! 💖</div>
-                        <div class="character-message" style="animation-delay: 0.8s;">So Exciting!</div>
-                        <div class="character-sophia" style="width: 100px; height: 140px; position: relative;">
-                            <img src="images/sophia-girl.png" alt="Sophia the Cute Doll" style="width: 100%; height: 100%; object-fit: contain; display: block;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                            <!-- Fallback SVG if image not found -->
-                            <svg class="sophia-girl" width="130" height="180" viewBox="0 0 100 140" xmlns="http://www.w3.org/2000/svg" style="display: none; transform: scale(1.3);">
-                                <path d="M 30 25 Q 25 15 30 20 Q 35 10 40 20 Q 45 8 50 20 Q 55 8 60 20 Q 65 10 70 20 Q 75 15 70 25 L 70 50 L 30 50 Z" fill="#8B4513"/>
-                                <circle cx="50" cy="30" r="22" fill="#FFF5E6" stroke="#F5E6D3" stroke-width="2"/>
-                                <path d="M 45 22 Q 50 18 55 22 Q 55 26 50 24 Q 45 26 45 22" fill="#FF6B9D"/>
-                                <circle cx="50" cy="23" r="3" fill="#FF6B9D"/>
-                                <circle cx="43" cy="28" r="3.5" fill="#1CA7E7"/>
-                                <circle cx="57" cy="28" r="3.5" fill="#1CA7E7"/>
-                                <circle cx="44" cy="27" r="1.5" fill="#FFFFFF"/>
-                                <circle cx="58" cy="27" r="1.5" fill="#FFFFFF"/>
-                                <circle cx="38" cy="32" r="4" fill="#FF6B9D" opacity="0.6"/>
-                                <circle cx="62" cy="32" r="4" fill="#FF6B9D" opacity="0.6"/>
-                                <path d="M 42 36 Q 50 41 58 36" stroke="#1A1A1A" stroke-width="2" fill="none"/>
-                                <path d="M 28 50 L 28 110 L 72 110 L 72 50 L 68 50 L 68 100 L 32 100 L 32 50 Z" fill="#FF6B9D" stroke="#E55A8A" stroke-width="2"/>
-                                <rect x="35" y="50" width="30" height="8" rx="4" fill="#FFB6C1"/>
-                                <rect x="20" y="60" width="10" height="25" rx="5" fill="#FFF5E6"/>
-                                <rect x="70" y="60" width="10" height="25" rx="5" fill="#FFF5E6"/>
-                                <rect x="38" y="110" width="8" height="20" rx="4" fill="#FFF5E6"/>
-                                <rect x="54" y="110" width="8" height="20" rx="4" fill="#FFF5E6"/>
-                                <ellipse cx="42" cy="132" rx="6" ry="4" fill="#FF6B9D"/>
-                                <ellipse cx="58" cy="132" rx="6" ry="4" fill="#FF6B9D"/>
-                            </svg>
-                        </div>
-                    </div>
-                </div>
-                
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; padding-right: 400px;">
-                    <h2 style="margin: 0; color: #1CA7E7; font-size: 1.6rem; font-weight: 700; display: flex; align-items: center; gap: 10px;">
-                        <span style="font-size: 1.8rem;">🎮</span>
-                        <span>Play & Learn!</span>
-                    </h2>
-                    <div class="fun-btn" style="padding: 10px 20px; font-size: 0.95rem; margin: 0;">Let's Play! →</div>
-                </div>
-                <p style="margin: 0 0 1.2rem 0; color: #4A6FA5; font-size: 1rem; font-weight: 500; line-height: 1.5;">Practice Reading, Speaking, Writing, Listening, and Good Moral Activities! ⭐</p>
-                <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px;">
-                    <div style="text-align: center; padding: 14px; background: linear-gradient(135deg, #E8F4FD, #FFFBF0); border-radius: 12px; border: 2px solid #1CA7E7; transition: all 0.3s ease;" onmouseover="this.style.transform='scale(1.05)'; this.style.borderColor='#FFD700';" onmouseout="this.style.transform='scale(1)'; this.style.borderColor='#1CA7E7';">
-                        <div style="font-size: 2.2rem; margin-bottom: 6px; animation: bounce 2s ease-in-out infinite;">📖</div>
-                        <div style="font-size: 0.9rem; font-weight: 700; color: #1CA7E7;">Reading</div>
-                    </div>
-                    <div style="text-align: center; padding: 14px; background: linear-gradient(135deg, #E8F4FD, #FFFBF0); border-radius: 12px; border: 2px solid #1CA7E7; transition: all 0.3s ease;" onmouseover="this.style.transform='scale(1.05)'; this.style.borderColor='#FFD700';" onmouseout="this.style.transform='scale(1)'; this.style.borderColor='#1CA7E7';">
-                        <div style="font-size: 2.2rem; margin-bottom: 6px; animation: bounce 2s ease-in-out infinite; animation-delay: 0.2s;">🗣️</div>
-                        <div style="font-size: 0.9rem; font-weight: 700; color: #1CA7E7;">Speaking</div>
-                    </div>
-                    <div style="text-align: center; padding: 14px; background: linear-gradient(135deg, #E8F4FD, #FFFBF0); border-radius: 12px; border: 2px solid #1CA7E7; transition: all 0.3s ease;" onmouseover="this.style.transform='scale(1.05)'; this.style.borderColor='#FFD700';" onmouseout="this.style.transform='scale(1)'; this.style.borderColor='#1CA7E7';">
-                        <div style="font-size: 2.2rem; margin-bottom: 6px; animation: bounce 2s ease-in-out infinite; animation-delay: 0.4s;">✍️</div>
-                        <div style="font-size: 0.9rem; font-weight: 700; color: #1CA7E7;">Writing</div>
-                    </div>
-                    <div style="text-align: center; padding: 14px; background: linear-gradient(135deg, #E8F4FD, #FFFBF0); border-radius: 12px; border: 2px solid #1CA7E7; transition: all 0.3s ease;" onmouseover="this.style.transform='scale(1.05)'; this.style.borderColor='#FFD700';" onmouseout="this.style.transform='scale(1)'; this.style.borderColor='#1CA7E7';">
-                        <div style="font-size: 2.2rem; margin-bottom: 6px; animation: bounce 2s ease-in-out infinite; animation-delay: 0.6s;">👂</div>
-                        <div style="font-size: 0.9rem; font-weight: 700; color: #1CA7E7;">Listening</div>
-                    </div>
-                    <div style="text-align: center; padding: 14px; background: linear-gradient(135deg, #E8F4FD, #FFFBF0); border-radius: 12px; border: 2px solid #1CA7E7; transition: all 0.3s ease;" onmouseover="this.style.transform='scale(1.05)'; this.style.borderColor='#FFD700';" onmouseout="this.style.transform='scale(1)'; this.style.borderColor='#1CA7E7';">
-                        <div style="font-size: 2.2rem; margin-bottom: 6px; animation: bounce 2s ease-in-out infinite; animation-delay: 0.8s;">❤️</div>
-                        <div style="font-size: 0.9rem; font-weight: 700; color: #1CA7E7;">Moral</div>
-                    </div>
-                </div>
-            </div>
             
             <!-- Primary Charts Grid (Total Classes & Completed Classes) -->
             <div class="charts-grid">
@@ -871,19 +797,46 @@
             <!-- Main Content Grid -->
             <div class="remoed-grid">
                 <div>
-                    <!-- Announcements -->
-                    <div class="remoed-section">
+                    <!-- Community & Social Responsibility -->
+                    <div class="remoed-section" id="community-responsibility">
                         <div class="remoed-section-title" style="display: flex; align-items: center; gap: 10px;">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="color: #667eea;">
-                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                                <path d="M12 12c2.21 0 4-1.79 4-4S14.21 4 12 4 8 5.79 8 8s1.79 4 4 4zm0 2c-3.33 0-8 1.67-8 5v1h16v-1c0-3.33-4.67-5-8-5z"/>
                             </svg>
-                            Announcements and Updates
+                            Community & Social Responsibility
                         </div>
-                        <div id="student-announcement-list" style="background: #fafdff; border-radius: 10px; padding: 12px; margin-bottom: 12px;">
-                            <!-- Announcements will be loaded here -->
+                        <div class="community-grid">
+                            <div class="community-item">
+                                <div class="community-icon">👨‍👩‍👧</div>
+                                <div><h4>Family Day</h4><p>Activities that encourage parent involvement and celebrate learning together.</p></div>
+                            </div>
+                            <div class="community-item">
+                                <div class="community-icon">👩‍🏫</div>
+                                <div><h4>Teachers’ Day</h4><p>Recognizing teacher dedication through appreciation and community events.</p></div>
+                            </div>
+                            <div class="community-item">
+                                <div class="community-icon">🧒</div>
+                                <div><h4>Students’ Day</h4><p>Celebrating student progress and building confidence through fun events.</p></div>
+                            </div>
+                            <div class="community-item">
+                                <div class="community-icon">🥣</div>
+                                <div><h4>Feeding Program</h4><p>Supporting learner wellness through food assistance and community outreach.</p></div>
+                            </div>
+                            <div class="community-item">
+                                <div class="community-icon">♻️</div>
+                                <div><h4>Waste Management</h4><p>Promoting proper segregation and eco-friendly habits at home and in school.</p></div>
+                            </div>
+                            <div class="community-item">
+                                <div class="community-icon">🧠</div>
+                                <div><h4>Mental Health Support</h4><p>Resources and awareness activities to support a safe, positive learning environment.</p></div>
+                            </div>
+                            <div class="community-item">
+                                <div class="community-icon">🌱</div>
+                                <div><h4>Sustainability Projects</h4><p>Simple projects and activities that build care for the environment.</p></div>
+                            </div>
                         </div>
                     </div>
-                    
+
                     <!-- Reschedule Notifications -->
                     <div class="remoed-section" id="reschedule-section" style="display: none;">
                         <div class="remoed-section-title" style="display: flex; align-items: center; gap: 10px; color: #dc2626;">
@@ -898,18 +851,18 @@
                     </div>
                 </div>
                 <div>
-                    <!-- Upcoming Classes -->
+                    <!-- Announcements -->
                     <div class="remoed-section">
                         <div class="remoed-section-title" style="display: flex; align-items: center; gap: 10px;">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="color: #667eea;">
-                                <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
                             </svg>
-                            Upcoming Classes
+                            Announcements and Updates
                         </div>
                         <div class="upcoming-classes-container">
-                            <ul class="upcoming-classes-list" id="upcoming-classes-list">
-                                <!-- Upcoming classes will be loaded here -->
-                            </ul>
+                            <div id="student-announcement-list-right" style="background: #fafdff; border-radius: 10px; padding: 12px; margin-bottom: 12px;">
+                                <!-- Announcements will be loaded here -->
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -958,17 +911,21 @@
       fetch('/api/announcement?role=student')
         .then(r => r.json())
         .then(list => {
-          const listDiv = document.getElementById('student-announcement-list');
+          const listDivs = [document.getElementById('student-announcement-list-right')].filter(Boolean);
+          if (!listDivs.length) return;
           if (!list.length) {
-            listDiv.innerHTML = '<div style="color:#888;">No announcements at this time.</div>';
+            listDivs.forEach((listDiv) => {
+              listDiv.innerHTML = '<div style="color:#888;">No announcements at this time.</div>';
+            });
             return;
           }
-          listDiv.innerHTML = list.map(a => `
+          const html = list.map(a => `
             <div style='background:#fafdff;border-radius:8px;padding:14px 18px;margin-bottom:10px;'>
               <div style='font-weight:500;white-space:pre-line;'>${a.content}</div>
               <div style='font-size:0.97rem;color:#888;margin-top:4px;'>${a.updatedAt ? new Date(a.updatedAt).toLocaleString() : ''}</div>
             </div>
           `).join('');
+          listDivs.forEach((listDiv) => { listDiv.innerHTML = html; });
         });
         
       // Set up dropdown functionality

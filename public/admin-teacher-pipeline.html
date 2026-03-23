@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TeacherPipeline - Admin</title>
+  <link rel="stylesheet" href="css/teacher-sidebar.css" />
+  <style>
+    body { margin: 0; background: #f4f7fb; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    .layout { display: flex; min-height: 100vh; }
+    .content { margin-left: 260px; width: calc(100% - 260px); padding: 20px; box-sizing: border-box; }
+    .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 1px 6px rgba(2, 6, 23, .06); }
+    .head { padding: 16px 18px; border-bottom: 1px solid #eef2f7; }
+    .title { margin: 0; font-size: 1.2rem; color: #0f172a; }
+    .sub { margin: 4px 0 0; color: #64748b; font-size: .9rem; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 12px 14px; border-bottom: 1px solid #f1f5f9; text-align: left; font-size: .92rem; }
+    th { color: #334155; background: #f8fafc; font-weight: 700; }
+    .progress-track { width: 180px; height: 8px; border-radius: 999px; background: #e2e8f0; overflow: hidden; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, #2563eb, #22c55e); }
+    .stage { text-transform: capitalize; color: #0f172a; font-weight: 600; }
+    .btn { border: none; border-radius: 8px; padding: 8px 12px; font-size: .85rem; cursor: pointer; font-weight: 700; }
+    .btn-review { background: #2563eb; color: #fff; }
+    .btn-pass { background: #16a34a; color: #fff; }
+    .btn-fail { background: #dc2626; color: #fff; }
+    .muted { color: #64748b; font-size: .86rem; }
+
+    .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, .45); z-index: 1000; }
+    .modal { width: min(980px, 92vw); max-height: 90vh; overflow: auto; margin: 4vh auto; background: #fff; border-radius: 12px; border: 1px solid #e2e8f0; }
+    .modal-head { padding: 14px 16px; border-bottom: 1px solid #eef2f7; display: flex; align-items: center; justify-content: space-between; }
+    .modal-body { padding: 14px 16px; display: grid; gap: 14px; }
+    .panel { border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; background: #f8fafc; }
+    .answers { white-space: pre-wrap; line-height: 1.5; color: #0f172a; }
+    .video-list a { display: block; margin: 4px 0; color: #2563eb; word-break: break-all; }
+    .actions { display: flex; gap: 8px; justify-content: flex-end; padding: 12px 16px; border-top: 1px solid #eef2f7; }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <div id="admin-sidebar-root"></div>
+    <main class="content">
+      <div class="card">
+        <div class="head">
+          <h1 class="title">TeacherPipeline</h1>
+          <p class="sub">Review all applicants, watch demo lessons, and decide pass/fail.</p>
+        </div>
+        <div style="padding: 6px 0;">
+          <table>
+            <thead>
+              <tr>
+                <th>Applicant</th>
+                <th>Email</th>
+                <th>Stage</th>
+                <th>Progress</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="pipeline-body">
+              <tr><td colspan="5" class="muted" style="padding: 18px;">Loading applicants...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="review-modal">
+    <div class="modal">
+      <div class="modal-head">
+        <strong id="modal-name">Applicant Review</strong>
+        <button class="btn" id="close-modal">Close</button>
+      </div>
+      <div class="modal-body">
+        <div class="panel">
+          <div class="muted">Lesson demo video</div>
+          <video id="demo-video" controls style="width: 100%; margin-top: 8px; border-radius: 8px; background: #000;"></video>
+          <a id="demo-video-link" href="#" target="_blank" rel="noopener" class="muted" style="display:block;margin-top:8px;">Open demo in new tab</a>
+        </div>
+        <div class="panel">
+          <div class="muted">Text answers</div>
+          <div id="answer-text" class="answers" style="margin-top: 8px;">No text answers.</div>
+        </div>
+        <div class="panel">
+          <div class="muted">Video answer URLs</div>
+          <div id="answer-videos" class="video-list" style="margin-top: 8px;"></div>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-fail" id="modal-fail">Fail</button>
+        <button class="btn btn-pass" id="modal-pass">Pass</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/admin-sidebar.js"></script>
+  <script>
+    const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
+    const userType = localStorage.getItem('userType');
+    if (!token || (userType && userType !== 'admin')) {
+      window.location.href = 'admin-login.html';
+    }
+
+    AdminSidebar.render('admin-sidebar-root', 'teacher-pipeline');
+
+    const bodyEl = document.getElementById('pipeline-body');
+    const modal = document.getElementById('review-modal');
+    const modalName = document.getElementById('modal-name');
+    const demoVideo = document.getElementById('demo-video');
+    const demoVideoLink = document.getElementById('demo-video-link');
+    const answerText = document.getElementById('answer-text');
+    const answerVideos = document.getElementById('answer-videos');
+    const passBtn = document.getElementById('modal-pass');
+    const failBtn = document.getElementById('modal-fail');
+
+    let selectedApplicantId = null;
+
+    function stageProgress(stage) {
+      const stages = ['applied', 'testing', 'interviewing', 'demo', 'documentation', 'passed', 'failed'];
+      const idx = stages.indexOf(stage);
+      if (idx < 0) return 0;
+      if (stage === 'failed') return 100;
+      return Math.round((idx / (stages.length - 2)) * 100);
+    }
+
+    async function api(path, options = {}) {
+      const response = await fetch(path, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          ...(options.headers || {})
+        }
+      });
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(json.error || `Request failed (${response.status})`);
+      return json;
+    }
+
+    async function loadApplicants() {
+      bodyEl.innerHTML = '<tr><td colspan="5" class="muted" style="padding: 18px;">Loading applicants...</td></tr>';
+      try {
+        const data = await api('/api/admin/teacher-pipeline/applicants');
+        const rows = data.applicants || [];
+        if (!rows.length) {
+          bodyEl.innerHTML = '<tr><td colspan="5" class="muted" style="padding: 18px;">No applicants found.</td></tr>';
+          return;
+        }
+        bodyEl.innerHTML = rows.map((a) => `
+          <tr>
+            <td>${a.fullName || '-'}</td>
+            <td>${a.email || '-'}</td>
+            <td><span class="stage">${a.currentStage || 'applied'}</span></td>
+            <td>
+              <div class="progress-track"><div class="progress-fill" style="width:${a.progress ?? stageProgress(a.currentStage)}%"></div></div>
+              <div class="muted" style="margin-top:4px;">${a.progress ?? stageProgress(a.currentStage)}%</div>
+            </td>
+            <td><button class="btn btn-review" data-review="${a._id}">Review</button></td>
+          </tr>
+        `).join('');
+
+        Array.from(document.querySelectorAll('[data-review]')).forEach((btn) => {
+          btn.addEventListener('click', () => openReview(btn.getAttribute('data-review')));
+        });
+      } catch (error) {
+        bodyEl.innerHTML = `<tr><td colspan="5" style="padding:18px;color:#dc2626;">${error.message}</td></tr>`;
+      }
+    }
+
+    async function openReview(applicantId) {
+      try {
+        const data = await api(`/api/admin/teacher-pipeline/applicants/${applicantId}`);
+        const applicant = data.applicant;
+        selectedApplicantId = applicant._id;
+
+        modalName.textContent = `Review: ${applicant.fullName || applicant.email || 'Applicant'}`;
+
+        const demoUrl = applicant.demoVideoUrl || '';
+        demoVideo.src = demoUrl;
+        demoVideoLink.href = demoUrl || '#';
+        demoVideoLink.textContent = demoUrl ? 'Open demo in new tab' : 'No demo video uploaded';
+
+        const txt = applicant?.testAnswers?.text || '';
+        answerText.textContent = txt || 'No text answers.';
+
+        const vids = Array.isArray(applicant?.testAnswers?.videoUrls) ? applicant.testAnswers.videoUrls : [];
+        answerVideos.innerHTML = vids.length
+          ? vids.map((url, idx) => `<a href="${url}" target="_blank" rel="noopener">Video Answer ${idx + 1}</a>`).join('')
+          : '<span class="muted">No video answer URLs.</span>';
+
+        modal.style.display = 'block';
+      } catch (error) {
+        alert(error.message);
+      }
+    }
+
+    async function passApplicant() {
+      if (!selectedApplicantId) return;
+      passBtn.disabled = true;
+      try {
+        const result = await api(`/api/admin/teacher-pipeline/applicants/${selectedApplicantId}/pass`, { method: 'POST' });
+        const info = result.emailResult?.success ? 'Invitation email sent.' : `Email issue: ${result.emailResult?.error || 'unknown'}`;
+        alert(`Applicant passed. ${info}`);
+        closeModal();
+        await loadApplicants();
+      } catch (error) {
+        alert(error.message);
+      } finally {
+        passBtn.disabled = false;
+      }
+    }
+
+    async function failApplicant() {
+      if (!selectedApplicantId) return;
+      failBtn.disabled = true;
+      try {
+        await api(`/api/admin/teacher-pipeline/applicants/${selectedApplicantId}/fail`, { method: 'POST' });
+        alert('Applicant marked as failed.');
+        closeModal();
+        await loadApplicants();
+      } catch (error) {
+        alert(error.message);
+      } finally {
+        failBtn.disabled = false;
+      }
+    }
+
+    function closeModal() {
+      modal.style.display = 'none';
+      selectedApplicantId = null;
+      demoVideo.pause();
+      demoVideo.src = '';
+      answerText.textContent = '';
+      answerVideos.innerHTML = '';
+    }
+
+    document.getElementById('close-modal').addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+    passBtn.addEventListener('click', passApplicant);
+    failBtn.addEventListener('click', failApplicant);
+
+    loadApplicants();
+  </script>
+</body>
+</html>

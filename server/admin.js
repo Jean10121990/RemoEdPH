@@ -12,7 +12,10 @@ const TimeLog = require('./models/TimeLog');
 const Referral = require('./models/Referral');
 const { verifyToken, requireAdmin } = require('./authMiddleware');
 const bcrypt = require('bcrypt');
-const { sendTeacherRegistrationEmail } = require('./emailService');
+const crypto = require('crypto');
+const Application = require('./models/Application');
+const InvitationToken = require('./models/InvitationToken');
+const { sendTeacherRegistrationEmail, sendTeacherPipelineWelcomeEmail } = require('./emailService');
 
 // Function to create notifications
 async function createNotification(userId, type, message) {
@@ -70,6 +73,15 @@ async function generateTemporaryUsername() {
 
 // Import GlobalSettings model
 const GlobalSettings = require('./models/GlobalSettings');
+
+const TEACHER_PIPELINE_STAGES = ['applied', 'testing', 'interviewing', 'demo', 'documentation', 'passed', 'failed'];
+
+function toProgressPercent(stage) {
+  const idx = TEACHER_PIPELINE_STAGES.indexOf(stage);
+  if (idx < 0) return 0;
+  if (stage === 'failed') return 100;
+  return Math.round((idx / (TEACHER_PIPELINE_STAGES.length - 2)) * 100);
+}
 
 // ——— Admin time tracking (registered early; 7 AM PHT business day) ———
 function adminTimeWorkerId(username) {
@@ -266,6 +278,110 @@ router.get('/notifications', verifyToken, requireAdmin, async (req, res) => {
   } catch (err) {
     console.error('Admin notifications list error:', err);
     res.status(500).json({ error: 'Failed to load notifications' });
+  }
+});
+
+// -----------------------------
+// Teacher Pipeline (Applications)
+// -----------------------------
+router.get('/teacher-pipeline/applicants', verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const applicants = await Application.find({})
+      .sort({ updatedAt: -1 })
+      .lean();
+
+    const rows = applicants.map((a) => ({
+      _id: a._id,
+      fullName: a.fullName || '',
+      email: a.email || '',
+      currentStage: a.currentStage || 'applied',
+      status: Boolean(a.status),
+      progress: toProgressPercent(a.currentStage),
+      updatedAt: a.updatedAt
+    }));
+
+    res.json({ success: true, applicants: rows });
+  } catch (error) {
+    console.error('❌ Failed to load teacher pipeline applicants:', error);
+    res.status(500).json({ success: false, error: 'Failed to load applicants' });
+  }
+});
+
+router.get('/teacher-pipeline/applicants/:id', verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const applicant = await Application.findById(req.params.id).lean();
+    if (!applicant) {
+      return res.status(404).json({ success: false, error: 'Applicant not found' });
+    }
+    res.json({ success: true, applicant });
+  } catch (error) {
+    console.error('❌ Failed to load applicant details:', error);
+    res.status(500).json({ success: false, error: 'Failed to load applicant details' });
+  }
+});
+
+router.post('/teacher-pipeline/applicants/:id/fail', verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const applicant = await Application.findById(req.params.id);
+    if (!applicant) {
+      return res.status(404).json({ success: false, error: 'Applicant not found' });
+    }
+
+    applicant.currentStage = 'failed';
+    applicant.status = false;
+    await applicant.save();
+
+    res.json({ success: true, message: 'Applicant marked as failed' });
+  } catch (error) {
+    console.error('❌ Failed to mark applicant as failed:', error);
+    res.status(500).json({ success: false, error: 'Failed to mark applicant as failed' });
+  }
+});
+
+router.post('/teacher-pipeline/applicants/:id/pass', verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const applicant = await Application.findById(req.params.id);
+    if (!applicant) {
+      return res.status(404).json({ success: false, error: 'Applicant not found' });
+    }
+
+    applicant.currentStage = 'passed';
+    applicant.status = true;
+    await applicant.save();
+
+    // Reuse an active unused token if available, otherwise generate a new one.
+    const now = new Date();
+    let invitation = await InvitationToken.findOne({
+      applicationId: applicant._id,
+      isUsed: false,
+      expiresAt: { $gt: now }
+    }).sort({ createdAt: -1 });
+
+    if (!invitation) {
+      invitation = await InvitationToken.create({
+        applicationId: applicant._id,
+        email: applicant.email,
+        token: crypto.randomBytes(24).toString('hex'),
+        isUsed: false,
+        expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7) // 7 days
+      });
+    }
+
+    const frontendBase = process.env.FRONTEND_URL || 'http://localhost:5000';
+    const signupLink = `${frontendBase}/teacher-signup?invitation=${encodeURIComponent(invitation.token)}`;
+
+    const emailResult = await sendTeacherPipelineWelcomeEmail(applicant.email, applicant.fullName, signupLink);
+
+    res.json({
+      success: true,
+      message: 'Applicant passed and invitation email processed',
+      invitationToken: invitation.token,
+      signupLink,
+      emailResult
+    });
+  } catch (error) {
+    console.error('❌ Failed to pass applicant:', error);
+    res.status(500).json({ success: false, error: 'Failed to pass applicant' });
   }
 });
 

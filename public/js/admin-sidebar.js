@@ -11,6 +11,7 @@
         { id: 'dashboard', label: 'Dashboard', href: 'admin-dashboard.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/></svg>' },
         { id: 'users', label: 'User Management', href: 'admin-users.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"/></svg>' },
         { id: 'teacher-assessments', label: 'Teacher Assessments', href: 'admin-teacher-assessments.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>' },
+        { id: 'teacher-pipeline', label: 'TeacherPipeline', href: 'admin-teacher-pipeline.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/><path d="M8 6v12"/></svg>' },
         { id: 'announcements', label: 'Announcements', href: 'admin-announcements.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg>' },
         { id: 'unique-link-commission', label: 'Unique Link Commission', href: 'admin-unique-link-commission.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 1 0-7l1-1a5 5 0 0 1 7 7l-1 1"/><path d="M14 11a5 5 0 0 1 0 7l-1 1a5 5 0 0 1-7-7l1-1"/></svg>' },
         { id: 'payroll', label: 'Payroll Management', href: 'admin-payroll.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 10c-4.41 0-8-1.79-8-4V6c0-2.21 3.59-4 8-4s8 1.79 8 4v8c0 2.21-3.59 4-8 4z"/></svg>' },
@@ -28,6 +29,7 @@
         if (path.indexOf('admin-dashboard') !== -1) return 'dashboard';
         if (path.indexOf('admin-users') !== -1) return 'users';
         if (path.indexOf('admin-teacher-assessments') !== -1) return 'teacher-assessments';
+        if (path.indexOf('admin-teacher-pipeline') !== -1) return 'teacher-pipeline';
         if (path.indexOf('admin-announcements') !== -1) return 'announcements';
         if (path.indexOf('admin-unique-link-commission') !== -1) return 'unique-link-commission';
         if (path.indexOf('admin-payroll') !== -1) return 'payroll';
