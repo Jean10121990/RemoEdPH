@@ -53,12 +53,16 @@ const studentSchema = new mongoose.Schema({
     paypalEmail: { type: String, default: '' }
   },
   paymentPaidAt: { type: Date, default: null },
+<<<<<<< HEAD
   processedPaymentIds: [{ type: String }],
+=======
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
   pendingCheckout: {
     sessionId: { type: String, default: '' },
     createdAt: { type: Date, default: null }
   },
   // Lesson credits (used for flexible scheduling)
+<<<<<<< HEAD
   totalCredits: { type: Number, default: 0 }, // alias for current balance (for newer UI/API)
   reservedCredits: { type: Number, default: 0 }, // credits temporarily held by upcoming bookings
   usedCredits: { type: Number, default: 0 }, // total consumed credits
@@ -71,6 +75,10 @@ const studentSchema = new mongoose.Schema({
     amountPaid: { type: Number, default: 0 },
     paymentId: { type: String, default: '' }
   }],
+=======
+  creditBalance: { type: Number, default: 0 }, // remaining lesson credits
+  totalCreditsEarned: { type: Number, default: 0 }, // total credits ever purchased
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
   creditTransactions: [{
     date: { type: Date, default: Date.now },
     type: { type: String, enum: ['purchase', 'adjustment', 'use'], default: 'purchase' },

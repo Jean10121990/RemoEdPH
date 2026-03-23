@@ -69,7 +69,10 @@ class AttendanceChecker {
           
           booking.status = 'absent';
           booking.attendance.absentChecked = true;
+<<<<<<< HEAD
           await this.consumeReservedCreditForBooking(booking, 'Student absent');
+=======
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
           await booking.save();
 
           // Create notification for teacher about teacher absence
@@ -82,7 +85,10 @@ class AttendanceChecker {
           
           booking.status = 'absent';
           booking.attendance.absentChecked = true;
+<<<<<<< HEAD
           await this.consumeReservedCreditForBooking(booking, 'Student absent');
+=======
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
           await booking.save();
 
           // Create notification for teacher about student absence
@@ -95,7 +101,10 @@ class AttendanceChecker {
           
           booking.status = 'absent';
           booking.attendance.absentChecked = true;
+<<<<<<< HEAD
           await this.consumeReservedCreditForBooking(booking, 'Student absent');
+=======
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
           await booking.save();
 
           // Create notification for teacher about teacher absence
@@ -138,6 +147,7 @@ class AttendanceChecker {
     }
   }
 
+<<<<<<< HEAD
   async consumeReservedCreditForBooking(booking, descriptionPrefix = 'Student absent') {
     if (!booking || booking.creditConsumedAt || booking.creditReservationReleasedAt) return;
     if (!booking || !booking.studentId) return;
@@ -189,6 +199,8 @@ class AttendanceChecker {
     booking.creditReservationReleasedAt = null;
   }
 
+=======
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
   // Method to manually mark a booking as absent (for testing or manual override)
   async markBookingAsAbsent(bookingId, absentType = 'student') {
     try {

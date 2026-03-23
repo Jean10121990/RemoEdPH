@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Watch Videos - RemoEdPH</title>
+  <link rel="stylesheet" href="css/teacher-sidebar.css">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Comic Sans MS', 'Chalkboard SE', 'Trebuchet MS', 'Segoe UI', sans-serif;
+      background: #f6fbff;
+    }
+    .remoed-main { display: flex; min-height: 100vh; }
+    .content {
+      margin-left: 260px;
+      width: calc(100% - 260px);
+      box-sizing: border-box;
+      padding: 22px;
+    }
+    .card {
+      background: #fff;
+      border: 1px solid #d8e8ff;
+      border-radius: 14px;
+      padding: 18px;
+      max-width: 900px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    h1 { margin: 0 0 8px; color: #1CA7E7; font-size: 1.7rem; }
+    p { margin: 0 0 12px; color: #334155; }
+    .coming {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: #eef7ff;
+      color: #1e3a8a;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body class="student-portal">
+  <div class="remoed-main">
+    <div id="student-sidebar-root"></div>
+    <div class="content">
+      <div class="card">
+        <h1>Watch Videos</h1>
+        <p>This section is ready for lesson videos, practice clips, and replay content.</p>
+        <div class="coming">Video library layout is active. You can now route and expand this page with real video content.</div>
+      </div>
+    </div>
+  </div>
+  <script src="js/student-sidebar.js"></script>
+  <script>
+    const userType = localStorage.getItem('userType');
+    if (userType !== 'student') {
+      alert('Access denied. This page is for students only.');
+      window.location.href = 'index.html';
+    }
+    StudentSidebar.render('student-sidebar-root', 'videos');
+  </script>
+</body>
+</html>

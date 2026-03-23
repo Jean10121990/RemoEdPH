@@ -11,15 +11,26 @@ const authRoutes = require('./auth');
 const teacherRoutes = require('./teacher');
 const studentRoutes = require('./student');
 const adminRoutes = require('./admin');
+<<<<<<< HEAD
 const paymentRoutes = require('./payments');
 const webhookRoutes = require('./webhooks');
+=======
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
 const fileRoutes = require('./fileRoutes');
 const announcementRoutes = require('./announcement');
 const lessonRoutes = require('./lessons');
 const classroomRecordingRouter = require('./classroomRecordingApi');
+<<<<<<< HEAD
 const Booking = require('./models/Booking');
 const Student = require('./models/Student');
 const LessonMaterial = require('./models/LessonMaterial');
+=======
+const applicationRoutes = require('./applications');
+const Booking = require('./models/Booking');
+const LessonMaterial = require('./models/LessonMaterial');
+const InvitationToken = require('./models/InvitationToken');
+const Application = require('./models/Application');
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
 const { DateTime } = require('luxon');
 // LessonSlides model removed - PPTX conversion still works but slides are not saved to database
 const fs = require('fs');
@@ -59,6 +70,7 @@ const userSessions = new Map(); // socketId -> { room, userType, userId, usernam
 const signalingMessages = new Map(); // room -> [messages]
 const messageId = 0;
 
+<<<<<<< HEAD
 async function findStudentForBooking(booking) {
   if (!booking || !booking.studentId) return null;
   return Student.findOne({
@@ -113,6 +125,8 @@ async function consumeReservedCreditForBooking(booking, descriptionPrefix = 'Cla
   booking.creditReservationReleasedAt = null;
 }
 
+=======
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
 // Lesson materials are now stored in database (LessonMaterial model)
 // Keep in-memory cache for quick access during active sessions
 const lessonMaterialsByRoom = new Map(); // room -> [{ id, name, type, size, data, uploader, uploadedAt }]
@@ -134,11 +148,14 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
+<<<<<<< HEAD
 // Keep raw body for PayMongo webhook signature verification.
 app.use('/api/webhooks/paymongo', express.raw({ type: 'application/json' }));
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+=======
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 
@@ -190,13 +207,20 @@ app.use('/api/student', studentRoutes);
 // Must be before /api/admin: same path prefix /api/admin/... is otherwise swallowed by adminRoutes → 404
 app.use('/api', classroomRecordingRouter);
 app.use('/api/admin', adminRoutes);
+<<<<<<< HEAD
 app.use('/api/payments', paymentRoutes);
 app.use('/api/webhooks', webhookRoutes);
+=======
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
 app.use('/api/files', fileRoutes);
 app.use('/api/upload', fileRoutes); // Add alias for upload endpoint
 app.use('/api', announcementRoutes); // Mount announcement routes directly under /api
 app.use('/api', fileRoutes); // Add direct access to file routes (moved after announcement routes)
 app.use('/api/lessons', lessonRoutes);
+<<<<<<< HEAD
+=======
+app.use('/api', applicationRoutes);
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
 
 /**
  * WebRTC ICE servers for live-classroom.html
@@ -224,6 +248,49 @@ app.get('/api/rtc-config', (req, res) => {
   res.json({ iceServers });
 });
 
+<<<<<<< HEAD
+=======
+// Protected teacher signup route: requires a valid invitation token in URL.
+app.get('/teacher-signup', async (req, res) => {
+  try {
+    const token = String(req.query.invitation || '').trim();
+    if (!token) {
+      return res.redirect('/');
+    }
+
+    const invitation = await InvitationToken.findOne({ token, isUsed: false }).lean();
+    if (!invitation) {
+      return res.redirect('/');
+    }
+
+    if (!invitation.expiresAt || new Date(invitation.expiresAt) <= new Date()) {
+      return res.redirect('/');
+    }
+
+    const application = await Application.findById(invitation.applicationId).lean();
+    if (!application || application.currentStage !== 'passed') {
+      return res.redirect('/');
+    }
+
+    return res.sendFile(path.join(__dirname, '../public/teacher-signup.html'));
+  } catch (error) {
+    console.error('Protected /teacher-signup route failed:', error);
+    return res.redirect('/');
+  }
+});
+
+// Prevent bypassing invitation checks via direct file URL.
+app.get('/teacher-signup.html', (req, res) => res.redirect('/'));
+
+// Public teacher application form (React build output).
+const applicationFormDist = path.join(__dirname, '../application-form/dist');
+const applicationFormAssets = path.join(applicationFormDist, 'assets');
+app.use('/assets', express.static(applicationFormAssets));
+app.get('/application-form', (req, res) => {
+  return res.sendFile(path.join(applicationFormDist, 'index.html'));
+});
+
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
 // Static files after core /api mounts so API paths are never shadowed by public files
 app.use(express.static(path.join(__dirname, '../public')));
 
@@ -404,6 +471,7 @@ app.post('/api/booking/:bookingId/mark-student-absent', verifyToken, requireTeac
 });
 
 // Complete a class (legacy route)
+<<<<<<< HEAD
 app.patch('/api/bookings/:bookingId/complete', verifyToken, requireTeacher, async (req, res) => {
   try {
     const { bookingId } = req.params;
@@ -442,6 +510,8 @@ app.patch('/api/bookings/:bookingId/complete', verifyToken, requireTeacher, asyn
   }
 });
 
+=======
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
 app.post('/api/booking/:bookingId/complete', verifyToken, requireTeacher, async (req, res) => {
   try {
     const { bookingId } = req.params;
@@ -482,7 +552,10 @@ app.post('/api/booking/:bookingId/complete', verifyToken, requireTeacher, async 
       booking.attendance = {};
     }
     booking.attendance.classCompleted = true;
+<<<<<<< HEAD
     await consumeReservedCreditForBooking(booking, 'Class finished');
+=======
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
     
     await booking.save();
     
@@ -2096,7 +2169,10 @@ async function checkAndMarkAbsentStudents() {
         booking.status = 'absent';
         booking.absentReason = 'Student did not enter classroom within 15 minutes of class start';
         booking.absentMarkedAt = new Date();
+<<<<<<< HEAD
         await consumeReservedCreditForBooking(booking, 'Student absent');
+=======
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
         
         await booking.save();
         console.log(`✅ Student marked as absent for booking ${booking._id}`);

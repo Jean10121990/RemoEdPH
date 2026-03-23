@@ -36,9 +36,12 @@ const bookingSchema = new mongoose.Schema({
     reason: { type: String },
     rejected: { type: Boolean, default: false }
   },
+<<<<<<< HEAD
   // Credit state markers to prevent duplicate consume/release operations
   creditConsumedAt: { type: Date, default: null },
   creditReservationReleasedAt: { type: Date, default: null },
+=======
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
   createdAt: { type: Date, default: Date.now }
 });
 module.exports = mongoose.model('Booking', bookingSchema); 

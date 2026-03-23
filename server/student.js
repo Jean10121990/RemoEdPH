@@ -29,6 +29,7 @@ async function createStudentNotification(studentId, type, message) {
   }
 }
 
+<<<<<<< HEAD
 async function releaseReservedCreditForBooking(booking) {
   if (!booking || booking.creditConsumedAt || booking.creditReservationReleasedAt) return;
   if (!booking || !booking.studentId) return;
@@ -55,6 +56,8 @@ async function releaseReservedCreditForBooking(booking) {
   booking.creditReservationReleasedAt = new Date();
 }
 
+=======
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
 // Test route to verify student routes are working
 router.get('/test', (req, res) => {
   res.json({ message: 'Student routes are working!' });
@@ -403,8 +406,11 @@ router.post('/cancel-booking', verifyToken, requireStudent, async (req, res) => 
       reason: 'Cancelled by student',
       rejected: false
     };
+<<<<<<< HEAD
 
     await releaseReservedCreditForBooking(booking);
+=======
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
     
     await booking.save();
     
@@ -1077,6 +1083,7 @@ router.get('/credits', verifyToken, requireStudent, async (req, res) => {
 
     const credits = student.creditTransactions || [];
     credits.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+<<<<<<< HEAD
     const creditHistory = student.creditHistory || [];
     creditHistory.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
     const totalCredits = Number(student.totalCredits ?? student.creditBalance ?? 0);
@@ -1112,6 +1119,17 @@ router.get('/credits', verifyToken, requireStudent, async (req, res) => {
         amountPaid: c.amountPaid,
         paymentId: c.paymentId || ''
       })),
+=======
+
+    res.json({
+      success: true,
+      balance: student.creditBalance || 0,
+      totalEarned: student.totalCreditsEarned || 0,
+      used: (student.totalCreditsEarned || 0) - (student.creditBalance || 0),
+      subscriptionPlan: student.subscriptionPlan || null,
+      subscriptionStatus: student.subscriptionStatus || null,
+      paymentStatus: student.paymentStatus || null,
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
       credits: credits.map(c => ({
         date: c.date,
         type: c.type,

@@ -73,9 +73,12 @@
       color:#0ea5e9;
       margin:4px 0;
     }
+<<<<<<< HEAD
     .balance.low{
       color:#dc2626;
     }
+=======
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
     .muted{color:#64748b;font-size:.9rem;}
     .stats{
       display:flex;
@@ -165,7 +168,11 @@
     <div class="header">
       <div>
         <div class="brand">
+<<<<<<< HEAD
           <img src="RemoEdPH Logo.png" alt="RemoEdPH">
+=======
+          <img src="images/remoed-logo.png" alt="RemoEdPH" onerror="this.src='remoed-logo.png'">
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
           <div>
             <div class="brand-title">My Lesson Credits</div>
             <div class="tagline" id="credits-greeting">Track how many classes are used and what’s left.</div>
@@ -179,11 +186,17 @@
       <div class="card">
         <h2>Current Balance</h2>
         <div class="balance" id="credits-balance">0</div>
+<<<<<<< HEAD
         <div class="muted">Remaining credits after finished/absent classes.</div>
         <div class="stats">
           <div class="stat-pill">Used: <span id="credits-used">0</span></div>
           <div class="stat-pill">Reserved: <span id="credits-reserved">0</span></div>
           <div class="stat-pill">Available to book: <span id="credits-available">0</span></div>
+=======
+        <div class="muted">Lesson credits available to book future classes.</div>
+        <div class="stats">
+          <div class="stat-pill">Used: <span id="credits-used">0</span></div>
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
           <div class="stat-pill">Total purchased: <span id="credits-total">0</span></div>
         </div>
         <div style="margin-top:10px;">
@@ -261,6 +274,7 @@
         }
 
         document.getElementById('credits-balance').textContent = data.balance || 0;
+<<<<<<< HEAD
         document.getElementById('credits-total').textContent = data.totalPurchased ?? data.totalEarned ?? data.totalCredits ?? 0;
         document.getElementById('credits-reserved').textContent = data.reservedCredits ?? 0;
         document.getElementById('credits-available').textContent = data.availableBalance ?? Math.max((data.totalCredits ?? 0) - (data.reservedCredits ?? 0), 0);
@@ -271,6 +285,10 @@
         } else {
           balEl.classList.remove('low');
         }
+=======
+        document.getElementById('credits-total').textContent = data.totalEarned || 0;
+        document.getElementById('credits-used').textContent = data.used || 0;
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
 
         const pill = document.getElementById('subscription-pill');
         if (data.subscriptionPlan) {
@@ -289,6 +307,7 @@
 
         const tbody = document.getElementById('credits-tbody');
         const empty = document.getElementById('credits-empty');
+<<<<<<< HEAD
         const list = Array.isArray(data.creditHistory) && data.creditHistory.length
           ? data.creditHistory.map(item => ({
               date: item.date,
@@ -300,6 +319,9 @@
               amountPaid: item.amountPaid || 0
             }))
           : (Array.isArray(data.credits) ? data.credits : []);
+=======
+        const list = Array.isArray(data.credits) ? data.credits : [];
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
         if (!list.length) {
           tbody.innerHTML = '';
           empty.style.display = 'block';
@@ -329,11 +351,14 @@
     }
 
     document.addEventListener('DOMContentLoaded', loadCredits);
+<<<<<<< HEAD
     window.addEventListener('storage', (event) => {
       if (event.key === 'creditsLastUpdatedAt') {
         loadCredits();
       }
     });
+=======
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
   </script>
 </body>
 </html>

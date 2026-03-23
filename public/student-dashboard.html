@@ -280,15 +280,25 @@
         .charts-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
+<<<<<<< HEAD
             gap: 1.5rem;
             margin-bottom: 2rem;
+=======
+            gap: 0.9rem;
+            margin-bottom: 1rem;
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
         }
         
         .charts-grid-secondary {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
+<<<<<<< HEAD
             gap: 1.5rem;
             margin-bottom: 2rem;
+=======
+            gap: 0.9rem;
+            margin-bottom: 1rem;
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
         }
         
         @media (max-width: 1400px) {
@@ -307,7 +317,11 @@
         .chart-card {
             background: white;
             border-radius: 12px;
+<<<<<<< HEAD
             padding: 1.25rem;
+=======
+            padding: 0.85rem;
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
             box-shadow: 0 2px 8px rgba(0,0,0,0.06);
             border: 1px solid #e0e6ed;
             transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -326,6 +340,7 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
+<<<<<<< HEAD
             margin-bottom: 1rem;
         }
         
@@ -341,6 +356,23 @@
             width: 36px;
             height: 36px;
             border-radius: 8px;
+=======
+            margin-bottom: 0.45rem;
+        }
+        
+        .chart-title {
+            font-size: 0.74rem;
+            font-weight: 600;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.35px;
+        }
+        
+        .chart-icon {
+            width: 30px;
+            height: 30px;
+            border-radius: 7px;
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
             display: flex;
             align-items: center;
             justify-content: center;
@@ -352,9 +384,15 @@
         }
         
         .chart-value {
+<<<<<<< HEAD
             font-size: 1.75rem;
             font-weight: 700;
             margin-bottom: 0.5rem;
+=======
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 0.2rem;
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
         }
         
         .chart-value.primary {
@@ -362,7 +400,11 @@
         }
         
         .chart-change {
+<<<<<<< HEAD
             font-size: 0.8rem;
+=======
+            font-size: 0.72rem;
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
             display: flex;
             align-items: center;
             gap: 0.25rem;
@@ -381,8 +423,13 @@
             margin-top: 55px;
             display: flex;
             flex-direction: column;
+<<<<<<< HEAD
             padding: 1.5rem;
             padding-top: 2rem;
+=======
+            padding: 1rem;
+            padding-top: 1.15rem;
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
             min-height: calc(100vh - 55px);
             overflow-x: visible;
         }
@@ -390,10 +437,60 @@
         .remoed-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
+<<<<<<< HEAD
             gap: 1.5rem;
             flex: 1;
             min-height: 0;
         }
+=======
+            gap: 0.9rem;
+            flex: 1;
+            min-height: 0;
+        }
+
+        /* Community & Social Responsibility */
+        .community-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+        @media (max-width: 768px) {
+            .community-grid { grid-template-columns: 1fr; }
+        }
+        .community-item {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid #e0e6ed;
+            background: #fafdff;
+        }
+        .community-icon {
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(102, 126, 234, 0.12);
+            color: #667eea;
+            flex-shrink: 0;
+            font-size: 1.05rem;
+        }
+        .community-item h4 {
+            margin: 0;
+            font-size: 0.95rem;
+            color: #1a202c;
+            font-weight: 700;
+        }
+        .community-item p {
+            margin: 4px 0 0 0;
+            font-size: 0.85rem;
+            color: #64748b;
+            line-height: 1.5;
+        }
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
         
         .remoed-section {
             display: flex;
@@ -549,6 +646,18 @@
             height: 20px; 
             stroke: currentColor; 
         }
+<<<<<<< HEAD
+=======
+
+        /* Remove decorative motion/noise on dashboard */
+        .fun-card::before,
+        .safe-content-badge,
+        .fun-floating-elements,
+        .floating-element {
+            display: none !important;
+            animation: none !important;
+        }
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
     </style>
     <link rel="stylesheet" href="css/teacher-sidebar.css">
 </head>
@@ -562,12 +671,16 @@
                     <span>🎮 My Learning Adventure</span>
                 </h1>
             </div>
+<<<<<<< HEAD
             <div style="display: flex; align-items: center; gap: 12px;">
                 <div class="points-display" id="student-points" style="font-size: 0.9rem; padding: 6px 12px;">
                     <span id="points-count">0</span> ⭐
                 </div>
                 <div class="badge" id="level-badge" style="font-size: 0.85rem; padding: 6px 12px;">Level 1 🌱</div>
             </div>
+=======
+            <div style="display: flex; align-items: center; gap: 12px;"></div>
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
             <div class="nav-right">
                 <!-- Profile Icon -->
                 <div class="nav-icon" onclick="window.location.href='student-profile.html'" title="My Profile">
@@ -624,6 +737,7 @@
         <script src="js/student-sidebar.js"></script>
         <script>StudentSidebar.render('student-sidebar-root', 'dashboard');</script>
         <div class="remoed-content" style="position: relative; z-index: 2; overflow-y: auto; overflow-x: visible;">
+<<<<<<< HEAD
             <!-- Games & Activities Quick Access with Characters -->
             <div class="fun-card" style="margin-top: 70px; margin-bottom: 2rem; cursor: pointer; border-color: #1CA7E7; padding: 2rem; padding-top: 2.5rem; position: relative; overflow: visible; min-height: 280px;" onclick="window.location.href='student-games-activities.html'">
                 <!-- Characters - Using Separate Images -->
@@ -745,6 +859,8 @@
                     </div>
                 </div>
             </div>
+=======
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
             
             <!-- Primary Charts Grid (Total Classes & Completed Classes) -->
             <div class="charts-grid">
@@ -871,6 +987,7 @@
             <!-- Main Content Grid -->
             <div class="remoed-grid">
                 <div>
+<<<<<<< HEAD
                     <!-- Announcements -->
                     <div class="remoed-section">
                         <div class="remoed-section-title" style="display: flex; align-items: center; gap: 10px;">
@@ -884,6 +1001,48 @@
                         </div>
                     </div>
                     
+=======
+                    <!-- Community & Social Responsibility -->
+                    <div class="remoed-section" id="community-responsibility">
+                        <div class="remoed-section-title" style="display: flex; align-items: center; gap: 10px;">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="color: #667eea;">
+                                <path d="M12 12c2.21 0 4-1.79 4-4S14.21 4 12 4 8 5.79 8 8s1.79 4 4 4zm0 2c-3.33 0-8 1.67-8 5v1h16v-1c0-3.33-4.67-5-8-5z"/>
+                            </svg>
+                            Community & Social Responsibility
+                        </div>
+                        <div class="community-grid">
+                            <div class="community-item">
+                                <div class="community-icon">👨‍👩‍👧</div>
+                                <div><h4>Family Day</h4><p>Activities that encourage parent involvement and celebrate learning together.</p></div>
+                            </div>
+                            <div class="community-item">
+                                <div class="community-icon">👩‍🏫</div>
+                                <div><h4>Teachers’ Day</h4><p>Recognizing teacher dedication through appreciation and community events.</p></div>
+                            </div>
+                            <div class="community-item">
+                                <div class="community-icon">🧒</div>
+                                <div><h4>Students’ Day</h4><p>Celebrating student progress and building confidence through fun events.</p></div>
+                            </div>
+                            <div class="community-item">
+                                <div class="community-icon">🥣</div>
+                                <div><h4>Feeding Program</h4><p>Supporting learner wellness through food assistance and community outreach.</p></div>
+                            </div>
+                            <div class="community-item">
+                                <div class="community-icon">♻️</div>
+                                <div><h4>Waste Management</h4><p>Promoting proper segregation and eco-friendly habits at home and in school.</p></div>
+                            </div>
+                            <div class="community-item">
+                                <div class="community-icon">🧠</div>
+                                <div><h4>Mental Health Support</h4><p>Resources and awareness activities to support a safe, positive learning environment.</p></div>
+                            </div>
+                            <div class="community-item">
+                                <div class="community-icon">🌱</div>
+                                <div><h4>Sustainability Projects</h4><p>Simple projects and activities that build care for the environment.</p></div>
+                            </div>
+                        </div>
+                    </div>
+
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
                     <!-- Reschedule Notifications -->
                     <div class="remoed-section" id="reschedule-section" style="display: none;">
                         <div class="remoed-section-title" style="display: flex; align-items: center; gap: 10px; color: #dc2626;">
@@ -898,6 +1057,7 @@
                     </div>
                 </div>
                 <div>
+<<<<<<< HEAD
                     <!-- Upcoming Classes -->
                     <div class="remoed-section">
                         <div class="remoed-section-title" style="display: flex; align-items: center; gap: 10px;">
@@ -910,6 +1070,20 @@
                             <ul class="upcoming-classes-list" id="upcoming-classes-list">
                                 <!-- Upcoming classes will be loaded here -->
                             </ul>
+=======
+                    <!-- Announcements -->
+                    <div class="remoed-section">
+                        <div class="remoed-section-title" style="display: flex; align-items: center; gap: 10px;">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="color: #667eea;">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                            </svg>
+                            Announcements and Updates
+                        </div>
+                        <div class="upcoming-classes-container">
+                            <div id="student-announcement-list-right" style="background: #fafdff; border-radius: 10px; padding: 12px; margin-bottom: 12px;">
+                                <!-- Announcements will be loaded here -->
+                            </div>
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
                         </div>
                     </div>
                 </div>
@@ -958,17 +1132,33 @@
       fetch('/api/announcement?role=student')
         .then(r => r.json())
         .then(list => {
+<<<<<<< HEAD
           const listDiv = document.getElementById('student-announcement-list');
           if (!list.length) {
             listDiv.innerHTML = '<div style="color:#888;">No announcements at this time.</div>';
             return;
           }
           listDiv.innerHTML = list.map(a => `
+=======
+          const listDivs = [document.getElementById('student-announcement-list-right')].filter(Boolean);
+          if (!listDivs.length) return;
+          if (!list.length) {
+            listDivs.forEach((listDiv) => {
+              listDiv.innerHTML = '<div style="color:#888;">No announcements at this time.</div>';
+            });
+            return;
+          }
+          const html = list.map(a => `
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
             <div style='background:#fafdff;border-radius:8px;padding:14px 18px;margin-bottom:10px;'>
               <div style='font-weight:500;white-space:pre-line;'>${a.content}</div>
               <div style='font-size:0.97rem;color:#888;margin-top:4px;'>${a.updatedAt ? new Date(a.updatedAt).toLocaleString() : ''}</div>
             </div>
           `).join('');
+<<<<<<< HEAD
+=======
+          listDivs.forEach((listDiv) => { listDiv.innerHTML = html; });
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
         });
         
       // Set up dropdown functionality

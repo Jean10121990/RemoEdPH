@@ -176,6 +176,43 @@
       transform: translateY(-2px);
       box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4) !important;
     }
+<<<<<<< HEAD
+=======
+
+    .feedback-reminder {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid #f1d38b;
+      background: #fff6dd;
+      color: #7a5600;
+      font-weight: 600;
+    }
+    .feedback-reminder .reminder-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .feedback-reminder button {
+      border: none;
+      border-radius: 8px;
+      padding: 8px 12px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+    .feedback-reminder .open-feedback-btn {
+      background: #1CA7E7;
+      color: #fff;
+    }
+    .feedback-reminder .dismiss-feedback-btn {
+      background: #eceff3;
+      color: #374151;
+    }
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
     
     .weekly-grid {
       background: #fff;
@@ -1025,6 +1062,17 @@
       </div>
     </div>
 
+<<<<<<< HEAD
+=======
+    <div id="feedback-reminder" class="feedback-reminder">
+      <span id="feedback-reminder-text">You have pending feedback.</span>
+      <div class="reminder-actions">
+        <button type="button" class="open-feedback-btn" id="open-feedback-reminder-btn">Give Feedback</button>
+        <button type="button" class="dismiss-feedback-btn" id="dismiss-feedback-reminder-btn">Dismiss</button>
+      </div>
+    </div>
+
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
     <!-- Booking Indicators Legend -->
     <div class="booking-legend" style="margin-bottom: 20px; padding: 15px; background: linear-gradient(135deg, #f8f9fa 0%, #e8f4fd 100%); border-radius: 12px; border: 1px solid rgba(28, 167, 231, 0.1); box-shadow: 0 4px 16px rgba(28, 167, 231, 0.05);">
       <div style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; flex-wrap: nowrap; overflow-x: auto;">
@@ -1844,6 +1892,10 @@
     let currentWeek = new Date();
     let bookingsData = [];
     let feedbackHistory = []; // Store feedback history
+<<<<<<< HEAD
+=======
+    let dismissedFeedbackReminder = false;
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
 
     // Initialize the weekly grid
     function initializeWeeklyGrid() {
@@ -2295,6 +2347,59 @@
           existingMessage.remove();
         }
       }
+<<<<<<< HEAD
+=======
+      renderFeedbackReminder();
+    }
+
+    function getPendingFeedbackBookings() {
+      const Lux = window.luxon && window.luxon.DateTime;
+      return bookingsData.filter(booking => {
+        const timeInfo = bookingDisplayDateTime(booking);
+        let isClassDurationPassed = false;
+        if (Lux) {
+          const bookingDt = Lux.fromISO(`${timeInfo.date}T${timeInfo.slot || booking.time}`, { zone: timeInfo.zone || VIEWER_ZONE });
+          const endDt = bookingDt.plus({ minutes: 25 });
+          const now = Lux.now().setZone(timeInfo.zone || VIEWER_ZONE);
+          isClassDurationPassed = endDt <= now;
+        } else {
+          const now = new Date();
+          const bookingDateTime = new Date(`${timeInfo.date}T${timeInfo.slot || booking.time}`);
+          const endTime = new Date(bookingDateTime);
+          endTime.setMinutes(endTime.getMinutes() + 25);
+          isClassDurationPassed = now > endTime;
+        }
+        if (!isClassDurationPassed) return false;
+        const existingFeedback = feedbackHistory.find(f => f.bookingId === booking._id);
+        return !existingFeedback;
+      });
+    }
+
+    function renderFeedbackReminder() {
+      const reminder = document.getElementById('feedback-reminder');
+      const textEl = document.getElementById('feedback-reminder-text');
+      const openBtn = document.getElementById('open-feedback-reminder-btn');
+      const dismissBtn = document.getElementById('dismiss-feedback-reminder-btn');
+      if (!reminder || !textEl || !openBtn || !dismissBtn) return;
+
+      const pending = getPendingFeedbackBookings();
+      if (!pending.length || dismissedFeedbackReminder) {
+        reminder.style.display = 'none';
+        return;
+      }
+
+      textEl.textContent = `You still have ${pending.length} class feedback ${pending.length === 1 ? 'request' : 'requests'} pending.`;
+      reminder.style.display = 'flex';
+
+      openBtn.onclick = () => {
+        const target = pending[0];
+        if (target) showPastBookingFeedback(target);
+      };
+      dismissBtn.onclick = () => {
+        dismissedFeedbackReminder = true;
+        reminder.style.display = 'none';
+      };
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
     }
 
     // Modal logic for class info

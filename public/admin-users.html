@@ -358,6 +358,7 @@
                     tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #888;">No students found</td></tr>';
                     return;
                 }
+<<<<<<< HEAD
 
                 const getStudentDisplayName = (student) => {
                     const firstName = (student.firstName || '').trim();
@@ -369,12 +370,18 @@
                     if (student.email && String(student.email).trim()) return String(student.email).trim();
                     return 'N/A';
                 };
+=======
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
                 
                 tbody.innerHTML = students.map(student => `
                     <tr>
                         <td>${student.username}</td>
                         <td>${student.email || 'N/A'}</td>
+<<<<<<< HEAD
                         <td>${getStudentDisplayName(student)}</td>
+=======
+                        <td>${student.firstName} ${student.lastName}</td>
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
                         <td><span class="status-badge ${student.status === 'suspended' ? 'status-inactive' : 'status-active'}">${student.status === 'suspended' ? 'Suspended' : 'Active'}</span></td>
                         <td>${new Date(student.createdAt).toLocaleDateString()}</td>
                         <td>

@@ -27,7 +27,11 @@ const storage = multer.diskStorage({
 const upload = multer({ 
   storage: storage,
   limits: {
+<<<<<<< HEAD
     fileSize: 10 * 1024 * 1024 // 10MB limit
+=======
+    fileSize: 100 * 1024 * 1024 // 100MB limit (supports short demo recordings)
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
   },
   fileFilter: function (req, file, cb) {
     // Allow only specific file types
@@ -40,13 +44,29 @@ const upload = multer({
       'image/jpeg',
       'image/png',
       'image/gif',
+<<<<<<< HEAD
       'text/plain'
+=======
+      'text/plain',
+      'audio/webm',
+      'audio/mp4',
+      'audio/mpeg',
+      'audio/wav',
+      'audio/ogg',
+      'video/webm',
+      'video/mp4',
+      'application/octet-stream'
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
     ];
     
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
+<<<<<<< HEAD
       cb(new Error('Invalid file type. Only PDF, DOC, PPT, Images, and Text files are allowed.'), false);
+=======
+      cb(new Error('Invalid file type. Allowed: documents, images, audio, and video files.'), false);
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
     }
   }
 });
@@ -201,4 +221,19 @@ router.delete('/files/:fileId', async (req, res) => {
   }
 });
 
+<<<<<<< HEAD
+=======
+// Multer/file filter error handler for cleaner API messages
+router.use((error, req, res, next) => {
+  if (!error) return next();
+  if (error instanceof multer.MulterError) {
+    if (error.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ error: 'File too large. Maximum size is 100MB.' });
+    }
+    return res.status(400).json({ error: error.message || 'Upload failed.' });
+  }
+  return res.status(400).json({ error: error.message || 'Upload failed.' });
+});
+
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
 module.exports = router; 

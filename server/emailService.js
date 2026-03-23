@@ -407,6 +407,66 @@ Please do not reply to this email.
 
 © 2025 RemoEdPH. All rights reserved.
     `
+<<<<<<< HEAD
+=======
+  }),
+  teacherPipelineWelcome: (fullName, signupLink) => ({
+    subject: 'Welcome to the Team - RemoEdPH',
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Welcome to the Team - RemoEdPH</title>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: #1ca7e7; color: #fff; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background: #f9f9f9; padding: 24px; border-radius: 0 0 8px 8px; }
+          .box { background: #fff; border: 2px solid #1ca7e7; border-radius: 8px; padding: 16px; margin: 16px 0; }
+          .btn { display: inline-block; background: #1ca7e7; color: #fff; padding: 12px 20px; text-decoration: none; border-radius: 8px; font-weight: 700; }
+          .footer { text-align: center; margin-top: 20px; color: #666; font-size: 13px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>Welcome to the Team</h1>
+            <p>RemoEdPH Teacher Pipeline</p>
+          </div>
+          <div class="content">
+            <p>Hello ${fullName || 'Applicant'},</p>
+            <p>Congratulations! You passed our teacher pipeline. Please complete your official teacher portal sign-up using the secure link below.</p>
+            <div class="box">
+              <p><strong>Secure sign-up link:</strong></p>
+              <p style="word-break: break-all;">${signupLink}</p>
+            </div>
+            <p style="text-align:center; margin-top: 20px;">
+              <a class="btn" href="${signupLink}">Complete Teacher Sign-up</a>
+            </p>
+            <p>This link is unique to your account and may expire. If you have trouble accessing it, please contact admin support.</p>
+          </div>
+          <div class="footer">
+            <p>This is an automated message from RemoEdPH. Please do not reply.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+    text: `
+Welcome to the Team - RemoEdPH
+
+Hello ${fullName || 'Applicant'},
+
+Congratulations! You passed our teacher pipeline.
+Complete your official teacher portal sign-up using this secure link:
+${signupLink}
+
+This link is unique to your account and may expire.
+If you need help, contact admin support.
+    `.trim()
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
   })
 };
 
@@ -731,6 +791,45 @@ async function sendPasswordResetEmail(email, username, newPassword, userType) {
   });
 }
 
+<<<<<<< HEAD
+=======
+async function sendTeacherPipelineWelcomeEmail(email, fullName, signupLink) {
+  try {
+    if (!isEmailConfigured) {
+      return { success: false, error: 'Email service not configured', fallback: true };
+    }
+
+    const template = emailTemplates.teacherPipelineWelcome(fullName, signupLink);
+    let result;
+
+    if (activeEmailService === 'sendgrid') {
+      result = await sendEmailViaSendGrid(email, template.subject, template.html, template.text);
+    } else if (activeEmailService === 'mailgun') {
+      result = await sendEmailViaMailgun(email, template.subject, template.html, template.text);
+    } else if (activeEmailService === 'smtp') {
+      if (!transporterVerified) {
+        await transporter.verify();
+        transporterVerified = true;
+      }
+      const info = await transporter.sendMail({
+        from: `"RemoEdPH" <${emailConfig.auth.user}>`,
+        to: email,
+        subject: template.subject,
+        html: template.html,
+        text: template.text
+      });
+      result = { success: true, messageId: info.messageId };
+    } else {
+      result = { success: false, error: 'No email service configured' };
+    }
+
+    return result;
+  } catch (error) {
+    return { success: false, error: error.message || 'Failed to send teacher pipeline email' };
+  }
+}
+
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
 // Diagnostic function to check email configuration (without exposing credentials)
 function getEmailConfigStatus() {
   const status = {
@@ -799,6 +898,10 @@ module.exports = {
   sendPasswordResetEmail,
   sendTeacherRegistrationEmail,
   sendSubscriptionEmail,
+<<<<<<< HEAD
+=======
+  sendTeacherPipelineWelcomeEmail,
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
   sendEmail,
   getEmailConfigStatus,
   testEmailSending

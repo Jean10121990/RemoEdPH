@@ -12,7 +12,14 @@ const TimeLog = require('./models/TimeLog');
 const Referral = require('./models/Referral');
 const { verifyToken, requireAdmin } = require('./authMiddleware');
 const bcrypt = require('bcrypt');
+<<<<<<< HEAD
 const { sendTeacherRegistrationEmail } = require('./emailService');
+=======
+const crypto = require('crypto');
+const Application = require('./models/Application');
+const InvitationToken = require('./models/InvitationToken');
+const { sendTeacherRegistrationEmail, sendTeacherPipelineWelcomeEmail } = require('./emailService');
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
 
 // Function to create notifications
 async function createNotification(userId, type, message) {
@@ -32,6 +39,7 @@ async function createNotification(userId, type, message) {
   }
 }
 
+<<<<<<< HEAD
 async function findStudentForBooking(booking) {
   if (!booking || !booking.studentId) return null;
   return Student.findOne({
@@ -103,6 +111,8 @@ async function consumeReservedCreditForBooking(booking, descriptionPrefix = 'Cla
   booking.creditReservationReleasedAt = null;
 }
 
+=======
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
 // Import generateStrongPassword function from auth.js
 function generateStrongPassword() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -142,6 +152,18 @@ async function generateTemporaryUsername() {
 // Import GlobalSettings model
 const GlobalSettings = require('./models/GlobalSettings');
 
+<<<<<<< HEAD
+=======
+const TEACHER_PIPELINE_STAGES = ['applied', 'testing', 'interviewing', 'demo', 'documentation', 'passed', 'failed'];
+
+function toProgressPercent(stage) {
+  const idx = TEACHER_PIPELINE_STAGES.indexOf(stage);
+  if (idx < 0) return 0;
+  if (stage === 'failed') return 100;
+  return Math.round((idx / (TEACHER_PIPELINE_STAGES.length - 2)) * 100);
+}
+
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
 // ——— Admin time tracking (registered early; 7 AM PHT business day) ———
 function adminTimeWorkerId(username) {
   return `admin:${String(username || 'unknown').toLowerCase()}`;
@@ -340,6 +362,113 @@ router.get('/notifications', verifyToken, requireAdmin, async (req, res) => {
   }
 });
 
+<<<<<<< HEAD
+=======
+// -----------------------------
+// Teacher Pipeline (Applications)
+// -----------------------------
+router.get('/teacher-pipeline/applicants', verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const applicants = await Application.find({})
+      .sort({ updatedAt: -1 })
+      .lean();
+
+    const rows = applicants.map((a) => ({
+      _id: a._id,
+      fullName: a.fullName || '',
+      email: a.email || '',
+      currentStage: a.currentStage || 'applied',
+      status: Boolean(a.status),
+      progress: toProgressPercent(a.currentStage),
+      updatedAt: a.updatedAt
+    }));
+
+    res.json({ success: true, applicants: rows });
+  } catch (error) {
+    console.error('❌ Failed to load teacher pipeline applicants:', error);
+    res.status(500).json({ success: false, error: 'Failed to load applicants' });
+  }
+});
+
+router.get('/teacher-pipeline/applicants/:id', verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const applicant = await Application.findById(req.params.id).lean();
+    if (!applicant) {
+      return res.status(404).json({ success: false, error: 'Applicant not found' });
+    }
+    res.json({ success: true, applicant });
+  } catch (error) {
+    console.error('❌ Failed to load applicant details:', error);
+    res.status(500).json({ success: false, error: 'Failed to load applicant details' });
+  }
+});
+
+router.post('/teacher-pipeline/applicants/:id/fail', verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const applicant = await Application.findById(req.params.id);
+    if (!applicant) {
+      return res.status(404).json({ success: false, error: 'Applicant not found' });
+    }
+
+    applicant.currentStage = 'failed';
+    applicant.status = false;
+    await applicant.save();
+
+    res.json({ success: true, message: 'Applicant marked as failed' });
+  } catch (error) {
+    console.error('❌ Failed to mark applicant as failed:', error);
+    res.status(500).json({ success: false, error: 'Failed to mark applicant as failed' });
+  }
+});
+
+router.post('/teacher-pipeline/applicants/:id/pass', verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const applicant = await Application.findById(req.params.id);
+    if (!applicant) {
+      return res.status(404).json({ success: false, error: 'Applicant not found' });
+    }
+
+    applicant.currentStage = 'passed';
+    applicant.status = true;
+    await applicant.save();
+
+    // Reuse an active unused token if available, otherwise generate a new one.
+    const now = new Date();
+    let invitation = await InvitationToken.findOne({
+      applicationId: applicant._id,
+      isUsed: false,
+      expiresAt: { $gt: now }
+    }).sort({ createdAt: -1 });
+
+    if (!invitation) {
+      invitation = await InvitationToken.create({
+        applicationId: applicant._id,
+        email: applicant.email,
+        token: crypto.randomBytes(24).toString('hex'),
+        isUsed: false,
+        expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7) // 7 days
+      });
+    }
+
+    const frontendBase = process.env.FRONTEND_URL || 'http://localhost:5000';
+    const signupLink = `${frontendBase}/teacher-signup?invitation=${encodeURIComponent(invitation.token)}`;
+
+    const emailResult = await sendTeacherPipelineWelcomeEmail(applicant.email, applicant.fullName, signupLink);
+
+    res.json({
+      success: true,
+      message: 'Applicant passed and invitation email processed',
+      invitationToken: invitation.token,
+      signupLink,
+      emailResult
+    });
+  } catch (error) {
+    console.error('❌ Failed to pass applicant:', error);
+    res.status(500).json({ success: false, error: 'Failed to pass applicant' });
+  }
+});
+
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
 // --- Referral / Commission tracking ---
 function generateReferralCodeAdmin() {
   return (
@@ -1975,7 +2104,10 @@ router.post('/review-cancellation', async (req, res) => {
       const booking = await Booking.findById(cancellationRequest.bookingId);
       if (booking) {
         booking.status = 'cancelled';
+<<<<<<< HEAD
         await releaseReservedCreditForBooking(booking);
+=======
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
         await booking.save();
         
         // MARK THE SLOT AS AVAILABLE AGAIN WHEN BOOKING IS CANCELLED
@@ -3339,7 +3471,11 @@ router.post('/issues/resolve', verifyToken, requireAdmin, async (req, res) => {
           booking.attendance = {};
         }
         booking.attendance.classCompleted = true;
+<<<<<<< HEAD
         await consumeReservedCreditForBooking(booking, 'Class finished');
+=======
+        
+>>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
         await booking.save();
         console.log(`✅ Marked booking ${issue.bookingId} as completed due to resolved issue`);
       }
