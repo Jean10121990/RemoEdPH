@@ -60,6 +60,7 @@ const studentSchema = new mongoose.Schema({
   },
   // Lesson credits (used for flexible scheduling)
   totalCredits: { type: Number, default: 0 }, // alias for current balance (for newer UI/API)
+  reservedCredits: { type: Number, default: 0 }, // credits temporarily held by upcoming bookings
   usedCredits: { type: Number, default: 0 }, // total consumed credits
   creditBalance: { type: Number, default: 0 }, // remaining lesson credits
   totalCreditsEarned: { type: Number, default: 0 }, // total credits ever purchased

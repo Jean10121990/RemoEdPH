@@ -179,9 +179,11 @@
       <div class="card">
         <h2>Current Balance</h2>
         <div class="balance" id="credits-balance">0</div>
-        <div class="muted">Lesson credits available to book future classes.</div>
+        <div class="muted">Remaining credits after finished/absent classes.</div>
         <div class="stats">
           <div class="stat-pill">Used: <span id="credits-used">0</span></div>
+          <div class="stat-pill">Reserved: <span id="credits-reserved">0</span></div>
+          <div class="stat-pill">Available to book: <span id="credits-available">0</span></div>
           <div class="stat-pill">Total purchased: <span id="credits-total">0</span></div>
         </div>
         <div style="margin-top:10px;">
@@ -259,7 +261,9 @@
         }
 
         document.getElementById('credits-balance').textContent = data.balance || 0;
-        document.getElementById('credits-total').textContent = data.totalCredits ?? data.totalEarned ?? 0;
+        document.getElementById('credits-total').textContent = data.totalPurchased ?? data.totalEarned ?? data.totalCredits ?? 0;
+        document.getElementById('credits-reserved').textContent = data.reservedCredits ?? 0;
+        document.getElementById('credits-available').textContent = data.availableBalance ?? Math.max((data.totalCredits ?? 0) - (data.reservedCredits ?? 0), 0);
         document.getElementById('credits-used').textContent = data.usedCredits ?? data.used ?? 0;
         const balEl = document.getElementById('credits-balance');
         if (Number(data.balance || 0) < 5) {

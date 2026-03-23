@@ -18,6 +18,7 @@ const announcementRoutes = require('./announcement');
 const lessonRoutes = require('./lessons');
 const classroomRecordingRouter = require('./classroomRecordingApi');
 const Booking = require('./models/Booking');
+const Student = require('./models/Student');
 const LessonMaterial = require('./models/LessonMaterial');
 const { DateTime } = require('luxon');
 // LessonSlides model removed - PPTX conversion still works but slides are not saved to database
@@ -57,6 +58,60 @@ const userSessions = new Map(); // socketId -> { room, userType, userId, usernam
 // Store REST API signaling messages
 const signalingMessages = new Map(); // room -> [messages]
 const messageId = 0;
+
+async function findStudentForBooking(booking) {
+  if (!booking || !booking.studentId) return null;
+  return Student.findOne({
+    $or: [{ username: booking.studentId }, { email: booking.studentId }]
+  });
+}
+
+async function consumeReservedCreditForBooking(booking, descriptionPrefix = 'Class finished') {
+  if (!booking || booking.creditConsumedAt || booking.creditReservationReleasedAt) return;
+  const student = await findStudentForBooking(booking);
+  if (!student) return;
+  const now = new Date();
+  const safeReserved = Number(student.reservedCredits || 0);
+  if (safeReserved <= 0) return;
+  const safeTotal = Number(student.totalCredits || 0);
+  const nextReserved = Math.max(safeReserved - 1, 0);
+  const nextTotal = Math.max(safeTotal - 1, 0);
+  const nextAvailable = Math.max(nextTotal - nextReserved, 0);
+  const planLabel = student.subscriptionPlan || '';
+  const desc = `${descriptionPrefix} (${booking.date} ${booking.time})`;
+
+  await Student.updateOne(
+    { _id: student._id },
+    {
+      $set: {
+        reservedCredits: nextReserved,
+        totalCredits: nextTotal,
+        creditBalance: nextAvailable
+      },
+      $inc: { usedCredits: 1 },
+      $push: {
+        creditTransactions: {
+          date: now,
+          type: 'use',
+          plan: planLabel,
+          description: desc,
+          credits: -1,
+          balanceAfter: nextAvailable,
+          amountPaid: 0
+        },
+        creditHistory: {
+          date: now,
+          plan: planLabel,
+          credits: -1,
+          amountPaid: 0,
+          paymentId: ''
+        }
+      }
+    }
+  );
+  booking.creditConsumedAt = now;
+  booking.creditReservationReleasedAt = null;
+}
 
 // Lesson materials are now stored in database (LessonMaterial model)
 // Keep in-memory cache for quick access during active sessions
@@ -349,6 +404,44 @@ app.post('/api/booking/:bookingId/mark-student-absent', verifyToken, requireTeac
 });
 
 // Complete a class (legacy route)
+app.patch('/api/bookings/:bookingId/complete', verifyToken, requireTeacher, async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const teacherId = req.user.teacherId;
+    const booking = await Booking.findById(bookingId);
+    if (!booking) {
+      return res.status(404).json({ success: false, error: 'Booking not found' });
+    }
+    if (booking.teacherId !== teacherId) {
+      return res.status(403).json({ success: false, error: 'Access denied. This booking does not belong to you.' });
+    }
+    if (booking.status === 'completed') {
+      return res.status(400).json({ success: false, error: 'Class is already completed' });
+    }
+
+    booking.status = 'completed';
+    booking.finishedAt = new Date();
+    booking.attendance = booking.attendance || {};
+    booking.attendance.classCompleted = true;
+    await consumeReservedCreditForBooking(booking, 'Class finished');
+    await booking.save();
+
+    return res.json({
+      success: true,
+      message: 'Class completed successfully',
+      booking: {
+        id: booking._id,
+        status: booking.status,
+        finishedAt: booking.finishedAt,
+        classCompleted: booking.attendance.classCompleted
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error completing class (PATCH /api/bookings):', error);
+    return res.status(500).json({ success: false, error: 'Failed to complete class: ' + error.message });
+  }
+});
+
 app.post('/api/booking/:bookingId/complete', verifyToken, requireTeacher, async (req, res) => {
   try {
     const { bookingId } = req.params;
@@ -389,6 +482,7 @@ app.post('/api/booking/:bookingId/complete', verifyToken, requireTeacher, async 
       booking.attendance = {};
     }
     booking.attendance.classCompleted = true;
+    await consumeReservedCreditForBooking(booking, 'Class finished');
     
     await booking.save();
     
@@ -2002,6 +2096,7 @@ async function checkAndMarkAbsentStudents() {
         booking.status = 'absent';
         booking.absentReason = 'Student did not enter classroom within 15 minutes of class start';
         booking.absentMarkedAt = new Date();
+        await consumeReservedCreditForBooking(booking, 'Student absent');
         
         await booking.save();
         console.log(`✅ Student marked as absent for booking ${booking._id}`);

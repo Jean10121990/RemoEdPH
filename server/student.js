@@ -29,6 +29,32 @@ async function createStudentNotification(studentId, type, message) {
   }
 }
 
+async function releaseReservedCreditForBooking(booking) {
+  if (!booking || booking.creditConsumedAt || booking.creditReservationReleasedAt) return;
+  if (!booking || !booking.studentId) return;
+  const student = await Student.findOne({
+    $or: [{ username: booking.studentId }, { email: booking.studentId }]
+  });
+  if (!student) return;
+
+  const safeReserved = Number(student.reservedCredits || 0);
+  if (safeReserved <= 0) return;
+  const safeTotal = Number(student.totalCredits || 0);
+  const nextReserved = safeReserved - 1;
+  const nextAvailable = Math.max(safeTotal - nextReserved, 0);
+
+  await Student.updateOne(
+    { _id: student._id },
+    {
+      $set: {
+        reservedCredits: nextReserved,
+        creditBalance: nextAvailable
+      }
+    }
+  );
+  booking.creditReservationReleasedAt = new Date();
+}
+
 // Test route to verify student routes are working
 router.get('/test', (req, res) => {
   res.json({ message: 'Student routes are working!' });
@@ -377,6 +403,8 @@ router.post('/cancel-booking', verifyToken, requireStudent, async (req, res) => 
       reason: 'Cancelled by student',
       rejected: false
     };
+
+    await releaseReservedCreditForBooking(booking);
     
     await booking.save();
     
@@ -1051,17 +1079,26 @@ router.get('/credits', verifyToken, requireStudent, async (req, res) => {
     credits.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
     const creditHistory = student.creditHistory || [];
     creditHistory.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
-    const balance = Number(student.totalCredits ?? student.creditBalance ?? 0);
+    const totalCredits = Number(student.totalCredits ?? student.creditBalance ?? 0);
+    const reservedCredits = Number(student.reservedCredits || 0);
+    const availableBalance = Math.max(totalCredits - reservedCredits, 0);
+    // "balance" is the true remaining purchased credits (after consumed classes),
+    // while availableBalance excludes temporary reservations from in-progress bookings.
+    const balance = totalCredits;
     const usedCredits = Number(
       student.usedCredits ??
       ((student.totalCreditsEarned || 0) - (student.creditBalance || 0))
     );
-    const totalEarned = Number(student.totalCreditsEarned || (balance + usedCredits) || 0);
+    const totalEarned = Number(student.totalCreditsEarned || (totalCredits + usedCredits) || 0);
+    const totalPurchased = totalEarned;
 
     res.json({
       success: true,
       balance,
-      totalCredits: balance,
+      availableBalance,
+      totalCredits,
+      totalPurchased,
+      reservedCredits,
       totalEarned,
       used: usedCredits,
       usedCredits,
