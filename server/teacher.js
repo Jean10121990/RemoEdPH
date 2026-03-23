@@ -1453,6 +1453,9 @@ router.post('/book-class', verifyToken, requireStudent, async (req, res) => {
       return res.status(400).json({ error: 'Student not found' });
     }
     const studentId = student.username;
+    if ((student.creditBalance || 0) <= 0) {
+      return res.status(400).json({ error: 'Insufficient credits. Please top up your plan.' });
+    }
 
     const missingFields = [];
     if (!studentId) missingFields.push('studentId');
@@ -1551,6 +1554,8 @@ router.post('/book-class', verifyToken, requireStudent, async (req, res) => {
     async function createBookingAtomic(session) {
       const findOpts = { new: true };
       if (session) findOpts.session = session;
+      const creditTxnTime = new Date();
+      const creditDescription = `Class booking (${dateUtc} ${timeUtc})`;
 
       let dupQ = Booking.findOne({
         teacherId: chosenTeacherId,
@@ -1566,6 +1571,46 @@ router.post('/book-class', verifyToken, requireStudent, async (req, res) => {
         throw err;
       }
 
+      // Atomically deduct one credit only when student still has balance.
+      const deductedStudent = await Student.findOneAndUpdate(
+        {
+          _id: req.user.studentId,
+          creditBalance: { $gt: 0 }
+        },
+        {
+          $inc: {
+            creditBalance: -1,
+            totalCredits: -1,
+            usedCredits: 1
+          },
+          $push: {
+            creditTransactions: {
+              date: creditTxnTime,
+              type: 'use',
+              plan: student.subscriptionPlan || '',
+              description: creditDescription,
+              credits: -1,
+              balanceAfter: Math.max((student.creditBalance || 0) - 1, 0),
+              amountPaid: 0
+            },
+            creditHistory: {
+              date: creditTxnTime,
+              plan: student.subscriptionPlan || '',
+              credits: -1,
+              amountPaid: 0,
+              paymentId: ''
+            }
+          }
+        },
+        findOpts
+      );
+      if (!deductedStudent) {
+        const err = new Error('Insufficient credits. Please top up your plan.');
+        err.statusCode = 400;
+        err.code = 'INSUFFICIENT_CREDITS';
+        throw err;
+      }
+
       const lockedSlot = await TeacherSlot.findOneAndUpdate(
         {
           _id: existingSlot._id,
@@ -1577,6 +1622,19 @@ router.post('/book-class', verifyToken, requireStudent, async (req, res) => {
       );
 
       if (!lockedSlot) {
+        if (!session) {
+          await Student.updateOne(
+            { _id: req.user.studentId },
+            {
+              $inc: { creditBalance: 1, totalCredits: 1, usedCredits: -1 },
+              $pull: { creditHistory: { date: creditTxnTime, credits: -1, amountPaid: 0 } }
+            }
+          ).catch(() => {});
+          await Student.updateOne(
+            { _id: req.user.studentId },
+            { $pull: { creditTransactions: { date: creditTxnTime, type: 'use', description: creditDescription } } }
+          ).catch(() => {});
+        }
         const err = new Error(
           'This time slot was just booked by another student. Please choose a different time.'
         );
@@ -1619,6 +1677,17 @@ router.post('/book-class', verifyToken, requireStudent, async (req, res) => {
             { _id: existingSlot._id, teacherId: existingSlot.teacherId },
             { $set: { available: true } }
           );
+          await Student.updateOne(
+            { _id: req.user.studentId },
+            {
+              $inc: { creditBalance: 1, totalCredits: 1, usedCredits: -1 },
+              $pull: { creditHistory: { date: creditTxnTime, credits: -1, amountPaid: 0 } }
+            }
+          ).catch(() => {});
+          await Student.updateOne(
+            { _id: req.user.studentId },
+            { $pull: { creditTransactions: { date: creditTxnTime, type: 'use', description: creditDescription } } }
+          ).catch(() => {});
         }
         throw saveErr;
       }
@@ -1718,6 +1787,7 @@ router.post('/book-class', verifyToken, requireStudent, async (req, res) => {
       console.error('⚠️ bookingsUpdated/slotsUpdated emit:', socketError);
     }
 
+    const refreshedStudent = await Student.findById(req.user.studentId).lean();
     res.json({
       success: true,
       bookingId: booking._id,
@@ -1725,7 +1795,12 @@ router.post('/book-class', verifyToken, requireStudent, async (req, res) => {
       assignmentMode: preferredRaw ? 'preferred' : assignmentMode,
       message: 'Class booked successfully',
       bookingMode: useTransactions ? 'transaction' : 'atomic-slot-lock',
-      useTransactions
+      useTransactions,
+      credits: {
+        balance: refreshedStudent?.creditBalance || 0,
+        totalCredits: refreshedStudent?.totalCredits ?? (refreshedStudent?.creditBalance || 0),
+        usedCredits: refreshedStudent?.usedCredits ?? ((refreshedStudent?.totalCreditsEarned || 0) - (refreshedStudent?.creditBalance || 0))
+      }
     });
   } catch (err) {
     console.error('❌ Error booking class:', err);

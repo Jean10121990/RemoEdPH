@@ -73,6 +73,9 @@
       color:#0ea5e9;
       margin:4px 0;
     }
+    .balance.low{
+      color:#dc2626;
+    }
     .muted{color:#64748b;font-size:.9rem;}
     .stats{
       display:flex;
@@ -256,8 +259,14 @@
         }
 
         document.getElementById('credits-balance').textContent = data.balance || 0;
-        document.getElementById('credits-total').textContent = data.totalEarned || 0;
-        document.getElementById('credits-used').textContent = data.used || 0;
+        document.getElementById('credits-total').textContent = data.totalCredits ?? data.totalEarned ?? 0;
+        document.getElementById('credits-used').textContent = data.usedCredits ?? data.used ?? 0;
+        const balEl = document.getElementById('credits-balance');
+        if (Number(data.balance || 0) < 5) {
+          balEl.classList.add('low');
+        } else {
+          balEl.classList.remove('low');
+        }
 
         const pill = document.getElementById('subscription-pill');
         if (data.subscriptionPlan) {
@@ -276,7 +285,17 @@
 
         const tbody = document.getElementById('credits-tbody');
         const empty = document.getElementById('credits-empty');
-        const list = Array.isArray(data.credits) ? data.credits : [];
+        const list = Array.isArray(data.creditHistory) && data.creditHistory.length
+          ? data.creditHistory.map(item => ({
+              date: item.date,
+              type: item.credits >= 0 ? 'purchase' : 'use',
+              plan: item.plan,
+              description: item.credits >= 0 ? `Plan purchase (${item.plan || 'Subscription'})` : `Class booked (${item.plan || 'Subscription'})`,
+              credits: item.credits,
+              balanceAfter: '',
+              amountPaid: item.amountPaid || 0
+            }))
+          : (Array.isArray(data.credits) ? data.credits : []);
         if (!list.length) {
           tbody.innerHTML = '';
           empty.style.display = 'block';
@@ -306,6 +325,11 @@
     }
 
     document.addEventListener('DOMContentLoaded', loadCredits);
+    window.addEventListener('storage', (event) => {
+      if (event.key === 'creditsLastUpdatedAt') {
+        loadCredits();
+      }
+    });
   </script>
 </body>
 </html>

@@ -11,6 +11,8 @@ const authRoutes = require('./auth');
 const teacherRoutes = require('./teacher');
 const studentRoutes = require('./student');
 const adminRoutes = require('./admin');
+const paymentRoutes = require('./payments');
+const webhookRoutes = require('./webhooks');
 const fileRoutes = require('./fileRoutes');
 const announcementRoutes = require('./announcement');
 const lessonRoutes = require('./lessons');
@@ -76,6 +78,11 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
+// Keep raw body for PayMongo webhook signature verification.
+app.use('/api/webhooks/paymongo', express.raw({ type: 'application/json' }));
+
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 
@@ -125,6 +132,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/teacher', teacherRoutes);
 app.use('/api/student', studentRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/webhooks', webhookRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/upload', fileRoutes); // Add alias for upload endpoint
 app.use('/api', announcementRoutes); // Mount announcement routes directly under /api

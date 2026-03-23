@@ -1049,15 +1049,32 @@ router.get('/credits', verifyToken, requireStudent, async (req, res) => {
 
     const credits = student.creditTransactions || [];
     credits.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+    const creditHistory = student.creditHistory || [];
+    creditHistory.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+    const balance = Number(student.totalCredits ?? student.creditBalance ?? 0);
+    const usedCredits = Number(
+      student.usedCredits ??
+      ((student.totalCreditsEarned || 0) - (student.creditBalance || 0))
+    );
+    const totalEarned = Number(student.totalCreditsEarned || (balance + usedCredits) || 0);
 
     res.json({
       success: true,
-      balance: student.creditBalance || 0,
-      totalEarned: student.totalCreditsEarned || 0,
-      used: (student.totalCreditsEarned || 0) - (student.creditBalance || 0),
+      balance,
+      totalCredits: balance,
+      totalEarned,
+      used: usedCredits,
+      usedCredits,
       subscriptionPlan: student.subscriptionPlan || null,
       subscriptionStatus: student.subscriptionStatus || null,
       paymentStatus: student.paymentStatus || null,
+      creditHistory: creditHistory.map(c => ({
+        date: c.date,
+        plan: c.plan,
+        credits: c.credits,
+        amountPaid: c.amountPaid,
+        paymentId: c.paymentId || ''
+      })),
       credits: credits.map(c => ({
         date: c.date,
         type: c.type,

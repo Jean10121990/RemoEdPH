@@ -291,6 +291,24 @@
             transform: translateY(-2px);
             box-shadow: 0 6px 20px rgba(28, 167, 231, 0.4);
         }
+
+        .btn-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            margin-right: 8px;
+            border: 2px solid rgba(255, 255, 255, 0.4);
+            border-top-color: #ffffff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
         
         /* Subscription Plans */
         .plans-grid {
@@ -425,6 +443,13 @@
             font-size: 3rem;
             font-weight: 800;
             color: var(--plan-title, #1CA7E7);
+            margin-bottom: 4px;
+        }
+
+        .plan-price-local {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #1E3A5F;
             margin-bottom: 8px;
         }
         
@@ -547,6 +572,7 @@
             z-index: 2000;
             align-items: center;
             justify-content: center;
+            backdrop-filter: blur(5px);
         }
         
         .modal.active {
@@ -556,17 +582,109 @@
         .modal-content {
             background: white;
             padding: 40px;
-            border-radius: 20px;
-            max-width: 500px;
+            border-radius: 24px;
+            max-width: 550px;
             width: 90%;
             max-height: 90vh;
             overflow-y: auto;
             text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            border: 1px solid rgba(255,255,255,0.3);
         }
-        
+
+        /* Multi-step Modal Styles */
+        .modal-step {
+            display: none;
+        }
+        .modal-step.active {
+            display: block;
+        }
+
+        .payment-options {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin: 24px 0;
+        }
+
+        .payment-method-btn {
+            background: #f8faff;
+            border: 2px solid #e8f4fd;
+            border-radius: 16px;
+            padding: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .payment-method-btn:hover {
+            border-color: #1CA7E7;
+            background: #f0f9ff;
+            transform: translateY(-2px);
+        }
+
+        .payment-method-btn.selected {
+            border-color: #1CA7E7;
+            background: #e0f2fe;
+            box-shadow: 0 4px 12px rgba(28, 167, 231, 0.15);
+        }
+
+        .payment-method-btn img {
+            height: 32px;
+            object-fit: contain;
+        }
+
+        .payment-method-btn span {
+            font-weight: 700;
+            color: #1E3A5F;
+            font-size: 0.9rem;
+        }
+
+        .payment-details-area {
+            text-align: left;
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8faff;
+            border-radius: 16px;
+            border: 1px solid #e8f4fd;
+        }
+
+        .cc-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .cc-full {
+            grid-column: span 2;
+        }
+
+        .payment-note {
+            font-size: 0.85rem;
+            color: #64748b;
+            margin-top: 8px;
+            font-style: italic;
+        }
+
+        .success-icon {
+            font-size: 5rem;
+            margin-bottom: 20px;
+            display: block;
+        }
+
         .modal-content h2 {
             color: #1CA7E7;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
+            font-size: 1.8rem;
+        }
+
+        .modal-subtitle {
+            color: #4A6FA5;
+            margin-bottom: 24px;
+            font-size: 1.1rem;
         }
         
         .close-modal {
@@ -770,14 +888,15 @@
                     </svg>
                 </div>
                 <div class="plan-name">RemoSpark (1 Month)</div>
-                <div class="plan-price">₱250</div>
-                <div class="plan-period"><strong>Price Per Class</strong></div>
+                <div class="plan-price">$91.74 USD</div>
+                <div class="plan-price-local">~₱5,507.15 PHP est.</div>
+                <div class="plan-period"><strong>$4.17/day x 22 days</strong></div>
                 <p class="plan-tagline">Spark their curiosity.</p>
                 <ul class="plan-features">
                     <li>Perfect for beginners</li>
                     <li>Access to digital library</li>
                 </ul>
-                <button class="plan-btn" onclick="selectPlan('1month', 250)">Enroll Now</button>
+                <button class="plan-btn" onclick="selectPlan('spark', this)">Enroll Now</button>
             </div>
             
             <div class="plan-card plan-steady plan-popular">
@@ -790,13 +909,14 @@
                     </svg>
                 </div>
                 <div class="plan-name">RemoSteady (3 Months)</div>
-                <div class="plan-price">₱245</div>
-                <div class="plan-period"><strong>Price Per Class</strong></div>
+                <div class="plan-price">$269.28 USD</div>
+                <div class="plan-price-local">~₱16,164.88 PHP est.</div>
+                <div class="plan-period"><strong>$4.08/day x 66 days</strong></div>
                 <p class="plan-tagline">Building a routine.</p>
                 <ul class="plan-features">
                     <li>Digital print outs</li>
                 </ul>
-                <button class="plan-btn" onclick="selectPlan('3months', 245)">Enroll Now</button>
+                <button class="plan-btn" onclick="selectPlan('steady', this)">Enroll Now</button>
             </div>
             
             <div class="plan-card plan-scholar">
@@ -809,13 +929,14 @@
                     </svg>
                 </div>
                 <div class="plan-name">RemoScholar (6 Months)</div>
-                <div class="plan-price">₱240</div>
-                <div class="plan-period"><strong>Price Per Class</strong></div>
+                <div class="plan-price">$528.00 USD</div>
+                <div class="plan-price-local">~₱31,695.84 PHP est.</div>
+                <div class="plan-period"><strong>$4.00/day x 132 days</strong></div>
                 <p class="plan-tagline">Mastering the basics.</p>
                 <ul class="plan-features">
                     <li>Mid-term progress report</li>
                 </ul>
-                <button class="plan-btn" onclick="selectPlan('6months', 240)">Enroll Now</button>
+                <button class="plan-btn" onclick="selectPlan('scholar', this)">Enroll Now</button>
             </div>
             
             <div class="plan-card plan-summit plan-recommended">
@@ -829,13 +950,14 @@
                     </svg>
                 </div>
                 <div class="plan-name">RemoSummit (12 Months)</div>
-                <div class="plan-price">₱235</div>
-                <div class="plan-period"><strong>Price Per Class</strong></div>
+                <div class="plan-price">$964.32 USD</div>
+                <div class="plan-price-local">~₱57,888.13 PHP est.</div>
+                <div class="plan-period"><strong>$3.92/day x 246 days</strong></div>
                 <p class="plan-tagline">Reaching the peak.</p>
                 <ul class="plan-features">
                     <li>End-of-year certificate</li>
                 </ul>
-                <button class="plan-btn" onclick="selectPlan('1year', 235)">Enroll Now</button>
+                <button class="plan-btn" onclick="selectPlan('summit', this)">Enroll Now</button>
             </div>
         </div>
     </section>
@@ -852,99 +974,189 @@
     <div id="signup-modal" class="modal">
         <div class="modal-content" style="position: relative;">
             <button class="close-modal" onclick="closeModal()">&times;</button>
-            <h2>📝 Create Your Account</h2>
-            <p style="margin-bottom: 24px; color: #1E3A5F;">Sign up to receive your assessment results and start learning!</p>
-            <form id="signup-form">
-                <div class="form-group">
-                    <label>👤 Username</label>
-                    <input type="text" id="signup-username" required placeholder="Choose a username">
-                </div>
-                <div class="form-group">
-                    <label>📧 Email</label>
-                    <input type="email" id="signup-email" required placeholder="Enter email">
-                </div>
-                <div class="form-group">
-                    <label>🔑 Password</label>
-                    <input type="password" id="signup-password" required placeholder="Create a password">
-                </div>
-                <div class="form-group">
-                    <label>👨‍👩‍👧 Parent/Guardian Name</label>
-                    <input type="text" id="signup-parent-name" required placeholder="Parent or guardian name">
-                </div>
-                <input type="hidden" id="selected-plan" value="">
-                <input type="hidden" id="selected-plan-price" value="">
-                <button type="submit" class="assessment-btn">✨ Sign Up & Subscribe</button>
-            </form>
+            
+            <!-- Step 1: Registration -->
+            <div id="step-registration" class="modal-step active">
+                <h2>📝 Create Your Account</h2>
+                <p class="modal-subtitle">Sign up to receive your assessment results and start learning!</p>
+                <form id="signup-form">
+                    <div class="form-group">
+                        <label>👤 Username</label>
+                        <input type="text" id="signup-username" required placeholder="Choose a username">
+                    </div>
+                    <div class="form-group">
+                        <label>📧 Email</label>
+                        <input type="email" id="signup-email" required placeholder="Enter email">
+                    </div>
+                    <div class="form-group">
+                        <label>🔑 Password</label>
+                        <input type="password" id="signup-password" required placeholder="Create a password">
+                    </div>
+                    <div class="form-group">
+                        <label>👨‍👩‍👧 Parent/Guardian Name</label>
+                        <input type="text" id="signup-parent-name" required placeholder="Parent or guardian name">
+                    </div>
+                    <input type="hidden" id="selected-plan" value="">
+                    <input type="hidden" id="selected-plan-price" value="">
+                    <button type="submit" class="assessment-btn">✨ Sign Up & Subscribe</button>
+                </form>
+            </div>
+
         </div>
     </div>
 
     <script src="js/referral-tracking.js"></script>
     <script>
         let selectedPlan = '';
-        let selectedPlanPrice = 0;
+        const EXCHANGE_RATE_USED = 60.03;
+        const PLAN_PRICING = {
+            spark: { usdDailyRate: 4.17, days: 22, name: 'RemoSpark Plan' },
+            steady: { usdDailyRate: 4.08, days: 66, name: 'RemoSteady Plan' },
+            scholar: { usdDailyRate: 4.0, days: 132, name: 'RemoScholar Plan' },
+            summit: { usdDailyRate: 3.92, days: 246, name: 'RemoSummit Plan' }
+        };
         let assessmentData = null;
 
-        // Assessment form submission
+        function buildPlanDescription(plan) {
+            return PLAN_PRICING[plan]?.name || 'RemoEd Subscription Plan';
+        }
+
+        function parseJwtPayload(token) {
+            try {
+                const parts = String(token || '').split('.');
+                if (parts.length < 2) return null;
+                const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+                const padded = base64 + '==='.slice((base64.length + 3) % 4);
+                return JSON.parse(atob(padded));
+            } catch (_) {
+                return null;
+            }
+        }
+
+        function getAuthenticatedStudentContext() {
+            const token = localStorage.getItem('studentToken') || localStorage.getItem('token') || '';
+            if (!token) return null;
+            const payload = parseJwtPayload(token);
+            const studentId = localStorage.getItem('studentId') || payload?.studentId || '';
+            if (!studentId) return null;
+            return { token, studentId };
+        }
+
+        function getPlanComputedAmounts(plan) {
+            const config = PLAN_PRICING[plan];
+            if (!config) return null;
+            const usdTotal = Number((config.usdDailyRate * config.days).toFixed(2));
+            const phpEstimate = Number((usdTotal * EXCHANGE_RATE_USED).toFixed(2));
+            return { usdTotal, phpEstimate };
+        }
+
+        function setSignupLoadingState(isLoading) {
+            const btn = document.querySelector('#signup-form button[type="submit"]');
+            if (!btn) return;
+
+            if (isLoading) {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="btn-spinner" aria-hidden="true"></span> Generating secure payment link...';
+            } else {
+                btn.disabled = false;
+                btn.innerHTML = '✨ Sign Up & Subscribe';
+            }
+        }
+
         document.getElementById('assessment-form').addEventListener('submit', async function(e) {
             e.preventDefault();
-            
+
             const childName = document.getElementById('child-name').value;
             const parentEmail = document.getElementById('parent-email').value;
             const contactNumber = document.getElementById('contact-number').value;
-            
-            // Store assessment data
-            assessmentData = {
-                childName,
-                parentEmail,
-                contactNumber
-            };
-            
-            // Redirect to assessment page with data
+
+            assessmentData = { childName, parentEmail, contactNumber };
+
             const assessmentUrl = `student-assessment.html?childName=${encodeURIComponent(childName)}&parentEmail=${encodeURIComponent(parentEmail)}&contactNumber=${encodeURIComponent(contactNumber)}`;
             window.location.href = assessmentUrl;
         });
 
-        // Plan selection
-        function selectPlan(plan, price) {
+        function setPlanButtonLoadingState(buttonEl, isLoading) {
+            if (!buttonEl) return;
+            if (isLoading) {
+                buttonEl.disabled = true;
+                buttonEl.dataset.originalText = buttonEl.textContent;
+                buttonEl.innerHTML = '<span class="btn-spinner" aria-hidden="true"></span> Processing...';
+            } else {
+                buttonEl.disabled = false;
+                buttonEl.textContent = buttonEl.dataset.originalText || 'Enroll Now';
+            }
+        }
+
+        async function selectPlan(plan, buttonEl) {
             selectedPlan = plan;
-            selectedPlanPrice = price;
-            
-            // Check if user is coming from assessment
+            const authStudent = getAuthenticatedStudentContext();
+            const planAmounts = getPlanComputedAmounts(selectedPlan);
+            if (!planAmounts) {
+                alert('Invalid plan selected.');
+                return;
+            }
+
+            if (authStudent) {
+                setPlanButtonLoadingState(buttonEl, true);
+                try {
+                    const payload = {
+                        userId: authStudent.studentId,
+                        planId: selectedPlan,
+                        description: buildPlanDescription(selectedPlan),
+                        success_url: `${window.location.origin}/student-credits.html?payment=success`,
+                        cancel_url: `${window.location.origin}/student-credits.html?payment=cancelled`,
+                        usd_total: planAmounts.usdTotal,
+                        exchange_rate_used: EXCHANGE_RATE_USED
+                    };
+
+                    const response = await fetch('/api/payments/create-link', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    const result = await response.json();
+                    if (!response.ok || !result.success || !result.checkout_url) {
+                        throw new Error(result.error || result.message || 'Failed to generate payment link');
+                    }
+                    window.location.href = result.checkout_url;
+                    return;
+                } catch (error) {
+                    alert(`❌ ${error.message}`);
+                    setPlanButtonLoadingState(buttonEl, false);
+                    return;
+                }
+            }
+
             const urlParams = new URLSearchParams(window.location.search);
             const email = urlParams.get('email');
-            const cefrLevel = urlParams.get('cefrLevel');
-            
-            // Show signup modal
+
             document.getElementById('signup-modal').classList.add('active');
             document.getElementById('selected-plan').value = plan;
-            document.getElementById('selected-plan-price').value = price;
-            
-            // Pre-fill email if coming from assessment
+            document.getElementById('selected-plan-price').value = '';
+
             if (email) {
                 document.getElementById('signup-email').value = email;
             }
         }
-        
-        // Check if returning from assessment
+
         document.addEventListener('DOMContentLoaded', function() {
             const urlParams = new URLSearchParams(window.location.search);
             const email = urlParams.get('email');
             const cefrLevel = urlParams.get('cefrLevel');
             const signup = urlParams.get('signup');
-            
+
             if (email && cefrLevel) {
-                // Pre-fill email in signup form
-                if (document.getElementById('signup-email')) {
-                    document.getElementById('signup-email').value = email;
+                const emailInput = document.getElementById('signup-email');
+                if (emailInput) {
+                    emailInput.value = email;
                 }
-                
-                // Show signup modal automatically if signup=true
+
                 if (signup === 'true') {
                     setTimeout(() => {
                         document.getElementById('signup-modal').classList.add('active');
                     }, 500);
                 } else {
-                    // Show welcome message
                     setTimeout(() => {
                         alert(`🎉 Welcome back! Your assessment result: ${cefrLevel}\n\nSign up now to access your results online and start learning!`);
                     }, 500);
@@ -952,108 +1164,63 @@
             }
         });
 
-        // Sign up form submission
         document.getElementById('signup-form').addEventListener('submit', async function(e) {
             e.preventDefault();
-            
-            const username = document.getElementById('signup-username').value;
-            const email = document.getElementById('signup-email').value;
+
+            const form = e.currentTarget;
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+            if (!selectedPlan) {
+                alert('Please select a learning plan first.');
+                return;
+            }
+            const planAmounts = getPlanComputedAmounts(selectedPlan);
+            if (!planAmounts) {
+                alert('Invalid plan selected.');
+                return;
+            }
+
+            const username = document.getElementById('signup-username').value.trim();
+            const email = document.getElementById('signup-email').value.trim();
             const password = document.getElementById('signup-password').value;
-            const parentName = document.getElementById('signup-parent-name').value;
-            const plan = document.getElementById('selected-plan').value || '';
-            const planPrice = document.getElementById('selected-plan-price').value || '';
-            
-            const submitBtn = e.target.querySelector('button[type="submit"]');
-            const originalText = submitBtn.textContent;
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Creating Account...';
-            
+            const parentName = document.getElementById('signup-parent-name').value.trim();
+
+            setSignupLoadingState(true);
+
             try {
-                // Register student
-                const registerResponse = await fetch('/api/auth/student-register', {
+                const payload = {
+                    username,
+                    email,
+                    password,
+                    parentName,
+                    planId: selectedPlan,
+                    description: buildPlanDescription(selectedPlan),
+                    referralCode: localStorage.getItem('referralCode') || '',
+                    success_url: `${window.location.origin}/student-login.html?payment=success`,
+                    cancel_url: `${window.location.origin}/#plans`,
+                    usd_total: planAmounts.usdTotal,
+                    exchange_rate_used: EXCHANGE_RATE_USED
+                };
+
+                const response = await fetch('/api/payments/create-link', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({
-                        username,
-                        email,
-                        password,
-                        parentName: parentName || assessmentData?.parentEmail || '',
-                        contact: assessmentData?.contactNumber || '',
-                        referralCode: localStorage.getItem('referralCode') || ''
-                    })
+                    body: JSON.stringify(payload)
                 });
-                
-                const registerResult = await registerResponse.json();
-                
-                if (!registerResponse.ok) {
-                    const errorMsg = registerResult.message || registerResult.error || 'Registration failed';
-                    console.error('Registration error:', registerResult);
-                    throw new Error(errorMsg);
+
+                const result = await response.json();
+                if (!response.ok || !result.success || !result.checkout_url) {
+                    throw new Error(result.error || result.message || 'Failed to generate payment link');
                 }
-                
-                // Save subscription if plan was selected (creates checkout session; payment required)
-                if (plan) {
-                    const subscribeResponse = await fetch('/api/student/subscribe', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            email,
-                            plan,
-                            planPrice,
-                            assessmentData: assessmentData || null
-                        })
-                    });
-                    
-                    const subscribeResult = await subscribeResponse.json().catch(() => ({}));
-                    if (!subscribeResponse.ok || !subscribeResult.success) {
-                        console.warn('Subscription save failed, but registration succeeded');
-                    } else if (subscribeResult.checkout && subscribeResult.checkout.sessionId) {
-                        alert('✅ Account created! Please complete payment to activate your subscription.');
-                        window.location.href = `student-payment.html?session=${encodeURIComponent(subscribeResult.checkout.sessionId)}`;
-                        return;
-                    }
-                }
-                
-                // Send assessment email if assessment was taken
-                if (assessmentData) {
-                    try {
-                        const emailResponse = await fetch('/api/student/send-assessment-email', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({
-                                email,
-                                childName: assessmentData.childName,
-                                parentEmail: assessmentData.parentEmail || email,
-                                contactNumber: assessmentData.contactNumber
-                            })
-                        });
-                        
-                        const emailResult = await emailResponse.json();
-                        if (emailResult.fallback) {
-                            console.log('Email not configured, but assessment saved');
-                        }
-                    } catch (emailError) {
-                        console.error('Error sending assessment email:', emailError);
-                        // Don't fail registration if email fails
-                    }
-                }
-                
-                alert('✅ Account created successfully! Redirecting to login...');
-                setTimeout(() => {
-                    window.location.href = 'student-login.html';
-                }, 1000);
-                
+
+                window.location.href = result.checkout_url;
             } catch (error) {
-                console.error('Error:', error);
-                alert('❌ Error: ' + error.message);
-                submitBtn.disabled = false;
-                submitBtn.textContent = originalText;
+                alert(`❌ ${error.message}`);
+                setSignupLoadingState(false);
             }
         });
 
@@ -1061,7 +1228,6 @@
             document.getElementById('signup-modal').classList.remove('active');
         }
 
-        // Close modal on outside click
         document.getElementById('signup-modal').addEventListener('click', function(e) {
             if (e.target === this) {
                 closeModal();
