@@ -1,6 +1,6 @@
 /**
  * Teacher Portal – shared sidebar component.
- * Renders the same 10-item menu on every teacher page. Add a new item here to update the whole app.
+ * Renders the same menu on every teacher page. Add a new item here to update the whole app.
  * Usage: <div id="teacher-sidebar-root"></div> then TeacherSidebar.render('dashboard');
  */
 
@@ -16,6 +16,7 @@
         { id: 'device-check', label: 'Device Check', href: 'device-check.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>' },
         { id: 'lessons-library', label: 'Lessons Library', href: 'teacher-lessons-library.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>' },
         { id: 'teaching-fee', label: 'Teaching Fee', href: 'teacher-service-fee.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 10c-4.41 0-8-1.79-8-4V6c0-2.21 3.59-4 8-4s8 1.79 8 4v8c0 2.21-3.59 4-8 4z"/></svg>' },
+        { id: 'referral-rewards', label: 'Referral Rewards', href: 'teacher-referrals.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>' },
         { id: 'performance-indicator', label: 'Performance Indicator', href: 'teacher-performance-indicator.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 12h10M7 8h6M7 16h4"/></svg>' },
         { id: 'professional-development', label: 'Professional Development', href: 'teacher-professional-development.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>' },
         { id: 'messages', label: 'Messages', href: 'teacher-messages.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>' },
@@ -31,6 +32,7 @@
         if (path.indexOf('device-check') !== -1) return 'device-check';
         if (path.indexOf('teacher-lessons-library') !== -1) return 'lessons-library';
         if (path.indexOf('teacher-service-fee') !== -1) return 'teaching-fee';
+        if (path.indexOf('teacher-referrals') !== -1) return 'referral-rewards';
         if (path.indexOf('teacher-performance-indicator') !== -1) return 'performance-indicator';
         if (path.indexOf('teacher-professional-development') !== -1) return 'professional-development';
         if (path.indexOf('teacher-messages') !== -1) return 'messages';

@@ -6,6 +6,7 @@ const Admin = require('./models/Admin');
 const CancellationRequest = require('./models/CancellationRequest');
 const Booking = require('./models/Booking');
 const Notification = require('./models/Notification');
+const PeerMessage = require('./models/PeerMessage');
 const IssueReport = require('./models/IssueReport');
 const TimeLog = require('./models/TimeLog');
 const Referral = require('./models/Referral');
@@ -1627,6 +1628,169 @@ router.get('/admins-list', async (req, res) => {
   } catch (error) {
     console.error('Error getting admins list:', error);
     res.status(500).json({ error: 'Error getting admins list' });
+  }
+});
+
+// Admin messages directory with search by user ID or name
+router.get('/messages/users', verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const q = String((req.query && req.query.q) || '').trim().toLowerCase();
+
+    const [teachers, students] = await Promise.all([
+      Teacher.find({})
+        .select('teacherId username firstName lastName fullname email profilePicture')
+        .lean(),
+      Student.find({})
+        .select('username firstName lastName email profilePicture')
+        .lean()
+    ]);
+
+    const teacherRows = teachers.map((t) => {
+      const displayName = (t.fullname || `${t.firstName || ''} ${t.lastName || ''}`.trim() || t.username || t.teacherId || 'Teacher').trim();
+      return {
+        userType: 'teacher',
+        userId: String(t.teacherId || t.username || ''),
+        username: String(t.username || ''),
+        name: displayName,
+        email: String(t.email || ''),
+        profilePicture: t.profilePicture || null
+      };
+    });
+
+    const studentRows = students.map((s) => {
+      const displayName = (`${s.firstName || ''} ${s.lastName || ''}`.trim() || s.username || 'Student').trim();
+      return {
+        userType: 'student',
+        userId: String(s.username || ''),
+        username: String(s.username || ''),
+        name: displayName,
+        email: String(s.email || ''),
+        profilePicture: s.profilePicture || null
+      };
+    });
+
+    const rows = teacherRows.concat(studentRows);
+    const filtered = !q
+      ? rows
+      : rows.filter((u) => {
+          const hay = `${u.userId} ${u.username} ${u.name} ${u.email} ${u.userType}`.toLowerCase();
+          return hay.includes(q);
+        });
+
+    // Include lightweight last-message preview to make search page useful.
+    const userKeys = filtered.map((u) => u.userId).filter(Boolean);
+    let lastByUser = new Map();
+    if (userKeys.length) {
+      const recent = await PeerMessage.find({
+        $or: [{ senderId: { $in: userKeys } }, { recipientId: { $in: userKeys } }]
+      })
+        .sort({ createdAt: -1 })
+        .limit(3000)
+        .lean();
+      recent.forEach((m) => {
+        const sender = String(m.senderId || '');
+        const recipient = String(m.recipientId || '');
+        if (sender && !lastByUser.has(sender)) lastByUser.set(sender, m);
+        if (recipient && !lastByUser.has(recipient)) lastByUser.set(recipient, m);
+      });
+    }
+
+    const out = filtered
+      .map((u) => {
+        const lm = lastByUser.get(u.userId);
+        return {
+          ...u,
+          lastMessage: lm ? String(lm.message || '') : '',
+          lastMessageAt: lm ? lm.createdAt : null
+        };
+      })
+      .sort((a, b) => {
+        const ta = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0;
+        const tb = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0;
+        if (tb !== ta) return tb - ta;
+        return String(a.name || '').localeCompare(String(b.name || ''));
+      });
+
+    res.json({ success: true, users: out });
+  } catch (error) {
+    console.error('Error loading admin message users:', error);
+    res.status(500).json({ success: false, message: 'Failed to load message users' });
+  }
+});
+
+function getAdminMessengerId(req) {
+  const username = String(req.user?.username || 'admin').trim().toLowerCase();
+  return `admin:${username}`;
+}
+
+// Admin -> user conversation thread
+router.get('/messages/thread/:userId', verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const userId = String(req.params.userId || '').trim();
+    if (!userId) return res.status(400).json({ success: false, message: 'userId is required' });
+
+    const adminId = getAdminMessengerId(req);
+    const messages = await PeerMessage.find({
+      $or: [
+        { senderId: adminId, recipientId: userId },
+        { senderId: userId, recipientId: adminId }
+      ]
+    })
+      .sort({ createdAt: 1 })
+      .lean();
+
+    await PeerMessage.updateMany(
+      { senderId: userId, recipientId: adminId, readAt: null },
+      { $set: { readAt: new Date() } }
+    );
+
+    res.json({
+      success: true,
+      me: adminId,
+      messages: messages.map((m) => ({
+        id: String(m._id),
+        senderId: String(m.senderId || ''),
+        recipientId: String(m.recipientId || ''),
+        message: String(m.message || ''),
+        createdAt: m.createdAt,
+        readAt: m.readAt || null
+      }))
+    });
+  } catch (error) {
+    console.error('Error loading admin thread:', error);
+    res.status(500).json({ success: false, message: 'Failed to load thread' });
+  }
+});
+
+// Admin sends a direct message to a teacher/student userId
+router.post('/messages/send', verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const recipientId = String(req.body?.recipientId || '').trim();
+    const message = String(req.body?.message || '').trim();
+    if (!recipientId || !message) {
+      return res.status(400).json({ success: false, message: 'recipientId and message are required' });
+    }
+
+    const adminId = getAdminMessengerId(req);
+    const saved = await PeerMessage.create({
+      senderId: adminId,
+      recipientId,
+      message
+    });
+
+    res.json({
+      success: true,
+      messageRecord: {
+        id: String(saved._id),
+        senderId: adminId,
+        recipientId,
+        message: saved.message,
+        createdAt: saved.createdAt
+      }
+    });
+  } catch (error) {
+    console.error('Error sending admin message:', error);
+    res.status(500).json({ success: false, message: 'Failed to send message' });
   }
 });
 

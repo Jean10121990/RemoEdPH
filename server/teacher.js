@@ -20,6 +20,7 @@ const Reward = require('./models/Reward');
 const Feedback = require('./models/Feedback');
 const IssueReport = require('./models/IssueReport');
 const PeerMessage = require('./models/PeerMessage');
+const Referral = require('./models/Referral');
 const { verifyToken, requireTeacher, requireStudent, requireOwnTeacherData, requireOwnStudentData, logAccess } = require('./authMiddleware');
 const realtime = require('./realtime');
 
@@ -228,6 +229,71 @@ router.get('/referral-link', verifyToken, requireTeacher, async (req, res) => {
   }
 });
 
+/**
+ * Teacher-only: list subscription referrals credited to this teacher (distinct from admin global view).
+ * Each row includes a stable reference number derived from the Referral document id.
+ */
+router.get('/referrals', verifyToken, requireTeacher, async (req, res) => {
+  try {
+    const teacherId = String(req.user.teacherId || '');
+    const { from, to } = req.query;
+    const filter = {
+      ownerType: 'teacher',
+      ownerId: teacherId
+    };
+    if (from || to) {
+      filter.createdAt = {};
+      if (from) filter.createdAt.$gte = new Date(from);
+      if (to) {
+        const end = new Date(to);
+        end.setHours(23, 59, 59, 999);
+        filter.createdAt.$lte = end;
+      }
+    }
+
+    const list = await Referral.find(filter).sort({ createdAt: -1 }).limit(500).lean();
+
+    const totals = list.reduce(
+      (acc, r) => {
+        acc.count += 1;
+        acc.totalAmountPaid += Number(r.amountPaid || 0) || 0;
+        acc.totalCommission += Number(r.commissionAmount || 0) || 0;
+        return acc;
+      },
+      { count: 0, totalAmountPaid: 0, totalCommission: 0 }
+    );
+
+    const referrals = list.map((r) => {
+      const id = String(r._id);
+      return {
+        id,
+        referenceNumber: `RM-${id.toUpperCase().slice(-10)}`,
+        referralCode: r.referralCode,
+        studentId: r.studentId,
+        studentName: r.studentName || '',
+        studentEmail: r.studentEmail || '',
+        studentContact: r.studentContact || '',
+        subscriptionPlan: r.subscriptionPlan || '',
+        amountPaid: Number(r.amountPaid || 0) || 0,
+        commissionAmount: Number(r.commissionAmount || 0) || 0,
+        status: r.status || 'successful',
+        createdAt: r.createdAt
+      };
+    });
+
+    res.json({
+      success: true,
+      referrals,
+      totals,
+      teacherId,
+      note: 'Admin commission reports use a separate dashboard; this list is scoped to your teacher referral link only.'
+    });
+  } catch (err) {
+    console.error('Teacher referrals error:', err);
+    res.status(500).json({ success: false, message: 'Failed to load referrals' });
+  }
+});
+
 // Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -341,7 +407,7 @@ router.post('/peer-message', verifyToken, requireTeacher, async (req, res) => {
     const sender = await Teacher.findOne({ teacherId: senderId });
     const senderName = sender?.fullname || `${sender?.firstName || ''} ${sender?.lastName || ''}`.trim() || 'A teacher';
     // Persist message for chat history
-    await PeerMessage.create({
+    const savedMessage = await PeerMessage.create({
       senderId,
       recipientId,
       message: message.trim()
@@ -354,7 +420,21 @@ router.post('/peer-message', verifyToken, requireTeacher, async (req, res) => {
       senderId: senderId,
       read: false
     });
-    res.json({ success: true, message: 'Message sent successfully' });
+    // Real-time emit to recipient + sender tabs
+    const payload = {
+      id: savedMessage._id.toString(),
+      senderId,
+      recipientId,
+      message: savedMessage.message,
+      createdAt: savedMessage.createdAt,
+      readAt: savedMessage.readAt || null
+    };
+    const io = realtime.getIo();
+    if (io) {
+      io.to(`teacher-msg:${recipientId}`).emit('peer-message:new', payload);
+      io.to(`teacher-msg:${senderId}`).emit('peer-message:new', payload);
+    }
+    res.json({ success: true, message: 'Message sent successfully', peerMessage: payload });
   } catch (err) {
     console.error('Error sending peer message:', err);
     res.status(500).json({ error: 'Failed to send message' });
