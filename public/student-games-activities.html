@@ -504,35 +504,13 @@
             }
         }
     </style>
-    <link rel="stylesheet" href="css/student-sidebar-unified.css">
+    <link rel="stylesheet" href="css/teacher-sidebar.css">
 </head>
 <body class="student-portal">
     <div class="remoed-main">
-        <nav class="remoed-sidebar">
-            <div class="remoed-logo" style="position: relative;">
-                <img src="remoed-logo.png" alt="RemoEdPH Logo" style="height:50px; filter: drop-shadow(0 2px 4px rgba(28, 167, 231, 0.3));">
-                <span class="remoed-title" style="font-size:1.4rem; font-weight:800; color:#1CA7E7; letter-spacing:1px; text-shadow: 2px 2px 4px rgba(28, 167, 231, 0.2);">RemoEdPH</span>
-                <div style="font-size: 0.75rem; color: #666;">Student Portal</div>
-            </div>
-            <div class="remoed-user">
-                <div class="remoed-avatar" id="student-avatar" onclick="window.location.href='student-profile.html'" style="cursor: pointer;">
-                    <img id="profile-image" class="avatar-img" src="" alt="Profile" style="display: none; width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">
-                    <span id="avatar-text" class="avatar-text">S</span>
-                </div>
-                <span class="remoed-username" id="remoed-username"></span>
-            </div>
-            <ul class="remoed-menu">
-                <li onclick="window.location.href='student-dashboard.html'">🏠 <span>My Home</span></li>
-                <li onclick="window.location.href='student-class-table.html'">📅 <span>My Schedule</span></li>
-                <li onclick="window.location.href='student-book.html'">➕ <span>Book a Class</span></li>
-                <li onclick="window.location.href='student-booking-history.html'">📜 <span>My Classes</span></li>
-                <li class="active">🎮 <span>Play & Learn</span></li>
-                <li onclick="window.location.href='student-profile.html'">👤 <span>My Profile</span></li>
-                <li onclick="window.location.href='student-assessment.html'">🎯 <span>My Level</span></li>
-                <li onclick="window.location.href='student-credits.html'">🎫 <span>My Credits</span></li>
-                <li id="logout-nav" style="margin-top:auto; color:#e74c3c; cursor:pointer;">🚪 <span>Exit</span></li>
-            </ul>
-        </nav>
+        <div id="student-sidebar-root"></div>
+        <script src="js/student-sidebar.js"></script>
+        <script>StudentSidebar.render('student-sidebar-root', 'games');</script>
         <div class="remoed-content">
             <div class="games-container">
                 <div class="page-header">

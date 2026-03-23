@@ -1066,36 +1066,13 @@
             filter: brightness(1.05);
         }
     </style>
-    <link rel="stylesheet" href="css/student-sidebar-unified.css">
+    <link rel="stylesheet" href="css/teacher-sidebar.css">
 </head>
 <body class="student-portal">
     <div class="remoed-main">
-        <nav class="remoed-sidebar">
-            <div class="remoed-logo">
-                <img src="remoed-logo.png" alt="RemoEdPH Logo">
-                <span class="student-brand-caption">RemoEdPH</span>
-                <span class="remoed-title">RemoEdPH</span>
-                <div class="student-portal-label">Student Portal</div>
-            </div>
-            <div class="remoed-user">
-                <div class="remoed-avatar" id="student-avatar" onclick="window.location.href='student-profile.html'" style="cursor:pointer;">
-                    <img id="profile-image" class="avatar-img" src="" alt="Profile" style="display: none;">
-                    <span id="avatar-text" class="avatar-text">S</span>
-                </div>
-                <span class="remoed-username" id="remoed-username"></span>
-            </div>
-            <ul class="remoed-menu">
-                <li onclick="window.location.href='student-dashboard.html'">🏠 <span>My Home</span></li>
-                <li onclick="window.location.href='student-class-table.html'">📅 <span>My Schedule</span></li>
-                <li class="active">➕ <span>Book a Class</span></li>
-                <li onclick="window.location.href='student-booking-history.html'">📜 <span>My Classes</span></li>
-                <li onclick="window.location.href='student-games-activities.html'">🎮 <span>Play & Learn</span></li>
-                <li onclick="window.location.href='student-profile.html'">👤 <span>My Profile</span></li>
-                <li onclick="window.location.href='student-assessment.html'">🎯 <span>My Level</span></li>
-                <li onclick="window.location.href='student-credits.html'">🎫 <span>My Credits</span></li>
-                <li id="logout-nav" style="margin-top:auto; color:#e74c3c; cursor:pointer;">🚪 <span>Exit</span></li>
-            </ul>
-        </nav>
+        <div id="student-sidebar-root"></div>
+        <script src="js/student-sidebar.js"></script>
+        <script>StudentSidebar.render('student-sidebar-root', 'book');</script>
         <div class="remoed-content">
             <div style="flex-shrink: 0;">
                 <div class="header">
@@ -1353,11 +1330,13 @@
         }
         
         function getWeekStartDate(date) {
-            // Get Monday of the week containing the given date in the user's timezone
-            const { DateTime } = luxon;
-            const dt = DateTime.fromJSDate(date, { zone: userTimezone });
-            const monday = dt.startOf('week').plus({ days: 1 }); // Luxon week starts Sunday; add 1 to get Monday
-            return monday.toJSDate();
+            // Match Teacher Class Configuration logic exactly: Monday-to-Sunday week
+            const d = new Date(date);
+            const dayOfWeek = d.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+            const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+            d.setHours(0, 0, 0, 0);
+            d.setDate(d.getDate() - daysToMonday);
+            return d;
         }
         
         // Set sidebar avatar and greeting
@@ -1633,11 +1612,15 @@
             let html = '<div class="grid-header">';
             html += '<div>Time</div>';
             
+            const { DateTime } = luxon;
             const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-            const weekStartLuxon = createDateTime(weekStart, timeZone);
+            const baseWeek = DateTime.fromJSDate(currentWeek, { zone: timeZone });
+            const monday = baseWeek.minus({ days: baseWeek.weekday - 1 }); // ISO weekday: 1=Mon
+            const weekDates = [];
 
             for (let i = 0; i < 7; i++) {
-                const day = weekStartLuxon.plus({ days: i });
+                const day = monday.plus({ days: i });
+                weekDates.push(day.toISODate());
                 html += `<div>${day.toFormat('ccc LLLL d')}</div>`;
             }
             html += '</div>';
@@ -1656,9 +1639,7 @@
                 html += `<div class="time-label">${timeObj.value}</div>`;
                 
                 for (let i = 0; i < 7; i++) {
-                    const date = new Date(weekStart);
-                    date.setDate(weekStart.getDate() + i);
-                    const dateStr = getLocalDateString(date); // Use consistent date formatting
+                    const dateStr = weekDates[i];
                     const slotKey = `${dateStr}-${timeObj.value}`;
                     
                 const { DateTime } = luxon;

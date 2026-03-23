@@ -550,7 +550,7 @@
             stroke: currentColor; 
         }
     </style>
-    <link rel="stylesheet" href="css/student-sidebar-unified.css">
+    <link rel="stylesheet" href="css/teacher-sidebar.css">
 </head>
   <body class="student-portal">
     <!-- Main Layout: Sidebar + Content -->
@@ -620,32 +620,9 @@
             </div>
         </div>
         
-        <nav class="remoed-sidebar">
-            <div class="remoed-logo">
-                <img src="remoed-logo.png" alt="RemoEdPH Logo">
-                <span class="student-brand-caption">RemoEdPH</span>
-                <span class="remoed-title">RemoEdPH</span>
-                <div class="student-portal-label">Student Portal</div>
-            </div>
-            <div class="remoed-user">
-                <div class="remoed-avatar" id="student-avatar" onclick="window.location.href='student-profile.html'" style="cursor: pointer;">
-                    <img id="profile-image" class="avatar-img" src="" alt="Profile" style="display: none;">
-                    <span id="avatar-text" class="avatar-text">S</span>
-                </div>
-                <span class="remoed-username" id="remoed-username"></span>
-            </div>
-            <ul class="remoed-menu">
-                <li class="active">🏠 <span>My Home</span></li>
-                <li onclick="window.location.href='student-class-table.html'">📅 <span>My Schedule</span></li>
-                <li onclick="window.location.href='student-book.html'">➕ <span>Book a Class</span></li>
-                <li onclick="window.location.href='student-booking-history.html'">📜 <span>My Classes</span></li>
-                <li onclick="window.location.href='student-games-activities.html'">🎮 <span>Play & Learn</span></li>
-                <li onclick="window.location.href='student-profile.html'">👤 <span>My Profile</span></li>
-                <li onclick="window.location.href='student-assessment.html'">🎯 <span>My Level</span></li>
-                <li onclick="window.location.href='student-credits.html'">🎫 <span>My Credits</span></li>
-                <li id="logout-nav" style="margin-top:auto; color:#e74c3c; cursor:pointer;">🚪 <span>Exit</span></li>
-            </ul>
-        </nav>
+        <div id="student-sidebar-root"></div>
+        <script src="js/student-sidebar.js"></script>
+        <script>StudentSidebar.render('student-sidebar-root', 'dashboard');</script>
         <div class="remoed-content" style="position: relative; z-index: 2; overflow-y: auto; overflow-x: visible;">
             <!-- Games & Activities Quick Access with Characters -->
             <div class="fun-card" style="margin-top: 70px; margin-bottom: 2rem; cursor: pointer; border-color: #1CA7E7; padding: 2rem; padding-top: 2.5rem; position: relative; overflow: visible; min-height: 280px;" onclick="window.location.href='student-games-activities.html'">

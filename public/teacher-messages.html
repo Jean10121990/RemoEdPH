@@ -305,6 +305,7 @@
         </main>
     </div>
 
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script>
         (function () {
             const token = localStorage.getItem('token');
@@ -323,6 +324,10 @@
 
             let chats = [];
             let activePeerId = null;
+            const seenMessageIds = new Set();
+            const socket = (typeof io !== 'undefined')
+                ? io(window.location.origin, { transports: ['websocket', 'polling'], reconnection: true })
+                : null;
 
             function esc(s) { return String(s || '').replace(/</g, '&lt;'); }
             function fmtTime(ts) { return ts ? new Date(ts).toLocaleString() : ''; }
@@ -379,7 +384,9 @@
                     chatScrollEl.innerHTML = '<div class="empty-pane">No messages yet. Say hi!</div>';
                     return;
                 }
+                seenMessageIds.clear();
                 chatScrollEl.innerHTML = messages.map(m => {
+                    if (m.id) seenMessageIds.add(String(m.id));
                     const isMe = String(m.senderId || '') === String(me || '');
                     const bubbleClass = isMe ? 'message-sent' : 'message-received';
                     const metaClass = isMe ? 'meta-sent' : 'meta-received';
@@ -391,6 +398,48 @@
                     `;
                 }).join('');
                 scrollToBottom();
+            }
+
+            function appendSingleMessage(m) {
+                if (!m) return;
+                const id = m.id ? String(m.id) : '';
+                if (id && seenMessageIds.has(id)) return;
+                if (id) seenMessageIds.add(id);
+                const empty = chatScrollEl.querySelector('.empty-pane');
+                if (empty) empty.remove();
+                const isMe = String(m.senderId || '') === String(me || '');
+                const bubbleClass = isMe ? 'message-sent' : 'message-received';
+                const metaClass = isMe ? 'meta-sent' : 'meta-received';
+                const row = document.createElement('div');
+                row.className = 'message-wrap';
+                row.innerHTML = `<div class="bubble ${bubbleClass}">${esc(m.message)}</div><div class="bubble-meta ${metaClass}">${fmtTime(m.createdAt)}</div>`;
+                chatScrollEl.appendChild(row);
+                scrollToBottom();
+            }
+
+            function upsertChatFromIncoming(m) {
+                const peerId = String(m.senderId) === String(me) ? String(m.recipientId) : String(m.senderId);
+                const current = chats.find(c => String(c.peerId) === peerId);
+                if (current) {
+                    current.lastMessage = m.message;
+                    current.lastAt = m.createdAt || new Date().toISOString();
+                    if (String(m.senderId) !== String(me) && peerId !== String(activePeerId || '')) {
+                        current.unreadCount = (Number(current.unreadCount) || 0) + 1;
+                    } else if (peerId === String(activePeerId || '')) {
+                        current.unreadCount = 0;
+                    }
+                } else {
+                    chats.unshift({
+                        peerId,
+                        name: peerId,
+                        profilePicture: null,
+                        lastMessage: m.message,
+                        lastAt: m.createdAt || new Date().toISOString(),
+                        unreadCount: String(m.senderId) !== String(me) ? 1 : 0
+                    });
+                }
+                chats.sort((a, b) => new Date(b.lastAt || 0) - new Date(a.lastAt || 0));
+                renderChatList(searchEl.value);
             }
 
             async function loadChats() {
@@ -436,16 +485,13 @@
                 if (!res.ok || !data.success) throw new Error(data.error || 'Failed to send');
 
                 composerTextEl.value = '';
-                const now = new Date().toISOString();
-                const empty = chatScrollEl.querySelector('.empty-pane');
-                if (empty) empty.remove();
-                const row = document.createElement('div');
-                row.className = 'message-wrap';
-                row.innerHTML = `<div class="bubble message-sent">${esc(msg)}</div><div class="bubble-meta meta-sent">${fmtTime(now)}</div>`;
-                chatScrollEl.appendChild(row);
-                scrollToBottom();
-
-                await loadChats();
+                if (data.peerMessage) {
+                    appendSingleMessage(data.peerMessage);
+                    upsertChatFromIncoming(data.peerMessage);
+                } else {
+                    // Fallback: keep legacy behavior if payload shape changes
+                    await openChat(activePeerId);
+                }
             }
 
             if (!token || !me) {
@@ -459,6 +505,24 @@
                 if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage().catch(err => alert(err.message)); }
             });
             backBtnEl.addEventListener('click', () => messengerEl.classList.remove('show-chat'));
+
+            if (socket) {
+                socket.on('connect', () => {
+                    if (me) socket.emit('join-teacher-messages', { teacherId: me });
+                });
+                socket.on('peer-message:new', (m) => {
+                    if (!m || (!m.senderId && !m.recipientId)) return;
+                    const peerId = String(m.senderId) === String(me) ? String(m.recipientId) : String(m.senderId);
+                    upsertChatFromIncoming(m);
+                    if (peerId === String(activePeerId || '')) {
+                        appendSingleMessage(m);
+                        // Mark as read server-side by reloading current thread in background
+                        fetch(`/api/teacher/peer-messages/${encodeURIComponent(peerId)}`, {
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        }).catch(() => {});
+                    }
+                });
+            }
 
             const params = new URLSearchParams(window.location.search);
             const peerIdFromUrl = params.get('peerId');

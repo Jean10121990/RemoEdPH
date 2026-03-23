@@ -16,6 +16,7 @@ const webhookRoutes = require('./webhooks');
 const fileRoutes = require('./fileRoutes');
 const announcementRoutes = require('./announcement');
 const lessonRoutes = require('./lessons');
+const classroomRecordingRouter = require('./classroomRecordingApi');
 const Booking = require('./models/Booking');
 const LessonMaterial = require('./models/LessonMaterial');
 const { DateTime } = require('luxon');
@@ -131,6 +132,8 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use('/api/auth', authRoutes);
 app.use('/api/teacher', teacherRoutes);
 app.use('/api/student', studentRoutes);
+// Must be before /api/admin: same path prefix /api/admin/... is otherwise swallowed by adminRoutes → 404
+app.use('/api', classroomRecordingRouter);
 app.use('/api/admin', adminRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/webhooks', webhookRoutes);
@@ -1056,6 +1059,19 @@ app.use((req, res) => {
 // Socket.IO signaling server functionality
 io.on('connection', socket => {
     console.log('🔌 New client connected:', socket.id);
+
+    // Teacher-to-teacher messaging room (for real-time inbox updates)
+    socket.on('join-teacher-messages', (data = {}) => {
+        try {
+            const teacherId = String(data.teacherId || '').trim();
+            if (!teacherId) return;
+            const roomName = `teacher-msg:${teacherId}`;
+            socket.join(roomName);
+            console.log(`💬 Socket ${socket.id} joined teacher message room: ${roomName}`);
+        } catch (e) {
+            console.warn('join-teacher-messages error:', e.message);
+        }
+    });
     
     socket.on('join', async (data) => {
         const { room, userType, userId, username } = data;
@@ -2103,6 +2119,29 @@ const startServer = () => {
           cleanupExpiredMaterials(); // Run once immediately
           cleanupInterval = setInterval(cleanupExpiredMaterials, 60 * 60 * 1000); // Every hour
           console.log(`🧹 Cleanup jobs scheduled (every hour)`);
+
+          try {
+            if (typeof classroomRecordingRouter.purgeExpiredClassroomRecordings === 'function') {
+              // How long files stay before expiresAt (see CLASSROOM_RECORDING_RETENTION_DAYS in classroomRecordingApi).
+              // How often we *scan* for expired rows (not daily — default weekly).
+              const purgeEveryDays = Math.max(
+                1,
+                Number(process.env.CLASSROOM_RECORDING_PURGE_INTERVAL_DAYS || 7)
+              );
+              const purgeMs = purgeEveryDays * 24 * 60 * 60 * 1000;
+              classroomRecordingRouter.purgeExpiredClassroomRecordings();
+              setInterval(() => {
+                classroomRecordingRouter.purgeExpiredClassroomRecordings().catch((e) =>
+                  console.warn('Classroom recording purge:', e.message)
+                );
+              }, purgeMs);
+              console.log(
+                `🧹 Classroom QA recording purge scheduled (every ${purgeEveryDays} day(s), not daily)`
+              );
+            }
+          } catch (e) {
+            console.warn('Classroom recording purge init:', e.message);
+          }
           
         }
       }).catch((err) => {

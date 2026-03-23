@@ -69,15 +69,44 @@
       gap: 6px;
       align-items: center;
       z-index: 10;
+      /* Keep controls visible at 100% browser zoom by allowing wrap */
       flex-wrap: nowrap;
+      row-gap: 4px;
+      max-width: 100%;
+      overflow-x: hidden;
+      overflow-y: visible;
+      box-sizing: border-box;
+    }
+    .pdf-controls-top-row,
+    .pdf-controls-bottom-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      flex-wrap: nowrap;
+      box-sizing: border-box;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scrollbar-width: thin;
+      padding-bottom: 2px;
+    }
+    .pdf-controls-top-row {
+      justify-content: flex-start;
+    }
+    .pdf-controls-top-row > *,
+    .pdf-controls-bottom-row > * {
+      flex: 0 0 auto;
     }
     .pdf-viewer-controls button {
-      padding: 4px 8px;
+      padding: 4px 6px;
       border: 1px solid #ccc;
       border-radius: 4px;
       background: white;
       cursor: pointer;
-      font-size: 0.85rem;
+      font-size: 0.78rem;
+      line-height: 1.1;
     }
     .pdf-viewer-controls .action-btn {
       width: 28px;
@@ -103,9 +132,11 @@
       border-color: #c3e6cb;
     }
     .pdf-page-info {
-      padding: 4px 8px;
-      font-size: 0.8rem;
+      padding: 4px 6px;
+      font-size: 0.76rem;
       color: #666;
+      min-width: 54px;
+      text-align: center;
     }
     .pdf-canvas-container {
       display: flex;
@@ -135,13 +166,15 @@
     }
     .pdf-annotator-controls {
       display: flex;
-      gap: 6px;
+      gap: 4px;
       align-items: center;
-      padding: 4px 6px;
+      padding: 3px 5px;
       background: #f8fafc;
       border: 1px solid #e5e7eb;
       border-radius: 6px;
       flex-wrap: nowrap;
+      max-width: none;
+      min-width: 0;
     }
     .pdf-annotator-controls select {
       padding: 4px 6px;
@@ -168,6 +201,17 @@
       border: 1px solid #cbd5e1;
       border-radius: 4px;
       background: white;
+    }
+    /* Teachers: keep nav + annotation row visible on last slide (no extension needed) */
+    .pdf-viewer-controls.pdf-viewer-toolbar-teacher {
+      display: flex !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+    }
+    .pdf-viewer-controls.pdf-viewer-toolbar-teacher .pdf-annotator-controls {
+      display: flex !important;
+      visibility: visible !important;
+      opacity: 1 !important;
     }
     .pdf-annotator-indicator {
       font-size: 0.85rem;
@@ -301,6 +345,7 @@
             <button id="toggle-camera" class="video-control-btn" title="Toggle Camera">📷</button>
             <button id="toggle-mic" class="video-control-btn" title="Toggle Microphone">🎤</button>
             <button id="toggle-mute" class="video-control-btn" title="Mute Audio">🔇</button>
+            <button id="toggle-bg-blur" class="video-control-btn" title="Background Blur (disabled)" style="display:none;">🫧</button>
           </div>
         </div>
       </div>
@@ -381,6 +426,7 @@
     </div>
   </div>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="js/classroom-qa-recording.js" defer></script>
     <script>
     // Collaborative annotation client
     (function(){
@@ -510,6 +556,9 @@
         teacherId: localStorage.getItem('teacherId') ? 'present' : 'missing',
         storedUserType: localStorage.getItem('userType')
       });
+
+      // For QA lesson recording (classroom-qa-recording.js): teacher auto-start + Finish finalization
+      window.__liveClassroomUserType = userType;
 
       // Update video labels so the local tile matches the current role
       try {
@@ -1446,6 +1495,10 @@
           // Create controls bar
           const controls = document.createElement('div');
           controls.className = 'pdf-viewer-controls';
+          const controlsTopRow = document.createElement('div');
+          controlsTopRow.className = 'pdf-controls-top-row';
+          const controlsBottomRow = document.createElement('div');
+          controlsBottomRow.className = 'pdf-controls-bottom-row';
           
           const prevBtn = document.createElement('button');
           prevBtn.textContent = '◀';
@@ -1575,13 +1628,15 @@
           }
           window.pdfViewerState.canvasContainer = pdfContainer;
           
-          controls.appendChild(prevBtn);
-          controls.appendChild(nextBtn);
-          controls.appendChild(pageInfo);
-          controls.appendChild(zoomOutBtn);
-          controls.appendChild(zoomInBtn);
-          controls.appendChild(fitToViewerBtn);
-          controls.appendChild(annotatorControls);
+          controlsTopRow.appendChild(prevBtn);
+          controlsTopRow.appendChild(nextBtn);
+          controlsTopRow.appendChild(pageInfo);
+          controlsTopRow.appendChild(zoomOutBtn);
+          controlsTopRow.appendChild(zoomInBtn);
+          controlsTopRow.appendChild(fitToViewerBtn);
+          controlsBottomRow.appendChild(annotatorControls);
+          controls.appendChild(controlsTopRow);
+          controls.appendChild(controlsBottomRow);
           
           pdfContainer.appendChild(controls);
           pdfContainer.appendChild(canvasContainer);
@@ -1595,9 +1650,14 @@
           // Show loading
           canvasContainer.innerHTML = '<div class="pdf-loading">Loading PDF...</div>';
           
-          const userLevel = (localStorage.getItem('user_level') || userType || '').toLowerCase();
-          const isTeacher = userLevel === 'teacher';
-          const isStudent = userLevel === 'student';
+          // Match the active live-classroom role (URL/localStorage resolution already done above)
+          // so controls are not accidentally hidden by stale user_level values.
+          const role = (userType || '').toLowerCase();
+          const isTeacher = role === 'teacher';
+          const isStudent = role === 'student';
+          if (isTeacher) {
+            controls.classList.add('pdf-viewer-toolbar-teacher');
+          }
 
           // Load PDF using PDF.js
           let pdfDoc = null;
@@ -1609,6 +1669,85 @@
           let allPagesRendered = false;
           let pageCanvases = {}; // Store canvas elements for each page
           const pdfEventBus = new EventTarget();
+          const FIT_VIEWER_MARGIN_PX = 24;
+          const FIT_STABILITY_FACTOR = 0.94; // keep 100% browser zoom comfortable
+
+          /** Keep page index within [1, numPages] — prevents blank viewer past last slide */
+          function clampPdfPage(n) {
+            if (!pdfDoc || !pdfDoc.numPages) return Math.max(1, parseInt(n, 10) || 1);
+            const max = pdfDoc.numPages;
+            return Math.min(Math.max(1, parseInt(n, 10) || 1), max);
+          }
+          function emitPresenterPdfSync() {
+            if (userType !== 'teacher' || !socket || !socket.connected || !presenterModeActive) return;
+            try {
+              socket.emit('presenter-sync-update', {
+                room,
+                page: pageNum,
+                scrollTop: currentPdfContainer ? currentPdfContainer.scrollTop : 0,
+                scrollLeft: currentPdfContainer ? currentPdfContainer.scrollLeft : 0,
+                materialId: window.currentPdfMaterialId
+              });
+            } catch (e) {
+              console.warn('presenter-sync-update failed', e);
+            }
+          }
+          function updateNavButtonStates() {
+            if (!pdfDoc) return;
+            pageNum = clampPdfPage(pageNum);
+            window.pdfViewerState.pageNum = pageNum;
+            // Keep the controls container mounted/visible even at boundaries.
+            if (controls) {
+              controls.classList.remove('hidden');
+              controls.style.setProperty('display', 'flex', 'important');
+              controls.style.setProperty('visibility', 'visible', 'important');
+              controls.style.setProperty('opacity', '1', 'important');
+            }
+            if (annotatorControls) {
+              annotatorControls.classList.remove('hidden');
+              annotatorControls.style.setProperty('display', 'flex', 'important');
+              annotatorControls.style.setProperty('visibility', 'visible', 'important');
+              annotatorControls.style.setProperty('opacity', '1', 'important');
+            }
+            if (pageInfo) pageInfo.textContent = `${pageNum}/${pdfDoc.numPages}`;
+            if (prevBtn) prevBtn.disabled = pageNum <= 1;
+            if (nextBtn) {
+              const atEnd = pageNum >= pdfDoc.numPages;
+              if (isTeacher && atEnd) {
+                nextBtn.textContent = 'Finish class';
+                nextBtn.title = 'Finish class and close the classroom';
+                nextBtn.disabled = false;
+                nextBtn.style.fontWeight = '600';
+                nextBtn.style.background = '#15803d';
+                nextBtn.style.color = '#fff';
+              } else {
+                nextBtn.textContent = '▶';
+                nextBtn.title = 'Next page';
+                nextBtn.disabled = atEnd;
+                nextBtn.style.fontWeight = '';
+                nextBtn.style.background = '';
+                nextBtn.style.color = '';
+              }
+            }
+            // In-app fix (preferred over browser extensions): last slide + Finish class must not collapse toolbar
+            if (isTeacher && controls && annotatorControls) {
+              controls.classList.remove('hidden');
+              annotatorControls.classList.remove('hidden');
+              controls.style.setProperty('display', 'flex', 'important');
+              annotatorControls.style.setProperty('display', 'flex', 'important');
+            }
+          }
+          function onNextOrFinishClick() {
+            if (!pdfDoc) return;
+            if (pageNum >= pdfDoc.numPages) {
+              if (isTeacher) {
+                const finishBtn = document.getElementById('finish-btn');
+                if (finishBtn) finishBtn.click();
+              }
+              return;
+            }
+            onNextPage();
+          }
           
           // Expose PDF state for presenter sync (teacher/student)
           window.pdfViewerState.pdfDoc = null;
@@ -1819,17 +1958,49 @@
           }
           setAnnotationInteractivity();
           
-          // Calculate scale to fit viewer width
+          function getCanvasContainerPadding() {
+            const cs = window.getComputedStyle(canvasContainer);
+            return {
+              left: parseFloat(cs.paddingLeft) || 0,
+              right: parseFloat(cs.paddingRight) || 0,
+              top: parseFloat(cs.paddingTop) || 0,
+              bottom: parseFloat(cs.paddingBottom) || 0
+            };
+          }
+
+          function scrollPageIntoFrame(pageEl, smooth = false) {
+            if (!pageEl || !pdfContainer) return;
+            const controlsH = ((controls && controls.offsetHeight) || 0);
+            const targetTop = Math.max(0, pageEl.offsetTop - controlsH - 8);
+            pdfContainer.scrollTo({
+              top: targetTop,
+              behavior: smooth ? 'smooth' : 'auto'
+            });
+          }
+
+          // Calculate scale to fit viewer size
           function calculateFitToViewerScale(page) {
-            const containerWidth = canvasContainer.clientWidth - 40; // Account for padding
+            const pad = getCanvasContainerPadding();
+            const containerWidth = Math.max(1, canvasContainer.clientWidth - pad.left - pad.right);
+            const containerHeight = Math.max(
+              1,
+              (pdfContainer.clientHeight || canvasContainer.clientHeight || 0) -
+              ((controls && controls.offsetHeight) || 0) -
+              pad.top -
+              pad.bottom -
+              FIT_VIEWER_MARGIN_PX
+            );
             const viewport = page.getViewport({ scale: 1.0 });
-            const scaleToFit = containerWidth / viewport.width;
-            return Math.min(scaleToFit, 3.0); // Max scale of 3.0
+            const widthScale = containerWidth / Math.max(1, viewport.width);
+            const heightScale = containerHeight / Math.max(1, viewport.height);
+            const scaleToFit = Math.min(widthScale, heightScale) * FIT_STABILITY_FACTOR;
+            return Math.min(Math.max(scaleToFit, 0.35), 3.0); // stable clamp
           }
           
           function renderPage(num, useFitScale = false) {
             pageRendering = true;
-            pdfDoc.getPage(num).then(function(page) {
+            const safeNum = clampPdfPage(num);
+            pdfDoc.getPage(safeNum).then(function(page) {
               let renderScale = scale;
               
               // Use fit-to-viewer scale if requested
@@ -1840,11 +2011,11 @@
               const viewport = page.getViewport({ scale: renderScale });
               
               // Create or get canvas for this page
-              let canvasDiv = document.getElementById(`pdf-page-${num}`);
+              let canvasDiv = document.getElementById(`pdf-page-${safeNum}`);
               if (!canvasDiv) {
                 canvasDiv = document.createElement('div');
                 canvasDiv.className = 'pdf-page';
-                canvasDiv.id = `pdf-page-${num}`;
+                canvasDiv.id = `pdf-page-${safeNum}`;
                 canvasContainer.appendChild(canvasDiv);
               }
               
@@ -1857,8 +2028,8 @@
               canvas.width = viewport.width;
               
               canvasDiv.appendChild(canvas);
-              pageCanvases[num] = { canvas, canvasDiv, scale: renderScale };
-              registerAnnotationLayer(num, viewport, canvasDiv);
+              pageCanvases[safeNum] = { canvas, canvasDiv, scale: renderScale };
+              registerAnnotationLayer(safeNum, viewport, canvasDiv);
               
               const renderContext = {
                 canvasContext: ctx,
@@ -1872,17 +2043,10 @@
                   pageNumPending = null;
                 }
                 
-                // Update page info
-                pageInfo.textContent = `${pageNum}/${pdfDoc.numPages}`;
-                
-                // Update buttons
-                prevBtn.disabled = pageNum <= 1;
-                nextBtn.disabled = pageNum >= pdfDoc.numPages;
+                updateNavButtonStates();
                 
                 // Scroll to current page
-                if (canvasDiv) {
-                  canvasDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
+                if (canvasDiv) scrollPageIntoFrame(canvasDiv, false);
               });
             });
           }
@@ -1927,16 +2091,13 @@
                 page.render(renderContext).promise.then(function() {
                   if (i === pdfDoc.numPages) {
                     allPagesRendered = true;
-                    pageInfo.textContent = `${pageNum}/${pdfDoc.numPages}`;
-                    prevBtn.disabled = pageNum <= 1;
-                    nextBtn.disabled = pageNum >= pdfDoc.numPages;
+                    pageNum = clampPdfPage(pageNum);
+                    updateNavButtonStates();
                     emitPageChange(pageNum);
                     
                     // Scroll to first page
                     const firstPage = document.getElementById(`pdf-page-${pageNum}`);
-                    if (firstPage) {
-                      firstPage.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }
+                    if (firstPage) scrollPageIntoFrame(firstPage, false);
                   }
                 });
               });
@@ -1953,94 +2114,71 @@
 
           function goToPage(targetPage, useFitScale = true) {
             if (!pdfDoc) return;
-            const clamped = Math.min(pdfDoc.numPages, Math.max(1, targetPage));
-            pageNum = clamped;
+            pageNum = clampPdfPage(targetPage);
             window.pdfViewerState.pageNum = pageNum;
-            if (pageInfo) pageInfo.textContent = `${pageNum}/${pdfDoc.numPages}`;
-            if (prevBtn) prevBtn.disabled = pageNum <= 1;
-            if (nextBtn) nextBtn.disabled = pageNum >= pdfDoc.numPages;
+            updateNavButtonStates();
             queueRenderPage(pageNum, useFitScale);
             const targetCanvas = pageCanvases[pageNum]?.canvasDiv;
             if (targetCanvas) {
-              targetCanvas.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              scrollPageIntoFrame(targetCanvas, true);
+            } else {
+              const el = document.getElementById(`pdf-page-${pageNum}`);
+              if (el) scrollPageIntoFrame(el, true);
             }
           }
           
           window.pdfViewerState.goToPage = goToPage;
           
           function queueRenderPage(num, useFitScale = false) {
+            const target = clampPdfPage(num);
             if (pageRendering) {
-              pageNumPending = num;
+              pageNumPending = target;
             } else {
               if (allPagesRendered) {
                 // Re-render all pages with new scale
                 renderAllPages(useFitScale);
               } else {
-                renderPage(num, useFitScale);
+                renderPage(target, useFitScale);
               }
             }
           }
           
           function onPrevPage() {
-            if (pageNum <= 1) return;
-            pageNum--;
+            if (!pdfDoc || pageNum <= 1) return;
+            pageNum = clampPdfPage(pageNum - 1);
             window.pdfViewerState.pageNum = pageNum;
             const targetPage = document.getElementById(`pdf-page-${pageNum}`);
             if (targetPage) {
-              targetPage.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              pageInfo.textContent = `${pageNum}/${pdfDoc.numPages}`;
-              window.pdfViewerState.pageNum = pageNum;
-              prevBtn.disabled = pageNum <= 1;
-              nextBtn.disabled = pageNum >= pdfDoc.numPages;
-              
-              // Sync page change to students
-              if (userType === 'teacher' && socket && socket.connected && presenterModeActive) {
-                const syncData = {
-                  room,
-                  page: pageNum,
-                  scrollTop: currentPdfContainer ? currentPdfContainer.scrollTop : 0,
-                  scrollLeft: currentPdfContainer ? currentPdfContainer.scrollLeft : 0,
-                  materialId: window.currentPdfMaterialId
-                };
-                socket.emit('presenter-sync-update', syncData);
-                console.log('📄 [TEACHER] presenter-sync-update (prev)', syncData);
-                if (window.DEBUG_MODE) {
-                  console.debug('📺 [TEACHER] Syncing page change:', syncData);
-                }
-              }
+              scrollPageIntoFrame(targetPage, true);
             } else {
-              queueRenderPage(pageNum);
+              goToPage(pageNum, true);
             }
+            updateNavButtonStates();
+            emitPresenterPdfSync();
           }
           
           function onNextPage() {
-            if (pageNum >= pdfDoc.numPages) return;
-            pageNum++;
+            if (!pdfDoc) return;
+            const maxP = pdfDoc.numPages;
+            if (pageNum >= maxP) {
+              pageNum = maxP;
+              updateNavButtonStates();
+              return;
+            }
+            pageNum = Math.min(pageNum + 1, maxP);
             window.pdfViewerState.pageNum = pageNum;
-            const targetPage = document.getElementById(`pdf-page-${pageNum}`);
+            let targetPage = document.getElementById(`pdf-page-${pageNum}`);
+            if (!targetPage && allPagesRendered) {
+              pageNum = clampPdfPage(pageNum);
+              targetPage = document.getElementById(`pdf-page-${pageNum}`);
+            }
             if (targetPage) {
-              targetPage.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              pageInfo.textContent = `${pageNum}/${pdfDoc.numPages}`;
-              prevBtn.disabled = pageNum <= 1;
-              nextBtn.disabled = pageNum >= pdfDoc.numPages;
-              
-              // Sync page change to students
-              if (userType === 'teacher' && socket && socket.connected && presenterModeActive) {
-                const syncData = {
-                  room,
-                  page: pageNum,
-                  scrollTop: currentPdfContainer ? currentPdfContainer.scrollTop : 0,
-                  scrollLeft: currentPdfContainer ? currentPdfContainer.scrollLeft : 0,
-                  materialId: window.currentPdfMaterialId
-                };
-                socket.emit('presenter-sync-update', syncData);
-                console.log('📄 [TEACHER] presenter-sync-update (next)', syncData);
-                if (window.DEBUG_MODE) {
-                  console.debug('📺 [TEACHER] Syncing page change:', syncData);
-                }
-              }
+              scrollPageIntoFrame(targetPage, true);
+              updateNavButtonStates();
+              emitPresenterPdfSync();
             } else {
-              queueRenderPage(pageNum);
+              goToPage(pageNum, true);
+              emitPresenterPdfSync();
             }
           }
           
@@ -2067,10 +2205,19 @@
           
           // Make controls work for both teacher and student
           prevBtn.addEventListener('click', onPrevPage);
-          nextBtn.addEventListener('click', onNextPage);
+          nextBtn.addEventListener('click', onNextOrFinishClick);
           zoomInBtn.addEventListener('click', onZoomIn);
           zoomOutBtn.addEventListener('click', onZoomOut);
           fitToViewerBtn.addEventListener('click', onFitToViewer);
+          window.addEventListener('resize', () => {
+            if (!fitToViewerMode || !pdfDoc) return;
+            clearTimeout(window.__pdfFitResizeTimer);
+            window.__pdfFitResizeTimer = setTimeout(() => {
+              if (fitToViewerMode && pdfDoc && window.currentPdfMaterialId === material.id) {
+                renderAllPages(true);
+              }
+            }, 120);
+          });
           
           annotateToggle.addEventListener('click', () => {
             if (!isTeacher) return;
@@ -2145,8 +2292,9 @@
 
           // Broadcast page changes via event bus (teacher only)
           pdfEventBus.addEventListener('pagechanging', (evt) => {
-            const pageNumber = evt?.detail?.pageNumber;
-            if (!pageNumber) return;
+            const raw = evt?.detail?.pageNumber;
+            if (!raw || !pdfDoc) return;
+            const pageNumber = clampPdfPage(raw);
             if (isTeacher && socket && socket.connected && presenterModeActive) {
               const syncData = {
                 room,
@@ -2203,6 +2351,13 @@
             // Auto-fit to viewer on load
             fitToViewerMode = true;
             renderAllPages(true);
+            // Hard-refresh/layout jitter fix: re-fit after layout settles
+            setTimeout(() => {
+              if (fitToViewerMode && window.currentPdfMaterialId === material.id) renderAllPages(true);
+            }, 180);
+            setTimeout(() => {
+              if (fitToViewerMode && window.currentPdfMaterialId === material.id) renderAllPages(true);
+            }, 700);
             
             // Update fit button state
             fitToViewerBtn.textContent = 'Fit to Viewer ✓';
@@ -3293,6 +3448,7 @@
       const toggleCameraBtn = document.getElementById('toggle-camera');
       const toggleMicBtn = document.getElementById('toggle-mic');
       const toggleMuteBtn = document.getElementById('toggle-mute');
+      const toggleBgBlurBtn = document.getElementById('toggle-bg-blur');
       const cameraErrorMessage = document.getElementById('camera-error-message');
       // Handle track ended events - auto-recover camera/mic
       let trackRecoveryInProgress = false;
@@ -3407,6 +3563,212 @@
       let isCameraOn = true;
       let isMicOn = true;
       let isMuted = false;
+      let isBgBlurOn = false;
+      let blurModelReady = false;
+      let blurRunner = null;
+      let blurOutputStream = null;
+      let blurOutputTrack = null;
+      let blurSourceVideo = null;
+      let blurCanvas = null;
+      let blurCtx = null;
+      let blurAnimationFrame = null;
+      let blurSegmentation = null;
+      let blurProcessing = false;
+      let blurOriginalTrack = null;
+      let blurNativeAppliedLast = false;
+
+      function applyTeacherCameraReadyLook() {
+        if (!localVideo) return;
+        // Stable, subtle enhancement (no segmentation/blur pipeline).
+        // Keeps teachers looking fresher while avoiding black-screen risk.
+        localVideo.style.filter = 'brightness(1.08) contrast(1.06) saturate(1.08)';
+      }
+
+      async function loadBlurLibs() {
+        if (window.SelfieSegmentation && window.Camera) return;
+        function load(src) {
+          return new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src = src;
+            s.async = true;
+            s.onload = resolve;
+            s.onerror = () => reject(new Error('Failed to load ' + src));
+            document.head.appendChild(s);
+          });
+        }
+        await load('https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js');
+        await load('https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js');
+      }
+
+      function stopBlurPipeline() {
+        if (blurAnimationFrame) {
+          cancelAnimationFrame(blurAnimationFrame);
+          blurAnimationFrame = null;
+        }
+        if (blurOutputTrack) {
+          try { blurOutputTrack.stop(); } catch (e) {}
+          blurOutputTrack = null;
+        }
+        if (blurOutputStream) {
+          try { blurOutputStream.getTracks().forEach(t => t.stop()); } catch (e) {}
+          blurOutputStream = null;
+        }
+        if (blurSourceVideo) {
+          try { blurSourceVideo.pause(); } catch (e) {}
+          blurSourceVideo.srcObject = null;
+          blurSourceVideo = null;
+        }
+        blurCanvas = null;
+        blurCtx = null;
+        blurRunner = null;
+        blurProcessing = false;
+      }
+
+      async function ensureBlurPipeline() {
+        await loadBlurLibs();
+        if (!localStream) throw new Error('No local stream');
+        const sourceTrack = localStream.getVideoTracks()[0];
+        if (!sourceTrack) throw new Error('No local video track');
+        blurOriginalTrack = sourceTrack;
+
+        if (!blurModelReady) {
+          blurSegmentation = new SelfieSegmentation({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`
+          });
+          blurSegmentation.setOptions({ modelSelection: 1 });
+          blurSegmentation.onResults((results) => {
+            if (!blurCtx || !blurCanvas || !blurSourceVideo) return;
+            const w = blurCanvas.width;
+            const h = blurCanvas.height;
+            const src = results && results.image ? results.image : blurSourceVideo;
+            blurCtx.save();
+            blurCtx.clearRect(0, 0, w, h);
+            // Build "person sharp + background blurred" composition.
+            // 1) Put mask on canvas
+            blurCtx.drawImage(results.segmentationMask, 0, 0, w, h);
+            // 2) Keep person area and draw original sharp frame there
+            blurCtx.globalCompositeOperation = 'source-in';
+            blurCtx.filter = 'none';
+            blurCtx.drawImage(src, 0, 0, w, h);
+            // 3) Draw blurred full frame behind person (fills background only)
+            blurCtx.globalCompositeOperation = 'destination-over';
+            blurCtx.filter = 'blur(16px)';
+            blurCtx.drawImage(src, 0, 0, w, h);
+            blurCtx.restore();
+          });
+          blurModelReady = true;
+        }
+
+        // Recreate output pipeline every time to ensure fresh tracks.
+        stopBlurPipeline();
+        blurSourceVideo = document.createElement('video');
+        blurSourceVideo.muted = true;
+        blurSourceVideo.playsInline = true;
+        blurSourceVideo.autoplay = true;
+        blurSourceVideo.srcObject = new MediaStream([sourceTrack]);
+        await blurSourceVideo.play().catch(() => {});
+
+        const vw = Math.max(320, blurSourceVideo.videoWidth || 640);
+        const vh = Math.max(180, blurSourceVideo.videoHeight || 360);
+        blurCanvas = document.createElement('canvas');
+        blurCanvas.width = vw;
+        blurCanvas.height = vh;
+        blurCtx = blurCanvas.getContext('2d', { alpha: false });
+        blurOutputStream = blurCanvas.captureStream(15);
+        blurOutputTrack = blurOutputStream.getVideoTracks()[0];
+
+        const run = async () => {
+          if (!isBgBlurOn || !blurSegmentation || !blurSourceVideo) return;
+          // Safety frame: never show black if segmentation is delayed/fails.
+          if (blurCtx && blurCanvas && blurSourceVideo.readyState >= 2) {
+            blurCtx.save();
+            blurCtx.globalCompositeOperation = 'source-over';
+            blurCtx.filter = 'none';
+            blurCtx.drawImage(blurSourceVideo, 0, 0, blurCanvas.width, blurCanvas.height);
+            blurCtx.restore();
+          }
+          if (!blurProcessing) {
+            blurProcessing = true;
+            try {
+              await blurSegmentation.send({ image: blurSourceVideo });
+            } catch (e) {
+              // keep running silently
+            } finally {
+              blurProcessing = false;
+            }
+          }
+          blurAnimationFrame = requestAnimationFrame(run);
+        };
+        blurRunner = run;
+        blurRunner();
+      }
+
+      async function replaceOutgoingVideoTrack(nextTrack) {
+        if (!nextTrack) return;
+        if (peerConnection) {
+          const sender = peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
+          if (sender) {
+            try { await sender.replaceTrack(nextTrack); } catch (e) {}
+          }
+        }
+      }
+
+      function syncBgBlurButton(nativeApplied) {
+        if (!toggleBgBlurBtn) return;
+        toggleBgBlurBtn.style.opacity = isBgBlurOn ? '1' : '0.7';
+        toggleBgBlurBtn.textContent = isBgBlurOn ? '🫧✅' : '🫧';
+        toggleBgBlurBtn.title = isBgBlurOn
+          ? (nativeApplied ? 'Background Blur: On' : 'Background Blur: On (preview fallback)')
+          : 'Background Blur: Off';
+      }
+
+      async function applyBackgroundBlur(enable) {
+        if (!localStream) return false;
+        const videoTrack = localStream.getVideoTracks()[0];
+        if (!videoTrack) return false;
+        // Prefer AI segmentation first for consistent Zoom-like blur across browsers.
+        if (enable) {
+          try {
+            await ensureBlurPipeline();
+            blurNativeAppliedLast = false;
+            await replaceOutgoingVideoTrack(blurOutputTrack);
+            if (localVideo && blurOutputStream) {
+              localVideo.srcObject = blurOutputStream;
+              localVideo.style.filter = '';
+            }
+            return false; // false => non-native (AI) path
+          } catch (e1) {
+            try {
+              await videoTrack.applyConstraints({ advanced: [{ backgroundBlur: true }] });
+              blurNativeAppliedLast = true;
+              stopBlurPipeline();
+              await replaceOutgoingVideoTrack(videoTrack);
+              if (localVideo) {
+                localVideo.srcObject = localStream;
+                localVideo.style.filter = '';
+              }
+              return true;
+            } catch (e2) {
+              if (localVideo) {
+                localVideo.srcObject = localStream;
+                localVideo.style.filter = 'blur(3px)';
+              }
+              return false;
+            }
+          }
+        } else {
+          stopBlurPipeline();
+          try {
+            await videoTrack.applyConstraints({ advanced: [{ backgroundBlur: false }] });
+          } catch (e) {}
+          await replaceOutgoingVideoTrack(videoTrack);
+          if (localVideo) {
+            localVideo.srcObject = localStream;
+            localVideo.style.filter = '';
+          }
+          return blurNativeAppliedLast;
+        }
+      }
       
       // Manual retry button
       if (retryCameraBtn) {
@@ -3615,6 +3977,16 @@
                 });
               }, 500);
             });
+
+            // Auto camera-ready look for teacher preview
+            if (userType === 'teacher') {
+              applyTeacherCameraReadyLook();
+            } else {
+              localVideo.style.filter = '';
+            }
+
+            // Background blur feature intentionally disabled for stability.
+            isBgBlurOn = false;
           } else {
             console.error('❌ Missing localVideo element or localStream:', { hasLocalVideo: !!localVideo, hasLocalStream: !!localStream });
           }
@@ -3761,6 +4133,11 @@
           toggleMuteBtn.style.opacity = isMuted ? '1' : '0.5';
           toggleMuteBtn.title = isMuted ? 'Unmute Audio' : 'Mute Audio';
         });
+      }
+
+      // Background blur disabled (stability preference)
+      if (toggleBgBlurBtn) {
+        toggleBgBlurBtn.style.display = 'none';
       }
 
       // Reconnection logic
@@ -4696,6 +5073,18 @@
         finishBtn.addEventListener('click', async () => {
           if (confirm('Are you sure you want to finish the class? This will close the classroom for both you and the student.')) {
             try {
+              // Save QA recording before tearing down WebRTC (otherwise upload never completes)
+              if (window.ClassroomQaRecording && typeof window.ClassroomQaRecording.stopAndFinalize === 'function') {
+                try {
+                  await Promise.race([
+                    window.ClassroomQaRecording.stopAndFinalize(),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('QA finalize timeout')), 40000))
+                  ]);
+                } catch (qaErr) {
+                  console.warn('QA recording finalize:', qaErr);
+                }
+              }
+
               const bookingId = getQueryParam('bookingId') || getQueryParam('bookingid');
               const token = localStorage.getItem('token');
               
