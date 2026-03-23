@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Referral Rewards - RemoEdPH Teacher</title>
+  <link rel="stylesheet" href="modern-styles.css">
+  <link rel="stylesheet" href="css/teacher-sidebar.css">
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f6fbff; margin: 0; color: #1a202c; }
+    .remoed-main { display: flex; min-height: 100vh; }
+    .remoed-content { flex: 1; margin-left: 260px; padding: 16px 20px 40px; min-width: 0; box-sizing: border-box; }
+    @media (max-width: 900px) {
+      .remoed-content { margin-left: 0; padding: 12px; }
+    }
+    .page-head { margin-bottom: 16px; }
+    .page-head h1 { margin: 0; font-size: 1.5rem; color: #667eea; font-weight: 800; }
+    .page-head p { margin: 8px 0 0; color: #64748b; font-size: 0.9rem; max-width: 720px; }
+    .banner-info {
+      background: linear-gradient(135deg, rgba(102,126,234,0.12), rgba(28,167,231,0.1));
+      border: 1px solid rgba(102,126,234,0.25);
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-size: 0.85rem;
+      color: #334155;
+      margin-bottom: 16px;
+    }
+    .link-card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(28,167,231,0.08);
+      padding: 16px;
+      margin-bottom: 16px;
+      border: 1px solid #e5e7eb;
+    }
+    .link-card h2 { margin: 0 0 10px; font-size: 1rem; color: #0f172a; }
+    .code-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 10px; }
+    .code-pill {
+      font-family: ui-monospace, monospace;
+      font-weight: 700;
+      padding: 8px 12px;
+      background: #f1f5f9;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+      font-size: 0.95rem;
+    }
+    .link-url { word-break: break-all; font-size: 0.85rem; color: #2563eb; font-weight: 600; }
+    .btn {
+      padding: 8px 14px;
+      border: none;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #667eea, #5a67d8);
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+    .btn:hover { filter: brightness(1.05); }
+    button.btn-outline, .btn.btn-outline {
+      background: #fff !important;
+      color: #667eea !important;
+      border: 2px solid #667eea !important;
+    }
+    .grid-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    @media (max-width: 800px) { .grid-stats { grid-template-columns: 1fr; } }
+    .stat-card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 16px;
+      border: 1px solid #e5e7eb;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+    }
+    .stat-card h3 { margin: 0 0 6px; font-size: 0.85rem; color: #64748b; font-weight: 700; }
+    .stat-card .big { font-size: 1.75rem; font-weight: 800; color: #0f172a; }
+    .stat-card .muted { font-size: 0.8rem; color: #94a3b8; margin-top: 4px; }
+    .filters { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin-bottom: 12px; }
+    .filters label { display: block; font-size: 0.75rem; font-weight: 700; color: #475569; margin-bottom: 4px; }
+    .filters input { padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.9rem; }
+    .table-wrap { background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; overflow: auto; max-height: 560px; }
+    table { width: 100%; border-collapse: collapse; min-width: 880px; }
+    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #f1f5f9; font-size: 0.85rem; vertical-align: top; }
+    th { background: #f8fafc; color: #0f172a; font-weight: 800; position: sticky; top: 0; z-index: 1; }
+    .ref-tag {
+      font-family: ui-monospace, monospace;
+      font-weight: 800;
+      font-size: 0.8rem;
+      color: #4338ca;
+      background: #eef2ff;
+      padding: 4px 8px;
+      border-radius: 6px;
+    }
+    .empty { padding: 40px; text-align: center; color: #64748b; }
+    .muted { color: #64748b; font-size: 0.8rem; }
+  </style>
+</head>
+<body>
+  <div class="remoed-main">
+    <div id="teacher-sidebar-root"></div>
+    <script src="js/teacher-sidebar.js"></script>
+    <script>TeacherSidebar.render('teacher-sidebar-root', 'referral-rewards');</script>
+
+    <div class="remoed-content">
+      <div class="page-head">
+        <h1>Referral Rewards</h1>
+        <p>Track students who subscribed using <strong>your</strong> referral link. Each enrollee gets a unique reference number. Totals show subscription amounts and your commission.</p>
+      </div>
+
+      <div class="banner-info">
+        <strong>Teacher vs admin:</strong> Administrators use <em>Unique Link Commission</em> in the admin portal to see <strong>all</strong> teachers. This page only shows referrals tied to <strong>your</strong> code — separate tracking for your classroom.
+      </div>
+
+      <div class="link-card" id="link-section">
+        <h2>Your referral link</h2>
+        <p class="muted" style="margin-top:0;">Share this link so new families land on plans with your code saved for signup.</p>
+        <div class="code-row">
+          <span>Code:</span>
+          <span class="code-pill" id="ref-code">—</span>
+          <button type="button" class="btn btn-outline" id="btn-copy-code">Copy code</button>
+          <button type="button" class="btn" id="btn-copy-link">Copy link</button>
+        </div>
+        <div><span class="muted">Full URL:</span><br><a class="link-url" id="ref-url" href="#" target="_blank" rel="noopener">—</a></div>
+      </div>
+
+      <div class="grid-stats">
+        <div class="stat-card">
+          <h3>Total commission (your link)</h3>
+          <div class="big" id="total-commission">₱0</div>
+          <div class="muted">Per successful paid subscription (system default ₱25 unless adjusted)</div>
+        </div>
+        <div class="stat-card">
+          <h3>Successful enrollees</h3>
+          <div class="big" id="total-count">0</div>
+          <div class="muted">Students who paid via your referral</div>
+        </div>
+        <div class="stat-card">
+          <h3>Total subscription amount</h3>
+          <div class="big" id="total-amount">₱0</div>
+          <div class="muted">Sum of plan amounts attributed to you</div>
+        </div>
+      </div>
+
+      <div class="filters">
+        <div>
+          <label for="from-date">From</label>
+          <input type="date" id="from-date" />
+        </div>
+        <div>
+          <label for="to-date">To</label>
+          <input type="date" id="to-date" />
+        </div>
+        <div>
+          <button type="button" class="btn" id="btn-load">Apply dates</button>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Reference #</th>
+              <th>Date</th>
+              <th>Student</th>
+              <th>Contact</th>
+              <th>Plan</th>
+              <th>Amount</th>
+              <th>Your commission</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+        <div id="empty" class="empty" style="display:none;">No referrals yet. Share your link from the box above — rewards appear after a student pays for a subscription.</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const userType = localStorage.getItem('userType');
+      if (userType !== 'teacher') {
+        alert('Access denied. Teachers only.');
+        window.location.href = 'teacher-login.html';
+        return;
+      }
+
+      function token() {
+        return localStorage.getItem('token') || '';
+      }
+
+      function fmtPeso(n) {
+        const v = Number(n || 0) || 0;
+        return '₱' + v.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+      }
+
+      async function loadLink() {
+        const res = await fetch('/api/teacher/referral-link', {
+          headers: { Authorization: 'Bearer ' + token() }
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+          document.getElementById('ref-code').textContent = '—';
+          return;
+        }
+        const code = data.referralCode || '';
+        const path = data.subscriptionLink || ('/index.html?ref=' + encodeURIComponent(code) + '#plans');
+        const full = window.location.origin + path;
+        document.getElementById('ref-code').textContent = code || '—';
+        const a = document.getElementById('ref-url');
+        a.href = full;
+        a.textContent = full;
+
+        document.getElementById('btn-copy-code').onclick = () => {
+          navigator.clipboard.writeText(code).then(() => alert('Code copied'));
+        };
+        document.getElementById('btn-copy-link').onclick = () => {
+          navigator.clipboard.writeText(full).then(() => alert('Link copied'));
+        };
+      }
+
+      async function loadReferrals() {
+        const from = document.getElementById('from-date').value;
+        const to = document.getElementById('to-date').value;
+        const params = new URLSearchParams();
+        if (from) params.set('from', from);
+        if (to) params.set('to', to);
+        const url = '/api/teacher/referrals' + (params.toString() ? '?' + params.toString() : '');
+        const res = await fetch(url, { headers: { Authorization: 'Bearer ' + token() } });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+          throw new Error(data.message || 'Failed to load referrals');
+        }
+        const rows = data.referrals || [];
+        const t = data.totals || {};
+        document.getElementById('total-commission').textContent = fmtPeso(t.totalCommission);
+        document.getElementById('total-count').textContent = String(t.count || 0);
+        document.getElementById('total-amount').textContent = fmtPeso(t.totalAmountPaid);
+
+        const tbody = document.getElementById('tbody');
+        const empty = document.getElementById('empty');
+        if (!rows.length) {
+          tbody.innerHTML = '';
+          empty.style.display = 'block';
+          return;
+        }
+        empty.style.display = 'none';
+        tbody.innerHTML = rows.map((r) => {
+          const when = r.createdAt ? new Date(r.createdAt).toLocaleString() : '—';
+          return (
+            '<tr>' +
+            '<td><span class="ref-tag">' + escapeHtml(r.referenceNumber || r.id || '') + '</span></td>' +
+            '<td>' + when + '</td>' +
+            '<td><strong>' + escapeHtml(r.studentName || '—') + '</strong><br><span class="muted">' + escapeHtml(r.studentEmail || '') + '</span></td>' +
+            '<td>' + escapeHtml(r.studentContact || '—') + '</td>' +
+            '<td>' + escapeHtml(r.subscriptionPlan || '—') + '</td>' +
+            '<td>' + fmtPeso(r.amountPaid) + '</td>' +
+            '<td>' + fmtPeso(r.commissionAmount) + '</td>' +
+            '<td>' + escapeHtml(r.status || 'successful') + '</td>' +
+            '</tr>'
+          );
+        }).join('');
+      }
+
+      function escapeHtml(s) {
+        if (s == null) return '';
+        const d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+      }
+
+      document.getElementById('btn-load').addEventListener('click', () => {
+        loadReferrals().catch((e) => alert(e.message || String(e)));
+      });
+
+      document.addEventListener('DOMContentLoaded', () => {
+        loadLink().catch(console.error);
+        loadReferrals().catch((e) => alert(e.message || String(e)));
+      });
+    })();
+  </script>
+</body>
+</html>
