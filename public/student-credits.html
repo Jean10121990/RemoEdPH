@@ -72,13 +72,11 @@
       font-weight:900;
       color:#0ea5e9;
       margin:4px 0;
+      transition: color .2s ease;
     }
-<<<<<<< HEAD
-    .balance.low{
+    .balance.balance-low{
       color:#dc2626;
     }
-=======
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
     .muted{color:#64748b;font-size:.9rem;}
     .stats{
       display:flex;
@@ -168,11 +166,7 @@
     <div class="header">
       <div>
         <div class="brand">
-<<<<<<< HEAD
-          <img src="RemoEdPH Logo.png" alt="RemoEdPH">
-=======
           <img src="images/remoed-logo.png" alt="RemoEdPH" onerror="this.src='remoed-logo.png'">
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
           <div>
             <div class="brand-title">My Lesson Credits</div>
             <div class="tagline" id="credits-greeting">Track how many classes are used and what’s left.</div>
@@ -186,17 +180,10 @@
       <div class="card">
         <h2>Current Balance</h2>
         <div class="balance" id="credits-balance">0</div>
-<<<<<<< HEAD
-        <div class="muted">Remaining credits after finished/absent classes.</div>
+        <div class="muted">Lesson credits available to book future classes (pool minus credits held for upcoming bookings).</div>
         <div class="stats">
+          <div class="stat-pill" id="credits-reserved-wrap" style="display:none;">Held for bookings: <span id="credits-reserved">0</span></div>
           <div class="stat-pill">Used: <span id="credits-used">0</span></div>
-          <div class="stat-pill">Reserved: <span id="credits-reserved">0</span></div>
-          <div class="stat-pill">Available to book: <span id="credits-available">0</span></div>
-=======
-        <div class="muted">Lesson credits available to book future classes.</div>
-        <div class="stats">
-          <div class="stat-pill">Used: <span id="credits-used">0</span></div>
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
           <div class="stat-pill">Total purchased: <span id="credits-total">0</span></div>
         </div>
         <div style="margin-top:10px;">
@@ -235,20 +222,33 @@
     </div>
   </div>
 
-  <script>
+  <script type="module">
     function getStudentToken() {
       return localStorage.getItem('studentToken') || localStorage.getItem('token') || '';
     }
 
-    function goToPlans() {
-      // Go to landing plans section; referral code (if any) is already handled there
+    window.goToPlans = function goToPlans() {
       window.location.href = 'index.html#plans';
+    };
+
+    let formatFn = null;
+    async function getDateFormat() {
+      if (!formatFn) {
+        const mod = await import('https://esm.sh/date-fns@3.6.0/format');
+        formatFn = mod.format;
+      }
+      return formatFn;
     }
 
-    function fmtDate(iso) {
+    async function formatRowDate(iso) {
       if (!iso) return '—';
-      const d = new Date(iso);
-      return d.toLocaleString(undefined, { month:'short', day:'numeric', year:'numeric', hour:'2-digit', minute:'2-digit' });
+      try {
+        const format = await getDateFormat();
+        return format(new Date(iso), 'MMM d, yyyy · h:mm a');
+      } catch (e) {
+        const d = new Date(iso);
+        return d.toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+      }
     }
 
     async function loadCredits() {
@@ -259,7 +259,7 @@
         return;
       }
       try {
-        const res = await fetch('/api/student/credits', {
+        const res = await fetch('/api/user/credits', {
           headers: { Authorization: 'Bearer ' + token }
         });
         const data = await res.json().catch(() => ({}));
@@ -273,31 +273,33 @@
           greet.textContent = `Hi, ${name}! Here are your lesson credits.`;
         }
 
-        document.getElementById('credits-balance').textContent = data.balance || 0;
-<<<<<<< HEAD
-        document.getElementById('credits-total').textContent = data.totalPurchased ?? data.totalEarned ?? data.totalCredits ?? 0;
-        document.getElementById('credits-reserved').textContent = data.reservedCredits ?? 0;
-        document.getElementById('credits-available').textContent = data.availableBalance ?? Math.max((data.totalCredits ?? 0) - (data.reservedCredits ?? 0), 0);
-        document.getElementById('credits-used').textContent = data.usedCredits ?? data.used ?? 0;
+        const totalCredits = data.totalCredits != null ? data.totalCredits : (data.balance ?? 0);
+        const usedCredits = data.usedCredits != null ? data.usedCredits : (data.used ?? 0);
+        const reserved = Number(data.reservedCredits) || 0;
+
         const balEl = document.getElementById('credits-balance');
-        if (Number(data.balance || 0) < 5) {
-          balEl.classList.add('low');
-        } else {
-          balEl.classList.remove('low');
+        balEl.textContent = totalCredits;
+        balEl.classList.toggle('balance-low', Number(totalCredits) < 5);
+
+        const reservedWrap = document.getElementById('credits-reserved-wrap');
+        const reservedEl = document.getElementById('credits-reserved');
+        if (reservedWrap && reservedEl) {
+          reservedEl.textContent = reserved;
+          reservedWrap.style.display = reserved > 0 ? 'inline-flex' : 'none';
         }
-=======
-        document.getElementById('credits-total').textContent = data.totalEarned || 0;
-        document.getElementById('credits-used').textContent = data.used || 0;
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
+
+        document.getElementById('credits-total').textContent = data.totalEarned ?? 0;
+        document.getElementById('credits-used').textContent = usedCredits;
 
         const pill = document.getElementById('subscription-pill');
         if (data.subscriptionPlan) {
+          const sp = data.subscriptionPlan;
           const label =
-            data.subscriptionPlan === '1month' ? '1 Month plan' :
-            data.subscriptionPlan === '3months' ? '3 Months plan' :
-            data.subscriptionPlan === '6months' ? '6 Months plan' :
-            data.subscriptionPlan === '1year' ? '12 Months plan' :
-            data.subscriptionPlan;
+            sp === '1month' || sp === 'spark' ? 'RemoSpark' :
+            sp === '3months' || sp === 'steady' ? 'RemoSteady' :
+            sp === '6months' || sp === 'scholar' ? 'RemoScholar' :
+            sp === '1year' || sp === 'summit' ? 'RemoSummit' :
+            sp;
           pill.textContent = `${label} • ${data.subscriptionStatus || 'status unknown'}`;
           pill.style.display = 'inline-flex';
           pill.className = 'badge ' + ((data.subscriptionStatus === 'active') ? 'green' : 'yellow');
@@ -307,43 +309,36 @@
 
         const tbody = document.getElementById('credits-tbody');
         const empty = document.getElementById('credits-empty');
-<<<<<<< HEAD
-        const list = Array.isArray(data.creditHistory) && data.creditHistory.length
-          ? data.creditHistory.map(item => ({
-              date: item.date,
-              type: item.credits >= 0 ? 'purchase' : 'use',
-              plan: item.plan,
-              description: item.credits >= 0 ? `Plan purchase (${item.plan || 'Subscription'})` : `Class booked (${item.plan || 'Subscription'})`,
-              credits: item.credits,
-              balanceAfter: '',
-              amountPaid: item.amountPaid || 0
-            }))
-          : (Array.isArray(data.credits) ? data.credits : []);
-=======
         const list = Array.isArray(data.credits) ? data.credits : [];
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
         if (!list.length) {
           tbody.innerHTML = '';
           empty.style.display = 'block';
+          sessionStorage.removeItem('remoedCreditsRefresh');
           return;
         }
         empty.style.display = 'none';
-        tbody.innerHTML = list.map(row => {
+
+        const rowsHtml = await Promise.all(list.map(async (row) => {
           const cls = row.credits >= 0 ? 'credits-pos' : 'credits-neg';
-          const label =
+          const typeLabel =
             row.type === 'purchase' ? 'Purchase' :
             row.type === 'use' ? 'Used' :
-            'Adjust';
+            row.type === 'adjustment' ? 'Adjust' :
+            (row.source === 'creditHistory' ? 'Purchase' : 'Entry');
+          const dateStr = await formatRowDate(row.date);
           return `
             <tr>
-              <td>${fmtDate(row.date)}</td>
-              <td>${label}</td>
-              <td>${row.description || ''}</td>
+              <td>${dateStr}</td>
+              <td>${typeLabel}</td>
+              <td>${row.description || row.plan || ''}</td>
               <td><span class="${cls}">${row.credits > 0 ? '+' : ''}${row.credits}</span></td>
-              <td>${row.balanceAfter ?? ''}</td>
+              <td>${row.balanceAfter != null && row.balanceAfter !== '' ? row.balanceAfter : '—'}</td>
             </tr>
           `;
-        }).join('');
+        }));
+        tbody.innerHTML = rowsHtml.join('');
+
+        sessionStorage.removeItem('remoedCreditsRefresh');
       } catch (err) {
         console.error('Credits load error:', err);
         alert('Error loading credits: ' + err.message);
@@ -351,14 +346,13 @@
     }
 
     document.addEventListener('DOMContentLoaded', loadCredits);
-<<<<<<< HEAD
-    window.addEventListener('storage', (event) => {
-      if (event.key === 'creditsLastUpdatedAt') {
-        loadCredits();
-      }
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') loadCredits();
     });
-=======
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
+    window.addEventListener('pageshow', (ev) => {
+      if (ev.persisted) loadCredits();
+    });
+    window.refreshStudentCredits = loadCredits;
   </script>
 </body>
 </html>

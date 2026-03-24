@@ -204,11 +204,7 @@ router.put('/curriculum/:curriculumId', authenticateToken, requireTeacher, async
 router.post('/curriculum/:curriculumId/lesson', authenticateToken, requireTeacher, async (req, res) => {
   try {
     const { curriculumId } = req.params;
-<<<<<<< HEAD
-    const { title, description, teacherNotes, lessonNumber, estimatedDuration } = req.body;
-=======
     const { title, description, lessonNumber, estimatedDuration } = req.body;
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
     const isAdmin = req.user && (req.user.isAdmin === true || req.user.role === 'admin' || req.user.username === 'admin');
     const createdBy = isAdmin ? (req.user.username || 'admin') : (req.user.teacherId || req.user.userId);
 

@@ -1344,24 +1344,6 @@
             }
         }
     
-<<<<<<< HEAD
-        function getPersonDisplayName(person, fallbackLabel = 'User') {
-            const firstName = String(person?.firstName || '').trim();
-            const lastName = String(person?.lastName || '').trim();
-            const fullName = `${firstName} ${lastName}`.trim();
-            if (fullName) return fullName;
-
-            const username = String(person?.username || '').trim();
-            if (username) return username;
-
-            const email = String(person?.email || '').trim();
-            if (email) return email;
-
-            return fallbackLabel;
-        }
-
-=======
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
         async function loadTopPerformers() {
             try {
                 const performersList = document.getElementById('top-performers-list');
@@ -1391,11 +1373,7 @@
                         const completionRate = totalClasses > 0 ? Math.round((completedClasses / totalClasses) * 100) : 0;
                         
                         return {
-<<<<<<< HEAD
-                            teacher: getPersonDisplayName(teacher, 'Teacher'),
-=======
                             teacher: `${teacher.firstName || 'Teacher'} ${teacher.lastName || ''}`,
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
                             totalClasses: totalClasses,
                             completedClasses: completedClasses,
                             completionRate: completionRate,
@@ -1480,11 +1458,7 @@
                         const earnings = completedClasses * globalRate;
                         
                         return {
-<<<<<<< HEAD
-                            teacher: getPersonDisplayName(teacher, 'Teacher'),
-=======
                             teacher: `${teacher.firstName || 'Teacher'} ${teacher.lastName || ''}`,
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
                             earnings: earnings,
                             classes: completedClasses,
                             teacherId: teacher.teacherId
@@ -1578,11 +1552,7 @@
                         teachersData.recentTeachers.slice(0, 2).forEach(teacher => {
                             activities.push({
                                 action: 'New Teacher Registration',
-<<<<<<< HEAD
-                                details: `${getPersonDisplayName(teacher, 'Teacher')} joined the platform`,
-=======
                                 details: `${teacher.firstName || 'Teacher'} ${teacher.lastName || ''} joined the platform`,
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
                                 timestamp: new Date(teacher.createdAt || now.getTime() - Math.random() * 7 * 24 * 60 * 60 * 1000),
                                 type: 'registration'
                             });
@@ -1624,11 +1594,7 @@
                         studentsData.recentStudents.slice(0, 1).forEach(student => {
                             activities.push({
                                 action: 'New Student Registration',
-<<<<<<< HEAD
-                                details: `${getPersonDisplayName(student, 'Student')} joined the platform`,
-=======
                                 details: `${student.firstName || 'Student'} ${student.lastName || ''} joined the platform`,
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
                                 timestamp: new Date(student.createdAt || now.getTime() - Math.random() * 3 * 24 * 60 * 60 * 1000),
                                 type: 'student'
                             });

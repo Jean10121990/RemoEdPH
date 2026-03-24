@@ -23,99 +23,16 @@ const PeerMessage = require('./models/PeerMessage');
 const Referral = require('./models/Referral');
 const { verifyToken, requireTeacher, requireStudent, requireOwnTeacherData, requireOwnStudentData, logAccess } = require('./authMiddleware');
 const realtime = require('./realtime');
+const {
+  availableLessonCredits,
+  finalizeLessonCreditsOnCompletion,
+  releaseReservedCreditForCancelledBooking
+} = require('./lessonCreditsHelper');
 
 async function ensureDir(dirPath) {
   await fsp.mkdir(dirPath, { recursive: true });
 }
 
-<<<<<<< HEAD
-async function findStudentForBooking(booking) {
-  if (!booking || !booking.studentId) return null;
-  return Student.findOne({
-    $or: [{ username: booking.studentId }, { email: booking.studentId }]
-  });
-}
-
-async function consumeReservedCreditForBooking(booking, descriptionPrefix = 'Class finished') {
-  if (!booking || booking.creditConsumedAt || booking.creditReservationReleasedAt) {
-    return null;
-  }
-  const student = await findStudentForBooking(booking);
-  if (!student) return null;
-  const now = new Date();
-  const safeReserved = Number(student.reservedCredits || 0);
-  if (safeReserved <= 0) return student._id;
-  const safeTotal = Number(student.totalCredits || 0);
-  const nextReserved = Math.max(safeReserved - 1, 0);
-  const nextTotal = Math.max(safeTotal - 1, 0);
-  const nextAvailable = Math.max(nextTotal - nextReserved, 0);
-  const planLabel = student.subscriptionPlan || '';
-  const desc = `${descriptionPrefix} (${booking.date} ${booking.time})`;
-
-  await Student.updateOne(
-    { _id: student._id },
-    {
-      $set: {
-        reservedCredits: nextReserved,
-        totalCredits: nextTotal,
-        creditBalance: nextAvailable
-      },
-      $inc: { usedCredits: 1 },
-      $push: {
-        creditTransactions: {
-          date: now,
-          type: 'use',
-          plan: planLabel,
-          description: desc,
-          credits: -1,
-          balanceAfter: nextAvailable,
-          amountPaid: 0
-        },
-        creditHistory: {
-          date: now,
-          plan: planLabel,
-          credits: -1,
-          amountPaid: 0,
-          paymentId: ''
-        }
-      }
-    }
-  );
-
-  booking.creditConsumedAt = now;
-  booking.creditReservationReleasedAt = null;
-
-  return student._id;
-}
-
-async function releaseReservedCreditForBooking(booking) {
-  if (!booking || booking.creditConsumedAt || booking.creditReservationReleasedAt) {
-    return null;
-  }
-  const student = await findStudentForBooking(booking);
-  if (!student) return null;
-  const safeReserved = Number(student.reservedCredits || 0);
-  if (safeReserved <= 0) return student._id;
-
-  const safeTotal = Number(student.totalCredits || 0);
-  const nextReserved = safeReserved - 1;
-  const nextAvailable = Math.max(safeTotal - nextReserved, 0);
-
-  await Student.updateOne(
-    { _id: student._id },
-    {
-      $set: {
-        reservedCredits: nextReserved,
-        creditBalance: nextAvailable
-      }
-    }
-  );
-  booking.creditReservationReleasedAt = new Date();
-  return student._id;
-}
-
-=======
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
 // Convert PPTX -> PDF -> slide images (JPG) for web
 async function convertPptxToSlides({ sourcePath, bookingId }) {
   const uploadBase = path.join(__dirname, '../uploads/slides', bookingId || 'general');
@@ -1620,16 +1537,10 @@ router.post('/book-class', verifyToken, requireStudent, async (req, res) => {
     if (!student) {
       return res.status(400).json({ error: 'Student not found' });
     }
-    const studentId = student.username;
-<<<<<<< HEAD
-    const currentTotalCredits = Number(student.totalCredits ?? student.creditBalance ?? 0);
-    const currentReservedCredits = Number(student.reservedCredits || 0);
-    const availableCredits = Math.max(currentTotalCredits - currentReservedCredits, 0);
-    if (availableCredits <= 0) {
+    if (availableLessonCredits(student) < 1) {
       return res.status(400).json({ error: 'Insufficient credits. Please top up your plan.' });
     }
-=======
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
+    const studentId = student.username;
 
     const missingFields = [];
     if (!studentId) missingFields.push('studentId');
@@ -1743,30 +1654,6 @@ router.post('/book-class', verifyToken, requireStudent, async (req, res) => {
         throw err;
       }
 
-<<<<<<< HEAD
-      // Atomically reserve one credit without consuming total purchased credits yet.
-      const reservedStudent = await Student.findOneAndUpdate(
-        {
-          _id: req.user.studentId,
-          $expr: { $gt: [{ $subtract: [{ $ifNull: ['$totalCredits', 0] }, { $ifNull: ['$reservedCredits', 0] }] }, 0] }
-        },
-        {
-          $inc: {
-            reservedCredits: 1,
-            creditBalance: -1
-          }
-        },
-        findOpts
-      );
-      if (!reservedStudent) {
-        const err = new Error('Insufficient credits. Please top up your plan.');
-        err.statusCode = 400;
-        err.code = 'INSUFFICIENT_CREDITS';
-        throw err;
-      }
-
-=======
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
       const lockedSlot = await TeacherSlot.findOneAndUpdate(
         {
           _id: existingSlot._id,
@@ -1778,17 +1665,6 @@ router.post('/book-class', verifyToken, requireStudent, async (req, res) => {
       );
 
       if (!lockedSlot) {
-<<<<<<< HEAD
-        if (!session) {
-          await Student.updateOne(
-            { _id: req.user.studentId },
-            {
-              $inc: { creditBalance: 1, reservedCredits: -1 }
-            }
-          ).catch(() => {});
-        }
-=======
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
         const err = new Error(
           'This time slot was just booked by another student. Please choose a different time.'
         );
@@ -1817,7 +1693,8 @@ router.post('/book-class', verifyToken, requireStudent, async (req, res) => {
         lessonId: lessonId || null,
         studentLevel,
         classroomId,
-        status: 'Booked'
+        status: 'Booked',
+        creditsReserved: true
       });
       try {
         if (session) {
@@ -1831,15 +1708,6 @@ router.post('/book-class', verifyToken, requireStudent, async (req, res) => {
             { _id: existingSlot._id, teacherId: existingSlot.teacherId },
             { $set: { available: true } }
           );
-<<<<<<< HEAD
-          await Student.updateOne(
-            { _id: req.user.studentId },
-            {
-              $inc: { creditBalance: 1, reservedCredits: -1 }
-            }
-          ).catch(() => {});
-=======
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
         }
         throw saveErr;
       }
@@ -1857,7 +1725,30 @@ router.post('/book-class', verifyToken, requireStudent, async (req, res) => {
       );
     }
 
+    const creditReservation = await Student.findOneAndUpdate(
+      {
+        _id: student._id,
+        $expr: {
+          $gte: [
+            {
+              $subtract: [
+                { $ifNull: ['$creditBalance', 0] },
+                { $ifNull: ['$reservedCredits', 0] }
+              ]
+            },
+            1
+          ]
+        }
+      },
+      { $inc: { reservedCredits: 1 } },
+      { new: true }
+    );
+    if (!creditReservation) {
+      return res.status(400).json({ error: 'Insufficient credits. Please top up your plan.' });
+    }
+
     let booking;
+    let creditRolledBack = false;
     try {
       if (!useTransactions) {
         booking = await createBookingAtomic(null);
@@ -1878,6 +1769,11 @@ router.post('/book-class', verifyToken, requireStudent, async (req, res) => {
           if (e && e.statusCode && e.message) {
             await session.endSession().catch(() => {});
             sessionHandled = true;
+            await Student.updateOne(
+              { _id: student._id },
+              { $inc: { reservedCredits: -1 } }
+            ).catch((rbErr) => console.error('⚠️ Credit rollback failed:', rbErr.message));
+            creditRolledBack = true;
             return res.status(e.statusCode).json({
               error: e.message,
               code: e.code || undefined
@@ -1900,6 +1796,13 @@ router.post('/book-class', verifyToken, requireStudent, async (req, res) => {
         }
       }
     } catch (bookErr) {
+      if (!creditRolledBack) {
+        await Student.updateOne(
+          { _id: student._id },
+          { $inc: { reservedCredits: -1 } }
+        ).catch((rbErr) => console.error('⚠️ Credit rollback failed:', rbErr.message));
+        creditRolledBack = true;
+      }
       const e =
         bookErr && bookErr.statusCode
           ? bookErr
@@ -1939,10 +1842,6 @@ router.post('/book-class', verifyToken, requireStudent, async (req, res) => {
       console.error('⚠️ bookingsUpdated/slotsUpdated emit:', socketError);
     }
 
-<<<<<<< HEAD
-    const refreshedStudent = await Student.findById(req.user.studentId).lean();
-=======
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
     res.json({
       success: true,
       bookingId: booking._id,
@@ -1950,21 +1849,13 @@ router.post('/book-class', verifyToken, requireStudent, async (req, res) => {
       assignmentMode: preferredRaw ? 'preferred' : assignmentMode,
       message: 'Class booked successfully',
       bookingMode: useTransactions ? 'transaction' : 'atomic-slot-lock',
-<<<<<<< HEAD
       useTransactions,
       credits: {
-        balance: refreshedStudent?.creditBalance || 0,
-        totalCredits: refreshedStudent?.totalCredits ?? (refreshedStudent?.creditBalance || 0),
-        reservedCredits: refreshedStudent?.reservedCredits || 0,
-        availableCredits: Math.max(
-          Number(refreshedStudent?.totalCredits ?? refreshedStudent?.creditBalance ?? 0) - Number(refreshedStudent?.reservedCredits || 0),
-          0
-        ),
-        usedCredits: refreshedStudent?.usedCredits ?? ((refreshedStudent?.totalCreditsEarned || 0) - (refreshedStudent?.creditBalance || 0))
+        totalCredits: availableLessonCredits(creditReservation),
+        usedCredits: creditReservation.usedCredits || 0,
+        reservedCredits: creditReservation.reservedCredits || 0,
+        creditBalance: creditReservation.creditBalance || 0
       }
-=======
-      useTransactions
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
     });
   } catch (err) {
     console.error('❌ Error booking class:', err);
@@ -1985,11 +1876,11 @@ router.post('/cancel-slot', verifyToken, requireTeacher, requireOwnTeacherData, 
     if (booking) {
       // Mark booking as cancelled and return penalty info
       booking.status = 'cancelled';
-<<<<<<< HEAD
-      await releaseReservedCreditForBooking(booking);
-=======
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
       await booking.save();
+
+      await releaseReservedCreditForCancelledBooking(booking).catch((relErr) =>
+        console.error('⚠️ Reserved credit release failed (cancel-slot):', relErr.message)
+      );
       
       // Create notification for cancelled class
       const student = await Student.findOne({ username: booking.studentId });
@@ -2310,6 +2201,10 @@ router.post('/mark-absent', verifyToken, requireTeacher, requireOwnTeacherData, 
     // Mark as absent (you can add an 'absent' field to the booking schema)
     booking.status = 'absent';
     await booking.save();
+
+    await releaseReservedCreditForCancelledBooking(booking).catch((relErr) =>
+      console.error('⚠️ Reserved credit release failed (mark-absent):', relErr.message)
+    );
 
     // Create notification for absent student
     const student = await Student.findOne({ username: booking.studentId });
@@ -3126,13 +3021,17 @@ router.post('/mark-class-finished', verifyToken, requireTeacher, async (req, res
         error: `Class cannot be marked as finished. Duration must be 15-25 minutes. Current duration: ${durationMinutes.toFixed(2)} minutes.` 
       });
     }
-<<<<<<< HEAD
-
-    await consumeReservedCreditForBooking(booking, 'Class finished');
-=======
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
     
     await booking.save();
+
+    const fin = await finalizeLessonCreditsOnCompletion(booking);
+    if (!fin.ok && !fin.skipped) {
+      console.error('❌ Lesson credit finalize failed (mark-class-finished):', fin.error);
+      return res.status(500).json({
+        success: false,
+        error: fin.error || 'Class marked complete but credits could not be updated. Contact support.'
+      });
+    }
     
     // Create notification with technical issue note if applicable
     const notificationMessage = !studentEntered 
@@ -3286,13 +3185,12 @@ router.post('/mark-student-absent', verifyToken, requireTeacher, async (req, res
     booking.status = 'absent';
     booking.absentAt = new Date();
     booking.absentReason = 'Student did not attend the class';
-<<<<<<< HEAD
-
-    await consumeReservedCreditForBooking(booking, 'Student absent');
-=======
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
     
     await booking.save();
+
+    await releaseReservedCreditForCancelledBooking(booking).catch((relErr) =>
+      console.error('⚠️ Reserved credit release failed (mark-student-absent):', relErr.message)
+    );
     
     // Create notification
     const notificationMessage = `Student marked as absent for ${booking.date} at ${booking.time}`;
@@ -3759,11 +3657,6 @@ router.post('/update-class-status', verifyToken, requireTeacher, async (req, res
     // This allows normal class completion as well as changing absent classes to completed
     // No additional validation needed - any non-completed status can become completed
     
-<<<<<<< HEAD
-    const previousStatus = booking.status;
-
-=======
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
     // Update the booking status
     booking.status = status;
     if (status === 'completed') {
@@ -3774,19 +3667,23 @@ router.post('/update-class-status', verifyToken, requireTeacher, async (req, res
       }
       booking.attendance.classCompleted = true;
     }
-<<<<<<< HEAD
-
-    // Consume credits only once when transitioning from a reserved booking to final state.
-    if (!['completed', 'absent', 'cancelled'].includes(previousStatus) && ['completed', 'absent'].includes(status)) {
-      await consumeReservedCreditForBooking(
-        booking,
-        status === 'absent' ? 'Student absent' : 'Class finished'
-      );
-    }
-=======
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
     
     await booking.save();
+
+    if (status === 'completed') {
+      const fin = await finalizeLessonCreditsOnCompletion(booking);
+      if (!fin.ok && !fin.skipped) {
+        console.error('❌ Lesson credit finalize failed (update-class-status):', fin.error);
+        return res.status(500).json({
+          success: false,
+          error: fin.error || 'Status saved but credits could not be updated. Contact support.'
+        });
+      }
+    } else if (status === 'absent') {
+      await releaseReservedCreditForCancelledBooking(booking).catch((relErr) =>
+        console.error('⚠️ Reserved credit release failed (absent):', relErr.message)
+      );
+    }
     
     console.log(`Updated booking ${booking._id} status to ${status}`);
     
@@ -4689,48 +4586,6 @@ router.post('/feedback/submit', verifyToken, requireTeacher, async (req, res) =>
 });
 
 // Complete a class (mark as finished) (legacy route for frontend compatibility)
-<<<<<<< HEAD
-router.patch('/bookings/:bookingId/complete', verifyToken, requireTeacher, async (req, res) => {
-  try {
-    const { bookingId } = req.params;
-    const teacherId = req.user.teacherId;
-
-    const booking = await Booking.findById(bookingId);
-    if (!booking) {
-      return res.status(404).json({ success: false, error: 'Booking not found' });
-    }
-    if (booking.teacherId !== teacherId) {
-      return res.status(403).json({ success: false, error: 'Access denied. This booking does not belong to you.' });
-    }
-    if (booking.status === 'completed') {
-      return res.status(400).json({ success: false, error: 'Class is already completed' });
-    }
-
-    booking.status = 'completed';
-    booking.finishedAt = new Date();
-    booking.attendance = booking.attendance || {};
-    booking.attendance.classCompleted = true;
-    await consumeReservedCreditForBooking(booking, 'Class finished');
-    await booking.save();
-
-    return res.json({
-      success: true,
-      message: 'Class completed successfully',
-      booking: {
-        id: booking._id,
-        status: booking.status,
-        finishedAt: booking.finishedAt,
-        classCompleted: booking.attendance.classCompleted
-      }
-    });
-  } catch (error) {
-    console.error('❌ Error completing class (PATCH):', error);
-    return res.status(500).json({ success: false, error: 'Failed to complete class: ' + error.message });
-  }
-});
-
-=======
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
 router.post('/booking/:bookingId/complete', verifyToken, requireTeacher, async (req, res) => {
   try {
     const { bookingId } = req.params;
@@ -4772,13 +4627,17 @@ router.post('/booking/:bookingId/complete', verifyToken, requireTeacher, async (
       booking.attendance = {};
     }
     booking.attendance.classCompleted = true;
-<<<<<<< HEAD
-
-    await consumeReservedCreditForBooking(booking, 'Class finished');
-=======
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
     
     await booking.save();
+
+    const fin = await finalizeLessonCreditsOnCompletion(booking);
+    if (!fin.ok && !fin.skipped) {
+      console.error('❌ Lesson credit finalize failed:', fin.error);
+      return res.status(500).json({
+        success: false,
+        error: fin.error || 'Class marked complete but credits could not be updated. Contact support.'
+      });
+    }
     
     console.log('✅ Class completed successfully:', bookingId);
 
@@ -4853,20 +4712,15 @@ router.post('/booking/:bookingId/mark-student-absent', verifyToken, requireTeach
     }
     
     // Mark as absent
-<<<<<<< HEAD
-    booking.status = 'absent';
     booking.absentMarkedAt = new Date();
     booking.absentType = 'student';
     booking.absentReason = 'Marked as absent by teacher';
-
-    await consumeReservedCreditForBooking(booking, 'Student absent');
-=======
-    booking.absentMarkedAt = new Date();
-    booking.absentType = 'student';
-    booking.absentReason = 'Marked as absent by teacher';
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
     
     await booking.save();
+
+    await releaseReservedCreditForCancelledBooking(booking).catch((relErr) =>
+      console.error('⚠️ Reserved credit release failed (legacy mark-student-absent):', relErr.message)
+    );
     
     console.log('✅ Student marked as absent successfully');
     

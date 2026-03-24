@@ -407,8 +407,6 @@ Please do not reply to this email.
 
 © 2025 RemoEdPH. All rights reserved.
     `
-<<<<<<< HEAD
-=======
   }),
   teacherPipelineWelcome: (fullName, signupLink) => ({
     subject: 'Welcome to the Team - RemoEdPH',
@@ -466,7 +464,6 @@ ${signupLink}
 This link is unique to your account and may expire.
 If you need help, contact admin support.
     `.trim()
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
   })
 };
 
@@ -791,8 +788,6 @@ async function sendPasswordResetEmail(email, username, newPassword, userType) {
   });
 }
 
-<<<<<<< HEAD
-=======
 async function sendTeacherPipelineWelcomeEmail(email, fullName, signupLink) {
   try {
     if (!isEmailConfigured) {
@@ -829,7 +824,6 @@ async function sendTeacherPipelineWelcomeEmail(email, fullName, signupLink) {
   }
 }
 
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
 // Diagnostic function to check email configuration (without exposing credentials)
 function getEmailConfigStatus() {
   const status = {
@@ -898,10 +892,7 @@ module.exports = {
   sendPasswordResetEmail,
   sendTeacherRegistrationEmail,
   sendSubscriptionEmail,
-<<<<<<< HEAD
-=======
   sendTeacherPipelineWelcomeEmail,
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
   sendEmail,
   getEmailConfigStatus,
   testEmailSending

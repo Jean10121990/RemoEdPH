@@ -11,26 +11,17 @@ const authRoutes = require('./auth');
 const teacherRoutes = require('./teacher');
 const studentRoutes = require('./student');
 const adminRoutes = require('./admin');
-<<<<<<< HEAD
 const paymentRoutes = require('./payments');
 const webhookRoutes = require('./webhooks');
-=======
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
 const fileRoutes = require('./fileRoutes');
 const announcementRoutes = require('./announcement');
 const lessonRoutes = require('./lessons');
 const classroomRecordingRouter = require('./classroomRecordingApi');
-<<<<<<< HEAD
-const Booking = require('./models/Booking');
-const Student = require('./models/Student');
-const LessonMaterial = require('./models/LessonMaterial');
-=======
 const applicationRoutes = require('./applications');
 const Booking = require('./models/Booking');
 const LessonMaterial = require('./models/LessonMaterial');
 const InvitationToken = require('./models/InvitationToken');
 const Application = require('./models/Application');
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
 const { DateTime } = require('luxon');
 // LessonSlides model removed - PPTX conversion still works but slides are not saved to database
 const fs = require('fs');
@@ -38,7 +29,11 @@ const fsp = require('fs').promises;
 // AdmZip removed - no longer needed for file conversion
 const FormData = require('form-data');
 const axios = require('axios');
-const { verifyToken, requireTeacher } = require('./authMiddleware');
+const { verifyToken, requireTeacher, requireStudent } = require('./authMiddleware');
+const {
+  finalizeLessonCreditsOnCompletion,
+  releaseReservedCreditForCancelledBooking
+} = require('./lessonCreditsHelper');
 
 const app = express();
 const http = require('http').createServer(app);
@@ -70,63 +65,6 @@ const userSessions = new Map(); // socketId -> { room, userType, userId, usernam
 const signalingMessages = new Map(); // room -> [messages]
 const messageId = 0;
 
-<<<<<<< HEAD
-async function findStudentForBooking(booking) {
-  if (!booking || !booking.studentId) return null;
-  return Student.findOne({
-    $or: [{ username: booking.studentId }, { email: booking.studentId }]
-  });
-}
-
-async function consumeReservedCreditForBooking(booking, descriptionPrefix = 'Class finished') {
-  if (!booking || booking.creditConsumedAt || booking.creditReservationReleasedAt) return;
-  const student = await findStudentForBooking(booking);
-  if (!student) return;
-  const now = new Date();
-  const safeReserved = Number(student.reservedCredits || 0);
-  if (safeReserved <= 0) return;
-  const safeTotal = Number(student.totalCredits || 0);
-  const nextReserved = Math.max(safeReserved - 1, 0);
-  const nextTotal = Math.max(safeTotal - 1, 0);
-  const nextAvailable = Math.max(nextTotal - nextReserved, 0);
-  const planLabel = student.subscriptionPlan || '';
-  const desc = `${descriptionPrefix} (${booking.date} ${booking.time})`;
-
-  await Student.updateOne(
-    { _id: student._id },
-    {
-      $set: {
-        reservedCredits: nextReserved,
-        totalCredits: nextTotal,
-        creditBalance: nextAvailable
-      },
-      $inc: { usedCredits: 1 },
-      $push: {
-        creditTransactions: {
-          date: now,
-          type: 'use',
-          plan: planLabel,
-          description: desc,
-          credits: -1,
-          balanceAfter: nextAvailable,
-          amountPaid: 0
-        },
-        creditHistory: {
-          date: now,
-          plan: planLabel,
-          credits: -1,
-          amountPaid: 0,
-          paymentId: ''
-        }
-      }
-    }
-  );
-  booking.creditConsumedAt = now;
-  booking.creditReservationReleasedAt = null;
-}
-
-=======
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
 // Lesson materials are now stored in database (LessonMaterial model)
 // Keep in-memory cache for quick access during active sessions
 const lessonMaterialsByRoom = new Map(); // room -> [{ id, name, type, size, data, uploader, uploadedAt }]
@@ -148,14 +86,20 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
-<<<<<<< HEAD
-// Keep raw body for PayMongo webhook signature verification.
-app.use('/api/webhooks/paymongo', express.raw({ type: 'application/json' }));
+// PayMongo webhooks require the exact raw bytes for HMAC (must run before bodyParser.json).
+// Accept all content-types on this path so proxies/tunnels that alter Content-Type still get a Buffer.
+app.use(
+  '/api/webhooks',
+  express.raw({ limit: '2mb', type: () => true }),
+  (req, res, next) => {
+    if (Buffer.isBuffer(req.body)) {
+      req.rawBody = req.body;
+    }
+    next();
+  },
+  webhookRoutes
+);
 
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
-=======
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 
@@ -204,23 +148,40 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use('/api/auth', authRoutes);
 app.use('/api/teacher', teacherRoutes);
 app.use('/api/student', studentRoutes);
+app.use('/api/payments', paymentRoutes);
+
+// GET /api/user/credits — same payload as GET /api/student/credits (alias for frontend)
+app.get('/api/user/credits', verifyToken, requireStudent, async (req, res) => {
+  try {
+    const Student = require('./models/Student');
+    const { buildCreditsJson } = require('./student');
+    const {
+      studentLedgerNeedsRepair,
+      repairStudentLedgerDoc
+    } = require('./creditLedgerRepair');
+    const doc = await Student.findById(req.user.studentId);
+    if (!doc) {
+      return res.status(404).json({ success: false, error: 'Student not found' });
+    }
+    if (studentLedgerNeedsRepair(doc)) {
+      repairStudentLedgerDoc(doc);
+      await doc.save();
+    }
+    res.json(buildCreditsJson(doc.toObject()));
+  } catch (error) {
+    console.error('❌ GET /api/user/credits:', error);
+    res.status(500).json({ success: false, error: 'Server error: ' + error.message });
+  }
+});
 // Must be before /api/admin: same path prefix /api/admin/... is otherwise swallowed by adminRoutes → 404
 app.use('/api', classroomRecordingRouter);
 app.use('/api/admin', adminRoutes);
-<<<<<<< HEAD
-app.use('/api/payments', paymentRoutes);
-app.use('/api/webhooks', webhookRoutes);
-=======
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
 app.use('/api/files', fileRoutes);
 app.use('/api/upload', fileRoutes); // Add alias for upload endpoint
 app.use('/api', announcementRoutes); // Mount announcement routes directly under /api
 app.use('/api', fileRoutes); // Add direct access to file routes (moved after announcement routes)
 app.use('/api/lessons', lessonRoutes);
-<<<<<<< HEAD
-=======
 app.use('/api', applicationRoutes);
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
 
 /**
  * WebRTC ICE servers for live-classroom.html
@@ -248,8 +209,6 @@ app.get('/api/rtc-config', (req, res) => {
   res.json({ iceServers });
 });
 
-<<<<<<< HEAD
-=======
 // Protected teacher signup route: requires a valid invitation token in URL.
 app.get('/teacher-signup', async (req, res) => {
   try {
@@ -290,7 +249,6 @@ app.get('/application-form', (req, res) => {
   return res.sendFile(path.join(applicationFormDist, 'index.html'));
 });
 
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
 // Static files after core /api mounts so API paths are never shadowed by public files
 app.use(express.static(path.join(__dirname, '../public')));
 
@@ -448,6 +406,10 @@ app.post('/api/booking/:bookingId/mark-student-absent', verifyToken, requireTeac
     booking.absentReason = 'Marked as absent by teacher';
     
     await booking.save();
+
+    await releaseReservedCreditForCancelledBooking(booking).catch((relErr) =>
+      console.error('⚠️ Reserved credit release failed (legacy mark-absent):', relErr.message)
+    );
     
     console.log('✅ Student marked as absent successfully');
     
@@ -470,56 +432,13 @@ app.post('/api/booking/:bookingId/mark-student-absent', verifyToken, requireTeac
   }
 });
 
-// Complete a class (legacy route)
-<<<<<<< HEAD
-app.patch('/api/bookings/:bookingId/complete', verifyToken, requireTeacher, async (req, res) => {
+async function handleTeacherCompleteBooking(req, res) {
   try {
-    const { bookingId } = req.params;
-    const teacherId = req.user.teacherId;
-    const booking = await Booking.findById(bookingId);
-    if (!booking) {
-      return res.status(404).json({ success: false, error: 'Booking not found' });
-    }
-    if (booking.teacherId !== teacherId) {
-      return res.status(403).json({ success: false, error: 'Access denied. This booking does not belong to you.' });
-    }
-    if (booking.status === 'completed') {
-      return res.status(400).json({ success: false, error: 'Class is already completed' });
-    }
-
-    booking.status = 'completed';
-    booking.finishedAt = new Date();
-    booking.attendance = booking.attendance || {};
-    booking.attendance.classCompleted = true;
-    await consumeReservedCreditForBooking(booking, 'Class finished');
-    await booking.save();
-
-    return res.json({
-      success: true,
-      message: 'Class completed successfully',
-      booking: {
-        id: booking._id,
-        status: booking.status,
-        finishedAt: booking.finishedAt,
-        classCompleted: booking.attendance.classCompleted
-      }
-    });
-  } catch (error) {
-    console.error('❌ Error completing class (PATCH /api/bookings):', error);
-    return res.status(500).json({ success: false, error: 'Failed to complete class: ' + error.message });
-  }
-});
-
-=======
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
-app.post('/api/booking/:bookingId/complete', verifyToken, requireTeacher, async (req, res) => {
-  try {
-    const { bookingId } = req.params;
+    const bookingId = req.params.bookingId || req.params.id;
     const teacherId = req.user.teacherId;
     
     console.log('✅ Completing class:', bookingId, 'for teacher:', teacherId);
     
-    // Find the booking and verify it belongs to this teacher
     const booking = await Booking.findById(bookingId);
     if (!booking) {
       return res.status(404).json({ 
@@ -535,7 +454,6 @@ app.post('/api/booking/:bookingId/complete', verifyToken, requireTeacher, async 
       });
     }
     
-    // Check if class is already completed
     if (booking.status === 'completed') {
       return res.status(400).json({ 
         success: false, 
@@ -543,21 +461,24 @@ app.post('/api/booking/:bookingId/complete', verifyToken, requireTeacher, async 
       });
     }
     
-    // Update booking status to completed
     booking.status = 'completed';
     booking.finishedAt = new Date();
     
-    // Set attendance.classCompleted to true for service fee calculation
     if (!booking.attendance) {
       booking.attendance = {};
     }
     booking.attendance.classCompleted = true;
-<<<<<<< HEAD
-    await consumeReservedCreditForBooking(booking, 'Class finished');
-=======
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
     
     await booking.save();
+
+    const fin = await finalizeLessonCreditsOnCompletion(booking);
+    if (!fin.ok && !fin.skipped) {
+      console.error('❌ Lesson credit finalize failed:', fin.error);
+      return res.status(500).json({
+        success: false,
+        error: fin.error || 'Class marked complete but credits could not be updated. Contact support.'
+      });
+    }
     
     console.log('✅ Class completed successfully:', bookingId);
 
@@ -592,7 +513,11 @@ app.post('/api/booking/:bookingId/complete', verifyToken, requireTeacher, async 
       error: 'Failed to complete class: ' + error.message 
     });
   }
-});
+}
+
+// Complete a class (legacy route)
+app.post('/api/booking/:bookingId/complete', verifyToken, requireTeacher, handleTeacherCompleteBooking);
+app.patch('/api/bookings/:id/complete', verifyToken, requireTeacher, handleTeacherCompleteBooking);
 
 // Check if feedback exists for a booking
 app.get('/api/feedback/check/:bookingId', verifyToken, requireTeacher, async (req, res) => {
@@ -2169,10 +2094,6 @@ async function checkAndMarkAbsentStudents() {
         booking.status = 'absent';
         booking.absentReason = 'Student did not enter classroom within 15 minutes of class start';
         booking.absentMarkedAt = new Date();
-<<<<<<< HEAD
-        await consumeReservedCreditForBooking(booking, 'Student absent');
-=======
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
         
         await booking.save();
         console.log(`✅ Student marked as absent for booking ${booking._id}`);

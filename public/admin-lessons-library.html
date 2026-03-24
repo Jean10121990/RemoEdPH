@@ -729,13 +729,6 @@
                             <textarea id="new-lesson-description" class="form-control" rows="3"></textarea>
                         </div>
                         <div class="form-group" style="margin-bottom: 1rem;">
-<<<<<<< HEAD
-                            <label for="teacherNotes">Teacher notes (internal)</label>
-                            <textarea id="teacherNotes" class="form-control" rows="4" placeholder="Optional notes for teachers only (visible in staff views, hidden from students)."></textarea>
-                        </div>
-                        <div class="form-group" style="margin-bottom: 1rem;">
-=======
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
                             <label for="new-lesson-duration">Duration (minutes)</label>
                             <input type="number" id="new-lesson-duration" class="form-control" min="1" max="600" value="30">
                         </div>
@@ -1834,10 +1827,6 @@
             const lessonNumber = document.getElementById('new-lesson-number').value;
             const title = document.getElementById('new-lesson-title').value.trim();
             const description = document.getElementById('new-lesson-description').value.trim();
-<<<<<<< HEAD
-            const teacherNotes = document.getElementById('teacherNotes')?.value || '';
-=======
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
             const duration = document.getElementById('new-lesson-duration').value || 30;
             const fileInput = document.getElementById('new-lesson-file');
 
@@ -1876,10 +1865,6 @@
                         lessonNumber: parseInt(lessonNumber, 10),
                         title,
                         description,
-<<<<<<< HEAD
-                        teacherNotes,
-=======
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
                         estimatedDuration: parseInt(duration, 10)
                     })
                 });
@@ -1946,10 +1931,6 @@
                 document.getElementById('new-lesson-number').value = '';
                 document.getElementById('new-lesson-title').value = '';
                 document.getElementById('new-lesson-description').value = '';
-<<<<<<< HEAD
-                document.getElementById('teacherNotes').value = '';
-=======
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
                 document.getElementById('new-lesson-duration').value = '30';
                 document.getElementById('new-lesson-file').value = '';
 

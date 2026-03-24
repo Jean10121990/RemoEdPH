@@ -2854,19 +2854,13 @@
                     throw new Error(errorMsg + errorDetailsStr);
                 }
                 
-<<<<<<< HEAD
-                const remainingCredits = result?.credits?.balance;
-                if (typeof remainingCredits === 'number') {
-                    localStorage.setItem('studentCreditsBalance', String(remainingCredits));
-                }
-                localStorage.setItem('creditsLastUpdatedAt', String(Date.now()));
-                showMessage(
-                    `✅ Booking successful! You have booked 1 class.${typeof remainingCredits === 'number' ? ` Remaining credits: ${remainingCredits}.` : ''} You will receive a confirmation email shortly.`,
-                    'success'
-                );
-=======
                 showMessage(`✅ Booking successful! You have booked 1 class. You will receive a confirmation email shortly.`, 'success');
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
+                try {
+                  sessionStorage.setItem('remoedCreditsRefresh', '1');
+                  if (typeof window.refreshStudentCredits === 'function') {
+                    window.refreshStudentCredits();
+                  }
+                } catch (e) { /* ignore */ }
                 
                 // Close modal and clear selections after successful booking
                 closeBookingModal();

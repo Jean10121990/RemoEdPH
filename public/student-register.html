@@ -565,29 +565,27 @@
   <div id="plan-selection-modal" class="plan-modal" style="display: none;">
     <div class="plan-modal-content">
       <h2 style="color: #667eea; margin-bottom: 24px; text-align: center;">📚 Choose Your Learning Plan 📚</h2>
-      <p style="text-align: center; color: #666; margin-bottom: 30px;">Select a subscription plan to continue (Testing Mode - All plans are FREE!)</p>
+      <p style="text-align: center; color: #666; margin-bottom: 20px; line-height: 1.45;">Select a plan. You’ll pay in PHP at checkout (estimates use <strong>1 USD = ₱60.03</strong>).</p>
       
       <div class="plans-grid-modal">
         <div class="plan-card-modal">
-          <div class="plan-name-modal">1 Month</div>
-          <div class="plan-price-modal">$0</div>
-          <div class="plan-period-modal">per month</div>
-          <div style="color: #4CAF50; font-weight: 700; margin-bottom: 16px; font-size: 1.1rem;">🆓 FREE!</div>
+          <div class="plan-name-modal">RemoSpark</div>
+          <div class="plan-price-modal" style="font-size:1rem;">$4.17/day × 22d</div>
+          <div class="plan-period-modal"><strong>$91.74 USD</strong> · <strong>₱5,507.15</strong> est.</div>
           <ul class="plan-features-modal">
             <li>Unlimited Classes</li>
             <li>All Learning Games</li>
             <li>Progress Tracking</li>
             <li>Email Support</li>
           </ul>
-          <button class="plan-btn-modal" onclick="selectSubscriptionPlan('1month', 0)">Choose Plan</button>
+          <button type="button" class="plan-btn-modal" onclick="selectSubscriptionPlan('spark')">Choose Plan</button>
         </div>
         
         <div class="plan-card-modal featured-modal">
           <div class="plan-badge-modal">Popular</div>
-          <div class="plan-name-modal">3 Months</div>
-          <div class="plan-price-modal">$0</div>
-          <div class="plan-period-modal">per month</div>
-          <div style="color: #4CAF50; font-weight: 700; margin-bottom: 16px; font-size: 1.1rem;">🆓 FREE!</div>
+          <div class="plan-name-modal">RemoSteady</div>
+          <div class="plan-price-modal" style="font-size:1rem;">$4.08/day × 66d</div>
+          <div class="plan-period-modal"><strong>$269.28 USD</strong> · <strong>₱16,162.88</strong> est.</div>
           <ul class="plan-features-modal">
             <li>Unlimited Classes</li>
             <li>All Learning Games</li>
@@ -595,14 +593,13 @@
             <li>Priority Support</li>
             <li>Free Assessment</li>
           </ul>
-          <button class="plan-btn-modal" onclick="selectSubscriptionPlan('3months', 0)">Choose Plan</button>
+          <button type="button" class="plan-btn-modal" onclick="selectSubscriptionPlan('steady')">Choose Plan</button>
         </div>
         
         <div class="plan-card-modal">
-          <div class="plan-name-modal">6 Months</div>
-          <div class="plan-price-modal">$0</div>
-          <div class="plan-period-modal">per month</div>
-          <div style="color: #4CAF50; font-weight: 700; margin-bottom: 16px; font-size: 1.1rem;">🆓 FREE!</div>
+          <div class="plan-name-modal">RemoScholar</div>
+          <div class="plan-price-modal" style="font-size:1rem;">$4.00/day × 132d</div>
+          <div class="plan-period-modal"><strong>$528.00 USD</strong> · <strong>₱31,695.84</strong> est.</div>
           <ul class="plan-features-modal">
             <li>Unlimited Classes</li>
             <li>All Learning Games</li>
@@ -611,14 +608,13 @@
             <li>Free Assessment</li>
             <li>Bonus Learning Materials</li>
           </ul>
-          <button class="plan-btn-modal" onclick="selectSubscriptionPlan('6months', 0)">Choose Plan</button>
+          <button type="button" class="plan-btn-modal" onclick="selectSubscriptionPlan('scholar')">Choose Plan</button>
         </div>
         
         <div class="plan-card-modal">
-          <div class="plan-name-modal">1 Year</div>
-          <div class="plan-price-modal">$0</div>
-          <div class="plan-period-modal">per month</div>
-          <div style="color: #4CAF50; font-weight: 700; margin-bottom: 16px; font-size: 1.1rem;">🆓 FREE!</div>
+          <div class="plan-name-modal">RemoSummit</div>
+          <div class="plan-price-modal" style="font-size:1rem;">$3.92/day × 246d</div>
+          <div class="plan-period-modal"><strong>$964.32 USD</strong> · <strong>₱57,888.13</strong> est.</div>
           <ul class="plan-features-modal">
             <li>Unlimited Classes</li>
             <li>All Learning Games</li>
@@ -628,7 +624,7 @@
             <li>Bonus Learning Materials</li>
             <li>Certificate of Completion</li>
           </ul>
-          <button class="plan-btn-modal" onclick="selectSubscriptionPlan('1year', 235)">Choose Plan</button>
+          <button type="button" class="plan-btn-modal" onclick="selectSubscriptionPlan('summit')">Choose Plan</button>
         </div>
       </div>
     </div>
@@ -725,9 +721,12 @@
           errorDiv.style.display = 'block';
           submitBtn.textContent = '✅ Success!';
           
-          // Store registration data for plan selection
+          // Store registration data for plan selection + PayMongo create-link
           localStorage.setItem('newStudentEmail', email);
           localStorage.setItem('newStudentUsername', username);
+          if (data.studentId) {
+            localStorage.setItem('newStudentId', String(data.studentId));
+          }
           
           // Show plan selection modal
           setTimeout(() => {
@@ -751,12 +750,13 @@
     };
     
     // Plan selection function
-    async function selectSubscriptionPlan(plan, price) {
+    async function selectSubscriptionPlan(planId) {
       const email = localStorage.getItem('newStudentEmail');
       const username = localStorage.getItem('newStudentUsername');
+      const studentId = localStorage.getItem('newStudentId');
       
-      if (!email) {
-        alert('Error: Email not found. Please register again.');
+      if (!email || !studentId) {
+        alert('Error: Registration data not found. Please register again.');
         return;
       }
       
@@ -771,41 +771,31 @@
       });
       
       try {
-        // Subscribe to plan
-        const subscribeResponse = await fetch('/api/student/subscribe', {
+        const origin = window.location.origin || '';
+        const payRes = await fetch('/api/payments/create-link', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            email: email,
-            plan: plan,
-            planPrice: price
+            userId: studentId,
+            username,
+            email,
+            planId,
+            referralCode: localStorage.getItem('referralCode') || '',
+            success_url: `${origin}/student-login.html`,
+            cancel_url: `${origin}/student-register.html`
           })
         });
-        
-        const subscribeResult = await subscribeResponse.json();
-        
-        if (!subscribeResponse.ok) {
-          throw new Error(subscribeResult.error || 'Subscription failed');
+        const payData = await payRes.json().catch(() => ({}));
+        if (!payRes.ok || !payData.success || !payData.checkout_url) {
+          throw new Error(payData.error || 'Could not start payment');
         }
-
-        if (subscribeResult && subscribeResult.checkout && subscribeResult.checkout.sessionId) {
-          // Clear temporary data used for plan selection
-          localStorage.removeItem('newStudentEmail');
-          localStorage.removeItem('newStudentUsername');
-          window.location.href = `student-payment.html?session=${encodeURIComponent(subscribeResult.checkout.sessionId)}`;
-          return;
-        }
-
-        throw new Error('Checkout session missing. Please try again.');
-        
+        localStorage.removeItem('newStudentEmail');
+        localStorage.removeItem('newStudentUsername');
+        localStorage.removeItem('newStudentId');
+        window.location.href = payData.checkout_url;
       } catch (error) {
         console.error('Subscription error:', error);
-        alert('Error subscribing to plan: ' + error.message);
-        
-        // Reset buttons
-        const planCards = document.querySelectorAll('.plan-card-modal');
+        alert('Error starting checkout: ' + error.message);
         planCards.forEach(card => {
           const btn = card.querySelector('.plan-btn-modal');
           if (btn) {
@@ -820,6 +810,7 @@
       // Clear temporary data
       localStorage.removeItem('newStudentEmail');
       localStorage.removeItem('newStudentUsername');
+      localStorage.removeItem('newStudentId');
       
       // Redirect to login
       window.location.href = 'student-login.html';

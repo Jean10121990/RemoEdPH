@@ -174,29 +174,19 @@
         
         .profile-header-info {
             flex: 1;
-<<<<<<< HEAD
-        }
-        
-        .profile-name-large {
-            font-size: 2.5rem;
-=======
             min-width: 0;
         }
         
         .profile-name-large {
             font-size: clamp(1.8rem, 4vw, 2.5rem);
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
             font-weight: 800;
             color: #1CA7E7;
             margin: 0 0 8px 0;
             text-shadow: 2px 2px 4px rgba(28, 167, 231, 0.2);
-<<<<<<< HEAD
-=======
             line-height: 1.15;
             white-space: normal;
             word-break: normal;
             overflow-wrap: break-word;
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
         }
         
         .profile-email-large {
@@ -204,11 +194,8 @@
             margin: 0 0 16px 0;
             font-size: 1.1rem;
             font-weight: 600;
-<<<<<<< HEAD
-=======
             white-space: normal;
             overflow-wrap: anywhere;
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
         }
         
         .profile-actions {
@@ -567,8 +554,6 @@
         .tab-content.active {
             display: block;
         }
-<<<<<<< HEAD
-=======
 
         .profile-edit-actions {
             display: flex;
@@ -578,7 +563,6 @@
             border-top: 2px solid #E8F4FD;
             padding-top: 20px;
         }
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
         
         /* Info Cards - Facebook Style */
         .info-card {
@@ -590,15 +574,10 @@
         }
         
         .info-row {
-<<<<<<< HEAD
-            display: flex;
-            align-items: flex-start;
-=======
             display: grid;
             grid-template-columns: 110px 1fr;
             gap: 12px;
             align-items: start;
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
             padding: 12px 0;
             border-bottom: 1px solid #E8F4FD;
         }
@@ -610,32 +589,19 @@
         .info-label {
             font-weight: 700;
             color: #1E3A5F;
-<<<<<<< HEAD
-            min-width: 180px;
-            font-size: 0.95rem;
-=======
             min-width: 0;
             font-size: 0.95rem;
             white-space: nowrap;
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
         }
         
         .info-value {
             color: #4A6FA5;
-<<<<<<< HEAD
-            font-size: 1rem;
-            flex: 1;
-            word-break: break-word;
-            overflow-wrap: anywhere;
-            white-space: normal;
-=======
             font-size: 0.95rem;
             flex: 1;
             word-break: normal;
             overflow-wrap: break-word;
             white-space: normal;
             line-height: 1.35;
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
         }
         
         .info-value.empty {
@@ -712,12 +678,6 @@
                         <p class="profile-email-large" id="profile-email">student@email.com</p>
                         <div class="profile-actions">
                             <button class="back-btn" onclick="goBack()">← Back to Dashboard</button>
-<<<<<<< HEAD
-                            <button class="edit-btn" id="edit-btn" onclick="enableEditing()">✏️ Edit Profile</button>
-                            <button class="cancel-btn" id="cancel-btn" onclick="cancelEditing()" style="display: none;">❌ Cancel</button>
-                            <button class="save-btn" id="save-btn" onclick="saveProfile()" style="display: none;">💾 Save Changes</button>
-=======
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
                         </div>
                     </div>
                 </div>
@@ -958,14 +918,11 @@
                         </div>
                     </div>
                 </div>
-<<<<<<< HEAD
-=======
                 <div class="profile-edit-actions">
                     <button class="edit-btn" id="edit-btn" onclick="enableEditing()">✏️ Edit</button>
                     <button class="cancel-btn" id="cancel-btn" onclick="cancelEditing()" style="display: none;">❌ Cancel</button>
                     <button class="save-btn" id="save-btn" onclick="saveProfile()" style="display: none;">💾 Save Changes</button>
                 </div>
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
                 
                 <div class="success-message" id="success-message" style="display: none; padding: 16px 24px; border-radius: 12px; margin-bottom: 24px; font-weight: 600;">
                     Profile updated successfully!
@@ -1015,28 +972,8 @@
             loadProfile();
             loadSettingsData();
             setupProfilePictureUpload();
-<<<<<<< HEAD
-            addSafeContentBadge();
         });
         
-        // Safe Content Badge
-        function addSafeContentBadge() {
-            if (!document.getElementById('safe-content-badge')) {
-                const badge = document.createElement('div');
-                badge.id = 'safe-content-badge';
-                badge.className = 'safe-content-badge';
-                badge.innerHTML = '🛡️ Safe & Friendly Content';
-                document.body.appendChild(badge);
-                setTimeout(() => {
-                    badge.style.display = 'flex';
-                }, 1000);
-            }
-        }
-        
-=======
-        });
-        
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
     // Load profile picture from backend (uses shared setAvatar)
     async function loadProfilePicture(studentId) {
         try {
