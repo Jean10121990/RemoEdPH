@@ -23,12 +23,13 @@
                 <th>Applicant</th>
                 <th>Email</th>
                 <th>Stage</th>
+                <th>Hiring Date</th>
                 <th>Progress</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody id="pipeline-body">
-              <tr><td colspan="5" class="muted" style="padding: 18px;">Loading applicants...</td></tr>
+              <tr><td colspan="6" class="muted" style="padding: 18px;">Loading applicants...</td></tr>
             </tbody>
           </table>
         </div>
@@ -109,12 +110,12 @@
     }
 
     async function loadApplicants() {
-      bodyEl.innerHTML = '<tr><td colspan="5" class="muted" style="padding: 18px;">Loading applicants...</td></tr>';
+      bodyEl.innerHTML = '<tr><td colspan="6" class="muted" style="padding: 18px;">Loading applicants...</td></tr>';
       try {
         const data = await api('/api/admin/teacher-pipeline/applicants');
         const rows = data.applicants || [];
         if (!rows.length) {
-          bodyEl.innerHTML = '<tr><td colspan="5" class="muted" style="padding: 18px;">No applicants found.</td></tr>';
+          bodyEl.innerHTML = '<tr><td colspan="6" class="muted" style="padding: 18px;">No applicants found.</td></tr>';
           return;
         }
         bodyEl.innerHTML = rows.map((a) => `
@@ -122,6 +123,7 @@
             <td>${a.fullName || '-'}</td>
             <td>${a.email || '-'}</td>
             <td><span class="stage">${a.currentStage || 'applied'}</span></td>
+            <td>${a.hiredAt ? new Date(a.hiredAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: '2-digit' }) : '-'}</td>
             <td>
               <div class="progress-track"><div class="progress-fill" style="width:${a.progress ?? stageProgress(a.currentStage)}%"></div></div>
               <div class="muted" style="margin-top:4px;">${a.progress ?? stageProgress(a.currentStage)}%</div>
@@ -134,7 +136,7 @@
           btn.addEventListener('click', () => openReview(btn.getAttribute('data-review')));
         });
       } catch (error) {
-        bodyEl.innerHTML = `<tr><td colspan="5" style="padding:18px;color:#dc2626;">${error.message}</td></tr>`;
+        bodyEl.innerHTML = `<tr><td colspan="6" style="padding:18px;color:#dc2626;">${error.message}</td></tr>`;
       }
     }
 

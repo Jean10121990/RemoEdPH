@@ -1,9 +1,10 @@
 const mongoose = require('mongoose');
 
 const teacherSchema = new mongoose.Schema({
-  teacherId: { type: String, required: true, unique: true }, // Unique teacher ID like "kjb00000001"
+  teacherId: { type: String, required: true, unique: true }, // Company format: KBF07202500001
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true },
+  hireDate: { type: Date, default: null },
   
      // Basic teacher info (for compatibility with existing code)
    firstName: { type: String, default: '' },
@@ -24,6 +25,34 @@ const teacherSchema = new mongoose.Schema({
   // Professional Information
   introduction: { type: String, default: '' },
   experience: { type: String, default: '' },
+  professionalPoints: { type: Number, default: 0 },
+  loyaltyPoints: { type: Number, default: 0 },
+  ladderTier: { type: String, default: 'Not Qualified' },
+  careerGrowthTitle: { type: String, default: 'Not Qualified' },
+  hasEnglishDegree4Year: { type: Boolean, default: false },
+  hasTesolTeylTefl: { type: Boolean, default: false },
+  hasIeltsCertificate: { type: Boolean, default: false },
+  eslExperienceLevel: {
+    type: String,
+    enum: ['none', '2years', '3to5', '5plus'],
+    default: 'none'
+  },
+  hasValuesAlignment: { type: Boolean, default: false },
+  // H.E.A.R.T. commitments
+  heartHospitality: { type: Boolean, default: false },
+  heartExcellence: { type: Boolean, default: false },
+  heartAffection: { type: Boolean, default: false },
+  heartRespect: { type: Boolean, default: false },
+  heartTogetherness: { type: Boolean, default: false },
+  // RemoEd Code of Honor commitments
+  honorAvoidFalseWitness: { type: Boolean, default: false },
+  honorNoGossipPolitics: { type: Boolean, default: false },
+  honorIntegritySpeech: { type: Boolean, default: false },
+  honorGoodAttitudeAntiGreed: { type: Boolean, default: false },
+  honorFinancialStewardship: { type: Boolean, default: false },
+  hasProfessionalLetLicense: { type: Boolean, default: false },
+  hasMastersDegree: { type: Boolean, default: false },
+  hasDoctorateDegree: { type: Boolean, default: false },
   
   // Profile Picture
   profilePicture: { type: String, default: null },
@@ -45,6 +74,7 @@ const teacherSchema = new mongoose.Schema({
     company: { type: String, default: '' },
     jobTitle: { type: String, default: '' },
     duration: { type: String, default: '' },
+    isPresent: { type: Boolean, default: false },
     jobDescription: { type: String, default: '' }
   }],
   

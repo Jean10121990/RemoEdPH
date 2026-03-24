@@ -35,6 +35,7 @@
                     <table class="user-table" id="teachers-table">
                         <thead>
                             <tr>
+                                <th>Teacher ID</th>
                                 <th>Username</th>
                                 <th>Email</th>
                                 <th>Status</th>
@@ -60,6 +61,7 @@
                     <table class="user-table" id="students-table">
                         <thead>
                             <tr>
+                                <th>Student ID</th>
                                 <th>Username</th>
                                 <th>Email</th>
                                 <th>Name</th>
@@ -86,6 +88,7 @@
                     <table class="user-table" id="admins-table">
                         <thead>
                             <tr>
+                                <th>Employee/Admin ID</th>
                                 <th>Username</th>
                                 <th>Status</th>
                                 <th>Join Date</th>
@@ -245,12 +248,13 @@
                 
                 const tbody = document.getElementById('teachers-tbody');
                 if (!teachers.length) {
-                    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #888;">No teachers found</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #888;">No teachers found</td></tr>';
                     return;
                 }
                 
                 tbody.innerHTML = teachers.map(teacher => `
                     <tr>
+                        <td>${teacher.teacherId || 'N/A'}</td>
                         <td>${teacher.username || 'N/A'}</td>
                         <td>${teacher.email || 'N/A'}</td>
                         <td><span class="status-badge ${teacher.status === 'suspended' ? 'status-inactive' : 'status-active'}">${teacher.status === 'suspended' ? 'Suspended' : 'Active'}</span></td>
@@ -285,7 +289,7 @@
                 `).join('');
             } catch (error) {
                 console.error('Error loading teachers:', error);
-                document.getElementById('teachers-tbody').innerHTML = '<tr><td colspan="5" style="text-align: center; color: #e74c3c;">Error loading teachers</td></tr>';
+                document.getElementById('teachers-tbody').innerHTML = '<tr><td colspan="6" style="text-align: center; color: #e74c3c;">Error loading teachers</td></tr>';
             }
         }
 
@@ -296,12 +300,13 @@
                 
                 const tbody = document.getElementById('students-tbody');
                 if (!students.length) {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #888;">No students found</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #888;">No students found</td></tr>';
                     return;
                 }
                 
                 tbody.innerHTML = students.map(student => `
                     <tr>
+                        <td>${student.studentCode || 'N/A'}</td>
                         <td>${student.username}</td>
                         <td>${student.email || 'N/A'}</td>
                         <td>${student.firstName} ${student.lastName}</td>
@@ -337,7 +342,7 @@
                 `).join('');
             } catch (error) {
                 console.error('Error loading students:', error);
-                document.getElementById('students-tbody').innerHTML = '<tr><td colspan="6" style="text-align: center; color: #e74c3c;">Error loading students</td></tr>';
+                document.getElementById('students-tbody').innerHTML = '<tr><td colspan="7" style="text-align: center; color: #e74c3c;">Error loading students</td></tr>';
             }
         }
 
@@ -348,12 +353,13 @@
                 
                 const tbody = document.getElementById('admins-tbody');
                 if (!admins.length) {
-                    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #888;">No admins found</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #888;">No admins found</td></tr>';
                     return;
                 }
                 
                 tbody.innerHTML = admins.map(admin => `
                     <tr>
+                        <td>${admin.employeeId || 'N/A'}</td>
                         <td>${admin.username}</td>
                         <td><span class="status-badge ${admin.status === 'suspended' ? 'status-inactive' : 'status-active'}">${admin.status === 'suspended' ? 'Suspended' : 'Active'}</span></td>
                         <td>${new Date(admin.createdAt).toLocaleDateString()}</td>
@@ -379,7 +385,7 @@
                 `).join('');
             } catch (error) {
                 console.error('Error loading admins:', error);
-                document.getElementById('admins-tbody').innerHTML = '<tr><td colspan="4" style="text-align: center; color: #e74c3c;">Error loading admins</td></tr>';
+                document.getElementById('admins-tbody').innerHTML = '<tr><td colspan="5" style="text-align: center; color: #e74c3c;">Error loading admins</td></tr>';
             }
         }
 

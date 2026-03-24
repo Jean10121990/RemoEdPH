@@ -36,6 +36,14 @@ const applicationSchema = new mongoose.Schema(
       default: 'Applicant',
       index: true
     },
+    passedAt: {
+      type: Date,
+      default: null
+    },
+    hiredAt: {
+      type: Date,
+      default: null
+    },
     testAnswers: {
       text: {
         type: String,

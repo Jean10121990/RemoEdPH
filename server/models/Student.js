@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 
 const studentSchema = new mongoose.Schema({
+  studentCode: { type: String, default: null, unique: true, sparse: true },
   username: { type: String, required: true, unique: true },
   email: { type: String, required: false, unique: true },
   password: { type: String, required: true },

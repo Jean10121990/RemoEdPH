@@ -27,6 +27,7 @@
                     <div class="profile-header-info">
                         <h1 class="profile-name-large" id="profile-name-large">Teacher Name</h1>
                         <p class="profile-email-large" id="profile-email-large">teacher@remoedph.com</p>
+                        <p class="profile-email-large" id="profile-hire-date" style="font-size:0.95rem;">Hire date: -</p>
                         <div class="profile-actions">
                             <button class="back-btn" onclick="window.location.href='teacher-dashboard.html'">← Back to Dashboard</button>
                         </div>
@@ -142,6 +143,10 @@
                                 <input type="date" class="form-input" id="birthday" name="birthday" disabled>
                             </div>
                             <div class="form-group">
+                                <label class="form-label">Hire Date</label>
+                                <input type="date" class="form-input" id="hire-date-input" name="hireDate" disabled>
+                            </div>
+                            <div class="form-group">
                                 <label class="form-label">Gender</label>
                                 <select class="form-input" id="gender" name="gender" disabled>
                                     <option value="">Select Gender</option>
@@ -227,6 +232,82 @@
                         </div>
                     </div>
                     
+                    <!-- Professional Development Tab -->
+                    <div id="professional-development-tab" class="tab-content">
+                        <div class="section-title">Career Growth</div>
+                        <div style="background:#f8fafc; border:1px solid #dbeafe; border-radius:12px; padding:16px; margin-bottom:16px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+                                <div>
+                                    <div style="font-size:0.85rem; color:#64748b;">Current Career Growth Title</div>
+                                    <div id="teacher-ladder-tier" style="font-size:1.2rem; font-weight:700; color:#1d4ed8;">Not Qualified</div>
+                                </div>
+                                <div style="text-align:right;">
+                                    <div style="font-size:0.85rem; color:#64748b;">Growth Points</div>
+                                    <div id="teacher-ladder-points" style="font-size:1.6rem; font-weight:800; color:#0f172a;">0</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-grid" id="professional-development-fields">
+                            <div class="form-group full-width">
+                                <label class="form-label" style="display:flex; align-items:center; gap:8px;">
+                                    <input type="checkbox" id="qual-english-degree" disabled>
+                                    4-year English Degree (+10)
+                                </label>
+                            </div>
+                            <div class="form-group full-width">
+                                <label class="form-label" style="display:flex; align-items:center; gap:8px;">
+                                    <input type="checkbox" id="qual-tesol" disabled>
+                                    TESOL / TEYL / TEFL (+20)
+                                </label>
+                            </div>
+                            <div class="form-group full-width">
+                                <label class="form-label">ESL / Voice BPO Experience</label>
+                                <select class="form-input" id="qual-esl-experience" disabled>
+                                    <option value="none">None</option>
+                                    <option value="2years">2 years (+20)</option>
+                                    <option value="3to5">3 to 5 years (+25)</option>
+                                    <option value="5plus">5+ years (+25)</option>
+                                </select>
+                            </div>
+                            <div class="form-group full-width">
+                                <label class="form-label" style="display:flex; align-items:center; gap:8px;">
+                                    <input type="checkbox" id="qual-let" disabled>
+                                    Professional LET License (+30)
+                                </label>
+                            </div>
+                            <div class="form-group full-width">
+                                <label class="form-label" style="display:flex; align-items:center; gap:8px;">
+                                    <input type="checkbox" id="qual-masters" disabled>
+                                    Master’s Degree (+30)
+                                </label>
+                            </div>
+                            <div class="form-group full-width">
+                                <label class="form-label" style="display:flex; align-items:center; gap:8px;">
+                                    <input type="checkbox" id="qual-values-alignment" disabled>
+                                    Values Alignment (care for waste, energy, family, and well-being)
+                                </label>
+                            </div>
+                            
+                            <div class="form-group full-width">
+                                <label class="form-label" style="display:flex; align-items:center; gap:8px;">
+                                    <input type="checkbox" id="qual-doctorate" disabled>
+                                    Doctorate Degree (+30)
+                                </label>
+                            </div>
+                        </div>
+
+                        <div style="margin-top:16px; border:1px solid #e2e8f0; border-radius:10px; overflow:hidden;">
+                            <div style="padding:10px 12px; background:#f1f5f9; font-weight:700; color:#334155;">Friendly Growth Path</div>
+                            <div id="career-ladder-view" style="padding:12px; display:grid; gap:8px;">
+                                <div data-tier="Seedling Educator" style="padding:10px; border:1px solid #cbd5e1; border-radius:8px;">Seedling Educator: TESOL/TEYL/TEFL OR 4-year equivalent degree</div>
+                                <div data-tier="Cultivator" style="padding:10px; border:1px solid #cbd5e1; border-radius:8px;">Cultivator: 2+ years ESL experience</div>
+                                <div data-tier="Steward Mentor" style="padding:10px; border:1px solid #cbd5e1; border-radius:8px;">Steward Mentor: 3+ years + degree + TESOL/TEFL + values alignment</div>
+                                <div data-tier="Legacy Guide" style="padding:10px; border:1px solid #cbd5e1; border-radius:8px;">Legacy Guide: 5+ years + core certifications + values alignment</div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Documents Tab -->
                     <div id="documents-tab" class="tab-content">
                         <div class="section-title">Documents & Certificates</div>
@@ -582,6 +663,22 @@
         // Global variables for bulk upload
         let bulkUploadFiles = [];
         let isPreviewMode = false;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            [
+                'qual-english-degree',
+                'qual-tesol',
+                'qual-esl-experience',
+                'qual-let',
+                'qual-masters',
+                'qual-doctorate',
+                'qual-values-alignment'
+            ].forEach((id) => {
+                const el = document.getElementById(id);
+                if (el) el.addEventListener('change', renderProfessionalDevelopmentSummary);
+            });
+            renderProfessionalDevelopmentSummary();
+        });
         
         document.addEventListener('DOMContentLoaded', function() {
             // Check if user just completed assessment (from URL parameter or localStorage)
@@ -848,12 +945,19 @@
                      
                      // Update main profile avatar
                      updateProfileAvatar(profile);
+                    const hireDateEl = document.getElementById('profile-hire-date');
+                    if (hireDateEl) {
+                        hireDateEl.textContent = profile.hireDate
+                            ? `Hire date: ${new Date(profile.hireDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: '2-digit' })}`
+                            : 'Hire date: -';
+                    }
                      
                      // Populate form fields
                      document.getElementById('firstname').value = profile.firstName || '';
                      document.getElementById('middlename').value = profile.middleName || '';
                      document.getElementById('lastname').value = profile.lastName || '';
                     document.getElementById('birthday').value = profile.birthday ? profile.birthday.split('T')[0] : '';
+                    document.getElementById('hire-date-input').value = profile.hireDate ? profile.hireDate.split('T')[0] : '';
                     document.getElementById('gender').value = profile.gender || '';
                     document.getElementById('language').value = profile.language || '';
                     document.getElementById('hobbies').value = profile.hobbies || '';
@@ -864,6 +968,14 @@
                     document.getElementById('emergency-contact').value = profile.emergencyContact || '';
                     document.getElementById('introduction').value = profile.introduction || '';
                     document.getElementById('experience').value = profile.experience || '';
+                    document.getElementById('qual-english-degree').checked = !!profile.hasEnglishDegree4Year;
+                    document.getElementById('qual-tesol').checked = !!profile.hasTesolTeylTefl;
+                    document.getElementById('qual-esl-experience').value = profile.eslExperienceLevel || 'none';
+                    document.getElementById('qual-let').checked = !!profile.hasProfessionalLetLicense;
+                    document.getElementById('qual-masters').checked = !!profile.hasMastersDegree;
+                    document.getElementById('qual-doctorate').checked = !!profile.hasDoctorateDegree;
+                    document.getElementById('qual-values-alignment').checked = !!profile.hasValuesAlignment;
+                    renderProfessionalDevelopmentSummary();
                     
                     // Load teaching abilities
                     loadTeachingAbilities(profile);
@@ -1307,6 +1419,12 @@
                         <label class="form-label">Duration</label>
                         <input type="text" class="form-input" name="duration" value="${data ? data.duration : ''}" placeholder="e.g., 2020-2023" ${disabledAttr}>
                     </div>
+                    <div class="form-group">
+                        <label class="form-label" style="display:flex; gap:8px; align-items:center; margin-top:28px;">
+                            <input type="checkbox" name="isPresent" ${data && data.isPresent ? 'checked' : ''} ${disabledAttr}>
+                            Present
+                        </label>
+                    </div>
                     <div class="form-group full-width">
                         <label class="form-label">Job Description</label>
                         <textarea class="form-textarea" name="jobDescription" rows="3" placeholder="Describe your role, responsibilities, and achievements..." ${disabledAttr}>${data ? data.jobDescription : ''}</textarea>
@@ -1594,6 +1712,7 @@
                  lastName: lastName,
                  fullname: fullname,
                 birthday: document.getElementById('birthday').value,
+                hireDate: document.getElementById('hire-date-input').value || null,
                 gender: document.getElementById('gender').value,
                 language: document.getElementById('language').value,
                 hobbies: document.getElementById('hobbies').value,
@@ -1609,6 +1728,13 @@
                  profilePicture: document.getElementById('profile-avatar-img')?.src || null,
                  videoIntroduction: document.getElementById('video-player').querySelector('source').src || null,
                  videoIntroductionFileName: document.getElementById('video-name').textContent !== 'No video selected' ? document.getElementById('video-name').textContent : null,
+                hasEnglishDegree4Year: document.getElementById('qual-english-degree')?.checked || false,
+                hasTesolTeylTefl: document.getElementById('qual-tesol')?.checked || false,
+                eslExperienceLevel: document.getElementById('qual-esl-experience')?.value || 'none',
+                hasProfessionalLetLicense: document.getElementById('qual-let')?.checked || false,
+                hasMastersDegree: document.getElementById('qual-masters')?.checked || false,
+                hasDoctorateDegree: document.getElementById('qual-doctorate')?.checked || false,
+                hasValuesAlignment: document.getElementById('qual-values-alignment')?.checked || false,
                 documents: (function() {
                     console.log('=== COLLECTING DOCUMENTS ===');
                     const diplomas = collectDiplomasData();
@@ -1751,7 +1877,14 @@
                     const displayName = profileData.fullname || `${profileData.firstName || ''} ${profileData.lastName || ''}`.trim() || profileData.username || 'Teacher';
                     document.getElementById('profile-name-large').textContent = displayName;
                     document.getElementById('profile-email-large').textContent = profileData.email || '';
+                    const hireDateLabel = document.getElementById('profile-hire-date');
+                    if (hireDateLabel) {
+                        hireDateLabel.textContent = profileData.hireDate
+                            ? `Hire date: ${new Date(profileData.hireDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: '2-digit' })}`
+                            : 'Hire date: -';
+                    }
                     updateSidebarQuickInfo(profileData);
+                    renderProfessionalDevelopmentSummary();
                     updateProfileAvatar(profileData);
                     
                     // Update token and localStorage if username was changed
@@ -1929,7 +2062,11 @@
                 const workExperience = {};
                 
                 inputs.forEach(input => {
-                    workExperience[input.name] = input.value;
+                    if (input.type === 'checkbox') {
+                        workExperience[input.name] = Boolean(input.checked);
+                    } else {
+                        workExperience[input.name] = input.value;
+                    }
                 });
                 
                 console.log(`Work experience item ${index + 1}:`, workExperience);
@@ -1944,6 +2081,55 @@
             
             console.log('Final work experience data:', workExperienceData);
             return workExperienceData;
+        }
+
+        function calculateProfessionalDevelopmentClient() {
+            const hasEnglishDegree4Year = !!document.getElementById('qual-english-degree')?.checked;
+            const hasTesolTeylTefl = !!document.getElementById('qual-tesol')?.checked;
+            const eslExperienceLevel = document.getElementById('qual-esl-experience')?.value || 'none';
+            const hasProfessionalLetLicense = !!document.getElementById('qual-let')?.checked;
+            const hasMastersDegree = !!document.getElementById('qual-masters')?.checked;
+            const hasDoctorateDegree = !!document.getElementById('qual-doctorate')?.checked;
+            const hasValuesAlignment = !!document.getElementById('qual-values-alignment')?.checked;
+
+            let points = 0;
+            if (hasEnglishDegree4Year) points += 10;
+            if (hasTesolTeylTefl) points += 20;
+            if (eslExperienceLevel === '2years') points += 20;
+            if (eslExperienceLevel === '3to5' || eslExperienceLevel === '5plus') points += 25;
+            if (hasProfessionalLetLicense) points += 30;
+            if (hasMastersDegree) points += 30;
+            if (hasDoctorateDegree) points += 30;
+
+            const hasAtLeast2Years = ['2years', '3to5', '5plus'].includes(eslExperienceLevel);
+            const hasAtLeast3Years = ['3to5', '5plus'].includes(eslExperienceLevel);
+            const hasAtLeast5Years = eslExperienceLevel === '5plus';
+            const hasCoreCertification = hasEnglishDegree4Year && hasTesolTeylTefl && hasProfessionalLetLicense;
+            let tier = 'Not Qualified';
+            if (hasAtLeast5Years && hasCoreCertification && hasValuesAlignment) {
+                tier = 'Legacy Guide';
+            } else if (hasAtLeast3Years && hasEnglishDegree4Year && hasTesolTeylTefl && hasValuesAlignment) {
+                tier = 'Steward Mentor';
+            } else if (hasAtLeast2Years) {
+                tier = 'Cultivator';
+            } else if (hasEnglishDegree4Year || hasTesolTeylTefl) {
+                tier = 'Seedling Educator';
+            }
+            return { points, tier };
+        }
+
+        function renderProfessionalDevelopmentSummary() {
+            const { points, tier } = calculateProfessionalDevelopmentClient();
+            const pointsEl = document.getElementById('teacher-ladder-points');
+            const tierEl = document.getElementById('teacher-ladder-tier');
+            if (pointsEl) pointsEl.textContent = String(points);
+            if (tierEl) tierEl.textContent = tier;
+            document.querySelectorAll('#career-ladder-view [data-tier]').forEach((el) => {
+                const isActive = el.getAttribute('data-tier') === tier;
+                el.style.borderColor = isActive ? '#2563eb' : '#cbd5e1';
+                el.style.background = isActive ? '#dbeafe' : '#ffffff';
+                el.style.fontWeight = isActive ? '700' : '500';
+            });
         }
         
         function collectDiplomasData() {
@@ -2083,6 +2269,8 @@
             // Enable education and work experience inputs
             const educationInputs = document.querySelectorAll('.education-item input, .education-item select, .work-experience-item input, .work-experience-item select');
             educationInputs.forEach(input => input.disabled = false);
+            const pdInputs = document.querySelectorAll('#professional-development-fields input, #professional-development-fields select');
+            pdInputs.forEach(input => input.disabled = false);
             
             // Setup file uploads for all diploma and certificate items
             document.querySelectorAll('[id^="diploma-file-"]').forEach(input => {
@@ -2130,6 +2318,8 @@
             // Disable education and work experience inputs
             const educationInputs = document.querySelectorAll('.education-item input, .education-item select, .work-experience-item input, .work-experience-item select');
             educationInputs.forEach(input => input.disabled = true);
+            const pdInputs = document.querySelectorAll('#professional-development-fields input, #professional-development-fields select');
+            pdInputs.forEach(input => input.disabled = true);
             
             // Show/hide buttons in all tabs
             const editIds = ['edit-profile-btn', 'edit-education-btn', 'edit-documents-btn'];
@@ -3624,7 +3814,8 @@
                 workExperience: Array.from(document.querySelectorAll('.work-experience-item')).map(item => ({
                     company: item.querySelector('[name="company"]')?.value || '',
                     position: item.querySelector('[name="jobTitle"]')?.value || '',
-                    duration: item.querySelector('[name="duration"]')?.value || ''
+                    duration: item.querySelector('[name="duration"]')?.value || '',
+                    isPresent: !!item.querySelector('[name="isPresent"]')?.checked
                 })).filter(work => work.company || work.position),
                 diplomas: diplomas,
                 certificates: certificates,

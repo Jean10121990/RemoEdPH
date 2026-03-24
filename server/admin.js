@@ -20,6 +20,7 @@ const crypto = require('crypto');
 const Application = require('./models/Application');
 const InvitationToken = require('./models/InvitationToken');
 const { sendTeacherRegistrationEmail, sendTeacherPipelineWelcomeEmail } = require('./emailService');
+const { generateCompanyId } = require('./idGenerator');
 
 // Function to create notifications
 async function createNotification(userId, type, message) {
@@ -301,6 +302,8 @@ router.get('/teacher-pipeline/applicants', verifyToken, requireAdmin, async (req
       currentStage: a.currentStage || 'applied',
       status: Boolean(a.status),
       progress: toProgressPercent(a.currentStage),
+      passedAt: a.passedAt || null,
+      hiredAt: a.hiredAt || null,
       updatedAt: a.updatedAt
     }));
 
@@ -351,6 +354,7 @@ router.post('/teacher-pipeline/applicants/:id/pass', verifyToken, requireAdmin, 
 
     applicant.currentStage = 'passed';
     applicant.status = true;
+    applicant.passedAt = new Date();
     await applicant.save();
 
     // Reuse an active unused token if available, otherwise generate a new one.
@@ -1717,9 +1721,35 @@ router.get('/recent-activity', async (req, res) => {
 router.get('/teachers-list', async (req, res) => {
   try {
     // Filter out teachers with null or missing usernames
-    const teachers = await Teacher.find({ 
+    const teachers = await Teacher.find({
       username: { $exists: true, $ne: null, $ne: '' } 
-    }).select('username email createdAt status');
+    }).select('teacherId username email firstName middleName lastName createdAt status hireDate');
+
+    await Promise.all(
+      teachers.map(async (teacher) => {
+        const next = {};
+        if (!teacher.teacherId) {
+          next.teacherId = await generateCompanyId(
+            Teacher,
+            'teacherId',
+            {
+              firstName: teacher.firstName || '',
+              middleName: teacher.middleName || '',
+              lastName: teacher.lastName || '',
+              fallback: teacher.username || ''
+            },
+            teacher.createdAt || new Date()
+          );
+        }
+        if (!teacher.hireDate) {
+          next.hireDate = teacher.createdAt || new Date();
+        }
+        if (Object.keys(next).length > 0) {
+          await Teacher.updateOne({ _id: teacher._id }, { $set: next });
+          Object.assign(teacher, next);
+        }
+      })
+    );
     
     console.log(`Found ${teachers.length} valid teachers`);
     res.json(teachers);
@@ -1732,7 +1762,26 @@ router.get('/teachers-list', async (req, res) => {
 // GET students list
 router.get('/students-list', async (req, res) => {
   try {
-    const students = await Student.find({}).select('username email firstName lastName createdAt status');
+    const students = await Student.find({}).select('studentCode username email firstName middleName lastName createdAt status');
+    await Promise.all(
+      students.map(async (student) => {
+        if (!student.studentCode) {
+          const studentCode = await generateCompanyId(
+            Student,
+            'studentCode',
+            {
+              firstName: student.firstName || '',
+              middleName: student.middleName || '',
+              lastName: student.lastName || '',
+              fallback: student.username || ''
+            },
+            student.createdAt || new Date()
+          );
+          await Student.updateOne({ _id: student._id }, { $set: { studentCode } });
+          student.studentCode = studentCode;
+        }
+      })
+    );
     res.json(students);
   } catch (error) {
     console.error('Error getting students list:', error);
@@ -1743,7 +1792,21 @@ router.get('/students-list', async (req, res) => {
 // GET admins list
 router.get('/admins-list', async (req, res) => {
   try {
-    const admins = await Admin.find({}).select('username createdAt status');
+    const admins = await Admin.find({}).select('employeeId username createdAt status');
+    await Promise.all(
+      admins.map(async (admin) => {
+        if (!admin.employeeId) {
+          const employeeId = await generateCompanyId(
+            Admin,
+            'employeeId',
+            { firstName: '', middleName: '', lastName: '', fallback: admin.username || '' },
+            admin.createdAt || new Date()
+          );
+          await Admin.updateOne({ _id: admin._id }, { $set: { employeeId } });
+          admin.employeeId = employeeId;
+        }
+      })
+    );
     res.json(admins);
   } catch (error) {
     console.error('Error getting admins list:', error);
@@ -2103,6 +2166,20 @@ router.get('/students', async (req, res) => {
 router.get('/admins', async (req, res) => {
   try {
     const admins = await Admin.find({}).select('-password');
+    await Promise.all(
+      admins.map(async (admin) => {
+        if (!admin.employeeId) {
+          const employeeId = await generateCompanyId(
+            Admin,
+            'employeeId',
+            { firstName: '', middleName: '', lastName: '', fallback: admin.username || '' },
+            admin.createdAt || new Date()
+          );
+          await Admin.updateOne({ _id: admin._id }, { $set: { employeeId } });
+          admin.employeeId = employeeId;
+        }
+      })
+    );
     res.json(admins);
   } catch (err) {
     console.error('Error fetching admins:', err);
@@ -2199,23 +2276,13 @@ router.post('/user', async (req, res) => {
         hashedPassword = await bcrypt.hash(generatedPassword, 10);
         console.log('Password hashed successfully');
         
-        // Generate teacherId (format: kjb + 8 digits)
-        // Find the highest existing teacherId number to avoid conflicts
-        const existingTeachers = await Teacher.find({}).select('teacherId');
-        let maxNumber = 0;
-        
-        existingTeachers.forEach(teacher => {
-          if (teacher.teacherId && teacher.teacherId.startsWith('kjb')) {
-            const numberPart = teacher.teacherId.substring(3);
-            const number = parseInt(numberPart, 10);
-            if (!isNaN(number) && number > maxNumber) {
-              maxNumber = number;
-            }
-          }
-        });
-        
-        const teacherIdNumber = (maxNumber + 1).toString().padStart(8, '0');
-        const teacherId = `kjb${teacherIdNumber}`;
+        // Generate teacher ID in format KBF07202500001
+        const teacherId = await generateCompanyId(
+          Teacher,
+          'teacherId',
+          { firstName: firstName || '', middleName: '', lastName: lastName || '', fallback: generatedUsername },
+          new Date()
+        );
         console.log('Generated teacherId:', teacherId);
         
         // Validate generated username
@@ -2242,6 +2309,7 @@ router.post('/user', async (req, res) => {
           password: hashedPassword,
           firstName: firstName || '',
           lastName: lastName || '',
+          hireDate: new Date(),
           hourlyRate: rate || 100,
           hasGeneratedPassword: true // Set flag to force password change
         });
@@ -2256,21 +2324,44 @@ router.post('/user', async (req, res) => {
         break;
       case 'student':
         hashedPassword = await bcrypt.hash(password, 10);
-        newUser = new Student({
-          username,
-          email,
-          password: hashedPassword,
-          firstName: studentFirstName || '',
-          lastName: studentLastName || ''
-        });
+        {
+          const studentCode = await generateCompanyId(
+            Student,
+            'studentCode',
+            {
+              firstName: studentFirstName || '',
+              middleName: '',
+              lastName: studentLastName || '',
+              fallback: username
+            },
+            new Date()
+          );
+          newUser = new Student({
+            studentCode,
+            username,
+            email,
+            password: hashedPassword,
+            firstName: studentFirstName || '',
+            lastName: studentLastName || ''
+          });
+        }
         break;
       case 'admin':
         hashedPassword = await bcrypt.hash(password, 10);
-        newUser = new Admin({
-          username,
-          email,
-          password: hashedPassword
-        });
+        {
+          const employeeId = await generateCompanyId(
+            Admin,
+            'employeeId',
+            { firstName: '', middleName: '', lastName: '', fallback: username },
+            new Date()
+          );
+          newUser = new Admin({
+            employeeId,
+            username,
+            email,
+            password: hashedPassword
+          });
+        }
         break;
     }
     

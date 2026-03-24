@@ -28,6 +28,7 @@ const {
   finalizeLessonCreditsOnCompletion,
   releaseReservedCreditForCancelledBooking
 } = require('./lessonCreditsHelper');
+const { calculateProfessionalDevelopment } = require('./professionalDevelopmentHelper');
 
 async function ensureDir(dirPath) {
   await fsp.mkdir(dirPath, { recursive: true });
@@ -2342,7 +2343,22 @@ router.get('/profile', verifyToken, requireTeacher, async (req, res) => {
       return res.status(404).json({ error: 'Teacher not found' });
     }
     
-    res.json({ 
+    // Keep ladder values consistent for older records.
+    const computedPd = calculateProfessionalDevelopment(teacher);
+    if (
+      teacher.professionalPoints !== computedPd.professionalPoints ||
+      teacher.loyaltyPoints !== computedPd.loyaltyPoints ||
+      teacher.ladderTier !== computedPd.ladderTier ||
+      teacher.careerGrowthTitle !== computedPd.careerGrowthTitle
+    ) {
+      teacher.professionalPoints = computedPd.professionalPoints;
+      teacher.loyaltyPoints = computedPd.loyaltyPoints;
+      teacher.ladderTier = computedPd.ladderTier;
+      teacher.careerGrowthTitle = computedPd.careerGrowthTitle;
+      await teacher.save();
+    }
+
+    res.json({
       success: true, 
       profile: teacher 
     });
@@ -2444,6 +2460,7 @@ router.post('/profile', verifyToken, requireTeacher, async (req, res) => {
         email: profileData.email,
         username: profileData.username,
         emergencyContact: profileData.emergencyContact,
+        hireDate: profileData.hireDate || null,
         introduction: profileData.introduction,
         experience: profileData.experience,
         profilePicture: profileData.profilePicture,
@@ -2458,6 +2475,53 @@ router.post('/profile', verifyToken, requireTeacher, async (req, res) => {
         'documents.validIds': validIdsArray
       }
     };
+
+    const currentTeacher = await Teacher.findOne({ teacherId }).select(
+      'hireDate hasEnglishDegree4Year hasTesolTeylTefl hasIeltsCertificate eslExperienceLevel hasValuesAlignment heartHospitality heartExcellence heartAffection heartRespect heartTogetherness honorAvoidFalseWitness honorNoGossipPolitics honorIntegritySpeech honorGoodAttitudeAntiGreed honorFinancialStewardship hasProfessionalLetLicense hasMastersDegree hasDoctorateDegree'
+    );
+    const pdInput = {
+      hireDate: profileData.hireDate ?? currentTeacher?.hireDate,
+      hasEnglishDegree4Year: profileData.hasEnglishDegree4Year ?? currentTeacher?.hasEnglishDegree4Year,
+      hasTesolTeylTefl: profileData.hasTesolTeylTefl ?? currentTeacher?.hasTesolTeylTefl,
+      hasIeltsCertificate: profileData.hasIeltsCertificate ?? currentTeacher?.hasIeltsCertificate,
+      eslExperienceLevel: profileData.eslExperienceLevel ?? currentTeacher?.eslExperienceLevel,
+      heartHospitality: profileData.heartHospitality ?? currentTeacher?.heartHospitality,
+      heartExcellence: profileData.heartExcellence ?? currentTeacher?.heartExcellence,
+      heartAffection: profileData.heartAffection ?? currentTeacher?.heartAffection,
+      heartRespect: profileData.heartRespect ?? currentTeacher?.heartRespect,
+      heartTogetherness: profileData.heartTogetherness ?? currentTeacher?.heartTogetherness,
+      honorAvoidFalseWitness: profileData.honorAvoidFalseWitness ?? currentTeacher?.honorAvoidFalseWitness,
+      honorNoGossipPolitics: profileData.honorNoGossipPolitics ?? currentTeacher?.honorNoGossipPolitics,
+      honorIntegritySpeech: profileData.honorIntegritySpeech ?? currentTeacher?.honorIntegritySpeech,
+      honorGoodAttitudeAntiGreed: profileData.honorGoodAttitudeAntiGreed ?? currentTeacher?.honorGoodAttitudeAntiGreed,
+      honorFinancialStewardship: profileData.honorFinancialStewardship ?? currentTeacher?.honorFinancialStewardship,
+      hasProfessionalLetLicense: profileData.hasProfessionalLetLicense ?? currentTeacher?.hasProfessionalLetLicense,
+      hasMastersDegree: profileData.hasMastersDegree ?? currentTeacher?.hasMastersDegree,
+      hasDoctorateDegree: profileData.hasDoctorateDegree ?? currentTeacher?.hasDoctorateDegree
+    };
+    const pd = calculateProfessionalDevelopment(pdInput);
+    updateData.$set.professionalPoints = pd.professionalPoints;
+    updateData.$set.loyaltyPoints = pd.loyaltyPoints;
+    updateData.$set.ladderTier = pd.ladderTier;
+    updateData.$set.careerGrowthTitle = pd.careerGrowthTitle;
+    updateData.$set.hasEnglishDegree4Year = pd.hasEnglishDegree4Year;
+    updateData.$set.hasTesolTeylTefl = pd.hasTesolTeylTefl;
+    updateData.$set.hasIeltsCertificate = pd.hasIeltsCertificate;
+    updateData.$set.eslExperienceLevel = pd.eslExperienceLevel;
+    updateData.$set.hasValuesAlignment = pd.hasValuesAlignment;
+    updateData.$set.heartHospitality = pd.heartHospitality;
+    updateData.$set.heartExcellence = pd.heartExcellence;
+    updateData.$set.heartAffection = pd.heartAffection;
+    updateData.$set.heartRespect = pd.heartRespect;
+    updateData.$set.heartTogetherness = pd.heartTogetherness;
+    updateData.$set.honorAvoidFalseWitness = pd.honorAvoidFalseWitness;
+    updateData.$set.honorNoGossipPolitics = pd.honorNoGossipPolitics;
+    updateData.$set.honorIntegritySpeech = pd.honorIntegritySpeech;
+    updateData.$set.honorGoodAttitudeAntiGreed = pd.honorGoodAttitudeAntiGreed;
+    updateData.$set.honorFinancialStewardship = pd.honorFinancialStewardship;
+    updateData.$set.hasProfessionalLetLicense = pd.hasProfessionalLetLicense;
+    updateData.$set.hasMastersDegree = pd.hasMastersDegree;
+    updateData.$set.hasDoctorateDegree = pd.hasDoctorateDegree;
     
     // Add teaching abilities if provided (preserve existing levels/criteria, only update descriptions)
     if (profileData.teachingAbilities) {
@@ -4003,9 +4067,9 @@ router.get('/weekly-payment-summary', verifyToken, requireTeacher, async (req, r
         }
       }
 
-      // Late arrival deduction (1% of class rate per minute)
+      // Late arrival deduction (fixed PHP 4 per minute)
       if (booking.lateMinutes && booking.lateMinutes > 0) {
-        const lateDeductionPerMinute = ratePerClass * 0.01; // 1% of class rate
+        const lateDeductionPerMinute = 4;
         lateDeductions += booking.lateMinutes * lateDeductionPerMinute;
         console.log(`Late deduction: ${booking.lateMinutes} minutes × ${lateDeductionPerMinute.toFixed(2)} = ${(booking.lateMinutes * lateDeductionPerMinute).toFixed(2)}`);
       }

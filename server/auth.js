@@ -11,6 +11,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret'; // Use a strong 
 const crypto = require('crypto');
 const mongoose = require('mongoose');
 const { sendPasswordResetEmail } = require('./emailService');
+const { generateCompanyId } = require('./idGenerator');
 
 // Middleware to authenticate JWT token
 const authenticateToken = (req, res, next) => {
@@ -53,31 +54,15 @@ function generateStrongPassword() {
   return password.split('').sort(() => Math.random() - 0.5).join('');
 }
 
-// Helper: generate teacherId in the format T<initials><MYYYY><#####>
+// Helper: generate company ID in format KBF07202500001
 async function generateTeacherIdFor(teacherData) {
   const { firstName = '', middleName = '', lastName = '', username = '' } = teacherData || {};
-  const takeInitial = (s) => (s && s.trim().length > 0 ? s.trim()[0].toUpperCase() : 'X');
-
-  let initials = '';
-  if (firstName || middleName || lastName) {
-    initials = `${takeInitial(firstName)}${takeInitial(middleName)}${takeInitial(lastName)}`;
-  } else {
-    // Fallback: derive up to 3 initials from username segments
-    const parts = (username || '').split(/[^A-Za-z]+/).filter(Boolean);
-    const chars = parts.map(p => p[0]?.toUpperCase()).slice(0, 3);
-    while (chars.length < 3) chars.push('X');
-    initials = chars.join('');
-  }
-
-  const now = new Date();
-  const monthNoPad = String(now.getMonth() + 1); // per spec, no leading zero e.g., 7 for July
-  const year = String(now.getFullYear());
-  const prefix = `T${initials}${monthNoPad}${year}`; // e.g., TKBF72025
-
-  // Count existing teachers with this prefix to assign next sequence
-  const count = await Teacher.countDocuments({ teacherId: { $regex: `^${prefix}` } });
-  const seq = String(count + 1).padStart(5, '0');
-  return `${prefix}${seq}`; // e.g., TKBF7202500001
+  return generateCompanyId(
+    Teacher,
+    'teacherId',
+    { firstName, middleName, lastName, fallback: username },
+    new Date()
+  );
 }
 
 // Seed default admin if not present
@@ -343,12 +328,14 @@ router.post('/teacher-signup/complete', async (req, res) => {
       email: String(application.email || '').trim(),
       contact: String(contact || '').trim(),
       address: String(address || '').trim(),
+      hireDate: new Date(),
       status: 'active'
     });
 
     // Flip applicant status to Active Teacher and consume invitation token.
     application.teacherActivationStatus = 'Active Teacher';
     application.status = true;
+    application.hiredAt = new Date();
     await application.save();
 
     invitation.isUsed = true;
@@ -491,7 +478,20 @@ router.post('/student-register', async (req, res) => {
     }
     
     const hashedPassword = await bcrypt.hash(password, 10);
-    const student = new Student({ 
+    const studentCode = await generateCompanyId(
+      Student,
+      'studentCode',
+      {
+        firstName: req.body.firstName || '',
+        middleName: req.body.middleName || '',
+        lastName: req.body.lastName || '',
+        fallback: username
+      },
+      new Date()
+    );
+
+    const student = new Student({
+      studentCode,
       username, 
       email: email,
       password: hashedPassword,

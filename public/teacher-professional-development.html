@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Professional Development - RemoEdPH</title>
+    <title>Career Growth - RemoEdPH</title>
     <link rel="stylesheet" href="modern-styles.css">
     <link rel="stylesheet" href="css/teacher-sidebar.css">
 <!-- Remo AI Chatbot Styles -->
@@ -16,7 +16,7 @@
         <script>TeacherSidebar.render('teacher-sidebar-root', 'professional-development');</script>
         <div class="remoed-content">
             <div class="page-header">
-                <h1>🎓 Professional Development</h1>
+                <h1>🌱 Career Growth</h1>
             </div>
             
             <!-- Tab Navigation -->
@@ -26,6 +26,7 @@
                 <button class="tab-btn" onclick="showTab('assessments', this)">📊 Skill Assessments</button>
                 <button class="tab-btn" onclick="showTab('personality', this)">🧭 Personality Assessment</button>
                 <button class="tab-btn" onclick="showTab('peer-learning', this)">👥 Peer Learning</button>
+                <button class="tab-btn" onclick="showTab('career-ladder', this)">🌿 Growth Path</button>
             </div>
             
             <!-- Training Portal Tab -->
@@ -113,6 +114,155 @@
                     
                     <div class="peer-learning-grid" id="peer-learning-grid">
                         <!-- Peer teachers will be loaded here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Career Ladder / Growth Path Tab -->
+            <div id="career-ladder-tab" class="tab-content">
+                <div class="section-card">
+                    <div class="section-title">🌿 Career Growth Path</div>
+                    <p style="color: #666; margin-bottom: 20px;">Track your growth points and build your journey from Seedling Educator to Legacy Guide.</p>
+
+                    <div style="background:#f8fafc; border:1px solid #dbeafe; border-radius:12px; padding:16px; margin-bottom:16px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+                            <div>
+                                <div style="font-size:0.85rem; color:#64748b;">Current Career Growth Title</div>
+                                <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                                    <div id="growth-tier" style="font-size:1.2rem; font-weight:700; color:#1d4ed8;">Not Qualified</div>
+                                    <span id="stewardship-badge" title="Values Aligned Steward Badge" style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; font-size:0.75rem; font-weight:700; border:1px solid #cbd5e1; background:#f1f5f9; color:#64748b; filter:grayscale(100%);">🍃 Locked</span>
+                                    <span id="shield-badge" title="Shield of Truth Badge" style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; font-size:0.75rem; font-weight:700; border:1px solid #cbd5e1; background:#f1f5f9; color:#64748b; filter:grayscale(100%);">🛡️ Locked</span>
+                                    <span id="legacy-leaf-badge" title="Legacy Leaf Badge (10+ years loyalty)" style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; font-size:0.75rem; font-weight:700; border:1px solid #cbd5e1; background:#f1f5f9; color:#64748b; filter:grayscale(100%);">🍀 Locked</span>
+                                </div>
+                            </div>
+                            <div style="text-align:right;">
+                                <div style="font-size:0.85rem; color:#64748b;">Growth Points</div>
+                                <div id="growth-points" style="font-size:1.6rem; font-weight:800; color:#0f172a;">0</div>
+                                <div id="growth-loyalty-info" style="font-size:0.78rem; color:#64748b;">Loyalty: 0 yrs (+0)</div>
+                            </div>
+                        </div>
+                        <div style="margin-top:12px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; font-size:0.8rem; color:#64748b;">
+                                <span>Growth Meter</span>
+                                <span id="growth-meter-label">0 / 160</span>
+                            </div>
+                            <div style="height:12px; border-radius:999px; background:#e2e8f0; overflow:hidden;">
+                                <div id="growth-meter-fill" style="height:100%; width:0%; background:linear-gradient(90deg, #A8E6CF 0%, #FFD700 100%); box-shadow:0 0 12px rgba(255, 215, 0, 0.45); transition:width 220ms ease;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-grid" id="growth-fields" style="display:grid; grid-template-columns:repeat(2, minmax(260px, 1fr)); gap:8px 14px; align-items:end;">
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label style="display:flex; align-items:center; gap:8px; font-weight:600;">
+                                <input type="checkbox" id="growth-degree4y">
+                                4-year English Degree (+20)
+                            </label>
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label style="display:flex; align-items:center; gap:8px; font-weight:600;">
+                                <input type="checkbox" id="growth-tesol">
+                                TESOL / TEYL / TEFL (+15)
+                            </label>
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label style="display:flex; align-items:center; gap:8px; font-weight:600;">
+                                <input type="checkbox" id="growth-ielts">
+                                IELTS Certificate (+15)
+                            </label>
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label style="font-weight:600;">ESL / Voice BPO Experience</label>
+                            <select id="growth-esl" class="form-input">
+                                <option value="none">None</option>
+                                <option value="2years">2 years (+15)</option>
+                                <option value="3to5">3 to 5 years (+20)</option>
+                                <option value="5plus">5+ years (+25)</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label style="font-weight:600;">Hire Date (Loyalty)</label>
+                            <input type="date" id="growth-hire-date" class="form-input">
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label style="display:flex; align-items:center; gap:8px; font-weight:600;">
+                                <input type="checkbox" id="growth-let">
+                                Professional LET License (+25)
+                            </label>
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label style="display:flex; align-items:center; gap:8px; font-weight:600;">
+                                <input type="checkbox" id="growth-masters">
+                                Master’s Degree (+30)
+                            </label>
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label style="display:flex; align-items:center; gap:8px; font-weight:600;">
+                                <input type="checkbox" id="growth-doctorate">
+                                Doctorate Degree (+30)
+                            </label>
+                        </div>
+                    </div>
+
+                    <div style="margin-top:16px; border:1px solid #e2e8f0; border-radius:10px; padding:12px; background:#f8fafc;">
+                        <div style="font-weight:700; color:#334155; margin-bottom:8px;">The H.E.A.R.T. Framework</div>
+                        <div style="display:grid; grid-template-columns:repeat(2, minmax(260px, 1fr)); gap:6px 12px;">
+                            <label title="Hospitality: Welcome students and teammates with warmth, kindness, and generosity." style="display:flex; align-items:center; gap:8px; font-weight:600; color:#334155;"><input type="checkbox" id="heart-hospitality"> H - Hospitality</label>
+                            <label title="Excellence: Deliver consistent quality, discipline, and continuous improvement." style="display:flex; align-items:center; gap:8px; font-weight:600; color:#334155;"><input type="checkbox" id="heart-excellence"> E - Excellence</label>
+                            <label title="Affection: Show genuine care, patience, empathy, and support for learners." style="display:flex; align-items:center; gap:8px; font-weight:600; color:#334155;"><input type="checkbox" id="heart-affection"> A - Affection</label>
+                            <label title="Respect: Practice humility, honor differences, and communicate with dignity." style="display:flex; align-items:center; gap:8px; font-weight:600; color:#334155;"><input type="checkbox" id="heart-respect"> R - Respect</label>
+                            <label title="Togetherness: Collaborate as one team, uplifting one another toward shared goals." style="display:flex; align-items:center; gap:8px; font-weight:600; color:#334155;"><input type="checkbox" id="heart-togetherness"> T - Togetherness</label>
+                        </div>
+                    </div>
+
+                    <div style="margin-top:12px; border:1px solid #e2e8f0; border-radius:10px; padding:12px; background:#f8fafc;">
+                        <div style="font-weight:700; color:#334155; margin-bottom:8px;">RemoEd Code of Honor</div>
+                        <div style="display:grid; grid-template-columns:repeat(2, minmax(260px, 1fr)); gap:6px 12px;">
+                            <label title="Commit to absolute truth; no rumors or exaggerated claims." style="display:flex; align-items:center; gap:8px; font-weight:600; color:#334155;"><input type="checkbox" id="honor-false-witness"> Avoid False Witness</label>
+                            <label title="Refuse office politics or back-stabbing in all interactions." style="display:flex; align-items:center; gap:8px; font-weight:600; color:#334155;"><input type="checkbox" id="honor-no-gossip"> No Gossip or Politics</label>
+                            <label title="No bad-mouthing, foul language, or fake news; speak with integrity." style="display:flex; align-items:center; gap:8px; font-weight:600; color:#334155;"><input type="checkbox" id="honor-integrity-speech"> Integrity &amp; Speech</label>
+                            <label title="Reject entitlement and greed; maintain gratitude and teachable humility." style="display:flex; align-items:center; gap:8px; font-weight:600; color:#334155;"><input type="checkbox" id="honor-good-attitude"> Good Attitude (Anti-Greed)</label>
+                            <label title="Encourage wise stewardship and a life free from unhealthy debt." style="display:flex; align-items:center; gap:8px; font-weight:600; color:#334155;"><input type="checkbox" id="honor-financial"> Financial Stewardship</label>
+                        </div>
+                    </div>
+
+                    <div style="margin-top:16px; border:1px solid #e2e8f0; border-radius:10px; overflow:hidden;">
+                        <div style="padding:10px 12px; background:#f1f5f9; font-weight:700; color:#334155;">Friendly Growth Path</div>
+                        <div id="growth-path-view" style="padding:12px; display:grid; gap:8px;">
+                            <div data-tier="Seedling Educator" style="padding:10px; border:1px solid #cbd5e1; border-radius:8px; display:flex; justify-content:space-between; gap:10px; align-items:center;"><span>Seedling Educator: TESOL/TEYL/TEFL OR 4-year equivalent degree</span><span class="tier-check" style="opacity:0; transition:opacity 180ms ease; color:#166534;">✓</span></div>
+                            <div data-tier="Cultivator" style="padding:10px; border:1px solid #cbd5e1; border-radius:8px; display:flex; justify-content:space-between; gap:10px; align-items:center;"><span>Cultivator: 2+ years ESL experience</span><span class="tier-check" style="opacity:0; transition:opacity 180ms ease; color:#166534;">✓</span></div>
+                            <div data-tier="Steward Mentor" class="tier-lockable" style="padding:10px; border:1px solid #cbd5e1; border-radius:8px; display:flex; justify-content:space-between; gap:10px; align-items:center;"><span>Steward Mentor: 3+ years + degree + TESOL/TEFL + all H.E.A.R.T. &amp; Code of Honor</span><span class="tier-check" style="opacity:0; transition:opacity 180ms ease; color:#166534;">✓</span></div>
+                            <div data-tier="Legacy Guide" class="tier-lockable" style="padding:10px; border:1px solid #cbd5e1; border-radius:8px; display:flex; justify-content:space-between; gap:10px; align-items:center;"><span>Legacy Guide: 5+ years + core certifications + all H.E.A.R.T. &amp; Code of Honor</span><span class="tier-check" style="opacity:0; transition:opacity 180ms ease; color:#166534;">✓</span></div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top:16px; border:1px solid #e2e8f0; border-radius:12px; padding:14px; background:linear-gradient(135deg, #5d72d7 0%, #4f46e5 100%); color:#f8fafc;">
+                        <div style="display:flex; align-items:center; gap:8px; font-size:1.5rem; font-weight:800; margin-bottom:4px;">🏆 Achievement Badges</div>
+                        <div style="opacity:0.9; margin-bottom:12px;">Earn badges by demonstrating excellence in teaching.</div>
+                        <div style="display:grid; gap:10px; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));">
+                            <div id="badge-values-steward" style="background:rgba(255,255,255,0.24); border:1px solid rgba(255,255,255,0.25); border-radius:12px; padding:12px; text-align:center; filter:grayscale(100%);">
+                                <div style="font-size:2rem;">🍃</div>
+                                <div style="font-size:1.1rem; font-weight:700;">Values Aligned Steward</div>
+                                <div style="opacity:0.9; margin-top:4px;">Complete all H.E.A.R.T. commitments</div>
+                                <div class="badge-state" style="margin-top:6px; font-weight:700; opacity:0.9;">Locked</div>
+                            </div>
+                            <div id="badge-shield-truth" style="background:rgba(255,255,255,0.24); border:1px solid rgba(255,255,255,0.25); border-radius:12px; padding:12px; text-align:center; filter:grayscale(100%);">
+                                <div style="font-size:2rem;">🛡️</div>
+                                <div style="font-size:1.1rem; font-weight:700;">Shield of Truth</div>
+                                <div style="opacity:0.9; margin-top:4px;">Complete all Code of Honor commitments</div>
+                                <div class="badge-state" style="margin-top:6px; font-weight:700; opacity:0.9;">Locked</div>
+                            </div>
+                            <div id="badge-legacy-leaf" style="background:rgba(255,255,255,0.24); border:1px solid rgba(255,255,255,0.25); border-radius:12px; padding:12px; text-align:center; filter:grayscale(100%);">
+                                <div style="font-size:2rem;">🍀</div>
+                                <div style="font-size:1.1rem; font-weight:700;">Legacy Leaf</div>
+                                <div style="opacity:0.9; margin-top:4px;">Reach 10+ years of RemoEd loyalty</div>
+                                <div class="badge-state" style="margin-top:6px; font-weight:700; opacity:0.9;">Locked</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top:16px; text-align:right;">
+                        <button class="btn-primary" onclick="saveCareerGrowth()">Save Career Growth</button>
                     </div>
                 </div>
             </div>
@@ -256,6 +406,308 @@
                 loadPersonalityAssessment();
             } else if (tabName === 'peer-learning') {
                 loadPeerTeachers();
+            } else if (tabName === 'career-ladder') {
+                loadCareerGrowth();
+            }
+        }
+
+        function calculateLoyaltyPointsFromHireDate(hireDateValue) {
+            if (!hireDateValue) return { loyaltyYears: 0, loyaltyPoints: 0 };
+            const hireDate = new Date(hireDateValue);
+            if (Number.isNaN(hireDate.getTime())) return { loyaltyYears: 0, loyaltyPoints: 0 };
+            const now = new Date();
+            let loyaltyYears = now.getFullYear() - hireDate.getFullYear();
+            const monthDelta = now.getMonth() - hireDate.getMonth();
+            if (monthDelta < 0 || (monthDelta === 0 && now.getDate() < hireDate.getDate())) loyaltyYears -= 1;
+            loyaltyYears = Math.max(0, loyaltyYears);
+            let loyaltyPoints = 0;
+            if (loyaltyYears >= 25) loyaltyPoints = 35;
+            else if (loyaltyYears >= 20) loyaltyPoints = 30;
+            else if (loyaltyYears >= 15) loyaltyPoints = 25;
+            else if (loyaltyYears >= 10) loyaltyPoints = 20;
+            else if (loyaltyYears >= 5) loyaltyPoints = 15;
+            else if (loyaltyYears >= 3) loyaltyPoints = 10;
+            else if (loyaltyYears >= 1) loyaltyPoints = 5;
+            return { loyaltyYears, loyaltyPoints };
+        }
+
+        function calculateCareerGrowthClient() {
+            const hasEnglishDegree4Year = !!document.getElementById('growth-degree4y')?.checked;
+            const hasTesolTeylTefl = !!document.getElementById('growth-tesol')?.checked;
+            const hasIeltsCertificate = !!document.getElementById('growth-ielts')?.checked;
+            const hasProfessionalLetLicense = !!document.getElementById('growth-let')?.checked;
+            const hasMastersDegree = !!document.getElementById('growth-masters')?.checked;
+            const hasDoctorateDegree = !!document.getElementById('growth-doctorate')?.checked;
+            const heartHospitality = !!document.getElementById('heart-hospitality')?.checked;
+            const heartExcellence = !!document.getElementById('heart-excellence')?.checked;
+            const heartAffection = !!document.getElementById('heart-affection')?.checked;
+            const heartRespect = !!document.getElementById('heart-respect')?.checked;
+            const heartTogetherness = !!document.getElementById('heart-togetherness')?.checked;
+            const honorAvoidFalseWitness = !!document.getElementById('honor-false-witness')?.checked;
+            const honorNoGossipPolitics = !!document.getElementById('honor-no-gossip')?.checked;
+            const honorIntegritySpeech = !!document.getElementById('honor-integrity-speech')?.checked;
+            const honorGoodAttitudeAntiGreed = !!document.getElementById('honor-good-attitude')?.checked;
+            const honorFinancialStewardship = !!document.getElementById('honor-financial')?.checked;
+            const eslExperienceLevel = document.getElementById('growth-esl')?.value || 'none';
+            const hireDate = document.getElementById('growth-hire-date')?.value || '';
+            const { loyaltyYears, loyaltyPoints } = calculateLoyaltyPointsFromHireDate(hireDate);
+
+            let points = 0;
+            if (hasEnglishDegree4Year) points += 20;
+            if (hasTesolTeylTefl) points += 15;
+            if (hasIeltsCertificate) points += 15;
+            if (eslExperienceLevel === '2years') points += 15;
+            if (eslExperienceLevel === '3to5') points += 20;
+            if (eslExperienceLevel === '5plus') points += 25;
+            if (hasProfessionalLetLicense) points += 25;
+            if (hasMastersDegree) points += 30;
+            if (hasDoctorateDegree) points += 30;
+            points += loyaltyPoints;
+
+            const hasAtLeast2Years = ['2years', '3to5', '5plus'].includes(eslExperienceLevel);
+            const hasAtLeast3Years = ['3to5', '5plus'].includes(eslExperienceLevel);
+            const hasAtLeast5Years = eslExperienceLevel === '5plus';
+            const allHeartCommitments = heartHospitality && heartExcellence && heartAffection && heartRespect && heartTogetherness;
+            const allHonorCommitments = honorAvoidFalseWitness && honorNoGossipPolitics && honorIntegritySpeech && honorGoodAttitudeAntiGreed && honorFinancialStewardship;
+            const allCommitmentsComplete = allHeartCommitments && allHonorCommitments;
+            const hasCoreCertification = hasEnglishDegree4Year && hasTesolTeylTefl && hasIeltsCertificate && hasProfessionalLetLicense;
+
+            let tier = 'Not Qualified';
+            if (hasAtLeast5Years && hasCoreCertification && allCommitmentsComplete) {
+                tier = 'Legacy Guide';
+            } else if (hasAtLeast3Years && hasEnglishDegree4Year && hasTesolTeylTefl && allCommitmentsComplete) {
+                tier = 'Steward Mentor';
+            } else if (hasAtLeast2Years) {
+                tier = 'Cultivator';
+            } else if (hasEnglishDegree4Year || hasTesolTeylTefl) {
+                tier = 'Seedling Educator';
+            }
+            return { points, tier, allHeartCommitments, allHonorCommitments, allCommitmentsComplete, loyaltyYears, loyaltyPoints };
+        }
+
+        function renderCareerGrowth() {
+            const { points, tier, allHeartCommitments, allHonorCommitments, allCommitmentsComplete, loyaltyYears, loyaltyPoints } = calculateCareerGrowthClient();
+            const pointsEl = document.getElementById('growth-points');
+            const tierEl = document.getElementById('growth-tier');
+            const meterFillEl = document.getElementById('growth-meter-fill');
+            const meterLabelEl = document.getElementById('growth-meter-label');
+            const stewardshipBadgeEl = document.getElementById('stewardship-badge');
+            const shieldBadgeEl = document.getElementById('shield-badge');
+            const legacyLeafBadgeEl = document.getElementById('legacy-leaf-badge');
+            const loyaltyInfoEl = document.getElementById('growth-loyalty-info');
+            const maxPoints = 195;
+            const fillPercent = Math.max(0, Math.min(100, (points / maxPoints) * 100));
+            if (pointsEl) pointsEl.textContent = String(points);
+            if (tierEl) tierEl.textContent = tier;
+            if (meterFillEl) meterFillEl.style.width = `${fillPercent}%`;
+            if (meterLabelEl) meterLabelEl.textContent = `${points} / ${maxPoints}`;
+            if (loyaltyInfoEl) loyaltyInfoEl.textContent = `Loyalty: ${loyaltyYears} yrs (+${loyaltyPoints})`;
+            if (stewardshipBadgeEl) {
+                stewardshipBadgeEl.textContent = allHeartCommitments ? '🍃 Values Aligned Steward' : '🍃 Locked';
+                stewardshipBadgeEl.style.filter = allHeartCommitments ? 'none' : 'grayscale(100%)';
+                stewardshipBadgeEl.style.color = allHeartCommitments ? '#14532d' : '#64748b';
+                stewardshipBadgeEl.style.background = allHeartCommitments ? 'linear-gradient(90deg, #A8E6CF 0%, #FFD700 100%)' : '#f1f5f9';
+                stewardshipBadgeEl.style.borderColor = allHeartCommitments ? '#22c55e' : '#cbd5e1';
+                stewardshipBadgeEl.style.boxShadow = allHeartCommitments ? '0 0 12px rgba(34, 197, 94, 0.45)' : 'none';
+            }
+            if (shieldBadgeEl) {
+                shieldBadgeEl.textContent = allHonorCommitments ? '🛡️ Shield of Truth' : '🛡️ Locked';
+                shieldBadgeEl.style.filter = allHonorCommitments ? 'none' : 'grayscale(100%)';
+                shieldBadgeEl.style.color = allHonorCommitments ? '#1e3a8a' : '#64748b';
+                shieldBadgeEl.style.background = allHonorCommitments ? 'linear-gradient(90deg, #c7d2fe 0%, #93c5fd 100%)' : '#f1f5f9';
+                shieldBadgeEl.style.borderColor = allHonorCommitments ? '#60a5fa' : '#cbd5e1';
+                shieldBadgeEl.style.boxShadow = allHonorCommitments ? '0 0 12px rgba(59, 130, 246, 0.4)' : 'none';
+            }
+            if (legacyLeafBadgeEl) {
+                const unlocked = loyaltyYears >= 10;
+                legacyLeafBadgeEl.textContent = unlocked ? '🍀 Legacy Leaf' : '🍀 Locked';
+                legacyLeafBadgeEl.style.filter = unlocked ? 'none' : 'grayscale(100%)';
+                legacyLeafBadgeEl.style.color = unlocked ? '#14532d' : '#64748b';
+                legacyLeafBadgeEl.style.background = unlocked ? 'linear-gradient(90deg, #A8E6CF 0%, #FFD700 100%)' : '#f1f5f9';
+                legacyLeafBadgeEl.style.borderColor = unlocked ? '#eab308' : '#cbd5e1';
+                legacyLeafBadgeEl.style.boxShadow = unlocked ? '0 0 12px rgba(234, 179, 8, 0.45)' : 'none';
+            }
+            document.querySelectorAll('#growth-path-view [data-tier]').forEach((el) => {
+                const tierName = el.getAttribute('data-tier');
+                const isActive = tierName === tier;
+                const isLockedTier = el.classList.contains('tier-lockable') && !allCommitmentsComplete;
+                el.style.borderColor = isActive ? '#10b981' : '#cbd5e1';
+                el.style.background = isActive ? 'linear-gradient(90deg, rgba(168, 230, 207, 0.3) 0%, rgba(255, 215, 0, 0.22) 100%)' : '#ffffff';
+                el.style.fontWeight = isActive ? '700' : '500';
+                el.style.boxShadow = isActive ? '0 0 16px rgba(16, 185, 129, 0.25)' : 'none';
+                el.style.opacity = isLockedTier ? '0.58' : '1';
+                const lockIcon = tierName === 'Steward Mentor' || tierName === 'Legacy Guide' ? (allCommitmentsComplete ? '' : ' 🔒') : '';
+                const titleSpan = el.querySelector('span');
+                if (titleSpan) {
+                    titleSpan.textContent = titleSpan.textContent.replace(/\s🔒$/, '') + lockIcon;
+                }
+                const checkIcon = el.querySelector('.tier-check');
+                if (checkIcon) checkIcon.style.opacity = isActive ? '1' : '0';
+            });
+            const valuesStewardCard = document.getElementById('badge-values-steward');
+            const shieldTruthCard = document.getElementById('badge-shield-truth');
+            const legacyLeafCard = document.getElementById('badge-legacy-leaf');
+            if (valuesStewardCard) {
+                valuesStewardCard.style.filter = allHeartCommitments ? 'none' : 'grayscale(100%)';
+                valuesStewardCard.style.boxShadow = allHeartCommitments ? '0 0 16px rgba(168, 230, 207, 0.55)' : 'none';
+                const stateEl = valuesStewardCard.querySelector('.badge-state');
+                if (stateEl) stateEl.textContent = allHeartCommitments ? 'Unlocked' : 'Locked';
+            }
+            if (shieldTruthCard) {
+                shieldTruthCard.style.filter = allHonorCommitments ? 'none' : 'grayscale(100%)';
+                shieldTruthCard.style.boxShadow = allHonorCommitments ? '0 0 16px rgba(147, 197, 253, 0.55)' : 'none';
+                const stateEl = shieldTruthCard.querySelector('.badge-state');
+                if (stateEl) stateEl.textContent = allHonorCommitments ? 'Unlocked' : 'Locked';
+            }
+            if (legacyLeafCard) {
+                const unlocked = loyaltyYears >= 10;
+                legacyLeafCard.style.filter = unlocked ? 'none' : 'grayscale(100%)';
+                legacyLeafCard.style.boxShadow = unlocked ? '0 0 16px rgba(250, 204, 21, 0.55)' : 'none';
+                const stateEl = legacyLeafCard.querySelector('.badge-state');
+                if (stateEl) stateEl.textContent = unlocked ? 'Unlocked' : 'Locked';
+            }
+        }
+
+        async function loadCareerGrowth() {
+            try {
+                const response = await fetch('/api/teacher/profile', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                if (!response.ok) return;
+                const data = await response.json();
+                const profile = data.profile || {};
+                const setChecked = (id, value) => {
+                    const el = document.getElementById(id);
+                    if (el) el.checked = !!value;
+                };
+                setChecked('growth-degree4y', profile.hasEnglishDegree4Year);
+                setChecked('growth-tesol', profile.hasTesolTeylTefl);
+                setChecked('growth-ielts', profile.hasIeltsCertificate);
+                setChecked('growth-let', profile.hasProfessionalLetLicense);
+                setChecked('growth-masters', profile.hasMastersDegree);
+                setChecked('growth-doctorate', profile.hasDoctorateDegree);
+                setChecked('heart-hospitality', profile.heartHospitality);
+                setChecked('heart-excellence', profile.heartExcellence);
+                setChecked('heart-affection', profile.heartAffection);
+                setChecked('heart-respect', profile.heartRespect);
+                setChecked('heart-togetherness', profile.heartTogetherness);
+                setChecked('honor-false-witness', profile.honorAvoidFalseWitness);
+                setChecked('honor-no-gossip', profile.honorNoGossipPolitics);
+                setChecked('honor-integrity-speech', profile.honorIntegritySpeech);
+                setChecked('honor-good-attitude', profile.honorGoodAttitudeAntiGreed);
+                setChecked('honor-financial', profile.honorFinancialStewardship);
+                const hireDateInput = document.getElementById('growth-hire-date');
+                if (hireDateInput) hireDateInput.value = profile.hireDate ? String(profile.hireDate).split('T')[0] : '';
+                const commitmentIds = [
+                    'heart-hospitality',
+                    'heart-excellence',
+                    'heart-affection',
+                    'heart-respect',
+                    'heart-togetherness',
+                    'honor-false-witness',
+                    'honor-no-gossip',
+                    'honor-integrity-speech',
+                    'honor-good-attitude',
+                    'honor-financial'
+                ];
+                const hasAnyCommitment = commitmentIds.some((id) => !!document.getElementById(id)?.checked);
+                // Backward compatibility: older profiles may only have hasValuesAlignment=true.
+                if (profile.hasValuesAlignment && !hasAnyCommitment) {
+                    commitmentIds.forEach((id) => setChecked(id, true));
+                }
+                const esl = document.getElementById('growth-esl');
+                if (esl) esl.value = profile.eslExperienceLevel || 'none';
+                renderCareerGrowth();
+            } catch (error) {
+                console.error('Error loading career growth data:', error);
+            }
+        }
+
+        async function saveCareerGrowth() {
+            try {
+                const profileResponse = await fetch('/api/teacher/profile', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                if (!profileResponse.ok) {
+                    alert('Failed to load profile before saving.');
+                    return;
+                }
+                const base = await profileResponse.json();
+                const profile = base.profile || {};
+                const growthState = calculateCareerGrowthClient();
+                const payload = {
+                    firstName: profile.firstName || '',
+                    middleName: profile.middleName || '',
+                    lastName: profile.lastName || '',
+                    fullname: profile.fullname || '',
+                    birthday: profile.birthday || null,
+                    gender: profile.gender || '',
+                    language: profile.language || '',
+                    hobbies: profile.hobbies || '',
+                    address: profile.address || '',
+                    contact: profile.contact || '',
+                    email: profile.email || '',
+                    username: profile.username || '',
+                    emergencyContact: profile.emergencyContact || '',
+                    hireDate: document.getElementById('growth-hire-date')?.value || null,
+                    introduction: profile.introduction || '',
+                    experience: profile.experience || '',
+                    profilePicture: profile.profilePicture || null,
+                    education: profile.education || [],
+                    workExperience: profile.workExperience || [],
+                    teachingAbilities: profile.teachingAbilities || {},
+                    documents: {
+                        diplomas: profile.documents?.diplomas || [],
+                        certificates: profile.documents?.certificates || [],
+                        validIds: profile.documents?.validIds || [],
+                        certifications: profile.documents?.certifications || [],
+                        diploma: profile.documents?.diploma || null
+                    },
+                    hasEnglishDegree4Year: !!document.getElementById('growth-degree4y')?.checked,
+                    hasTesolTeylTefl: !!document.getElementById('growth-tesol')?.checked,
+                    hasIeltsCertificate: !!document.getElementById('growth-ielts')?.checked,
+                    eslExperienceLevel: document.getElementById('growth-esl')?.value || 'none',
+                    hasProfessionalLetLicense: !!document.getElementById('growth-let')?.checked,
+                    hasMastersDegree: !!document.getElementById('growth-masters')?.checked,
+                    hasDoctorateDegree: !!document.getElementById('growth-doctorate')?.checked,
+                    heartHospitality: !!document.getElementById('heart-hospitality')?.checked,
+                    heartExcellence: !!document.getElementById('heart-excellence')?.checked,
+                    heartAffection: !!document.getElementById('heart-affection')?.checked,
+                    heartRespect: !!document.getElementById('heart-respect')?.checked,
+                    heartTogetherness: !!document.getElementById('heart-togetherness')?.checked,
+                    honorAvoidFalseWitness: !!document.getElementById('honor-false-witness')?.checked,
+                    honorNoGossipPolitics: !!document.getElementById('honor-no-gossip')?.checked,
+                    honorIntegritySpeech: !!document.getElementById('honor-integrity-speech')?.checked,
+                    honorGoodAttitudeAntiGreed: !!document.getElementById('honor-good-attitude')?.checked,
+                    honorFinancialStewardship: !!document.getElementById('honor-financial')?.checked,
+                    hasValuesAlignment: !!growthState.allCommitmentsComplete
+                };
+
+                const saveResponse = await fetch('/api/teacher/profile', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+                if (!saveResponse.ok) {
+                    const errText = await saveResponse.text();
+                    throw new Error(errText || 'Failed to save career growth.');
+                }
+                alert('Career Growth updated successfully.');
+                await loadCareerGrowth();
+            } catch (error) {
+                console.error('Error saving career growth:', error);
+                alert(`Error saving Career Growth: ${error.message || 'Please try again.'}`);
             }
         }
         
@@ -1066,7 +1518,8 @@
                 'training': 'training',
                 'assessments': 'assessments',
                 'personality': 'personality',
-                'peer-learning': 'peer-learning'
+                'peer-learning': 'peer-learning',
+                'career-ladder': 'career-ladder'
             };
                 
                 const tabName = tabMap[hash];
@@ -1077,7 +1530,8 @@
                             tabName === 'certifications' ? 'Certifications' :
                             tabName === 'training' ? 'Training' :
                             tabName === 'assessments' ? 'Assessments' :
-                            tabName === 'personality' ? 'Personality' : 'Peer'
+                            tabName === 'personality' ? 'Personality' :
+                            tabName === 'career-ladder' ? 'Growth Path' : 'Peer'
                         );
                     });
                     
@@ -1098,6 +1552,12 @@
             loadAssessments();
             loadPersonalityAssessment();
             loadPeerTeachers();
+            loadCareerGrowth();
+            ['growth-degree4y','growth-tesol','growth-ielts','growth-esl','growth-hire-date','growth-let','growth-masters','growth-doctorate','heart-hospitality','heart-excellence','heart-affection','heart-respect','heart-togetherness','honor-false-witness','honor-no-gossip','honor-integrity-speech','honor-good-attitude','honor-financial'].forEach((id) => {
+                const el = document.getElementById(id);
+                if (el) el.addEventListener('change', renderCareerGrowth);
+            });
+            renderCareerGrowth();
             
             // Handle hash navigation after a short delay to ensure DOM is ready
             setTimeout(handleHashNavigation, 200);
