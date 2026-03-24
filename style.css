@@ -793,7 +793,8 @@ body.page-admin-classroom-recordings{ font-family: 'Segoe UI', Tahoma, Geneva, V
         .metric-chart, .page-admin-dashboard .traffic-chart{
             width: 100%;
             height: 60px;
-        }.page-admin-dashboard /* Responsive Design */
+        }
+        /* Responsive Design */
         @media (max-width: 1200px){
             .metrics-row {
                 grid-template-columns: 1fr 1fr;
@@ -6760,7 +6761,8 @@ body.page-student-forgot-password{
       box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
     }.page-student-forgot-password .links-container a:active{
       transform: translateY(0);
-    }.page-student-forgot-password /* Responsive design for different screen sizes and zoom levels */
+    }
+    /* Responsive design for different screen sizes and zoom levels */
     @media (max-width: 768px){
       body {
         padding: 10px;
@@ -8117,7 +8119,8 @@ body.page-student-profile{
             height: 100%;
             object-fit: contain;
             border-radius: 12px;
-        }.page-student-profile /* Responsive Design */
+        }
+        /* Responsive Design */
         @media (max-width: 1024px){
             .profile-content-grid {
                 grid-template-columns: 1fr;
@@ -9135,8 +9138,7 @@ body.page-teacher-assessment{
             font-size: 1rem;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             resize: vertical;
-            /* Disable Grammarly and spell check */
-            spellcheck: false;
+            /* Disable Grammarly and browser spellcheck via HTML attributes only */
         }.page-teacher-assessment /* Prevent Grammarly from injecting styles */
         .typing-input[data-gramm="false"], .page-teacher-assessment .typing-input[data-gramm_editor="false"]{
             background: white !important;
@@ -9660,36 +9662,6 @@ body.page-teacher-class-table-fixed{
       gap: 10px; 
     }.page-teacher-class-table-fixed .remoed-avatar{ 
       width: 72px; 
-        // Defer DOM operations until DOM is ready to avoid null element access
-        document.addEventListener('DOMContentLoaded', function () {
-          const userType = localStorage.getItem('userType');
-          if (userType !== 'teacher') {
-            alert('Access denied. This page is for teachers only.');
-            window.location.href = 'index.html';
-            return;
-          }
-
-          const username = localStorage.getItem('remoedUsername') || 'Teacher';
-          const teacherId = localStorage.getItem('teacherId');
-
-          const avatarTextEl = document.getElementById('avatar-text');
-          if (avatarTextEl) avatarTextEl.textContent = username[0].toUpperCase();
-
-          const usernameEl = document.getElementById('remoed-username');
-          if (usernameEl) usernameEl.textContent = 'Loading...';
-
-          if (teacherId && typeof loadProfilePicture === 'function') {
-            try { loadProfilePicture(teacherId); } catch (e) { /* ignore */ }
-          }
-
-          const openClassBtn = document.getElementById('open-class-btn');
-          if (openClassBtn) openClassBtn.onclick = () => { window.location.href = 'teacher-open-class.html'; };
-
-          const logoutNav = document.getElementById('logout-nav');
-          if (logoutNav) {
-            logoutNav.onclick = function() { localStorage.clear(); window.location.href = 'teacher-login.html'; };
-          }
-        });
       color: white; 
       transform: translateX(4px);
       transition: all 0.3s ease;
@@ -11011,7 +10983,8 @@ body.page-teacher-class-table-old{
       color: white;
     }.page-teacher-class-table .remoed-btn-danger:hover{
       background: linear-gradient(135deg, #c82333, #bd2130);
-    }.page-teacher-class-table /* Responsive Design */
+    }
+    /* Responsive Design */
     @media (max-width: 1200px){
       .remoed-sidebar {
         width: 260px;
@@ -13153,7 +13126,8 @@ body.page-teacher-messages{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sa
             padding: 40px;
             color: #64748b;
             text-align: center;
-        }.page-teacher-messages /* Mobile */
+        }
+        /* Mobile */
         @media (max-width: 900px){
             .remoed-content { margin-left: 0; max-width: 100vw; padding: 12px; }
             .messenger { grid-template-columns: 1fr; min-height: calc(100vh - 24px); }
@@ -15736,7 +15710,8 @@ body.page-teacher-profile{
             border-radius: 8px;
             margin-bottom: 20px;
             display: none;
-        }.page-teacher-profile /* Responsive Design */
+        }
+        /* Responsive Design */
         @media (max-width: 1024px){
             .profile-content-grid {
                 grid-template-columns: 1fr;
@@ -17832,6 +17807,7 @@ body.page-teacher-view-profile{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana
             line-height: 1.45;
             display: -webkit-box;
             -webkit-line-clamp: 2;
+            line-clamp: 2;
             -webkit-box-orient: vertical;
             overflow: hidden;
             min-height: 2.8em;
@@ -18661,7 +18637,8 @@ body.page-video-room{ margin: 0; background: #f4f6fb; height: 100vh; }.page-vide
           padding: 18px 0 8px 0;
         }.page-video-room .video-feed{ width: 160px; height: 120px; background: #111; border-radius: 8px; object-fit: cover; border: 2px solid #3a7afe; box-shadow: 0 2px 8px rgba(58,122,254,0.08); }.page-video-room .chat-header{ font-weight: 600; color: #3a7afe; padding: 0 0 8px 0; text-align: center; letter-spacing: 1px; }.page-video-room .chat-messages{ flex: 1; min-height: 0; overflow-y: auto; background: #f4f6fb; border-radius: 8px; padding: 10px; margin: 0 16px 8px 16px; font-size: 1rem; border: 1px solid #e0e6ed; }.page-video-room .chat-form{ display: flex; gap: 8px; padding: 0 16px 16px 16px; }.page-video-room .chat-input{ flex: 1; padding: 0.5rem; border-radius: 5px; border: 1px solid #ccc; font-size: 1rem; }@media (max-width: 1200px){.page-video-room .center-panel, .page-video-room .lesson-viewer, .page-video-room .whiteboard, .page-video-room .file-list{ max-width: 95vw; }.page-video-room .video-feed, .page-video-room .whiteboard{ width: 90vw; max-width: 160px; }
         }@media (max-width: 900px){.page-video-room .classroom-layout{ flex-direction: column; }.page-video-room .toolbar, .page-video-room .right-panel{ min-width: 0; width: 100vw; height: auto; }.page-video-room .center-panel{ height: auto; }
-        }.page-video-room /* Loading animation for PDF viewer */
+        }
+        /* Loading animation for PDF viewer */
         @keyframes loading{
             0% { transform: translateX(-100%); }
             100% { transform: translateX(100%); }
