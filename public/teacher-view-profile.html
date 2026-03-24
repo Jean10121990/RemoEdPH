@@ -6,47 +6,9 @@
     <title>Teacher Profile - RemoEdPH</title>
     <link rel="stylesheet" href="modern-styles.css">
     <link rel="stylesheet" href="css/teacher-sidebar.css">
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f8fafc; color: #1a202c; margin: 0; padding: 0; }
-        .remoed-main { display: flex; min-height: 100vh; }
-        .remoed-content { flex: 1; padding: 24px 32px; margin-left: 260px; max-width: calc(100vw - 260px); }
-        .profile-container { max-width: 900px; margin: 0 auto; }
-        .back-btn {
-            padding: 10px 20px; background: #e8f4fd; color: #667eea; border: none; border-radius: 8px;
-            cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; margin-bottom: 24px;
-        }
-        .back-btn:hover { background: #667eea; color: white; }
-        .profile-header {
-            background: white; border-radius: 16px; padding: 32px; margin-bottom: 24px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08); display: flex; align-items: center; gap: 24px;
-        }
-        .profile-avatar-large {
-            width: 120px; height: 120px; border-radius: 50%;
-            background: linear-gradient(135deg, #667eea, #764ba2); color: white;
-            display: flex; align-items: center; justify-content: center; font-size: 3rem; font-weight: bold;
-            flex-shrink: 0; overflow: hidden;
-        }
-        .profile-avatar-large img { width: 100%; height: 100%; object-fit: cover; }
-        .profile-header-info { flex: 1; }
-        .profile-name-large { font-size: 1.8rem; font-weight: 800; color: #667eea; margin: 0 0 8px 0; }
-        .profile-id { color: #64748b; font-size: 0.95rem; margin: 0 0 12px 0; }
-        .profile-intro { color: #475569; line-height: 1.6; margin: 0; }
-        .section-card {
-            background: white; border-radius: 16px; padding: 24px; margin-bottom: 20px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08); border: 1px solid #e8f4fd;
-        }
-        .section-title { font-size: 1.2rem; font-weight: 700; color: #667eea; margin: 0 0 16px 0; padding-bottom: 8px; border-bottom: 2px solid #e8f4fd; }
-        .profile-item { margin-bottom: 12px; }
-        .profile-item:last-child { margin-bottom: 0; }
-        .profile-label { font-weight: 600; color: #64748b; font-size: 0.9rem; }
-        .profile-value { color: #1a202c; margin-top: 4px; }
-        .expertise-tags { display: flex; flex-wrap: wrap; gap: 8px; }
-        .expertise-tag { background: #e8f4fd; color: #667eea; padding: 6px 12px; border-radius: 8px; font-size: 0.9rem; font-weight: 600; }
-        .loading, .error { text-align: center; padding: 60px 20px; color: #64748b; }
-        .error { color: #e74c3c; }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="page-teacher-view-profile">
     <div class="remoed-main">
         <div id="teacher-sidebar-root"></div>
         <script src="js/teacher-sidebar.js"></script>
@@ -145,3 +107,5 @@
     </script>
 </body>
 </html>
+
+

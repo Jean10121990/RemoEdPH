@@ -1,1168 +1,770 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>RemoEdPH - Learn English at Home for Kids</title>
-    <link rel="stylesheet" href="modern-styles.css">
-    <link rel="stylesheet" href="child-friendly-styles.css">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Comic Sans MS', 'Chalkboard SE', 'Trebuchet MS', 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #FFF0F5 0%, #E8F8F5 50%, #FFF9E6 100%);
-            background-attachment: fixed;
-            color: #1E3A5F;
-            line-height: 1.6;
-        }
-
-        h1, h2, h3, h4, h5, h6 {
-            font-weight: 800;
-        }
-        
-        /* Navigation */
-        .navbar {
-            background: white;
-            padding: 20px 40px;
-            box-shadow: 0 4px 20px rgba(28, 167, 231, 0.1);
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .logo-section {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        
-        .logo-section img {
-            height: 50px;
-        }
-        
-        .logo-section span {
-            font-size: 1.8rem;
-            font-weight: 800;
-            color: #1CA7E7;
-            text-shadow: 2px 2px 4px rgba(28, 167, 231, 0.2);
-        }
-        
-        .nav-buttons {
-            display: flex;
-            gap: 16px;
-        }
-        
-        .nav-btn {
-            padding: 14px 28px;
-            border-radius: 50px;
-            border: 2px solid #1CA7E7;
-            background: white;
-            color: #1CA7E7;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            font-size: 1rem;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            transform-origin: center;
-        }
-        
-        .nav-btn:hover {
-            background: #1CA7E7;
-            color: white;
-            transform: translateY(-2px) scale(1.05);
-        }
-        
-        .nav-btn.primary {
-            background: linear-gradient(135deg, #1CA7E7, #5CB3FF);
-            color: white;
-            border: 2px solid #FFD700;
-        }
-        
-        /* Hero Section */
-        .hero {
-            padding: 120px 40px;
-            text-align: center;
-            background: linear-gradient(135deg, rgba(28, 167, 231, 0.1), rgba(255, 215, 0, 0.1));
-        }
-        
-        .hero h1 {
-            font-size: 3.5rem;
-            font-weight: 800;
-            color: #1CA7E7;
-            margin-bottom: 24px;
-            text-shadow: 2px 2px 4px rgba(28, 167, 231, 0.2);
-        }
-        
-        .hero p {
-            font-size: 1.5rem;
-            color: #1E3A5F;
-            margin-bottom: 40px;
-            max-width: 800px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-        
-        .cta-buttons {
-            display: flex;
-            gap: 20px;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-        
-        .cta-btn {
-            padding: 18px 44px;
-            border-radius: 50px;
-            font-size: 1.2rem;
-            font-weight: 800;
-            cursor: pointer;
-            border: none;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-block;
-            transform-origin: center;
-        }
-        
-        .cta-btn.primary {
-            background: linear-gradient(135deg, #1CA7E7, #5CB3FF);
-            color: white;
-            border: 3px solid #FFD700;
-            box-shadow: 0 6px 20px rgba(28, 167, 231, 0.4);
-        }
-        
-        .cta-btn.primary:hover {
-            transform: translateY(-4px) scale(1.05);
-            box-shadow: 0 10px 30px rgba(28, 167, 231, 0.5);
-        }
-        
-        .cta-btn.secondary {
-            background: white;
-            color: #1CA7E7;
-            border: 3px solid #1CA7E7;
-        }
-        
-        .cta-btn.secondary:hover {
-            background: #1CA7E7;
-            color: white;
-            transform: translateY(-2px) scale(1.05);
-        }
-        
-        /* Benefits Section */
-        .section {
-            padding: 80px 40px;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        
-        .section-title {
-            font-size: 2.5rem;
-            font-weight: 800;
-            color: #1CA7E7;
-            text-align: center;
-            margin-bottom: 50px;
-        }
-        
-        .benefits-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 30px;
-            margin-top: 40px;
-        }
-        
-        .benefit-card {
-            background: rgba(255, 255, 255, 0.62);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.45);
-            padding: 40px;
-            border-radius: 20px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
-            text-align: center;
-            transition: all 0.3s ease;
-            overflow: hidden;
-        }
-        
-        .benefit-card:hover {
-            transform: translateY(-10px);
-            border-color: #FFD700;
-            box-shadow: 0 12px 32px rgba(28, 167, 231, 0.2);
-        }
-        
-        .benefit-icon {
-            font-size: 4rem;
-            margin-bottom: 20px;
-        }
-        
-        .benefit-card h3 {
-            font-size: 1.5rem;
-            color: #1CA7E7;
-            margin-bottom: 16px;
-        }
-        
-        .benefit-card p {
-            color: #1E3A5F;
-            font-size: 1.1rem;
-        }
-        
-        /* Assessment Section */
-        .assessment-section {
-            background: linear-gradient(135deg, #1CA7E7, #5CB3FF);
-            color: white;
-            padding: 80px 40px;
-            text-align: center;
-        }
-        
-        .assessment-section h2 {
-            font-size: 2.5rem;
-            margin-bottom: 24px;
-            color: white;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-        }
-        
-        .assessment-section p {
-            font-size: 1.3rem;
-            margin-bottom: 40px;
-            color: white;
-            opacity: 1;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
-        }
-        
-        .assessment-form {
-            max-width: 600px;
-            margin: 0 auto;
-            background: white;
-            padding: 40px;
-            border-radius: 20px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
-        }
-        
-        .form-group {
-            margin-bottom: 24px;
-            text-align: left;
-        }
-        
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 700;
-            color: #1E3A5F;
-        }
-        
-        .form-group input {
-            width: 100%;
-            padding: 14px 18px;
-            border: 3px solid #E8F4FD;
-            border-radius: 12px;
-            font-size: 1rem;
-            font-family: inherit;
-            transition: all 0.3s ease;
-        }
-        
-        .form-group input:focus {
-            outline: none;
-            border-color: #1CA7E7;
-            box-shadow: 0 0 0 4px rgba(28, 167, 231, 0.1);
-        }
-        
-        .assessment-btn {
-            width: 100%;
-            padding: 18px;
-            background: linear-gradient(135deg, #1CA7E7, #5CB3FF);
-            color: white;
-            border: 3px solid #FFD700;
-            border-radius: 12px;
-            font-size: 1.2rem;
-            font-weight: 800;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        
-        .assessment-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(28, 167, 231, 0.4);
-        }
-        
-        /* Subscription Plans */
-        .plans-grid {
-            display: grid;
-            grid-template-columns: repeat(4, minmax(220px, 1fr));
-            gap: 24px;
-            margin-top: 40px;
-            align-items: stretch; /* ensure equal-height cards per row */
-        }
-        
-        .plan-card {
-            background: var(--plan-bg, white);
-            padding: 40px;
-            border-radius: 20px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
-            text-align: center;
-            transition: all 0.3s ease;
-            border: 3px solid var(--plan-border, transparent);
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-        }
-        
-        .plan-card.plan-spark {
-            --plan-bg: linear-gradient(180deg, rgba(232, 244, 253, 0.95), rgba(255,255,255,1));
-            --plan-border: rgba(28, 167, 231, 0.18);
-        }
-
-        .plan-card.plan-steady {
-            --plan-bg: linear-gradient(180deg, rgba(214, 241, 255, 0.92), rgba(255,255,255,1));
-            --plan-border: rgba(28, 167, 231, 0.26);
-        }
-
-        .plan-card.plan-scholar {
-            --plan-bg: linear-gradient(180deg, rgba(200, 232, 255, 0.90), rgba(255,255,255,1));
-            --plan-border: rgba(28, 167, 231, 0.36);
-        }
-
-        .plan-card.plan-summit {
-            --plan-bg: linear-gradient(180deg, rgba(30, 58, 95, 0.08), rgba(255,255,255,1));
-            --plan-border: rgba(30, 58, 95, 0.38);
-        }
-
-        .plan-card.plan-popular {
-            border-color: rgba(255, 215, 0, 0.9);
-            box-shadow: 0 12px 32px rgba(255, 215, 0, 0.18);
-        }
-
-        .plan-card.plan-recommended {
-            border-color: rgba(28, 167, 231, 0.65);
-            box-shadow: 0 14px 36px rgba(28, 167, 231, 0.18);
-        }
-
-        .plan-tag {
-            position: absolute;
-            top: -14px;
-            left: 20px;
-            background: linear-gradient(135deg, #1CA7E7, #5CB3FF);
-            color: white;
-            padding: 8px 16px;
-            border-radius: 999px;
-            font-weight: 800;
-            font-size: 0.85rem;
-            letter-spacing: 0.2px;
-        }
-        
-        .plan-card:hover {
-            transform: translateY(-10px);
-            border-color: #1CA7E7;
-        }
-        
-        .plan-card.plan-popular:hover,
-        .plan-card.plan-recommended:hover {
-            transform: translateY(-10px);
-        }
-        
-        .plan-badge {
-            position: absolute;
-            top: -15px;
-            right: 20px;
-            background: linear-gradient(135deg, #FFD700, #FFE66D);
-            color: #1E3A5F;
-            padding: 8px 20px;
-            border-radius: 20px;
-            font-weight: 800;
-            font-size: 0.9rem;
-        }
-        
-        .plan-icon {
-            width: 56px;
-            height: 56px;
-            margin: 0 auto 14px auto;
-            border-radius: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: rgba(255, 255, 255, 0.85);
-            border: 2px solid rgba(28, 167, 231, 0.14);
-            color: var(--plan-accent, #1CA7E7);
-        }
-
-        .plan-icon svg {
-            width: 30px;
-            height: 30px;
-        }
-
-        .plan-label {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            padding: 6px 12px;
-            border-radius: 999px;
-            background: #f8faff;
-            border: 2px solid #e8f4fd;
-            color: #1E3A5F;
-            font-weight: 800;
-            font-size: 0.9rem;
-            margin: 0 auto 12px auto;
-            width: fit-content;
-        }
-
-        .plan-name {
-            font-size: 1.8rem;
-            font-weight: 800;
-            color: var(--plan-title, #1CA7E7);
-            margin-bottom: 10px;
-        }
-        
-        .plan-price {
-            font-size: 3rem;
-            font-weight: 800;
-            color: var(--plan-title, #1CA7E7);
-            margin-bottom: 8px;
-        }
-
-        .plan-daily {
-            font-size: 1.15rem;
-            font-weight: 800;
-            color: #1E3A5F;
-            margin-bottom: 10px;
-        }
-
-        .plan-daily .per-day {
-            font-weight: 700;
-            color: #64748b;
-            font-size: 0.95rem;
-        }
-        
-        .plan-period {
-            color: #4A6FA5;
-            margin-bottom: 14px;
-        }
-
-        .plans-exchange-note {
-            text-align: center;
-            color: #4A6FA5;
-            font-size: 0.95rem;
-            font-weight: 600;
-            max-width: 720px;
-            margin: 12px auto 0;
-            line-height: 1.45;
-        }
-        
-        .plan-tagline {
-            color: #1E3A5F;
-            font-weight: 700;
-            margin: 0 0 14px 0;
-        }
-
-        .plan-totals {
-            margin-top: 14px;
-            padding: 14px 14px;
-            border-radius: 14px;
-            border: 2px solid #e8f4fd;
-            background: #fbfdff;
-            text-align: left;
-        }
-
-        .plan-totals .totals-title {
-            font-weight: 800;
-            color: #1E3A5F;
-            font-size: 0.95rem;
-            margin-bottom: 10px;
-        }
-
-        .totals-row {
-            display: flex;
-            justify-content: space-between;
-            gap: 10px;
-            padding: 6px 0;
-            color: #1E3A5F;
-            font-weight: 600;
-            border-top: 1px dashed rgba(28, 167, 231, 0.18);
-        }
-
-        .totals-row:first-of-type {
-            border-top: none;
-            padding-top: 0;
-        }
-
-        .totals-row .muted {
-            color: #64748b;
-            font-weight: 700;
-        }
-
-        .plan-features {
-            list-style: none;
-            margin: 24px 0;
-            text-align: left;
-            flex-grow: 1; /* fill space so button aligns at bottom */
-        }
-        
-        .plan-features li {
-            padding: 12px 0;
-            color: #1E3A5F;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        
-        .plan-features li::before {
-            content: '✓';
-            color: #4CAF50;
-            font-weight: 800;
-            font-size: 1.5rem;
-        }
-        
-        .plan-btn {
-            width: 100%;
-            padding: 16px;
-            background: linear-gradient(135deg, #1CA7E7, #5CB3FF);
-            color: white;
-            border: 2px solid #FFD700;
-            border-radius: 12px;
-            font-size: 1.1rem;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-top: auto; /* push to bottom in flex column */
-            align-self: center;
-        }
-
-        /* Keep consistent spacing above the button even with margin-top:auto */
-        .plan-meta + .plan-btn,
-        .plan-features + .plan-btn {
-            margin-top: 24px;
-        }
-        
-        .plan-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(28, 167, 231, 0.4);
-        }
-
-        @media (max-width: 1100px) {
-            .plans-grid {
-                grid-template-columns: repeat(2, minmax(220px, 1fr));
-            }
-        }
-
-        @media (max-width: 560px) {
-            .plans-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-        
-        /* Modal */
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.7);
-            z-index: 2000;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .modal.active {
-            display: flex;
-        }
-        
-        .modal-content {
-            background: white;
-            padding: 40px;
-            border-radius: 20px;
-            max-width: 500px;
-            width: 90%;
-            max-height: 90vh;
-            overflow-y: auto;
-            text-align: center;
-        }
-        
-        .modal-content h2 {
-            color: #1CA7E7;
-            margin-bottom: 20px;
-        }
-        
-        .close-modal {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: none;
-            border: none;
-            font-size: 2rem;
-            cursor: pointer;
-            color: #1E3A5F;
-        }
-        
-        /* Footer */
-        .footer {
-            background: #1E3A5F;
-            color: white;
-            padding: 40px;
-            text-align: center;
-        }
-        
-        .footer * {
-            color: white !important;
-        }
-        
-        .footer p,
-        .footer a,
-        .footer span,
-        .footer div,
-        .footer h1,
-        .footer h2,
-        .footer h3,
-        .footer h4,
-        .footer h5,
-        .footer h6,
-        .footer li,
-        .footer label {
-            color: white !important;
-        }
-        
-        .footer a:hover {
-            color: #FFD700 !important;
-            opacity: 0.9;
-        }
-
-        /* Subtle admin link */
-        .footer .admin-login {
-            font-size: 0.85rem;
-            opacity: 0.08;
-            color: #cde5ff !important;
-            text-decoration: none;
-            transition: opacity 0.2s ease, color 0.2s ease;
-        }
-        .footer .admin-login:hover,
-        .footer .admin-login:focus {
-            opacity: 0.9;
-            color: #FFD700 !important;
-        }
-        
-        @media (max-width: 768px) {
-            .hero h1 {
-                font-size: 2.5rem;
-            }
-            
-            .section-title {
-                font-size: 2rem;
-            }
-            
-            .benefits-grid,
-            .plans-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .nav-buttons {
-                flex-wrap: wrap;
-                gap: 8px;
-            }
-            
-            .nav-btn {
-                padding: 10px 16px;
-                font-size: 0.9rem;
-            }
-        }
-        
-        @media (max-width: 480px) {
-            .navbar {
-                padding: 15px 20px;
-                flex-direction: column;
-                gap: 15px;
-            }
-            
-            .nav-buttons {
-                width: 100%;
-                justify-content: center;
-            }
-            
-            .nav-btn {
-                flex: 1;
-                min-width: 120px;
-                text-align: center;
-            }
-        }
-    </style>
-</head>
-<body>
+    <link rel="stylesheet" href="modern-styles.css" />
+    <link rel="stylesheet" href="child-friendly-styles.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Quicksand:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="landing-brand.css" />
+  </head>
+  <body class="page-index">
     <!-- Navigation -->
     <nav class="navbar">
-        <div class="logo-section">
-            <img src="images/remoed-logo-new.png" alt="RemoEdPH Logo">
-            <span>RemoEdPH</span>
-        </div>
-        <div class="nav-buttons">
-            <a href="/teachers" class="nav-btn">Our Teachers</a>
-            <a href="#assessment" class="nav-btn">Free Assessment</a>
-            <a href="#plans" class="nav-btn">Plans</a>
-            <a href="/application-form" class="nav-btn">Apply Now</a>
-            <a href="teacher-login.html" class="nav-btn">Teacher Login</a>
-            <a href="student-login.html" class="nav-btn primary">Student Login</a>
-        </div>
+      <div class="logo-section">
+        <img src="images/remoed-logo-new.png" alt="RemoEdPH Logo" />
+        <span>RemoEdPH</span>
+      </div>
+      <div class="nav-buttons">
+        <a href="/teachers" class="nav-btn">Our Teachers</a>
+        <a href="#assessment" class="nav-btn">Free Assessment</a>
+        <a href="#plans" class="nav-btn">Plans</a>
+        <a href="/application-form" class="nav-btn">Apply Now</a>
+        <a href="teacher-login.html" class="nav-btn">Teacher Login</a>
+        <a href="student-login.html" class="nav-btn primary">Student Login</a>
+      </div>
     </nav>
 
     <!-- Hero Section -->
-    <section class="hero">
-        <h1>🌟 Learn English at Home! 🏠</h1>
-        <p>Fun, interactive English learning for kids ages 2-6! Join thousands of happy learners studying from the comfort of home.</p>
-        <div class="cta-buttons">
-            <a href="#assessment" class="cta-btn primary">🎯 Take Free Assessment</a>
-            <a href="#plans" class="cta-btn secondary">📚 View Plans</a>
-            <a href="/application-form" class="cta-btn secondary">📝 Apply Now</a>
+    <section class="hero japandi-hero">
+      <div class="hero-grid">
+        <div class="hero-copy">
+          <h1>Learn English at Home!</h1>
+          <p>
+            Calm, playful English learning for children ages 2-6. Designed for
+            busy Filipino families using phones and tablets.
+          </p>
+          <div class="cta-buttons">
+            <div class="assessment-cta-wrap">
+              <img
+                src="images/ed-boy.png"
+                alt="Ed introducing free assessment"
+                class="intro-kid"
+              />
+              <a href="#assessment" class="cta-btn primary"
+                >Take Free Assessment</a
+              >
+              <img
+                src="images/sophia-girl.png"
+                alt="Sophia introducing free assessment"
+                class="intro-kid"
+              />
+            </div>
+            <a href="#plans" class="cta-btn secondary">View Plans</a>
+            <a href="/application-form" class="cta-btn secondary">Apply Now</a>
+          </div>
         </div>
+        <div class="hero-media">
+          <img
+            src="images/remo-robot.png"
+            alt="Remo Robot mascot"
+            class="robot-float"
+          />
+        </div>
+      </div>
     </section>
 
     <!-- Benefits Section -->
     <section class="section" id="benefits">
-        <h2 class="section-title">✨ Why Learn at Home? ✨</h2>
-        <div class="benefits-grid">
-            <div class="benefit-card">
-                <div class="benefit-icon">🏠</div>
-                <h3>Safe & Comfortable</h3>
-                <p>Learn in the safety and comfort of your own home. No need to travel or worry about safety!</p>
+      <h2 class="section-title">Why Learn at Home?</h2>
+      <div class="benefits-grid">
+        <article class="benefit-card">
+          <div class="benefit-card__layout">
+            <div
+              class="benefit-icon-circle benefit-icon-circle--blue"
+              aria-hidden="true"
+            >
+              <i class="fa-solid fa-house-lock"></i>
             </div>
-            <div class="benefit-card">
-                <div class="benefit-icon">⏰</div>
-                <h3>Flexible Schedule</h3>
-                <p>Choose class times that work for your family. Learn at your own pace!</p>
+            <div class="benefit-bubble">
+              <h3>Safe & Comfortable</h3>
+              <p>
+                Learn in the safety and comfort of your own home. No need to
+                travel or worry about safety!
+              </p>
             </div>
-            <div class="benefit-card">
-                <div class="benefit-icon">👨‍👩‍👧</div>
-                <h3>Family Involvement</h3>
-                <p>Parents can watch and support their child's learning journey together!</p>
+          </div>
+        </article>
+        <article class="benefit-card">
+          <div class="benefit-card__layout">
+            <div
+              class="benefit-icon-circle benefit-icon-circle--green"
+              aria-hidden="true"
+            >
+              <i class="fa-solid fa-calendar-days"></i>
             </div>
-            <div class="benefit-card">
-                <div class="benefit-icon">🎮</div>
-                <h3>Fun & Interactive</h3>
-                <p>Play games, do activities, and learn through fun interactive lessons!</p>
+            <div class="benefit-bubble">
+              <h3>Flexible Schedule</h3>
+              <p>
+                Choose class times that work for your family. Learn at your own
+                pace!
+              </p>
             </div>
-            <div class="benefit-card">
-                <div class="benefit-icon">👨‍🏫</div>
-                <h3>Expert Teachers</h3>
-                <p>Learn from experienced, friendly teachers who love teaching kids!</p>
+          </div>
+        </article>
+        <article class="benefit-card">
+          <div class="benefit-card__layout">
+            <div
+              class="benefit-icon-circle benefit-icon-circle--orange"
+              aria-hidden="true"
+            >
+              <i class="fa-solid fa-people-roof"></i>
             </div>
-            <div class="benefit-card">
-                <div class="benefit-icon">📱</div>
-                <h3>Easy to Use</h3>
-                <p>Simple platform designed for kids. Easy for parents to manage too!</p>
+            <div class="benefit-bubble">
+              <h3>Family Involvement</h3>
+              <p>
+                Parents can watch and support their child's learning journey
+                together!
+              </p>
             </div>
-        </div>
+          </div>
+        </article>
+        <article class="benefit-card">
+          <div class="benefit-card__layout">
+            <div
+              class="benefit-icon-circle benefit-icon-circle--violet"
+              aria-hidden="true"
+            >
+              <i class="fa-solid fa-puzzle-piece"></i>
+            </div>
+            <div class="benefit-bubble">
+              <h3>Fun & Interactive</h3>
+              <p>
+                Play games, do activities, and learn through fun interactive
+                lessons!
+              </p>
+            </div>
+          </div>
+        </article>
+        <article class="benefit-card">
+          <div class="benefit-card__layout">
+            <div
+              class="benefit-icon-circle benefit-icon-circle--teal"
+              aria-hidden="true"
+            >
+              <i class="fa-solid fa-chalkboard-user"></i>
+            </div>
+            <div class="benefit-bubble">
+              <h3>Expert Teachers</h3>
+              <p>
+                Learn from experienced, friendly teachers who love teaching
+                kids!
+              </p>
+            </div>
+          </div>
+        </article>
+        <article class="benefit-card">
+          <div class="benefit-card__layout">
+            <div
+              class="benefit-icon-circle benefit-icon-circle--mint"
+              aria-hidden="true"
+            >
+              <i class="fa-solid fa-mobile-screen-button"></i>
+            </div>
+            <div class="benefit-bubble">
+              <h3>Easy to Use</h3>
+              <p>
+                Simple platform designed for kids. Easy for parents to manage
+                too!
+              </p>
+            </div>
+          </div>
+        </article>
+      </div>
     </section>
-<!-- comment -->
+    <!-- comment -->
     <!-- Free Assessment Section -->
     <section class="assessment-section" id="assessment">
-        <h2>🎯 Take Your Free Level Assessment!</h2>
-        <p>Find out your English level and get personalized learning recommendations sent to your email!</p>
-        <p style="font-size: 1.1rem; margin-top: 16px; opacity: 0.9;">✨ No sign-up required! Results will be emailed to you. Sign up after to access your results online.</p>
-        <div class="assessment-form">
-            <form id="assessment-form">
-                <div class="form-group">
-                    <label>👤 Child's Name</label>
-                    <input type="text" id="child-name" required placeholder="Enter child's name">
-                </div>
-                <div class="form-group">
-                    <label>📧 Parent's Email</label>
-                    <input type="email" id="parent-email" required placeholder="Enter parent's email">
-                </div>
-                <div class="form-group">
-                    <label>📞 Contact Number</label>
-                    <input type="tel" id="contact-number" required placeholder="Enter contact number">
-                </div>
-                <button type="submit" class="assessment-btn">🚀 Start Free Assessment</button>
-            </form>
+      <h2>Free Level Assessment</h2>
+      <p>
+        Find out your child's English level and get personalized recommendations
+        straight to your email.
+      </p>
+      <p style="font-size: 1.05rem; margin-top: 10px">
+        No sign-up required. Perfect for first-time parents checking readiness.
+      </p>
+      <div class="assessment-layout">
+        <div class="sophia-guide">
+          <div class="speech-bubble">
+            Hi! I'm Sophia. Let's find the perfect level for you!
+          </div>
+          <img src="images/sophia-girl.png" alt="Sophia guide" />
         </div>
+        <div class="assessment-form">
+          <form id="assessment-form">
+            <div class="form-group">
+              <label>Child's Name</label>
+              <input
+                type="text"
+                id="child-name"
+                required
+                placeholder="Enter child's name"
+              />
+            </div>
+            <div class="form-group">
+              <label>Parent's Email</label>
+              <input
+                type="email"
+                id="parent-email"
+                required
+                placeholder="Enter parent's email"
+              />
+            </div>
+            <div class="form-group">
+              <label>Contact Number</label>
+              <input
+                type="tel"
+                id="contact-number"
+                required
+                placeholder="Enter contact number"
+              />
+            </div>
+            <button type="submit" class="assessment-btn">
+              Start Free Assessment
+            </button>
+          </form>
+        </div>
+      </div>
     </section>
 
     <!-- Subscription Plans -->
     <section class="section" id="plans">
-        <h2 class="section-title">📚 Choose Your Learning Plan 📚</h2>
-        <p class="plans-exchange-note">Totals use our daily-rate bundles. Estimated PHP uses a fixed rate of <strong>1 USD = ₱60.03</strong> (same as checkout). PayMongo charges in PHP centavos.</p>
-        <div class="plans-grid">
-            <div class="plan-card plan-spark">
-                <div class="plan-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
-                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-                    </svg>
-                </div>
-                <div class="plan-name">RemoSpark (1 Month)</div>
-                <div class="plan-daily">$4.17 <span class="per-day">/ day</span> × 22 days</div>
-                <div class="plan-totals">
-                    <div class="totals-title">Plan total</div>
-                    <div class="totals-row"><span class="muted">USD</span><span>$91.74</span></div>
-                    <div class="totals-row"><span class="muted">Est. PHP</span><span>₱5,507.15</span></div>
-                </div>
-                <div class="plan-period"><strong>22 class days</strong> in this bundle</div>
-                <p class="plan-tagline">Spark their curiosity.</p>
-                <ul class="plan-features">
-                    <li>Perfect for beginners</li>
-                    <li>Access to digital library</li>
-                </ul>
-                <button type="button" class="plan-btn" data-plan-id="spark" onclick="selectPlan(event, 'spark')">Enroll Now</button>
-            </div>
-            
-            <div class="plan-card plan-steady plan-popular">
-                <div class="plan-badge">Save 2%</div>
-                <div class="plan-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
-                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-                        <path d="M8 6h10M8 10h10M8 14h10"/>
-                    </svg>
-                </div>
-                <div class="plan-name">RemoSteady (3 Months)</div>
-                <div class="plan-daily">$4.08 <span class="per-day">/ day</span> × 66 days</div>
-                <div class="plan-totals">
-                    <div class="totals-title">Plan total</div>
-                    <div class="totals-row"><span class="muted">USD</span><span>$269.28</span></div>
-                    <div class="totals-row"><span class="muted">Est. PHP</span><span>₱16,162.88</span></div>
-                </div>
-                <div class="plan-period"><strong>66 class days</strong> in this bundle</div>
-                <p class="plan-tagline">Building a routine.</p>
-                <ul class="plan-features">
-                    <li>Digital print outs</li>
-                </ul>
-                <button type="button" class="plan-btn" data-plan-id="steady" onclick="selectPlan(event, 'steady')">Enroll Now</button>
-            </div>
-            
-            <div class="plan-card plan-scholar">
-                <div class="plan-badge">Save 4%</div>
-                <div class="plan-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M7 4h10a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-4 3V6a2 2 0 0 1 2-2z"/>
-                        <path d="M9 8h8M9 11h6"/>
-                        <path d="M14.5 14.5l1.2 1.2 2.3-2.3"/>
-                    </svg>
-                </div>
-                <div class="plan-name">RemoScholar (6 Months)</div>
-                <div class="plan-daily">$4.00 <span class="per-day">/ day</span> × 132 days</div>
-                <div class="plan-totals">
-                    <div class="totals-title">Plan total</div>
-                    <div class="totals-row"><span class="muted">USD</span><span>$528.00</span></div>
-                    <div class="totals-row"><span class="muted">Est. PHP</span><span>₱31,695.84</span></div>
-                </div>
-                <div class="plan-period"><strong>132 class days</strong> in this bundle</div>
-                <p class="plan-tagline">Mastering the basics.</p>
-                <ul class="plan-features">
-                    <li>Mid-term progress report</li>
-                </ul>
-                <button type="button" class="plan-btn" data-plan-id="scholar" onclick="selectPlan(event, 'scholar')">Enroll Now</button>
-            </div>
-            
-            <div class="plan-card plan-summit plan-recommended">
-                <div class="plan-tag">Recommended</div>
-                <div class="plan-badge">Save 6%</div>
-                <div class="plan-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M22 10l-10-5-10 5 10 5 10-5z"/>
-                        <path d="M6 12v5c0 1 3 3 6 3s6-2 6-3v-5"/>
-                        <path d="M22 10v6"/>
-                    </svg>
-                </div>
-                <div class="plan-name">RemoSummit (12 Months)</div>
-                <div class="plan-daily">$3.92 <span class="per-day">/ day</span> × 246 days</div>
-                <div class="plan-totals">
-                    <div class="totals-title">Plan total</div>
-                    <div class="totals-row"><span class="muted">USD</span><span>$964.32</span></div>
-                    <div class="totals-row"><span class="muted">Est. PHP</span><span>₱57,888.13</span></div>
-                </div>
-                <div class="plan-period"><strong>246 class days</strong> in this bundle</div>
-                <p class="plan-tagline">Reaching the peak.</p>
-                <ul class="plan-features">
-                    <li>End-of-year certificate</li>
-                </ul>
-                <button type="button" class="plan-btn" data-plan-id="summit" onclick="selectPlan(event, 'summit')">Enroll Now</button>
-            </div>
+      <h2 class="section-title">Choose Your Learning Plan</h2>
+      <div class="plans-grid">
+        <div class="plan-card plan-spark">
+          <div class="plan-icon" aria-hidden="true">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+              <path
+                d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"
+              />
+            </svg>
+          </div>
+          <div class="plan-name">RemoSpark (1 Month)</div>
+          <div class="plan-price">$91.74 USD</div>
+          <div class="plan-price-local">~₱5,507.15 PHP est.</div>
+          <div class="plan-period"><strong>$4.17/day x 22 days</strong></div>
+          <p class="plan-tagline">Spark their curiosity.</p>
+          <ul class="plan-features">
+            <li>Perfect for beginners</li>
+            <li>Access to digital library</li>
+          </ul>
+          <button class="plan-btn" onclick="selectPlan('spark', this)">
+            Enroll Now
+          </button>
         </div>
+
+        <div class="plan-card plan-steady plan-popular">
+          <div class="plan-badge">Save 2%</div>
+          <div class="plan-icon" aria-hidden="true">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+              <path
+                d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"
+              />
+              <path d="M8 6h10M8 10h10M8 14h10" />
+            </svg>
+          </div>
+          <div class="plan-name">RemoSteady (3 Months)</div>
+          <div class="plan-price">$269.28 USD</div>
+          <div class="plan-price-local">~₱16,164.88 PHP est.</div>
+          <div class="plan-period"><strong>$4.08/day x 66 days</strong></div>
+          <p class="plan-tagline">Building a routine.</p>
+          <ul class="plan-features">
+            <li>Digital print outs</li>
+          </ul>
+          <button class="plan-btn" onclick="selectPlan('steady', this)">
+            Enroll Now
+          </button>
+        </div>
+
+        <div class="plan-card plan-scholar">
+          <div class="plan-badge">Save 4%</div>
+          <div class="plan-icon" aria-hidden="true">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path
+                d="M7 4h10a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-4 3V6a2 2 0 0 1 2-2z"
+              />
+              <path d="M9 8h8M9 11h6" />
+              <path d="M14.5 14.5l1.2 1.2 2.3-2.3" />
+            </svg>
+          </div>
+          <div class="plan-name">RemoScholar (6 Months)</div>
+          <div class="plan-price">$528.00 USD</div>
+          <div class="plan-price-local">~₱31,695.84 PHP est.</div>
+          <div class="plan-period"><strong>$4.00/day x 132 days</strong></div>
+          <p class="plan-tagline">Mastering the basics.</p>
+          <ul class="plan-features">
+            <li>Mid-term progress report</li>
+          </ul>
+          <button class="plan-btn" onclick="selectPlan('scholar', this)">
+            Enroll Now
+          </button>
+        </div>
+
+        <div class="plan-card plan-summit plan-recommended">
+          <div class="plan-tag">Recommended</div>
+          <div class="plan-badge">Save 6%</div>
+          <div class="plan-icon" aria-hidden="true">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M22 10l-10-5-10 5 10 5 10-5z" />
+              <path d="M6 12v5c0 1 3 3 6 3s6-2 6-3v-5" />
+              <path d="M22 10v6" />
+            </svg>
+          </div>
+          <div class="plan-name">RemoSummit (12 Months)</div>
+          <div class="plan-price">$964.32 USD</div>
+          <div class="plan-price-local">~₱57,888.13 PHP est.</div>
+          <div class="plan-period"><strong>$3.92/day x 246 days</strong></div>
+          <p class="plan-tagline">Reaching the peak.</p>
+          <ul class="plan-features">
+            <li>End-of-year certificate</li>
+          </ul>
+          <button class="plan-btn" onclick="selectPlan('summit', this)">
+            Enroll Now
+          </button>
+        </div>
+      </div>
     </section>
 
     <!-- Footer -->
     <footer class="footer">
-        <p>&copy; 2024 RemoEdPH. All rights reserved. 🌟</p>
-        <p style="margin-top:8px; font-size: 0.95rem;">
-            <a href="admin-login.html" class="admin-login" aria-label="Admin access">Admin Login</a>
-        </p>
+      <p>&copy; 2024 RemoEdPH. All rights reserved. 🌟</p>
+      <p style="margin-top: 8px; font-size: 0.95rem">
+        <a href="admin-login.html" class="admin-login" aria-label="Admin access"
+          >Admin Login</a
+        >
+      </p>
     </footer>
 
     <!-- Sign Up Modal -->
     <div id="signup-modal" class="modal">
-        <div class="modal-content" style="position: relative;">
-            <button class="close-modal" onclick="closeModal()">&times;</button>
-            <h2>📝 Create Your Account</h2>
-            <p style="margin-bottom: 24px; color: #1E3A5F;">Sign up to receive your assessment results and start learning!</p>
-            <form id="signup-form">
-                <div class="form-group">
-                    <label>👤 Username</label>
-                    <input type="text" id="signup-username" required placeholder="Choose a username">
-                </div>
-                <div class="form-group">
-                    <label>📧 Email</label>
-                    <input type="email" id="signup-email" required placeholder="Enter email">
-                </div>
-                <div class="form-group">
-                    <label>🔑 Password</label>
-                    <input type="password" id="signup-password" required placeholder="Create a password">
-                </div>
-                <div class="form-group">
-                    <label>👨‍👩‍👧 Parent/Guardian Name</label>
-                    <input type="text" id="signup-parent-name" required placeholder="Parent or guardian name">
-                </div>
-                <input type="hidden" id="selected-plan" value="">
-                <button type="submit" class="assessment-btn">✨ Sign Up & Subscribe</button>
-            </form>
+      <div class="modal-content" style="position: relative">
+        <button class="close-modal" onclick="closeModal()">&times;</button>
+
+        <!-- Step 1: Registration -->
+        <div id="step-registration" class="modal-step active">
+          <h2>📝 Create Your Account</h2>
+          <p class="modal-subtitle">
+            Sign up to receive your assessment results and start learning!
+          </p>
+          <form id="signup-form">
+            <div class="form-group">
+              <label>👤 Username</label>
+              <input
+                type="text"
+                id="signup-username"
+                required
+                placeholder="Choose a username"
+              />
+            </div>
+            <div class="form-group">
+              <label>📧 Email</label>
+              <input
+                type="email"
+                id="signup-email"
+                required
+                placeholder="Enter email"
+              />
+            </div>
+            <div class="form-group">
+              <label>🔑 Password</label>
+              <input
+                type="password"
+                id="signup-password"
+                required
+                placeholder="Create a password"
+              />
+            </div>
+            <div class="form-group">
+              <label>👨‍👩‍👧 Parent/Guardian Name</label>
+              <input
+                type="text"
+                id="signup-parent-name"
+                required
+                placeholder="Parent or guardian name"
+              />
+            </div>
+            <input type="hidden" id="selected-plan" value="" />
+            <input type="hidden" id="selected-plan-price" value="" />
+            <button type="submit" class="assessment-btn">
+              ✨ Sign Up & Subscribe
+            </button>
+          </form>
         </div>
+      </div>
     </div>
 
     <script src="js/referral-tracking.js"></script>
     <script>
-        let selectedPlan = '';
-        let assessmentData = null;
+      let selectedPlan = "";
+      const EXCHANGE_RATE_USED = 60.03;
+      const PLAN_PRICING = {
+        spark: { usdDailyRate: 4.17, days: 22, name: "RemoSpark Plan" },
+        steady: { usdDailyRate: 4.08, days: 66, name: "RemoSteady Plan" },
+        scholar: { usdDailyRate: 4.0, days: 132, name: "RemoScholar Plan" },
+        summit: { usdDailyRate: 3.92, days: 246, name: "RemoSummit Plan" },
+      };
+      let assessmentData = null;
 
-        // Assessment form submission
-        document.getElementById('assessment-form').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const childName = document.getElementById('child-name').value;
-            const parentEmail = document.getElementById('parent-email').value;
-            const contactNumber = document.getElementById('contact-number').value;
-            
-            // Store assessment data
-            assessmentData = {
-                childName,
-                parentEmail,
-                contactNumber
+      function buildPlanDescription(plan) {
+        return PLAN_PRICING[plan]?.name || "RemoEd Subscription Plan";
+      }
+
+      function parseJwtPayload(token) {
+        try {
+          const parts = String(token || "").split(".");
+          if (parts.length < 2) return null;
+          const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+          const padded = base64 + "===".slice((base64.length + 3) % 4);
+          return JSON.parse(atob(padded));
+        } catch (_) {
+          return null;
+        }
+      }
+
+      function getAuthenticatedStudentContext() {
+        const token =
+          localStorage.getItem("studentToken") ||
+          localStorage.getItem("token") ||
+          "";
+        if (!token) return null;
+        const payload = parseJwtPayload(token);
+        const studentId =
+          localStorage.getItem("studentId") || payload?.studentId || "";
+        if (!studentId) return null;
+        return { token, studentId };
+      }
+
+      function getPlanComputedAmounts(plan) {
+        const config = PLAN_PRICING[plan];
+        if (!config) return null;
+        const usdTotal = Number((config.usdDailyRate * config.days).toFixed(2));
+        const phpEstimate = Number((usdTotal * EXCHANGE_RATE_USED).toFixed(2));
+        return { usdTotal, phpEstimate };
+      }
+
+      function setSignupLoadingState(isLoading) {
+        const btn = document.querySelector(
+          '#signup-form button[type="submit"]',
+        );
+        if (!btn) return;
+
+        if (isLoading) {
+          btn.disabled = true;
+          btn.innerHTML =
+            '<span class="btn-spinner" aria-hidden="true"></span> Generating secure payment link...';
+        } else {
+          btn.disabled = false;
+          btn.innerHTML = "✨ Sign Up & Subscribe";
+        }
+      }
+
+      document
+        .getElementById("assessment-form")
+        .addEventListener("submit", async function (e) {
+          e.preventDefault();
+
+          const childName = document.getElementById("child-name").value;
+          const parentEmail = document.getElementById("parent-email").value;
+          const contactNumber = document.getElementById("contact-number").value;
+
+          assessmentData = { childName, parentEmail, contactNumber };
+
+          const assessmentUrl = `student-assessment.html?childName=${encodeURIComponent(childName)}&parentEmail=${encodeURIComponent(parentEmail)}&contactNumber=${encodeURIComponent(contactNumber)}`;
+          window.location.href = assessmentUrl;
+        });
+
+      function setPlanButtonLoadingState(buttonEl, isLoading) {
+        if (!buttonEl) return;
+        if (isLoading) {
+          buttonEl.disabled = true;
+          buttonEl.dataset.originalText = buttonEl.textContent;
+          buttonEl.innerHTML =
+            '<span class="btn-spinner" aria-hidden="true"></span> Processing...';
+        } else {
+          buttonEl.disabled = false;
+          buttonEl.textContent = buttonEl.dataset.originalText || "Enroll Now";
+        }
+      }
+
+      async function selectPlan(plan, buttonEl) {
+        selectedPlan = plan;
+        const authStudent = getAuthenticatedStudentContext();
+        const planAmounts = getPlanComputedAmounts(selectedPlan);
+        if (!planAmounts) {
+          alert("Invalid plan selected.");
+          return;
+        }
+
+        if (authStudent) {
+          setPlanButtonLoadingState(buttonEl, true);
+          try {
+            const payload = {
+              userId: authStudent.studentId,
+              planId: selectedPlan,
+              description: buildPlanDescription(selectedPlan),
+              success_url: `${window.location.origin}/student-credits.html?payment=success`,
+              cancel_url: `${window.location.origin}/student-credits.html?payment=cancelled`,
+              usd_total: planAmounts.usdTotal,
+              exchange_rate_used: EXCHANGE_RATE_USED,
             };
-            
-            // Redirect to assessment page with data
-            const assessmentUrl = `student-assessment.html?childName=${encodeURIComponent(childName)}&parentEmail=${encodeURIComponent(parentEmail)}&contactNumber=${encodeURIComponent(contactNumber)}`;
-            window.location.href = assessmentUrl;
-        });
 
-        // Plan selection — planId: spark | steady | scholar | summit (aliases 1month etc. still accepted server-side)
-        function setPlanButtonLoading(btn, loading) {
-            if (!btn || btn.tagName !== 'BUTTON') return;
-            if (loading) {
-                if (!btn.dataset.originalPlanLabel) {
-                    btn.dataset.originalPlanLabel = btn.textContent;
-                }
-                btn.disabled = true;
-                btn.textContent = 'Processing...';
-            } else {
-                btn.disabled = false;
-                btn.textContent = btn.dataset.originalPlanLabel || 'Enroll Now';
+            const response = await fetch("/api/payments/create-link", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload),
+            });
+            const result = await response.json();
+            if (!response.ok || !result.success || !result.checkout_url) {
+              throw new Error(
+                result.error ||
+                  result.message ||
+                  "Failed to generate payment link",
+              );
             }
+            window.location.href = result.checkout_url;
+            return;
+          } catch (error) {
+            alert(`❌ ${error.message}`);
+            setPlanButtonLoadingState(buttonEl, false);
+            return;
+          }
         }
 
-        async function selectPlan(event, planId) {
-            selectedPlan = planId;
-            const btn = event && event.currentTarget;
+        const urlParams = new URLSearchParams(window.location.search);
+        const email = urlParams.get("email");
 
-            const token = localStorage.getItem('token');
-            const studentId = localStorage.getItem('studentId');
-            const userType = localStorage.getItem('userType');
-            const isStudentSession = !!(token && studentId && userType === 'student');
+        document.getElementById("signup-modal").classList.add("active");
+        document.getElementById("selected-plan").value = plan;
+        document.getElementById("selected-plan-price").value = "";
 
-            if (isStudentSession) {
-                setPlanButtonLoading(btn, true);
-                const origin = window.location.origin || '';
-                try {
-                    const payRes = await fetch('/api/payments/create-link', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            Authorization: 'Bearer ' + token
-                        },
-                        body: JSON.stringify({
-                            planId: planId,
-                            loggedInUserId: studentId,
-                            referralCode: localStorage.getItem('referralCode') || '',
-                            success_url: origin + '/student-dashboard.html',
-                            cancel_url: origin + '/#plans'
-                        })
-                    });
-                    const payData = await payRes.json().catch(() => ({}));
-                    if (!payRes.ok || !payData.success || !payData.checkout_url) {
-                        const errMsg = payData.error || 'Could not start payment. Please try again.';
-                        throw new Error(errMsg);
-                    }
-                    window.location.href = payData.checkout_url;
-                    return;
-                } catch (err) {
-                    console.error('Checkout link error:', err);
-                    alert('❌ ' + (err.message || 'Could not start payment.'));
-                    setPlanButtonLoading(btn, false);
-                }
+        if (email) {
+          document.getElementById("signup-email").value = email;
+        }
+      }
+
+      // Check if returning from assessment
+      document.addEventListener("DOMContentLoaded", function () {
+        const urlParams = new URLSearchParams(window.location.search);
+        const email = urlParams.get("email");
+        const cefrLevel = urlParams.get("cefrLevel");
+        const signup = urlParams.get("signup");
+
+        if (email && cefrLevel) {
+          // Pre-fill email in signup form
+          if (document.getElementById("signup-email")) {
+            document.getElementById("signup-email").value = email;
+          }
+
+          // Show signup modal automatically if signup=true
+          if (signup === "true") {
+            setTimeout(() => {
+              document.getElementById("signup-modal").classList.add("active");
+            }, 500);
+          } else {
+            // Show welcome message
+            setTimeout(() => {
+              alert(
+                `🎉 Welcome back! Your assessment result: ${cefrLevel}\n\nSign up now to access your results online and start learning!`,
+              );
+            }, 500);
+          }
+        }
+      });
+
+      document
+        .getElementById("signup-form")
+        .addEventListener("submit", async function (e) {
+          e.preventDefault();
+
+          const form = e.currentTarget;
+          if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+          }
+          if (!selectedPlan) {
+            alert("Please select a learning plan first.");
+            return;
+          }
+          const planAmounts = getPlanComputedAmounts(selectedPlan);
+          if (!planAmounts) {
+            alert("Invalid plan selected.");
+            return;
+          }
+
+          const username = document
+            .getElementById("signup-username")
+            .value.trim();
+          const email = document.getElementById("signup-email").value.trim();
+          const password = document.getElementById("signup-password").value;
+          const parentName = document
+            .getElementById("signup-parent-name")
+            .value.trim();
+
+          setSignupLoadingState(true);
+
+          try {
+            const payload = {
+              username,
+              email,
+              password,
+              parentName,
+              planId: selectedPlan,
+              description: buildPlanDescription(selectedPlan),
+              referralCode: localStorage.getItem("referralCode") || "",
+              success_url: `${window.location.origin}/student-login.html?payment=success`,
+              cancel_url: `${window.location.origin}/#plans`,
+              usd_total: planAmounts.usdTotal,
+              exchange_rate_used: EXCHANGE_RATE_USED,
+            };
+
+            const response = await fetch("/api/payments/create-link", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                username,
+                email,
+                password,
+                parentName: parentName || assessmentData?.parentEmail || "",
+                contact: assessmentData?.contactNumber || "",
+                referralCode: localStorage.getItem("referralCode") || "",
+              }),
+            });
+
+            const registerResult = await registerResponse.json();
+
+            if (!registerResponse.ok) {
+              const errorMsg =
+                registerResult.message ||
+                registerResult.error ||
+                "Registration failed";
+              console.error("Registration error:", registerResult);
+              throw new Error(errorMsg);
+            }
+
+            // Save subscription if plan was selected (creates checkout session; payment required)
+            if (plan) {
+              const subscribeResponse = await fetch("/api/student/subscribe", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  email,
+                  plan,
+                  planPrice,
+                  assessmentData: assessmentData || null,
+                }),
+              });
+
+              const subscribeResult = await subscribeResponse
+                .json()
+                .catch(() => ({}));
+              if (!subscribeResponse.ok || !subscribeResult.success) {
+                console.warn(
+                  "Subscription save failed, but registration succeeded",
+                );
+              } else if (
+                subscribeResult.checkout &&
+                subscribeResult.checkout.sessionId
+              ) {
+                alert(
+                  "✅ Account created! Please complete payment to activate your subscription.",
+                );
+                window.location.href = `student-payment.html?session=${encodeURIComponent(subscribeResult.checkout.sessionId)}`;
                 return;
+              }
             }
 
-            // Guest: open signup modal (unchanged)
-            const urlParams = new URLSearchParams(window.location.search);
-            const email = urlParams.get('email');
-
-            document.getElementById('signup-modal').classList.add('active');
-            document.getElementById('selected-plan').value = planId;
-
-            if (email) {
-                document.getElementById('signup-email').value = email;
-            }
-        }
-        
-        // Check if returning from assessment
-        document.addEventListener('DOMContentLoaded', function() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const email = urlParams.get('email');
-            const cefrLevel = urlParams.get('cefrLevel');
-            const signup = urlParams.get('signup');
-            
-            if (email && cefrLevel) {
-                // Pre-fill email in signup form
-                if (document.getElementById('signup-email')) {
-                    document.getElementById('signup-email').value = email;
-                }
-                
-                // Show signup modal automatically if signup=true
-                if (signup === 'true') {
-                    setTimeout(() => {
-                        document.getElementById('signup-modal').classList.add('active');
-                    }, 500);
-                } else {
-                    // Show welcome message
-                    setTimeout(() => {
-                        alert(`🎉 Welcome back! Your assessment result: ${cefrLevel}\n\nSign up now to access your results online and start learning!`);
-                    }, 500);
-                }
-            }
-        });
-
-        // Sign up form submission
-        document.getElementById('signup-form').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const username = document.getElementById('signup-username').value;
-            const email = document.getElementById('signup-email').value;
-            const password = document.getElementById('signup-password').value;
-            const parentName = document.getElementById('signup-parent-name').value;
-            const plan = document.getElementById('selected-plan').value || '';
-            
-            const submitBtn = e.target.querySelector('button[type="submit"]');
-            const originalText = submitBtn.textContent;
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Creating Account...';
-            
-            try {
-                // Register student
-                const registerResponse = await fetch('/api/auth/student-register', {
-                    method: 'POST',
+            // Send assessment email if assessment was taken
+            if (assessmentData) {
+              try {
+                const emailResponse = await fetch(
+                  "/api/student/send-assessment-email",
+                  {
+                    method: "POST",
                     headers: {
-                        'Content-Type': 'application/json'
+                      "Content-Type": "application/json",
                     },
                     body: JSON.stringify({
-                        username,
-                        email,
-                        password,
-                        parentName: parentName || assessmentData?.parentEmail || '',
-                        contact: assessmentData?.contactNumber || '',
-                        referralCode: localStorage.getItem('referralCode') || ''
-                    })
-                });
-                
-                const registerResult = await registerResponse.json();
-                
-                if (!registerResponse.ok) {
-                    const errorMsg = registerResult.message || registerResult.error || 'Registration failed';
-                    console.error('Registration error:', registerResult);
-                    throw new Error(errorMsg);
+                      email,
+                      childName: assessmentData.childName,
+                      parentEmail: assessmentData.parentEmail || email,
+                      contactNumber: assessmentData.contactNumber,
+                    }),
+                  },
+                );
+
+                const emailResult = await emailResponse.json();
+                if (emailResult.fallback) {
+                  console.log("Email not configured, but assessment saved");
                 }
-                
-                // PayMongo checkout (POST /api/payments/create-link) when a plan was selected
-                if (plan) {
-                    if (!registerResult.studentId) {
-                        throw new Error('Registration succeeded but student id is missing. Please log in or contact support.');
-                    }
-                    const origin = window.location.origin || '';
-                    const payRes = await fetch('/api/payments/create-link', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            userId: registerResult.studentId,
-                            username,
-                            email,
-                            parentName: parentName || assessmentData?.parentEmail || '',
-                            planId: plan,
-                            referralCode: localStorage.getItem('referralCode') || '',
-                            success_url: `${origin}/student-login.html`,
-                            cancel_url: `${origin}/#plans`
-                        })
-                    });
-                    const payData = await payRes.json().catch(() => ({}));
-                    if (!payRes.ok || !payData.success || !payData.checkout_url) {
-                        const errMsg = payData.error || 'Could not start payment. You can log in later and contact support.';
-                        throw new Error(errMsg);
-                    }
-                    alert('✅ Account created! You will be redirected to secure checkout (GCash, PayMaya, or card).');
-                    window.location.href = payData.checkout_url;
-                    return;
-                }
-                
-                // Send assessment email if assessment was taken
-                if (assessmentData) {
-                    try {
-                        const emailResponse = await fetch('/api/student/send-assessment-email', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({
-                                email,
-                                childName: assessmentData.childName,
-                                parentEmail: assessmentData.parentEmail || email,
-                                contactNumber: assessmentData.contactNumber
-                            })
-                        });
-                        
-                        const emailResult = await emailResponse.json();
-                        if (emailResult.fallback) {
-                            console.log('Email not configured, but assessment saved');
-                        }
-                    } catch (emailError) {
-                        console.error('Error sending assessment email:', emailError);
-                        // Don't fail registration if email fails
-                    }
-                }
-                
-                alert('✅ Account created successfully! Redirecting to login...');
-                setTimeout(() => {
-                    window.location.href = 'student-login.html';
-                }, 1000);
-                
-            } catch (error) {
-                console.error('Error:', error);
-                alert('❌ Error: ' + error.message);
-                submitBtn.disabled = false;
-                submitBtn.textContent = originalText;
+              } catch (emailError) {
+                console.error("Error sending assessment email:", emailError);
+                // Don't fail registration if email fails
+              }
             }
+
+            alert("✅ Account created successfully! Redirecting to login...");
+            setTimeout(() => {
+              window.location.href = "student-login.html";
+            }, 1000);
+          } catch (error) {
+            console.error("Error:", error);
+            alert("❌ Error: " + error.message);
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
+          }
         });
 
-        function closeModal() {
-            document.getElementById('signup-modal').classList.remove('active');
-        }
+      function closeModal() {
+        document.getElementById("signup-modal").classList.remove("active");
+      }
 
-        // Close modal on outside click
-        document.getElementById('signup-modal').addEventListener('click', function(e) {
-            if (e.target === this) {
-                closeModal();
-            }
+      // Close modal on outside click
+      document
+        .getElementById("signup-modal")
+        .addEventListener("click", function (e) {
+          if (e.target === this) {
+            closeModal();
+          }
         });
     </script>
-</body>
+  </body>
 </html>

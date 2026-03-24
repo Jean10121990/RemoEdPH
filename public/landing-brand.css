@@ -1,0 +1,290 @@
+/*
+ * RemoEdPH landing (index) — brand colors + readable CTAs
+ * Loaded after style.css so these rules win without editing the consolidated bundle.
+ */
+
+body.page-index {
+  --remo-logo-blue: #1ca7e7;
+  --remo-logo-blue-deep: #0f7bb0;
+  --remo-logo-yellow: #ffd700;
+  --remo-logo-yellow-soft: #ffe566;
+  --remo-logo-green: #2fb27a;
+  --remo-logo-green-deep: #1f8f62;
+  --remo-ink: #1e3a5f;
+}
+
+/* Stronger hero wash: blue + mint + warm yellow (logo family) */
+body.page-index .hero.japandi-hero {
+  background: linear-gradient(
+    145deg,
+    #e8f6fd 0%,
+    #e4f5ee 38%,
+    #fff8e1 72%,
+    #f0f9ff 100%
+  ) !important;
+}
+
+/* Nav: brand stripe (gradient underline) */
+body.page-index .navbar {
+  position: relative;
+  box-shadow: 0 8px 24px rgba(28, 167, 231, 0.12);
+}
+
+body.page-index .navbar::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    var(--remo-logo-green) 0%,
+    var(--remo-logo-blue) 45%,
+    var(--remo-logo-yellow) 100%
+  );
+  pointer-events: none;
+}
+
+/* Fallback if gradient text is unsupported */
+body.page-index .logo-section span {
+  color: var(--remo-logo-blue-deep) !important;
+}
+
+@supports (background-clip: text) {
+  body.page-index .logo-section span {
+    background: linear-gradient(
+      90deg,
+      var(--remo-logo-green-deep),
+      var(--remo-logo-blue)
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent !important;
+    -webkit-text-fill-color: transparent;
+    text-shadow: none !important;
+  }
+}
+
+/* Outline nav — readable + brand hover */
+body.page-index .nav-btn:not(.primary) {
+  border-color: var(--remo-logo-blue) !important;
+  color: var(--remo-ink) !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  box-shadow: inset 0 -3px 0 rgba(47, 178, 122, 0.35);
+}
+
+body.page-index .nav-btn:not(.primary):hover {
+  background: linear-gradient(
+    135deg,
+    var(--remo-logo-blue),
+    var(--remo-logo-blue-deep)
+  ) !important;
+  color: #fff !important;
+  border-color: var(--remo-logo-yellow) !important;
+  box-shadow: 0 6px 18px rgba(28, 167, 231, 0.35);
+}
+
+/* Primary nav CTA: blue + green gradient, gold rim */
+body.page-index .nav-btn.primary {
+  background: linear-gradient(
+    135deg,
+    var(--remo-logo-green-deep),
+    var(--remo-logo-blue)
+  ) !important;
+  color: #fff !important;
+  border: 3px solid var(--remo-logo-yellow) !important;
+  box-shadow: 0 6px 20px rgba(31, 143, 98, 0.35);
+}
+
+body.page-index .nav-btn.primary:hover {
+  filter: brightness(1.05);
+  color: #fff !important;
+}
+
+/* Hero CTAs: guaranteed contrast */
+body.page-index .cta-btn.primary,
+body.page-index a.cta-btn.primary {
+  background: linear-gradient(
+    135deg,
+    var(--remo-logo-blue-deep),
+    var(--remo-logo-blue)
+  ) !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff;
+  border: 3px solid var(--remo-logo-yellow-soft) !important;
+  box-shadow: 0 8px 22px rgba(15, 123, 176, 0.45);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+body.page-index .cta-btn.primary:hover,
+body.page-index a.cta-btn.primary:hover {
+  background: linear-gradient(
+    135deg,
+    var(--remo-logo-green-deep),
+    var(--remo-logo-blue-deep)
+  ) !important;
+  color: #ffffff !important;
+}
+
+body.page-index .cta-btn.secondary,
+body.page-index a.cta-btn.secondary {
+  background: #fffef8 !important;
+  color: var(--remo-ink) !important;
+  border: 3px solid var(--remo-logo-blue) !important;
+  box-shadow: 0 4px 14px rgba(28, 167, 231, 0.15);
+}
+
+body.page-index .cta-btn.secondary:hover,
+body.page-index a.cta-btn.secondary:hover {
+  background: linear-gradient(
+    135deg,
+    var(--remo-logo-yellow-soft),
+    #fff8dc
+  ) !important;
+  color: var(--remo-ink) !important;
+  border-color: var(--remo-logo-green) !important;
+}
+
+/*
+ * CTA layout: full-width assessment row, then two equal columns for plans + apply
+ */
+body.page-index .cta-buttons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 20px;
+  max-width: 520px;
+  margin-left: auto;
+  margin-right: auto;
+  justify-items: stretch;
+}
+
+body.page-index .assessment-cta-wrap {
+  grid-column: 1 / -1;
+  justify-self: center;
+  width: 100%;
+  justify-content: center;
+}
+
+@media (max-width: 480px) {
+  body.page-index .cta-buttons {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Section titles: readable + brand accent bar */
+body.page-index .section-title {
+  color: var(--remo-ink) !important;
+  -webkit-text-fill-color: var(--remo-ink);
+  position: relative;
+}
+
+body.page-index .section-title::after {
+  content: "";
+  display: block;
+  width: 72px;
+  height: 4px;
+  margin: 14px auto 0;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    var(--remo-logo-green),
+    var(--remo-logo-yellow),
+    var(--remo-logo-blue)
+  );
+}
+
+body.page-index .hero-copy h1 {
+  color: var(--remo-ink) !important;
+}
+
+/*
+ * Plan cards — match primary nav CTA (green → blue, gold rim, white label).
+ * Keeps buttons readable on glass / mint plan cards.
+ */
+body.page-index #plans button.plan-btn,
+body.page-index #plans .plan-btn {
+  isolation: isolate;
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  padding: 14px 24px;
+  margin-top: auto;
+  align-self: stretch;
+  font-family: "Quicksand", "Fredoka", "Segoe UI", sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  border-radius: 20px;
+  background: linear-gradient(
+    135deg,
+    var(--remo-logo-green-deep),
+    var(--remo-logo-blue)
+  ) !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff;
+  border: 3px solid var(--remo-logo-yellow) !important;
+  box-shadow: 0 6px 20px rgba(31, 143, 98, 0.35);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+  transition:
+    filter 0.25s ease,
+    box-shadow 0.25s ease,
+    transform 0.25s ease;
+}
+
+body.page-index #plans .plan-btn:hover:not(:disabled) {
+  filter: brightness(1.06);
+  color: #ffffff !important;
+  box-shadow: 0 10px 26px rgba(28, 167, 231, 0.4);
+  transform: translateY(-2px);
+}
+
+body.page-index #plans .plan-btn:disabled {
+  opacity: 0.85;
+  cursor: wait;
+}
+
+/*
+ * Signup modal submit button — match landing primary button treatment
+ * and keep it visible while user scrolls the form.
+ */
+body.page-index #signup-modal .modal-content {
+  overflow-x: hidden;
+}
+
+body.page-index #signup-form .assessment-btn,
+body.page-index #signup-form button[type="submit"] {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  width: 100%;
+  margin-top: 14px;
+  padding: 14px 20px;
+  border-radius: 20px;
+  border: 3px solid var(--remo-logo-yellow) !important;
+  background: linear-gradient(
+    135deg,
+    var(--remo-logo-green-deep),
+    var(--remo-logo-blue)
+  ) !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff;
+  box-shadow: 0 8px 22px rgba(31, 143, 98, 0.35);
+  font-weight: 800;
+  font-size: 1rem;
+  letter-spacing: 0.02em;
+}
+
+body.page-index #signup-form .assessment-btn:hover,
+body.page-index #signup-form button[type="submit"]:hover {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(28, 167, 231, 0.38);
+}
+
+body.page-index #signup-form .assessment-btn:disabled,
+body.page-index #signup-form button[type="submit"]:disabled {
+  opacity: 0.88;
+  cursor: wait;
+}

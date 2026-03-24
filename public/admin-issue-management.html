@@ -6,105 +6,9 @@
     <title>Issue Management - RemoEdPH Admin</title>
     <link rel="stylesheet" href="modern-styles.css">
     <link rel="stylesheet" href="css/teacher-sidebar.css">
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f6fbff; }
-        .remoed-main { display: flex; min-height: calc(100vh - 70px); }
-        .remoed-sidebar { width: 220px; background: #fff; box-shadow: 2px 0 8px rgba(0,0,0,0.05); padding: 32px 0 0 0; display: flex; flex-direction: column; }
-        .remoed-logo { display: flex; align-items: center; gap: 14px; }
-        .remoed-logo img { height: 48px; }
-        .remoed-title { font-size: 1.7rem; font-weight: 700; color: #667eea; letter-spacing: 1px; }
-        .remoed-user { display: flex; align-items: center; gap: 10px; }
-        .remoed-avatar { width: 72px; height: 72px; border-radius: 50%; background: #667eea; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 2.2rem; }
-        .remoed-username { color: #667eea; font-weight: 600; }
-        .remoed-menu { list-style: none; padding: 0; margin: 0; }
-        .remoed-menu li { padding: 14px 32px; color: #667eea; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 12px; border-left: 4px solid transparent; transition: all 0.2s; }
-        .remoed-menu li.active, .remoed-menu li:hover { background: linear-gradient(90deg, #667eea 0%, #5a67d8 100%); border-left: 4px solid #667eea; color: white; transform: translateX(4px); }
-        .remoed-menu svg { width: 20px; height: 20px; }
-        .remoed-content { flex: 1; padding: 12px 16px; }
-        .remoed-section { background: #fff; border-radius: 12px; box-shadow: 0 4px 24px rgba(28,167,231,0.07); padding: 12px; margin-bottom: 12px; }
-        .remoed-section-title { font-size: 1rem; font-weight: 700; color: #1ca7e7; margin-bottom: 10px; letter-spacing: 0.5px; }
-        
-        /* Issue Management Styles */
-        .issue-filters { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
-        .filter-group { display: flex; flex-direction: column; gap: 4px; }
-        .filter-group label { font-size: 0.8rem; font-weight: 600; color: #374151; }
-        .filter-group select, .filter-group input { padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.8rem; }
-        
-        .issue-card { background: #f8f9fa; border-radius: 8px; padding: 10px; margin-bottom: 8px; border-left: 4px solid #1ca7e7; }
-        .issue-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
-        .issue-title { font-size: 0.95rem; font-weight: 600; color: #1ca7e7; }
-        .issue-status { padding: 3px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
-        .status-pending { background: #fef3c7; color: #92400e; }
-        .status-reviewed { background: #dbeafe; color: #1e40af; }
-        .status-resolved { background: #d1fae5; color: #065f46; }
-        .status-dismissed { background: #fee2e2; color: #991b1b; }
-        
-        .issue-details { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
-        .issue-detail { display: flex; flex-direction: column; gap: 4px; }
-        .issue-detail label { font-size: 0.75rem; font-weight: 600; color: #6b7280; }
-        .issue-detail span { font-size: 0.8rem; color: #374151; }
-        
-        .issue-description { background: #fff; padding: 8px; border-radius: 6px; margin-bottom: 8px; border: 1px solid #e5e7eb; }
-        .issue-description h4 { margin: 0 0 6px 0; font-size: 0.8rem; color: #374151; }
-        .issue-description p { margin: 0; font-size: 0.8rem; color: #6b7280; line-height: 1.3; }
-        
-        .issue-actions { display: flex; gap: 6px; flex-wrap: wrap; }
-        .btn { padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.75rem; transition: all 0.2s; }
-        .btn-primary { background: #1ca7e7; color: #fff; }
-        .btn-primary:hover { background: #168fc1; }
-        .btn-success { background: #10b981; color: #fff; }
-        .btn-success:hover { background: #059669; }
-        .btn-warning { background: #f59e0b; color: #fff; }
-        .btn-warning:hover { background: #d97706; }
-        .btn-danger { background: #ef4444; color: #fff; }
-        .btn-danger:hover { background: #dc2626; }
-        .btn-secondary { background: #6b7280; color: #fff; }
-        .btn-secondary:hover { background: #4b5563; }
-        
-        .screenshot-preview { max-width: 200px; max-height: 150px; border-radius: 6px; border: 1px solid #d1d5db; }
-        
-        .review-modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
-        .review-modal-content { background-color: #fff; margin: 2% auto; padding: 16px; border-radius: 8px; width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto; }
-        .review-modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-        .review-modal-header h2 { margin: 0; color: #1ca7e7; font-size: 1.1rem; }
-        .close { color: #aaa; font-size: 24px; font-weight: bold; cursor: pointer; }
-        .close:hover { color: #000; }
-        .review-form { display: flex; flex-direction: column; gap: 10px; }
-        .form-group { display: flex; flex-direction: column; gap: 4px; }
-        .form-group label { font-weight: 600; color: #374151; font-size: 0.85rem; }
-        .form-group select, .form-group textarea { padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.85rem; }
-        .form-group textarea { resize: vertical; min-height: 80px; }
-        
-        .validity-badge { padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: 600; }
-        .validity-valid { background: #d1fae5; color: #065f46; }
-        .validity-invalid { background: #fee2e2; color: #991b1b; }
-        .validity-pending { background: #fef3c7; color: #92400e; }
-        
-        .reschedule-info { background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 6px; padding: 10px; margin-top: 10px; }
-        .reschedule-info h4 { margin: 0 0 5px 0; font-size: 0.9rem; color: #0c4a6e; }
-        .reschedule-info p { margin: 0; font-size: 0.8rem; color: #0369a1; }
-        
-        .resolution-options { display: flex; flex-direction: column; gap: 10px; }
-        .resolution-option { display: flex; align-items: flex-start; gap: 10px; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
-        .resolution-option:hover { border-color: #1ca7e7; background: #f8f9fa; }
-        .resolution-option input[type="radio"] { margin-top: 2px; }
-        .resolution-option input[type="radio"]:checked + .option-text { color: #1ca7e7; }
-        .resolution-option:has(input[type="radio"]:checked) { border-color: #1ca7e7; background: #eaf7ff; }
-        .option-text { flex: 1; }
-        .option-text strong { display: block; margin-bottom: 4px; }
-        .option-text small { color: #6b7280; }
-        
-        @media (max-width: 900px) {
-            .remoed-main { flex-direction: column; }
-            .remoed-sidebar { width: 100%; flex-direction: row; box-shadow: none; border-bottom: 1px solid #e0e6ed; }
-            .remoed-menu li { padding: 12px 10px; font-size: 0.97rem; }
-            .remoed-content { padding: 18px 6px; }
-            .issue-details { grid-template-columns: 1fr; }
-            .issue-actions { flex-direction: column; }
-        }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="page-admin-issue-management">
     <div class="remoed-main">
         <div id="admin-sidebar-root"></div>
         <script src="js/admin-sidebar.js"></script>
@@ -598,3 +502,5 @@
     </script>
 </body>
 </html>
+
+

@@ -8,111 +8,9 @@
     <!-- PDF.js library for custom PDF viewer -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
-    <style>
-        body { margin: 0; background: #f4f6fb; height: 100vh; }
-        .classroom-layout { display: flex; height: 100vh; width: 100vw; overflow: hidden; }
-        .toolbar { width: 64px; background: #23272f; display: flex; flex-direction: column; align-items: center; padding: 16px 0; gap: 24px; box-shadow: 2px 0 8px rgba(0,0,0,0.04); }
-        .toolbar-btn { background: none; border: none; cursor: pointer; margin: 0; padding: 0; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 8px; transition: background 0.2s, box-shadow 0.2s; position: relative; }
-        .toolbar-btn:hover, .toolbar-btn:focus { background: #3a7afe; box-shadow: 0 2px 8px rgba(58,122,254,0.08); }
-        .toolbar-btn svg { width: 28px; height: 28px; color: #fff; }
-        .toolbar-btn .custom-tooltip { display: none; position: absolute; left: 48px; top: 50%; transform: translateY(-50%); background: #222; color: #fff; padding: 4px 12px; border-radius: 4px; font-size: 0.95rem; white-space: nowrap; z-index: 10; box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
-        .toolbar-btn:hover .custom-tooltip, .toolbar-btn:focus .custom-tooltip { display: block; }
-        .center-panel { flex: 2.5; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 32px 0 0 0; height: 100vh; overflow-y: auto; }
-        .class-timer { font-size: 1.2rem; color: #3a7afe; font-weight: 600; margin-bottom: 18px; letter-spacing: 1px; }
-        .tab-container { width: 100%; max-width: 1100px; margin-bottom: 16px; }
-        .tab-buttons { display: flex; gap: 4px; margin-bottom: 8px; }
-        .tab-btn { background: #f4f6fb; border: none; border-radius: 8px 8px 0 0; padding: 12px 24px; font-size: 1rem; cursor: pointer; color: #666; transition: all 0.2s; position: relative; z-index: 10; }
-        .tab-btn.active { background: #fff; color: #3a7afe; font-weight: 600; box-shadow: 0 -2px 8px rgba(0,0,0,0.05); }
-        .tab-btn:hover { background: #e0e6ed; }
-        .tab-btn:active { transform: translateY(1px); }
-        .tab-content { background: #fff; border-radius: 0 12px 12px 12px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); min-height: 480px; max-height: 700px; padding: 24px; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: auto; border: 1px solid #e0e6ed; }
-        .lesson-viewer { width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .whiteboard-tab { width: 100%; height: 100%; display: flex; flex-direction: column; }
-        .whiteboard-controls { display: flex; gap: 12px; margin-bottom: 16px; justify-content: center; align-items: center; }
-        .wb-control-btn { background: #f4f6fb; border: none; border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 0.9rem; transition: background 0.2s; }
-        .wb-control-btn.active { background: #3a7afe; color: white; }
-        .wb-control-btn:hover { background: #e0e6ed; }
-        .wb-control-btn.active:hover { background: #255ed6; }
-        .wb-color-picker { width: 40px; height: 32px; border: none; border-radius: 4px; cursor: pointer; }
-        .wb-brush-size { width: 60px; padding: 4px; border: 1px solid #ccc; border-radius: 4px; }
-        .whiteboard-canvas { flex: 1; background: white; border: 1px solid #e0e6ed; border-radius: 8px; cursor: crosshair; min-height: 400px; }
-        .files-tab { width: 100%; display: flex; flex-direction: column; align-items: center; }
-        .lesson-nav { margin-top: 12px; display: flex; gap: 8px; justify-content: center; }
-        .lesson-nav-btn { background: #3a7afe; color: #fff; border: none; border-radius: 5px; padding: 0.5rem 1.2rem; font-size: 1rem; cursor: pointer; transition: background 0.2s; }
-        .lesson-nav-btn:hover { background: #255ed6; }
-        .whiteboard { width: 800px; height: 220px; background: #fff; border-radius: 12px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); margin: 20px 0; cursor: crosshair; display: none; border: 1px solid #e0e6ed; }
-        .file-upload-form { display: none; margin-top: 12px; }
-        .file-list { width: 100%; max-width: 800px; margin-bottom: 20px; /* display: none; */ }
-        .right-panel { flex: 1.2; background: #fff; border-left: 1px solid #eee; display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; min-width: 340px; height: 100vh; box-shadow: -2px 0 8px rgba(0,0,0,0.04); }
-        .video-feeds {
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
-          justify-content: flex-start;
-          align-items: center;
-          padding: 18px 0 8px 0;
-        }
-        .video-feed { width: 160px; height: 120px; background: #111; border-radius: 8px; object-fit: cover; border: 2px solid #3a7afe; box-shadow: 0 2px 8px rgba(58,122,254,0.08); }
-        .chat-header { font-weight: 600; color: #3a7afe; padding: 0 0 8px 0; text-align: center; letter-spacing: 1px; }
-        .chat-messages { flex: 1; min-height: 0; overflow-y: auto; background: #f4f6fb; border-radius: 8px; padding: 10px; margin: 0 16px 8px 16px; font-size: 1rem; border: 1px solid #e0e6ed; }
-        .chat-form { display: flex; gap: 8px; padding: 0 16px 16px 16px; }
-        .chat-input { flex: 1; padding: 0.5rem; border-radius: 5px; border: 1px solid #ccc; font-size: 1rem; }
-        @media (max-width: 1200px) {
-            .center-panel, .lesson-viewer, .whiteboard, .file-list { max-width: 95vw; }
-            .video-feed, .whiteboard { width: 90vw; max-width: 160px; }
-        }
-        @media (max-width: 900px) {
-            .classroom-layout { flex-direction: column; }
-            .toolbar, .right-panel { min-width: 0; width: 100vw; height: auto; }
-            .center-panel { height: auto; }
-        }
-        
-        /* Loading animation for PDF viewer */
-        @keyframes loading {
-            0% { transform: translateX(-100%); }
-            100% { transform: translateX(100%); }
-        }
-        .remoed-header {
-            background: #fafdff;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding-left: 32px;
-            padding-right: 32px;
-            height: 56px;
-            min-height: 40px;
-            max-height: 64px;
-            box-shadow: 0 2px 8px rgba(28,167,231,0.06), 0 1px 0 #e6f0fa;
-            border-bottom: 1px solid #e6f0fa;
-        }
-        .remoed-logo {
-            height:100%; display:flex; align-items:center; gap:10px;
-        }
-        .remoed-logo img {
-            height:36px; width:auto; display:inline-block; vertical-align:middle;
-        }
-        .remoed-title {
-            font-size:1.3rem; font-weight:700; color:#1ca7e7; letter-spacing:1px;
-        }
-        .remoed-user {
-            display:flex; align-items:center; gap:10px;
-        }
-        .remoed-avatar {
-            width:32px; height:32px; background:#1ca7e7; color:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1rem; font-weight:bold;
-        }
-        .remoed-username {
-            font-size:1rem; color:#333; font-weight:600;
-        }
-        #local-video {
-          filter: brightness(1.2) contrast(1.1) saturate(1.1) drop-shadow(0 0 8px #fff8);
-          background: #fff;
-          border-radius: 8px;
-        }
-        #clear-whiteboard { background: #ff6b6b; color: white; }
-        #clear-whiteboard:hover { background: #ff5252; }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="page-video-room">
     <script>
 (function() {
   const params = new URLSearchParams(window.location.search);
@@ -1599,3 +1497,4 @@
     </script>
 </body>
 </html> 
+

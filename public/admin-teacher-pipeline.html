@@ -5,37 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>TeacherPipeline - Admin</title>
   <link rel="stylesheet" href="css/teacher-sidebar.css" />
-  <style>
-    body { margin: 0; background: #f4f7fb; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-    .layout { display: flex; min-height: 100vh; }
-    .content { margin-left: 260px; width: calc(100% - 260px); padding: 20px; box-sizing: border-box; }
-    .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 1px 6px rgba(2, 6, 23, .06); }
-    .head { padding: 16px 18px; border-bottom: 1px solid #eef2f7; }
-    .title { margin: 0; font-size: 1.2rem; color: #0f172a; }
-    .sub { margin: 4px 0 0; color: #64748b; font-size: .9rem; }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { padding: 12px 14px; border-bottom: 1px solid #f1f5f9; text-align: left; font-size: .92rem; }
-    th { color: #334155; background: #f8fafc; font-weight: 700; }
-    .progress-track { width: 180px; height: 8px; border-radius: 999px; background: #e2e8f0; overflow: hidden; }
-    .progress-fill { height: 100%; background: linear-gradient(90deg, #2563eb, #22c55e); }
-    .stage { text-transform: capitalize; color: #0f172a; font-weight: 600; }
-    .btn { border: none; border-radius: 8px; padding: 8px 12px; font-size: .85rem; cursor: pointer; font-weight: 700; }
-    .btn-review { background: #2563eb; color: #fff; }
-    .btn-pass { background: #16a34a; color: #fff; }
-    .btn-fail { background: #dc2626; color: #fff; }
-    .muted { color: #64748b; font-size: .86rem; }
-
-    .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, .45); z-index: 1000; }
-    .modal { width: min(980px, 92vw); max-height: 90vh; overflow: auto; margin: 4vh auto; background: #fff; border-radius: 12px; border: 1px solid #e2e8f0; }
-    .modal-head { padding: 14px 16px; border-bottom: 1px solid #eef2f7; display: flex; align-items: center; justify-content: space-between; }
-    .modal-body { padding: 14px 16px; display: grid; gap: 14px; }
-    .panel { border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; background: #f8fafc; }
-    .answers { white-space: pre-wrap; line-height: 1.5; color: #0f172a; }
-    .video-list a { display: block; margin: 4px 0; color: #2563eb; word-break: break-all; }
-    .actions { display: flex; gap: 8px; justify-content: flex-end; padding: 12px 16px; border-top: 1px solid #eef2f7; }
-  </style>
+    <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="page-admin-teacher-pipeline">
   <div class="layout">
     <div id="admin-sidebar-root"></div>
     <main class="content">
@@ -242,3 +214,5 @@
   </script>
 </body>
 </html>
+
+
