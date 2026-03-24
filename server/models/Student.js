@@ -44,7 +44,7 @@ const studentSchema = new mongoose.Schema({
   subscriptionEndDate: { type: Date },
   subscriptionStatus: { type: String, enum: ['pending', 'active', 'expired', 'cancelled'], default: 'pending' },
   paymentStatus: { type: String, enum: ['unpaid', 'pending', 'paid'], default: 'unpaid' },
-  paymentMethod: { type: String, enum: ['bank', 'gcash', 'paypal', null], default: null },
+  paymentMethod: { type: String, enum: ['bank', 'gcash', 'paypal', 'paymongo', null], default: null },
   paymentReference: { type: String, default: '' },
   paymentDetails: {
     bankName: { type: String, default: '' },
@@ -53,32 +53,28 @@ const studentSchema = new mongoose.Schema({
     paypalEmail: { type: String, default: '' }
   },
   paymentPaidAt: { type: Date, default: null },
-<<<<<<< HEAD
-  processedPaymentIds: [{ type: String }],
-=======
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
   pendingCheckout: {
     sessionId: { type: String, default: '' },
     createdAt: { type: Date, default: null }
   },
   // Lesson credits (used for flexible scheduling)
-<<<<<<< HEAD
-  totalCredits: { type: Number, default: 0 }, // alias for current balance (for newer UI/API)
-  reservedCredits: { type: Number, default: 0 }, // credits temporarily held by upcoming bookings
-  usedCredits: { type: Number, default: 0 }, // total consumed credits
-  creditBalance: { type: Number, default: 0 }, // remaining lesson credits
+  creditBalance: { type: Number, default: 0 }, // pool of purchased credits not yet consumed by finished lessons
+  /** Credits held for upcoming bookings (deducted from "available" until class is finished or cancelled). */
+  reservedCredits: { type: Number, default: 0 },
   totalCreditsEarned: { type: Number, default: 0 }, // total credits ever purchased
+  usedCredits: { type: Number, default: 0 }, // lifetime credits spent on bookings
+  /** Idempotency for PayMongo / multi-step payments */
+  processedPaymentIds: { type: [String], default: [] },
   creditHistory: [{
     date: { type: Date, default: Date.now },
     plan: { type: String, default: '' },
     credits: { type: Number, default: 0 },
     amountPaid: { type: Number, default: 0 },
-    paymentId: { type: String, default: '' }
+    paymentId: { type: String, default: '' },
+    /** purchase = top-up; usage = lesson consumed after teacher marks class finished */
+    entryType: { type: String, enum: ['purchase', 'usage'], default: 'purchase' },
+    balanceAfter: { type: Number, default: null }
   }],
-=======
-  creditBalance: { type: Number, default: 0 }, // remaining lesson credits
-  totalCreditsEarned: { type: Number, default: 0 }, // total credits ever purchased
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
   creditTransactions: [{
     date: { type: Date, default: Date.now },
     type: { type: String, enum: ['purchase', 'adjustment', 'use'], default: 'purchase' },

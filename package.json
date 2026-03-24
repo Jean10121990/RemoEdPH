@@ -6,7 +6,8 @@
     "start": "node server/index.js",
     "start:backend": "node server/index.js",
     "start:frontend": "echo Frontend is served by Express on port 5000",
-    "start:all": "npm run start:backend"
+    "start:all": "npm run start:backend",
+    "repair:credit-ledgers": "node server/scripts/repair-all-credit-ledgers.js"
   },
   "keywords": [],
   "author": "",

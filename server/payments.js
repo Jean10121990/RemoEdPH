@@ -2,11 +2,50 @@ const express = require('express');
 const crypto = require('crypto');
 const bcrypt = require('bcrypt');
 const axios = require('axios');
+const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
 const Student = require('./models/Student');
 const PendingRegistration = require('./models/PendingRegistration');
 
 const router = express.Router();
-const EXCHANGE_RATE_PHP = 60.03;
+const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
+
+/**
+ * If Authorization: Bearer is present, verify JWT. Student tokens populate req.studentFromToken;
+ * teacher tokens return 403. Invalid token returns 401. No/invalid header → next() (guest flow).
+ */
+function optionalVerifyStudent(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return next();
+  }
+  const token = authHeader.split(' ')[1];
+  if (!token) {
+    return next();
+  }
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (decoded.studentId) {
+      req.studentFromToken = decoded;
+    } else if (decoded.teacherId) {
+      return res.status(403).json({
+        success: false,
+        error: 'Please sign in as a student to purchase a plan.'
+      });
+    }
+  } catch (e) {
+    return res.status(401).json({ success: false, error: 'Invalid or expired session token' });
+  }
+  next();
+}
+
+/** USD → PHP for PayMongo checkout (override via EXCHANGE_RATE_PHP in .env). */
+const EXCHANGE_RATE_PHP = parseFloat(process.env.EXCHANGE_RATE_PHP) || 60.03;
+
+/**
+ * Daily-rate bundle pricing (USD): total = usdDailyRate × days.
+ * Spark 22d, Steady 66d, Scholar 132d, Summit 246d.
+ */
 const PLAN_PRICING = {
   spark: { name: 'RemoSpark', usdDailyRate: 4.17, days: 22 },
   steady: { name: 'RemoSteady', usdDailyRate: 4.08, days: 66 },
@@ -52,7 +91,7 @@ function computePlanTotals(planId) {
   }
 }
 
-router.post('/create-link', async (req, res) => {
+router.post('/create-link', optionalVerifyStudent, async (req, res) => {
   try {
     const secretKey =
       process.env.PAYMONGO_SECRET_KEY ||
@@ -67,6 +106,7 @@ router.post('/create-link', async (req, res) => {
 
     const {
       userId,
+      loggedInUserId,
       username,
       email,
       password,
@@ -78,6 +118,14 @@ router.post('/create-link', async (req, res) => {
       success_url,
       cancel_url
     } = req.body || {};
+
+    /** Session checkout: JWT wins; otherwise body userId / loggedInUserId (e.g. post-registration). */
+    let effectiveUserId = null;
+    if (req.studentFromToken && req.studentFromToken.studentId) {
+      effectiveUserId = req.studentFromToken.studentId;
+    } else {
+      effectiveUserId = userId || loggedInUserId || null;
+    }
 
     const selectedPlanId = normalizePlanId(planId || plan);
     if (!selectedPlanId) {
@@ -96,14 +144,16 @@ router.post('/create-link', async (req, res) => {
     let resolvedParentName = String(parentName || '').trim();
     let passwordHash = '';
 
-    if (userId) {
-      resolvedStudent = await Student.findOne({
-        $or: [
-          { _id: String(userId) },
-          { username: String(userId) },
-          { email: String(userId) }
-        ]
-      });
+    if (effectiveUserId) {
+      const sid = String(effectiveUserId).trim();
+      if (mongoose.isValidObjectId(sid)) {
+        resolvedStudent = await Student.findById(sid);
+      }
+      if (!resolvedStudent) {
+        resolvedStudent = await Student.findOne({
+          $or: [{ username: sid }, { email: sid }]
+        });
+      }
       if (!resolvedStudent) {
         return res.status(404).json({ success: false, error: 'Student not found for provided userId' });
       }
@@ -132,6 +182,12 @@ router.post('/create-link', async (req, res) => {
     const safeCancelUrl = String(cancel_url || `${req.protocol}://${req.get('host')}/#plans`).trim();
     const lineItemDescription = String(description || planDescription(selectedPlanId)).trim();
 
+    const studentDisplayName = resolvedStudent
+      ? [resolvedStudent.firstName, resolvedStudent.lastName].filter(Boolean).join(' ').trim() ||
+        resolvedStudent.username ||
+        ''
+      : '';
+
     const paymongoPayload = {
       data: {
         attributes: {
@@ -151,15 +207,16 @@ router.post('/create-link', async (req, res) => {
             }
           ],
           metadata: {
-            registrationId,
-            userId: String(resolvedStudent?._id || userId || ''),
+            registrationId: String(registrationId),
+            userId: String(resolvedStudent?._id || effectiveUserId || ''),
             username: resolvedUsername,
             email: resolvedEmail,
             parentName: resolvedParentName,
+            student_name: studentDisplayName,
             planId: totals.planId,
             plan: totals.planId,
-            usd_total: totals.usdTotal,
-            exchange_rate_used: EXCHANGE_RATE_PHP
+            usd_total: String(totals.usdTotal),
+            exchange_rate_used: String(EXCHANGE_RATE_PHP)
           }
         }
       }

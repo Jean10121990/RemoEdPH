@@ -11,15 +11,15 @@ const IssueReport = require('./models/IssueReport');
 const TimeLog = require('./models/TimeLog');
 const Referral = require('./models/Referral');
 const { verifyToken, requireAdmin } = require('./authMiddleware');
+const {
+  releaseReservedCreditForCancelledBooking,
+  finalizeLessonCreditsOnCompletion
+} = require('./lessonCreditsHelper');
 const bcrypt = require('bcrypt');
-<<<<<<< HEAD
-const { sendTeacherRegistrationEmail } = require('./emailService');
-=======
 const crypto = require('crypto');
 const Application = require('./models/Application');
 const InvitationToken = require('./models/InvitationToken');
 const { sendTeacherRegistrationEmail, sendTeacherPipelineWelcomeEmail } = require('./emailService');
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
 
 // Function to create notifications
 async function createNotification(userId, type, message) {
@@ -39,80 +39,6 @@ async function createNotification(userId, type, message) {
   }
 }
 
-<<<<<<< HEAD
-async function findStudentForBooking(booking) {
-  if (!booking || !booking.studentId) return null;
-  return Student.findOne({
-    $or: [{ username: booking.studentId }, { email: booking.studentId }]
-  });
-}
-
-async function releaseReservedCreditForBooking(booking) {
-  if (!booking || booking.creditConsumedAt || booking.creditReservationReleasedAt) return;
-  const student = await findStudentForBooking(booking);
-  if (!student) return;
-  const safeReserved = Number(student.reservedCredits || 0);
-  if (safeReserved <= 0) return;
-
-  const safeTotal = Number(student.totalCredits || 0);
-  const nextReserved = safeReserved - 1;
-  const nextAvailable = Math.max(safeTotal - nextReserved, 0);
-  await Student.updateOne(
-    { _id: student._id },
-    { $set: { reservedCredits: nextReserved, creditBalance: nextAvailable } }
-  );
-  booking.creditReservationReleasedAt = new Date();
-}
-
-async function consumeReservedCreditForBooking(booking, descriptionPrefix = 'Class finished') {
-  if (!booking || booking.creditConsumedAt || booking.creditReservationReleasedAt) return;
-  const student = await findStudentForBooking(booking);
-  if (!student) return;
-  const now = new Date();
-  const safeReserved = Number(student.reservedCredits || 0);
-  if (safeReserved <= 0) return;
-  const safeTotal = Number(student.totalCredits || 0);
-  const nextReserved = Math.max(safeReserved - 1, 0);
-  const nextTotal = Math.max(safeTotal - 1, 0);
-  const nextAvailable = Math.max(nextTotal - nextReserved, 0);
-  const planLabel = student.subscriptionPlan || '';
-  const desc = `${descriptionPrefix} (${booking.date} ${booking.time})`;
-
-  await Student.updateOne(
-    { _id: student._id },
-    {
-      $set: {
-        reservedCredits: nextReserved,
-        totalCredits: nextTotal,
-        creditBalance: nextAvailable
-      },
-      $inc: { usedCredits: 1 },
-      $push: {
-        creditTransactions: {
-          date: now,
-          type: 'use',
-          plan: planLabel,
-          description: desc,
-          credits: -1,
-          balanceAfter: nextAvailable,
-          amountPaid: 0
-        },
-        creditHistory: {
-          date: now,
-          plan: planLabel,
-          credits: -1,
-          amountPaid: 0,
-          paymentId: ''
-        }
-      }
-    }
-  );
-  booking.creditConsumedAt = now;
-  booking.creditReservationReleasedAt = null;
-}
-
-=======
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
 // Import generateStrongPassword function from auth.js
 function generateStrongPassword() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -152,8 +78,6 @@ async function generateTemporaryUsername() {
 // Import GlobalSettings model
 const GlobalSettings = require('./models/GlobalSettings');
 
-<<<<<<< HEAD
-=======
 const TEACHER_PIPELINE_STAGES = ['applied', 'testing', 'interviewing', 'demo', 'documentation', 'passed', 'failed'];
 
 function toProgressPercent(stage) {
@@ -163,7 +87,6 @@ function toProgressPercent(stage) {
   return Math.round((idx / (TEACHER_PIPELINE_STAGES.length - 2)) * 100);
 }
 
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
 // ——— Admin time tracking (registered early; 7 AM PHT business day) ———
 function adminTimeWorkerId(username) {
   return `admin:${String(username || 'unknown').toLowerCase()}`;
@@ -362,8 +285,6 @@ router.get('/notifications', verifyToken, requireAdmin, async (req, res) => {
   }
 });
 
-<<<<<<< HEAD
-=======
 // -----------------------------
 // Teacher Pipeline (Applications)
 // -----------------------------
@@ -468,7 +389,6 @@ router.post('/teacher-pipeline/applicants/:id/pass', verifyToken, requireAdmin, 
   }
 });
 
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
 // --- Referral / Commission tracking ---
 function generateReferralCodeAdmin() {
   return (
@@ -2104,11 +2024,11 @@ router.post('/review-cancellation', async (req, res) => {
       const booking = await Booking.findById(cancellationRequest.bookingId);
       if (booking) {
         booking.status = 'cancelled';
-<<<<<<< HEAD
-        await releaseReservedCreditForBooking(booking);
-=======
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
         await booking.save();
+
+        await releaseReservedCreditForCancelledBooking(booking).catch((relErr) =>
+          console.error('⚠️ Reserved credit release failed (admin cancel):', relErr.message)
+        );
         
         // MARK THE SLOT AS AVAILABLE AGAIN WHEN BOOKING IS CANCELLED
         console.log('🔍 Marking slot as available after booking cancellation...');
@@ -3471,12 +3391,12 @@ router.post('/issues/resolve', verifyToken, requireAdmin, async (req, res) => {
           booking.attendance = {};
         }
         booking.attendance.classCompleted = true;
-<<<<<<< HEAD
-        await consumeReservedCreditForBooking(booking, 'Class finished');
-=======
         
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
         await booking.save();
+        const fin = await finalizeLessonCreditsOnCompletion(booking);
+        if (!fin.ok && !fin.skipped) {
+          console.error('⚠️ Lesson credit finalize failed after issue resolution:', fin.error);
+        }
         console.log(`✅ Marked booking ${issue.bookingId} as completed due to resolved issue`);
       }
     } catch (bookingError) {

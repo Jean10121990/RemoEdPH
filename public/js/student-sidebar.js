@@ -13,10 +13,7 @@
         { id: 'book', label: 'Book a Class', href: 'student-book.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>' },
         { id: 'classes', label: 'My Classes', href: 'student-booking-history.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>' },
         { id: 'games', label: 'Play & Learn', href: 'student-games-activities.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M6 12h4M8 10v4"/><path d="M15 11h.01M18 13h.01"/><rect x="2" y="7" width="20" height="10" rx="5"/></svg>' },
-<<<<<<< HEAD
-=======
         { id: 'videos', label: 'Watch Videos', href: 'student-watch-videos.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>' },
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
         { id: 'profile', label: 'My Profile', href: 'student-profile.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>' },
         { id: 'level', label: 'My Level', href: 'student-assessment.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 12h10M7 8h6M7 16h4"/></svg>' },
         { id: 'credits', label: 'My Credits', href: 'student-credits.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M2 10h20M7 14h4"/></svg>' },
@@ -30,10 +27,7 @@
         if (path.indexOf('student-booking-history') !== -1) return 'classes';
         if (path.indexOf('student-book') !== -1) return 'book';
         if (path.indexOf('student-games-activities') !== -1) return 'games';
-<<<<<<< HEAD
-=======
         if (path.indexOf('student-watch-videos') !== -1) return 'videos';
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
         if (path.indexOf('student-profile') !== -1) return 'profile';
         if (path.indexOf('student-assessment') !== -1) return 'level';
         if (path.indexOf('student-credits') !== -1) return 'credits';
@@ -124,11 +118,8 @@
             '  <ul class="remoed-menu">' + menuHtml + '</ul>' +
             '</nav>';
 
-<<<<<<< HEAD
-=======
         injectStudentNoMotionStyles();
 
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
         var logoutLi = container.querySelector('#logout-nav');
         if (logoutLi) {
             logoutLi.addEventListener('click', function () {
@@ -146,8 +137,6 @@
         loadProfileIntoSidebar(container);
     }
 
-<<<<<<< HEAD
-=======
     function injectStudentNoMotionStyles() {
         if (document.getElementById('student-no-motion-style')) return;
         var style = document.createElement('style');
@@ -168,7 +157,6 @@
         document.head.appendChild(style);
     }
 
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
     global.StudentSidebar = {
         render: render,
         MENU_ITEMS: MENU_ITEMS,

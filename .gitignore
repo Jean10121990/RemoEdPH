@@ -1,9 +1,6 @@
 node_modules
-<<<<<<< HEAD
 .env
 .env.*
 !.env.example
 *.pem
 *.key
-=======
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc

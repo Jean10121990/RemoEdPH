@@ -3,11 +3,8 @@ const bcrypt = require('bcrypt');
 const Teacher = require('./models/Teacher');
 const Student = require('./models/Student');
 const Admin = require('./models/Admin');
-<<<<<<< HEAD
-=======
 const Application = require('./models/Application');
 const InvitationToken = require('./models/InvitationToken');
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret'; // Use a strong secret in production
@@ -239,8 +236,6 @@ router.post('/register', async (req, res) => {
   }
 });
 
-<<<<<<< HEAD
-=======
 // Validate teacher signup invitation token
 router.get('/teacher-signup/validate', async (req, res) => {
   try {
@@ -374,7 +369,6 @@ router.post('/teacher-signup/complete', async (req, res) => {
   }
 });
 
->>>>>>> 50700b36e828b653968685fb464adca59f1fbdcc
 // Student login endpoint
 router.post('/student-login', async (req, res) => {
   const { email, username, password } = req.body;
