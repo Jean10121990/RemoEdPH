@@ -4,21 +4,7 @@ const Student = require('./models/Student');
 const PendingRegistration = require('./models/PendingRegistration');
 
 const router = express.Router();
-const PLAN_CREDITS = {
-  spark: { credits: 22, label: 'RemoSpark' },
-  steady: { credits: 66, label: 'RemoSteady' },
-  scholar: { credits: 132, label: 'RemoScholar' },
-  summit: { credits: 264, label: 'RemoSummit' }
-};
-
-function normalizePlanId(plan) {
-  const p = String(plan || '').toLowerCase();
-  if (p === '1month') return 'spark';
-  if (p === '3months') return 'steady';
-  if (p === '6months') return 'scholar';
-  if (p === '1year') return 'summit';
-  return p;
-}
+const { PLAN_CREDITS, normalizePlanId } = require('./config/planCredits');
 
 /** True if any idempotency key is already stored on the student (PayMongo retries / alternate ids). */
 function paymongoKeysOverlap(processedIds, keys) {

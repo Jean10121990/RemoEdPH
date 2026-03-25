@@ -14,6 +14,8 @@ const studentRoutes = require('./student');
 const adminRoutes = require('./admin');
 const paymentRoutes = require('./payments');
 const webhookRoutes = require('./webhooks');
+const creditsRoutes = require('./credits.routes');
+const publicAssessmentRoutes = require('./publicAssessmentRoutes');
 const fileRoutes = require('./fileRoutes');
 const announcementRoutes = require('./announcement');
 const lessonRoutes = require('./lessons');
@@ -261,6 +263,8 @@ app.use('/api', classroomRecordingRouter);
 app.use('/api/admin', adminRouterLimiter, adminRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/webhooks', webhookRoutes);
+app.use('/api/credits', adminRouterLimiter, creditsRoutes);
+app.use('/api/public', publicAssessmentRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/upload', fileRoutes); // Add alias for upload endpoint
 app.use('/api', announcementRoutes); // Mount announcement routes directly under /api

@@ -10,6 +10,7 @@ const Referral = require('./models/Referral');
 const { verifyToken, requireStudent } = require('./authMiddleware');
 const { buildStudentCreditApiResponse } = require('./services/studentCreditSummary');
 const crypto = require('crypto');
+const { body, validationResult } = require('express-validator');
 
 const router = express.Router();
 
@@ -729,27 +730,31 @@ router.post('/update-settings', verifyToken, requireStudent, async (req, res) =>
   }
 });
 
+const saveAssessmentValidators = [
+  body('cefrLevel')
+    .trim()
+    .notEmpty()
+    .withMessage('cefrLevel is required')
+    .customSanitizer((v) => String(v || '').trim().toUpperCase())
+    .isIn(['A1', 'A2', 'A3', 'B1', 'B2', 'C1', 'C2'])
+    .withMessage('Invalid CEFR level'),
+  body('score').toFloat().isFloat({ min: 0, max: 100 }).withMessage('score must be 0–100'),
+  body('date').optional({ values: 'falsy' }).isISO8601().toDate(),
+];
+
 // Save assessment result
-router.post('/save-assessment', verifyToken, requireStudent, async (req, res) => {
+router.post('/save-assessment', verifyToken, requireStudent, saveAssessmentValidators, async (req, res) => {
   try {
     console.log('🎯 Assessment result submission received');
     console.log('🔍 Student ID:', req.user.studentId);
     console.log('🔍 Request body:', req.body);
-    
+
+    const val = validationResult(req);
+    if (!val.isEmpty()) {
+      return res.status(400).json({ error: 'Invalid assessment data', details: val.array() });
+    }
+
     const { cefrLevel, score, date } = req.body;
-    
-    // Validate required fields
-    if (!cefrLevel || score === undefined) {
-      console.log('❌ Missing required fields');
-      return res.status(400).json({ error: 'Missing required fields: cefrLevel, score' });
-    }
-    
-    // Validate CEFR level (allow A3 for custom levels)
-    const validLevels = ['A1', 'A2', 'A3', 'B1', 'B2', 'C1', 'C2'];
-    if (!validLevels.includes(cefrLevel)) {
-      console.log('⚠️ Non-standard CEFR level:', cefrLevel, '- allowing it for custom leveling system');
-      // Don't reject, just log a warning - allows for custom leveling
-    }
     
     // Find and update student
     const student = await Student.findById(req.user.studentId);
@@ -765,7 +770,7 @@ router.post('/save-assessment', verifyToken, requireStudent, async (req, res) =>
     student.assessmentDate = date ? new Date(date) : new Date();
     
     // Also update the legacy level field for backward compatibility
-    if (cefrLevel === 'A1' || cefrLevel === 'A2') {
+    if (cefrLevel === 'A1' || cefrLevel === 'A2' || cefrLevel === 'A3') {
       student.level = 'Beginner';
     } else if (cefrLevel === 'B1' || cefrLevel === 'B2') {
       student.level = 'Intermediate';

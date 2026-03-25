@@ -72,13 +72,6 @@
 
     <script src="avatar-helper.js"></script>
     <script>
-        // Role-based access control
-        const userType = localStorage.getItem('userType');
-        if (userType !== 'student') {
-            alert('Access denied. This page is for students only.');
-            window.location.href = 'index.html';
-        }
-
         // Assessment Questions - CEFR A1/A2 Level for Young Learners
         const assessmentQuestions = [
             {
@@ -192,58 +185,121 @@
         let answers = [];
         let totalQuestions = assessmentQuestions.length;
 
+        const GUEST_PREFILL_STORAGE_KEY = 'remoedGuestAssessmentPrefill';
+
+        function escapeHtml(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/"/g, '&quot;');
+        }
+
         // Check if coming from landing page (guest assessment)
         let isGuestAssessment = false;
         let guestAssessmentData = null;
-        
-        // Initialize
-        document.addEventListener('DOMContentLoaded', function() {
-            // Check URL parameters for guest assessment
+
+        document.addEventListener('DOMContentLoaded', async function() {
             const urlParams = new URLSearchParams(window.location.search);
-            const childName = urlParams.get('childName');
-            const parentEmail = urlParams.get('parentEmail');
-            const contactNumber = urlParams.get('contactNumber');
-            
-            if (childName && parentEmail) {
+            const prefillToken = urlParams.get('p');
+            const legacyChild = urlParams.get('childName');
+            const legacyParent = urlParams.get('parentEmail');
+            const legacyContact = urlParams.get('contactNumber') || '';
+
+            if (prefillToken) {
+                try {
+                    const res = await fetch('/api/public/assessment-prefill/' + encodeURIComponent(prefillToken));
+                    const data = await res.json().catch(function () { return {}; });
+                    if (res.ok && data.success && data.prefill) {
+                        isGuestAssessment = true;
+                        guestAssessmentData = {
+                            childName: data.prefill.childName,
+                            parentEmail: data.prefill.parentEmail,
+                            contactNumber: data.prefill.contactNumber || ''
+                        };
+                        try {
+                            sessionStorage.setItem(GUEST_PREFILL_STORAGE_KEY, JSON.stringify(guestAssessmentData));
+                        } catch (e) { /* ignore */ }
+                        window.history.replaceState({}, '', 'student-assessment.html');
+                    } else {
+                        console.warn('Assessment prefill failed', data.error || res.status);
+                    }
+                } catch (e) {
+                    console.error('Assessment prefill request failed', e);
+                }
+            }
+
+            if (!isGuestAssessment && legacyChild && legacyParent) {
                 isGuestAssessment = true;
-                guestAssessmentData = { childName, parentEmail, contactNumber };
-                
-                // Hide sidebar for guest users
-                document.querySelector('.remoed-sidebar').style.display = 'none';
-                document.querySelector('.remoed-content').style.marginLeft = '0';
-                document.querySelector('.remoed-content').style.maxWidth = '100%';
-                
-                // Show guest message
-                const introScreen = document.getElementById('intro-screen');
+                guestAssessmentData = {
+                    childName: legacyChild,
+                    parentEmail: legacyParent,
+                    contactNumber: legacyContact
+                };
+                try {
+                    sessionStorage.setItem(GUEST_PREFILL_STORAGE_KEY, JSON.stringify(guestAssessmentData));
+                } catch (e) { /* ignore */ }
+                window.history.replaceState({}, '', 'student-assessment.html');
+            }
+
+            if (!isGuestAssessment) {
+                try {
+                    var raw = sessionStorage.getItem(GUEST_PREFILL_STORAGE_KEY);
+                    if (raw) {
+                        var parsed = JSON.parse(raw);
+                        if (parsed && parsed.parentEmail && parsed.childName) {
+                            isGuestAssessment = true;
+                            guestAssessmentData = parsed;
+                        }
+                    }
+                } catch (e) { /* ignore */ }
+            }
+
+            if (isGuestAssessment && guestAssessmentData) {
+                var sb = document.getElementById('student-sidebar-root');
+                if (sb) sb.style.display = 'none';
+                var content = document.querySelector('.remoed-content');
+                if (content) {
+                    content.style.marginLeft = '0';
+                    content.style.maxWidth = '100%';
+                }
+                var introScreen = document.getElementById('intro-screen');
                 if (introScreen) {
-                    const guestMsg = document.createElement('div');
+                    var guestMsg = document.createElement('div');
                     guestMsg.style.cssText = 'background: #FFF3CD; border: 2px solid #FFD700; padding: 16px; border-radius: 12px; margin-bottom: 24px; text-align: center;';
-                    guestMsg.innerHTML = `<strong>👋 Welcome ${childName}!</strong> Complete the assessment to receive your results via email. You'll need to sign up after to view your results online.`;
+                    var safe = escapeHtml(guestAssessmentData.childName);
+                    guestMsg.innerHTML = '<strong>👋 Welcome ' + safe + '!</strong> Complete the assessment to receive your results via email. You\'ll need to sign up after to view your results online.';
                     introScreen.insertBefore(guestMsg, introScreen.firstChild);
                 }
-            } else {
-                // Regular logged-in user
-                const username = localStorage.getItem('remoedUsername') || 'Student';
-                const studentId = localStorage.getItem('studentId');
-                
-                // Set sidebar avatar
-                const sidebarImg = document.getElementById('profile-image');
-                const sidebarText = document.getElementById('avatar-text');
-                if (sidebarImg && sidebarText) {
-                    sidebarImg.style.display = 'none';
-                    sidebarText.style.display = 'inline-block';
-                    sidebarText.textContent = username[0].toUpperCase();
-                }
-                const sidebarName = document.getElementById('remoed-username');
-                if (sidebarName) sidebarName.textContent = 'Hi, ' + username + '!';
-                
-                // Load profile picture if available
-                if (studentId) {
-                    loadProfilePicture(studentId);
-                }
-                
-                // Logout functionality
-                document.getElementById('logout-nav').onclick = function() {
+                return;
+            }
+
+            var userType = localStorage.getItem('userType');
+            if (userType !== 'student') {
+                alert('Access denied. This page is for students only.');
+                window.location.href = 'index.html';
+                return;
+            }
+
+            var username = localStorage.getItem('remoedUsername') || 'Student';
+            var studentId = localStorage.getItem('studentId');
+
+            var sidebarImg = document.getElementById('profile-image');
+            var sidebarText = document.getElementById('avatar-text');
+            if (sidebarImg && sidebarText) {
+                sidebarImg.style.display = 'none';
+                sidebarText.style.display = 'inline-block';
+                sidebarText.textContent = username[0].toUpperCase();
+            }
+            var sidebarName = document.getElementById('remoed-username');
+            if (sidebarName) sidebarName.textContent = 'Hi, ' + username + '!';
+
+            if (studentId) {
+                loadProfilePicture(studentId);
+            }
+
+            var logoutNav = document.getElementById('logout-nav');
+            if (logoutNav) {
+                logoutNav.onclick = function() {
                     localStorage.clear();
                     window.location.href = 'student-login.html';
                 };

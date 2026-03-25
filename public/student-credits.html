@@ -143,11 +143,11 @@
           greet.textContent = 'Hi, ' + name + '! Here are your lesson credits.';
         }
 
-        var pool = Number(data.balance != null ? data.balance : data.totalCredits) || 0;
+        var available = Number(data.availableBalance);
         var reserved = Number(data.reservedCredits) || 0;
-        var available = data.availableBalance != null ? Number(data.availableBalance) : NaN;
-        if (available == null || isNaN(available)) {
-          available = Math.max(pool - reserved, 0);
+        if (data.availableBalance == null || isNaN(available)) {
+          document.getElementById('credits-balance').textContent = '\u2014';
+          throw new Error('Credits API must return availableBalance (server-side summary required).');
         }
 
         const usedCredits = data.usedCredits != null ? data.usedCredits : (data.used ?? 0);

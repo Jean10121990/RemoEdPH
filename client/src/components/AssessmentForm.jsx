@@ -1,28 +1,55 @@
+import { useState } from "react";
 import { legacyUrl } from "../api/http.js";
 
 const ASSESSMENT_DRAFT_KEY = "remoedAssessmentDraft";
 
 export default function AssessmentForm() {
-  function onSubmit(e) {
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  async function onSubmit(e) {
     e.preventDefault();
+    setError("");
     const fd = new FormData(e.target);
     const childName = fd.get("childName");
     const parentEmail = fd.get("parentEmail");
     const contactNumber = fd.get("contactNumber");
+    setSubmitting(true);
     try {
-      sessionStorage.setItem(
-        ASSESSMENT_DRAFT_KEY,
-        JSON.stringify({ childName, parentEmail, contactNumber }),
+      const res = await fetch(legacyUrl("/api/public/assessment-prefill"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          childName,
+          parentEmail,
+          contactNumber: contactNumber || "",
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const msg =
+          data.error ||
+          (Array.isArray(data.details) && data.details[0]?.msg) ||
+          "Could not start assessment";
+        throw new Error(msg);
+      }
+      if (!data.token) throw new Error("Invalid server response");
+      try {
+        sessionStorage.setItem(
+          ASSESSMENT_DRAFT_KEY,
+          JSON.stringify({ childName, parentEmail, contactNumber }),
+        );
+      } catch {
+        /* ignore */
+      }
+      window.location.href = legacyUrl(
+        `/student-assessment.html?p=${encodeURIComponent(data.token)}`,
       );
-    } catch {
-      /* ignore */
+    } catch (err) {
+      setError(err.message || "Something went wrong");
+    } finally {
+      setSubmitting(false);
     }
-    const q = new URLSearchParams({
-      childName: String(childName),
-      parentEmail: String(parentEmail),
-      contactNumber: String(contactNumber),
-    });
-    window.location.href = legacyUrl(`/student-assessment.html?${q.toString()}`);
   }
 
   return (
@@ -47,6 +74,11 @@ export default function AssessmentForm() {
           />
         </div>
         <div className="assessment-form">
+          {error ? (
+            <p className="assessment-error" role="alert" style={{ color: "#b00020" }}>
+              {error}
+            </p>
+          ) : null}
           <form onSubmit={onSubmit}>
             <div className="form-group">
               <label htmlFor="childName">Child&apos;s Name</label>
@@ -81,8 +113,8 @@ export default function AssessmentForm() {
                 autoComplete="tel"
               />
             </div>
-            <button type="submit" className="assessment-btn">
-              Start Free Assessment
+            <button type="submit" className="assessment-btn" disabled={submitting}>
+              {submitting ? "Starting…" : "Start Free Assessment"}
             </button>
           </form>
         </div>
