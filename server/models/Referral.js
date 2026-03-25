@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { piiContactString } = require('../utils/piiMongoose');
 
 const referralSchema = new mongoose.Schema(
   {
@@ -9,13 +10,17 @@ const referralSchema = new mongoose.Schema(
     studentId: { type: String, required: true, index: true }, // Student _id as string
     studentName: { type: String, default: '' },
     studentEmail: { type: String, default: '' },
-    studentContact: { type: String, default: '' },
+    studentContact: piiContactString(''),
     subscriptionPlan: { type: String, default: '' }, // 1month/3months/6months/1year
     amountPaid: { type: Number, default: 0 }, // subscription amount (PHP)
     commissionAmount: { type: Number, default: 25 }, // fixed commission per successful enrollee
     status: { type: String, enum: ['pending', 'successful', 'void'], default: 'successful' }
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    toJSON: { getters: true },
+    toObject: { getters: true },
+  }
 );
 
 // Prevent duplicate commission per student per referrer

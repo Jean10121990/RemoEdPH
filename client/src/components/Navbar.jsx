@@ -1,6 +1,10 @@
+import { useTranslation } from "react-i18next";
 import { legacyUrl } from "../api/http.js";
+import LanguageSwitcher from "./LanguageSwitcher.jsx";
 
 export default function Navbar() {
+  const { t } = useTranslation();
+
   return (
     <nav className="navbar">
       <div className="logo-section">
@@ -23,8 +27,9 @@ export default function Navbar() {
         <a href={legacyUrl("/teacher-login.html")} className="nav-btn">
           Teacher Login
         </a>
+        <LanguageSwitcher />
         <a href={legacyUrl("/student-login.html")} className="nav-btn primary">
-          Student Login
+          {t("login_title")}
         </a>
       </div>
     </nav>

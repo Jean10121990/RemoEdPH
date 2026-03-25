@@ -11,6 +11,7 @@ const { verifyToken, requireStudent } = require('./authMiddleware');
 const { buildStudentCreditApiResponse } = require('./services/studentCreditSummary');
 const crypto = require('crypto');
 const { body, validationResult } = require('express-validator');
+const { encryptPiiString } = require('./utils/piiCrypto');
 
 const router = express.Router();
 
@@ -194,14 +195,15 @@ router.post('/profile', verifyToken, requireStudent, async (req, res) => {
       gender: gender || '',
       birthday: birthday || null,
       age: age || null,
-      contact: contact || '',
+      // Raw updates skip Mongoose setters — encrypt here when PII_ENCRYPTION_KEY is set
+      contact: encryptPiiString(contact || ''),
       email: email || req.user.username, // Use username as fallback for email
       address: address || '',
       language: language || '',
       hobbies: hobbies || '',
       parentName: parentName || '',
-      parentContact: parentContact || '',
-      emergencyContact: emergencyContact || '',
+      parentContact: encryptPiiString(parentContact || ''),
+      emergencyContact: encryptPiiString(emergencyContact || ''),
       aboutMe: aboutMe || '',
       education: education || []
     };
@@ -948,7 +950,7 @@ router.post('/confirm-payment', async (req, res) => {
     student.paymentDetails = {
       bankName: String(bankName || '').trim(),
       accountName: String(accountName || '').trim(),
-      gcashNumber: String(gcashNumber || '').trim(),
+      gcashNumber: encryptPiiString(String(gcashNumber || '').trim()),
       paypalEmail: String(paypalEmail || '').trim()
     };
 
@@ -1046,7 +1048,7 @@ router.post('/confirm-payment', async (req, res) => {
                 studentId: String(student._id),
                 studentName,
                 studentEmail: student.email || '',
-                studentContact: student.contact || '',
+                studentContact: encryptPiiString(student.contact || ''),
                 subscriptionPlan: student.subscriptionPlan || '',
                 amountPaid: paid,
                 commissionAmount: 25,

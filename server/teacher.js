@@ -29,6 +29,8 @@ const {
   releaseReservedCreditForBooking,
 } = require('./services/bookingCreditLedger');
 const realtime = require('./realtime');
+const { teacherPeerSearchLimiter } = require('./middleware/apiRateLimits');
+const { encryptPiiString, decryptPiiString } = require('./utils/piiCrypto');
 
 async function ensureDir(dirPath) {
   await fsp.mkdir(dirPath, { recursive: true });
@@ -278,7 +280,7 @@ router.get('/referrals', verifyToken, requireTeacher, async (req, res) => {
         studentId: r.studentId,
         studentName: r.studentName || '',
         studentEmail: r.studentEmail || '',
-        studentContact: r.studentContact || '',
+        studentContact: decryptPiiString(r.studentContact || ''),
         subscriptionPlan: r.subscriptionPlan || '',
         amountPaid: Number(r.amountPaid || 0) || 0,
         commissionAmount: Number(r.commissionAmount || 0) || 0,
@@ -2441,10 +2443,10 @@ router.post('/profile', verifyToken, requireTeacher, async (req, res) => {
         language: profileData.language,
         hobbies: profileData.hobbies,
         address: profileData.address,
-        contact: profileData.contact,
+        contact: encryptPiiString(profileData.contact || ''),
         email: profileData.email,
         username: profileData.username,
-        emergencyContact: profileData.emergencyContact,
+        emergencyContact: encryptPiiString(profileData.emergencyContact || ''),
         introduction: profileData.introduction,
         experience: profileData.experience,
         profilePicture: profileData.profilePicture,
@@ -5905,7 +5907,7 @@ router.get('/assessed-abilities', verifyToken, requireTeacher, async (req, res) 
 });
 
 // Get peer teachers (for peer learning)
-router.get('/peers', verifyToken, requireTeacher, async (req, res) => {
+router.get('/peers', teacherPeerSearchLimiter, verifyToken, requireTeacher, async (req, res) => {
   try {
     const { search } = req.query;
     const currentTeacherId = req.user.teacherId;

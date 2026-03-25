@@ -20,6 +20,7 @@
     />
     <link rel="stylesheet" href="style.css" />
     <link rel="stylesheet" href="landing-brand.css" />
+    <link rel="stylesheet" href="css/site-i18n.css" />
   </head>
   <body class="page-index">
     <!-- Navigation -->
@@ -34,7 +35,14 @@
         <a href="#plans" class="nav-btn">Plans</a>
         <a href="/application-form" class="nav-btn">Apply Now</a>
         <a href="teacher-login.html" class="nav-btn">Teacher Login</a>
-        <a href="student-login.html" class="nav-btn primary">Student Login</a>
+        <select
+          class="site-lang-switcher"
+          id="nav-lang-switcher"
+          aria-label="Language"
+        ></select>
+        <a href="student-login.html" class="nav-btn primary" data-i18n="login_title"
+          >Student Login</a
+        >
       </div>
     </nav>
 
@@ -683,6 +691,10 @@
             closeModal();
           }
         });
+    </script>
+    <script src="js/site-i18n.js"></script>
+    <script>
+      SiteI18n.init();
     </script>
   </body>
 </html>

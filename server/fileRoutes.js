@@ -3,6 +3,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const File = require('./models/File');
+const { fileUploadLimiter } = require('./middleware/apiRateLimits');
 
 const router = express.Router();
 
@@ -59,8 +60,8 @@ const upload = multer({
   }
 });
 
-// Upload file
-router.post('/upload', upload.single('file'), async (req, res) => {
+// Upload file (limiter on handler so all mount prefixes share one cap, e.g. /api/upload and /api/files/upload)
+router.post('/upload', fileUploadLimiter, upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });

@@ -7,6 +7,7 @@ const { verifyAdminApiAuth, requireAdmin, verifyToken, requireStudent } = requir
 const { creditsForPlan } = require('./config/planCredits');
 const { consumeReservedCreditForBooking } = require('./services/bookingCreditLedger');
 const { buildStudentCreditApiResponse } = require('./services/studentCreditSummary');
+const { logAdminAction } = require('./services/adminAudit');
 
 const router = express.Router();
 
@@ -163,6 +164,17 @@ router.post(
       if (adminKey) {
         const ids = Array.isArray(student.processedPaymentIds) ? student.processedPaymentIds : [];
         if (ids.includes(adminKey)) {
+          await logAdminAction(req, {
+            action: 'admin_credit_grant',
+            subjectId: student._id,
+            subjectEmail: student.email || '',
+            details: {
+              duplicate: true,
+              planKey: plan.planId,
+              planLabel: plan.label,
+              idempotencyKey: adminKey,
+            },
+          });
           return res.json({
             success: true,
             duplicate: true,
@@ -212,6 +224,20 @@ router.post(
       }
 
       await Student.updateOne({ _id: student._id }, update);
+
+      await logAdminAction(req, {
+        action: 'admin_credit_grant',
+        subjectId: student._id,
+        subjectEmail: student.email || '',
+        details: {
+          planKey: plan.planId,
+          planLabel: plan.label,
+          creditsAdded: creditsToAdd,
+          note: note || '',
+          idempotencyKey: adminKey || null,
+          availableBalance: availableAfter,
+        },
+      });
 
       return res.json({
         success: true,

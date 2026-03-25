@@ -10,7 +10,57 @@ const PeerMessage = require('./models/PeerMessage');
 const IssueReport = require('./models/IssueReport');
 const TimeLog = require('./models/TimeLog');
 const Referral = require('./models/Referral');
-const { verifyAdminApiAuth, requireAdmin } = require('./authMiddleware');
+const AdminAuditLog = require('./models/AdminAuditLog');
+const { decryptPiiString } = require('./utils/piiCrypto');
+const { verifyAdminApiAuth, requireAdmin, verifyToken, requireTeacher } = require('./authMiddleware');
+
+/**
+ * RBAC for /api/admin/* — default: admin session/JWT only.
+ * Exception: GET /teacher-rate and GET /teacher-rate/:id for authenticated teachers (service-fee UI).
+ */
+function adminRouterRbac(req, res, next) {
+  const p = req.path || '';
+  const teacherRateRead =
+    req.method === 'GET' && (p === '/teacher-rate' || p.startsWith('/teacher-rate/'));
+  if (teacherRateRead) {
+    if (req.session && req.session.adminAuth === true && req.session.adminUsername) {
+      req.user = {
+        username: req.session.adminUsername,
+        isAdmin: true,
+        role: 'admin',
+        adminId: req.session.adminId || null,
+      };
+      return next();
+    }
+    return verifyToken(req, res, (err) => {
+      if (err) return;
+      const isAdmin = req.user && (req.user.isAdmin === true || req.user.role === 'admin');
+      if (isAdmin) return next();
+      requireTeacher(req, res, next);
+    });
+  }
+  return verifyAdminApiAuth(req, res, (err) => {
+    if (err) return;
+    requireAdmin(req, res, next);
+  });
+}
+
+router.use(adminRouterRbac);
+
+/** Recent admin audit events (credit grants, etc.). Query: ?action=&limit= */
+router.get('/audit-logs', async (req, res) => {
+  try {
+    const lim = Math.min(Math.max(Number(req.query.limit) || 50, 1), 200);
+    const filter = {};
+    if (req.query.action) filter.action = String(req.query.action);
+    const logs = await AdminAuditLog.find(filter).sort({ createdAt: -1 }).limit(lim).lean();
+    res.json({ success: true, logs });
+  } catch (err) {
+    console.error('Admin audit-logs error:', err);
+    res.status(500).json({ success: false, message: 'Failed to load audit logs' });
+  }
+});
+
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const Application = require('./models/Application');
@@ -432,7 +482,11 @@ router.get('/referrals', verifyAdminApiAuth, requireAdmin, async (req, res) => {
       const t = teacherMap.get(r.teacherId);
       const teacherName =
         (t?.fullname || `${t?.firstName || ''} ${t?.lastName || ''}`.trim() || t?.username || r.teacherId);
-      return { ...r, teacherName };
+      return {
+        ...r,
+        teacherName,
+        studentContact: decryptPiiString(r.studentContact || ''),
+      };
     });
 
     const totals = rows.reduce(
@@ -1359,7 +1413,7 @@ router.post('/cleanup/backups', async (req, res) => {
 router.get('/teacher-rate/:teacherId', async (req, res) => {
   try {
     const { teacherId } = req.params;
-    
+
     const teacher = await Teacher.findById(teacherId);
     if (!teacher) {
       return res.status(404).json({
@@ -1367,7 +1421,22 @@ router.get('/teacher-rate/:teacherId', async (req, res) => {
         message: 'Teacher not found'
       });
     }
-    
+
+    const isStaff =
+      req.user && (req.user.isAdmin === true || req.user.role === 'admin');
+    if (!isStaff) {
+      const uid = req.user && req.user.teacherId;
+      const ownsByLogical = uid && teacher.teacherId === uid;
+      const ownsByDoc =
+        req.teacher && String(req.teacher._id) === String(teacher._id);
+      if (!ownsByLogical && !ownsByDoc) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied',
+        });
+      }
+    }
+
     // Get global rate from database
     const settings = await GlobalSettings.findOne({});
     const globalRate = settings ? settings.globalRate : 100;

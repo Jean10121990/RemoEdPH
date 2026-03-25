@@ -1,6 +1,11 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
-const rateLimit = require('express-rate-limit');
+const {
+  authLoginLimiter,
+  adminLoginLimiterExtra,
+  passwordResetLimiter,
+  authRegisterLimiter,
+} = require('./middleware/apiRateLimits');
 const Teacher = require('./models/Teacher');
 const Student = require('./models/Student');
 const Admin = require('./models/Admin');
@@ -22,14 +27,6 @@ const { sendPasswordResetEmail } = require('./emailService');
 function getAdminPasswordHashField(adminDoc) {
   return adminDoc.passwordHash || adminDoc.password || '';
 }
-
-const adminLoginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: Number(process.env.ADMIN_LOGIN_RATE_LIMIT_MAX || 10),
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { success: false, message: 'Too many login attempts. Please try again later.' },
-});
 
 // Middleware to authenticate JWT token
 const authenticateToken = (req, res, next) => {
@@ -130,7 +127,7 @@ const seedAdminFromEnv = async () => {
 setTimeout(seedAdminFromEnv, 2000);
 
 // Admin login endpoint (rate-limited; sets httpOnly session cookie + optional legacy JWT)
-router.post('/admin-login', adminLoginLimiter, async (req, res) => {
+router.post('/admin-login', adminLoginLimiterExtra, async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) {
     return res.status(400).json({ success: false, message: 'Username and password are required' });
@@ -214,7 +211,7 @@ router.post('/admin-logout', (req, res) => {
   });
 });
 
-router.post('/login', async (req, res) => {
+router.post('/login', authLoginLimiter, async (req, res) => {
   console.log('=== TEACHER LOGIN ATTEMPT ===');
   console.log('Request headers:', req.headers);
   console.log('Request body:', req.body);
@@ -287,7 +284,7 @@ router.post('/login', async (req, res) => {
   }
 });
 
-router.post('/register', async (req, res) => {
+router.post('/register', authRegisterLimiter, async (req, res) => {
   const { username, password, firstName = '', middleName = '', lastName = '', email = '' } = req.body;
   if (!username || !password) {
     return res.status(400).json({ success: false, message: 'Username and password are required.' });
@@ -334,7 +331,7 @@ router.post('/register', async (req, res) => {
 });
 
 // Student login endpoint
-router.post('/student-login', async (req, res) => {
+router.post('/student-login', authLoginLimiter, async (req, res) => {
   const { email, username, password } = req.body;
   console.log('=== STUDENT LOGIN ATTEMPT ===');
   console.log('Request body:', { email, username, password: '***' });
@@ -432,7 +429,7 @@ router.post('/student-login', async (req, res) => {
 });
 
 // Student registration endpoint
-router.post('/student-register', async (req, res) => {
+router.post('/student-register', authRegisterLimiter, async (req, res) => {
   const { username, email, password, referralCode } = req.body;
   if (!username || !password) {
     return res.status(400).json({ success: false, message: 'Username and password required' });
@@ -530,7 +527,7 @@ router.post('/student-register', async (req, res) => {
 });
 
 // Add forgot password endpoint for teachers - generates new password
-router.post('/forgot-password', async (req, res) => {
+router.post('/forgot-password', passwordResetLimiter, async (req, res) => {
   try {
     const { email } = req.body;
     
@@ -607,7 +604,7 @@ router.post('/forgot-password', async (req, res) => {
 });
 
 // Add reset password endpoint
-router.post('/reset-password', async (req, res) => {
+router.post('/reset-password', passwordResetLimiter, async (req, res) => {
   const { token, password } = req.body;
   console.log('Token received:', token);
   const user = await Teacher.findOne({
@@ -632,7 +629,7 @@ router.post('/reset-password', async (req, res) => {
 // Student login endpoint (duplicate removed - using the one above)
 
 // Student forgot password endpoint - generates new password
-router.post('/student-forgot-password', async (req, res) => {
+router.post('/student-forgot-password', passwordResetLimiter, async (req, res) => {
   try {
     const { email } = req.body;
     
@@ -712,7 +709,7 @@ router.post('/student-forgot-password', async (req, res) => {
 // Add reset password endpoint (duplicate removed - using the one above)
 
 // Student reset password endpoint
-router.post('/student-reset-password', async (req, res) => {
+router.post('/student-reset-password', passwordResetLimiter, async (req, res) => {
   const { token, password } = req.body;
   const user = await Student.findOne({
     resetPasswordToken: token,

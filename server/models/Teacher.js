@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { piiContactString } = require('../utils/piiMongoose');
 
 const teacherSchema = new mongoose.Schema({
   teacherId: { type: String, required: true, unique: true }, // Company format: KBF07202500001
@@ -18,9 +19,9 @@ const teacherSchema = new mongoose.Schema({
   language: { type: String, enum: ['English', 'Filipino', 'Spanish', 'Chinese', 'Japanese', ''], default: '' },
   hobbies: { type: String, default: '' },
   address: { type: String, default: '' },
-  contact: { type: String, default: '' },
+  contact: piiContactString(''),
   email: { type: String, default: '' },
-  emergencyContact: { type: String, default: '' },
+  emergencyContact: piiContactString(''),
   
   // Professional Information
   introduction: { type: String, default: '' },
@@ -302,7 +303,9 @@ const teacherSchema = new mongoose.Schema({
     }
   }
 }, {
-  timestamps: true
+  timestamps: true,
+  toJSON: { getters: true },
+  toObject: { getters: true },
 });
 
 module.exports = mongoose.model('Teacher', teacherSchema); 

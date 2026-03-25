@@ -2,6 +2,7 @@ const express = require('express');
 const crypto = require('crypto');
 const Student = require('./models/Student');
 const PendingRegistration = require('./models/PendingRegistration');
+const PaymongoWebhookEvent = require('./models/PaymongoWebhookEvent');
 
 const router = express.Router();
 const { PLAN_CREDITS, normalizePlanId } = require('./config/planCredits');
@@ -30,6 +31,21 @@ function paymongoNotYetProcessedFilter(guardKeys) {
       ]
     }
   };
+}
+
+async function markPaymongoWebhookEventProcessed(eventId, eventType) {
+  const id = String(eventId || '').trim();
+  if (!id) return;
+  try {
+    await PaymongoWebhookEvent.create({
+      eventId: id,
+      eventType: String(eventType || 'checkout_session.payment.paid'),
+    });
+  } catch (e) {
+    if (e.code !== 11000) {
+      console.warn('[PAYMONGO WEBHOOK] Event ledger write:', e.message);
+    }
+  }
 }
 
 /**
@@ -99,10 +115,15 @@ function computeSubscriptionDates(plan) {
 }
 
 async function handlePaymongoWebhook(req, res) {
-  /** PayMongo retries on non-2xx; always acknowledge with HTTP 200 + { received: true }. */
   const sendAck = (extra = {}) => {
     if (!res.headersSent) {
       return res.status(200).json({ received: true, ...extra });
+    }
+  };
+
+  const rejectWebhook = (status, message) => {
+    if (!res.headersSent) {
+      return res.status(status).json({ error: message });
     }
   };
 
@@ -138,7 +159,7 @@ async function handlePaymongoWebhook(req, res) {
     ).trim();
     if (!webhookSecret) {
       console.error('❌ [PAYMONGO WEBHOOK] Missing PAYMONGO_WEBHOOK_SECRET in environment');
-      return sendAck({ processed: false, error: 'PayMongo webhook secret is not configured' });
+      return rejectWebhook(503, 'Webhook signing is not configured');
     }
 
     const signatureHeader = String(
@@ -148,7 +169,7 @@ async function handlePaymongoWebhook(req, res) {
     ).trim();
     if (!signatureHeader) {
       console.error('❌ [PAYMONGO WEBHOOK] Missing Paymongo-Signature / paymongo-signature header');
-      return sendAck({ processed: false, error: 'Missing Paymongo-Signature header' });
+      return rejectWebhook(401, 'Missing Paymongo-Signature header');
     }
 
     const signatureParts = signatureHeader.split(',').reduce((acc, part) => {
@@ -164,7 +185,18 @@ async function handlePaymongoWebhook(req, res) {
         hasProvidedSignature: !!providedSignature,
         signatureHeader
       });
-      return sendAck({ processed: false, error: 'Invalid webhook signature format' });
+      return rejectWebhook(401, 'Invalid webhook signature format');
+    }
+
+    const tsNum = Number(timestamp);
+    if (!Number.isFinite(tsNum)) {
+      return rejectWebhook(401, 'Invalid webhook timestamp');
+    }
+    const maxSkew = Number(process.env.PAYMONGO_WEBHOOK_MAX_SKEW_SEC || 300);
+    const skewSec = Math.abs(Math.floor(Date.now() / 1000) - tsNum);
+    if (skewSec > maxSkew) {
+      console.error('❌ [PAYMONGO WEBHOOK] Timestamp outside allowed window', { skewSec, maxSkew });
+      return rejectWebhook(401, 'Webhook timestamp outside allowed window');
     }
 
     const bodyBuffer = Buffer.isBuffer(req.rawBody) ? req.rawBody : req.body;
@@ -207,7 +239,7 @@ async function handlePaymongoWebhook(req, res) {
         expectedPrefix: expectedSignature.slice(0, 24),
         hint: 'Confirm PAYMONGO_WEBHOOK_SECRET matches the signing secret in PayMongo Dashboard for this URL.'
       });
-      return sendAck({ processed: false, error: 'Webhook signature verification failed' });
+      return rejectWebhook(401, 'Webhook signature verification failed');
     }
     console.log('✅ [PAYMONGO WEBHOOK] Signature verified (HMAC SHA-256 OK, secret from PAYMONGO_WEBHOOK_SECRET)');
 
@@ -225,12 +257,21 @@ async function handlePaymongoWebhook(req, res) {
         message: parseError.message,
         rawHead: String(rawPayload).slice(0, 400)
       });
-      return sendAck({ processed: false, error: 'Invalid JSON payload' });
+      return rejectWebhook(400, 'Invalid JSON payload');
     }
 
     const ctx = extractCheckoutSessionContext(payload);
     const eventType = ctx.eventType || payload?.data?.attributes?.type;
     console.log('🔔 [PAYMONGO WEBHOOK] Event type:', eventType || '(missing type)');
+
+    const paymongoEventId = String(payload?.data?.id || '').trim();
+    if (eventType === 'checkout_session.payment.paid' && paymongoEventId) {
+      const already = await PaymongoWebhookEvent.findOne({ eventId: paymongoEventId }).lean();
+      if (already) {
+        console.log('ℹ️ [PAYMONGO WEBHOOK] Duplicate event id (already processed):', paymongoEventId);
+        return res.status(200).json({ received: true, duplicateEvent: true });
+      }
+    }
 
     if (eventType !== 'checkout_session.payment.paid') {
       console.log(
@@ -244,7 +285,6 @@ async function handlePaymongoWebhook(req, res) {
     console.log('✅ [PAYMONGO WEBHOOK] checkout_session.payment.paid — EVENT RECEIVED (will run DB logic)');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
-    const eventId = String(payload?.data?.id || '');
     const legacyResource =
       payload?.data?.attributes?.data ||
       payload?.data?.attributes ||
@@ -283,10 +323,10 @@ async function handlePaymongoWebhook(req, res) {
      * then payment id, then event id — prevents double-credit when webhook payload shape varies.
      */
     const idempotencyKey = String(
-      checkoutSessionId || paymongoPaymentId || eventId || ''
+      checkoutSessionId || paymongoPaymentId || paymongoEventId || ''
     ).trim();
     console.log('🔎 [PAYMONGO WEBHOOK] Parsed identifiers', {
-      eventId,
+      eventId: paymongoEventId,
       checkoutSessionId,
       registrationId,
       paymongoPaymentId,
@@ -319,6 +359,7 @@ async function handlePaymongoWebhook(req, res) {
 
     if (pending.status === 'paid') {
       console.log('ℹ️ [PAYMONGO WEBHOOK] Already processed registration:', pending.registrationId);
+      await markPaymongoWebhookEventProcessed(paymongoEventId, eventType);
       return sendAck({ processed: true, message: 'Already processed' });
     }
 
@@ -347,6 +388,7 @@ async function handlePaymongoWebhook(req, res) {
 
       if (paymongoKeysOverlap(existing.processedPaymentIds, guardKeys)) {
         console.log('ℹ️ [PAYMONGO WEBHOOK] Duplicate webhook ignored, payment already processed for student', existing._id);
+        await markPaymongoWebhookEventProcessed(paymongoEventId, eventType);
         return sendAck({ processed: true, duplicate: true });
       }
 
@@ -405,7 +447,7 @@ async function handlePaymongoWebhook(req, res) {
       }
 
       pending.status = 'paid';
-      pending.paymongoEventId = eventId;
+      pending.paymongoEventId = paymongoEventId;
       pending.processedAt = new Date();
       if (checkoutSessionId) pending.paymongoCheckoutId = checkoutSessionId;
       try {
@@ -416,6 +458,7 @@ async function handlePaymongoWebhook(req, res) {
           code: pendErr.code,
           registrationId: pending.registrationId
         });
+        await markPaymongoWebhookEventProcessed(paymongoEventId, eventType);
         return sendAck({
           processed: true,
           refill: true,
@@ -430,6 +473,7 @@ async function handlePaymongoWebhook(req, res) {
         paymongoPaymentId,
         modifiedCount: updateExisting.modifiedCount
       });
+      await markPaymongoWebhookEventProcessed(paymongoEventId, eventType);
       return sendAck({ processed: true, refill: true });
     }
 
@@ -541,7 +585,7 @@ async function handlePaymongoWebhook(req, res) {
     }
 
     pending.status = 'paid';
-    pending.paymongoEventId = eventId;
+    pending.paymongoEventId = paymongoEventId;
     pending.processedAt = new Date();
     if (checkoutSessionId) pending.paymongoCheckoutId = checkoutSessionId;
     try {
@@ -553,6 +597,7 @@ async function handlePaymongoWebhook(req, res) {
         message: pendingSaveError.message,
         code: pendingSaveError.code
       });
+      await markPaymongoWebhookEventProcessed(paymongoEventId, eventType);
       return sendAck({
         processed: true,
         warning: 'Student saved but pending row not updated',
@@ -561,6 +606,7 @@ async function handlePaymongoWebhook(req, res) {
     }
 
     console.log('✅ [PAYMONGO WEBHOOK] checkout_session.payment.paid processed successfully');
+    await markPaymongoWebhookEventProcessed(paymongoEventId, eventType);
     return sendAck({ processed: true });
   } catch (error) {
     console.error('❌ [PAYMONGO WEBHOOK] Unhandled error (top-level catch — still returning 200 to stop PayMongo retries)', {

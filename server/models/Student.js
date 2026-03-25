@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { piiContactString } = require('../utils/piiMongoose');
 
 const studentSchema = new mongoose.Schema({
   studentCode: { type: String, default: null, unique: true, sparse: true },
@@ -11,13 +12,13 @@ const studentSchema = new mongoose.Schema({
   gender: { type: String },
   birthday: { type: Date },
   age: { type: Number },
-  contact: { type: String },
+  contact: piiContactString(''),
   address: { type: String },
   language: { type: String },
   hobbies: { type: String },
   parentName: { type: String },
-  parentContact: { type: String },
-  emergencyContact: { type: String },
+  parentContact: piiContactString(''),
+  emergencyContact: piiContactString(''),
   aboutMe: { type: String },
   photo: { type: String },
   profilePicture: { type: String },
@@ -54,7 +55,7 @@ const studentSchema = new mongoose.Schema({
   paymentDetails: {
     bankName: { type: String, default: '' },
     accountName: { type: String, default: '' },
-    gcashNumber: { type: String, default: '' },
+    gcashNumber: piiContactString(''),
     paypalEmail: { type: String, default: '' }
   },
   paymentPaidAt: { type: Date, default: null },
@@ -95,6 +96,10 @@ const studentSchema = new mongoose.Schema({
   referredByOwnerType: { type: String, enum: ['teacher', 'admin', null], default: null },
   referredByOwnerId: { type: String, default: null }, // teacherId or admin username
   createdAt: { type: Date, default: Date.now }
-}, { timestamps: true });
+}, {
+  timestamps: true,
+  toJSON: { getters: true },
+  toObject: { getters: true },
+});
 
 module.exports = mongoose.model('Student', studentSchema); 
