@@ -39,6 +39,21 @@ if (String(process.env.TRUST_PROXY || '').toLowerCase() === 'true' || process.en
   app.set('trust proxy', 1);
 }
 
+function isAllowedOrigin(origin) {
+  if (!origin) return true; // curl / same-origin / server-to-server
+  try {
+    const u = new URL(origin);
+    const host = String(u.hostname || '').toLowerCase();
+    if (host === 'localhost' || host === '127.0.0.1') return true;
+    if (host.endsWith('.devtunnels.ms')) return true;
+    if (host.endsWith('.ngrok.io')) return true;
+    if (host.endsWith('.ngrok-free.dev')) return true;
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 // Secure HTTP headers. CSP disabled so existing static HTML + inline handlers keep working during migration.
 app.use(
   helmet({
@@ -51,7 +66,10 @@ const { Server } = require('socket.io');
 // Keep the connection alive
 const io = new Server(http, {
   cors: {
-    origin: ["*", "https://*.devtunnels.ms", "https://*.ngrok.io", "http://localhost:5000"],
+    origin(origin, cb) {
+      if (isAllowedOrigin(origin)) return cb(null, true);
+      return cb(new Error('Not allowed by Socket.IO CORS'));
+    },
     methods: ["GET", "POST"],
     credentials: true
   },
@@ -89,12 +107,17 @@ app.get('/startup', (req, res) => {
 });
 
 // Middleware
-app.use(cors({
-  origin: ["*", "https://*.devtunnels.ms", "https://*.ngrok.io", "http://localhost:5000"],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
-}));
+app.use(
+  cors({
+    origin(origin, cb) {
+      if (isAllowedOrigin(origin)) return cb(null, true);
+      return cb(new Error('Not allowed by CORS'));
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  })
+);
 
 // Keep raw body for PayMongo webhook signature verification.
 app.use('/api/webhooks/paymongo', express.raw({ type: 'application/json' }));
@@ -226,7 +249,34 @@ app.get('/api/rtc-config', (req, res) => {
   ];
   const turnUrls = process.env.TURN_URLS || process.env.TURN_URI;
   if (turnUrls) {
-    const urls = turnUrls.split(',').map((s) => s.trim()).filter(Boolean);
+    const rawList = turnUrls
+      .split(',')
+      .map((s) => String(s || '').trim())
+      .filter(Boolean)
+    const urls = rawList
+      .map((u) => {
+        // Allow: stun:, turn:, turns:
+        const lower = u.toLowerCase();
+        if (lower.startsWith('stun:') || lower.startsWith('turn:') || lower.startsWith('turns:')) return u;
+        // Common misconfig: "host:port" → assume TURN
+        if (/^[a-z0-9.-]+:\d+(\?.*)?$/i.test(u)) return `turn:${u}`;
+        // Reject obvious invalid URLs like https://...
+        return '';
+      })
+      .filter(Boolean);
+
+    // If user provided only host:port (or only turn:host:3478) and no turns:/tcp entry,
+    // add a safe fallback for restrictive networks: turns:host:443?transport=tcp
+    const hasTurns = urls.some((u) => String(u).toLowerCase().startsWith('turns:'));
+    if (!hasTurns) {
+      // Pick the first host from a turn url (or host:port input)
+      const first = urls[0] || '';
+      const m = String(first).match(/^(?:turns?:)?([^:?/]+)(?::(\d+))?/i);
+      const host = m && m[1] ? m[1] : '';
+      if (host) {
+        urls.unshift(`turns:${host}:443?transport=tcp`);
+      }
+    }
     if (urls.length) {
       const turnEntry = urls.length === 1 ? { urls: urls[0] } : { urls };
       if (process.env.TURN_USERNAME) {
@@ -234,6 +284,8 @@ app.get('/api/rtc-config', (req, res) => {
         turnEntry.credential = process.env.TURN_CREDENTIAL || '';
       }
       iceServers.push(turnEntry);
+    } else {
+      console.warn('⚠️ TURN_URLS is set but contains no valid stun/turn urls. Expected e.g. turn:host:3478 or turns:host:443?transport=tcp');
     }
   }
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate');

@@ -464,6 +464,17 @@
         return;
       }
 
+      // Privacy + authority: only teachers can start/see QA recording controls.
+      if (liveUserType() !== 'teacher') {
+        window.ClassroomQaRecording = {
+          stopAndFinalize: function () { return Promise.resolve(); },
+          isRecording: function () { return false; },
+          isEnabled: false,
+          reason: 'teacher_only'
+        };
+        return;
+      }
+
       state.roomId =
         getParam('room') || getParam('classroomId') || getParam('classroomid') || 'default-room';
       state.bookingId = getParam('bookingId') || getParam('bookingid') || '';
@@ -476,9 +487,7 @@
       var hint = state.panel.querySelector('#qa-rec-hint');
       if (hint) {
         hint.textContent =
-          liveUserType() === 'teacher'
-            ? 'Teachers: click Start and choose \"This tab (Live Classroom)\". If wrong tab is captured, Stop then Start again.'
-            : 'Students: use Start when the teacher is visible, or rely on your school’s policy.';
+          'Teachers: click Start and choose \"This tab (Live Classroom)\". If wrong tab is captured, Stop then Start again.';
       }
       setStatus(
         cfg.enabled
@@ -503,11 +512,7 @@
       };
 
       // Teachers should choose the tab/window explicitly for screen recording.
-      if (liveUserType() === 'teacher') {
-        setStatus('Click Start, choose \"This tab\", then continue class.');
-      } else {
-        setStatus('Click Start when remote video is connected.');
-      }
+      setStatus('Click Start, choose \"This tab\", then continue class.');
     });
   }
 

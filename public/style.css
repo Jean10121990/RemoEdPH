@@ -16258,7 +16258,64 @@ body.page-teacher-schedule{
       background: linear-gradient(135deg, #f6fbff 0%, #e8f4fd 100%); 
       margin: 0;
       padding: 0;
-    }.page-teacher-schedule .remoed-main{
+    }
+
+/* --- Typography unification: Booking Indicators + schedule grid --- */
+body.page-teacher-schedule,
+body.page-teacher-class-table,
+body.page-teacher-class-table-fixed,
+body.page-teacher-class-table-old,
+body.page-student-class-table{
+  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif !important;
+}
+
+.page-teacher-schedule .booking-legend,
+.page-teacher-schedule .weekly-grid,
+.page-teacher-schedule .schedule-table,
+.page-teacher-schedule .schedule-table th,
+.page-teacher-schedule .schedule-table td,
+.page-teacher-class-table .remoed-legend,
+.page-teacher-class-table .remoed-schedule-container,
+.page-teacher-class-table .remoed-schedule-table,
+.page-teacher-class-table .remoed-schedule-table th,
+.page-teacher-class-table .remoed-schedule-table td,
+.page-teacher-class-table-fixed .booking-legend,
+.page-teacher-class-table-fixed .weekly-grid,
+.page-teacher-class-table-fixed .schedule-table,
+.page-teacher-class-table-fixed .schedule-table th,
+.page-teacher-class-table-fixed .schedule-table td,
+.page-teacher-class-table-old .booking-legend,
+.page-teacher-class-table-old .weekly-grid,
+.page-teacher-class-table-old .schedule-table,
+.page-teacher-class-table-old .schedule-table th,
+.page-teacher-class-table-old .schedule-table td,
+.page-student-class-table .weekly-grid,
+.page-student-class-table .schedule-table,
+.page-student-class-table .schedule-table th,
+.page-student-class-table .schedule-table td{
+  font-family: inherit !important;
+}
+
+/* Time column (00:00, etc.) */
+.page-teacher-schedule .time-column,
+.page-teacher-class-table-fixed .time-column,
+.page-teacher-class-table-old .time-column,
+.page-student-class-table .time-column,
+.page-teacher-class-table .remoed-time-column{
+  font-weight: 600 !important;
+}
+
+/* Status text (Unbooked, Student, etc.) */
+.page-teacher-schedule .time-slot,
+.page-teacher-class-table-fixed .time-slot,
+.page-teacher-class-table-old .time-slot,
+.page-student-class-table .time-slot,
+.page-teacher-class-table .remoed-time-slot,
+.page-teacher-class-table .remoed-legend-text{
+  font-weight: 500 !important;
+}
+
+.page-teacher-schedule .remoed-main{
       display: flex;
       min-height: 100vh;
       flex-direction: row;

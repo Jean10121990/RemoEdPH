@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>403 Forbidden — RemoEdPH</title>
+    <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
+    <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
+    <style>
+      :root{
+        --remo-blue: #1ca7e7;
+        --remo-blue-deep: #0f7bb0;
+        --remo-green: #2fb27a;
+        --remo-yellow: #ffd700;
+        --bg: #f6fbff;
+        --card: rgba(255,255,255,0.92);
+        --ink: #0f172a;
+        --muted: #475569;
+        --border: rgba(2, 6, 23, 0.10);
+        --shadow: 0 18px 50px rgba(15, 23, 42, 0.16);
+      }
+      *{ box-sizing: border-box; }
+      body{
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background:
+          radial-gradient(900px 500px at 15% 15%, rgba(47,178,122,0.16), transparent 60%),
+          radial-gradient(900px 500px at 85% 20%, rgba(28,167,231,0.18), transparent 60%),
+          radial-gradient(900px 500px at 55% 90%, rgba(255,215,0,0.16), transparent 60%),
+          var(--bg);
+        color: var(--ink);
+        font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      }
+      .wrap{
+        width: min(980px, 92vw);
+        display: grid;
+        grid-template-columns: 1.2fr 0.8fr;
+        gap: 20px;
+        align-items: stretch;
+      }
+      @media (max-width: 860px){
+        .wrap{ grid-template-columns: 1fr; }
+      }
+      .card{
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        background: var(--card);
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(10px);
+        overflow: hidden;
+      }
+      .head{
+        padding: 18px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid rgba(2, 6, 23, 0.08);
+        background: linear-gradient(90deg, rgba(47,178,122,0.16), rgba(28,167,231,0.12), rgba(255,215,0,0.14));
+      }
+      .brand{
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+      }
+      .brand img{
+        width: 44px;
+        height: 44px;
+        object-fit: contain;
+      }
+      .brand-title{
+        font-weight: 800;
+        letter-spacing: .4px;
+        color: var(--remo-blue-deep);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .badge{
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        border: 1px solid rgba(225, 29, 72, 0.25);
+        background: rgba(225, 29, 72, 0.08);
+        color: #9f1239;
+        font-weight: 800;
+        font-size: 0.85rem;
+      }
+      .body{
+        padding: 22px 20px 18px;
+      }
+      .kicker{
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 800;
+        color: #9f1239;
+        letter-spacing: .2px;
+        margin-bottom: 10px;
+      }
+      .title{
+        margin: 0 0 10px 0;
+        font-size: 1.6rem;
+        line-height: 1.15;
+      }
+      .desc{
+        margin: 0 0 16px 0;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+      .ip-box{
+        border: 1px dashed rgba(15, 23, 42, 0.22);
+        background: rgba(15, 23, 42, 0.03);
+        border-radius: 14px;
+        padding: 14px 14px;
+      }
+      .ip-line{
+        margin: 0;
+        font-weight: 700;
+        color: #0f172a;
+      }
+      .ip{
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        font-weight: 900;
+      }
+      .actions{
+        margin-top: 16px;
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      .btn{
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        border-radius: 12px;
+        padding: 12px 14px;
+        border: 1px solid rgba(2, 6, 23, 0.12);
+        text-decoration: none;
+        font-weight: 800;
+        cursor: pointer;
+        user-select: none;
+      }
+      .btn-primary{
+        background: linear-gradient(135deg, var(--remo-blue), var(--remo-blue-deep));
+        color: #fff;
+        border-color: rgba(28, 167, 231, 0.6);
+        box-shadow: 0 10px 22px rgba(28, 167, 231, 0.24);
+      }
+      .btn-secondary{
+        background: #fff;
+        color: var(--remo-blue-deep);
+      }
+      .aside{
+        padding: 18px 18px 18px;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+      .aside h3{
+        margin: 0 0 10px 0;
+        font-size: 1.05rem;
+        color: #0f172a;
+      }
+      .aside p{
+        margin: 0 0 14px 0;
+        color: var(--muted);
+        line-height: 1.6;
+        font-size: 0.95rem;
+      }
+      .tips{
+        display: grid;
+        gap: 10px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+      .tips li{
+        padding: 10px 12px;
+        border-radius: 14px;
+        border: 1px solid rgba(2, 6, 23, 0.08);
+        background: rgba(255,255,255,0.75);
+        font-weight: 600;
+        color: #0f172a;
+      }
+      .footer{
+        padding: 14px 20px;
+        border-top: 1px solid rgba(2, 6, 23, 0.08);
+        color: rgba(71, 85, 105, 0.95);
+        font-size: 0.85rem;
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <section class="card">
+        <div class="head">
+          <div class="brand">
+            <img src="remoed-logo.png" alt="RemoEdPH" />
+            <div class="brand-title">RemoEdPH Security</div>
+          </div>
+          <div class="badge">403 Forbidden</div>
+        </div>
+        <div class="body">
+          <div class="kicker">Security Warning</div>
+          <h1 class="title">Access Denied</h1>
+          <p class="desc">
+            This page is protected by an IP allowlist. Your request was blocked.
+          </p>
+          <div class="ip-box">
+            <p class="ip-line">
+              Access Denied. Your IP address <span class="ip">{{USER_IP}}</span> has been logged for security purposes.
+            </p>
+          </div>
+          <div class="actions">
+            <a class="btn btn-primary" href="student-login.html">Return to Student Login</a>
+            <a class="btn btn-secondary" href="index.html">Return to Home</a>
+          </div>
+        </div>
+        <div class="footer">
+          <div>RemoEdPH — Protected Area</div>
+          <div>If you believe this is a mistake, contact your administrator.</div>
+        </div>
+      </section>
+      <aside class="card">
+        <div class="aside">
+          <div>
+            <h3>Why am I seeing this?</h3>
+            <p>
+              Admin access is restricted to approved networks. This reduces risk from unauthorized access attempts.
+            </p>
+            <ul class="tips">
+              <li>Use your approved office/home network.</li>
+              <li>Ensure VPN settings match the allowlisted IP.</li>
+              <li>Ask an admin to add your IP to `ADMIN_IP_WHITELIST`.</li>
+            </ul>
+          </div>
+          <div>
+            <h3>Tip</h3>
+            <p>
+              If you are behind a proxy (ngrok), the system uses `X-Forwarded-For` to detect your public IP.
+            </p>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </body>
+</html>
+

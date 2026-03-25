@@ -505,6 +505,7 @@
       let iceRestartWatchdogId = null;
       let disconnectedWatchdogId = null;
       let disconnectedSince = null;
+      let connectionNewWatchdogId = null;
       
       
       // Cross-browser compatibility for RTCPeerConnection
@@ -529,14 +530,141 @@
         .then((r) => (r.ok ? r.json() : {}))
         .then((j) => {
           if (j.iceServers && Array.isArray(j.iceServers) && j.iceServers.length) {
-            rtcConfig.iceServers = j.iceServers;
-            console.log('🔧 ICE servers loaded from /api/rtc-config:', j.iceServers.length);
+            // Filter invalid urls to avoid RTCPeerConnection constructor errors
+            const cleaned = j.iceServers
+              .map((s) => {
+                if (!s) return null;
+                const urls = s.urls;
+                const list = Array.isArray(urls) ? urls : [urls];
+                const ok = list
+                  .map((u) => String(u || '').trim())
+                  .filter(Boolean)
+                  .filter((u) => {
+                    const lower = u.toLowerCase();
+                    return lower.startsWith('stun:') || lower.startsWith('turn:') || lower.startsWith('turns:');
+                  });
+                if (!ok.length) return null;
+                const out = { ...s, urls: Array.isArray(urls) ? ok : ok[0] };
+                return out;
+              })
+              .filter(Boolean);
+            if (!cleaned.length) {
+              console.warn('⚠️ /api/rtc-config returned iceServers but none were valid. Using defaults.');
+            } else {
+              rtcConfig.iceServers = cleaned;
+              console.log('🔧 ICE servers loaded from /api/rtc-config:', cleaned.length);
+              // If we have TURN (especially turns:443/tcp), prefer relay-first on restrictive networks.
+              const hasTurn =
+                cleaned.some((s) => {
+                  const u = s && s.urls;
+                  const arr = Array.isArray(u) ? u : [u];
+                  return arr.some((x) => {
+                    const lx = String(x || '').toLowerCase();
+                    return lx.startsWith('turn:') || lx.startsWith('turns:');
+                  });
+                });
+              const hasTurns443Tcp =
+                cleaned.some((s) => {
+                  const u = s && s.urls;
+                  const arr = Array.isArray(u) ? u : [u];
+                  return arr.some((x) => {
+                    const lx = String(x || '').toLowerCase();
+                    return lx.startsWith('turns:') && lx.includes(':443') && lx.includes('transport=tcp');
+                  });
+                });
+              if (hasTurn && hasTurns443Tcp) {
+                // Safer default when STUN is blocked: start in relay to avoid long STUN timeouts.
+                rtcConfig.iceTransportPolicy = 'relay';
+                // Also remove STUN entries to prevent noisy 701 timeouts on restrictive networks.
+                rtcConfig.iceServers = cleaned.filter((s) => {
+                  const u = s && s.urls;
+                  const arr = Array.isArray(u) ? u : [u];
+                  return arr.some((x) => {
+                    const lx = String(x || '').toLowerCase();
+                    return lx.startsWith('turn:') || lx.startsWith('turns:');
+                  });
+                });
+                console.warn('🔁 TURN(TLS 443) detected — using relay-only + TURN-only iceServers for reliability');
+              }
+            }
           }
         })
         .catch((e) => console.warn('⚠️ /api/rtc-config failed, using defaults:', e && e.message))
         .finally(() => {
           rtcConfigReady = true;
         });
+
+      // --- Media constraints (fast load / lower bandwidth) ---
+      const IDEAL_CAM_WIDTH = 640;
+      const IDEAL_CAM_HEIGHT = 480;
+      const IDEAL_CAM_FPS = 15;
+
+      function buildVideoConstraintsSd() {
+        return {
+          width: { ideal: IDEAL_CAM_WIDTH },
+          height: { ideal: IDEAL_CAM_HEIGHT },
+          frameRate: { ideal: IDEAL_CAM_FPS, max: 24 },
+          facingMode: 'user'
+        };
+      }
+
+      function buildAudioConstraints() {
+        return {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        };
+      }
+
+      // Retry attach stream to <video> (max 3 attempts, 5s each)
+      async function attachStreamWithRetry(videoEl, stream, opts = {}) {
+        const maxAttempts = Number(opts.maxAttempts || 3);
+        const timeoutMs = Number(opts.timeoutMs || 5000);
+        const label = String(opts.label || videoEl?.id || 'video');
+        if (!videoEl || !stream) return false;
+
+        async function attemptOnce(attempt) {
+          try {
+            if (opts.muted != null) videoEl.muted = !!opts.muted;
+            videoEl.autoplay = true;
+            videoEl.playsInline = true;
+            videoEl.setAttribute('autoplay', '');
+            videoEl.setAttribute('playsinline', '');
+            if (videoEl.muted) videoEl.setAttribute('muted', '');
+
+            videoEl.srcObject = stream;
+            await videoEl.play().catch(() => {});
+          } catch (_) {}
+
+          const ok = await new Promise((resolve) => {
+            const start = Date.now();
+            const tick = () => {
+              const hasFrames =
+                (videoEl.readyState >= 2 && (videoEl.videoWidth || 0) > 0) ||
+                (videoEl.currentTime || 0) > 0;
+              if (hasFrames) return resolve(true);
+              if (Date.now() - start >= timeoutMs) return resolve(false);
+              setTimeout(tick, 250);
+            };
+            tick();
+          });
+
+          if (ok) {
+            console.log('✅ Video stream attached:', label, { attempt });
+            return true;
+          }
+          console.warn('⚠️ Video attach timeout:', label, { attempt, timeoutMs });
+          return false;
+        }
+
+        for (let i = 1; i <= maxAttempts; i++) {
+          try { videoEl.srcObject = null; } catch (_) {}
+          if (await attemptOnce(i)) return true;
+        }
+
+        console.error('❌ Failed to attach stream after retries:', label, { maxAttempts });
+        return false;
+      }
 
       function addLocalTracksToPeerConnection() {
         if (!peerConnection || !localStream) return;
@@ -581,6 +709,82 @@
           }
         }
         peerConnection = new RTCPeerConnection(rtcConfig);
+        // Log why ICE candidate gathering fails (e.g. STUN blocked / network policy).
+        let sawStunTimeout = false;
+        let forcedRelayAfterStunTimeout = false;
+        let sawTurnTimeout = false;
+        peerConnection.onicecandidateerror = (event) => {
+          try {
+            console.error('❌ ICE candidate error:', {
+              errorCode: event.errorCode,
+              errorText: event.errorText,
+              url: event.url,
+              address: event.address,
+              port: event.port,
+              userType,
+              iceGatheringState: peerConnection.iceGatheringState,
+              iceConnectionState: peerConnection.iceConnectionState,
+              connectionState: peerConnection.connectionState,
+            });
+
+            // Common case on restrictive networks (e.g. some school ISPs): STUN UDP blocked → 701 timeout.
+            const txt = String(event.errorText || '').toLowerCase();
+            const url = String(event.url || '').toLowerCase();
+            const isStunTimeout =
+              (event.errorCode === 701 || txt.includes('timed out')) && url.startsWith('stun:');
+            const isTurnTimeout =
+              (event.errorCode === 701 || txt.includes('timed out')) &&
+              (url.startsWith('turn:') || url.startsWith('turns:'));
+
+            if (isStunTimeout && !sawStunTimeout) {
+              sawStunTimeout = true;
+              console.error(
+                '🧩 STUN timed out. This network is likely blocking UDP/STUN. ' +
+                  'To fix reliably, configure TURN (TCP/TLS 443). ' +
+                  'Set TURN_URLS, TURN_USERNAME, TURN_CREDENTIAL on the server so /api/rtc-config returns TURN.'
+              );
+            }
+
+            if (isTurnTimeout && !sawTurnTimeout) {
+              sawTurnTimeout = true;
+              console.error(
+                '🚫 TURN allocate timed out. The TURN server/port is unreachable from this network. ' +
+                  'Use a TURN that supports turns:443?transport=tcp (TLS over 443) or a different provider/VPS coturn.'
+              );
+              try {
+                const status = document.getElementById('connection-status');
+                if (status) status.textContent = 'TURN unreachable (firewall). Use turns:443.';
+              } catch (_) {}
+            }
+
+            // If TURN is available in rtcConfig, force relay-only once and restart ICE.
+            if (isStunTimeout && !forcedRelayAfterStunTimeout) {
+              const hasTurn =
+                Array.isArray(rtcConfig.iceServers) &&
+                rtcConfig.iceServers.some((s) => {
+                  const u = s && s.urls;
+                  const arr = Array.isArray(u) ? u : [u];
+                  return arr.some((x) => String(x || '').toLowerCase().startsWith('turn:') || String(x || '').toLowerCase().startsWith('turns:'));
+                });
+              if (hasTurn && rtcConfig.iceTransportPolicy !== 'relay') {
+                forcedRelayAfterStunTimeout = true;
+                rtcConfig.iceTransportPolicy = 'relay';
+                console.warn('🔁 Forcing TURN relay-only due to STUN timeout, restarting ICE…');
+                try {
+                  if (userType === 'teacher' && typeof createOfferWithIceRestart === 'function') {
+                    createOfferWithIceRestart();
+                  } else {
+                    socket.emit('request-ice-restart', { room });
+                  }
+                } catch (e) {
+                  console.error('❌ Relay fallback ICE restart failed:', e && (e.message || e));
+                }
+              }
+            }
+          } catch (e) {
+            console.error('❌ ICE candidate error (unparsed):', event);
+          }
+        };
         peerConnection.onicecandidate = (event) => {
           if (event.candidate) {
             const c = event.candidate.toJSON
@@ -633,9 +837,9 @@
               id: t.id 
             })));
             
-            // Always set srcObject to ensure video is displayed
-            remoteVideo.srcObject = remoteStream;
-            console.log('✅ Remote video srcObject set, stream tracks:', remoteStream.getTracks().length);
+            // Attach remote stream with retry (max 3 attempts, 5s each)
+            attachStreamWithRetry(remoteVideo, remoteStream, { muted: false, label: 'remote-video' }).catch(() => {});
+            console.log('✅ Remote stream received, tracks:', remoteStream.getTracks().length);
             
             // Ensure video element is visible and properly configured
             remoteVideo.muted = false; // Allow audio from remote
@@ -748,6 +952,32 @@
             }, 1000);
           }
         };
+
+        // If connectionState stays 'new' too long, force a renegotiation / ICE restart.
+        if (connectionNewWatchdogId) {
+          clearTimeout(connectionNewWatchdogId);
+          connectionNewWatchdogId = null;
+        }
+        connectionNewWatchdogId = setTimeout(() => {
+          connectionNewWatchdogId = null;
+          if (!peerConnection) return;
+          const cs = peerConnection.connectionState;
+          const ice = peerConnection.iceConnectionState;
+          if (cs === 'new' && ice === 'new') {
+            console.warn('⏱️ Connection stuck in new for 10s — forcing renegotiation/ICE restart', { userType });
+            try {
+              if (userType === 'teacher' && typeof createOfferWithIceRestart === 'function') {
+                createOfferWithIceRestart();
+              } else {
+                // Student asks teacher to restart ICE (teacher owns offer creation).
+                socket.emit('request-ice-restart', { room });
+                console.log('📤 Student requested ICE restart (10s new watchdog)');
+              }
+            } catch (e) {
+              console.error('❌ 10s new watchdog renegotiation failed:', e && (e.message || e));
+            }
+          }
+        }, 10000);
         
         peerConnection.oniceconnectionstatechange = () => {
           const iceState = peerConnection.iceConnectionState;
@@ -3246,12 +3476,17 @@
         localVideo.muted = true; // Always mute local to prevent feedback
         localVideo.autoplay = true;
         localVideo.playsInline = true;
+        localVideo.setAttribute('autoplay', '');
+        localVideo.setAttribute('muted', '');
+        localVideo.setAttribute('playsinline', '');
       }
       
       if (remoteVideo) {
         remoteVideo.autoplay = true;
         remoteVideo.playsInline = true;
         remoteVideo.muted = false; // Allow audio from remote
+        remoteVideo.setAttribute('autoplay', '');
+        remoteVideo.setAttribute('playsinline', '');
         console.log('✅ Remote video element configured');
       } else {
         console.error('❌ Remote video element not found!');
@@ -3283,9 +3518,9 @@
           }
           
           // Get new media
-          const constraints = trackKind === 'video' 
-            ? { video: true, audio: false }
-            : { video: false, audio: true };
+          const constraints = trackKind === 'video'
+            ? { video: buildVideoConstraintsSd(), audio: false }
+            : { video: false, audio: buildAudioConstraints() };
           
           const newStream = await getUserMedia(constraints);
           
@@ -3314,14 +3549,8 @@
               
               // Update video element
               if (trackKind === 'video' && localVideo && localVideo.srcObject === localStream) {
-                // Stream should automatically update, but force refresh
-                localVideo.srcObject = null;
-                setTimeout(() => {
-                  localVideo.srcObject = localStream;
-                  localVideo.play().catch(() => {
-                    // Silently ignore play errors after track recovery
-                  });
-                }, 100);
+                // Stream should automatically update, but force refresh (with retry)
+                attachStreamWithRetry(localVideo, localStream, { muted: true, label: 'local-video(recovered)' }).catch(() => {});
               }
               
               console.log(`✅ Successfully recovered ${trackKind} track`);
@@ -3593,13 +3822,15 @@
       }
 
       // Check if we're in a secure context (required for getUserMedia)
+      let warnedInsecureProtocol = false;
       function isSecureContext() {
         return window.isSecureContext || 
                location.protocol === 'https:' || 
                location.hostname === 'localhost' || 
                location.hostname === '127.0.0.1' ||
                location.hostname.endsWith('.devtunnels.ms') ||
-               location.hostname.endsWith('.ngrok.io');
+               location.hostname.endsWith('.ngrok.io') ||
+               location.hostname.endsWith('.ngrok-free.dev');
       }
 
       // Check permissions before requesting
@@ -3694,6 +3925,11 @@
         try {
           // Check secure context first
           if (!isSecureContext()) {
+            // Small user-facing warning: cameras are blocked on non-HTTPS (except localhost).
+            if (!warnedInsecureProtocol && location.protocol !== 'https:') {
+              warnedInsecureProtocol = true;
+              alert('Camera is blocked on non-HTTPS pages. Please use HTTPS (or localhost) to enable camera/microphone.');
+            }
             const retry = showPermissionHelp('SECURE_CONTEXT_REQUIRED');
             if (retry) {
               // User wants to retry, but we can't fix HTTPS issue
@@ -3718,25 +3954,24 @@
             return;
           }
 
-          // 360p (640x360) for faster connection on dev tunnel / slower bitrate
-          const constraints = {
-            video: { 
-              width: { ideal: 640, max: 640 },
-              height: { ideal: 360, max: 360 },
-              facingMode: 'user'
-            }, 
-            audio: {
-              echoCancellation: true,
-              noiseSuppression: true,
-              autoGainControl: true
-            }
-          };
-
+          // Compatibility-first: request default devices, then apply SD ideals.
+          // This avoids failures on older Android/Safari that reject strict width/height constraints.
+          localStream = await getUserMedia({ video: true, audio: true });
           try {
-            localStream = await getUserMedia(constraints);
-          } catch (err) {
-            console.warn('360p constraints failed, trying video: true...', err);
-            localStream = await getUserMedia({ video: true, audio: true });
+            const vt = localStream.getVideoTracks && localStream.getVideoTracks()[0];
+            if (vt && typeof vt.applyConstraints === 'function') {
+              await vt.applyConstraints(buildVideoConstraintsSd());
+            }
+          } catch (e) {
+            console.warn('⚠️ applyConstraints (video SD ideals) failed:', e && (e.name || e.message));
+          }
+          try {
+            const at = localStream.getAudioTracks && localStream.getAudioTracks()[0];
+            if (at && typeof at.applyConstraints === 'function') {
+              await at.applyConstraints(buildAudioConstraints());
+            }
+          } catch (e) {
+            console.warn('⚠️ applyConstraints (audio) failed:', e && (e.name || e.message));
           }
 
           if (localVideo && localStream) {
@@ -3766,28 +4001,8 @@
               console.log('📹 Local track:', { kind: track.kind, enabled: track.enabled, readyState: track.readyState, id: track.id });
             });
             
-            localVideo.srcObject = localStream;
-            localVideo.muted = true; // Always mute local video to prevent feedback
-            localVideo.autoplay = true;
-            localVideo.playsInline = true;
-            
-            // Ensure video plays
-            localVideo.play().then(() => {
-              // Only log success in debug mode to reduce console noise
-              if (window.DEBUG_MODE) console.log('✅ Local video playing');
-            }).catch(err => {
-              // Suppress AbortError and other harmless errors - they're expected during video src changes
-              if (err.name !== 'AbortError' && err.name !== 'NotAllowedError') {
-                // Only log unexpected errors
-                console.debug('Video play:', err.name);
-              }
-              // Try to play again after a short delay (silently)
-              setTimeout(() => {
-                localVideo.play().catch(() => {
-                  // Silently ignore retry errors
-                });
-              }, 500);
-            });
+            // Attach local stream with retry (max 3 attempts, 5s each)
+            await attachStreamWithRetry(localVideo, localStream, { muted: true, label: 'local-video' });
 
             // Auto camera-ready look for teacher preview
             if (userType === 'teacher') {
@@ -3872,8 +4087,16 @@
           if (cameraErrorMessage) {
             cameraErrorMessage.style.display = 'none';
           }
-        } catch (error) {
-          console.error('❌ Error accessing webcam:', error);
+          } catch (error) {
+          // Explicit logging so you can see NotAllowedError / NotFoundError in DevTools.
+          console.error('❌ Camera init failed:', {
+            name: error && error.name,
+            code: error && error.code,
+            message: error && error.message,
+            constraint: error && error.constraint,
+            protocol: location.protocol,
+            secureContext: isSecureContext(),
+          });
           
           let errorType = error.name || error.message;
           if (error.message === 'SECURE_CONTEXT_REQUIRED') {
