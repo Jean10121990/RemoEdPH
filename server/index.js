@@ -285,6 +285,17 @@ const clientDist = path.join(__dirname, '../client/dist');
 const clientIndex = path.join(clientDist, 'index.html');
 if (fs.existsSync(clientIndex)) {
   app.get('/app', noStoreProtectedResponse, (req, res) => res.redirect(301, '/app/'));
+  const appFaviconPng = path.join(clientDist, 'favicon.png');
+  const publicFaviconPng = path.join(__dirname, '../public/images/remoed-favicon.png');
+  app.get('/app/favicon.ico', noStoreProtectedResponse, (req, res) => {
+    const file = fs.existsSync(appFaviconPng) ? appFaviconPng : publicFaviconPng;
+    if (!fs.existsSync(file)) {
+      return res.status(404).end();
+    }
+    res.type('image/png');
+    res.set('Cache-Control', 'public, max-age=604800, immutable');
+    res.sendFile(file);
+  });
   app.use('/app', noStoreProtectedResponse, express.static(clientDist));
   app.use('/app', noStoreProtectedResponse, (req, res) => {
     res.sendFile(clientIndex);
@@ -313,6 +324,17 @@ protectedHtmlFiles.forEach((htmlName) => {
   app.get(`/${htmlName}`, noStoreProtectedResponse, (req, res) => {
     res.sendFile(path.join(publicDir, htmlName));
   });
+});
+
+// Browsers request /favicon.ico by default; serve site logo PNG.
+const faviconPngPath = path.join(publicDir, 'images', 'remoed-favicon.png');
+app.get('/favicon.ico', (req, res) => {
+  if (!fs.existsSync(faviconPngPath)) {
+    return res.status(404).end();
+  }
+  res.type('image/png');
+  res.set('Cache-Control', 'public, max-age=604800, immutable');
+  res.sendFile(faviconPngPath);
 });
 
 // Static files after core /api mounts so API paths are never shadowed by public files

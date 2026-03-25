@@ -271,8 +271,8 @@ class MobileNotifications {
             if (permission === 'granted') {
                 this.showNotification('Notifications Enabled', {
                     body: 'You will now receive important updates',
-                    icon: '/favicon.ico',
-                    badge: '/favicon.ico'
+                    icon: '/images/remoed-favicon.png',
+                    badge: '/images/remoed-favicon.png'
                 });
             }
             
@@ -291,8 +291,8 @@ class MobileNotifications {
         
         const notificationOptions = {
             body: options.body || '',
-            icon: options.icon || '/favicon.ico',
-            badge: options.badge || '/favicon.ico',
+            icon: options.icon || '/images/remoed-favicon.png',
+            badge: options.badge || '/images/remoed-favicon.png',
             tag: options.tag || 'default',
             requireInteraction: options.requireInteraction || false,
             ...options

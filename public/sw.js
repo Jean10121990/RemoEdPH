@@ -58,8 +58,8 @@ self.addEventListener('push', (event) => {
     const title = data.title || 'RemoEdPH Notification';
     const options = {
         body: data.body || 'You have a new notification',
-        icon: data.icon || '/favicon.ico',
-        badge: data.badge || '/favicon.ico',
+        icon: data.icon || '/images/remoed-favicon.png',
+        badge: data.badge || '/images/remoed-favicon.png',
         tag: data.tag || 'default',
         requireInteraction: data.requireInteraction || false,
         data: data.data || {}
