@@ -1,5 +1,6 @@
 require('dotenv').config();
 const express = require('express');
+const helmet = require('helmet');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path');
@@ -17,11 +18,9 @@ const fileRoutes = require('./fileRoutes');
 const announcementRoutes = require('./announcement');
 const lessonRoutes = require('./lessons');
 const classroomRecordingRouter = require('./classroomRecordingApi');
-const applicationRoutes = require('./applications');
 const Booking = require('./models/Booking');
+const Student = require('./models/Student');
 const LessonMaterial = require('./models/LessonMaterial');
-const InvitationToken = require('./models/InvitationToken');
-const Application = require('./models/Application');
 const { DateTime } = require('luxon');
 // LessonSlides model removed - PPTX conversion still works but slides are not saved to database
 const fs = require('fs');
@@ -29,13 +28,21 @@ const fsp = require('fs').promises;
 // AdmZip removed - no longer needed for file conversion
 const FormData = require('form-data');
 const axios = require('axios');
-const { verifyToken, requireTeacher, requireStudent } = require('./authMiddleware');
-const {
-  finalizeLessonCreditsOnCompletion,
-  releaseReservedCreditForCancelledBooking
-} = require('./lessonCreditsHelper');
+const { verifyToken, requireTeacher } = require('./authMiddleware');
 
 const app = express();
+
+if (String(process.env.TRUST_PROXY || '').toLowerCase() === 'true' || process.env.TRUST_PROXY === '1') {
+  app.set('trust proxy', 1);
+}
+
+// Secure HTTP headers. CSP disabled so existing static HTML + inline handlers keep working during migration.
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+  })
+);
 const http = require('http').createServer(app);
 const { Server } = require('socket.io');
 // Keep the connection alive
@@ -65,6 +72,60 @@ const userSessions = new Map(); // socketId -> { room, userType, userId, usernam
 const signalingMessages = new Map(); // room -> [messages]
 const messageId = 0;
 
+async function findStudentForBooking(booking) {
+  if (!booking || !booking.studentId) return null;
+  return Student.findOne({
+    $or: [{ username: booking.studentId }, { email: booking.studentId }]
+  });
+}
+
+async function consumeReservedCreditForBooking(booking, descriptionPrefix = 'Class finished') {
+  if (!booking || booking.creditConsumedAt || booking.creditReservationReleasedAt) return;
+  const student = await findStudentForBooking(booking);
+  if (!student) return;
+  const now = new Date();
+  const safeReserved = Number(student.reservedCredits || 0);
+  if (safeReserved <= 0) return;
+  const safeTotal = Number(student.totalCredits || 0);
+  const nextReserved = Math.max(safeReserved - 1, 0);
+  const nextTotal = Math.max(safeTotal - 1, 0);
+  const nextAvailable = Math.max(nextTotal - nextReserved, 0);
+  const planLabel = student.subscriptionPlan || '';
+  const desc = `${descriptionPrefix} (${booking.date} ${booking.time})`;
+
+  await Student.updateOne(
+    { _id: student._id },
+    {
+      $set: {
+        reservedCredits: nextReserved,
+        totalCredits: nextTotal,
+        creditBalance: nextAvailable
+      },
+      $inc: { usedCredits: 1 },
+      $push: {
+        creditTransactions: {
+          date: now,
+          type: 'use',
+          plan: planLabel,
+          description: desc,
+          credits: -1,
+          balanceAfter: nextAvailable,
+          amountPaid: 0
+        },
+        creditHistory: {
+          date: now,
+          plan: planLabel,
+          credits: -1,
+          amountPaid: 0,
+          paymentId: ''
+        }
+      }
+    }
+  );
+  booking.creditConsumedAt = now;
+  booking.creditReservationReleasedAt = null;
+}
+
 // Lesson materials are now stored in database (LessonMaterial model)
 // Keep in-memory cache for quick access during active sessions
 const lessonMaterialsByRoom = new Map(); // room -> [{ id, name, type, size, data, uploader, uploadedAt }]
@@ -86,22 +147,69 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
-// PayMongo webhooks require the exact raw bytes for HMAC (must run before bodyParser.json).
-// Accept all content-types on this path so proxies/tunnels that alter Content-Type still get a Buffer.
-app.use(
-  '/api/webhooks',
-  express.raw({ limit: '2mb', type: () => true }),
-  (req, res, next) => {
-    if (Buffer.isBuffer(req.body)) {
-      req.rawBody = req.body;
-    }
-    next();
-  },
-  webhookRoutes
-);
+// Keep raw body for PayMongo webhook signature verification.
+app.use('/api/webhooks/paymongo', express.raw({ type: 'application/json' }));
 
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
+
+const session = require('express-session');
+const rateLimit = require('express-rate-limit');
+const { getAdminLoginPathSegment } = require('./utils/adminRouteConfig');
+const { adminIpWhitelistForLoginPage } = require('./middleware/adminLoginPageGuard');
+
+const sessionSecret =
+  process.env.SESSION_SECRET ||
+  process.env.JWT_SECRET ||
+  crypto.randomBytes(32).toString('hex');
+if (!process.env.SESSION_SECRET) {
+  console.warn('⚠️ SESSION_SECRET is not set; falling back to JWT_SECRET or a random value (sessions reset if random).');
+}
+
+const sessionCookieSecure =
+  process.env.SESSION_COOKIE_SECURE === 'true' ||
+  (process.env.NODE_ENV === 'production' && process.env.SESSION_COOKIE_SECURE !== 'false');
+
+app.use(
+  session({
+    name: 'remoed.admin.sid',
+    secret: sessionSecret,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      secure: sessionCookieSecure,
+      sameSite: 'lax',
+      maxAge: 24 * 60 * 60 * 1000,
+    },
+  })
+);
+
+// Obfuscated admin login HTML (blocks legacy /admin-login URLs; optional IP allowlist)
+const adminLoginHtmlPath = path.join(__dirname, '../public/admin-login.html');
+const adminLoginPathSeg = getAdminLoginPathSegment();
+app.get(['/admin-login', '/admin-login.html'], (req, res) => {
+  res
+    .status(404)
+    .type('html')
+    .send(
+      '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Not found</title></head><body><h1>Not found</h1></body></html>'
+    );
+});
+app.get(`/${adminLoginPathSeg}`, adminIpWhitelistForLoginPage, (req, res) => {
+  res.sendFile(adminLoginHtmlPath);
+});
+console.log(`🔐 Admin login page path: /${adminLoginPathSeg} (set ADMIN_LOGIN_PATH in .env for production)`);
+
+const adminRouterLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: Number(process.env.ADMIN_API_RATE_LIMIT_MAX || 3000),
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many admin API requests from this IP. Please try again later.' },
+});
 
 // Ensure PDF.js assets are available under public/vendor/pdfjs
 const ensurePdfjsAssets = () => {
@@ -148,40 +256,16 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use('/api/auth', authRoutes);
 app.use('/api/teacher', teacherRoutes);
 app.use('/api/student', studentRoutes);
-app.use('/api/payments', paymentRoutes);
-
-// GET /api/user/credits — same payload as GET /api/student/credits (alias for frontend)
-app.get('/api/user/credits', verifyToken, requireStudent, async (req, res) => {
-  try {
-    const Student = require('./models/Student');
-    const { buildCreditsJson } = require('./student');
-    const {
-      studentLedgerNeedsRepair,
-      repairStudentLedgerDoc
-    } = require('./creditLedgerRepair');
-    const doc = await Student.findById(req.user.studentId);
-    if (!doc) {
-      return res.status(404).json({ success: false, error: 'Student not found' });
-    }
-    if (studentLedgerNeedsRepair(doc)) {
-      repairStudentLedgerDoc(doc);
-      await doc.save();
-    }
-    res.json(buildCreditsJson(doc.toObject()));
-  } catch (error) {
-    console.error('❌ GET /api/user/credits:', error);
-    res.status(500).json({ success: false, error: 'Server error: ' + error.message });
-  }
-});
 // Must be before /api/admin: same path prefix /api/admin/... is otherwise swallowed by adminRoutes → 404
 app.use('/api', classroomRecordingRouter);
-app.use('/api/admin', adminRoutes);
+app.use('/api/admin', adminRouterLimiter, adminRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/webhooks', webhookRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/upload', fileRoutes); // Add alias for upload endpoint
 app.use('/api', announcementRoutes); // Mount announcement routes directly under /api
 app.use('/api', fileRoutes); // Add direct access to file routes (moved after announcement routes)
 app.use('/api/lessons', lessonRoutes);
-app.use('/api', applicationRoutes);
 
 /**
  * WebRTC ICE servers for live-classroom.html
@@ -248,6 +332,17 @@ app.use('/assets', express.static(applicationFormAssets));
 app.get('/application-form', (req, res) => {
   return res.sendFile(path.join(applicationFormDist, 'index.html'));
 });
+
+// Main marketing SPA (Vite + React). Build: npm run client:build
+const clientDist = path.join(__dirname, '../client/dist');
+const clientIndex = path.join(clientDist, 'index.html');
+if (fs.existsSync(clientIndex)) {
+  app.get('/app', (req, res) => res.redirect(301, '/app/'));
+  app.use('/app', express.static(clientDist));
+  app.use('/app', (req, res) => {
+    res.sendFile(clientIndex);
+  });
+}
 
 // Static files after core /api mounts so API paths are never shadowed by public files
 app.use(express.static(path.join(__dirname, '../public')));
@@ -406,10 +501,6 @@ app.post('/api/booking/:bookingId/mark-student-absent', verifyToken, requireTeac
     booking.absentReason = 'Marked as absent by teacher';
     
     await booking.save();
-
-    await releaseReservedCreditForCancelledBooking(booking).catch((relErr) =>
-      console.error('⚠️ Reserved credit release failed (legacy mark-absent):', relErr.message)
-    );
     
     console.log('✅ Student marked as absent successfully');
     
@@ -432,13 +523,53 @@ app.post('/api/booking/:bookingId/mark-student-absent', verifyToken, requireTeac
   }
 });
 
-async function handleTeacherCompleteBooking(req, res) {
+// Complete a class (legacy route)
+app.patch('/api/bookings/:bookingId/complete', verifyToken, requireTeacher, async (req, res) => {
   try {
-    const bookingId = req.params.bookingId || req.params.id;
+    const { bookingId } = req.params;
+    const teacherId = req.user.teacherId;
+    const booking = await Booking.findById(bookingId);
+    if (!booking) {
+      return res.status(404).json({ success: false, error: 'Booking not found' });
+    }
+    if (booking.teacherId !== teacherId) {
+      return res.status(403).json({ success: false, error: 'Access denied. This booking does not belong to you.' });
+    }
+    if (booking.status === 'completed') {
+      return res.status(400).json({ success: false, error: 'Class is already completed' });
+    }
+
+    booking.status = 'completed';
+    booking.finishedAt = new Date();
+    booking.attendance = booking.attendance || {};
+    booking.attendance.classCompleted = true;
+    await consumeReservedCreditForBooking(booking, 'Class finished');
+    await booking.save();
+
+    return res.json({
+      success: true,
+      message: 'Class completed successfully',
+      booking: {
+        id: booking._id,
+        status: booking.status,
+        finishedAt: booking.finishedAt,
+        classCompleted: booking.attendance.classCompleted
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error completing class (PATCH /api/bookings):', error);
+    return res.status(500).json({ success: false, error: 'Failed to complete class: ' + error.message });
+  }
+});
+
+app.post('/api/booking/:bookingId/complete', verifyToken, requireTeacher, async (req, res) => {
+  try {
+    const { bookingId } = req.params;
     const teacherId = req.user.teacherId;
     
     console.log('✅ Completing class:', bookingId, 'for teacher:', teacherId);
     
+    // Find the booking and verify it belongs to this teacher
     const booking = await Booking.findById(bookingId);
     if (!booking) {
       return res.status(404).json({ 
@@ -454,6 +585,7 @@ async function handleTeacherCompleteBooking(req, res) {
       });
     }
     
+    // Check if class is already completed
     if (booking.status === 'completed') {
       return res.status(400).json({ 
         success: false, 
@@ -461,24 +593,18 @@ async function handleTeacherCompleteBooking(req, res) {
       });
     }
     
+    // Update booking status to completed
     booking.status = 'completed';
     booking.finishedAt = new Date();
     
+    // Set attendance.classCompleted to true for service fee calculation
     if (!booking.attendance) {
       booking.attendance = {};
     }
     booking.attendance.classCompleted = true;
+    await consumeReservedCreditForBooking(booking, 'Class finished');
     
     await booking.save();
-
-    const fin = await finalizeLessonCreditsOnCompletion(booking);
-    if (!fin.ok && !fin.skipped) {
-      console.error('❌ Lesson credit finalize failed:', fin.error);
-      return res.status(500).json({
-        success: false,
-        error: fin.error || 'Class marked complete but credits could not be updated. Contact support.'
-      });
-    }
     
     console.log('✅ Class completed successfully:', bookingId);
 
@@ -513,11 +639,7 @@ async function handleTeacherCompleteBooking(req, res) {
       error: 'Failed to complete class: ' + error.message 
     });
   }
-}
-
-// Complete a class (legacy route)
-app.post('/api/booking/:bookingId/complete', verifyToken, requireTeacher, handleTeacherCompleteBooking);
-app.patch('/api/bookings/:id/complete', verifyToken, requireTeacher, handleTeacherCompleteBooking);
+});
 
 // Check if feedback exists for a booking
 app.get('/api/feedback/check/:bookingId', verifyToken, requireTeacher, async (req, res) => {
@@ -1128,10 +1250,6 @@ app.get('/student-login', (req, res) => {
 
 app.get('/student-waiting-room', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/student-waiting-room.html'));
-});
-
-app.get('/admin-login', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/admin-login.html'));
 });
 
 // Error handling middleware
@@ -2094,6 +2212,7 @@ async function checkAndMarkAbsentStudents() {
         booking.status = 'absent';
         booking.absentReason = 'Student did not enter classroom within 15 minutes of class start';
         booking.absentMarkedAt = new Date();
+        await consumeReservedCreditForBooking(booking, 'Student absent');
         
         await booking.save();
         console.log(`✅ Student marked as absent for booking ${booking._id}`);

@@ -12,9 +12,15 @@ const adminSchema = new mongoose.Schema({
     required: true,
     unique: true
   },
+  /** Bcrypt hash — preferred field (never store plaintext). */
+  passwordHash: {
+    type: String,
+    default: null
+  },
+  /** @deprecated Legacy bcrypt hash; use passwordHash. Login accepts either. */
   password: {
     type: String,
-    required: true
+    default: null
   },
   createdAt: {
     type: Date,

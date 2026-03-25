@@ -103,11 +103,25 @@
         var logoutLi = container.querySelector('#logout-nav');
         if (logoutLi) {
             logoutLi.addEventListener('click', function () {
-                localStorage.removeItem('adminToken');
-                localStorage.removeItem('adminUsername');
-                localStorage.removeItem('userType');
-                localStorage.removeItem('token');
-                window.location.href = 'admin-login.html';
+                fetch('/api/auth/admin-logout', { method: 'POST', credentials: 'include' }).finally(function () {
+                    localStorage.removeItem('adminToken');
+                    localStorage.removeItem('adminUsername');
+                    localStorage.removeItem('userType');
+                    localStorage.removeItem('token');
+                    var W = typeof window !== 'undefined' ? window : null;
+                    if (W && W.RemoedAdminSession && W.RemoedAdminSession.redirectToAdminLogin) {
+                        W.RemoedAdminSession.redirectToAdminLogin();
+                    } else {
+                        try {
+                            var p = localStorage.getItem('remoedAdminEntryPath');
+                            if (p && p.charAt(0) === '/') {
+                                if (W) W.location.href = p;
+                                return;
+                            }
+                        } catch (e) {}
+                        if (W) W.location.href = 'index.html';
+                    }
+                });
             });
         }
 

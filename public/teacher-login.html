@@ -5,17 +5,291 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
   <title>Teacher Login - RemoEdPH</title>
   <link rel="stylesheet" href="modern-styles.css">
-    <link rel="stylesheet" href="style.css">
+  <style>
+    :root {
+      --primary: #667eea;
+      --primary-dark: #764ba2;
+      --surface: #ffffff;
+      --text: #1e2a4a;
+      --muted: #6b7280;
+      --stroke: #e7eaf3;
+      --bg: #efefff;
+    }
+
+    body {
+      margin: 0;
+      padding: 24px;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: var(--text);
+      overflow-x: hidden;
+      overflow-y: auto;
+      position: relative;
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(22px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .login-card {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      background: var(--surface);
+      border-radius: 28px;
+      overflow: visible;
+      box-shadow: 0 30px 60px rgba(31, 41, 55, 0.18);
+      border: 1px solid rgba(102, 126, 234, 0.1);
+      animation: slideUp 0.7s ease-out;
+      position: relative;
+      z-index: 1;
+    }
+
+    .login-panel {
+      padding: 44px 52px;
+      position: relative;
+    }
+
+    .login-visual {
+      background: linear-gradient(135deg, #4c1d95 0%, #312e81 45%, #0f172a 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      padding: 32px;
+      animation: none;
+    }
+
+    .intro-card {
+      width: min(340px, 82%);
+      border-radius: 24px;
+      background: transparent;
+      border: none;
+      padding: 12px;
+      color: #f8fafc;
+      box-shadow: none;
+      animation: none;
+    }
+
+    .intro-card h3 {
+      margin: 0 0 14px;
+      font-size: 1.6rem;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      color: #f8fafc;
+    }
+
+    .intro-card p {
+      margin: 0 0 18px;
+      color: rgba(248, 250, 252, 0.88);
+      line-height: 1.7;
+      font-size: 1.02rem;
+    }
+
+    .intro-card ul {
+      margin: 0;
+      padding-left: 0;
+      list-style: none;
+      color: rgba(248, 250, 252, 0.9);
+      line-height: 1.6;
+      font-size: 1rem;
+      display: grid;
+      gap: 12px;
+    }
+
+    .intro-card li {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .intro-icon {
+      width: 20px;
+      height: 20px;
+      margin-top: 2px;
+      flex: 0 0 auto;
+      color: rgba(248, 250, 252, 0.9);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 22px;
+    }
+
+    .brand img {
+      height: 44px;
+    }
+
+    .brand-name {
+      font-weight: 800;
+      color: var(--primary);
+      font-size: 1.4rem;
+      letter-spacing: 0.5px;
+    }
+
+    .brand-subtitle {
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    .login-title {
+      font-size: 1.9rem;
+      margin: 6px 0 6px;
+      color: var(--text);
+    }
+
+    .login-subtitle {
+      margin: 0 0 24px;
+      color: var(--muted);
+      font-size: 0.98rem;
+    }
+
+    .remoed-form-input {
+      border: 1px solid var(--stroke) !important;
+      border-radius: 14px !important;
+      padding: 12px 16px !important;
+      font-size: 1rem !important;
+      transition: all 0.2s ease !important;
+      background: #fbfbff !important;
+    }
+
+    .remoed-form-input:focus {
+      border-color: var(--primary) !important;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2) !important;
+      transform: none !important;
+    }
+
+    .remoed-form-label {
+      color: var(--text) !important;
+      font-weight: 600 !important;
+      font-size: 0.95rem !important;
+      margin-bottom: 0.5rem !important;
+    }
+
+    .remoed-btn-primary {
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark)) !important;
+      border: none !important;
+      border-radius: 14px !important;
+      padding: 14px 30px !important;
+      font-size: 1rem !important;
+      font-weight: 700 !important;
+      color: white !important;
+      cursor: pointer !important;
+      transition: all 0.3s ease !important;
+      box-shadow: 0 10px 18px rgba(17, 24, 39, 0.18) !important;
+    }
+
+    .remoed-btn-primary:hover {
+      transform: translateY(-1px) !important;
+      box-shadow: 0 18px 28px rgba(102, 126, 234, 0.35) !important;
+    }
+
+
+    .remoed-status.error,
+    .remoed-status.success {
+      border-radius: 12px !important;
+      padding: 12px !important;
+      font-weight: 500 !important;
+      margin-bottom: 16px;
+    }
+
+    .links-container {
+      text-align: left;
+      margin-top: 1.5rem;
+      display: grid;
+      gap: 10px;
+    }
+
+    .links-container a {
+      color: #3f2ea6 !important;
+      text-decoration: none !important;
+      font-weight: 700 !important;
+      font-size: 0.95rem !important;
+      transition: all 0.2s ease !important;
+      padding: 10px 14px !important;
+      border-radius: 10px !important;
+      background: rgba(79, 70, 229, 0.14) !important;
+      display: inline-flex !important;
+      align-items: center !important;
+    }
+
+    .links-container a:hover {
+      background: rgba(102, 126, 234, 0.15) !important;
+      transform: translateX(2px) !important;
+    }
+
+    .password-input-container {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .password-input-container input {
+      padding-right: 48px;
+    }
+
+    .password-toggle {
+      position: absolute;
+      right: 10px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 6px;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .password-toggle:hover {
+      background: rgba(102, 126, 234, 0.12);
+    }
+
+    .eye-icon {
+      font-size: 1.1rem;
+      color: var(--primary);
+    }
+
+    @media (max-width: 900px) {
+      .login-card {
+        grid-template-columns: 1fr;
+      }
+
+      .login-visual {
+        order: -1;
+        padding: 28px 24px;
+      }
+
+      .login-panel {
+        padding: 32px 28px;
+      }
+    }
+  </style>
+  <link rel="stylesheet" href="css/login-portals-japandi.css">
 </head>
-<body class="page-teacher-login">
+<body class="teacher-login-page">
+  <div class="page-atmosphere page-atmosphere--teacher" aria-hidden="true">
+    <div class="atmosphere-grid"></div>
+    <div class="atmosphere-blob atmosphere-blob--1"></div>
+    <div class="atmosphere-blob atmosphere-blob--2"></div>
+    <div class="atmosphere-blob atmosphere-blob--3"></div>
+    <div class="atmosphere-blob atmosphere-blob--4"></div>
+    <div class="atmosphere-blob atmosphere-blob--5"></div>
+  </div>
   <div class="login-shell">
     <div class="peek-character peek-boy">
       <div class="chat-bubble">Hi! I'm Ed! 👋</div>
-      <img src="images/ed-peeking.png" alt="Ed">
+      <img src="images/ed-peeking.png" alt="Ed" decoding="async">
     </div>
     <div class="peek-character peek-robot">
       <div class="chat-bubble">Hello! I'm Remo! 🤖</div>
-      <img src="images/remo-peeking.png" alt="Remo">
+      <img src="images/remo-peeking.png" alt="Remo" decoding="async">
     </div>
     <div class="login-card">
       <div class="login-panel">
@@ -113,5 +387,3 @@
   <script src="teacher-login.js"></script>
 </body>
 </html>
-
-

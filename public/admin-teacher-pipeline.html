@@ -65,12 +65,13 @@
     </div>
   </div>
 
+  <script src="js/admin-session.js"></script>
   <script src="js/admin-sidebar.js"></script>
   <script>
     const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
     const userType = localStorage.getItem('userType');
     if (!token || (userType && userType !== 'admin')) {
-      window.location.href = 'admin-login.html';
+      window.location.href = (function(){ try { var p = localStorage.getItem('remoedAdminEntryPath'); if (p && p.charAt(0) === '/') return p; } catch(e){} return 'index.html'; })();
     }
 
     AdminSidebar.render('admin-sidebar-root', 'teacher-pipeline');

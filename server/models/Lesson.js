@@ -18,7 +18,8 @@ const lessonSchema = new mongoose.Schema({
   /** Internal notes for teachers (cheat sheet / Q&A). Not shown to students. */
   teacherNotes: {
     type: String,
-    default: ''
+    default: '',
+    maxlength: 100000,
   },
   lessonNumber: {
     type: Number,

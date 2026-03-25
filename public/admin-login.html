@@ -6,8 +6,10 @@
   <title>Admin Login - RemoEdPH</title>
   <link rel="stylesheet" href="modern-styles.css">
     <link rel="stylesheet" href="style.css">
+  <script src="js/admin-session.js"></script>
 </head>
 <body class="page-admin-login">
+  <script>if (window.RemoedAdminSession) RemoedAdminSession.rememberCurrentPathAsAdminEntry();</script>
   <div class="remoed-form" style="margin: 50px auto; max-width: 400px; width: 90%;">
     <div class="remoed-logo" style="justify-content: center; margin-bottom: 1.5rem;">
       <img src="remoed-logo.png" alt="RemoEdPH Logo">
@@ -51,6 +53,7 @@
         response = await fetch('/api/auth/admin-login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({ username, password })
         });
       } catch (error) {

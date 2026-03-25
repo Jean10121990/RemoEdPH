@@ -1,0 +1,311 @@
+/**
+ * Japandi atmosphere + peek characters for Teacher & Student login portals.
+ * Load after page-specific <style> blocks so these rules take precedence.
+ */
+
+/* ---- Fixed atmosphere (below card & characters) ---- */
+.page-atmosphere {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.atmosphere-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(72px);
+  transform: translateZ(0);
+}
+
+.atmosphere-grid {
+  position: absolute;
+  inset: -20%;
+  opacity: 0.035;
+  background-image:
+    linear-gradient(rgba(30, 58, 95, 0.5) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(30, 58, 95, 0.5) 1px, transparent 1px);
+  background-size: 52px 52px;
+}
+
+/* Page bodies */
+.teacher-login-page,
+.student-login-page {
+  position: relative;
+  z-index: 1;
+}
+
+.teacher-login-page {
+  background: #f2ede4;
+}
+
+/* Teacher: beige + soft purple / periwinkle (card/button purples unchanged) */
+.teacher-login-page .page-atmosphere--teacher .atmosphere-blob--1 {
+  width: min(58vmin, 520px);
+  height: min(58vmin, 520px);
+  background: #ebe4d8;
+  top: -12%;
+  left: -18%;
+}
+
+.teacher-login-page .page-atmosphere--teacher .atmosphere-blob--2 {
+  width: min(50vmin, 440px);
+  height: min(50vmin, 440px);
+  background: rgba(199, 183, 255, 0.4);
+  top: 8%;
+  right: -12%;
+}
+
+.teacher-login-page .page-atmosphere--teacher .atmosphere-blob--3 {
+  width: min(62vmin, 560px);
+  height: min(62vmin, 560px);
+  background: rgba(165, 180, 252, 0.3);
+  bottom: -20%;
+  left: 20%;
+}
+
+.teacher-login-page .page-atmosphere--teacher .atmosphere-blob--4 {
+  width: min(44vmin, 400px);
+  height: min(44vmin, 400px);
+  background: rgba(224, 231, 255, 0.5);
+  bottom: 5%;
+  right: 5%;
+}
+
+.teacher-login-page .page-atmosphere--teacher .atmosphere-blob--5 {
+  width: min(36vmin, 320px);
+  height: min(36vmin, 320px);
+  background: rgba(237, 233, 254, 0.65);
+  top: 42%;
+  left: 35%;
+}
+
+/* Solid base so child-friendly global body gradient does not show through */
+.student-login-page {
+  background: #f3efe6;
+  background-image: none;
+  background-attachment: scroll;
+}
+
+/* Student: beige + pale sky blue (teal panel unchanged) */
+.student-login-page .page-atmosphere--student .atmosphere-blob--1 {
+  width: min(56vmin, 500px);
+  height: min(56vmin, 500px);
+  background: #e8f4fc;
+  top: -15%;
+  right: -10%;
+}
+
+.student-login-page .page-atmosphere--student .atmosphere-blob--2 {
+  width: min(52vmin, 480px);
+  height: min(52vmin, 480px);
+  background: #ebe4d8;
+  top: 10%;
+  left: -15%;
+}
+
+.student-login-page .page-atmosphere--student .atmosphere-blob--3 {
+  width: min(60vmin, 540px);
+  height: min(60vmin, 540px);
+  background: rgba(186, 230, 253, 0.42);
+  bottom: -18%;
+  right: 15%;
+}
+
+.student-login-page .page-atmosphere--student .atmosphere-blob--4 {
+  width: min(42vmin, 380px);
+  height: min(42vmin, 380px);
+  background: rgba(224, 242, 254, 0.5);
+  bottom: 8%;
+  left: 8%;
+}
+
+.student-login-page .page-atmosphere--student .atmosphere-blob--5 {
+  width: min(38vmin, 340px);
+  height: min(38vmin, 340px);
+  background: rgba(207, 250, 254, 0.32);
+  top: 38%;
+  left: 40%;
+}
+
+/* Shell & card stacking */
+.login-shell {
+  position: relative;
+  z-index: 2;
+  isolation: isolate;
+  width: min(900px, 100%);
+  margin: 0 auto;
+  padding: 0 12px 140px;
+}
+
+@media (min-width: 1200px) {
+  .login-shell {
+    margin: 0 120px;
+    max-width: 920px;
+    padding-bottom: 48px;
+  }
+}
+
+@media (min-width: 1400px) {
+  .login-shell {
+    margin: 0 200px;
+  }
+}
+
+.login-card {
+  position: relative;
+  z-index: 2;
+}
+
+/* ---- Peek characters ---- */
+.peek-character {
+  position: absolute;
+  height: auto;
+  z-index: 3;
+  filter: drop-shadow(0 16px 24px rgba(15, 23, 42, 0.22));
+  transition: transform 0.25s ease;
+  pointer-events: auto;
+}
+
+.peek-character img {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: contain;
+}
+
+/* Ed left (white form edge), Remo right (colored panel edge) — teacher & student */
+.teacher-login-page .peek-boy,
+.student-login-page .peek-boy {
+  left: min(-18vw, -200px);
+  bottom: -24px;
+  width: min(300px, 28vw);
+  max-width: 320px;
+}
+
+.teacher-login-page .peek-boy:hover,
+.student-login-page .peek-boy:hover {
+  transform: rotate(-2deg);
+}
+
+.teacher-login-page .peek-robot,
+.student-login-page .peek-robot {
+  right: min(-18vw, -210px);
+  bottom: -48px;
+  width: min(340px, 30vw);
+  max-width: 380px;
+}
+
+.teacher-login-page .peek-robot:hover,
+.student-login-page .peek-robot:hover {
+  transform: rotate(2deg);
+}
+
+/* Chat bubbles */
+.chat-bubble {
+  position: absolute;
+  background: #ffffff;
+  color: #1e2a4a;
+  padding: 10px 16px;
+  border-radius: 16px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.chat-bubble::after {
+  content: "";
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-top: 10px solid #ffffff;
+}
+
+.peek-boy .chat-bubble,
+.peek-robot .chat-bubble {
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.peek-character:hover .chat-bubble {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Mid widths: shrink peeks, keep beside card */
+@media (max-width: 1199px) {
+  .teacher-login-page .peek-boy,
+  .teacher-login-page .peek-robot,
+  .student-login-page .peek-boy,
+  .student-login-page .peek-robot {
+    width: 200px;
+    max-width: 200px;
+  }
+
+  .teacher-login-page .peek-boy,
+  .student-login-page .peek-boy {
+    left: -100px;
+    bottom: 8px;
+  }
+
+  .teacher-login-page .peek-robot,
+  .student-login-page .peek-robot {
+    right: -110px;
+    bottom: 0;
+  }
+}
+
+/* Narrow: row of greeters under the card — clear of primary CTA */
+@media (max-width: 767px) {
+  .login-shell {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+    padding: 0 12px 32px;
+    gap: 0 12px;
+    align-items: end;
+  }
+
+  .login-shell > .login-card {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .teacher-login-page .login-shell > .peek-boy,
+  .student-login-page .login-shell > .peek-boy {
+    grid-column: 1;
+    grid-row: 2;
+    position: relative;
+    left: auto;
+    bottom: auto;
+    justify-self: start;
+    width: min(132px, 40vw);
+    max-width: 140px;
+    margin-top: 10px;
+  }
+
+  .teacher-login-page .login-shell > .peek-robot,
+  .student-login-page .login-shell > .peek-robot {
+    grid-column: 2;
+    grid-row: 2;
+    position: relative;
+    right: auto;
+    bottom: auto;
+    justify-self: end;
+    width: min(142px, 42vw);
+    max-width: 150px;
+    margin-top: 4px;
+  }
+}

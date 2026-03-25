@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>My Lesson Credits - RemoEdPH</title>
   <link rel="stylesheet" href="modern-styles.css">
-    <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body class="page-student-credits">
   <div class="shell">
@@ -15,11 +15,11 @@
           <img src="images/remoed-logo.png" alt="RemoEdPH" onerror="this.src='remoed-logo.png'">
           <div>
             <div class="brand-title">My Lesson Credits</div>
-            <div class="tagline" id="credits-greeting">Track how many classes are used and what’s left.</div>
+            <div class="tagline" id="credits-greeting">Track how many classes are used and what's left.</div>
           </div>
         </div>
       </div>
-      <button class="btn-link" onclick="window.location.href='student-dashboard.html'">← Back to Dashboard</button>
+      <button class="btn-link" onclick="window.location.href='student-dashboard.html'">&larr; Back to Dashboard</button>
     </div>
 
     <div class="grid">
@@ -68,33 +68,57 @@
     </div>
   </div>
 
-  <script type="module">
+  <script>
     function getStudentToken() {
       return localStorage.getItem('studentToken') || localStorage.getItem('token') || '';
     }
 
-    window.goToPlans = function goToPlans() {
+    function goToPlans() {
       window.location.href = 'index.html#plans';
-    };
-
-    let formatFn = null;
-    async function getDateFormat() {
-      if (!formatFn) {
-        const mod = await import('https://esm.sh/date-fns@3.6.0/format');
-        formatFn = mod.format;
-      }
-      return formatFn;
     }
 
-    async function formatRowDate(iso) {
-      if (!iso) return '—';
-      try {
-        const format = await getDateFormat();
-        return format(new Date(iso), 'MMM d, yyyy · h:mm a');
-      } catch (e) {
-        const d = new Date(iso);
-        return d.toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-      }
+    function fmtDate(iso) {
+      if (!iso) return '\u2014';
+      const d = new Date(iso);
+      return d.toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
+
+    function escHtml(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function buildHistoryRows(data) {
+      const tx = Array.isArray(data.credits) ? data.credits : [];
+      const hist = Array.isArray(data.creditHistory) ? data.creditHistory : [];
+      const fromHist = hist.map((item) => ({
+        date: item.date,
+        type: item.credits >= 0 ? 'purchase' : 'use',
+        plan: item.plan,
+        description:
+          item.credits >= 0
+            ? 'Plan purchase (' + (item.plan || 'Subscription') + ')'
+            : 'Class booked (' + (item.plan || 'Subscription') + ')',
+        credits: item.credits,
+        balanceAfter: item.balanceAfter != null ? item.balanceAfter : '',
+        amountPaid: item.amountPaid || 0
+      }));
+      const fromTx = tx.map((row) => ({
+        date: row.date,
+        type: row.type,
+        plan: row.plan,
+        description: row.description || row.plan || '',
+        credits: row.credits,
+        balanceAfter: row.balanceAfter != null ? row.balanceAfter : '',
+        amountPaid: row.amountPaid || 0
+      }));
+      const list = fromTx.concat(fromHist);
+      list.sort(function (a, b) {
+        return new Date(b.date || 0) - new Date(a.date || 0);
+      });
+      return list;
     }
 
     async function loadCredits() {
@@ -105,36 +129,42 @@
         return;
       }
       try {
-        const res = await fetch('/api/user/credits', {
+        const res = await fetch('/api/student/credits', {
           headers: { Authorization: 'Bearer ' + token }
         });
-        const data = await res.json().catch(() => ({}));
+        const data = await res.json().catch(function () { return {}; });
         if (!res.ok || !data.success) {
-          throw new Error(data.error || 'Failed to load credits');
+          throw new Error(data.error || ('Failed to load credits (' + res.status + ')'));
         }
 
         const name = localStorage.getItem('remoedUsername') || localStorage.getItem('studentName') || '';
         const greet = document.getElementById('credits-greeting');
         if (name && greet) {
-          greet.textContent = `Hi, ${name}! Here are your lesson credits.`;
+          greet.textContent = 'Hi, ' + name + '! Here are your lesson credits.';
         }
 
-        const totalCredits = data.totalCredits != null ? data.totalCredits : (data.balance ?? 0);
+        var pool = Number(data.balance != null ? data.balance : data.totalCredits) || 0;
+        var reserved = Number(data.reservedCredits) || 0;
+        var available = data.availableBalance != null ? Number(data.availableBalance) : NaN;
+        if (available == null || isNaN(available)) {
+          available = Math.max(pool - reserved, 0);
+        }
+
         const usedCredits = data.usedCredits != null ? data.usedCredits : (data.used ?? 0);
-        const reserved = Number(data.reservedCredits) || 0;
 
         const balEl = document.getElementById('credits-balance');
-        balEl.textContent = totalCredits;
-        balEl.classList.toggle('balance-low', Number(totalCredits) < 5);
+        balEl.textContent = String(available);
+        balEl.classList.toggle('balance-low', Number(available) < 5);
 
         const reservedWrap = document.getElementById('credits-reserved-wrap');
         const reservedEl = document.getElementById('credits-reserved');
         if (reservedWrap && reservedEl) {
-          reservedEl.textContent = reserved;
+          reservedEl.textContent = String(reserved);
           reservedWrap.style.display = reserved > 0 ? 'inline-flex' : 'none';
         }
 
-        document.getElementById('credits-total').textContent = data.totalEarned ?? 0;
+        document.getElementById('credits-total').textContent =
+          data.totalPurchased != null ? data.totalPurchased : (data.totalEarned != null ? data.totalEarned : 0);
         document.getElementById('credits-used').textContent = usedCredits;
 
         const pill = document.getElementById('subscription-pill');
@@ -146,7 +176,7 @@
             sp === '6months' || sp === 'scholar' ? 'RemoScholar' :
             sp === '1year' || sp === 'summit' ? 'RemoSummit' :
             sp;
-          pill.textContent = `${label} • ${data.subscriptionStatus || 'status unknown'}`;
+          pill.textContent = label + ' \u2022 ' + (data.subscriptionStatus || 'status unknown');
           pill.style.display = 'inline-flex';
           pill.className = 'badge ' + ((data.subscriptionStatus === 'active') ? 'green' : 'yellow');
         } else {
@@ -155,7 +185,7 @@
 
         const tbody = document.getElementById('credits-tbody');
         const empty = document.getElementById('credits-empty');
-        const list = Array.isArray(data.credits) ? data.credits : [];
+        const list = buildHistoryRows(data);
         if (!list.length) {
           tbody.innerHTML = '';
           empty.style.display = 'block';
@@ -164,25 +194,24 @@
         }
         empty.style.display = 'none';
 
-        const rowsHtml = await Promise.all(list.map(async (row) => {
+        tbody.innerHTML = list.map(function (row) {
           const cls = row.credits >= 0 ? 'credits-pos' : 'credits-neg';
           const typeLabel =
             row.type === 'purchase' ? 'Purchase' :
             row.type === 'use' ? 'Used' :
             row.type === 'adjustment' ? 'Adjust' :
-            (row.source === 'creditHistory' ? 'Purchase' : 'Entry');
-          const dateStr = await formatRowDate(row.date);
-          return `
-            <tr>
-              <td>${dateStr}</td>
-              <td>${typeLabel}</td>
-              <td>${row.description || row.plan || ''}</td>
-              <td><span class="${cls}">${row.credits > 0 ? '+' : ''}${row.credits}</span></td>
-              <td>${row.balanceAfter != null && row.balanceAfter !== '' ? row.balanceAfter : '—'}</td>
-            </tr>
-          `;
-        }));
-        tbody.innerHTML = rowsHtml.join('');
+            'Entry';
+          const balCell = row.balanceAfter !== '' && row.balanceAfter != null ? row.balanceAfter : '\u2014';
+          return (
+            '<tr>' +
+              '<td>' + fmtDate(row.date) + '</td>' +
+              '<td>' + typeLabel + '</td>' +
+              '<td>' + escHtml(row.description) + '</td>' +
+              '<td><span class="' + cls + '">' + (row.credits > 0 ? '+' : '') + row.credits + '</span></td>' +
+              '<td>' + balCell + '</td>' +
+            '</tr>'
+          );
+        }).join('');
 
         sessionStorage.removeItem('remoedCreditsRefresh');
       } catch (err) {
@@ -192,16 +221,13 @@
     }
 
     document.addEventListener('DOMContentLoaded', loadCredits);
-    document.addEventListener('visibilitychange', () => {
+    document.addEventListener('visibilitychange', function () {
       if (document.visibilityState === 'visible') loadCredits();
     });
-    window.addEventListener('pageshow', (ev) => {
+    window.addEventListener('pageshow', function (ev) {
       if (ev.persisted) loadCredits();
     });
     window.refreshStudentCredits = loadCredits;
   </script>
 </body>
 </html>
-
-
-

@@ -1,5 +1,7 @@
 const express = require('express');
+const { body, param, validationResult } = require('express-validator');
 const router = express.Router();
+const { sanitizeTeacherNotes } = require('./utils/sanitizeHtml');
 const Curriculum = require('./models/Curriculum');
 const Lesson = require('./models/Lesson');
 // LessonFile model removed - files are now embedded in Lesson model
@@ -201,10 +203,27 @@ router.put('/curriculum/:curriculumId', authenticateToken, requireTeacher, async
 
 // Create a new lesson - Admin/Teacher only
 // NOTE: This route must come BEFORE /curriculum/:curriculumId/lessons to avoid route conflicts
-router.post('/curriculum/:curriculumId/lesson', authenticateToken, requireTeacher, async (req, res) => {
+router.post(
+  '/curriculum/:curriculumId/lesson',
+  authenticateToken,
+  requireTeacher,
+  [
+    param('curriculumId').isMongoId().withMessage('Invalid curriculum id'),
+    body('title').trim().notEmpty().isLength({ max: 300 }),
+    body('lessonNumber').isInt({ min: 1, max: 9999 }),
+    body('estimatedDuration').optional({ nullable: true }).isInt({ min: 5, max: 600 }),
+    body('description').optional().isString().isLength({ max: 20000 }),
+    body('teacherNotes').optional().isString().isLength({ max: 100000 }),
+  ],
+  async (req, res) => {
   try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, errors: errors.array() });
+    }
+
     const { curriculumId } = req.params;
-    const { title, description, lessonNumber, estimatedDuration } = req.body;
+    const { title, description, lessonNumber, estimatedDuration, teacherNotes } = req.body;
     const isAdmin = req.user && (req.user.isAdmin === true || req.user.role === 'admin' || req.user.username === 'admin');
     const createdBy = isAdmin ? (req.user.username || 'admin') : (req.user.teacherId || req.user.userId);
 
@@ -239,7 +258,7 @@ router.post('/curriculum/:curriculumId/lesson', authenticateToken, requireTeache
       curriculumId,
       title,
       description: description || '',
-      teacherNotes: teacherNotes != null ? String(teacherNotes) : '',
+      teacherNotes: sanitizeTeacherNotes(teacherNotes),
       lessonNumber: parseInt(lessonNumber, 10),
       order: parseInt(lessonNumber, 10), // Use lesson number as order
       estimatedDuration: estimatedDuration ? parseInt(estimatedDuration, 10) : 30,
@@ -380,8 +399,24 @@ router.delete('/lesson/:lessonId', authenticateToken, requireTeacher, async (req
 
 // Update lesson details (title, description, estimatedDuration) - Admin/Teacher only
 // NOTE: This route must come BEFORE /lesson/:lessonId/files to avoid route conflicts
-router.put('/lesson/:lessonId', authenticateToken, requireTeacher, async (req, res) => {
+router.put(
+  '/lesson/:lessonId',
+  authenticateToken,
+  requireTeacher,
+  [
+    param('lessonId').isMongoId().withMessage('Invalid lesson id'),
+    body('title').optional().trim().notEmpty().isLength({ max: 300 }),
+    body('description').optional().isString().isLength({ max: 20000 }),
+    body('estimatedDuration').optional({ nullable: true }).isInt({ min: 5, max: 600 }),
+    body('teacherNotes').optional().isString().isLength({ max: 100000 }),
+  ],
+  async (req, res) => {
   try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, errors: errors.array() });
+    }
+
     const { lessonId } = req.params;
     const { title, description, estimatedDuration, teacherNotes } = req.body;
 
@@ -400,7 +435,7 @@ router.put('/lesson/:lessonId', authenticateToken, requireTeacher, async (req, r
     if (title !== undefined) lesson.title = title;
     if (description !== undefined) lesson.description = description;
     if (estimatedDuration !== undefined) lesson.estimatedDuration = estimatedDuration;
-    if (teacherNotes !== undefined) lesson.teacherNotes = String(teacherNotes);
+    if (teacherNotes !== undefined) lesson.teacherNotes = sanitizeTeacherNotes(teacherNotes);
 
     await lesson.save();
     console.log(`✅ [UPDATE] Lesson updated successfully: ${lessonId}`);

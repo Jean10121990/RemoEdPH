@@ -10,17 +10,12 @@ const PeerMessage = require('./models/PeerMessage');
 const IssueReport = require('./models/IssueReport');
 const TimeLog = require('./models/TimeLog');
 const Referral = require('./models/Referral');
-const { verifyToken, requireAdmin } = require('./authMiddleware');
-const {
-  releaseReservedCreditForCancelledBooking,
-  finalizeLessonCreditsOnCompletion
-} = require('./lessonCreditsHelper');
+const { verifyAdminApiAuth, requireAdmin } = require('./authMiddleware');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const Application = require('./models/Application');
 const InvitationToken = require('./models/InvitationToken');
 const { sendTeacherRegistrationEmail, sendTeacherPipelineWelcomeEmail } = require('./emailService');
-const { generateCompanyId } = require('./idGenerator');
 
 // Function to create notifications
 async function createNotification(userId, type, message) {
@@ -38,6 +33,77 @@ async function createNotification(userId, type, message) {
   } catch (error) {
     console.error('❌ Error creating notification:', error);
   }
+}
+
+async function findStudentForBooking(booking) {
+  if (!booking || !booking.studentId) return null;
+  return Student.findOne({
+    $or: [{ username: booking.studentId }, { email: booking.studentId }]
+  });
+}
+
+async function releaseReservedCreditForBooking(booking) {
+  if (!booking || booking.creditConsumedAt || booking.creditReservationReleasedAt) return;
+  const student = await findStudentForBooking(booking);
+  if (!student) return;
+  const safeReserved = Number(student.reservedCredits || 0);
+  if (safeReserved <= 0) return;
+
+  const safeTotal = Number(student.totalCredits || 0);
+  const nextReserved = safeReserved - 1;
+  const nextAvailable = Math.max(safeTotal - nextReserved, 0);
+  await Student.updateOne(
+    { _id: student._id },
+    { $set: { reservedCredits: nextReserved, creditBalance: nextAvailable } }
+  );
+  booking.creditReservationReleasedAt = new Date();
+}
+
+async function consumeReservedCreditForBooking(booking, descriptionPrefix = 'Class finished') {
+  if (!booking || booking.creditConsumedAt || booking.creditReservationReleasedAt) return;
+  const student = await findStudentForBooking(booking);
+  if (!student) return;
+  const now = new Date();
+  const safeReserved = Number(student.reservedCredits || 0);
+  if (safeReserved <= 0) return;
+  const safeTotal = Number(student.totalCredits || 0);
+  const nextReserved = Math.max(safeReserved - 1, 0);
+  const nextTotal = Math.max(safeTotal - 1, 0);
+  const nextAvailable = Math.max(nextTotal - nextReserved, 0);
+  const planLabel = student.subscriptionPlan || '';
+  const desc = `${descriptionPrefix} (${booking.date} ${booking.time})`;
+
+  await Student.updateOne(
+    { _id: student._id },
+    {
+      $set: {
+        reservedCredits: nextReserved,
+        totalCredits: nextTotal,
+        creditBalance: nextAvailable
+      },
+      $inc: { usedCredits: 1 },
+      $push: {
+        creditTransactions: {
+          date: now,
+          type: 'use',
+          plan: planLabel,
+          description: desc,
+          credits: -1,
+          balanceAfter: nextAvailable,
+          amountPaid: 0
+        },
+        creditHistory: {
+          date: now,
+          plan: planLabel,
+          credits: -1,
+          amountPaid: 0,
+          paymentId: ''
+        }
+      }
+    }
+  );
+  booking.creditConsumedAt = now;
+  booking.creditReservationReleasedAt = null;
 }
 
 // Import generateStrongPassword function from auth.js
@@ -131,7 +197,7 @@ function getPhilippineTimeStringAdmin() {
   }).format(new Date());
 }
 
-router.post('/time-tracking/clock-in', verifyToken, requireAdmin, async (req, res) => {
+router.post('/time-tracking/clock-in', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
     const workerId = adminTimeWorkerId(req.user.username);
     const phDate = getPhilippineBusinessDateAdmin(7);
@@ -167,7 +233,7 @@ router.post('/time-tracking/clock-in', verifyToken, requireAdmin, async (req, re
   }
 });
 
-router.post('/time-tracking/clock-out', verifyToken, requireAdmin, async (req, res) => {
+router.post('/time-tracking/clock-out', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
     const workerId = adminTimeWorkerId(req.user.username);
     const currentTime = getPhilippineTimeStringAdmin();
@@ -200,7 +266,7 @@ router.post('/time-tracking/clock-out', verifyToken, requireAdmin, async (req, r
   }
 });
 
-router.get('/time-tracking/status', verifyToken, requireAdmin, async (req, res) => {
+router.get('/time-tracking/status', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
     const workerId = adminTimeWorkerId(req.user.username);
     const phDate = getPhilippineBusinessDateAdmin(7);
@@ -248,7 +314,7 @@ router.get('/time-tracking/status', verifyToken, requireAdmin, async (req, res) 
   }
 });
 
-router.get('/time-tracking/history', verifyToken, requireAdmin, async (req, res) => {
+router.get('/time-tracking/history', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
     const workerId = adminTimeWorkerId(req.user.username);
     const { startDate, endDate } = req.query;
@@ -271,7 +337,7 @@ router.get('/time-tracking/history', verifyToken, requireAdmin, async (req, res)
 });
 
 // ——— Admin notifications (same Notification collection; teacherId = admin username) ———
-router.get('/notifications', verifyToken, requireAdmin, async (req, res) => {
+router.get('/notifications', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
     const username = req.user.username;
     const notifications = await Notification.find({ teacherId: username })
@@ -289,7 +355,7 @@ router.get('/notifications', verifyToken, requireAdmin, async (req, res) => {
 // -----------------------------
 // Teacher Pipeline (Applications)
 // -----------------------------
-router.get('/teacher-pipeline/applicants', verifyToken, requireAdmin, async (req, res) => {
+router.get('/teacher-pipeline/applicants', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
     const applicants = await Application.find({})
       .sort({ updatedAt: -1 })
@@ -302,8 +368,6 @@ router.get('/teacher-pipeline/applicants', verifyToken, requireAdmin, async (req
       currentStage: a.currentStage || 'applied',
       status: Boolean(a.status),
       progress: toProgressPercent(a.currentStage),
-      passedAt: a.passedAt || null,
-      hiredAt: a.hiredAt || null,
       updatedAt: a.updatedAt
     }));
 
@@ -314,7 +378,7 @@ router.get('/teacher-pipeline/applicants', verifyToken, requireAdmin, async (req
   }
 });
 
-router.get('/teacher-pipeline/applicants/:id', verifyToken, requireAdmin, async (req, res) => {
+router.get('/teacher-pipeline/applicants/:id', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
     const applicant = await Application.findById(req.params.id).lean();
     if (!applicant) {
@@ -327,7 +391,7 @@ router.get('/teacher-pipeline/applicants/:id', verifyToken, requireAdmin, async 
   }
 });
 
-router.post('/teacher-pipeline/applicants/:id/fail', verifyToken, requireAdmin, async (req, res) => {
+router.post('/teacher-pipeline/applicants/:id/fail', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
     const applicant = await Application.findById(req.params.id);
     if (!applicant) {
@@ -345,7 +409,7 @@ router.post('/teacher-pipeline/applicants/:id/fail', verifyToken, requireAdmin, 
   }
 });
 
-router.post('/teacher-pipeline/applicants/:id/pass', verifyToken, requireAdmin, async (req, res) => {
+router.post('/teacher-pipeline/applicants/:id/pass', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
     const applicant = await Application.findById(req.params.id);
     if (!applicant) {
@@ -354,7 +418,6 @@ router.post('/teacher-pipeline/applicants/:id/pass', verifyToken, requireAdmin, 
 
     applicant.currentStage = 'passed';
     applicant.status = true;
-    applicant.passedAt = new Date();
     await applicant.save();
 
     // Reuse an active unused token if available, otherwise generate a new one.
@@ -414,7 +477,7 @@ async function ensureTeacherReferralCode(teacher) {
   return code;
 }
 
-router.get('/referrals', verifyToken, requireAdmin, async (req, res) => {
+router.get('/referrals', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
     const { teacherId, from, to } = req.query;
     const filter = {};
@@ -456,7 +519,7 @@ router.get('/referrals', verifyToken, requireAdmin, async (req, res) => {
   }
 });
 
-router.get('/referrals/teachers', verifyToken, requireAdmin, async (req, res) => {
+router.get('/referrals/teachers', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
     const teachers = await Teacher.find({})
       .select('teacherId firstName lastName fullname username referralCode')
@@ -489,7 +552,7 @@ router.get('/referrals/teachers', verifyToken, requireAdmin, async (req, res) =>
   }
 });
 
-router.get('/referral-link', verifyToken, requireAdmin, async (req, res) => {
+router.get('/referral-link', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
     const username = req.user.username;
     const admin = await Admin.findOne({ username });
@@ -524,7 +587,7 @@ router.get('/referral-link', verifyToken, requireAdmin, async (req, res) => {
   }
 });
 
-router.patch('/notifications/mark-all-read', verifyToken, requireAdmin, async (req, res) => {
+router.patch('/notifications/mark-all-read', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
     await Notification.updateMany(
       { teacherId: req.user.username, read: false },
@@ -537,7 +600,7 @@ router.patch('/notifications/mark-all-read', verifyToken, requireAdmin, async (r
   }
 });
 
-router.patch('/notifications/:notificationId/read', verifyToken, requireAdmin, async (req, res) => {
+router.patch('/notifications/:notificationId/read', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
     const n = await Notification.findOneAndUpdate(
       { _id: req.params.notificationId, teacherId: req.user.username },
@@ -1721,35 +1784,9 @@ router.get('/recent-activity', async (req, res) => {
 router.get('/teachers-list', async (req, res) => {
   try {
     // Filter out teachers with null or missing usernames
-    const teachers = await Teacher.find({
+    const teachers = await Teacher.find({ 
       username: { $exists: true, $ne: null, $ne: '' } 
-    }).select('teacherId username email firstName middleName lastName createdAt status hireDate');
-
-    await Promise.all(
-      teachers.map(async (teacher) => {
-        const next = {};
-        if (!teacher.teacherId) {
-          next.teacherId = await generateCompanyId(
-            Teacher,
-            'teacherId',
-            {
-              firstName: teacher.firstName || '',
-              middleName: teacher.middleName || '',
-              lastName: teacher.lastName || '',
-              fallback: teacher.username || ''
-            },
-            teacher.createdAt || new Date()
-          );
-        }
-        if (!teacher.hireDate) {
-          next.hireDate = teacher.createdAt || new Date();
-        }
-        if (Object.keys(next).length > 0) {
-          await Teacher.updateOne({ _id: teacher._id }, { $set: next });
-          Object.assign(teacher, next);
-        }
-      })
-    );
+    }).select('username email createdAt status');
     
     console.log(`Found ${teachers.length} valid teachers`);
     res.json(teachers);
@@ -1762,26 +1799,7 @@ router.get('/teachers-list', async (req, res) => {
 // GET students list
 router.get('/students-list', async (req, res) => {
   try {
-    const students = await Student.find({}).select('studentCode username email firstName middleName lastName createdAt status');
-    await Promise.all(
-      students.map(async (student) => {
-        if (!student.studentCode) {
-          const studentCode = await generateCompanyId(
-            Student,
-            'studentCode',
-            {
-              firstName: student.firstName || '',
-              middleName: student.middleName || '',
-              lastName: student.lastName || '',
-              fallback: student.username || ''
-            },
-            student.createdAt || new Date()
-          );
-          await Student.updateOne({ _id: student._id }, { $set: { studentCode } });
-          student.studentCode = studentCode;
-        }
-      })
-    );
+    const students = await Student.find({}).select('username email firstName lastName createdAt status');
     res.json(students);
   } catch (error) {
     console.error('Error getting students list:', error);
@@ -1792,21 +1810,7 @@ router.get('/students-list', async (req, res) => {
 // GET admins list
 router.get('/admins-list', async (req, res) => {
   try {
-    const admins = await Admin.find({}).select('employeeId username createdAt status');
-    await Promise.all(
-      admins.map(async (admin) => {
-        if (!admin.employeeId) {
-          const employeeId = await generateCompanyId(
-            Admin,
-            'employeeId',
-            { firstName: '', middleName: '', lastName: '', fallback: admin.username || '' },
-            admin.createdAt || new Date()
-          );
-          await Admin.updateOne({ _id: admin._id }, { $set: { employeeId } });
-          admin.employeeId = employeeId;
-        }
-      })
-    );
+    const admins = await Admin.find({}).select('username createdAt status');
     res.json(admins);
   } catch (error) {
     console.error('Error getting admins list:', error);
@@ -1815,7 +1819,7 @@ router.get('/admins-list', async (req, res) => {
 });
 
 // Admin messages directory with search by user ID or name
-router.get('/messages/users', verifyToken, requireAdmin, async (req, res) => {
+router.get('/messages/users', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
     const q = String((req.query && req.query.q) || '').trim().toLowerCase();
 
@@ -1907,7 +1911,7 @@ function getAdminMessengerId(req) {
 }
 
 // Admin -> user conversation thread
-router.get('/messages/thread/:userId', verifyToken, requireAdmin, async (req, res) => {
+router.get('/messages/thread/:userId', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
     const userId = String(req.params.userId || '').trim();
     if (!userId) return res.status(400).json({ success: false, message: 'userId is required' });
@@ -1946,7 +1950,7 @@ router.get('/messages/thread/:userId', verifyToken, requireAdmin, async (req, re
 });
 
 // Admin sends a direct message to a teacher/student userId
-router.post('/messages/send', verifyToken, requireAdmin, async (req, res) => {
+router.post('/messages/send', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
     const recipientId = String(req.body?.recipientId || '').trim();
     const message = String(req.body?.message || '').trim();
@@ -2087,11 +2091,8 @@ router.post('/review-cancellation', async (req, res) => {
       const booking = await Booking.findById(cancellationRequest.bookingId);
       if (booking) {
         booking.status = 'cancelled';
+        await releaseReservedCreditForBooking(booking);
         await booking.save();
-
-        await releaseReservedCreditForCancelledBooking(booking).catch((relErr) =>
-          console.error('⚠️ Reserved credit release failed (admin cancel):', relErr.message)
-        );
         
         // MARK THE SLOT AS AVAILABLE AGAIN WHEN BOOKING IS CANCELLED
         console.log('🔍 Marking slot as available after booking cancellation...');
@@ -2165,21 +2166,7 @@ router.get('/students', async (req, res) => {
 // GET all admins
 router.get('/admins', async (req, res) => {
   try {
-    const admins = await Admin.find({}).select('-password');
-    await Promise.all(
-      admins.map(async (admin) => {
-        if (!admin.employeeId) {
-          const employeeId = await generateCompanyId(
-            Admin,
-            'employeeId',
-            { firstName: '', middleName: '', lastName: '', fallback: admin.username || '' },
-            admin.createdAt || new Date()
-          );
-          await Admin.updateOne({ _id: admin._id }, { $set: { employeeId } });
-          admin.employeeId = employeeId;
-        }
-      })
-    );
+    const admins = await Admin.find({}).select('-password -passwordHash');
     res.json(admins);
   } catch (err) {
     console.error('Error fetching admins:', err);
@@ -2202,7 +2189,7 @@ router.get('/user/:userId', async (req, res) => {
         user = await Student.findById(userId).select('-password');
         break;
       case 'admin':
-        user = await Admin.findById(userId).select('-password');
+        user = await Admin.findById(userId).select('-password -passwordHash');
         break;
       default:
         return res.status(400).json({ error: 'Invalid user type' });
@@ -2276,13 +2263,23 @@ router.post('/user', async (req, res) => {
         hashedPassword = await bcrypt.hash(generatedPassword, 10);
         console.log('Password hashed successfully');
         
-        // Generate teacher ID in format KBF07202500001
-        const teacherId = await generateCompanyId(
-          Teacher,
-          'teacherId',
-          { firstName: firstName || '', middleName: '', lastName: lastName || '', fallback: generatedUsername },
-          new Date()
-        );
+        // Generate teacherId (format: kjb + 8 digits)
+        // Find the highest existing teacherId number to avoid conflicts
+        const existingTeachers = await Teacher.find({}).select('teacherId');
+        let maxNumber = 0;
+        
+        existingTeachers.forEach(teacher => {
+          if (teacher.teacherId && teacher.teacherId.startsWith('kjb')) {
+            const numberPart = teacher.teacherId.substring(3);
+            const number = parseInt(numberPart, 10);
+            if (!isNaN(number) && number > maxNumber) {
+              maxNumber = number;
+            }
+          }
+        });
+        
+        const teacherIdNumber = (maxNumber + 1).toString().padStart(8, '0');
+        const teacherId = `kjb${teacherIdNumber}`;
         console.log('Generated teacherId:', teacherId);
         
         // Validate generated username
@@ -2309,7 +2306,6 @@ router.post('/user', async (req, res) => {
           password: hashedPassword,
           firstName: firstName || '',
           lastName: lastName || '',
-          hireDate: new Date(),
           hourlyRate: rate || 100,
           hasGeneratedPassword: true // Set flag to force password change
         });
@@ -2324,44 +2320,21 @@ router.post('/user', async (req, res) => {
         break;
       case 'student':
         hashedPassword = await bcrypt.hash(password, 10);
-        {
-          const studentCode = await generateCompanyId(
-            Student,
-            'studentCode',
-            {
-              firstName: studentFirstName || '',
-              middleName: '',
-              lastName: studentLastName || '',
-              fallback: username
-            },
-            new Date()
-          );
-          newUser = new Student({
-            studentCode,
-            username,
-            email,
-            password: hashedPassword,
-            firstName: studentFirstName || '',
-            lastName: studentLastName || ''
-          });
-        }
+        newUser = new Student({
+          username,
+          email,
+          password: hashedPassword,
+          firstName: studentFirstName || '',
+          lastName: studentLastName || ''
+        });
         break;
       case 'admin':
-        hashedPassword = await bcrypt.hash(password, 10);
-        {
-          const employeeId = await generateCompanyId(
-            Admin,
-            'employeeId',
-            { firstName: '', middleName: '', lastName: '', fallback: username },
-            new Date()
-          );
-          newUser = new Admin({
-            employeeId,
-            username,
-            email,
-            password: hashedPassword
-          });
-        }
+        hashedPassword = await bcrypt.hash(password, 12);
+        newUser = new Admin({
+          username,
+          email,
+          passwordHash: hashedPassword,
+        });
         break;
     }
     
@@ -2465,7 +2438,7 @@ router.post('/user', async (req, res) => {
       res.json({
         success: true,
         message: `${userType} created successfully`,
-        user: { ...newUser.toObject(), password: undefined }
+        user: { ...newUser.toObject(), password: undefined, passwordHash: undefined }
       });
     }
   } catch (err) {
@@ -2508,7 +2481,13 @@ router.put('/user/:userId', async (req, res) => {
     if (username) user.username = username;
     if (email) user.email = email;
     if (password) {
-      user.password = await bcrypt.hash(password, 10);
+      const h = await bcrypt.hash(password, 12);
+      if (userType === 'admin') {
+        user.passwordHash = h;
+        user.password = undefined;
+      } else {
+        user.password = h;
+      }
     }
     
     // Update type-specific fields
@@ -2526,7 +2505,7 @@ router.put('/user/:userId', async (req, res) => {
     res.json({
       success: true,
       message: `${userType} updated successfully`,
-      user: { ...user.toObject(), password: undefined }
+      user: { ...user.toObject(), password: undefined, passwordHash: undefined }
     });
   } catch (err) {
     console.error('Error updating user:', err);
@@ -3132,7 +3111,7 @@ router.get('/payment-history/export', async (req, res) => {
 });
 
 // GET all issue reports
-router.get('/issue-reports', verifyToken, async (req, res) => {
+router.get('/issue-reports', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
     const { status, teacherId, page = 1, limit = 10 } = req.query;
     
@@ -3177,7 +3156,7 @@ router.get('/issue-reports', verifyToken, async (req, res) => {
 });
 
 // GET single issue report by ID
-router.get('/issue-reports/:id', verifyToken, async (req, res) => {
+router.get('/issue-reports/:id', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -3207,7 +3186,7 @@ router.get('/issue-reports/:id', verifyToken, async (req, res) => {
 });
 
 // PUT update issue report status
-router.put('/issue-reports/:id/status', verifyToken, async (req, res) => {
+router.put('/issue-reports/:id/status', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { status, adminResponse } = req.body;
@@ -3256,7 +3235,7 @@ router.put('/issue-reports/:id/status', verifyToken, async (req, res) => {
 });
 
 // GET issue report statistics
-router.get('/issue-reports/stats', verifyToken, async (req, res) => {
+router.get('/issue-reports/stats', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
     const totalReports = await IssueReport.countDocuments();
     const pendingReports = await IssueReport.countDocuments({ status: 'pending' });
@@ -3323,7 +3302,7 @@ router.get('/issues-test', async (req, res) => {
 });
 
 // GET all issues with filters
-router.get('/issues', verifyToken, requireAdmin, async (req, res) => {
+router.get('/issues', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
     const { status, validityStatus, issueType, date } = req.query;
     
@@ -3358,7 +3337,7 @@ router.get('/issues', verifyToken, requireAdmin, async (req, res) => {
 });
 
 // POST review issue
-router.post('/issues/review', verifyToken, requireAdmin, async (req, res) => {
+router.post('/issues/review', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
     const { issueId, validityStatus, adminReviewNotes, canReschedule } = req.body;
     
@@ -3421,7 +3400,7 @@ router.post('/issues/review', verifyToken, requireAdmin, async (req, res) => {
 });
 
 // POST mark issue as resolved
-router.post('/issues/resolve', verifyToken, requireAdmin, async (req, res) => {
+router.post('/issues/resolve', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
     const { issueId, resolutionType, teacherFaultReason, resolveNotes } = req.body;
     
@@ -3482,12 +3461,8 @@ router.post('/issues/resolve', verifyToken, requireAdmin, async (req, res) => {
           booking.attendance = {};
         }
         booking.attendance.classCompleted = true;
-        
+        await consumeReservedCreditForBooking(booking, 'Class finished');
         await booking.save();
-        const fin = await finalizeLessonCreditsOnCompletion(booking);
-        if (!fin.ok && !fin.skipped) {
-          console.error('⚠️ Lesson credit finalize failed after issue resolution:', fin.error);
-        }
         console.log(`✅ Marked booking ${issue.bookingId} as completed due to resolved issue`);
       }
     } catch (bookingError) {
@@ -3523,7 +3498,7 @@ router.post('/issues/resolve', verifyToken, requireAdmin, async (req, res) => {
 });
 
 // POST dismiss issue
-router.post('/issues/dismiss', verifyToken, requireAdmin, async (req, res) => {
+router.post('/issues/dismiss', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
     const { issueId } = req.body;
     
@@ -3559,7 +3534,7 @@ router.post('/issues/dismiss', verifyToken, requireAdmin, async (req, res) => {
 });
 
 // GET all teacher assessments (for admin review)
-router.get('/teacher-assessments', verifyToken, requireAdmin, async (req, res) => {
+router.get('/teacher-assessments', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   console.log('📊 Admin accessing teacher assessments endpoint');
   try {
     const { status, teacherId } = req.query;
@@ -3643,7 +3618,7 @@ router.get('/teacher-assessments', verifyToken, requireAdmin, async (req, res) =
 });
 
 // GET specific teacher's assessment details (for admin review)
-router.get('/teacher-assessments/:teacherId', verifyToken, requireAdmin, async (req, res) => {
+router.get('/teacher-assessments/:teacherId', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
     const { teacherId } = req.params;
     
@@ -3692,7 +3667,7 @@ router.get('/teacher-assessments/:teacherId', verifyToken, requireAdmin, async (
 });
 
 // Allow retake: reset assessment tests so teacher can resubmit
-router.post('/teacher-assessments/:teacherId/retake', verifyToken, requireAdmin, async (req, res) => {
+router.post('/teacher-assessments/:teacherId/retake', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
     const { teacherId } = req.params;
     const teacher = await Teacher.findOne({ teacherId });
@@ -3731,7 +3706,7 @@ router.post('/teacher-assessments/:teacherId/retake', verifyToken, requireAdmin,
 });
 
 // Recompute/backfill grammar & vocabulary scores for existing assessments
-router.post('/teacher-assessments/:teacherId/recompute-scores', verifyToken, requireAdmin, async (req, res) => {
+router.post('/teacher-assessments/:teacherId/recompute-scores', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
     const { teacherId } = req.params;
     const teacher = await Teacher.findOne({ teacherId });
@@ -3854,7 +3829,7 @@ router.post('/teacher-assessments/:teacherId/recompute-scores', verifyToken, req
 });
 
 // Assess teacher skills (Admin/Trainer endpoint)
-router.post('/assess-teacher/:teacherId', verifyToken, requireAdmin, async (req, res) => {
+router.post('/assess-teacher/:teacherId', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
     const { teacherId } = req.params;
     const { skills, personality, notes, totals } = req.body; // skills: { speaking, reading, writing, pronunciation, grammar, vocabulary, listening }

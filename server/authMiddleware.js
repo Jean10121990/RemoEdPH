@@ -33,6 +33,42 @@ const verifyToken = (req, res, next) => {
   }
 };
 
+/**
+ * Admin API: accept httpOnly session cookie (set on POST /api/auth/admin-login)
+ * or legacy Bearer JWT with isAdmin / role admin.
+ */
+const verifyAdminApiAuth = (req, res, next) => {
+  if (req.session && req.session.adminAuth === true && req.session.adminUsername) {
+    req.user = {
+      username: req.session.adminUsername,
+      isAdmin: true,
+      role: 'admin',
+      adminId: req.session.adminId || null,
+    };
+    return next();
+  }
+
+  const token =
+    req.headers.authorization?.split(' ')[1] ||
+    req.body?.token ||
+    req.query?.token;
+
+  if (!token) {
+    return res.status(401).json({ error: 'Access denied. No token provided.' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (decoded.isAdmin !== true && decoded.role !== 'admin') {
+      return res.status(403).json({ error: 'Access denied. Admin privileges required.' });
+    }
+    req.user = decoded;
+    next();
+  } catch (error) {
+    return res.status(401).json({ error: 'Invalid token.' });
+  }
+};
+
 // Middleware to ensure user is a teacher
 const requireTeacher = async (req, res, next) => {
   try {
@@ -150,11 +186,8 @@ const requireAdmin = async (req, res, next) => {
       return res.status(401).json({ error: 'Authentication required.' });
     }
 
-    // Check if user is admin - check isAdmin flag first, then username patterns
-    const isAdmin = req.user.isAdmin === true || 
-                    req.user.role === 'admin' || 
-                    req.user.username === 'admin' ||
-                    (req.user.username && req.user.username.toLowerCase().includes('admin'));
+    // Check admin only from verified claims (JWT or session) — do not infer from username
+    const isAdmin = req.user.isAdmin === true || req.user.role === 'admin';
     
     console.log('Admin check result:', {
       isAdmin: req.user.isAdmin,
@@ -183,7 +216,13 @@ const requireAdmin = async (req, res, next) => {
 // Middleware to log access attempts for security monitoring
 const logAccess = (req, res, next) => {
   const timestamp = new Date().toISOString();
-  const userType = req.user?.teacherId ? 'teacher' : req.user?.studentId ? 'student' : req.user?.username === 'admin' ? 'admin' : 'unknown';
+  const userType = req.user?.teacherId
+    ? 'teacher'
+    : req.user?.studentId
+      ? 'student'
+      : req.user?.isAdmin || req.user?.role === 'admin'
+        ? 'admin'
+        : 'unknown';
   const userId = req.user?.teacherId || req.user?.studentId || req.user?.username || 'unknown';
   const endpoint = req.originalUrl;
   const method = req.method;
@@ -194,6 +233,7 @@ const logAccess = (req, res, next) => {
 
 module.exports = {
   verifyToken,
+  verifyAdminApiAuth,
   requireTeacher,
   requireStudent,
   requireAdmin,

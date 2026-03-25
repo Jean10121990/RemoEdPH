@@ -8,13 +8,7 @@ const StudentNotification = require('./models/StudentNotification');
 const Teacher = require('./models/Teacher');
 const Referral = require('./models/Referral');
 const { verifyToken, requireStudent } = require('./authMiddleware');
-const { releaseReservedCreditForCancelledBooking } = require('./lessonCreditsHelper');
-const {
-  dedupeMergedCreditRows,
-  filterLegacyPaymongoTransactionRows,
-  studentLedgerNeedsRepair,
-  repairStudentLedgerDoc
-} = require('./creditLedgerRepair');
+const { buildStudentCreditApiResponse } = require('./services/studentCreditSummary');
 const crypto = require('crypto');
 
 const router = express.Router();
@@ -34,6 +28,32 @@ async function createStudentNotification(studentId, type, message) {
     console.error('❌ Error creating student notification:', error);
     throw error;
   }
+}
+
+async function releaseReservedCreditForBooking(booking) {
+  if (!booking || booking.creditConsumedAt || booking.creditReservationReleasedAt) return;
+  if (!booking || !booking.studentId) return;
+  const student = await Student.findOne({
+    $or: [{ username: booking.studentId }, { email: booking.studentId }]
+  });
+  if (!student) return;
+
+  const safeReserved = Number(student.reservedCredits || 0);
+  if (safeReserved <= 0) return;
+  const safeTotal = Number(student.totalCredits || 0);
+  const nextReserved = safeReserved - 1;
+  const nextAvailable = Math.max(safeTotal - nextReserved, 0);
+
+  await Student.updateOne(
+    { _id: student._id },
+    {
+      $set: {
+        reservedCredits: nextReserved,
+        creditBalance: nextAvailable
+      }
+    }
+  );
+  booking.creditReservationReleasedAt = new Date();
 }
 
 // Test route to verify student routes are working
@@ -384,12 +404,10 @@ router.post('/cancel-booking', verifyToken, requireStudent, async (req, res) => 
       reason: 'Cancelled by student',
       rejected: false
     };
+
+    await releaseReservedCreditForBooking(booking);
     
     await booking.save();
-
-    await releaseReservedCreditForCancelledBooking(booking).catch((relErr) =>
-      console.error('⚠️ Reserved credit release failed:', relErr.message)
-    );
     
     console.log(`✅ [STUDENT] Booking ${bookingId} cancelled by student ${studentUsername}`);
     
@@ -1050,104 +1068,16 @@ router.post('/confirm-payment', async (req, res) => {
   }
 });
 
-/** Shared JSON for GET /api/student/credits and GET /api/user/credits */
-function buildCreditsJson(student) {
-  const balance = Number(student.creditBalance) || 0;
-  const reserved = Number(student.reservedCredits) || 0;
-  /** Balance shown to students = pool minus credits held for upcoming classes */
-  const available = Math.max(0, balance - reserved);
-  const totalEarned = Number(student.totalCreditsEarned) || 0;
-  const usedRaw = student.usedCredits;
-  const usedComputed =
-    typeof usedRaw === 'number' && !Number.isNaN(usedRaw)
-      ? usedRaw
-      : Math.max(0, totalEarned - balance);
-
-  const tx = (student.creditTransactions || []).map((c) => ({
-    source: 'transaction',
-    date: c.date,
-    type: c.type,
-    plan: c.plan,
-    description: c.description,
-    credits: c.credits,
-    balanceAfter: c.balanceAfter,
-    amountPaid: c.amountPaid
-  }));
-
-  const hist = (student.creditHistory || []).map((h) => {
-    const isUsage = h.entryType === 'usage';
-    const creds = isUsage ? -Math.abs(Number(h.credits) || 1) : h.credits;
-    return {
-      source: 'creditHistory',
-      date: h.date,
-      type: isUsage ? 'use' : 'purchase',
-      plan: h.plan,
-      description: isUsage
-        ? `Lesson used — ${h.plan || 'class'}`
-        : `Purchase — ${h.plan || 'plan'}`,
-      credits: creds,
-      balanceAfter: h.balanceAfter != null ? h.balanceAfter : null,
-      amountPaid: h.amountPaid,
-      paymentId: h.paymentId
-    };
-  });
-
-  /** Drop legacy PayMongo duplicate lines from transactions; merge + dedupe for one row per payment. */
-  const txDeduped = filterLegacyPaymongoTransactionRows(tx);
-
-  const mergedRaw = [...txDeduped, ...hist].sort(
-    (a, b) => new Date(b.date || 0) - new Date(a.date || 0)
-  );
-  const merged = dedupeMergedCreditRows(mergedRaw);
-
-  return {
-    success: true,
-    totalCredits: available,
-    usedCredits: usedComputed,
-    balance: available,
-    creditBalance: balance,
-    reservedCredits: reserved,
-    totalEarned,
-    used: usedComputed,
-    subscriptionPlan: student.subscriptionPlan || null,
-    subscriptionStatus: student.subscriptionStatus || null,
-    paymentStatus: student.paymentStatus || null,
-    creditHistory: dedupeMergedCreditRows(hist),
-    credits: merged,
-    transactions: txDeduped
-  };
-}
-
 // Get credit summary + history for logged-in student
 router.get('/credits', verifyToken, requireStudent, async (req, res) => {
   try {
-    const doc = await Student.findById(req.user.studentId);
-    if (!doc) {
+    const student = await Student.findById(req.user.studentId).lean();
+    if (!student) {
       return res.status(404).json({ success: false, error: 'Student not found' });
     }
-    if (studentLedgerNeedsRepair(doc)) {
-      repairStudentLedgerDoc(doc);
-      await doc.save();
-    }
-    res.json(buildCreditsJson(doc.toObject()));
-  } catch (error) {
-    console.error('❌ Error fetching student credits:', error);
-    res.status(500).json({ success: false, error: 'Server error: ' + error.message });
-  }
-});
 
-// Alias: GET /api/student/user/credits (same payload as /credits)
-router.get('/user/credits', verifyToken, requireStudent, async (req, res) => {
-  try {
-    const doc = await Student.findById(req.user.studentId);
-    if (!doc) {
-      return res.status(404).json({ success: false, error: 'Student not found' });
-    }
-    if (studentLedgerNeedsRepair(doc)) {
-      repairStudentLedgerDoc(doc);
-      await doc.save();
-    }
-    res.json(buildCreditsJson(doc.toObject()));
+    const payload = buildStudentCreditApiResponse(student);
+    res.json(payload);
   } catch (error) {
     console.error('❌ Error fetching student credits:', error);
     res.status(500).json({ success: false, error: 'Server error: ' + error.message });
@@ -1863,5 +1793,4 @@ router.post('/decline-reschedule', verifyToken, requireStudent, async (req, res)
   }
 });
 
-module.exports = router;
-module.exports.buildCreditsJson = buildCreditsJson;
+module.exports = router; 

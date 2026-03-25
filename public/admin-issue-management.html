@@ -11,6 +11,7 @@
 <body class="page-admin-issue-management">
     <div class="remoed-main">
         <div id="admin-sidebar-root"></div>
+        <script src="js/admin-session.js"></script>
         <script src="js/admin-sidebar.js"></script>
         <script>AdminSidebar.render('admin-sidebar-root', 'issues');</script>
         <div class="remoed-content">
@@ -186,7 +187,7 @@
             
             if (!token) {
                 console.log('No admin token found, redirecting to login');
-                window.location.href = 'admin-login.html';
+                window.location.href = (function(){ try { var p = localStorage.getItem('remoedAdminEntryPath'); if (p && p.charAt(0) === '/') return p; } catch(e){} return 'index.html'; })();
                 return;
             }
             

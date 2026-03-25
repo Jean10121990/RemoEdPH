@@ -11,6 +11,7 @@
 <body class="page-admin-messages">
     <div class="remoed-main">
         <div id="admin-sidebar-root"></div>
+        <script src="js/admin-session.js"></script>
         <script src="js/admin-sidebar.js"></script>
         <script>AdminSidebar.render('admin-sidebar-root', 'messages');</script>
         <div class="remoed-content">
@@ -46,7 +47,7 @@
         (function () {
             var token = localStorage.getItem('adminToken');
             if (!token) {
-                window.location.href = 'admin-login.html';
+                window.location.href = (function(){ try { var p = localStorage.getItem('remoedAdminEntryPath'); if (p && p.charAt(0) === '/') return p; } catch(e){} return 'index.html'; })();
                 return;
             }
             if (window.AdminSidebar && typeof AdminSidebar.applyGreetingFromStorage === 'function') {

@@ -1,17 +1,27 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
+const rateLimit = require('express-rate-limit');
 const Teacher = require('./models/Teacher');
 const Student = require('./models/Student');
 const Admin = require('./models/Admin');
-const Application = require('./models/Application');
-const InvitationToken = require('./models/InvitationToken');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret'; // Use a strong secret in production
 const crypto = require('crypto');
 const mongoose = require('mongoose');
 const { sendPasswordResetEmail } = require('./emailService');
-const { generateCompanyId } = require('./idGenerator');
+
+function getAdminPasswordHashField(adminDoc) {
+  return adminDoc.passwordHash || adminDoc.password || '';
+}
+
+const adminLoginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: Number(process.env.ADMIN_LOGIN_RATE_LIMIT_MAX || 10),
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many login attempts. Please try again later.' },
+});
 
 // Middleware to authenticate JWT token
 const authenticateToken = (req, res, next) => {
@@ -54,62 +64,129 @@ function generateStrongPassword() {
   return password.split('').sort(() => Math.random() - 0.5).join('');
 }
 
-// Helper: generate company ID in format KBF07202500001
+// Helper: generate teacherId in the format T<initials><MYYYY><#####>
 async function generateTeacherIdFor(teacherData) {
   const { firstName = '', middleName = '', lastName = '', username = '' } = teacherData || {};
-  return generateCompanyId(
-    Teacher,
-    'teacherId',
-    { firstName, middleName, lastName, fallback: username },
-    new Date()
-  );
+  const takeInitial = (s) => (s && s.trim().length > 0 ? s.trim()[0].toUpperCase() : 'X');
+
+  let initials = '';
+  if (firstName || middleName || lastName) {
+    initials = `${takeInitial(firstName)}${takeInitial(middleName)}${takeInitial(lastName)}`;
+  } else {
+    // Fallback: derive up to 3 initials from username segments
+    const parts = (username || '').split(/[^A-Za-z]+/).filter(Boolean);
+    const chars = parts.map(p => p[0]?.toUpperCase()).slice(0, 3);
+    while (chars.length < 3) chars.push('X');
+    initials = chars.join('');
+  }
+
+  const now = new Date();
+  const monthNoPad = String(now.getMonth() + 1); // per spec, no leading zero e.g., 7 for July
+  const year = String(now.getFullYear());
+  const prefix = `T${initials}${monthNoPad}${year}`; // e.g., TKBF72025
+
+  // Count existing teachers with this prefix to assign next sequence
+  const count = await Teacher.countDocuments({ teacherId: { $regex: `^${prefix}` } });
+  const seq = String(count + 1).padStart(5, '0');
+  return `${prefix}${seq}`; // e.g., TKBF7202500001
 }
 
-// Seed default admin if not present
-const seedDefaultAdmin = async () => {
-  try {
-    const admin = await Admin.findOne({ username: 'admin@remoedph.com' });
-    if (!admin) {
-      const bcrypt = require('bcrypt');
-      const hashed = await bcrypt.hash('admin123', 10);
-      await Admin.create({ username: 'admin@remoedph.com', password: hashed });
-      console.log('Default admin created: admin@remoedph.com / admin123');
+// Bootstrap admin from .env (plaintext password only in env; stored as bcrypt in MongoDB)
+const seedAdminFromEnv = async () => {
+  const username = String(process.env.ADMIN_SEED_USERNAME || '').trim();
+  const plain = process.env.ADMIN_SEED_PASSWORD;
+  if (!username || !plain) {
+    const count = await Admin.countDocuments().catch(() => 0);
+    if (!count) {
+      console.warn(
+        '⚠️ No admins in database. Set ADMIN_SEED_USERNAME and ADMIN_SEED_PASSWORD in .env to create the first admin, or create one via MongoDB.'
+      );
     }
+    return;
+  }
+  try {
+    const existing = await Admin.findOne({ username });
+    if (existing) return;
+    const passwordHash = await bcrypt.hash(plain, 12);
+    await Admin.create({ username, passwordHash });
+    console.log('✅ Admin user created from ADMIN_SEED_USERNAME (password stored as bcrypt hash only).');
   } catch (error) {
-    console.log('Could not seed default admin (database may not be ready):', error.message);
+    console.warn('Could not seed admin from env:', error.message);
   }
 };
 
-// Call the function after a delay to ensure database is ready
-setTimeout(seedDefaultAdmin, 2000);
+setTimeout(seedAdminFromEnv, 2000);
 
-// Admin login endpoint
-router.post('/admin-login', async (req, res) => {
+// Admin login endpoint (rate-limited; sets httpOnly session cookie + optional legacy JWT)
+router.post('/admin-login', adminLoginLimiter, async (req, res) => {
   const { username, password } = req.body;
-  const admin = await Admin.findOne({ username });
+  if (!username || !password) {
+    return res.status(400).json({ success: false, message: 'Username and password are required' });
+  }
+
+  const admin = await Admin.findOne({ username: String(username).trim() });
   if (!admin) {
     return res.status(401).json({ success: false, message: 'Invalid credentials' });
   }
-  
-  // Check if admin is suspended
+
   if (admin.status === 'suspended') {
     console.log('Admin is suspended:', admin.username);
-    return res.status(403).json({ success: false, message: 'Your account has been suspended. Please contact the system administrator.' });
+    return res.status(403).json({
+      success: false,
+      message: 'Your account has been suspended. Please contact the system administrator.',
+    });
   }
-  
-  const bcrypt = require('bcrypt');
-  const match = await bcrypt.compare(password, admin.password);
+
+  const hash = getAdminPasswordHashField(admin);
+  if (!hash) {
+    return res.status(401).json({ success: false, message: 'Invalid credentials' });
+  }
+
+  const match = await bcrypt.compare(password, hash);
   if (!match) {
     return res.status(401).json({ success: false, message: 'Invalid credentials' });
   }
-  const jwt = require('jsonwebtoken');
-  const token = jwt.sign({ 
-    username: admin.username, 
-    isAdmin: true, 
-    role: 'admin' 
-  }, JWT_SECRET, { expiresIn: '24h' });
-  console.log('Admin login successful, token created with:', { username: admin.username, isAdmin: true, role: 'admin' });
-  res.json({ success: true, token, username: admin.username });
+
+  if (admin.password && !admin.passwordHash) {
+    admin.passwordHash = admin.password;
+    admin.password = undefined;
+    await admin.save().catch(() => {});
+  }
+
+  const token = jwt.sign(
+    { username: admin.username, isAdmin: true, role: 'admin' },
+    JWT_SECRET,
+    { expiresIn: '24h' }
+  );
+
+  req.session.regenerate((regenErr) => {
+    if (regenErr) {
+      console.error('Session regenerate error:', regenErr);
+      return res.status(500).json({ success: false, message: 'Could not create session' });
+    }
+    req.session.adminAuth = true;
+    req.session.adminUsername = admin.username;
+    req.session.adminId = String(admin._id);
+
+    req.session.save((saveErr) => {
+      if (saveErr) {
+        console.error('Session save error:', saveErr);
+        return res.status(500).json({ success: false, message: 'Could not save session' });
+      }
+      console.log('Admin login successful (session + token):', { username: admin.username });
+      res.json({ success: true, token, username: admin.username });
+    });
+  });
+});
+
+router.post('/admin-logout', (req, res) => {
+  req.session.destroy((err) => {
+    if (err) {
+      return res.status(500).json({ success: false, message: 'Logout failed' });
+    }
+    res.clearCookie('remoed.admin.sid', { path: '/' });
+    res.json({ success: true });
+  });
 });
 
 router.post('/login', async (req, res) => {
@@ -218,141 +295,6 @@ router.post('/register', async (req, res) => {
       return res.status(409).json({ success: false, message: `${field} already exists.` });
     }
     res.status(500).json({ success: false, message: 'Server error: ' + (err.message || 'Failed to create account') });
-  }
-});
-
-// Validate teacher signup invitation token
-router.get('/teacher-signup/validate', async (req, res) => {
-  try {
-    const token = String(req.query.token || '').trim();
-    if (!token) {
-      return res.status(400).json({ success: false, message: 'Invitation token is required.' });
-    }
-
-    const invitation = await InvitationToken.findOne({ token, isUsed: false }).lean();
-    if (!invitation) {
-      return res.status(401).json({ success: false, message: 'Invalid invitation token.' });
-    }
-
-    if (!invitation.expiresAt || new Date(invitation.expiresAt) <= new Date()) {
-      return res.status(401).json({ success: false, message: 'Invitation token has expired.' });
-    }
-
-    const application = await Application.findById(invitation.applicationId).lean();
-    if (!application || application.currentStage !== 'passed') {
-      return res.status(401).json({ success: false, message: 'Invitation is no longer valid.' });
-    }
-
-    return res.json({
-      success: true,
-      applicant: {
-        id: application._id,
-        fullName: application.fullName || '',
-        email: application.email || ''
-      }
-    });
-  } catch (error) {
-    console.error('Teacher signup token validation failed:', error);
-    return res.status(500).json({ success: false, message: 'Failed to validate invitation token.' });
-  }
-});
-
-// Complete teacher signup with a valid invitation token
-router.post('/teacher-signup/complete', async (req, res) => {
-  try {
-    const {
-      token,
-      username,
-      password,
-      firstName = '',
-      middleName = '',
-      lastName = '',
-      contact = '',
-      address = ''
-    } = req.body || {};
-
-    if (!token || !username || !password) {
-      return res.status(400).json({ success: false, message: 'Token, username, and password are required.' });
-    }
-
-    const invitation = await InvitationToken.findOne({ token: String(token).trim(), isUsed: false });
-    if (!invitation) {
-      return res.status(401).json({ success: false, message: 'Invalid invitation token.' });
-    }
-
-    if (!invitation.expiresAt || new Date(invitation.expiresAt) <= new Date()) {
-      return res.status(401).json({ success: false, message: 'Invitation token has expired.' });
-    }
-
-    const application = await Application.findById(invitation.applicationId);
-    if (!application || application.currentStage !== 'passed') {
-      return res.status(401).json({ success: false, message: 'Invitation is no longer valid.' });
-    }
-
-    // Enforce email match between invitation and application.
-    if (
-      String(invitation.email || '').toLowerCase() !== String(application.email || '').toLowerCase()
-    ) {
-      return res.status(401).json({ success: false, message: 'Invitation email mismatch.' });
-    }
-
-    const existingUsername = await Teacher.findOne({ username: String(username).trim() }).lean();
-    if (existingUsername) {
-      return res.status(409).json({ success: false, message: 'Username already exists.' });
-    }
-
-    const existingEmail = await Teacher.findOne({ email: String(application.email).trim() }).lean();
-    if (existingEmail) {
-      return res.status(409).json({ success: false, message: 'A teacher account already exists for this email.' });
-    }
-
-    const teacherId = await generateTeacherIdFor({
-      firstName,
-      middleName,
-      lastName,
-      username: String(username).trim()
-    });
-
-    const hashedPassword = await bcrypt.hash(String(password), 10);
-    const teacher = await Teacher.create({
-      teacherId,
-      username: String(username).trim(),
-      password: hashedPassword,
-      firstName: String(firstName || '').trim(),
-      middleName: String(middleName || '').trim(),
-      lastName: String(lastName || '').trim(),
-      fullname:
-        `${String(firstName || '').trim()} ${String(lastName || '').trim()}`.trim() ||
-        application.fullName ||
-        '',
-      email: String(application.email || '').trim(),
-      contact: String(contact || '').trim(),
-      address: String(address || '').trim(),
-      hireDate: new Date(),
-      status: 'active'
-    });
-
-    // Flip applicant status to Active Teacher and consume invitation token.
-    application.teacherActivationStatus = 'Active Teacher';
-    application.status = true;
-    application.hiredAt = new Date();
-    await application.save();
-
-    invitation.isUsed = true;
-    invitation.usedAt = new Date();
-    await invitation.save();
-
-    return res.json({
-      success: true,
-      message: 'Teacher account activated successfully.',
-      teacherId: teacher.teacherId
-    });
-  } catch (error) {
-    console.error('Teacher signup completion failed:', error);
-    if (error && error.code === 11000) {
-      return res.status(409).json({ success: false, message: 'Duplicate account data detected.' });
-    }
-    return res.status(500).json({ success: false, message: 'Failed to complete teacher signup.' });
   }
 });
 
@@ -478,20 +420,7 @@ router.post('/student-register', async (req, res) => {
     }
     
     const hashedPassword = await bcrypt.hash(password, 10);
-    const studentCode = await generateCompanyId(
-      Student,
-      'studentCode',
-      {
-        firstName: req.body.firstName || '',
-        middleName: req.body.middleName || '',
-        lastName: req.body.lastName || '',
-        fallback: username
-      },
-      new Date()
-    );
-
-    const student = new Student({
-      studentCode,
+    const student = new Student({ 
       username, 
       email: email,
       password: hashedPassword,

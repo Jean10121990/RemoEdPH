@@ -363,11 +363,6 @@
     <!-- Footer -->
     <footer class="footer">
       <p>&copy; 2024 RemoEdPH. All rights reserved. 🌟</p>
-      <p style="margin-top: 8px; font-size: 0.95rem">
-        <a href="admin-login.html" class="admin-login" aria-label="Admin access"
-          >Admin Login</a
-        >
-      </p>
     </footer>
 
     <!-- Sign Up Modal -->
@@ -642,12 +637,12 @@
               username,
               email,
               password,
-              parentName,
+              parentName: parentName || assessmentData?.parentEmail || "",
               planId: selectedPlan,
               description: buildPlanDescription(selectedPlan),
               referralCode: localStorage.getItem("referralCode") || "",
               success_url: `${window.location.origin}/student-login.html?payment=success`,
-              cancel_url: `${window.location.origin}/#plans`,
+              cancel_url: `${window.location.origin}/index.html#plans`,
               usd_total: planAmounts.usdTotal,
               exchange_rate_used: EXCHANGE_RATE_USED,
             };
@@ -657,99 +652,22 @@
               headers: {
                 "Content-Type": "application/json",
               },
-              body: JSON.stringify({
-                username,
-                email,
-                password,
-                parentName: parentName || assessmentData?.parentEmail || "",
-                contact: assessmentData?.contactNumber || "",
-                referralCode: localStorage.getItem("referralCode") || "",
-              }),
+              body: JSON.stringify(payload),
             });
 
-            const registerResult = await registerResponse.json();
-
-            if (!registerResponse.ok) {
-              const errorMsg =
-                registerResult.message ||
-                registerResult.error ||
-                "Registration failed";
-              console.error("Registration error:", registerResult);
-              throw new Error(errorMsg);
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok || !result.success || !result.checkout_url) {
+              throw new Error(
+                result.error ||
+                  result.message ||
+                  "Could not start checkout. Try again.",
+              );
             }
-
-            // Save subscription if plan was selected (creates checkout session; payment required)
-            if (plan) {
-              const subscribeResponse = await fetch("/api/student/subscribe", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  email,
-                  plan,
-                  planPrice,
-                  assessmentData: assessmentData || null,
-                }),
-              });
-
-              const subscribeResult = await subscribeResponse
-                .json()
-                .catch(() => ({}));
-              if (!subscribeResponse.ok || !subscribeResult.success) {
-                console.warn(
-                  "Subscription save failed, but registration succeeded",
-                );
-              } else if (
-                subscribeResult.checkout &&
-                subscribeResult.checkout.sessionId
-              ) {
-                alert(
-                  "✅ Account created! Please complete payment to activate your subscription.",
-                );
-                window.location.href = `student-payment.html?session=${encodeURIComponent(subscribeResult.checkout.sessionId)}`;
-                return;
-              }
-            }
-
-            // Send assessment email if assessment was taken
-            if (assessmentData) {
-              try {
-                const emailResponse = await fetch(
-                  "/api/student/send-assessment-email",
-                  {
-                    method: "POST",
-                    headers: {
-                      "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                      email,
-                      childName: assessmentData.childName,
-                      parentEmail: assessmentData.parentEmail || email,
-                      contactNumber: assessmentData.contactNumber,
-                    }),
-                  },
-                );
-
-                const emailResult = await emailResponse.json();
-                if (emailResult.fallback) {
-                  console.log("Email not configured, but assessment saved");
-                }
-              } catch (emailError) {
-                console.error("Error sending assessment email:", emailError);
-                // Don't fail registration if email fails
-              }
-            }
-
-            alert("✅ Account created successfully! Redirecting to login...");
-            setTimeout(() => {
-              window.location.href = "student-login.html";
-            }, 1000);
+            window.location.href = result.checkout_url;
           } catch (error) {
             console.error("Error:", error);
             alert("❌ Error: " + error.message);
-            submitBtn.disabled = false;
-            submitBtn.textContent = originalText;
+            setSignupLoadingState(false);
           }
         });
 
