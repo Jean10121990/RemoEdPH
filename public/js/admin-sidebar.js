@@ -103,23 +103,21 @@
         var logoutLi = container.querySelector('#logout-nav');
         if (logoutLi) {
             logoutLi.addEventListener('click', function () {
-                fetch('/api/auth/admin-logout', { method: 'POST', credentials: 'include' }).finally(function () {
-                    localStorage.removeItem('adminToken');
-                    localStorage.removeItem('adminUsername');
-                    localStorage.removeItem('userType');
-                    localStorage.removeItem('token');
+                var token = localStorage.getItem('adminToken') || localStorage.getItem('token') || '';
+                var opts = { method: 'POST', credentials: 'include' };
+                if (token) {
+                    opts.headers = { Authorization: 'Bearer ' + token };
+                }
+                fetch('/api/logout', opts).catch(function () {}).finally(function () {
+                    try {
+                        localStorage.removeItem('adminToken');
+                        localStorage.removeItem('adminUsername');
+                        localStorage.removeItem('userType');
+                        localStorage.removeItem('token');
+                    } catch (e) {}
                     var W = typeof window !== 'undefined' ? window : null;
-                    if (W && W.RemoedAdminSession && W.RemoedAdminSession.redirectToAdminLogin) {
-                        W.RemoedAdminSession.redirectToAdminLogin();
-                    } else {
-                        try {
-                            var p = localStorage.getItem('remoedAdminEntryPath');
-                            if (p && p.charAt(0) === '/') {
-                                if (W) W.location.href = p;
-                                return;
-                            }
-                        } catch (e) {}
-                        if (W) W.location.href = 'index.html';
+                    if (W) {
+                        W.location.replace('login.html?r=a');
                     }
                 });
             });

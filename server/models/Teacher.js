@@ -246,6 +246,8 @@ const teacherSchema = new mongoose.Schema({
   
   // Status field
   status: { type: String, enum: ['active', 'suspended'], default: 'active' },
+  loginAttempts: { type: Number, default: 0 },
+  lockUntil: { type: Date, default: null },
   hasGeneratedPassword: { type: Boolean, default: false },
   
   // Assessment Test Results

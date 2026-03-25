@@ -39,6 +39,10 @@ const studentSchema = new mongoose.Schema({
     certificates: { type: String }
   },
   status: { type: String, enum: ['active', 'suspended'], default: 'active' },
+  /** Failed password attempts; reset on successful login */
+  loginAttempts: { type: Number, default: 0 },
+  /** When set and in the future, login is rejected until this time */
+  lockUntil: { type: Date, default: null },
   hasGeneratedPassword: { type: Boolean, default: false },
   subscriptionPlan: { type: String }, // '1month', '3months', '6months', '1year'
   subscriptionStartDate: { type: Date },

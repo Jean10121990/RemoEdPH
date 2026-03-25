@@ -22,6 +22,7 @@ const lessonRoutes = require('./lessons');
 const classroomRecordingRouter = require('./classroomRecordingApi');
 const Booking = require('./models/Booking');
 const Student = require('./models/Student');
+const { consumeReservedCreditForBooking } = require('./services/bookingCreditLedger');
 const LessonMaterial = require('./models/LessonMaterial');
 const { DateTime } = require('luxon');
 // LessonSlides model removed - PPTX conversion still works but slides are not saved to database
@@ -74,60 +75,6 @@ const userSessions = new Map(); // socketId -> { room, userType, userId, usernam
 const signalingMessages = new Map(); // room -> [messages]
 const messageId = 0;
 
-async function findStudentForBooking(booking) {
-  if (!booking || !booking.studentId) return null;
-  return Student.findOne({
-    $or: [{ username: booking.studentId }, { email: booking.studentId }]
-  });
-}
-
-async function consumeReservedCreditForBooking(booking, descriptionPrefix = 'Class finished') {
-  if (!booking || booking.creditConsumedAt || booking.creditReservationReleasedAt) return;
-  const student = await findStudentForBooking(booking);
-  if (!student) return;
-  const now = new Date();
-  const safeReserved = Number(student.reservedCredits || 0);
-  if (safeReserved <= 0) return;
-  const safeTotal = Number(student.totalCredits || 0);
-  const nextReserved = Math.max(safeReserved - 1, 0);
-  const nextTotal = Math.max(safeTotal - 1, 0);
-  const nextAvailable = Math.max(nextTotal - nextReserved, 0);
-  const planLabel = student.subscriptionPlan || '';
-  const desc = `${descriptionPrefix} (${booking.date} ${booking.time})`;
-
-  await Student.updateOne(
-    { _id: student._id },
-    {
-      $set: {
-        reservedCredits: nextReserved,
-        totalCredits: nextTotal,
-        creditBalance: nextAvailable
-      },
-      $inc: { usedCredits: 1 },
-      $push: {
-        creditTransactions: {
-          date: now,
-          type: 'use',
-          plan: planLabel,
-          description: desc,
-          credits: -1,
-          balanceAfter: nextAvailable,
-          amountPaid: 0
-        },
-        creditHistory: {
-          date: now,
-          plan: planLabel,
-          credits: -1,
-          amountPaid: 0,
-          paymentId: ''
-        }
-      }
-    }
-  );
-  booking.creditConsumedAt = now;
-  booking.creditReservationReleasedAt = null;
-}
-
 // Lesson materials are now stored in database (LessonMaterial model)
 // Keep in-memory cache for quick access during active sessions
 const lessonMaterialsByRoom = new Map(); // room -> [{ id, name, type, size, data, uploader, uploadedAt }]
@@ -161,6 +108,9 @@ const session = require('express-session');
 const rateLimit = require('express-rate-limit');
 const { getAdminLoginPathSegment } = require('./utils/adminRouteConfig');
 const { adminIpWhitelistForLoginPage } = require('./middleware/adminLoginPageGuard');
+const { sessionCookieBase } = require('./config/authTokens');
+const { postApiLogout } = require('./logoutApi');
+const { noStoreProtectedResponse } = require('./middleware/noStoreProtected');
 
 const sessionSecret =
   process.env.SESSION_SECRET ||
@@ -170,24 +120,17 @@ if (!process.env.SESSION_SECRET) {
   console.warn('⚠️ SESSION_SECRET is not set; falling back to JWT_SECRET or a random value (sessions reset if random).');
 }
 
-const sessionCookieSecure =
-  process.env.SESSION_COOKIE_SECURE === 'true' ||
-  (process.env.NODE_ENV === 'production' && process.env.SESSION_COOKIE_SECURE !== 'false');
-
 app.use(
   session({
     name: 'remoed.admin.sid',
     secret: sessionSecret,
     resave: false,
     saveUninitialized: false,
-    cookie: {
-      httpOnly: true,
-      secure: sessionCookieSecure,
-      sameSite: 'lax',
-      maxAge: 24 * 60 * 60 * 1000,
-    },
+    cookie: sessionCookieBase(),
   })
 );
+
+app.post('/api/logout', postApiLogout);
 
 // Obfuscated admin login HTML (blocks legacy /admin-login URLs; optional IP allowlist)
 const adminLoginHtmlPath = path.join(__dirname, '../public/admin-login.html');
@@ -254,22 +197,22 @@ app.use('/vendor/pdfjs', express.static(path.join(__dirname, '../node_modules/pd
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
-// API Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/teacher', teacherRoutes);
-app.use('/api/student', studentRoutes);
+// API Routes (no-store on role-protected APIs)
+app.use('/api/auth', noStoreProtectedResponse, authRoutes);
+app.use('/api/teacher', noStoreProtectedResponse, teacherRoutes);
+app.use('/api/student', noStoreProtectedResponse, studentRoutes);
 // Must be before /api/admin: same path prefix /api/admin/... is otherwise swallowed by adminRoutes → 404
-app.use('/api', classroomRecordingRouter);
-app.use('/api/admin', adminRouterLimiter, adminRoutes);
+app.use('/api', noStoreProtectedResponse, classroomRecordingRouter);
+app.use('/api/admin', noStoreProtectedResponse, adminRouterLimiter, adminRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/webhooks', webhookRoutes);
-app.use('/api/credits', adminRouterLimiter, creditsRoutes);
+app.use('/api/credits', noStoreProtectedResponse, adminRouterLimiter, creditsRoutes);
 app.use('/api/public', publicAssessmentRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/upload', fileRoutes); // Add alias for upload endpoint
 app.use('/api', announcementRoutes); // Mount announcement routes directly under /api
 app.use('/api', fileRoutes); // Add direct access to file routes (moved after announcement routes)
-app.use('/api/lessons', lessonRoutes);
+app.use('/api/lessons', noStoreProtectedResponse, lessonRoutes);
 
 /**
  * WebRTC ICE servers for live-classroom.html
@@ -341,15 +284,39 @@ app.get('/application-form', (req, res) => {
 const clientDist = path.join(__dirname, '../client/dist');
 const clientIndex = path.join(clientDist, 'index.html');
 if (fs.existsSync(clientIndex)) {
-  app.get('/app', (req, res) => res.redirect(301, '/app/'));
-  app.use('/app', express.static(clientDist));
-  app.use('/app', (req, res) => {
+  app.get('/app', noStoreProtectedResponse, (req, res) => res.redirect(301, '/app/'));
+  app.use('/app', noStoreProtectedResponse, express.static(clientDist));
+  app.use('/app', noStoreProtectedResponse, (req, res) => {
     res.sendFile(clientIndex);
   });
 }
 
+const publicDir = path.join(__dirname, '../public');
+const protectedHtmlFiles = new Set([
+  'student-dashboard.html',
+  'teacher-dashboard.html',
+  'student-profile.html',
+  'teacher-profile.html',
+  'teacher-view-profile.html',
+  'login.html',
+  'student-login.html',
+  'teacher-login.html',
+]);
+try {
+  fs.readdirSync(publicDir).forEach((name) => {
+    if (/^admin-.*\.html$/i.test(name)) protectedHtmlFiles.add(name);
+  });
+} catch (e) {
+  /* ignore */
+}
+protectedHtmlFiles.forEach((htmlName) => {
+  app.get(`/${htmlName}`, noStoreProtectedResponse, (req, res) => {
+    res.sendFile(path.join(publicDir, htmlName));
+  });
+});
+
 // Static files after core /api mounts so API paths are never shadowed by public files
-app.use(express.static(path.join(__dirname, '../public')));
+app.use(express.static(publicDir));
 
 // Email diagnostic endpoint (for debugging)
 app.get('/api/email/status', (req, res) => {

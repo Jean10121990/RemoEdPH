@@ -7,6 +7,14 @@ const Admin = require('./models/Admin');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret'; // Use a strong secret in production
+const { JWT_EXPIRES_IN } = require('./config/authTokens');
+const { blacklistToken, isTokenBlacklisted } = require('./services/jwtBlacklist');
+const {
+  isAccountLocked,
+  lockoutMessage,
+  applyFailedLogin,
+  resetLoginAttempts,
+} = require('./utils/accountLockout');
 const crypto = require('crypto');
 const mongoose = require('mongoose');
 const { sendPasswordResetEmail } = require('./emailService');
@@ -30,6 +38,10 @@ const authenticateToken = (req, res, next) => {
 
   if (!token) {
     return res.status(401).json({ success: false, message: 'Access token required' });
+  }
+
+  if (isTokenBlacklisted(token)) {
+    return res.status(403).json({ success: false, message: 'Token has been revoked' });
   }
 
   jwt.verify(token, JWT_SECRET, (err, user) => {
@@ -156,7 +168,7 @@ router.post('/admin-login', adminLoginLimiter, async (req, res) => {
   const token = jwt.sign(
     { username: admin.username, isAdmin: true, role: 'admin' },
     JWT_SECRET,
-    { expiresIn: '24h' }
+    { expiresIn: JWT_EXPIRES_IN }
   );
 
   req.session.regenerate((regenErr) => {
@@ -180,12 +192,25 @@ router.post('/admin-login', adminLoginLimiter, async (req, res) => {
 });
 
 router.post('/admin-logout', (req, res) => {
+  const authHeader = req.headers.authorization;
+  const bearer = authHeader && authHeader.split(' ')[1];
+  if (bearer) blacklistToken(bearer);
+
+  const { sessionCookieBase } = require('./config/authTokens');
+  const cookieOpts = { path: '/', ...sessionCookieBase() };
+
   req.session.destroy((err) => {
     if (err) {
       return res.status(500).json({ success: false, message: 'Logout failed' });
     }
-    res.clearCookie('remoed.admin.sid', { path: '/' });
-    res.json({ success: true });
+    res.clearCookie('remoed.admin.sid', cookieOpts);
+    res.set(
+      'Cache-Control',
+      'no-store, no-cache, must-revalidate, proxy-revalidate'
+    );
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    res.status(200).json({ success: true });
   });
 });
 
@@ -210,7 +235,11 @@ router.post('/login', async (req, res) => {
       console.log('User not found');
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
-    
+
+    if (isAccountLocked(teacher)) {
+      return res.status(423).json({ success: false, message: lockoutMessage() });
+    }
+
     // Check if user is suspended
     if (teacher.status === 'suspended') {
       console.log('User is suspended:', teacher.username);
@@ -221,7 +250,12 @@ router.post('/login', async (req, res) => {
     console.log('Password match:', passwordMatch);
     
     if (passwordMatch) {
-      const token = jwt.sign({ username: teacher.username, teacherId: teacher.teacherId }, JWT_SECRET, { expiresIn: '24h' });
+      await resetLoginAttempts(teacher);
+      const token = jwt.sign(
+        { username: teacher.username, teacherId: teacher.teacherId },
+        JWT_SECRET,
+        { expiresIn: JWT_EXPIRES_IN }
+      );
       console.log('Token generated successfully');
       console.log('Sending response:', { success: true, token: token.substring(0, 20) + '...', teacherId: teacher.teacherId });
       
@@ -244,6 +278,7 @@ router.post('/login', async (req, res) => {
       });
     } else {
       console.log('Password incorrect');
+      await applyFailedLogin(teacher);
       res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
   } catch (err) {
@@ -332,7 +367,11 @@ router.post('/student-login', async (req, res) => {
       console.log('Student not found');
       return res.status(401).json({ success: false, message: 'Invalid email or password' });
     }
-    
+
+    if (isAccountLocked(student)) {
+      return res.status(423).json({ success: false, message: lockoutMessage() });
+    }
+
     // Check if user is suspended
     if (student.status === 'suspended') {
       console.log('Student is suspended:', student.username);
@@ -342,7 +381,12 @@ router.post('/student-login', async (req, res) => {
     const passwordMatch = await bcrypt.compare(password, student.password);
     console.log('Password match:', passwordMatch);
     if (passwordMatch) {
-      const token = jwt.sign({ username: student.username, studentId: student._id }, JWT_SECRET, { expiresIn: '24h' });
+      await resetLoginAttempts(student);
+      const token = jwt.sign(
+        { username: student.username, studentId: student._id },
+        JWT_SECRET,
+        { expiresIn: JWT_EXPIRES_IN }
+      );
       // Check if user has a generated password and needs to change it
       const needsPasswordChange = student.hasGeneratedPassword;
       console.log('Student hasGeneratedPassword:', student.hasGeneratedPassword);
@@ -359,6 +403,7 @@ router.post('/student-login', async (req, res) => {
       res.json(response);
     } else {
       console.log('Password incorrect');
+      await applyFailedLogin(student);
       res.status(401).json({ success: false, message: 'Invalid email or password' });
     }
   } catch (err) {

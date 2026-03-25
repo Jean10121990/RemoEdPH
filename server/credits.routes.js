@@ -2,8 +2,11 @@ const express = require('express');
 const mongoose = require('mongoose');
 const { body, validationResult } = require('express-validator');
 const Student = require('./models/Student');
-const { verifyAdminApiAuth, requireAdmin } = require('./authMiddleware');
+const Booking = require('./models/Booking');
+const { verifyAdminApiAuth, requireAdmin, verifyToken, requireStudent } = require('./authMiddleware');
 const { creditsForPlan } = require('./config/planCredits');
+const { consumeReservedCreditForBooking } = require('./services/bookingCreditLedger');
+const { buildStudentCreditApiResponse } = require('./services/studentCreditSummary');
 
 const router = express.Router();
 
@@ -30,6 +33,88 @@ function rejectClientCreditNumbers(req, res, next) {
   }
   next();
 }
+
+function bookingEligibleForCreditSpend(booking) {
+  if (!booking) return false;
+  const st = String(booking.status || '').toLowerCase();
+  if (st === 'completed') return true;
+  if (booking.finishedAt) return true;
+  if (booking.attendance && booking.attendance.classCompleted) return true;
+  return false;
+}
+
+function bookingOwnedByStudent(booking, student) {
+  if (!booking || !student) return false;
+  const sid = String(booking.studentId || '');
+  return (
+    sid === student.username ||
+    (student.email && sid === student.email) ||
+    sid === String(student._id)
+  );
+}
+
+/**
+ * Finalize one reserved lesson credit after class completion (server-side ledger only).
+ * Client sends only bookingId — never a credit amount.
+ */
+router.post(
+  '/spend',
+  verifyToken,
+  requireStudent,
+  rejectClientCreditNumbers,
+  [body('bookingId').isMongoId().withMessage('bookingId must be a valid id')],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ error: 'Invalid request', details: errors.array() });
+      }
+
+      const { bookingId } = req.body;
+      const booking = await Booking.findById(bookingId);
+      if (!booking) {
+        return res.status(404).json({ error: 'Booking not found' });
+      }
+
+      const student = req.student;
+      if (!bookingOwnedByStudent(booking, student)) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      if (!bookingEligibleForCreditSpend(booking)) {
+        return res.status(409).json({
+          error: 'Class must be marked complete before credits can be finalized.',
+        });
+      }
+
+      if (booking.creditConsumedAt || booking.creditsFinalized) {
+        const fresh = await Student.findById(student._id);
+        const summary = buildStudentCreditApiResponse(fresh);
+        return res.status(200).json({
+          success: true,
+          duplicate: true,
+          message: 'Credits already finalized for this booking.',
+          credits: summary,
+        });
+      }
+
+      await consumeReservedCreditForBooking(booking, 'Class finished');
+      booking.creditsFinalized = true;
+      await booking.save();
+
+      const fresh = await Student.findById(student._id);
+      const summary = buildStudentCreditApiResponse(fresh);
+
+      return res.status(200).json({
+        success: true,
+        credits: summary,
+      });
+    } catch (err) {
+      console.error('POST /api/credits/spend error:', err);
+      return res.status(500).json({ error: 'Server error' });
+    }
+  }
+);
 
 router.post(
   '/update',

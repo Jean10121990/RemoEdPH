@@ -123,13 +123,22 @@
         var logoutLi = container.querySelector('#logout-nav');
         if (logoutLi) {
             logoutLi.addEventListener('click', function () {
-                localStorage.removeItem('studentToken');
-                localStorage.removeItem('studentId');
-                localStorage.removeItem('studentUsername');
-                localStorage.removeItem('token');
-                localStorage.removeItem('username');
-                localStorage.removeItem('userType');
-                window.location.href = 'student-login.html';
+                var token = localStorage.getItem('studentToken') || localStorage.getItem('token') || '';
+                var opts = { method: 'POST', credentials: 'include' };
+                if (token) {
+                    opts.headers = { Authorization: 'Bearer ' + token };
+                }
+                fetch('/api/logout', opts).catch(function () {}).finally(function () {
+                    try {
+                        localStorage.removeItem('studentToken');
+                        localStorage.removeItem('studentId');
+                        localStorage.removeItem('studentUsername');
+                        localStorage.removeItem('token');
+                        localStorage.removeItem('username');
+                        localStorage.removeItem('userType');
+                    } catch (e) {}
+                    window.location.replace('login.html');
+                });
             });
         }
 

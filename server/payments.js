@@ -9,6 +9,7 @@ const PendingRegistration = require('./models/PendingRegistration');
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
+const { isTokenBlacklisted } = require('./services/jwtBlacklist');
 
 /**
  * If Authorization: Bearer is present, verify JWT. Student tokens populate req.studentFromToken;
@@ -22,6 +23,9 @@ function optionalVerifyStudent(req, res, next) {
   const token = authHeader.split(' ')[1];
   if (!token) {
     return next();
+  }
+  if (isTokenBlacklisted(token)) {
+    return res.status(401).json({ success: false, error: 'Session token has been revoked' });
   }
   try {
     const decoded = jwt.verify(token, JWT_SECRET);

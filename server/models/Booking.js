@@ -40,6 +40,9 @@ const bookingSchema = new mongoose.Schema({
     reason: { type: String },
     rejected: { type: Boolean, default: false }
   },
+  /** Set when reserved credit is finalized to a used lesson (ledger). */
+  creditConsumedAt: { type: Date, default: null },
+  creditReservationReleasedAt: { type: Date, default: null },
   createdAt: { type: Date, default: Date.now }
 });
 module.exports = mongoose.model('Booking', bookingSchema); 

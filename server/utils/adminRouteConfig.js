@@ -36,7 +36,7 @@ function sanitizeAdminLoginPathSegment(raw) {
 function getAdminLoginPathSegment() {
   const fromEnv = sanitizeAdminLoginPathSegment(process.env.ADMIN_LOGIN_PATH);
   if (fromEnv) return fromEnv;
-  return 'remo-dev-admin-login';
+  return 'admin-portal_remoed_8k92-f3x7-z1p0';
 }
 
 module.exports = {

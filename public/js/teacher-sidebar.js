@@ -85,10 +85,20 @@
         var logoutLi = container.querySelector('#logout-nav');
         if (logoutLi) {
             logoutLi.addEventListener('click', function () {
-                localStorage.removeItem('token');
-                localStorage.removeItem('teacherId');
-                localStorage.removeItem('remoedUsername');
-                window.location.href = 'teacher-login.html';
+                var token = localStorage.getItem('token') || '';
+                var opts = { method: 'POST', credentials: 'include' };
+                if (token) {
+                    opts.headers = { Authorization: 'Bearer ' + token };
+                }
+                fetch('/api/logout', opts).catch(function () {}).finally(function () {
+                    try {
+                        localStorage.removeItem('token');
+                        localStorage.removeItem('teacherId');
+                        localStorage.removeItem('remoedUsername');
+                        localStorage.removeItem('userType');
+                    } catch (e) {}
+                    window.location.replace('login.html?r=t');
+                });
             });
         }
 

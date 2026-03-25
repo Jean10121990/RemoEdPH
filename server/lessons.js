@@ -7,6 +7,8 @@ const Lesson = require('./models/Lesson');
 // LessonFile model removed - files are now embedded in Lesson model
 const LessonProgress = require('./models/LessonProgress');
 // Import auth middleware
+const { isTokenBlacklisted } = require('./services/jwtBlacklist');
+
 const authenticateToken = (req, res, next) => {
   // Accept token from Authorization header, query, or body for flexibility (devtunnels)
   const authHeader = req.headers['authorization'];
@@ -15,6 +17,9 @@ const authenticateToken = (req, res, next) => {
 
   if (!token) {
     return res.status(401).json({ success: false, message: 'Access token required' });
+  }
+  if (isTokenBlacklisted(token)) {
+    return res.status(403).json({ success: false, message: 'Token has been revoked' });
   }
   const jwt = require('jsonwebtoken');
   const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';

@@ -16,6 +16,10 @@ const crypto = require('crypto');
 const Application = require('./models/Application');
 const InvitationToken = require('./models/InvitationToken');
 const { sendTeacherRegistrationEmail, sendTeacherPipelineWelcomeEmail } = require('./emailService');
+const {
+  releaseReservedCreditForBooking,
+  consumeReservedCreditForBooking,
+} = require('./services/bookingCreditLedger');
 
 // Function to create notifications
 async function createNotification(userId, type, message) {
@@ -33,77 +37,6 @@ async function createNotification(userId, type, message) {
   } catch (error) {
     console.error('❌ Error creating notification:', error);
   }
-}
-
-async function findStudentForBooking(booking) {
-  if (!booking || !booking.studentId) return null;
-  return Student.findOne({
-    $or: [{ username: booking.studentId }, { email: booking.studentId }]
-  });
-}
-
-async function releaseReservedCreditForBooking(booking) {
-  if (!booking || booking.creditConsumedAt || booking.creditReservationReleasedAt) return;
-  const student = await findStudentForBooking(booking);
-  if (!student) return;
-  const safeReserved = Number(student.reservedCredits || 0);
-  if (safeReserved <= 0) return;
-
-  const safeTotal = Number(student.totalCredits || 0);
-  const nextReserved = safeReserved - 1;
-  const nextAvailable = Math.max(safeTotal - nextReserved, 0);
-  await Student.updateOne(
-    { _id: student._id },
-    { $set: { reservedCredits: nextReserved, creditBalance: nextAvailable } }
-  );
-  booking.creditReservationReleasedAt = new Date();
-}
-
-async function consumeReservedCreditForBooking(booking, descriptionPrefix = 'Class finished') {
-  if (!booking || booking.creditConsumedAt || booking.creditReservationReleasedAt) return;
-  const student = await findStudentForBooking(booking);
-  if (!student) return;
-  const now = new Date();
-  const safeReserved = Number(student.reservedCredits || 0);
-  if (safeReserved <= 0) return;
-  const safeTotal = Number(student.totalCredits || 0);
-  const nextReserved = Math.max(safeReserved - 1, 0);
-  const nextTotal = Math.max(safeTotal - 1, 0);
-  const nextAvailable = Math.max(nextTotal - nextReserved, 0);
-  const planLabel = student.subscriptionPlan || '';
-  const desc = `${descriptionPrefix} (${booking.date} ${booking.time})`;
-
-  await Student.updateOne(
-    { _id: student._id },
-    {
-      $set: {
-        reservedCredits: nextReserved,
-        totalCredits: nextTotal,
-        creditBalance: nextAvailable
-      },
-      $inc: { usedCredits: 1 },
-      $push: {
-        creditTransactions: {
-          date: now,
-          type: 'use',
-          plan: planLabel,
-          description: desc,
-          credits: -1,
-          balanceAfter: nextAvailable,
-          amountPaid: 0
-        },
-        creditHistory: {
-          date: now,
-          plan: planLabel,
-          credits: -1,
-          amountPaid: 0,
-          paymentId: ''
-        }
-      }
-    }
-  );
-  booking.creditConsumedAt = now;
-  booking.creditReservationReleasedAt = null;
 }
 
 // Import generateStrongPassword function from auth.js

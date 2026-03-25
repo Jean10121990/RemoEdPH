@@ -253,7 +253,7 @@
                     return;
                 }
                 
-                // Then save to database
+                // Persist via API
                 const saveResponse = await fetch('/api/admin/save-global-rate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -270,7 +270,7 @@
                         document.getElementById('rate-status').textContent = '';
                     }, 3000);
                 } else {
-                    alert(saveData.message || 'Failed to save rate to database');
+                    alert(saveData.message || 'Failed to save rate');
                 }
             } catch (error) {
                 console.error('Error saving rate:', error);

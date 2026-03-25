@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
 const Teacher = require('./models/Teacher');
 const Student = require('./models/Student');
+const { isTokenBlacklisted } = require('./services/jwtBlacklist');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
 
@@ -22,6 +23,9 @@ const verifyToken = (req, res, next) => {
   }
 
   try {
+    if (isTokenBlacklisted(token)) {
+      return res.status(401).json({ error: 'Token has been revoked.' });
+    }
     const decoded = jwt.verify(token, JWT_SECRET);
     console.log('Token decoded successfully:', decoded);
     req.user = decoded;
@@ -58,6 +62,9 @@ const verifyAdminApiAuth = (req, res, next) => {
   }
 
   try {
+    if (isTokenBlacklisted(token)) {
+      return res.status(401).json({ error: 'Token has been revoked.' });
+    }
     const decoded = jwt.verify(token, JWT_SECRET);
     if (decoded.isAdmin !== true && decoded.role !== 'admin') {
       return res.status(403).json({ error: 'Access denied. Admin privileges required.' });

@@ -365,7 +365,7 @@
       }
     }
 
-    // Load schedule data from backend - ALWAYS FRESH FROM DATABASE
+    // Load schedule data from backend (always fresh)
     async function loadScheduleData() {
       if (!teacherId) return;
       
@@ -433,12 +433,12 @@
         slotsData = [];
         bookingsData = [];
         
-        // Set new data from database
+        // Set new data from response
         slotsData = data.slots || [];
         bookingsData = data.bookings || [];
         
-        console.log('🔄 Updated slotsData (from database):', slotsData);
-        console.log('🔄 Updated bookingsData (from database):', bookingsData);
+        console.log('🔄 Updated slotsData:', slotsData);
+        console.log('🔄 Updated bookingsData:', bookingsData);
         
         // Debug: Check for past slots in the data
         const pastSlots = slotsData.filter(slot => {
