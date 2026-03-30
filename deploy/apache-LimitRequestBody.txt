@@ -1,0 +1,13 @@
+Apache (if you terminate TLS / proxy with httpd instead of Nginx)
+--------------------------------------------------------------------
+In the VirtualHost for remoedph.com, or in .htaccess if AllowOverride allows it:
+
+  LimitRequestBody 67108864
+
+(64 MB in bytes; lesson uploads use JSON+base64 and must pass the proxy before Node.)
+
+Reload: sudo systemctl reload apache2   (or httpd)
+
+OpenLiteSpeed (some Hostinger stacks)
+--------------------------------------
+WebAdmin → Virtual Hosts → your vhost → General → set "Max Request Body" to at least 67108864 (64 MB).

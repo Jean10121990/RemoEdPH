@@ -144,10 +144,12 @@ app.use(
 // Keep raw body for PayMongo webhook signature verification.
 app.use('/api/webhooks/paymongo', express.raw({ type: 'application/json' }));
 
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
-app.use(bodyParser.json({ limit: '50mb' }));
-app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
+// Large JSON bodies: lesson library uploads send base64 fileData (UI allows up to ~50MB files).
+const jsonBodyLimit = process.env.JSON_BODY_LIMIT || '52mb';
+app.use(express.json({ limit: jsonBodyLimit }));
+app.use(express.urlencoded({ extended: true, limit: jsonBodyLimit }));
+app.use(bodyParser.json({ limit: jsonBodyLimit }));
+app.use(bodyParser.urlencoded({ extended: true, limit: jsonBodyLimit }));
 
 const session = require('express-session');
 const rateLimit = require('express-rate-limit');
@@ -1343,10 +1345,25 @@ app.get('/student-waiting-room', (req, res) => {
 
 // Error handling middleware
 app.use((err, req, res, next) => {
+  const tooLarge =
+    err &&
+    (err.type === 'entity.too.large' ||
+      err.status === 413 ||
+      err.statusCode === 413 ||
+      String(err.message || '').toLowerCase().includes('too large'));
+  if (tooLarge) {
+    console.warn('⚠️ Payload too large:', req.method, req.originalUrl, err.message || err.type);
+    return res.status(413).json({
+      success: false,
+      error: 'Request body too large',
+      hint:
+        'If this happens for small files on production, Nginx/Apache in front of Node is likely limiting the body (default often 1m). Raise client_max_body_size (Nginx) or LimitRequestBody (Apache). See RemoEdPH/deploy/nginx-increase-body-size.conf',
+    });
+  }
   console.error('Error:', err);
-  res.status(500).json({ 
+  res.status(500).json({
     error: 'Internal server error',
-    message: err.message 
+    message: err.message,
   });
 });
 
