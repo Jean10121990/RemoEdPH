@@ -55,10 +55,21 @@ function isAllowedOrigin(origin) {
   try {
     const u = new URL(origin);
     const host = String(u.hostname || '').toLowerCase();
+    
+    // 1. Allow localhost for development
     if (host === 'localhost' || host === '127.0.0.1') return true;
+    
+    // 2. Allow your production domain from .env
+    if (process.env.FRONTEND_URL) {
+      const allowedUrl = new URL(process.env.FRONTEND_URL);
+      if (host === allowedUrl.hostname.toLowerCase()) return true;
+    }
+
+    // 3. Allow tunnels for testing
     if (host.endsWith('.devtunnels.ms')) return true;
     if (host.endsWith('.ngrok.io')) return true;
     if (host.endsWith('.ngrok-free.dev')) return true;
+    
     return false;
   } catch {
     return false;
