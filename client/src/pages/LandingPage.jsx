@@ -13,7 +13,7 @@ const ASSESSMENT_DRAFT_KEY = "remoedAssessmentDraft";
 
 export default function LandingPage() {
   useReferralCapture();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState("");
   const [assessmentData, setAssessmentData] = useState(null);
@@ -33,20 +33,43 @@ export default function LandingPage() {
     const email = searchParams.get("email");
     const cefrLevel = searchParams.get("cefrLevel");
     const signup = searchParams.get("signup");
-    if (email && cefrLevel && signup === "true") {
-      const t = setTimeout(() => setModalOpen(true), 500);
-      return () => clearTimeout(t);
-    }
-    if (email && cefrLevel && signup !== "true") {
+
+    const scrollPlans = () => {
       const t = setTimeout(() => {
-        alert(
-          `🎉 Welcome back! Your assessment result: ${cefrLevel}\n\nSign up now to access your results online and start learning!`,
-        );
-      }, 500);
+        document
+          .getElementById("plans")
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 200);
       return () => clearTimeout(t);
+    };
+
+    if (email && cefrLevel) {
+      if (signup === "true") {
+        const next = new URLSearchParams(searchParams);
+        next.delete("signup");
+        setSearchParams(next, { replace: true });
+        if (!window.location.hash || window.location.hash === "#") {
+          window.location.hash = "plans";
+        }
+      }
+      const cancelScroll = scrollPlans();
+      let cancelAlert;
+      if (window.location.hash !== "#plans") {
+        cancelAlert = setTimeout(() => {
+          alert(
+            `🎉 Your level: ${cefrLevel}\n\nChoose a learning plan below and tap Enroll Now to sign up.`,
+          );
+        }, 600);
+      }
+      return () => {
+        cancelScroll();
+        if (cancelAlert) clearTimeout(cancelAlert);
+      };
     }
+
+    if (window.location.hash === "#plans") return scrollPlans();
     return undefined;
-  }, [searchParams]);
+  }, [searchParams, setSearchParams]);
 
   function openSignup(planId) {
     setSelectedPlan(planId);

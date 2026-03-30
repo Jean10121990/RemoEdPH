@@ -647,6 +647,7 @@
     </div>
     </div>
 
+    <script src="timezone-utils.js"></script>
     <script>
         // Role-based access control
         const userType = localStorage.getItem('userType');
@@ -661,6 +662,22 @@
         let certificateCounter = 0;
         let validIdCounter = 0;
         let isEditingProfile = false;
+
+        const REMOED_FOUNDER_TEACHER_EMAILS = ['jean10121990@gmail.com', 'plflores3301@gmail.com'];
+        function getTeacherProfileEmailForFounderCheck() {
+            const emailEl = document.getElementById('email');
+            const currentEl = document.getElementById('current-email');
+            const largeEl = document.getElementById('profile-email-large');
+            const v =
+                (emailEl && emailEl.value) ||
+                (currentEl && currentEl.value) ||
+                (largeEl && largeEl.textContent) ||
+                '';
+            return String(v).toLowerCase().trim();
+        }
+        function isFounderTeacherProfile() {
+            return REMOED_FOUNDER_TEACHER_EMAILS.includes(getTeacherProfileEmailForFounderCheck());
+        }
 
         // Global variables for bulk upload
         let bulkUploadFiles = [];
@@ -950,7 +967,7 @@
                     const hireDateEl = document.getElementById('profile-hire-date');
                     if (hireDateEl) {
                         hireDateEl.textContent = profile.hireDate
-                            ? `Hire date: ${new Date(profile.hireDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: '2-digit' })}`
+                            ? `Hire date: ${(window.TimezoneUtils && window.TimezoneUtils.formatDateLongPhilippines) ? window.TimezoneUtils.formatDateLongPhilippines(new Date(profile.hireDate)) : new Date(profile.hireDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: '2-digit' })}`
                             : 'Hire date: -';
                     }
                      
@@ -1882,7 +1899,7 @@
                     const hireDateLabel = document.getElementById('profile-hire-date');
                     if (hireDateLabel) {
                         hireDateLabel.textContent = profileData.hireDate
-                            ? `Hire date: ${new Date(profileData.hireDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: '2-digit' })}`
+                            ? `Hire date: ${(window.TimezoneUtils && window.TimezoneUtils.formatDateLongPhilippines) ? window.TimezoneUtils.formatDateLongPhilippines(new Date(profileData.hireDate)) : new Date(profileData.hireDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: '2-digit' })}`
                             : 'Hire date: -';
                     }
                     updateSidebarQuickInfo(profileData);
@@ -2086,6 +2103,9 @@
         }
 
         function calculateProfessionalDevelopmentClient() {
+            if (isFounderTeacherProfile()) {
+                return { points: 245, tier: 'Legacy Guide', founderLadder: true };
+            }
             const hasEnglishDegree4Year = !!document.getElementById('qual-english-degree')?.checked;
             const hasTesolTeylTefl = !!document.getElementById('qual-tesol')?.checked;
             const eslExperienceLevel = document.getElementById('qual-esl-experience')?.value || 'none';
@@ -2121,11 +2141,11 @@
         }
 
         function renderProfessionalDevelopmentSummary() {
-            const { points, tier } = calculateProfessionalDevelopmentClient();
+            const { points, tier, founderLadder } = calculateProfessionalDevelopmentClient();
             const pointsEl = document.getElementById('teacher-ladder-points');
             const tierEl = document.getElementById('teacher-ladder-tier');
             if (pointsEl) pointsEl.textContent = String(points);
-            if (tierEl) tierEl.textContent = tier;
+            if (tierEl) tierEl.textContent = founderLadder ? 'Legacy Guide · Founder' : tier;
             document.querySelectorAll('#career-ladder-view [data-tier]').forEach((el) => {
                 const isActive = el.getAttribute('data-tier') === tier;
                 el.style.borderColor = isActive ? '#2563eb' : '#cbd5e1';
@@ -2985,7 +3005,7 @@
             if (birthday !== '-') {
                 try {
                     const date = new Date(birthday);
-                    document.getElementById('sidebar-birthday-display').textContent = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                    document.getElementById('sidebar-birthday-display').textContent = (window.TimezoneUtils && window.TimezoneUtils.formatDateShortPhilippines) ? window.TimezoneUtils.formatDateShortPhilippines(date) : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
                 } catch (e) {
                     document.getElementById('sidebar-birthday-display').textContent = birthday;
                 }
@@ -2997,12 +3017,8 @@
             document.getElementById('sidebar-location-display').textContent = address !== '' ? address : '-';
         }
         
-        // Handle profile picture click
+        // Handle profile picture click — open file picker anytime; upload saves via change handler
         function handleProfilePictureClick() {
-            if (!isEditingProfile) {
-                alert('Click "Edit" to upload a new profile picture.');
-                return;
-            }
             document.getElementById('profile-picture').click();
         }
         

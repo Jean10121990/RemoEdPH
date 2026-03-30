@@ -1,0 +1,56 @@
+/* Shared tab bar + iframe panels for admin QA / HR / Accounting hubs */
+
+.admin-hub-page .hub-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0 0 20px 0;
+    padding: 0;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.admin-hub-page .hub-tab {
+    margin: 0 0 -2px 0;
+    padding: 10px 18px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #64748b;
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    border-radius: 8px 8px 0 0;
+    cursor: pointer;
+    transition: color 0.2s, background 0.2s, border-color 0.2s;
+}
+
+.admin-hub-page .hub-tab:hover {
+    color: #1ca7e7;
+    background: rgba(28, 167, 231, 0.06);
+}
+
+.admin-hub-page .hub-tab.hub-tab--active {
+    color: #1ca7e7;
+    border-bottom-color: #1ca7e7;
+    background: rgba(28, 167, 231, 0.08);
+}
+
+.admin-hub-page .hub-panel[hidden] {
+    display: none !important;
+}
+
+.admin-hub-page .hub-iframe {
+    width: 100%;
+    height: calc(100vh - 220px);
+    min-height: 520px;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    background: #fff;
+    display: block;
+}
+
+@media (max-width: 768px) {
+    .admin-hub-page .hub-iframe {
+        min-height: 70vh;
+        height: calc(100vh - 260px);
+    }
+}

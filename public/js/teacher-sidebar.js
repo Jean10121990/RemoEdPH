@@ -51,10 +51,11 @@
         var menuHtml = MENU_ITEMS.map(function (item) {
             var activeClass = (item.id === active && !item.isLogout) ? ' class="active"' : '';
             var idAttr = item.id === 'logout' ? ' id="logout-nav"' : '';
+            var dataNav = ' data-nav="' + item.id + '"';
             if (item.isLogout) {
-                return '<li' + idAttr + activeClass + ' data-logout="1">' + item.icon + item.label + '</li>';
+                return '<li' + idAttr + activeClass + dataNav + ' data-logout="1">' + item.icon + item.label + '</li>';
             }
-            return '<li' + activeClass + ' onclick="window.location.href=\'' + item.href + '\'">' + item.icon + item.label + '</li>';
+            return '<li' + activeClass + dataNav + ' onclick="window.location.href=\'' + item.href + '\'">' + item.icon + item.label + '</li>';
         }).join('');
 
         var html =

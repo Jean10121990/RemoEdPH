@@ -2,6 +2,74 @@ function toBool(value) {
   return value === true || value === 'true' || value === 1 || value === '1';
 }
 
+/**
+ * Comma-separated teacher emails treated as founders (top ladder / Legacy Guide exception).
+ * Defaults: CEO + co-founder.
+ */
+function getFounderTeacherEmails() {
+  const raw =
+    process.env.REMOED_FOUNDER_TEACHER_EMAIL ||
+    'jean10121990@gmail.com,plflores3301@gmail.com';
+  return raw
+    .split(/[,;]+/)
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function isFounderTeacherEmail(email) {
+  const e = String(email || '').toLowerCase().trim();
+  return Boolean(e && getFounderTeacherEmails().includes(e));
+}
+
+function normalizeTeachingExperienceBand(value) {
+  const v = String(value || '').trim().toLowerCase();
+  if (['y3', 'y5', 'y10', 'y15', 'y20plus', 'none'].includes(v)) return v;
+  return 'none';
+}
+
+function teachingExperiencePoints(band) {
+  const b = normalizeTeachingExperienceBand(band);
+  if (b === 'y3') return 20;
+  if (b === 'y5') return 30;
+  if (b === 'y10') return 40;
+  if (b === 'y15') return 50;
+  if (b === 'y20plus') return 50;
+  return 0;
+}
+
+function founderGrowthSnapshot() {
+  return {
+    professionalPoints: 245,
+    ladderTier: 'Legacy Guide',
+    careerGrowthTitle: 'Legacy Guide · Founder',
+    hasEnglishDegree4Year: true,
+    hasTesolTeylTefl: true,
+    hasIeltsCertificate: true,
+    eslExperienceLevel: '5plus',
+    teachingExperienceBand: 'y20plus',
+    teachingExperiencePoints: 50,
+    hasValuesAlignment: true,
+    heartHospitality: true,
+    heartExcellence: true,
+    heartAffection: true,
+    heartRespect: true,
+    heartTogetherness: true,
+    honorAvoidFalseWitness: true,
+    honorNoGossipPolitics: true,
+    honorIntegritySpeech: true,
+    honorGoodAttitudeAntiGreed: true,
+    honorFinancialStewardship: true,
+    hasProfessionalLetLicense: true,
+    hasMastersDegree: true,
+    hasDoctorateDegree: true,
+    loyaltyPoints: 35,
+    loyaltyYears: 25,
+    allHeartCommitments: true,
+    allHonorCommitments: true,
+    allCommitmentsComplete: true
+  };
+}
+
 function normalizeEslExperienceLevel(value) {
   const v = String(value || '').trim().toLowerCase();
   if (v === '2years') return '2years';
@@ -42,6 +110,9 @@ function loyaltyPointsFromHireDate(hireDateValue) {
 }
 
 function calculateGrowth(data = {}) {
+  if (isFounderTeacherEmail(data.email)) {
+    return founderGrowthSnapshot();
+  }
   const hasEnglishDegree4Year = toBool(data.hasEnglishDegree4Year);
   const hasTesolTeylTefl = toBool(data.hasTesolTeylTefl);
   const hasIeltsCertificate = toBool(data.hasIeltsCertificate);
@@ -60,6 +131,8 @@ function calculateGrowth(data = {}) {
   const hasMastersDegree = toBool(data.hasMastersDegree);
   const hasDoctorateDegree = toBool(data.hasDoctorateDegree);
   const eslExperienceLevel = normalizeEslExperienceLevel(data.eslExperienceLevel);
+  const teachingExperienceBand = normalizeTeachingExperienceBand(data.teachingExperienceBand);
+  const teachingExpPts = teachingExperiencePoints(teachingExperienceBand);
   const { loyaltyYears, loyaltyPoints } = loyaltyPointsFromHireDate(data.hireDate);
 
   let points = 0;
@@ -73,6 +146,7 @@ function calculateGrowth(data = {}) {
   if (hasMastersDegree) points += 30;
   if (hasDoctorateDegree) points += 30;
   points += loyaltyPoints;
+  points += teachingExpPts;
 
   const hasEntryRequirement = hasTesolTeylTefl || hasEnglishDegree4Year;
   const hasAtLeast2Years = ['2years', '3to5', '5plus'].includes(eslExperienceLevel);
@@ -116,6 +190,8 @@ function calculateGrowth(data = {}) {
     hasTesolTeylTefl,
     hasIeltsCertificate,
     eslExperienceLevel,
+    teachingExperienceBand,
+    teachingExperiencePoints: teachingExpPts,
     hasValuesAlignment: allCommitmentsComplete,
     heartHospitality,
     heartExcellence,
@@ -144,5 +220,10 @@ function calculateProfessionalDevelopment(data = {}) {
 
 module.exports = {
   calculateGrowth,
-  calculateProfessionalDevelopment
+  calculateProfessionalDevelopment,
+  getFounderTeacherEmails,
+  isFounderTeacherEmail,
+  founderGrowthSnapshot,
+  normalizeTeachingExperienceBand,
+  teachingExperiencePoints
 };

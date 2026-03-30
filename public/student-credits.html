@@ -8,6 +8,8 @@
   <title>My Lesson Credits - RemoEdPH</title>
   <link rel="stylesheet" href="modern-styles.css">
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="css/student-portal-layout.css">
+  <script src="timezone-utils.js"></script>
 </head>
 <body class="page-student-credits">
   <div class="shell">
@@ -38,12 +40,25 @@
           <span id="subscription-pill" class="badge yellow" style="display:none;"></span>
         </div>
         <div class="actions">
-          <button class="primary-btn" onclick="goToPlans()">
-            <span>Refill Credits / Subscribe</span>
-          </button>
-          <button class="secondary-btn" onclick="window.location.href='student-booking-history.html'">
+          <button type="button" class="secondary-btn" onclick="window.location.href='student-booking-history.html'">
             View class booking history
           </button>
+        </div>
+
+        <div id="student-refill-panel" class="refill-panel" style="margin-top:1.25rem;padding-top:1.1rem;border-top:1px solid #e2e8f0;">
+          <h3 style="margin:0 0 0.35rem;font-size:1.05rem;color:#0f172a;">Choose a learning plan</h3>
+          <p class="muted" style="margin:0 0 0.75rem;font-size:0.88rem;">Same plans as on our homepage (1 month = 22 lesson credits). Pay with GCash, PayMaya, or card. Credits are added after PayMongo confirms payment (usually under a minute).</p>
+          <div class="refill-row" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
+            <label for="refill-plan-select" class="muted" style="font-weight:600;">Plan</label>
+            <select id="refill-plan-select" style="min-width:min(100%,320px);padding:10px 12px;border-radius:8px;border:1px solid #cbd5e1;font-size:0.95rem;">
+              <option value="spark">RemoSpark — 1 mo, 22 credits — $91.74 USD</option>
+              <option value="steady">RemoSteady — 3 mo, 66 credits — $269.28 USD</option>
+              <option value="scholar">RemoScholar — 6 mo, 132 credits — $528.00 USD</option>
+              <option value="summit">RemoSummit — 12 mo, 264 credits — $964.32 USD</option>
+            </select>
+            <button type="button" class="primary-btn" id="refill-pay-btn" onclick="startRefillCheckout()">Continue to payment</button>
+          </div>
+          <p id="refill-status" class="muted" style="margin:10px 0 0;font-size:0.85rem;display:none;"></p>
         </div>
       </div>
 
@@ -71,18 +86,86 @@
   </div>
 
   <script>
+    var creditsBroadcast = null;
+    try {
+      creditsBroadcast = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('remoed-credits') : null;
+    } catch (e) {
+      creditsBroadcast = null;
+    }
+
+    function notifyCreditsUpdated(detail) {
+      try {
+        window.dispatchEvent(new CustomEvent('remoedCreditsUpdated', { detail: detail || {} }));
+      } catch (e) {}
+      try {
+        if (creditsBroadcast) creditsBroadcast.postMessage({ type: 'credits-updated', detail: detail || {} });
+      } catch (e) {}
+    }
+
     function getStudentToken() {
       return localStorage.getItem('studentToken') || localStorage.getItem('token') || '';
     }
 
-    function goToPlans() {
-      window.location.href = 'index.html#plans';
+    function openRefillPanel() {
+      var p = document.getElementById('student-refill-panel');
+      if (p) p.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      var s = document.getElementById('refill-plan-select');
+      if (s) try { s.focus(); } catch (e) {}
+    }
+
+    async function startRefillCheckout() {
+      var token = getStudentToken();
+      var studentId = localStorage.getItem('studentId');
+      var sel = document.getElementById('refill-plan-select');
+      var btn = document.getElementById('refill-pay-btn');
+      var statusEl = document.getElementById('refill-status');
+      if (!token || !studentId) {
+        alert('Please log in as a student to purchase a plan.');
+        window.location.href = 'student-login.html';
+        return;
+      }
+      if (!sel) return;
+      var planId = sel.value;
+      var label = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : planId;
+      btn.disabled = true;
+      if (statusEl) {
+        statusEl.style.display = 'block';
+        statusEl.textContent = 'Creating secure checkout…';
+      }
+      try {
+        var payload = {
+          userId: studentId,
+          planId: planId,
+          description: 'RemoEd — ' + label,
+          success_url: window.location.origin + '/student-credits.html?payment=success',
+          cancel_url: window.location.origin + '/student-credits.html?payment=cancelled',
+        };
+        var res = await fetch('/api/payments/create-link', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer ' + token,
+          },
+          body: JSON.stringify(payload),
+        });
+        var data = await res.json().catch(function () { return {}; });
+        if (!res.ok || !data.success || !data.checkout_url) {
+          throw new Error(data.error || data.message || ('Checkout failed (' + res.status + ')'));
+        }
+        window.location.href = data.checkout_url;
+      } catch (err) {
+        alert(err.message || 'Could not start checkout');
+        if (statusEl) statusEl.textContent = '';
+      } finally {
+        btn.disabled = false;
+      }
     }
 
     function fmtDate(iso) {
       if (!iso) return '\u2014';
       const d = new Date(iso);
-      return d.toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+      const TU = window.TimezoneUtils || {};
+      return TU.formatDateTimePhilippines ? TU.formatDateTimePhilippines(d) : d.toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
     }
 
     function escHtml(s) {
@@ -120,7 +203,26 @@
       list.sort(function (a, b) {
         return new Date(b.date || 0) - new Date(a.date || 0);
       });
-      return list;
+      const seen = new Set();
+      const deduped = [];
+      for (var i = 0; i < list.length; i++) {
+        var row = list[i];
+        var t = row.date ? new Date(row.date).getTime() : 0;
+        var key =
+          String(Math.floor(t / 60000)) +
+          '|' +
+          String(row.credits) +
+          '|' +
+          String(row.description || '') +
+          '|' +
+          String(row.plan || '') +
+          '|' +
+          String(row.type || '');
+        if (seen.has(key)) continue;
+        seen.add(key);
+        deduped.push(row);
+      }
+      return deduped;
     }
 
     async function loadCredits() {
@@ -191,7 +293,10 @@
         if (!list.length) {
           tbody.innerHTML = '';
           empty.style.display = 'block';
-          sessionStorage.removeItem('remoedCreditsRefresh');
+          try {
+            sessionStorage.setItem('remoedCreditsRefresh', '1');
+          } catch (e) {}
+          notifyCreditsUpdated({ availableBalance: available, reservedCredits: reserved, totalPurchased: data.totalPurchased });
           return;
         }
         empty.style.display = 'none';
@@ -215,14 +320,44 @@
           );
         }).join('');
 
-        sessionStorage.removeItem('remoedCreditsRefresh');
+        try {
+          sessionStorage.setItem('remoedCreditsRefresh', '1');
+        } catch (e) {}
+        notifyCreditsUpdated({
+          availableBalance: available,
+          reservedCredits: reserved,
+          totalPurchased: data.totalPurchased != null ? data.totalPurchased : data.totalEarned,
+        });
       } catch (err) {
         console.error('Credits load error:', err);
         alert('Error loading credits: ' + err.message);
       }
     }
 
-    document.addEventListener('DOMContentLoaded', loadCredits);
+    document.addEventListener('DOMContentLoaded', function () {
+      loadCredits();
+      try {
+        var params = new URLSearchParams(window.location.search);
+        if (params.get('refill') === '1') {
+          setTimeout(openRefillPanel, 500);
+        }
+        if (params.get('payment') === 'success') {
+          var n = 0;
+          var poll = setInterval(function () {
+            loadCredits();
+            if (++n >= 30) clearInterval(poll);
+          }, 2000);
+        }
+        if (params.get('payment') === 'cancelled') {
+          var st = document.getElementById('refill-status');
+          if (st) {
+            st.style.display = 'block';
+            st.textContent = 'Payment was cancelled. You can choose a plan below when you’re ready.';
+          }
+          setTimeout(openRefillPanel, 400);
+        }
+      } catch (e) {}
+    });
     document.addEventListener('visibilitychange', function () {
       if (document.visibilityState === 'visible') loadCredits();
     });

@@ -10,8 +10,11 @@
       <link rel="stylesheet" href="modern-styles.css">
     <link rel="stylesheet" href="child-friendly-styles.css">
   <script src="vendor/luxon.min.js"></script>
+  <script src="timezone-utils.js"></script>
+  <script src="js/classroom-entry.js"></script>
 <link rel="stylesheet" href="css/teacher-sidebar.css">
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/student-portal-layout.css">
 </head>
 <body  class="student-portal page-student-class-table">
   <div class="remoed-main">
@@ -19,18 +22,13 @@
     <script src="js/student-sidebar.js"></script>
     <script>StudentSidebar.render('student-sidebar-root', 'schedule');</script>
   <div class="remoed-content">
-    <div class="header">
-      <h1 style="font-size: 2rem; font-weight: 800; color: #1CA7E7; text-shadow: 2px 2px 4px rgba(28, 167, 231, 0.2); display: flex; align-items: center; gap: 12px;">
-        <span>📚📶</span>
-        <span>📅 My Schedule</span>
-      </h1>
-      <div class="header-controls">
-        <div class="week-navigation">
-          <button id="prev-week" class="nav-btn">← Previous Week</button>
-          <span id="week-display" class="week-display">Current Week</span>
-          <button id="next-week" class="nav-btn">Next Week →</button>
-          <button id="current-week" class="nav-btn current-week-btn">Today</button>
-        </div>
+    <div class="student-schedule-toolbar">
+      <h1 class="student-schedule-toolbar__title">My Schedule</h1>
+      <div class="week-navigation">
+        <button id="prev-week" class="nav-btn">← Previous Week</button>
+        <span id="week-display" class="week-display">Current Week</span>
+        <button id="next-week" class="nav-btn">Next Week →</button>
+        <button id="current-week" class="nav-btn current-week-btn">Today</button>
       </div>
     </div>
 
@@ -43,23 +41,24 @@
     </div>
 
     <!-- Booking Indicators Legend -->
-    <div class="booking-legend" style="margin-bottom: 20px; padding: 15px; background: linear-gradient(135deg, #f8f9fa 0%, #e8f4fd 100%); border-radius: 12px; border: 1px solid rgba(28, 167, 231, 0.1); box-shadow: 0 4px 16px rgba(28, 167, 231, 0.05);">
-      <div style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; flex-wrap: nowrap; overflow-x: auto;">
-        <h3 style="margin: 0; color: #667eea; font-size: 1.1rem; font-weight: 600;">📊 Schedule Indicators:</h3>
+    <p class="student-schedule-pht-note" id="student-schedule-hours-note" style="margin: 0 0 8px; font-size: 0.82rem; color: #475569; font-weight: 600;">All times are <strong>Philippine Time (PHT, Asia/Manila, UTC+8)</strong>—the same clock used across the Philippines; other places that share this offset will match. Daily window: 6:00 AM – midnight (24:00).</p>
+    <div class="booking-legend student-schedule-legend" style="background: linear-gradient(135deg, #f8f9fa 0%, #f1f3fd 100%); border: 1px solid rgba(90, 103, 216, 0.15); box-shadow: 0 2px 10px rgba(90, 103, 216, 0.06);">
+      <div style="display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; overflow-x: auto;">
+        <h3 style="color: #5a67d8; font-weight: 600;">Schedule indicators</h3>
         <div style="display: flex; align-items: center; gap: 4px; white-space: nowrap; flex-shrink: 0;">
           <span style="display: inline-block; width: 18px; height: 18px; background: #f8d7da; color: #721c24; text-align: center; font-weight: bold; border-radius: 3px; font-size: 0.75rem; line-height: 18px;">B</span>
           <span style="white-space: nowrap;">Booked</span>
         </div>
         <div style="display: flex; align-items: center; gap: 4px; white-space: nowrap; flex-shrink: 0;">
           <span style="display: inline-block; width: 18px; height: 18px; background: #28a745; color: white; text-align: center; font-weight: bold; border-radius: 3px; font-size: 0.75rem; line-height: 18px;">✓</span>
-          <span style="white-space: nowrap;">Feedback Submitted</span>
+          <span style="white-space: nowrap;">Teacher feedback (stars shown)</span>
         </div>
         <div style="display: flex; align-items: center; gap: 4px; white-space: nowrap; flex-shrink: 0;">
           <span style="display: inline-block; width: 18px; height: 18px; background: #ffc107; color: #000; text-align: center; font-weight: bold; border-radius: 3px; font-size: 0.75rem; line-height: 18px;">!</span>
-          <span style="white-space: nowrap;">Feedback Pending</span>
+          <span style="white-space: nowrap;">Teacher feedback pending</span>
         </div>
         <div style="display: flex; align-items: center; gap: 4px; white-space: nowrap; flex-shrink: 0;">
-          <span style="display: inline-block; width: 18px; height: 18px; background: #6c757d; color: white; text-align: center; font-weight: bold; border-radius: 3px; font-size: 0.75rem; line-height: 18px;">⏰</span>
+          <span style="display: inline-block; width: 18px; height: 18px; background: #6c757d; color: white; text-align: center; font-weight: bold; border-radius: 3px; font-size: 0.75rem; line-height: 18px;">P</span>
           <span style="white-space: nowrap;">Past</span>
         </div>
       </div>
@@ -80,14 +79,14 @@
   </div>
   <!-- Booking Details Modal -->
   <div id="booking-modal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.25); z-index:2000; align-items:center; justify-content:center;">
-    <div style="background:#fff; border-radius:12px; max-width:350px; width:90vw; margin:auto; box-shadow:0 4px 24px rgba(28,167,231,0.13); padding:28px 22px 18px 22px; position:relative;">
+    <div style="background:#fff; border-radius:12px; max-width:350px; width:90vw; margin:auto; box-shadow:0 4px 24px rgba(90,103,216,0.15); padding:28px 22px 18px 22px; position:relative;">
       <button id="close-booking-modal" style="position:absolute; top:10px; right:14px; background:none; border:none; font-size:1.3rem; color:#888; cursor:pointer;">&times;</button>
-      <div style="font-size:1.2rem; font-weight:700; color:#667eea; margin-bottom:10px;">Class Details</div>
-      <div style="margin-bottom:8px;"><span style="font-weight:600; color:#667eea;">Teacher:</span> <span id="modal-teacher"></span></div>
-      <div style="margin-bottom:8px;"><span style="font-weight:600; color:#667eea;">Lesson:</span> <span id="modal-lesson"></span></div>
-      <div style="margin-bottom:8px;"><span style="font-weight:600; color:#667eea;">Level:</span> <span id="modal-level"></span></div>
-      <div style="margin-bottom:8px;"><span style="font-weight:600; color:#667eea;">Date:</span> <span id="modal-date"></span></div>
-      <div style="margin-bottom:8px;"><span style="font-weight:600; color:#667eea;">Time:</span> <span id="modal-time"></span></div>
+      <div style="font-size:1.2rem; font-weight:700; color:#5a67d8; margin-bottom:10px;">Class Details</div>
+      <div style="margin-bottom:8px;"><span style="font-weight:600; color:#5a67d8;">Teacher:</span> <span id="modal-teacher"></span></div>
+      <div style="margin-bottom:8px;"><span style="font-weight:600; color:#5a67d8;">Lesson:</span> <span id="modal-lesson"></span></div>
+      <div style="margin-bottom:8px;"><span style="font-weight:600; color:#5a67d8;">Level:</span> <span id="modal-level"></span></div>
+      <div style="margin-bottom:8px;"><span style="font-weight:600; color:#5a67d8;">Date:</span> <span id="modal-date"></span></div>
+      <div style="margin-bottom:8px;"><span style="font-weight:600; color:#5a67d8;">Time:</span> <span id="modal-time"></span></div>
     </div>
   </div>
   <!-- Class Info Modal -->
@@ -121,11 +120,20 @@
           </div>
           <div class="detail-row">
             <label>Classroom ID:</label>
-            <span id="info-classroom-id" style="font-weight: bold; color: #667eea;"></span>
+            <span id="info-classroom-id" style="font-weight: bold; color: #5a67d8;"></span>
           </div>
           <div class="detail-row">
             <label>Join Classroom:</label>
             <button class="btn-join" id="join-classroom-btn">Enter Live Classroom</button>
+          </div>
+          <div id="info-teacher-feedback-section" style="display: none; margin-top: 16px; padding-top: 16px; border-top: 1px solid #e7e5e4;">
+            <label style="display:block; font-weight:600; color:#44403c; margin-bottom:8px;">Teacher feedback</label>
+            <div id="info-teacher-stars" style="font-size: 1.35rem; letter-spacing: 2px; color: #b45309;"></div>
+            <p id="info-teacher-comment" style="margin: 10px 0 0; color: #57534e; font-size: 0.95rem; line-height: 1.5;"></p>
+            <p id="info-teacher-feedback-pending" style="display: none; margin: 8px 0 0; color: #92400e; font-size: 0.92rem;">Your teacher hasn’t submitted feedback for this class yet. Check back soon.</p>
+          </div>
+          <div class="detail-row" id="rate-teacher-row" style="display: none; margin-top: 12px;">
+            <button type="button" class="btn-secondary" id="open-rate-teacher-btn" style="background: linear-gradient(135deg, #f5f2eb, #ecfeff); border: 1px solid rgba(13,148,136,0.35); color: #134e4a; font-weight: 600;">Rate your teacher</button>
           </div>
           <div class="detail-row" id="cancel-booking-row" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #e0e6ed;">
             <label>Actions:</label>
@@ -330,15 +338,37 @@
     // Feedback Modal Functions - Define these first so they're available when called
     let currentFeedbackBooking = null;
     let selectedRating = 0;
+
+    function getTeacherLogicalIdFromBooking(booking) {
+        if (!booking) return '';
+        if (typeof booking.teacherLogicalId === 'string' && booking.teacherLogicalId.trim()) {
+            return booking.teacherLogicalId.trim();
+        }
+        if (typeof booking.teacherId === 'string' && booking.teacherId.trim()) {
+            return booking.teacherId.trim();
+        }
+        if (booking.teacherId && typeof booking.teacherId === 'object' && booking.teacherId.teacherId) {
+            return String(booking.teacherId.teacherId).trim();
+        }
+        return '';
+    }
+
+    function getBookingIdString(booking) {
+        if (!booking) return '';
+        const raw = booking._id != null ? booking._id : booking.id;
+        if (raw == null) return '';
+        if (typeof raw === 'object' && typeof raw.toString === 'function') return raw.toString();
+        return String(raw);
+    }
     
     function showPastBookingFeedback(booking) {
         currentFeedbackBooking = booking;
         
-        // Format date
-        const date = new Date(booking.date);
-        const formattedDate = date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-        document.getElementById('feedback-class-date').textContent = formattedDate;
-        document.getElementById('feedback-class-time').textContent = formatTime24Hour(booking.time);
+        const tiFb = bookingDisplayDateTime(booking);
+        document.getElementById('feedback-class-date').textContent = TU.formatYmdAsPhilippinesLongDate
+          ? TU.formatYmdAsPhilippinesLongDate(tiFb.date || booking.date)
+          : String(tiFb.date || booking.date || '');
+        document.getElementById('feedback-class-time').textContent = formatTime24Hour(tiFb.slot || booking.time);
         
         // Handle teacher name
         let teacherName = 'Unknown Teacher';
@@ -369,7 +399,7 @@
         }, 100);
         
         // Check if feedback already exists for this booking
-        checkExistingFeedback(booking._id);
+        checkExistingFeedback(getBookingIdString(booking));
     }
     
     function closeFeedbackModal() {
@@ -435,10 +465,20 @@
         console.log('📝 Comments:', comments);
         console.log('📝 Technical issues:', technicalIssues);
         
-        // Validate rating
-        if (selectedRating === 0) {
+        const bookingIdStr = getBookingIdString(currentFeedbackBooking);
+        const teacherIdStr = getTeacherLogicalIdFromBooking(currentFeedbackBooking);
+
+        if (!bookingIdStr || !teacherIdStr) {
+            alert(
+              'This class could not be identified (missing booking or teacher). Please refresh your schedule page and try again.'
+            );
+            return;
+        }
+
+        // Validate rating (1–5 only; 0 means no selection)
+        if (!Number.isFinite(selectedRating) || selectedRating < 1 || selectedRating > 5) {
             console.log('❌ No rating selected');
-            alert('Please provide a rating before submitting feedback.');
+            alert('Please tap the stars to choose a rating from 1 to 5 before submitting.');
             return;
         }
         
@@ -453,10 +493,10 @@
         
         // Submit feedback to server
         submitFeedbackToServer({
-            bookingId: currentFeedbackBooking._id,
+            bookingId: bookingIdStr,
             rating: selectedRating,
             comment: comments,
-            teacherId: currentFeedbackBooking.teacherId
+            teacherId: teacherIdStr
         });
     }
     
@@ -743,7 +783,7 @@
     async function checkExistingFeedback(bookingId) {
         try {
             // Use the global feedback history instead of making a new API call
-            const existingFeedback = feedbackHistory.find(f => f.bookingId === bookingId);
+            const existingFeedback = feedbackHistory.find(f => String(f.bookingId) === String(bookingId));
             
             if (existingFeedback) {
                 console.log('⚠️ Feedback already exists for this booking:', existingFeedback.rating, 'stars');
@@ -790,13 +830,31 @@
             
             console.log('📤 Submitting feedback data:', feedbackData);
             
+            const payload = {
+                bookingId: feedbackData.bookingId != null ? String(feedbackData.bookingId) : '',
+                teacherId: feedbackData.teacherId != null ? String(feedbackData.teacherId).trim() : '',
+                rating: Number(feedbackData.rating),
+                comment: feedbackData.comment != null ? String(feedbackData.comment) : '',
+            };
+            if (
+                !payload.bookingId ||
+                !payload.teacherId ||
+                !Number.isFinite(payload.rating) ||
+                payload.rating < 1 ||
+                payload.rating > 5
+            ) {
+                throw new Error(
+                    'Missing booking, teacher, or star rating. Choose 1–5 stars, then submit. If this keeps happening, refresh your schedule and try again.'
+                );
+            }
+
             const response = await fetch('/api/student/feedback/submit', {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify(feedbackData)
+                body: JSON.stringify(payload)
             });
             
             console.log('📥 Response status:', response.status);
@@ -857,7 +915,12 @@
       window.location.href = 'student-login.html';
     };
 
-    // Weekly grid variables
+    const TU = window.TimezoneUtils || {};
+    const SCHEDULE_FIRST_HOUR = TU.REMOED_OPERATING_START_HOUR != null ? TU.REMOED_OPERATING_START_HOUR : 6;
+    const SCHEDULE_LAST_HOUR_EXCLUSIVE = TU.REMOED_OPERATING_END_HOUR_EXCLUSIVE != null ? TU.REMOED_OPERATING_END_HOUR_EXCLUSIVE : 24;
+
+    const PH_ZONE = TU.REMOED_ANCHOR_ZONE || TU.REMOED_DISPLAY_ZONE || 'Asia/Manila';
+
     let currentWeek = new Date();
     let bookingsData = [];
     let feedbackHistory = []; // Store feedback history
@@ -881,12 +944,13 @@
         plus: ({ days = 0 } = {}) => createDateTime(new Date(d.getTime() + days * 86400000), timeZone),
         minus: ({ days = 0 } = {}) => createDateTime(new Date(d.getTime() - days * 86400000), timeZone),
         toFormat: (fmt) => {
-          if (fmt === 'ccc') return d.toLocaleDateString(undefined, { weekday: 'short' });
-          if (fmt === 'LLLL d') return d.toLocaleDateString(undefined, { month: 'long', day: 'numeric' });
+          const loc = { timeZone: timeZone };
+          if (fmt === 'ccc') return d.toLocaleDateString('en-US', Object.assign({ weekday: 'short' }, loc));
+          if (fmt === 'LLLL d') return d.toLocaleDateString('en-US', Object.assign({ month: 'long', day: 'numeric' }, loc));
           if (fmt === 'ccc LLLL d') {
-            return `${d.toLocaleDateString(undefined, { weekday: 'short' })} ${d.toLocaleDateString(undefined, { month: 'long' })} ${d.getDate()}`;
+            return `${d.toLocaleDateString('en-US', Object.assign({ weekday: 'short' }, loc))} ${d.toLocaleDateString('en-US', Object.assign({ month: 'long' }, loc))} ${new Intl.DateTimeFormat('en-US', Object.assign({ day: 'numeric' }, loc)).format(d)}`;
           }
-          return d.toLocaleDateString();
+          return d.toLocaleDateString('en-US', loc);
         },
         toISODate: () => d.toISOString().split('T')[0]
       };
@@ -917,66 +981,76 @@
       }
     }
 
-    // Generate time slots (30-minute intervals from 01:00 to 24:00) - 24-hour format
+    // Generate time slots: 30-minute steps from 6:00 through 23:30 in selected aligned zone
     function generateTimeSlots() {
       const gridBody = document.getElementById('time-slots-grid');
       gridBody.innerHTML = '';
-      
-      const startHour = 1;
-      const endHour = 24;
-      
-      for (let hour = startHour; hour < endHour; hour++) {
+
+      const Lux = window.luxon && window.luxon.DateTime;
+      const zone = getDisplayZone();
+      let weekDates = [];
+      if (Lux) {
+        const base = Lux.fromJSDate(currentWeek, { zone });
+        const monday = base.minus({ days: base.weekday - 1 });
+        for (let i = 0; i < 7; i++) {
+          weekDates.push(monday.plus({ days: i }).toISODate());
+        }
+      } else {
+        const date = new Date(currentWeek);
+        const dayOfWeek = currentWeek.getDay();
+        const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+        for (let day = 0; day < 7; day++) {
+          const d = new Date(date);
+          d.setDate(currentWeek.getDate() - daysToMonday + day);
+          weekDates.push(d.toISOString().split('T')[0]);
+        }
+      }
+
+      const nowZ = Lux ? Lux.now().setZone(zone) : null;
+
+      for (let hour = SCHEDULE_FIRST_HOUR; hour < SCHEDULE_LAST_HOUR_EXCLUSIVE; hour++) {
         for (let minute = 0; minute < 60; minute += 30) {
           const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-          
+
           const timeRow = document.createElement('tr');
-          
-          // Time column
+
           const timeColumn = document.createElement('td');
           timeColumn.className = 'time-slot';
           timeColumn.textContent = formatTime24Hour(timeString);
           timeRow.appendChild(timeColumn);
-          
-          // Day columns
-                  for (let day = 0; day < 7; day++) {
-          const date = new Date(currentWeek);
-          // Calculate Monday as the start of the week
-          const dayOfWeek = currentWeek.getDay();
-          const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-          date.setDate(currentWeek.getDate() - daysToMonday + day);
-            const dateString = date.toISOString().split('T')[0];
-            
+
+          for (let day = 0; day < 7; day++) {
+            const dateString = weekDates[day];
+
             const slot = document.createElement('td');
             slot.className = 'time-slot';
             slot.dataset.date = dateString;
             slot.dataset.time = timeString;
-            
-            // Check if slot is in the past
-            const slotDateTime = new Date(`${dateString}T${timeString}`);
-            const now = new Date();
-            
-            // Check if the class duration has passed (25 minutes after start time)
-            const currentDate = now.toISOString().split('T')[0];
-            const currentTime = now.toTimeString().split(' ')[0].substring(0, 5); // HH:MM format
-            
-            let isClassDurationPassed = false;
-            if (dateString === currentDate) {
-                // If it's today, check if the class duration has passed (25 minutes after start)
-                const [startHour, startMinute] = timeString.split(':').map(Number);
+
+            let isPastSlot = false;
+            if (Lux && nowZ) {
+              const slotStart = Lux.fromISO(`${dateString}T${timeString}`, { zone });
+              const slotEnd = slotStart.plus({ minutes: 25 });
+              isPastSlot = nowZ > slotEnd;
+            } else {
+              const slotDateTime = new Date(`${dateString}T${timeString}`);
+              const now = new Date();
+              const currentDate = now.toISOString().split('T')[0];
+              let isClassDurationPassed = false;
+              if (dateString === currentDate) {
+                const [h, m] = timeString.split(':').map(Number);
                 const endTime = new Date();
-                endTime.setHours(startHour, startMinute + 25, 0, 0); // 25 minutes after start
-                
-                const currentDateTime = new Date();
-                isClassDurationPassed = currentDateTime > endTime;
+                endTime.setHours(h, m + 25, 0, 0);
+                isClassDurationPassed = new Date() > endTime;
+              }
+              if (slotDateTime <= now && isClassDurationPassed) isPastSlot = true;
             }
-            
-            if (slotDateTime <= now && isClassDurationPassed) {
-              slot.classList.add('unavailable');
-            }
-            
+
+            if (isPastSlot) slot.classList.add('unavailable');
+
             timeRow.appendChild(slot);
           }
-          
+
           gridBody.appendChild(timeRow);
         }
       }
@@ -985,12 +1059,18 @@
     // Load schedule data from backend
     async function loadScheduleData() {
       try {
-              const weekStart = new Date(currentWeek);
-      // Calculate Monday as the start of the week
-      const dayOfWeek = currentWeek.getDay();
-      const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-      weekStart.setDate(currentWeek.getDate() - daysToMonday);
-      const weekString = weekStart.toISOString().split('T')[0];
+      const Lux = window.luxon && window.luxon.DateTime;
+      let weekString;
+      if (Lux) {
+        const base = Lux.fromJSDate(currentWeek, { zone: getDisplayZone() });
+        weekString = base.minus({ days: base.weekday - 1 }).toISODate();
+      } else {
+        const weekStart = new Date(currentWeek);
+        const dayOfWeek = currentWeek.getDay();
+        const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+        weekStart.setDate(currentWeek.getDate() - daysToMonday);
+        weekString = weekStart.toISOString().split('T')[0];
+      }
         
         console.log('🔍 Loading student bookings for week:', weekString);
         console.log('🔍 Username from localStorage:', username);
@@ -1066,17 +1146,8 @@
       }
     }
 
-    const VIEWER_ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; // viewer's local timezone
-
     function getDisplayZone() {
-      const first = bookingsData[0] || {};
-      return (
-        first.studentLocalZone ||
-        first.studentTimezone ||
-        first.clientTz ||
-        first.timezone ||
-        VIEWER_ZONE
-      );
+      return PH_ZONE;
     }
 
     // Fallback converter when Luxon is unavailable; only supports UTC -> target zone
@@ -1085,7 +1156,7 @@
         const d = new Date(utcString);
         if (Number.isNaN(d.getTime())) return null;
         const formatter = new Intl.DateTimeFormat('en-CA', {
-          timeZone: targetZone || VIEWER_ZONE,
+          timeZone: targetZone || PH_ZONE,
           year: 'numeric',
           month: '2-digit',
           day: '2-digit',
@@ -1108,12 +1179,7 @@
     function bookingDisplayDateTime(booking) {
       const Lux = window.luxon && window.luxon.DateTime;
       const normalized = normalizeTimeToHHMM(booking.time);
-      const zone =
-        booking.studentLocalZone ||
-        booking.studentTimezone ||
-        booking.clientTz ||
-        booking.timezone ||
-        getDisplayZone();
+      const zone = PH_ZONE;
 
       if (!Lux || !normalized) {
         return { date: booking.date, slot: normalized, label: normalized, zone };
@@ -1132,23 +1198,23 @@
         if (Lux) {
           const utcDt = Lux.fromISO(utcString, { zone: 'utc' });
           if (utcDt.isValid) {
-            const local = utcDt.setZone(zone || VIEWER_ZONE);
+            const local = utcDt.setZone(zone || PH_ZONE);
             return {
               date: local.toISODate(),
               slot: local.toFormat('HH:mm'),
               label: local.toFormat('hh:mm a'),
-              zone: zone || VIEWER_ZONE
+              zone: zone || PH_ZONE
             };
           }
         }
         // Fallback using Intl if Luxon missing/invalid
-        const parts = utcToZoneParts(utcString, zone || VIEWER_ZONE);
+        const parts = utcToZoneParts(utcString, zone || PH_ZONE);
         if (parts) {
           return {
             date: parts.date,
             slot: parts.time,
             label: parts.time,
-            zone: zone || VIEWER_ZONE
+            zone: zone || PH_ZONE
           };
         }
       }
@@ -1162,29 +1228,29 @@
       if (Lux) {
         const dt = hasOffset
           ? Lux.fromISO(isoCandidate)
-          : Lux.fromISO(isoCandidate, { zone: zone || VIEWER_ZONE });
+          : Lux.fromISO(isoCandidate, { zone: zone || PH_ZONE });
 
         if (!dt.isValid) {
           return { date: booking.date, slot: normalized, label: normalized, zone };
         }
 
-        const local = dt.setZone(zone || VIEWER_ZONE);
+        const local = dt.setZone(zone || PH_ZONE);
         return {
           date: local.toISODate(),
           slot: local.toFormat('HH:mm'),
           label: local.toFormat('hh:mm a'),
-          zone: zone || VIEWER_ZONE
+          zone: zone || PH_ZONE
         };
       }
 
       // Intl fallback (no offset parsing beyond UTC strings)
-      const parts = utcToZoneParts(isoCandidate, zone || VIEWER_ZONE);
+      const parts = utcToZoneParts(isoCandidate, zone || PH_ZONE);
       if (parts) {
         return {
           date: parts.date,
           slot: parts.time,
           label: parts.time,
-          zone: zone || VIEWER_ZONE
+          zone: zone || PH_ZONE
         };
       }
 
@@ -1240,9 +1306,9 @@
           const Lux = window.luxon && window.luxon.DateTime;
           let isClassDurationPassed = false;
           if (Lux) {
-            const bookingDt = Lux.fromISO(`${timeInfo.date}T${timeInfo.slot || booking.time}`, { zone: timeInfo.zone || VIEWER_ZONE });
+            const bookingDt = Lux.fromISO(`${timeInfo.date}T${timeInfo.slot || booking.time}`, { zone: timeInfo.zone || PH_ZONE });
             const endDt = bookingDt.plus({ minutes: 25 });
-            const now = Lux.now().setZone(timeInfo.zone || VIEWER_ZONE);
+            const now = Lux.now().setZone(timeInfo.zone || PH_ZONE);
             isClassDurationPassed = endDt <= now;
             console.log(`⏰ Class end time: ${endDt.toISO()} (${timeInfo.zone}), Is past: ${isClassDurationPassed}`);
           } else {
@@ -1254,27 +1320,40 @@
             console.log(`⏰ Class end time: ${endTime.toLocaleString()}, Is past: ${isClassDurationPassed}`);
           }
           
-          if (isClassDurationPassed) {
-            // Check if feedback already exists for this booking
-            const existingFeedback = feedbackHistory.find(f => f.bookingId === booking._id);
-            console.log(`📝 Checking feedback for booking ${booking._id}:`, existingFeedback ? `Found ${existingFeedback.rating}-star feedback` : 'No feedback found');
-            
-            if (existingFeedback) {
-              // If feedback already submitted, show feedback status
+          const tf = booking.teacherFeedback;
+          const st = (booking.status && String(booking.status).toLowerCase()) || '';
+          const classFinished =
+            st === 'completed' ||
+            st === 'absent' ||
+            !!booking.finishedAt;
+
+          if (isClassDurationPassed || classFinished) {
+            const studentRatedTeacher = feedbackHistory.some(
+              (f) => String(f.bookingId) === getBookingIdString(booking)
+            );
+
+            if (tf && tf.rating) {
               slotElement.classList.add('past', 'feedback-submitted');
-              slotElement.textContent = `${existingFeedback.rating}★`;
-              slotElement.title = `Feedback submitted: ${existingFeedback.rating} stars`;
+              slotElement.textContent = `${tf.rating}★`;
+              slotElement.title = `Teacher gave you ${tf.rating} star(s) — open for details`;
+              if (!studentRatedTeacher) {
+                slotElement.title += '. Tap “Rate your teacher” in the class window if you haven’t yet.';
+              }
               slotElement.style.cursor = 'pointer';
-              slotElement.onclick = () => showPastBookingFeedback(booking);
-              console.log(`✅ Slot marked as feedback submitted: ${existingFeedback.rating}★`);
+              slotElement.onclick = () => showBookingInfo(booking);
+            } else if (classFinished) {
+              slotElement.classList.add('past', 'feedback-needed');
+              slotElement.textContent = '!';
+              slotElement.title =
+                'Teacher feedback isn’t ready yet — open for class details';
+              slotElement.style.cursor = 'pointer';
+              slotElement.onclick = () => showBookingInfo(booking);
             } else {
-              // If no feedback submitted, show as "Past" and allow feedback
               slotElement.classList.add('past', 'feedback-needed');
               slotElement.textContent = 'Past';
-              slotElement.title = 'Click to submit feedback';
+              slotElement.title = 'Class time has passed — open for details';
               slotElement.style.cursor = 'pointer';
-              slotElement.onclick = () => showPastBookingFeedback(booking);
-              console.log(`⚠️ Slot marked as feedback needed: Past`);
+              slotElement.onclick = () => showBookingInfo(booking);
             }
           } else {
             // If class duration hasn't passed, show as "Booked"
@@ -1322,9 +1401,9 @@
         const timeInfo = bookingDisplayDateTime(booking);
         let isClassDurationPassed = false;
         if (Lux) {
-          const bookingDt = Lux.fromISO(`${timeInfo.date}T${timeInfo.slot || booking.time}`, { zone: timeInfo.zone || VIEWER_ZONE });
+          const bookingDt = Lux.fromISO(`${timeInfo.date}T${timeInfo.slot || booking.time}`, { zone: timeInfo.zone || PH_ZONE });
           const endDt = bookingDt.plus({ minutes: 25 });
-          const now = Lux.now().setZone(timeInfo.zone || VIEWER_ZONE);
+          const now = Lux.now().setZone(timeInfo.zone || PH_ZONE);
           isClassDurationPassed = endDt <= now;
         } else {
           const now = new Date();
@@ -1334,8 +1413,10 @@
           isClassDurationPassed = now > endTime;
         }
         if (!isClassDurationPassed) return false;
-        const existingFeedback = feedbackHistory.find(f => f.bookingId === booking._id);
-        return !existingFeedback;
+        const studentRatedTeacher = feedbackHistory.some(
+          (f) => String(f.bookingId) === getBookingIdString(booking)
+        );
+        return !studentRatedTeacher;
       });
     }
 
@@ -1369,11 +1450,11 @@
     let currentBookingInfo = null;
     function showBookingInfo(booking) {
       currentBookingInfo = booking;
-      // Format date
-      const date = new Date(booking.date);
-      const formattedDate = date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-      document.getElementById('info-class-date').textContent = formattedDate;
-      document.getElementById('info-class-time').textContent = formatTime24Hour(booking.time);
+      const timeInfoModal = bookingDisplayDateTime(booking);
+      document.getElementById('info-class-date').textContent = TU.formatYmdAsPhilippinesLongDate
+        ? TU.formatYmdAsPhilippinesLongDate(timeInfoModal.date || booking.date)
+        : String(timeInfoModal.date || booking.date || '');
+      document.getElementById('info-class-time').textContent = formatTime24Hour(timeInfoModal.slot || booking.time);
       // Handle both old and new teacher data structures
       let teacherName = 'Unknown Teacher';
       if (booking.teacherId) {
@@ -1393,12 +1474,110 @@
       // Show/hide cancel button based on booking status and time
       const cancelRow = document.getElementById('cancel-booking-row');
       const cancelBtn = document.getElementById('cancel-booking-btn');
-      const classDateTime = new Date(`${booking.date}T${booking.time}:00`);
-      const now = new Date();
-      const isPastOrStarted = classDateTime <= now;
+      const LuxModal = window.luxon && window.luxon.DateTime;
+      let isPastOrStarted = false;
+      if (LuxModal) {
+        const u = booking.dateTimeUtc || booking.dateTimeUTC || booking.datetimeUtc;
+        if (u) {
+          const startU = LuxModal.fromISO(String(u), { zone: 'utc' });
+          if (startU.isValid) isPastOrStarted = startU <= LuxModal.now();
+        }
+        if (!isPastOrStarted && timeInfoModal.date && timeInfoModal.slot) {
+          const startL = LuxModal.fromISO(`${timeInfoModal.date}T${timeInfoModal.slot}`, { zone: PH_ZONE });
+          if (startL.isValid) isPastOrStarted = startL <= LuxModal.now();
+        }
+      } else {
+        const classDateTime = new Date(`${booking.date}T${booking.time}:00`);
+        isPastOrStarted = classDateTime <= new Date();
+      }
       const isCancelled = booking.status === 'cancelled';
       const joinBtn = document.getElementById('join-classroom-btn');
-      if (joinBtn) joinBtn.style.display = 'inline-block';
+      const feedbackSection = document.getElementById('info-teacher-feedback-section');
+      const starsEl = document.getElementById('info-teacher-stars');
+      const commentEl = document.getElementById('info-teacher-comment');
+      const pendingEl = document.getElementById('info-teacher-feedback-pending');
+      const rateRow = document.getElementById('rate-teacher-row');
+      const rateBtn = document.getElementById('open-rate-teacher-btn');
+
+      const stLower = (booking.status && String(booking.status).toLowerCase()) || '';
+      const classFinished =
+        stLower === 'completed' || stLower === 'absent' || !!booking.finishedAt;
+      const tf = booking.teacherFeedback;
+      const studentRatedTeacher = feedbackHistory.some(
+        (f) => String(f.bookingId) === getBookingIdString(booking)
+      );
+
+      if (feedbackSection && starsEl && commentEl && pendingEl) {
+        if (isPastOrStarted || classFinished) {
+          feedbackSection.style.display = 'block';
+          if (tf && tf.rating) {
+            starsEl.textContent = '★'.repeat(Math.min(5, Math.max(1, Number(tf.rating)))) + ' (' + tf.rating + '/5)';
+            starsEl.style.display = 'block';
+            commentEl.style.display = 'block';
+            commentEl.textContent = tf.comment
+              ? tf.comment
+              : 'Your teacher left a rating for this lesson.';
+            pendingEl.style.display = 'none';
+          } else {
+            starsEl.style.display = 'none';
+            commentEl.style.display = 'none';
+            pendingEl.style.display = 'block';
+            pendingEl.textContent = classFinished
+              ? 'Your teacher hasn’t submitted feedback for this class yet. Check back soon.'
+              : 'Feedback from your teacher will appear after the class is marked complete.';
+          }
+        } else {
+          feedbackSection.style.display = 'none';
+        }
+      }
+
+      if (rateRow && rateBtn) {
+        if ((isPastOrStarted || classFinished) && !studentRatedTeacher) {
+          rateRow.style.display = 'flex';
+          rateBtn.onclick = function () {
+            closeBookingInfo();
+            showPastBookingFeedback(booking);
+          };
+        } else {
+          rateRow.style.display = 'none';
+          rateBtn.onclick = null;
+        }
+      }
+
+      if (joinBtn) {
+        if (classFinished || isCancelled) {
+          joinBtn.style.display = 'none';
+          if (window.__studentJoinCountdownTimer) {
+            clearInterval(window.__studentJoinCountdownTimer);
+            window.__studentJoinCountdownTimer = null;
+          }
+        } else {
+          joinBtn.style.display = 'inline-block';
+          const patchJoin = () => {
+            if (!window.RemoedClassroomEntry) return;
+            const gate = window.RemoedClassroomEntry.getEntryGate(booking);
+            if (!gate.allowed && gate.code === 'TOO_EARLY') {
+              joinBtn.disabled = true;
+              joinBtn.style.opacity = '0.65';
+              joinBtn.title = 'You can enter starting 10 minutes before the scheduled start time.';
+              const left = gate.opensAtMs != null ? gate.opensAtMs - Date.now() : 0;
+              joinBtn.textContent = left > 0
+                ? `Opens in ${window.RemoedClassroomEntry.formatOpensIn(left)}`
+                : 'Enter Live Classroom';
+              return;
+            }
+            joinBtn.disabled = false;
+            joinBtn.style.opacity = '1';
+            joinBtn.title = '';
+            joinBtn.textContent = 'Enter Live Classroom';
+          };
+          patchJoin();
+          if (window.__studentJoinCountdownTimer) {
+            clearInterval(window.__studentJoinCountdownTimer);
+          }
+          window.__studentJoinCountdownTimer = setInterval(patchJoin, 1000);
+        }
+      }
       
       if (isCancelled || isPastOrStarted) {
         cancelRow.style.display = 'none';
@@ -1418,6 +1597,10 @@
       if (modal) {
         modal.classList.remove('show');
       }
+      if (window.__studentJoinCountdownTimer) {
+        clearInterval(window.__studentJoinCountdownTimer);
+        window.__studentJoinCountdownTimer = null;
+      }
       currentBookingInfo = null;
     }
     document.getElementById('close-booking-info-modal').onclick = closeBookingInfo;
@@ -1432,6 +1615,16 @@
         alert('No classroom ID set for this booking.');
         return;
       }
+      if (window.RemoedClassroomEntry) {
+        const gate = window.RemoedClassroomEntry.getEntryGate(currentBookingInfo);
+        if (!gate.allowed && gate.code === 'TOO_EARLY') {
+          const when = gate.opensAtMs != null
+            ? (TU.formatDateTimePhilippines ? TU.formatDateTimePhilippines(new Date(gate.opensAtMs)) : new Date(gate.opensAtMs).toLocaleString('en-PH', { timeZone: PH_ZONE }))
+            : 'the allowed time';
+          alert(`Class hasn’t opened yet. You can enter starting 10 minutes before the scheduled start (from ${when}).`);
+          return;
+        }
+      }
       const slotTime = currentBookingInfo.time || '';
       const roomUrl = `live-classroom.html?room=${classroomId}&type=student&bookingId=${currentBookingInfo._id}&slot=${encodeURIComponent(slotTime)}`;
       window.open(roomUrl, '_blank');
@@ -1441,20 +1634,35 @@
     document.getElementById('cancel-booking-btn').onclick = async function() {
       if (!currentBookingInfo) return;
       
-      // Check if class has already started
-      const classDateTime = new Date(`${currentBookingInfo.date}T${currentBookingInfo.time}:00`);
-      const now = new Date();
-      
-      if (classDateTime <= now) {
+      const tiCancel = bookingDisplayDateTime(currentBookingInfo);
+      const LuxC = window.luxon && window.luxon.DateTime;
+      let cancelStarted = false;
+      if (LuxC) {
+        const u = currentBookingInfo.dateTimeUtc || currentBookingInfo.dateTimeUTC || currentBookingInfo.datetimeUtc;
+        if (u) {
+          const startU = LuxC.fromISO(String(u), { zone: 'utc' });
+          if (startU.isValid) cancelStarted = startU <= LuxC.now();
+        }
+        if (!cancelStarted && tiCancel.date && tiCancel.slot) {
+          const startL = LuxC.fromISO(`${tiCancel.date}T${tiCancel.slot}`, { zone: PH_ZONE });
+          if (startL.isValid) cancelStarted = startL <= LuxC.now();
+        }
+      } else {
+        cancelStarted = new Date(`${currentBookingInfo.date}T${currentBookingInfo.time}:00`) <= new Date();
+      }
+
+      if (cancelStarted) {
         alert('Cannot cancel a class that has already started.');
         return;
       }
-      
-      // Confirmation dialog
+
+      const dateLine = TU.formatYmdAsPhilippinesLongDate
+        ? TU.formatYmdAsPhilippinesLongDate(tiCancel.date || currentBookingInfo.date)
+        : String(tiCancel.date || currentBookingInfo.date);
       const confirmed = confirm(
         `Are you sure you want to cancel this booking?\n\n` +
-        `Date: ${new Date(currentBookingInfo.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}\n` +
-        `Time: ${formatTime24Hour(currentBookingInfo.time)}\n\n` +
+        `Date: ${dateLine}\n` +
+        `Time: ${formatTime24Hour(tiCancel.slot || currentBookingInfo.time)}\n\n` +
         `This action cannot be undone.`
       );
       
@@ -1530,18 +1738,25 @@
       initializeWeeklyGrid();
     });
 
-    // Update week display
+    // Update week display (week boundaries in Philippine time)
     function updateWeekDisplay() {
-      const weekStart = new Date(currentWeek);
-      // Calculate Monday as the start of the week (Monday = 1, Sunday = 0)
-      const dayOfWeek = currentWeek.getDay();
-      const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // If Sunday, go back 6 days; if Monday, go back 0 days, etc.
-      weekStart.setDate(currentWeek.getDate() - daysToMonday);
-      const weekEnd = new Date(weekStart);
-      weekEnd.setDate(weekStart.getDate() + 6);
-      
       const display = document.getElementById('week-display');
-      display.textContent = `${weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+      const Lux = window.luxon && window.luxon.DateTime;
+      if (Lux) {
+        const base = Lux.fromJSDate(currentWeek, { zone: getDisplayZone() });
+        const mon = base.minus({ days: base.weekday - 1 });
+        const sun = mon.plus({ days: 6 });
+        display.textContent = `${mon.toFormat('MMM d')} - ${sun.toFormat('MMM d, yyyy')} (Philippine Time, PHT)`;
+      } else {
+        const weekStart = new Date(currentWeek);
+        const dayOfWeek = currentWeek.getDay();
+        const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+        weekStart.setDate(currentWeek.getDate() - daysToMonday);
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 6);
+        const pht = { timeZone: PH_ZONE };
+        display.textContent = `${weekStart.toLocaleDateString('en-US', Object.assign({ month: 'short', day: 'numeric' }, pht))} - ${weekEnd.toLocaleDateString('en-US', Object.assign({ month: 'short', day: 'numeric', year: 'numeric' }, pht))} (Philippine Time, PHT)`;
+      }
       
       // Allow navigation to previous weeks (remove the restriction)
       const prevBtn = document.getElementById('prev-week');

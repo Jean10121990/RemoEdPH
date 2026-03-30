@@ -5,11 +5,12 @@
     <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🎮 Play & Learn - RemoEdPH</title>
+    <title>Play & Learn - RemoEdPH</title>
     <link rel="stylesheet" href="modern-styles.css">
     <link rel="stylesheet" href="child-friendly-styles.css">
 <link rel="stylesheet" href="css/teacher-sidebar.css">
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/student-portal-layout.css">
 </head>
 <body  class="student-portal page-student-games-activities">
     <div class="remoed-main">
@@ -19,10 +20,7 @@
         <div class="remoed-content">
             <div class="games-container">
                 <div class="page-header">
-                    <h1 style="font-size: 2rem; font-weight: 800; color: #1CA7E7; text-shadow: none; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; justify-content: center;">
-                        <span>📚📶</span>
-                        <span>🎮 Play & Learn! 🎨</span>
-                    </h1>
+                    <h1 style="font-size: 2rem; font-weight: 800; color: #5a67d8; text-shadow: none; margin-bottom: 6px; text-align: center;">Play &amp; Learn</h1>
                     <p style="font-size: 1rem; color: #636E72; font-weight: 600;">Have fun while learning new things!</p>
                 </div>
 
@@ -390,9 +388,9 @@
                 document.querySelector('.game-content').innerHTML = `
                     <div style="text-align: center; padding: 40px;">
                         <div style="font-size: 2.6rem; margin-bottom: 12px;">Great work</div>
-                        <h2 style="color: #1CA7E7; font-size: 2rem; font-weight: 800; margin-bottom: 16px; text-shadow: 2px 2px 4px rgba(28, 167, 231, 0.2);">Amazing Job!</h2>
+                        <h2 style="color: #5a67d8; font-size: 2rem; font-weight: 800; margin-bottom: 16px; text-shadow: 2px 2px 4px rgba(90, 103, 216, 0.15);">Amazing Job!</h2>
                         <p style="font-size: 1.5rem; color: #1E3A5F; margin: 20px 0; font-weight: 600;">
-                            You got <strong style="color: #1CA7E7;">${readingScore}/${data.length}</strong> correct!
+                            You got <strong style="color: #5a67d8;">${readingScore}/${data.length}</strong> correct!
                         </p>
                         <div style="font-size: 2rem; margin: 20px 0; color: #FFD700; filter: drop-shadow(0 2px 4px rgba(255, 215, 0, 0.4));">
                             ${'⭐'.repeat(starsEarned)}
@@ -816,9 +814,9 @@
                 document.querySelector('.game-content').innerHTML = `
                     <div style="text-align: center; padding: 40px;">
                         <div style="font-size: 2.6rem; margin-bottom: 12px;">Great work</div>
-                        <h2 style="color: #1CA7E7; font-size: 2rem; font-weight: 800; margin-bottom: 16px; text-shadow: 2px 2px 4px rgba(28, 167, 231, 0.2);">Wonderful!</h2>
+                        <h2 style="color: #5a67d8; font-size: 2rem; font-weight: 800; margin-bottom: 16px; text-shadow: 2px 2px 4px rgba(90, 103, 216, 0.15);">Wonderful!</h2>
                         <p style="font-size: 1.5rem; color: #1E3A5F; margin: 20px 0; font-weight: 600;">
-                            You got <strong style="color: #1CA7E7;">${listeningScore}/${data.length}</strong> correct!
+                            You got <strong style="color: #5a67d8;">${listeningScore}/${data.length}</strong> correct!
                         </p>
                         <div style="font-size: 2rem; margin: 20px 0; color: #FFD700; filter: drop-shadow(0 2px 4px rgba(255, 215, 0, 0.4));">
                             ${'⭐'.repeat(starsEarned)}

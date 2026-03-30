@@ -75,13 +75,6 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="batch-select">Batch</label>
-                    <select id="batch-select" onchange="onBatchChange()" disabled>
-                        <option value="">-- All batches --</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
                     <label for="lesson-select">Select Lesson</label>
                     <select id="lesson-select" onchange="loadLessonFiles()" disabled>
                         <option value="">-- Select a lesson --</option>
@@ -148,6 +141,7 @@
         </div>
     </div>
 
+    <script src="timezone-utils.js"></script>
     <script>
         let selectedFiles = [];
         let currentLessonId = null;
@@ -191,57 +185,27 @@
             }
         }
 
-        function extractBatchLabel(lesson) {
-            const title = String(lesson?.title || '');
-            const m = title.match(/batch\s*(\d+)/i);
-            return m ? `Batch ${m[1]}` : 'General';
-        }
-
-        function populateBatchOptions(lessons) {
-            const batchSelect = document.getElementById('batch-select');
-            const seen = new Set();
-            const labels = [];
-            lessons.forEach((lesson) => {
-                const label = extractBatchLabel(lesson);
-                if (!seen.has(label)) {
-                    seen.add(label);
-                    labels.push(label);
-                }
-            });
-            batchSelect.innerHTML = '<option value="">-- All batches --</option>';
-            labels.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-            labels.forEach((label) => {
-                const option = document.createElement('option');
-                option.value = label;
-                option.textContent = label;
-                batchSelect.appendChild(option);
-            });
-            batchSelect.disabled = false;
-        }
-
-        function populateLessonsForBatch() {
+        function populateLessonSelect() {
             const lessonSelect = document.getElementById('lesson-select');
-            const selectedBatch = document.getElementById('batch-select').value;
-            const filtered = selectedBatch
-                ? currentLessonsCache.filter((lesson) => extractBatchLabel(lesson) === selectedBatch)
-                : currentLessonsCache.slice();
             lessonSelect.disabled = false;
             lessonSelect.innerHTML = '<option value="">-- Select a lesson --</option>';
-            filtered.forEach((lesson) => {
+            const sorted = currentLessonsCache.slice().sort((a, b) => {
+                const na = Number(a.lessonNumber) || 0;
+                const nb = Number(b.lessonNumber) || 0;
+                if (na !== nb) return na - nb;
+                return formatLessonLabel(a).localeCompare(formatLessonLabel(b));
+            });
+            sorted.forEach((lesson) => {
                 const option = document.createElement('option');
                 option.value = lesson._id;
                 option.textContent = formatLessonLabel(lesson);
                 option.dataset.lesson = JSON.stringify(lesson);
                 lessonSelect.appendChild(option);
             });
-            if (!filtered.length) {
-                lessonSelect.innerHTML = '<option value="">-- No lessons in selected batch --</option>';
+            if (!sorted.length) {
+                lessonSelect.innerHTML = '<option value="">-- No lessons in this curriculum --</option>';
+                lessonSelect.disabled = true;
             }
-        }
-
-        function onBatchChange() {
-            populateLessonsForBatch();
-            loadLessonFiles();
         }
 
         function closeEditCurriculumForm() {
@@ -430,8 +394,6 @@
             const uploadSection = document.getElementById('upload-section');
             
             if (!curriculumId) {
-                document.getElementById('batch-select').disabled = true;
-                document.getElementById('batch-select').innerHTML = '<option value="">-- All batches --</option>';
                 lessonSelect.disabled = true;
                 lessonSelect.innerHTML = '<option value="">-- Select a lesson --</option>';
                 lessonInfo.style.display = 'none';
@@ -451,8 +413,7 @@
                 if (!response.ok) throw new Error('Failed to load lessons');
                 const lessons = await response.json();
                 currentLessonsCache = Array.isArray(lessons) ? lessons : [];
-                populateBatchOptions(currentLessonsCache);
-                populateLessonsForBatch();
+                populateLessonSelect();
             } catch (error) {
                 showAlert('error', 'Failed to load lessons: ' + error.message);
             }
@@ -522,7 +483,7 @@
                         </div>
                         <div class="file-details">
                             <div class="file-name">${file.fileName}</div>
-                            <div class="file-meta">${file.fileType} • ${formatFileSize(file.fileSize)} • ${new Date(file.uploadedAt).toLocaleDateString()}</div>
+                            <div class="file-meta">${file.fileType} • ${formatFileSize(file.fileSize)} • ${window.TimezoneUtils && window.TimezoneUtils.formatDateShortPhilippines ? window.TimezoneUtils.formatDateShortPhilippines(new Date(file.uploadedAt)) : new Date(file.uploadedAt).toLocaleDateString()}</div>
                         </div>
                     </div>
                     <div class="file-actions">

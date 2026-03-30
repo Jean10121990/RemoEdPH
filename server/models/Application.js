@@ -40,6 +40,15 @@ const applicationSchema = new mongoose.Schema(
       type: Date,
       default: null
     },
+    failedAt: {
+      type: Date,
+      default: null
+    },
+    /** After a failed screening, applicant may submit again only on or after this date (typically failedAt + 3 months). */
+    reapplyEligibleAt: {
+      type: Date,
+      default: null
+    },
     hiredAt: {
       type: Date,
       default: null

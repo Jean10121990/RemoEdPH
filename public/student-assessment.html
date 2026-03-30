@@ -10,6 +10,84 @@
     <link rel="stylesheet" href="child-friendly-styles.css">
 <link rel="stylesheet" href="css/teacher-sidebar.css">
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/student-portal-layout.css">
+    <style>
+      .post-assessment-modal {
+        position: fixed;
+        inset: 0;
+        z-index: 10000;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        box-sizing: border-box;
+        background: rgba(90, 103, 216, 0.35);
+        backdrop-filter: blur(6px);
+      }
+      .post-assessment-modal.is-open { display: flex; }
+      .post-assessment-modal__card {
+        max-width: 440px;
+        width: 100%;
+        background: #fff;
+        border-radius: 24px;
+        padding: 28px 26px 24px;
+        box-shadow: 0 28px 60px rgba(90, 103, 216, 0.18);
+        border: 1px solid rgba(90, 103, 216, 0.2);
+        text-align: center;
+        color: #334155;
+      }
+      .post-assessment-modal__card h2 {
+        margin: 0 0 10px;
+        font-size: 1.45rem;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+      }
+      .post-assessment-modal__hook {
+        font-size: 1.05rem;
+        line-height: 1.55;
+        margin: 0 0 16px;
+        color: #334155;
+      }
+      .post-assessment-modal__score {
+        background: linear-gradient(135deg, #eef6ff, #e8faf8);
+        border-radius: 16px;
+        padding: 14px;
+        margin-bottom: 20px;
+        font-size: 1rem;
+      }
+      .post-assessment-modal__score strong {
+        color: var(--remoed-brand-blue);
+        font-size: 1.75rem;
+      }
+      .post-assessment-modal__actions {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .post-assessment-modal__actions button {
+        width: 100%;
+        border: none;
+        border-radius: 999px;
+        padding: 14px 18px;
+        font-size: 1rem;
+        font-weight: 700;
+        cursor: pointer;
+        font-family: inherit;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+      }
+      .post-assessment-modal__actions button:active { transform: scale(0.98); }
+      .pam-btn-primary {
+        background: linear-gradient(135deg, var(--remoed-brand-blue), var(--remoed-brand-blue-soft));
+        color: #fff;
+        box-shadow: 0 10px 24px rgba(90, 103, 216, 0.35);
+        border: 2px solid rgba(250, 214, 72, 0.85);
+      }
+      .pam-btn-secondary {
+        background: #fff;
+        color: var(--remoed-brand-blue);
+        border: 2px solid rgba(90, 103, 216, 0.45);
+      }
+    </style>
 </head>
 <body  class="student-portal page-student-assessment">
     <div class="remoed-main">
@@ -32,7 +110,7 @@
                             It helps us understand your English level so we can give you the best learning experience!
                         </p>
                         
-                        <h2 style="margin-top: 32px;">✨ What to Expect:</h2>
+                        <h2>✨ What to Expect:</h2>
                         <ul>
                             <li>Fun and colorful questions designed for young learners</li>
                             <li>Pictures and simple words you'll recognize</li>
@@ -68,6 +146,18 @@
                         <button class="action-btn dashboard-btn" onclick="goToDashboard()">🏠 Go to Dashboard</button>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="post-assessment-modal" class="post-assessment-modal" role="dialog" aria-modal="true" aria-labelledby="pam-title" aria-hidden="true">
+        <div class="post-assessment-modal__card">
+            <h2 id="pam-title">Congratulations! 🎉</h2>
+            <p id="pam-hook" class="post-assessment-modal__hook"></p>
+            <div id="pam-score" class="post-assessment-modal__score"></div>
+            <div class="post-assessment-modal__actions">
+                <button type="button" class="pam-btn-primary" id="pam-btn-register">Save My Results &amp; Register</button>
+                <button type="button" class="pam-btn-secondary" id="pam-btn-plans">Enroll in a Plan Now</button>
             </div>
         </div>
     </div>
@@ -200,6 +290,12 @@
         let isGuestAssessment = false;
         let guestAssessmentData = null;
 
+        function isLoggedInStudent() {
+            var ut = localStorage.getItem('userType');
+            var tok = localStorage.getItem('token') || localStorage.getItem('studentToken');
+            return ut === 'student' && !!tok;
+        }
+
         document.addEventListener('DOMContentLoaded', async function() {
             const urlParams = new URLSearchParams(window.location.search);
             const prefillToken = urlParams.get('p');
@@ -256,6 +352,15 @@
                 } catch (e) { /* ignore */ }
             }
 
+            // Signed-in students are never "guest" for results UI (avoids stale sessionStorage from a prior guest visit)
+            if (isLoggedInStudent()) {
+                isGuestAssessment = false;
+                guestAssessmentData = null;
+                try {
+                    sessionStorage.removeItem(GUEST_PREFILL_STORAGE_KEY);
+                } catch (e) { /* ignore */ }
+            }
+
             if (isGuestAssessment && guestAssessmentData) {
                 var sb = document.getElementById('student-sidebar-root');
                 if (sb) sb.style.display = 'none';
@@ -269,7 +374,7 @@
                     var guestMsg = document.createElement('div');
                     guestMsg.style.cssText = 'background: #FFF3CD; border: 2px solid #FFD700; padding: 16px; border-radius: 12px; margin-bottom: 24px; text-align: center;';
                     var safe = escapeHtml(guestAssessmentData.childName);
-                    guestMsg.innerHTML = '<strong>👋 Welcome ' + safe + '!</strong> Complete the assessment to receive your results via email. You\'ll need to sign up after to view your results online.';
+                    guestMsg.innerHTML = '<strong>👋 Welcome ' + safe + '!</strong> Complete the assessment to see your level on the next screen. After that, you can choose a learning plan and enroll.';
                     introScreen.insertBefore(guestMsg, introScreen.firstChild);
                 }
                 return;
@@ -476,11 +581,86 @@
                 };
             }
             
-            // Save result to profile (optional - can be implemented with backend)
+            if (isGuestAssessment && guestAssessmentData) {
+                submitGuestAssessmentWithModal(cefrLevel, cefrBadge, description, score, correctAnswers);
+                return;
+            }
+
             saveAssessmentResult(cefrLevel, score);
-            
-            // Show results
             showResults(cefrLevel, cefrBadge, description, score, correctAnswers);
+        }
+
+        function recommendedPlanLabel(level) {
+            if (level === 'A2') return 'RemoSteady or RemoScholar';
+            return 'RemoSpark';
+        }
+
+        function openPostAssessmentModal(level, badge, description, score, correct, trialToken) {
+            try {
+                localStorage.removeItem('remoedAssessmentInProgress');
+                sessionStorage.removeItem(GUEST_PREFILL_STORAGE_KEY);
+            } catch (e) { /* ignore */ }
+
+            const modal = document.getElementById('post-assessment-modal');
+            const childName = (guestAssessmentData && guestAssessmentData.childName) ? escapeHtml(guestAssessmentData.childName) : 'Learner';
+            const planHint = recommendedPlanLabel(level);
+            document.getElementById('pam-title').textContent = 'Congratulations, ' + (guestAssessmentData && guestAssessmentData.childName ? guestAssessmentData.childName : 'friend') + '! 🎉';
+            document.getElementById('pam-hook').innerHTML =
+                '<strong>Your Level is: ' + escapeHtml(level) + '</strong> — ' + escapeHtml(badge) +
+                '! You are ready for <strong>' + escapeHtml(planHint) + '</strong>. ' +
+                escapeHtml(description.text);
+            document.getElementById('pam-score').innerHTML =
+                '<div>' + escapeHtml(description.title) + '</div>' +
+                '<div style="margin-top:8px;">You got <strong>' + correct + '</strong> out of <strong>' + totalQuestions + '</strong> correct — ' +
+                '<strong>' + score + '%</strong></div>';
+
+            const baseReg = window.location.origin || '';
+            const emailQ = guestAssessmentData ? encodeURIComponent(guestAssessmentData.parentEmail) : '';
+            const levelQ = encodeURIComponent(level);
+            const scoreQ = encodeURIComponent(String(score));
+            let registerUrl = baseReg + '/student-register.html?cefrLevel=' + levelQ + '&score=' + scoreQ;
+            if (emailQ) registerUrl += '&email=' + emailQ;
+            if (trialToken) registerUrl += '&trial=' + encodeURIComponent(trialToken);
+
+            const plansUrl = baseReg + '/index.html?email=' + emailQ + '&cefrLevel=' + levelQ + '&score=' + scoreQ + '#plans';
+
+            document.getElementById('pam-btn-register').onclick = function () {
+                window.location.href = registerUrl;
+            };
+            document.getElementById('pam-btn-plans').onclick = function () {
+                window.location.href = plansUrl;
+            };
+
+            document.getElementById('questions-container').style.display = 'none';
+            document.getElementById('results-container').classList.remove('active');
+            modal.classList.add('is-open');
+            modal.setAttribute('aria-hidden', 'false');
+        }
+
+        async function submitGuestAssessmentWithModal(level, badge, description, score, correct) {
+            let trialToken = '';
+            try {
+                const emailResponse = await fetch('/api/student/send-assessment-email', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: guestAssessmentData.parentEmail,
+                        childName: guestAssessmentData.childName,
+                        parentEmail: guestAssessmentData.parentEmail,
+                        contactNumber: guestAssessmentData.contactNumber,
+                        cefrLevel: level,
+                        score: score
+                    })
+                });
+                const emailResult = await emailResponse.json().catch(function () { return {}; });
+                if (emailResult.trialToken) trialToken = emailResult.trialToken;
+                if (emailResult.success || emailResult.fallback) {
+                    console.log('✅ Assessment email / trial token ready');
+                }
+            } catch (err) {
+                console.error('Guest assessment email error', err);
+            }
+            openPostAssessmentModal(level, badge, description, score, correct, trialToken);
         }
 
         function showResults(level, badge, description, score, correct) {
@@ -491,75 +671,17 @@
             document.getElementById('cefr-badge').textContent = badge;
             document.getElementById('score-display').innerHTML = `
                 <strong>You got ${correct} out of ${totalQuestions} questions correct!</strong><br>
-                <span style="font-size: 2rem; color: #1CA7E7; font-weight: 800;">${score}%</span>
+                <span class="assessment-score-pct" style="font-size: 2rem; font-weight: 800;">${score}%</span>
             `;
             
             document.getElementById('level-description').innerHTML = `
                 <h3>${description.title}</h3>
                 <p>${description.text}</p>
-                ${isGuestAssessment ? '<p style="margin-top: 20px; padding: 16px; background: #FFF3CD; border: 2px solid #FFD700; border-radius: 12px;"><strong>📧 Your results have been sent to your email!</strong><br>Sign up now to access your results online and start learning!</p>' : ''}
             `;
-            
-            // Update action buttons for guest users
-            if (isGuestAssessment) {
-                const actionButtons = document.querySelector('.action-buttons');
-                if (actionButtons) {
-                    actionButtons.innerHTML = `
-                        <button class="action-btn retake-btn" onclick="retakeAssessment()">🔄 Take Again</button>
-                        <button class="action-btn dashboard-btn" onclick="goToSignup()">✨ Sign Up Now</button>
-                    `;
-                }
-                
-                // Auto-redirect to sign-up after 5 seconds
-                setTimeout(() => {
-                    goToSignup();
-                }, 5000);
-            }
-        }
-        
-        function goToSignup() {
-            if (guestAssessmentData) {
-                const level = document.getElementById('cefr-level').textContent.replace('Level ', '');
-                const scoreMatch = document.getElementById('score-display').textContent.match(/\d+/);
-                const score = scoreMatch ? scoreMatch[0] : '0';
-                window.location.href = `index.html?email=${encodeURIComponent(guestAssessmentData.parentEmail)}&cefrLevel=${encodeURIComponent(level)}&score=${encodeURIComponent(score)}&signup=true`;
-            } else {
-                window.location.href = 'index.html?signup=true';
-            }
         }
 
         async function saveAssessmentResult(level, score) {
             try {
-                // If guest assessment, save to temporary storage and send email
-                if (isGuestAssessment && guestAssessmentData) {
-                    console.log('Guest assessment - sending email with results');
-                    
-                    const emailResponse = await fetch('/api/student/send-assessment-email', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            email: guestAssessmentData.parentEmail,
-                            childName: guestAssessmentData.childName,
-                            parentEmail: guestAssessmentData.parentEmail,
-                            contactNumber: guestAssessmentData.contactNumber,
-                            cefrLevel: level,
-                            score: score
-                        })
-                    });
-                    
-                    const emailResult = await emailResponse.json();
-                    if (emailResult.success || emailResult.fallback) {
-                        console.log('✅ Assessment results sent via email');
-                        // Automatically redirect to home page with sign-up
-                        setTimeout(() => {
-                            window.location.href = `/?email=${encodeURIComponent(guestAssessmentData.parentEmail)}&cefrLevel=${level}&score=${score}&signup=true`;
-                        }, 3000);
-                    }
-                    return;
-                }
-                
                 // Regular logged-in user assessment
                 const token = localStorage.getItem('token');
                 if (!token) {
@@ -601,6 +723,11 @@
         }
 
         function retakeAssessment() {
+            var pam = document.getElementById('post-assessment-modal');
+            if (pam) {
+                pam.classList.remove('is-open');
+                pam.setAttribute('aria-hidden', 'true');
+            }
             document.getElementById('results-container').classList.remove('active');
             document.getElementById('intro-screen').style.display = 'block';
             currentQuestion = 0;

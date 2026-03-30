@@ -45,6 +45,7 @@
         </div>
     </div>
     
+    <script src="timezone-utils.js"></script>
     <script>
         // Setup sidebar navigation links
         function setupSidebarNavigation() {
@@ -309,13 +310,12 @@
                         <div class="breakdown-header">${title} (${items.length})</div>
                         <div class="breakdown-list">
                             ${items.map(item => {
-                                const date = new Date(item.date);
-                                const dateStr = date.toLocaleDateString('en-US', { 
-                                    weekday: 'short', 
-                                    year: 'numeric', 
-                                    month: 'short', 
-                                    day: 'numeric' 
-                                });
+                                const ymd = String(item.date || '').split('T')[0];
+                                const date = ymd ? new Date(ymd + 'T12:00:00+08:00') : new Date(item.date);
+                                const TU = window.TimezoneUtils || {};
+                                const dateStr = TU.formatDateShortPhilippines
+                                    ? TU.formatDateShortPhilippines(date)
+                                    : date.toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
                                 return `
                                     <div class="breakdown-item">
                                         <div>

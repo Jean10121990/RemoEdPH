@@ -199,8 +199,26 @@
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/luxon@3.5.0/build/global/luxon.min.js"></script>
+  <script src="timezone-utils.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script>
+    const RemoedSchedTZ = window.TimezoneUtils || {};
+    const scheduleViewZone = RemoedSchedTZ.REMOED_ANCHOR_ZONE || RemoedSchedTZ.REMOED_DISPLAY_ZONE || 'Asia/Manila';
+    const SCHED_PAGE_FIRST_HOUR = RemoedSchedTZ.REMOED_OPERATING_START_HOUR != null ? RemoedSchedTZ.REMOED_OPERATING_START_HOUR : 6;
+    const SCHED_PAGE_END_HOUR_EXC = RemoedSchedTZ.REMOED_OPERATING_END_HOUR_EXCLUSIVE != null ? RemoedSchedTZ.REMOED_OPERATING_END_HOUR_EXCLUSIVE : 24;
+
+    function initTeacherSchedulePhilippineTimeNote() {
+      if (document.getElementById('teacher-schedule-pht-note')) return;
+      const hc = document.querySelector('.page-teacher-schedule .header-controls');
+      if (!hc) return;
+      const p = document.createElement('p');
+      p.id = 'teacher-schedule-pht-note';
+      p.style.cssText = 'margin:8px 0 0;width:100%;font-size:0.78rem;color:#475569;font-weight:600;';
+      p.textContent = 'All times are Philippine Time (PHT, Asia/Manila, UTC+8).';
+      hc.appendChild(p);
+    }
+
     // Role-based access control
     const userType = localStorage.getItem('userType');
     if (userType !== 'teacher') {
@@ -256,7 +274,7 @@
     // Generate day headers
     function generateDayHeaders() {
       const { DateTime } = luxon;
-      const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+      const timeZone = getScheduleTimeZone();
       const dayHeadersRow = document.getElementById('day-headers-row');
 
       // Clear existing day headers, but keep the 'Time' th
@@ -280,7 +298,7 @@
     }
 
     function getScheduleTimeZone() {
-      return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+      return scheduleViewZone;
     }
 
     /** Match booking to grid: prefer API local fields, else convert UTC instant to local calendar + time */
@@ -327,7 +345,7 @@
       return `<div class="slot-booked-inner"><strong>${esc(statusLabel)}</strong><div class="slot-student">${esc(studentName)}</div>${lesson}</div>`;
     }
 
-    // Generate time slots (30-minute intervals from 01:00 to 24:00) - 24-hour format
+    // Generate time slots: 06:00–23:30 local (aligned region), 30-minute steps
     function generateTimeSlots() {
       const gridBody = document.getElementById('time-slots-grid');
       gridBody.innerHTML = '';
@@ -339,8 +357,8 @@
       const baseWeek = DateTime.fromJSDate(currentWeek, { zone: timeZone });
       const monday = baseWeek.minus({ days: baseWeek.weekday - 1 });
       
-      const startHour = 1;
-      const endHour = 24;
+      const startHour = SCHED_PAGE_FIRST_HOUR;
+      const endHour = SCHED_PAGE_END_HOUR_EXC;
       
       for (let hour = startHour; hour < endHour; hour++) {
         for (let minute = 0; minute < 60; minute += 30) {
@@ -1213,25 +1231,19 @@
       initializeWeeklyGrid();
     });
 
-    // Update week display
+    // Update week display (selected aligned zone)
     function updateWeekDisplay() {
-      const weekStart = new Date(currentWeek);
-      // Calculate Monday as the start of the week (Monday = 1, Sunday = 0)
-      const dayOfWeek = currentWeek.getDay();
-      const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // If Sunday, go back 6 days; if Monday, go back 0 days, etc.
-      weekStart.setDate(currentWeek.getDate() - daysToMonday);
-      const weekEnd = new Date(weekStart);
-      weekEnd.setDate(weekStart.getDate() + 6);
-      
       const display = document.getElementById('week-display');
-      display.textContent = `${weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
-      
-      // Allow navigation to previous weeks (remove the restriction)
+      const { DateTime } = luxon;
+      const base = DateTime.fromJSDate(currentWeek, { zone: getScheduleTimeZone() });
+      const mon = base.minus({ days: base.weekday - 1 });
+      const sun = mon.plus({ days: 6 });
+      display.textContent = `${mon.toFormat('MMM d')} - ${sun.toFormat('MMM d, yyyy')} (Philippine Time, PHT)`;
+
       const prevBtn = document.getElementById('prev-week');
-      prevBtn.disabled = false; // Always allow previous week navigation
-      
-      // Add debug info to console
-      console.log('Current week display:', currentWeek.toISOString(), weekStart.toISOString(), weekEnd.toISOString());
+      prevBtn.disabled = false;
+
+      console.log('Current week display:', currentWeek.toISOString(), display.textContent);
     }
 
     // Class Info Modal Functions
@@ -1240,14 +1252,9 @@
     function showClassInfo(booking) {
       currentBooking = booking;
       
-      // Format date
-      const date = new Date(booking.date);
-      const formattedDate = date.toLocaleDateString('en-US', { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
-      });
+      const formattedDate = RemoedSchedTZ.formatYmdAsPhilippinesLongDate
+        ? RemoedSchedTZ.formatYmdAsPhilippinesLongDate(booking.date)
+        : new Date(booking.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
       
       // Populate modal with booking data
       document.getElementById('class-date').textContent = formattedDate;
@@ -1459,6 +1466,7 @@
       slotsData = [];
       bookingsData = [];
       
+      initTeacherSchedulePhilippineTimeNote();
       updateWeekDisplay();
       initializeWeeklyGrid();
       

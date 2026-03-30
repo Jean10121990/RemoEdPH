@@ -84,6 +84,7 @@
         <span>Connecting to classroom...</span>
     </div>
 
+    <script src="timezone-utils.js"></script>
     <script>
         // Get URL parameters
         const urlParams = new URLSearchParams(window.location.search);
@@ -134,10 +135,33 @@
                     const data = await response.json();
                     
                     if (!data.accessAllowed) {
-                        console.log('⏰ Class time access denied');
+                        console.log('⏰ Class time access denied', data);
+                        if (data.tooEarly && data.opensAt) {
+                            showNotification('Class opens 10 minutes before start time.', 'info');
+                            const opens = new Date(data.opensAt);
+                            const tick = () => {
+                                const left = opens.getTime() - Date.now();
+                                const sub = document.getElementById('waiting-early-sub');
+                                if (sub) {
+                                    sub.textContent = left > 0
+                                      ? `You can enter in ${Math.ceil(left / 1000)} seconds.`
+                                      : 'You can refresh this page or continue to the classroom.';
+                                }
+                            };
+                            document.querySelector('.waiting-container').innerHTML = `
+                                <div class="waiting-icon">⏳</div>
+                                <h1 class="waiting-title">Class hasn’t started yet</h1>
+                                <p id="waiting-early-sub" class="waiting-subtitle">Entry opens 10 minutes before your scheduled class.</p>
+                                <div class="action-buttons">
+                                    <a href="/student-dashboard.html" class="btn btn-secondary">Back to Dashboard</a>
+                                </div>
+                            `;
+                            tick();
+                            setInterval(tick, 1000);
+                            return;
+                        }
                         showNotification('Class time has expired or not started yet', 'error');
                         
-                        // Show class expired message
                         document.querySelector('.waiting-container').innerHTML = `
                             <div class="waiting-icon">⏰</div>
                             <h1 class="waiting-title">Class Time Expired</h1>
@@ -174,7 +198,9 @@
                 if (response.ok) {
                     const booking = await response.json();
                     
-                    document.getElementById('class-date').textContent = new Date(booking.date).toLocaleDateString();
+                    document.getElementById('class-date').textContent = window.TimezoneUtils && window.TimezoneUtils.formatYmdAsPhilippinesLongDate
+                        ? window.TimezoneUtils.formatYmdAsPhilippinesLongDate(booking.date)
+                        : new Date(booking.date).toLocaleDateString();
                     document.getElementById('class-time').textContent = booking.time;
                     document.getElementById('class-info').style.display = 'block';
                     

@@ -5,7 +5,11 @@ const PendingRegistration = require('./models/PendingRegistration');
 const PaymongoWebhookEvent = require('./models/PaymongoWebhookEvent');
 
 const router = express.Router();
-const { PLAN_CREDITS, normalizePlanId } = require('./config/planCredits');
+const {
+  PLAN_CREDITS,
+  normalizePlanId,
+  getPlanDurationMonths,
+} = require('./config/planCredits');
 
 /** True if any idempotency key is already stored on the student (PayMongo retries / alternate ids). */
 function paymongoKeysOverlap(processedIds, keys) {
@@ -88,29 +92,8 @@ function extractCheckoutSessionContext(payload) {
 function computeSubscriptionDates(plan) {
   const startDate = new Date();
   const endDate = new Date(startDate);
-
-  switch (String(plan || '').toLowerCase()) {
-    case 'spark':
-    case '1month':
-      endDate.setDate(endDate.getDate() + 22);
-      break;
-    case 'steady':
-    case '3months':
-      endDate.setDate(endDate.getDate() + 66);
-      break;
-    case 'scholar':
-    case '6months':
-      endDate.setDate(endDate.getDate() + 132);
-      break;
-    case 'summit':
-    case '1year':
-      endDate.setDate(endDate.getDate() + 246);
-      break;
-    default:
-      endDate.setDate(endDate.getDate() + 22);
-      break;
-  }
-
+  const months = getPlanDurationMonths(plan);
+  endDate.setMonth(endDate.getMonth() + months);
   return { startDate, endDate };
 }
 
@@ -412,7 +395,9 @@ async function handlePaymongoWebhook(req, res) {
             subscriptionStatus: 'active',
             subscriptionPlan: normalizedPlanId || existing.subscriptionPlan || pending.plan,
             subscriptionStartDate: startDate,
-            subscriptionEndDate: endDate
+            subscriptionEndDate: endDate,
+            accountStatus: 'active_subscriber',
+            isSubscribed: true,
           },
           $inc: {
             creditBalance: creditsToAdd,
@@ -509,7 +494,9 @@ async function handlePaymongoWebhook(req, res) {
       paymentStatus: 'paid',
       paymentMethod: 'paymongo',
       paymentReference: paymongoPaymentId || idempotencyKey,
-      paymentPaidAt: new Date()
+      paymentPaidAt: new Date(),
+      accountStatus: 'active_subscriber',
+      isSubscribed: true,
     });
 
     try {

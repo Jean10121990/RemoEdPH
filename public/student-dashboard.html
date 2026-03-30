@@ -9,7 +9,10 @@
     <link rel="stylesheet" href="modern-styles.css">
     <link rel="stylesheet" href="child-friendly-styles.css">
 <link rel="stylesheet" href="css/teacher-sidebar.css">
+    <script src="timezone-utils.js"></script>
+    <script src="js/classroom-entry.js"></script>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/student-portal-layout.css">
 </head>
   <body  class="student-portal page-student-dashboard">
     <!-- Main Layout: Sidebar + Content -->
@@ -17,8 +20,8 @@
         <!-- Navigation Header -->
         <div class="nav-header">
             <div class="nav-left">
-                <h1 style="margin: 0; font-size: 1.4rem; font-weight: 700; color: #1CA7E7; display: flex; align-items: center; gap: 8px;">
-                    <span>🎮 My Learning Adventure</span>
+                <h1 style="margin: 0; font-size: 1.4rem; font-weight: 700; color: #5a67d8; display: flex; align-items: center; gap: 8px;">
+                    <span>My Learning Adventure</span>
                 </h1>
             </div>
             <div style="display: flex; align-items: center; gap: 12px;"></div>
@@ -40,10 +43,10 @@
                         <div class="nav-dropdown-header">
                             <span>Notifications</span>
                             <div style="display: flex; gap: 8px;">
-                                <button onclick="markAllNotificationsAsRead()" style="background: none; border: none; cursor: pointer; color: #667eea; font-size: 0.8rem; padding: 4px 8px; border-radius: 4px; transition: background 0.2s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
+                                <button onclick="markAllNotificationsAsRead()" style="background: none; border: none; cursor: pointer; color: #5a67d8; font-size: 0.8rem; padding: 4px 8px; border-radius: 4px; transition: background 0.2s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
                                     Mark All Read
                                 </button>
-                                <button onclick="refreshNotifications()" style="background: none; border: none; cursor: pointer; color: #667eea;">
+                                <button onclick="refreshNotifications()" style="background: none; border: none; cursor: pointer; color: #5a67d8;">
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                                         <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
                                     </svg>
@@ -78,9 +81,74 @@
         <script src="js/student-sidebar.js"></script>
         <script>StudentSidebar.render('student-sidebar-root', 'dashboard');</script>
         <div class="remoed-content" style="position: relative; z-index: 2; overflow-y: auto; overflow-x: visible;">
-            
+            <style>
+                @keyframes paywallPulseDash { 0%, 100% { box-shadow: 0 12px 40px rgba(13,148,136,0.12); } 50% { box-shadow: 0 18px 48px rgba(13,148,136,0.28); } }
+                .paywall--pulse .subscription-paywall-card { animation: paywallPulseDash 1s ease-in-out 2; }
+                #welcome-tour-overlay { display: none; position: fixed; inset: 0; z-index: 10000; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; }
+                #welcome-tour-overlay.is-open { display: flex; }
+                .welcome-tour-backdrop { position: absolute; inset: 0; background: rgba(41,37,36,0.35); backdrop-filter: blur(2px); }
+                #welcome-tour-card { position: relative; z-index: 1; max-width: 480px; width: 100%; padding: 28px 26px; background: #fdfcfa; border: 1px solid rgba(120,113,108,0.22); border-radius: 18px; box-shadow: 0 20px 50px rgba(0,0,0,0.12); color: #44403c; }
+                #welcome-tour-card h3 { margin: 0 0 12px; font-size: 1.28rem; font-weight: 700; color: #292524; letter-spacing: -0.02em; }
+                #welcome-tour-card p { margin: 0; line-height: 1.6; font-size: 0.95rem; color: #57534e; }
+                #welcome-tour-desc { white-space: pre-line; }
+                .welcome-tour-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; margin-top: 22px; }
+                .welcome-tour-actions button { padding: 10px 18px; border-radius: 999px; font-weight: 600; font-size: 0.9rem; cursor: pointer; border: 1px solid #d6d3d1; background: #fafaf9; color: #44403c; }
+                .welcome-tour-actions button.primary { background: linear-gradient(135deg, #0d9488, #115e59); color: #fff; border-color: rgba(250, 214, 72, 0.55); }
+                .tour-nav-pulse { outline: 2px solid rgba(13,148,136,0.85); outline-offset: 4px; border-radius: 10px; transition: outline 0.3s ease; }
+            </style>
+            <div id="welcome-tour-overlay" aria-hidden="true">
+                <div class="welcome-tour-backdrop" id="welcome-tour-backdrop"></div>
+                <div id="welcome-tour-card" role="dialog" aria-labelledby="welcome-tour-title" aria-describedby="welcome-tour-desc">
+                    <p id="welcome-tour-step" style="margin:0 0 6px; font-size:0.7rem; letter-spacing:0.12em; text-transform:uppercase; color:#78716c;"></p>
+                    <h3 id="welcome-tour-title"></h3>
+                    <p id="welcome-tour-desc"></p>
+                    <div class="welcome-tour-actions">
+                        <button type="button" id="welcome-tour-skip">Skip tour</button>
+                        <button type="button" class="primary" id="welcome-tour-next">Next</button>
+                    </div>
+                </div>
+            </div>
+            <div id="welcome-trial-toast" style="display: none; margin: 0 0 14px 0; padding: 14px 18px; border-radius: 14px; background: rgba(13,148,136,0.08); border: 1px solid rgba(13,148,136,0.28); color: #134e4a; font-size: 0.95rem; line-height: 1.55; box-shadow: 0 4px 14px rgba(13,148,136,0.08);">
+                <strong>Welcome to RemoEd!</strong> You have <strong>1 free trial class</strong> available. Let’s schedule it now!
+            </div>
+            <div id="subscription-paywall-overlay" style="display: none; position: absolute; inset: 0; z-index: 100; align-items: center; justify-content: center; padding: 24px; background: rgba(250,248,245,0.97); box-sizing: border-box;">
+                <div class="subscription-paywall-card" style="max-width: 440px; width: 100%; padding: 36px 32px; background: #fdfcfa; border: 1px solid rgba(120,113,108,0.2); border-radius: 20px; box-shadow: 0 12px 40px rgba(41,37,36,0.08); text-align: center;">
+                    <p style="margin: 0 0 8px; font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase; color: #78716c;">Trial complete</p>
+                    <h2 style="margin: 0 0 16px; font-size: 1.45rem; font-weight: 700; color: #292524; letter-spacing: -0.02em;">Continue your journey</h2>
+                    <p style="margin: 0 0 20px; line-height: 1.65; color: #57534e; font-size: 0.98rem;">You’ve completed your first lesson! Read your teacher’s feedback and enroll in a plan to continue to Lesson&nbsp;2.</p>
+                    <div id="paywall-lesson2-teaser" style="margin: 0 0 24px; padding: 14px 16px; background: rgba(13,148,136,0.06); border-radius: 12px; border: 1px solid rgba(13,148,136,0.2); text-align: left; font-size: 0.9rem; color: #44403c; line-height: 1.55;"></div>
+                    <div style="display: flex; flex-direction: column; gap: 12px; align-items: center;">
+                        <a href="student-booking-history.html" style="display: inline-block; width: 100%; max-width: 280px; padding: 12px 24px; background: #fafaf9; color: #292524; font-weight: 700; border-radius: 999px; text-decoration: none; border: 1px solid #d6d3d1;">View feedback &amp; classes</a>
+                        <a href="index.html#plans" style="display: inline-block; width: 100%; max-width: 280px; padding: 14px 32px; background: linear-gradient(135deg, #0d9488, #115e59); color: #fff; font-weight: 700; border-radius: 999px; text-decoration: none; border: 2px solid rgba(250, 214, 72, 0.65);">Choose learning plan</a>
+                    </div>
+                </div>
+            </div>
+            <div id="free-lesson-cta" style="display: none; margin: 0 0 18px 0;">
+                <a href="student-book.html" style="display: flex; align-items: center; justify-content: center; gap: 10px; padding: 16px 24px; background: linear-gradient(135deg, #f5f2eb 0%, #ecfeff 100%); border: 1px solid rgba(13,148,136,0.35); border-radius: 16px; text-decoration: none; color: #134e4a; font-weight: 800; font-size: 1.05rem; box-shadow: 0 4px 18px rgba(13,148,136,0.12);">
+                    Book My Free Trial
+                </a>
+            </div>
+            <div id="trial-completed-banner" style="display: none; margin: 0 0 16px 0; padding: 14px 18px; border-radius: 12px; background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%); border: 1px solid #a5b4fc; color: #312e81; box-shadow: 0 2px 8px rgba(99,102,241,0.12);">
+                <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;">
+                    <p style="margin: 0; flex: 1; min-width: 220px; line-height: 1.5; font-size: 0.95rem;">
+                        You've finished your free trial! Ready to keep learning? <strong>Subscribe now</strong> to enroll in a full plan and book your next session.
+                    </p>
+                    <div style="display: flex; align-items: center; gap: 10px; flex-shrink: 0;">
+                        <a id="trial-banner-plans-btn" href="index.html#plans" style="display: inline-block; padding: 10px 20px; background: #6366f1; color: #fff; font-weight: 700; border-radius: 10px; text-decoration: none;">View Plans</a>
+                        <button type="button" id="trial-banner-dismiss" style="padding: 8px 12px; background: transparent; border: 1px solid #6366f1; color: #4338ca; border-radius: 8px; cursor: pointer; font-size: 0.85rem;">Dismiss</button>
+                    </div>
+                </div>
+            </div>
+            <div id="post-assessment-enroll-banner" style="display: none; margin: 0 0 16px 0; padding: 14px 18px; border-radius: 16px; background: linear-gradient(135deg, #f0fdf9 0%, #ecfeff 100%); border: 1px solid rgba(20, 184, 166, 0.35); color: #134e4a; box-shadow: 0 2px 10px rgba(20, 184, 166, 0.12);">
+                <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;">
+                    <p id="post-assessment-enroll-text" style="margin: 0; flex: 1; min-width: 220px; line-height: 1.55; font-size: 0.95rem;">
+                        Great job on your assessment! You're ready to start. <strong>Enroll in a plan today</strong> to book your first tutor session.
+                    </p>
+                    <a id="post-assessment-enroll-cta" href="index.html#plans" style="display: inline-block; padding: 10px 22px; background: linear-gradient(135deg, #1d9bf0, #14b8a6); color: #fff; font-weight: 700; border-radius: 999px; text-decoration: none; border: 2px solid rgba(250, 214, 72, 0.75); flex-shrink: 0;">View Learning Plans</a>
+                </div>
+            </div>
             <!-- Primary Charts Grid (Total Classes & Completed Classes) -->
-            <div class="charts-grid">
+            <div class="charts-grid" id="charts-grid-tour">
                 <!-- Total Classes Booked Chart -->
                 <div class="chart-card primary">
                     <div class="chart-header">
@@ -207,7 +275,7 @@
                     <!-- Community & Social Responsibility -->
                     <div class="remoed-section" id="community-responsibility">
                         <div class="remoed-section-title" style="display: flex; align-items: center; gap: 10px;">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="color: #667eea;">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="color: #5a67d8;">
                                 <path d="M12 12c2.21 0 4-1.79 4-4S14.21 4 12 4 8 5.79 8 8s1.79 4 4 4zm0 2c-3.33 0-8 1.67-8 5v1h16v-1c0-3.33-4.67-5-8-5z"/>
                             </svg>
                             Community & Social Responsibility
@@ -261,7 +329,7 @@
                     <!-- Announcements -->
                     <div class="remoed-section">
                         <div class="remoed-section-title" style="display: flex; align-items: center; gap: 10px;">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="color: #667eea;">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="color: #5a67d8;">
                                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
                             </svg>
                             Announcements and Updates
@@ -285,6 +353,201 @@
     }
     
         document.addEventListener('DOMContentLoaded', function() {
+            const token = localStorage.getItem('token');
+            const trialBanner = document.getElementById('trial-completed-banner');
+            function profileIsSubscribed(p) {
+                return p.isSubscribed === true || (p.paymentStatus === 'paid' && p.subscriptionStatus === 'active');
+            }
+            function lesson2TeaserText(p) {
+                var lvl = (p && p.cefrLevel) ? String(p.cefrLevel).trim() : '';
+                if (lvl) {
+                    return '<strong>What\'s next</strong> — In Lesson 2, you’ll go deeper with guided practice at <strong>' + lvl + '</strong>: conversation, vocabulary, and confidence with your tutor.';
+                }
+                return '<strong>What\'s next</strong> — In Lesson 2, you’ll build fluency with guided conversation, new vocabulary, and personalized feedback from your tutor.';
+            }
+
+            function clearTourHighlights() {
+                var cg = document.getElementById('charts-grid-tour');
+                if (cg) cg.classList.remove('tour-nav-pulse');
+                var root = document.getElementById('student-sidebar-root');
+                if (root) {
+                    var li = root.querySelector('li[data-nav="games"]');
+                    if (li) li.classList.remove('tour-nav-pulse');
+                }
+            }
+
+            function runWelcomeTourIfNeeded(profile) {
+                if (!profile || profile.hasSeenWelcomeTour === true) {
+                    try { sessionStorage.removeItem('remoedShowWelcomeTour'); } catch (e) {}
+                    return;
+                }
+
+                var overlay = document.getElementById('welcome-tour-overlay');
+                var stepEl = document.getElementById('welcome-tour-step');
+                var titleEl = document.getElementById('welcome-tour-title');
+                var descEl = document.getElementById('welcome-tour-desc');
+                var nextBtn = document.getElementById('welcome-tour-next');
+                var skipBtn = document.getElementById('welcome-tour-skip');
+                if (!overlay || !stepEl || !titleEl || !descEl || !nextBtn || !skipBtn) return;
+
+                var steps = [
+                    {
+                        title: 'Welcome — join the fun!',
+                        desc: 'Welcome to your RemoEdPH Student Portal.\n\nWe’re glad you’re here. RemoEd makes it easy to learn with real tutors, see how you’re growing, and play quick learning games between classes.\n\nThis short tour highlights a few spots on your dashboard. When you finish, tap the purple “Student guide” button in the bottom-right anytime for a full walkthrough of the menu—book classes and your free trial, check your schedule, open the Videos tab during live class, see your level and credits, and update your profile.'
+                    },
+                    {
+                        title: 'Progress tracking',
+                        desc: 'Your class stats and completed lessons show up here so you (and your parents) can see how you’re growing.',
+                        onEnter: function () {
+                            var cg = document.getElementById('charts-grid-tour');
+                            if (cg) {
+                                cg.classList.add('tour-nav-pulse');
+                                cg.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
+                        }
+                    },
+                    {
+                        title: 'Learning games',
+                        desc: 'When you need a break, open Play & Learn in the sidebar for quick, fun practice.',
+                        onEnter: function () {
+                            var root = document.getElementById('student-sidebar-root');
+                            if (root) {
+                                var li = root.querySelector('li[data-nav="games"]');
+                                if (li) {
+                                    li.classList.add('tour-nav-pulse');
+                                    li.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                                }
+                            }
+                        }
+                    },
+                    {
+                        title: 'Your free trial class',
+                        desc: 'You have a complimentary lesson ready. Book it from the big button below, or anytime from Book a Class in the menu.',
+                        onEnter: function () {
+                            var cta = document.getElementById('free-lesson-cta');
+                            if (cta && cta.style.display !== 'none') {
+                                cta.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
+                        }
+                    }
+                ];
+                var idx = 0;
+
+                function showStep(i) {
+                    clearTourHighlights();
+                    var st = steps[i];
+                    stepEl.textContent = 'Step ' + (i + 1) + ' of ' + steps.length;
+                    titleEl.textContent = st.title;
+                    descEl.textContent = st.desc;
+                    nextBtn.textContent = i === steps.length - 1 ? 'Got it!' : 'Next';
+                    if (typeof st.onEnter === 'function') st.onEnter();
+                }
+
+                function closeTourFinal() {
+                    overlay.classList.remove('is-open');
+                    overlay.setAttribute('aria-hidden', 'true');
+                    clearTourHighlights();
+                    try {
+                        sessionStorage.removeItem('remoedShowWelcomeTour');
+                    } catch (e) {}
+                    fetch('/api/student/welcome-tour/dismiss', {
+                        method: 'POST',
+                        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
+                    }).catch(function () {});
+                }
+
+                overlay.classList.add('is-open');
+                overlay.setAttribute('aria-hidden', 'false');
+                showStep(0);
+
+                nextBtn.onclick = function () {
+                    idx += 1;
+                    if (idx >= steps.length) {
+                        closeTourFinal();
+                        return;
+                    }
+                    showStep(idx);
+                };
+                skipBtn.onclick = closeTourFinal;
+                document.getElementById('welcome-tour-backdrop').onclick = closeTourFinal;
+            }
+
+            if (token && trialBanner) {
+                fetch('/api/student/profile', { headers: { 'Authorization': 'Bearer ' + token } })
+                    .then(function (r) { return r.ok ? r.json() : null; })
+                    .then(function (data) {
+                        if (!data || !data.profile) return;
+                        var acct = data.profile.accountStatus || 'standard';
+                        var sub = profileIsSubscribed(data.profile);
+                        try {
+                            localStorage.setItem('studentAccountStatus', acct);
+                            localStorage.setItem('studentHasFreeTrial', data.profile.hasFreeTrial ? '1' : '0');
+                            localStorage.setItem('studentIsSubscribed', sub ? '1' : '0');
+                            localStorage.setItem('studentPaymentStatus', data.profile.paymentStatus || 'unpaid');
+                            localStorage.setItem('studentSubscriptionStatus', data.profile.subscriptionStatus || 'pending');
+                        } catch (e) {}
+
+                        var paywall = document.getElementById('subscription-paywall-overlay');
+                        var freeCta = document.getElementById('free-lesson-cta');
+                        var teaserEl = document.getElementById('paywall-lesson2-teaser');
+                        if (acct === 'trial_completed' && !sub) {
+                            if (trialBanner) trialBanner.style.display = 'none';
+                            if (freeCta) freeCta.style.display = 'none';
+                            var toastEl = document.getElementById('welcome-trial-toast');
+                            if (toastEl) toastEl.style.display = 'none';
+                            if (paywall) {
+                                if (teaserEl) teaserEl.innerHTML = lesson2TeaserText(data.profile);
+                                paywall.style.display = 'flex';
+                                try {
+                                    if (sessionStorage.getItem('remoedTrialPaywallGate') === '1') {
+                                        paywall.classList.add('paywall--pulse');
+                                        sessionStorage.removeItem('remoedTrialPaywallGate');
+                                        setTimeout(function () { paywall.classList.remove('paywall--pulse'); }, 2200);
+                                    }
+                                } catch (e) {}
+                            }
+                            try {
+                                var sroot = document.getElementById('student-sidebar-root');
+                                if (window.StudentSidebar && typeof window.StudentSidebar.refreshBookNavItem === 'function' && sroot) {
+                                    window.StudentSidebar.refreshBookNavItem(sroot);
+                                }
+                            } catch (e) {}
+                            return;
+                        }
+
+                        if (freeCta && data.profile.hasFreeTrial === true && acct !== 'trial_completed' && !sub) {
+                            freeCta.style.display = 'block';
+                            var toastA = document.getElementById('welcome-trial-toast');
+                            if (toastA) toastA.style.display = 'block';
+                        }
+
+                        runWelcomeTourIfNeeded(data.profile);
+
+                        var enrollBanner = document.getElementById('post-assessment-enroll-banner');
+                        var enrollText = document.getElementById('post-assessment-enroll-text');
+                        var enrollCta = document.getElementById('post-assessment-enroll-cta');
+                        if (enrollBanner && enrollText && enrollCta && acct !== 'trial_completed') {
+                            var hasAsm = !!(data.profile.cefrLevel || data.profile.assessmentScore != null);
+                            if (hasAsm && !sub && data.profile.hasFreeTrial === true) {
+                                enrollBanner.style.display = 'none';
+                            } else if (hasAsm && !sub && data.profile.hasFreeTrial !== true) {
+                                // No free trial credit: plans are the entry point.
+                                enrollBanner.style.display = 'block';
+                                enrollText.innerHTML = 'Great job on your assessment! You\'re ready to start. <strong>Enroll in a plan today</strong> to book your first tutor session.';
+                                enrollCta.href = 'index.html#plans';
+                                enrollCta.textContent = 'View Learning Plans';
+                            }
+                        }
+                    }).catch(function () {});
+                var dismissBtn = document.getElementById('trial-banner-dismiss');
+                if (dismissBtn) {
+                    dismissBtn.addEventListener('click', function () {
+                        trialBanner.style.display = 'none';
+                        try { sessionStorage.setItem('trialBannerDismissed', '1'); } catch (e) {}
+                    });
+                }
+            }
+
             const username = localStorage.getItem('remoedUsername');
             const studentId = localStorage.getItem('studentId');
             
@@ -329,7 +592,7 @@
           const html = list.map(a => `
             <div style='background:#fafdff;border-radius:8px;padding:14px 18px;margin-bottom:10px;'>
               <div style='font-weight:500;white-space:pre-line;'>${a.content}</div>
-              <div style='font-size:0.97rem;color:#888;margin-top:4px;'>${a.updatedAt ? new Date(a.updatedAt).toLocaleString() : ''}</div>
+              <div style='font-size:0.97rem;color:#888;margin-top:4px;'>${a.updatedAt && window.TimezoneUtils && window.TimezoneUtils.formatDateTimePhilippines ? window.TimezoneUtils.formatDateTimePhilippines(new Date(a.updatedAt)) : (a.updatedAt ? new Date(a.updatedAt).toLocaleString() : '')}</div>
             </div>
           `).join('');
           listDivs.forEach((listDiv) => { listDiv.innerHTML = html; });
@@ -477,14 +740,14 @@
                   <div style="font-size: 0.9rem;">${n.message}</div>
                   <div style="font-size: 0.8rem; color: #666;">${time}</div>
                 </div>
-                ${!n.read ? '<span style="background: #667eea; color: white; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem;">New</span>' : ''}
+                ${!n.read ? '<span style="background: #5a67d8; color: white; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem;">New</span>' : ''}
               </div>
             </div>`;
           }).join('');
           
           // Add "View All" option if there are more notifications
           if (data.notifications.length > 10) {
-            notificationsHTML += `<div class="nav-dropdown-item" style="text-align: center; color: #667eea; font-weight: 500; border-top: 1px solid #e2e8f0; margin-top: 8px; padding-top: 12px; cursor: pointer;" onclick="viewAllNotifications()">
+            notificationsHTML += `<div class="nav-dropdown-item" style="text-align: center; color: #5a67d8; font-weight: 500; border-top: 1px solid #e2e8f0; margin-top: 8px; padding-top: 12px; cursor: pointer;" onclick="viewAllNotifications()">
                 View All ${data.notifications.length} Notifications
             </div>`;
           }
@@ -527,20 +790,22 @@
           dropdownContent.innerHTML = '<div class="nav-dropdown-item">No upcoming classes</div>';
         } else {
           const upcoming = data.classes.slice(0, 5);
+          const TU = window.TimezoneUtils || {};
+          const todayPh = TU.formatYmdPhilippines ? TU.formatYmdPhilippines(new Date()) : '';
+          const tomorrowPh = todayPh && TU.addDaysYmdPhilippines ? TU.addDaysYmdPhilippines(todayPh, 1) : '';
           dropdownContent.innerHTML = upcoming.map(classItem => {
-            const classDate = new Date(`${classItem.date}T${classItem.time}`);
-            const now = new Date();
-            const isToday = classItem.date === now.toISOString().split('T')[0];
-            const isTomorrow = classItem.date === new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-            
+            const isToday = todayPh && classItem.date === todayPh;
+            const isTomorrow = tomorrowPh && classItem.date === tomorrowPh;
             let timeDisplay;
             if (isToday) {
               timeDisplay = `Today, ${classItem.time}`;
             } else if (isTomorrow) {
               timeDisplay = `Tomorrow, ${classItem.time}`;
             } else {
-              const options = { weekday: 'short', month: 'short', day: 'numeric' };
-              timeDisplay = `${classDate.toLocaleDateString('en-US', options)}, ${classItem.time}`;
+              const shortD = TU.formatDateShortPhilippines
+                ? TU.formatDateShortPhilippines(new Date(classItem.date + 'T12:00:00+08:00'))
+                : new Date(classItem.date + 'T12:00:00+08:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+              timeDisplay = `${shortD}, ${classItem.time}`;
             }
             
             return `<div class="nav-dropdown-item">
@@ -549,8 +814,8 @@
                   <div style="font-size: 0.9rem; font-weight: 500;">${timeDisplay}</div>
                   <div style="font-size: 0.8rem; color: #666;">${classItem.teacherName || 'Unknown Teacher'}</div>
                 </div>
-                <button onclick="window.location.href='live-classroom.html?room=${classItem.classroomId}&type=student&bookingId=${classItem._id}'" 
-                        style="background: #667eea; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; cursor: pointer;">
+                <button onclick="RemoedClassroomEntry.hrefIfAllowed('live-classroom.html?room=${classItem.classroomId}&type=student&bookingId=${classItem._id}', { date: '${classItem.date}', time: '${classItem.time}', scheduledStartTime: '${classItem.scheduledStartTime || ''}', dateTimeUtc: '${classItem.dateTimeUtc || ''}' })" 
+                        style="background: #5a67d8; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; cursor: pointer;">
                   Join
                 </button>
               </div>
@@ -730,14 +995,16 @@
           notificationsList.innerHTML = '<div style="text-align: center; color: #666; padding: 40px;">No notifications found</div>';
         } else {
           const notificationsHTML = data.notifications.map((n, index) => {
-            const time = n.createdAt ? new Date(n.createdAt).toLocaleString('en-US', { 
+            const time = n.createdAt && window.TimezoneUtils && window.TimezoneUtils.formatDateTimePhilippines
+              ? window.TimezoneUtils.formatDateTimePhilippines(new Date(n.createdAt))
+              : (n.createdAt ? new Date(n.createdAt).toLocaleString('en-US', { 
               year: 'numeric',
               month: 'short',
               day: 'numeric',
               hour: '2-digit', 
               minute: '2-digit',
               hour12: true 
-            }) : '';
+            }) : '');
             
             const readClass = n.read ? 'read' : '';
             
@@ -748,7 +1015,7 @@
                   <div style="font-size: 0.9rem;">${n.message}</div>
                   <div style="font-size: 0.8rem; color: #666;">${time}</div>
                 </div>
-                ${!n.read ? '<span style="background: #667eea; color: white; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem;">New</span>' : ''}
+                ${!n.read ? '<span style="background: #5a67d8; color: white; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem;">New</span>' : ''}
               </div>
             </div>`;
           }).join('');
@@ -854,11 +1121,11 @@
               <li class="upcoming-class-item">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                   <div>
-                    <div style="font-weight: 600; color: #1ca7e7;">${classItem.date} at ${classItem.time}</div>
+                    <div style="font-weight: 600; color: #5a67d8;">${classItem.date} at ${classItem.time}</div>
                     <div style="font-size: 0.9rem; color: #666;">Teacher: ${classItem.teacherName}</div>
                   </div>
-                  <button onclick="window.location.href='live-classroom.html?room=${classItem.classroomId}&type=student&bookingId=${classItem._id}'" 
-                          style="background: #667eea; color: white; border: none; border-radius: 4px; padding: 4px 8px; font-size: 0.8rem; cursor: pointer;">Join</button>
+                  <button onclick="RemoedClassroomEntry.hrefIfAllowed('live-classroom.html?room=${classItem.classroomId}&type=student&bookingId=${classItem._id}', { date: '${classItem.date}', time: '${classItem.time}', scheduledStartTime: '${classItem.scheduledStartTime || ''}', dateTimeUtc: '${classItem.dateTimeUtc || ''}' })" 
+                          style="background: #5a67d8; color: white; border: none; border-radius: 4px; padding: 4px 8px; font-size: 0.8rem; cursor: pointer;">Join</button>
                 </div>
               </li>
             `).join('');
@@ -911,11 +1178,11 @@
                 <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
                   <div style="font-weight: 600; color: #dc2626;">Reschedule Available</div>
                   <div style="font-size: 0.8rem; color: #666;">
-                    Expires: ${new Date(issue.rescheduleDeadline).toLocaleString()}
+                    Expires: ${window.TimezoneUtils && window.TimezoneUtils.formatDateTimePhilippines ? window.TimezoneUtils.formatDateTimePhilippines(new Date(issue.rescheduleDeadline)) : new Date(issue.rescheduleDeadline).toLocaleString()}
                   </div>
                 </div>
                 <div style="font-size: 0.9rem; color: #374151; margin-bottom: 12px;">
-                  Your class with ${issue.teacherName} on ${new Date(issue.booking?.date).toLocaleDateString()} at ${issue.booking?.time} 
+                  Your class with ${issue.teacherName} on ${window.TimezoneUtils && window.TimezoneUtils.formatYmdAsPhilippinesLongDate && issue.booking?.date ? window.TimezoneUtils.formatYmdAsPhilippinesLongDate(issue.booking.date) : (issue.booking?.date ? new Date(issue.booking.date).toLocaleDateString() : '')} at ${issue.booking?.time} 
                   can be rescheduled due to teacher technical issues.
                 </div>
                 <div style="display: flex; gap: 8px;">
@@ -979,6 +1246,8 @@
       loadRescheduleNotifications();
     });
   </script>
+  <script src="js/portal-tour.js"></script>
+  <script src="js/student-tour.js"></script>
   <script src="avatar-helper.js"></script>
 </body>
 </html> 

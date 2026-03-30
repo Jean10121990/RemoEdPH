@@ -5,6 +5,8 @@
     <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="js/admin-standalone-redirect.js"></script>
+    <script src="js/admin-embed-init.js"></script>
     <title>Teacher Assessments - RemoEdPH Admin</title>
     <link rel="stylesheet" href="modern-styles.css">
     <link rel="stylesheet" href="css/teacher-sidebar.css">
@@ -15,7 +17,7 @@
         <div id="admin-sidebar-root"></div>
         <script src="js/admin-session.js"></script>
         <script src="js/admin-sidebar.js"></script>
-        <script>AdminSidebar.render('admin-sidebar-root', 'teacher-assessments');</script>
+        <script>if (!window.__ADMIN_EMBED__) { AdminSidebar.render('admin-sidebar-root', 'teacher-assessments'); }</script>
         <div class="remoed-content">
             <div class="remoed-section">
                 <div class="remoed-section-title">Teacher Assessment Submissions</div>

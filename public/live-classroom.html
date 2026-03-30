@@ -88,6 +88,7 @@
       <div class="tabs">
         <button class="active" data-tab="lesson-content">Lesson Content</button>
         <button data-tab="whiteboard">Whiteboard</button>
+        <button data-tab="videos">Videos</button>
       </div>
       
       <!-- Lesson Content Tab -->
@@ -126,6 +127,11 @@
         <div class="whiteboard-container">
           <canvas id="whiteboard-canvas" class="whiteboard-canvas"></canvas>
         </div>
+      </div>
+
+      <div class="panel-content" id="videos-panel" style="display:none; flex-direction:column; padding:12px; overflow:auto;">
+        <p style="color:#64748b; font-size:0.9rem; margin:0 0 12px;">School library videos. Students open this tab during live class.</p>
+        <div id="portal-videos-list"></div>
       </div>
       
       <!-- Lessons Tab removed - moved to admin side -->
@@ -216,6 +222,16 @@
     </div>
   </div>
 
+  <div id="classroom-entry-blocked-overlay" style="display:none; position:fixed; inset:0; z-index:100000; background:rgba(15,23,42,0.92); flex-direction:column; align-items:center; justify-content:center; padding:24px; text-align:center;">
+    <div style="max-width:420px; background:#fff; border-radius:16px; padding:28px; box-shadow:0 25px 50px rgba(0,0,0,0.25);">
+      <div style="font-size:2rem; margin-bottom:12px;">⏳</div>
+      <h1 id="classroom-entry-blocked-message" style="margin:0 0 12px; font-size:1.25rem; color:#0f172a;">Class hasn’t started yet</h1>
+      <p id="classroom-entry-blocked-sub" style="margin:0 0 16px; color:#64748b; font-size:0.95rem; line-height:1.5;"></p>
+      <p id="classroom-entry-countdown" style="margin:0 0 20px; font-size:1.1rem; font-weight:600; color:#1ca7e7;"></p>
+      <button type="button" onclick="window.location.href= (localStorage.getItem('userType')==='teacher') ? 'teacher-class-table.html' : 'student-class-table.html'" style="padding:10px 20px; border:none; border-radius:8px; background:#64748b; color:#fff; font-weight:600; cursor:pointer;">Back to schedule</button>
+    </div>
+  </div>
+
   <!-- Upload Lesson Files Modal -->
   <div id="upload-files-modal-overlay" style="position:fixed; inset:0; background:rgba(15,23,42,0.45); display:none; align-items:center; justify-content:center; z-index:9000;">
     <div style="background:#ffffff; border-radius:12px; padding:20px 24px; width:90%; max-width:500px; box-shadow:0 24px 55px rgba(15,23,42,0.35); max-height:90vh; overflow-y:auto;">
@@ -236,6 +252,7 @@
       <div id="upload-progress" style="display:none; margin-top:12px; padding:8px; background:#f0f9ff; border-radius:6px; font-size:0.85rem; color:#0369a1;"></div>
     </div>
   </div>
+    <script src="js/classroom-entry.js"></script>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script src="js/classroom-qa-recording.js" defer></script>
     <script>
@@ -368,6 +385,78 @@
         storedUserType: localStorage.getItem('userType')
       });
 
+      const entryCheckPromise = (async function loadEntryGate() {
+        try {
+          if (!window.RemoedClassroomEntry) return { allowed: true, reason: 'no_script' };
+          const bid = getQueryParam('bookingId') || getQueryParam('bookingid');
+          if (!bid || room === 'default-room') return { allowed: true };
+          const token = localStorage.getItem('token');
+          const headers = token ? { Authorization: 'Bearer ' + token } : {};
+          let booking = null;
+          const r1 = await fetch('/api/student/booking/' + encodeURIComponent(bid), { headers });
+          if (r1.ok) {
+            const d = await r1.json();
+            booking = d.booking || d;
+          }
+          if (!booking && room !== 'default-room') {
+            const r2 = await fetch('/api/teacher/booking/by-classroom/' + encodeURIComponent(room), { headers });
+            if (r2.ok) {
+              const d2 = await r2.json();
+              booking = d2.booking || d2;
+            }
+          }
+          if (!booking) return { allowed: true };
+          const gate = window.RemoedClassroomEntry.getEntryGate(booking);
+          if (gate.opensAtMs == null && gate.scheduledStartMs != null) {
+            gate.opensAtMs = gate.scheduledStartMs - window.RemoedClassroomEntry.EARLY_MIN * 60 * 1000;
+          }
+          return gate;
+        } catch (e) {
+          console.warn('entry gate prefetch:', e);
+          return { allowed: true };
+        }
+      })();
+
+      function showClassroomEntryBlocked(gate) {
+        const el = document.getElementById('classroom-entry-blocked-overlay');
+        if (!el) return;
+        const sub = document.getElementById('classroom-entry-blocked-sub');
+        if (sub) {
+          sub.textContent = (gate && gate.message) ? gate.message : 'You can join starting 10 minutes before the scheduled start time.';
+        }
+        el.style.display = 'flex';
+        let opensMs = gate && gate.opensAtMs;
+        if (opensMs == null && gate && gate.opensAt) opensMs = new Date(gate.opensAt).getTime();
+        const tick = () => {
+          const t = document.getElementById('classroom-entry-countdown');
+          if (!t || opensMs == null || !Number.isFinite(opensMs)) return;
+          const left = opensMs - Date.now();
+          if (left <= 0) {
+            t.textContent = 'You can refresh this page to enter the classroom.';
+            return;
+          }
+          t.textContent = 'Opens in: ' + window.RemoedClassroomEntry.formatOpensIn(left);
+        };
+        tick();
+        setInterval(tick, 1000);
+      }
+
+      async function emitSocketJoin() {
+        const gate = await entryCheckPromise;
+        if (!gate.allowed && gate.code === 'TOO_EARLY') {
+          showClassroomEntryBlocked(gate);
+          return false;
+        }
+        socket.emit('join', { room, userType, userId, username });
+        return true;
+      }
+
+      socket.on('entry-denied', (data) => {
+        const g = { allowed: false, code: data && data.code, message: data && data.message };
+        if (data && data.opensAt) g.opensAtMs = new Date(data.opensAt).getTime();
+        showClassroomEntryBlocked(g);
+      });
+
       // For QA lesson recording (classroom-qa-recording.js): teacher auto-start + Finish finalization
       window.__liveClassroomUserType = userType;
 
@@ -394,6 +483,9 @@
       const tabs = document.querySelectorAll('.tabs button');
       const lessonContentPanel = document.getElementById('lesson-content-panel');
       const whiteboardPanel = document.getElementById('whiteboard-panel');
+      const portalVideosPanel = document.getElementById('videos-panel');
+      const portalVideosListEl = document.getElementById('portal-videos-list');
+      let portalVideosLoaded = false;
       // Lessons tab removed - moved to admin side
       // Lesson file select dropdown removed - lesson loads automatically from booking
       const lessonFileViewer = document.getElementById('lesson-file-viewer');
@@ -454,6 +546,56 @@
 
       // Lessons panel references (already defined above)
 
+      function escapePortalVid(s) {
+        if (s == null) return '';
+        return String(s)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;');
+      }
+      function escapePortalVidAttr(s) {
+        return escapePortalVid(s).replace(/"/g, '&quot;');
+      }
+
+      function loadPortalVideosIfNeeded() {
+        if (!portalVideosListEl) return;
+        if (portalVideosLoaded) return;
+        const token = localStorage.getItem('token');
+        if (!token) {
+          portalVideosListEl.innerHTML = '<p style="color:#94a3b8;">Sign in to view videos.</p>';
+          return;
+        }
+        const apiUrl = userType === 'teacher' ? '/api/teacher/portal-videos' : '/api/student/portal-videos';
+        portalVideosListEl.innerHTML = '<p style="color:#94a3b8;">Loading videos…</p>';
+        fetch(apiUrl, { headers: { Authorization: 'Bearer ' + token } })
+          .then((r) => r.json())
+          .then((data) => {
+            if (!data.success) {
+              portalVideosListEl.innerHTML = '<p style="color:#e11d48;">Could not load videos.</p>';
+              return;
+            }
+            portalVideosLoaded = true;
+            const list = data.videos || [];
+            if (!list.length) {
+              portalVideosListEl.innerHTML = '<p style="color:#94a3b8;">No videos yet.</p>';
+              return;
+            }
+            portalVideosListEl.innerHTML = list.map((v) => {
+              const src = v.url || '';
+              return (
+                '<div class="portal-video-card" style="margin-bottom:16px;padding:12px;background:#fff;border-radius:8px;border:1px solid #e2e8f0;">' +
+                '<div style="font-weight:600;margin-bottom:4px;">' + escapePortalVid(v.title) + '</div>' +
+                (v.description ? '<div style="font-size:0.875rem;color:#64748b;margin-bottom:8px;">' + escapePortalVid(v.description) + '</div>' : '') +
+                '<video controls preload="metadata" playsinline style="width:100%;max-height:360px;border-radius:6px;" src="' + escapePortalVidAttr(src) + '"></video>' +
+                '</div>'
+              );
+            }).join('');
+          })
+          .catch(() => {
+            portalVideosListEl.innerHTML = '<p style="color:#e11d48;">Failed to load videos.</p>';
+          });
+      }
+
       function setActiveTab(tabName = 'lesson-content') {
         tabs.forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tabName));
         
@@ -472,6 +614,11 @@
               restoreWhiteboard();
             }, 100);
           }
+        }
+        if (portalVideosPanel) {
+          portalVideosPanel.style.display = tabName === 'videos' ? 'flex' : 'none';
+          portalVideosPanel.classList.toggle('active', tabName === 'videos');
+          if (tabName === 'videos') loadPortalVideosIfNeeded();
         }
         // Lessons tab removed - moved to admin side
       }
@@ -506,6 +653,21 @@
       let disconnectedWatchdogId = null;
       let disconnectedSince = null;
       let connectionNewWatchdogId = null;
+      /** Prevents offer/ICE-restart storms when the peer never answers or the network blocks UDP (common on mobile). */
+      let lastIceRestartOfferAt = 0;
+      let lastStudentIceRestartRequestAt = 0;
+      const ICE_RESTART_COOLDOWN_MS = 14000;
+
+      function emitStudentIceRestartRequest(note) {
+        if (userType === 'teacher' || !room) return false;
+        if (!socket || !socket.connected) return false;
+        const now = Date.now();
+        if (now - lastStudentIceRestartRequestAt < ICE_RESTART_COOLDOWN_MS) return false;
+        lastStudentIceRestartRequestAt = now;
+        socket.emit('request-ice-restart', { room });
+        if (note) console.log('📤 Student requested ICE restart', note);
+        return true;
+      }
       
       
       // Cross-browser compatibility for RTCPeerConnection
@@ -774,7 +936,7 @@
                   if (userType === 'teacher' && typeof createOfferWithIceRestart === 'function') {
                     createOfferWithIceRestart();
                   } else {
-                    socket.emit('request-ice-restart', { room });
+                    emitStudentIceRestartRequest('(relay fallback)');
                   }
                 } catch (e) {
                   console.error('❌ Relay fallback ICE restart failed:', e && (e.message || e));
@@ -969,9 +1131,7 @@
               if (userType === 'teacher' && typeof createOfferWithIceRestart === 'function') {
                 createOfferWithIceRestart();
               } else {
-                // Student asks teacher to restart ICE (teacher owns offer creation).
-                socket.emit('request-ice-restart', { room });
-                console.log('📤 Student requested ICE restart (10s new watchdog)');
+                emitStudentIceRestartRequest('(10s new watchdog)');
               }
             } catch (e) {
               console.error('❌ 10s new watchdog renegotiation failed:', e && (e.message || e));
@@ -1030,25 +1190,41 @@
           if (!peerConnection) return;
           const s = peerConnection.iceConnectionState;
           if (s !== 'new' && s !== 'checking') return;
-          console.warn('🧊 ICE stuck in', s, 'for 5s - triggering restart');
           if (userType === 'teacher') {
+            const now = Date.now();
+            if (lastIceRestartOfferAt > 0 && now - lastIceRestartOfferAt < ICE_RESTART_COOLDOWN_MS) {
+              startIceRestartWatchdog();
+              return;
+            }
+            console.warn('🧊 ICE stuck in', s, 'for 5s - triggering restart');
             createOfferWithIceRestart();
           } else {
-            if (socket && socket.connected) {
-              socket.emit('request-ice-restart', { room });
-              console.log('📤 Student requested ICE restart from teacher');
+            if (!emitStudentIceRestartRequest('(ICE watchdog)')) {
+              startIceRestartWatchdog();
+              return;
             }
+            startIceRestartWatchdog();
           }
         }, 5000);
       }
 
       function createOfferWithIceRestart() {
-        if (!peerConnection || !localStream || isCreatingOffer) return;
+        if (!peerConnection || !localStream) return;
+        if (isCreatingOffer) {
+          startIceRestartWatchdog();
+          return;
+        }
+        const now = Date.now();
+        if (lastIceRestartOfferAt > 0 && now - lastIceRestartOfferAt < ICE_RESTART_COOLDOWN_MS) {
+          startIceRestartWatchdog();
+          return;
+        }
         isCreatingOffer = true;
         peerConnection.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true, voiceActivityDetection: true, iceRestart: true })
           .then(offer => peerConnection.setLocalDescription(offer))
           .then(() => {
             socket.emit('offer', { room, offer: peerConnection.localDescription });
+            lastIceRestartOfferAt = Date.now();
             console.log('📤 ICE restart: new offer sent by teacher');
             isCreatingOffer = false;
             startIceRestartWatchdog();
@@ -1056,6 +1232,7 @@
           .catch(err => {
             console.error('❌ ICE restart offer failed:', err);
             isCreatingOffer = false;
+            startIceRestartWatchdog();
           });
       }
 
@@ -1308,7 +1485,7 @@
         } else {
           console.warn('📥 Answering offer without local camera/mic (receive-only remote video)');
         }
-        console.log(`📊 Tracks ensured: local=${localStream.getTracks().length}, senders=${peerConnection.getSenders().length}`);
+        console.log(`📊 Tracks ensured: local=${localStream ? localStream.getTracks().length : 0}, senders=${peerConnection.getSenders().length}`);
         if (isSettingRemoteDescription) return;
         isSettingRemoteDescription = true;
         peerConnection.setRemoteDescription(new RTCSessionDescription(offer))
@@ -1626,6 +1803,7 @@
           const bindRewardButton = (btn, type) => {
             btn.addEventListener('click', () => {
               if (userType === 'teacher') {
+                playRewardChime();
                 showRewardAnimation(type);
                 if (socket && socket.connected) {
                   socket.emit('reward-animation', { type, room });
@@ -3935,7 +4113,7 @@
               // User wants to retry, but we can't fix HTTPS issue
               alert('Please access this page via HTTPS. The page will continue without camera.');
             }
-            socket.emit('join', { room, userType, userId, username });
+            void emitSocketJoin();
             return;
           }
 
@@ -3950,7 +4128,7 @@
               }, 1000);
               return;
             }
-            socket.emit('join', { room, userType, userId, username });
+            void emitSocketJoin();
             return;
           }
 
@@ -4047,7 +4225,7 @@
           // Join room AFTER webcam is initialized so peer connection has tracks
           const joinRoom = () => {
             if (socket && socket.connected) {
-              socket.emit('join', { room, userType, userId, username });
+              void emitSocketJoin();
               console.log('✅ Joined room after webcam init, room:', room);
               // Set up reward listener after joining room
               setTimeout(() => {
@@ -4066,7 +4244,7 @@
               
               socket.once('connect', () => {
                 clearTimeout(connectTimeout);
-                socket.emit('join', { room, userType, userId, username });
+                void emitSocketJoin();
                 console.log('✅ Joined room after socket connection, room:', room);
                 // Set up reward listener after joining room
                 setTimeout(() => {
@@ -4116,7 +4294,7 @@
             if (cameraErrorMessage) {
               cameraErrorMessage.style.display = 'block';
             }
-            socket.emit('join', { room, userType, userId, username });
+            void emitSocketJoin();
           }
         }
       }
@@ -4210,7 +4388,7 @@
             setTimeout(() => {
               ensurePeerConnection();
               if (socket && socket.connected && localStream) {
-                socket.emit('join', { room, userType, userId, username });
+                void emitSocketJoin();
                 console.log('🔄 Rejoined room after peer connection reset');
                 setTimeout(() => {
                   socket.emit('ready', { room });
@@ -4353,7 +4531,7 @@
               // Rejoin room
               if (socket && socket.connected && localStream) {
                 setTimeout(() => {
-                  socket.emit('join', { room, userType, userId, username });
+                  void emitSocketJoin();
                   socket.emit('ready', { room });
                 }, 500);
               }
@@ -4382,7 +4560,7 @@
             console.warn('⚠️ Connection health check: Missing peer connection but have stream, creating...');
             ensurePeerConnection();
             if (socket && socket.connected) {
-              socket.emit('join', { room, userType, userId, username });
+              void emitSocketJoin();
               socket.emit('ready', { room });
             }
           }
@@ -4436,7 +4614,7 @@
         console.log('✅ Socket reconnected, socket ID:', socket.id);
         updateConnectionStatus();
         // Rejoin room and request materials
-        socket.emit('join', { room, userType, userId, username });
+        void emitSocketJoin();
         
         // Only request materials if we don't have any
         if (room && lessonState.size === 0) {
@@ -4490,7 +4668,7 @@
         } else {
           // If we already have a stream, just rejoin the room
           console.log('🔄 Rejoining room after socket reconnection');
-          socket.emit('join', { room, userType, userId, username });
+          void emitSocketJoin();
         }
       });
 
@@ -5078,6 +5256,7 @@
       const leaveBtn = document.getElementById('leave-btn');
       const flagBtn = document.querySelector('.flag-btn');
       const cookieBtn = document.querySelector('.cookie-btn');
+      const starBtnGlobal = document.querySelector('.star-btn');
       const navIconBtns = document.querySelectorAll('.nav-icon-btn');
 
       // Show/hide buttons based on user type
@@ -5120,57 +5299,14 @@
               }
 
               const bookingId = getQueryParam('bookingId') || getQueryParam('bookingid');
-              const token = localStorage.getItem('token');
               
               if (!bookingId) {
                 alert('Error: Could not find booking ID. Please close the window manually.');
                 return;
               }
 
-              // Fetch booking to get date and time for status update
-              let booking = null;
-              try {
-                const bookingResp = await fetch(`/api/teacher/booking/${bookingId}`, {
-                  headers: {
-                    'Authorization': `Bearer ${token}`
-                  }
-                });
-                if (bookingResp.ok) {
-                  const bookingData = await bookingResp.json();
-                  booking = bookingData.booking || bookingData; // Handle both response formats
-                }
-              } catch (e) {
-                console.warn('Could not fetch booking details:', e);
-              }
-
-              // Mark class as completed in database
-              if (booking && booking.date && booking.time) {
-                try {
-                  const updateResp = await fetch('/api/teacher/update-class-status', {
-                    method: 'POST',
-                    headers: {
-                      'Content-Type': 'application/json',
-                      'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({
-                      date: booking.date,
-                      time: booking.time,
-                      status: 'completed'
-                    })
-                  });
-                  
-                  if (!updateResp.ok) {
-                    const error = await updateResp.json();
-                    console.warn('Could not update class status:', error);
-                    // Continue anyway to close the classroom
-                  } else {
-                    console.log('✅ Class marked as completed in database');
-                  }
-                } catch (e) {
-                  console.warn('Error updating class status:', e);
-                  // Continue anyway to close the classroom
-                }
-              }
+              // Live session end only — final "completed" status and teacher feedback happen
+              // from the schedule: "Complete Class & Submit Feedback" (not here).
 
               // Emit class-finished event to notify student
               if (socket && socket.connected) {
@@ -5250,6 +5386,50 @@
         });
       }
 
+      let __rewardAudioCtx = null;
+      function getRewardAudioContext() {
+        if (__rewardAudioCtx) return __rewardAudioCtx;
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return null;
+        __rewardAudioCtx = new AC();
+        return __rewardAudioCtx;
+      }
+      function unlockRewardAudioFromGesture() {
+        try {
+          const ctx = getRewardAudioContext();
+          if (ctx && ctx.state === 'suspended') ctx.resume();
+        } catch (e) { /* ignore */ }
+      }
+      document.addEventListener('pointerdown', unlockRewardAudioFromGesture, { capture: true, passive: true });
+
+      /** Short celebration tone — teacher hears on click; students hear when the teacher broadcasts a reward. */
+      function playRewardChime() {
+        try {
+          const ctx = getRewardAudioContext();
+          if (!ctx) return;
+          if (ctx.state === 'suspended') ctx.resume();
+          const master = ctx.createGain();
+          master.gain.value = 0.16;
+          master.connect(ctx.destination);
+          const now = ctx.currentTime;
+          [523.25, 659.25, 783.99].forEach((freq, i) => {
+            const o = ctx.createOscillator();
+            const g = ctx.createGain();
+            o.type = 'sine';
+            o.frequency.setValueAtTime(freq, now);
+            g.gain.setValueAtTime(0, now);
+            g.gain.linearRampToValueAtTime(1, now + 0.03 + i * 0.06);
+            g.gain.exponentialRampToValueAtTime(0.001, now + 0.28 + i * 0.06);
+            o.connect(g);
+            g.connect(master);
+            o.start(now + i * 0.05);
+            o.stop(now + 0.35 + i * 0.06);
+          });
+        } catch (e) {
+          /* ignore */
+        }
+      }
+
       // Reward animation function (flag = green flag SVG, others = emoji)
       function showRewardAnimation(type) {
         const rewardElement = document.createElement('div');
@@ -5323,6 +5503,7 @@
           if (data && (data.type === 'flag' || data.type === 'cookie' || data.type === 'star')) {
             console.log('🎁 [CLIENT] Showing reward animation:', data.type);
             try {
+              if (userType === 'student') playRewardChime();
               showRewardAnimation(data.type);
               console.log('✅ [CLIENT] Reward animation displayed successfully');
             } catch (error) {
@@ -5375,6 +5556,7 @@
         flagBtn.addEventListener('click', () => {
           if (userType === 'teacher') {
             console.log('🚩 [TEACHER] Flag button clicked, emitting reward animation');
+            playRewardChime();
             // Show animation locally
             showRewardAnimation('flag');
             // Emit to students - ensure socket is connected
@@ -5392,6 +5574,7 @@
         cookieBtn.addEventListener('click', () => {
           if (userType === 'teacher') {
             console.log('🍪 [TEACHER] Cookie button clicked, emitting reward animation');
+            playRewardChime();
             // Show animation locally
             showRewardAnimation('cookie');
             // Emit to students - ensure socket is connected
@@ -5405,6 +5588,17 @@
         });
       }
 
+      if (starBtnGlobal) {
+        starBtnGlobal.addEventListener('click', () => {
+          if (userType === 'teacher') {
+            playRewardChime();
+            showRewardAnimation('star');
+            if (socket && socket.connected) {
+              socket.emit('reward-animation', { type: 'star', room });
+            }
+          }
+        });
+      }
 
       // Direct handler for lessons button
       // Lessons tab removed - moved to admin side

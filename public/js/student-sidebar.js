@@ -8,12 +8,12 @@
     var SVG_STROKE = 'stroke-width="2"';
 
     var MENU_ITEMS = [
-        { id: 'dashboard', label: 'My Home', href: 'student-dashboard.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/></svg>' },
+        { id: 'dashboard', label: 'Dashboard', href: 'student-dashboard.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/></svg>' },
         { id: 'schedule', label: 'My Schedule', href: 'student-class-table.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M16 3v4M8 3v4"/></svg>' },
-        { id: 'book', label: 'Book a Class', href: 'student-book.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>' },
+        { id: 'book', label: 'Book Class', href: 'student-book.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>' },
         { id: 'classes', label: 'My Classes', href: 'student-booking-history.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>' },
         { id: 'games', label: 'Play & Learn', href: 'student-games-activities.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M6 12h4M8 10v4"/><path d="M15 11h.01M18 13h.01"/><rect x="2" y="7" width="20" height="10" rx="5"/></svg>' },
-        { id: 'videos', label: 'Watch Videos', href: 'student-watch-videos.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>' },
+        { id: 'videos', label: 'Videos', href: 'student-videos.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><rect x="2" y="7" width="15" height="10" rx="2"/><path d="M17 10l5-3v10l-5-3z"/></svg>' },
         { id: 'profile', label: 'My Profile', href: 'student-profile.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>' },
         { id: 'level', label: 'My Level', href: 'student-assessment.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 12h10M7 8h6M7 16h4"/></svg>' },
         { id: 'credits', label: 'My Credits', href: 'student-credits.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M2 10h20M7 14h4"/></svg>' },
@@ -21,23 +21,79 @@
     ];
 
     function getActiveFromPath() {
-        var path = (window.location.pathname || '').replace(/^\//, '') || window.location.href;
-        if (path.indexOf('student-dashboard') !== -1) return 'dashboard';
-        if (path.indexOf('student-class-table') !== -1) return 'schedule';
-        if (path.indexOf('student-booking-history') !== -1) return 'classes';
-        if (path.indexOf('student-book') !== -1) return 'book';
-        if (path.indexOf('student-games-activities') !== -1) return 'games';
-        if (path.indexOf('student-watch-videos') !== -1) return 'videos';
-        if (path.indexOf('student-profile') !== -1) return 'profile';
-        if (path.indexOf('student-assessment') !== -1) return 'level';
-        if (path.indexOf('student-credits') !== -1) return 'credits';
-        return null;
+        var raw = (window.location.pathname || '').replace(/\\/g, '/');
+        var file = raw.split('/').pop() || '';
+        if (file.indexOf('?') !== -1) file = file.split('?')[0];
+        if (file.indexOf('#') !== -1) file = file.split('#')[0];
+        if (!file && window.location.href) {
+            try {
+                file = decodeURIComponent((window.location.href.split('/').pop() || '').split('?')[0].split('#')[0]);
+            } catch (e) {
+                file = '';
+            }
+        }
+        switch (file) {
+            case 'student-dashboard.html':
+                return 'dashboard';
+            case 'student-class-table.html':
+                return 'schedule';
+            case 'student-booking-history.html':
+                return 'classes';
+            case 'student-book.html':
+                return 'book';
+            case 'student-games-activities.html':
+                return 'games';
+            case 'student-videos.html':
+                return 'videos';
+            case 'student-profile.html':
+                return 'profile';
+            case 'student-assessment.html':
+                return 'level';
+            case 'student-credits.html':
+                return 'credits';
+            default:
+                return null;
+        }
     }
 
     function baseNameFromStorage() {
         var raw = localStorage.getItem('studentUsername') || localStorage.getItem('username') || 'Student';
         var cleaned = String(raw).replace(/^Hi,\s*/i, '').trim();
         return cleaned || 'Student';
+    }
+
+    function readStoredSubscribed() {
+        try {
+            if (localStorage.getItem('studentIsSubscribed') === '1') return true;
+            var ps = localStorage.getItem('studentPaymentStatus');
+            var ss = localStorage.getItem('studentSubscriptionStatus');
+            return ps === 'paid' && ss === 'active';
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function getBookNavSpec() {
+        var acct = 'standard';
+        try {
+            acct = localStorage.getItem('studentAccountStatus') || 'standard';
+        } catch (e) {}
+        if (acct === 'trial_completed' && !readStoredSubscribed()) {
+            return { label: 'Subscribe to Book', href: 'index.html#plans' };
+        }
+        return { label: 'Book Class', href: 'student-book.html' };
+    }
+
+    function refreshBookNavItem(container) {
+        if (!container) return;
+        var li = container.querySelector('li[data-nav="book"]');
+        if (!li) return;
+        var spec = getBookNavSpec();
+        var icon = MENU_ITEMS.filter(function (x) { return x.id === 'book'; })[0].icon;
+        li.innerHTML = icon + spec.label;
+        li.onclick = function () {
+            window.location.href = spec.href;
+        };
     }
 
     function applyGreetingFromStorage(container) {
@@ -60,7 +116,7 @@
         fetch('/api/student/profile', {
             method: 'GET',
             headers: { 'Authorization': 'Bearer ' + token }
-        }).then(function (r) { return r.ok ? r.json() : null; }).then(function (data) {
+        }).then(function (r) { return r.ok ? r.json() : null;         }).then(function (data) {
             if (!data || !data.profile) return;
             var firstName = (data.profile.firstName || fallbackName || 'Student').trim();
             if (usernameEl) usernameEl.textContent = 'Hi, ' + firstName;
@@ -74,6 +130,16 @@
             } else if (avatarTextEl) {
                 avatarTextEl.style.display = '';
             }
+
+            var acct = data.profile.accountStatus || 'standard';
+            try {
+                localStorage.setItem('studentAccountStatus', acct);
+                localStorage.setItem('studentHasFreeTrial', data.profile.hasFreeTrial ? '1' : '0');
+                localStorage.setItem('studentIsSubscribed', data.profile.isSubscribed ? '1' : '0');
+                localStorage.setItem('studentPaymentStatus', data.profile.paymentStatus || 'unpaid');
+                localStorage.setItem('studentSubscriptionStatus', data.profile.subscriptionStatus || 'pending');
+            } catch (e) {}
+            refreshBookNavItem(container);
         }).catch(function () {
             if (usernameEl) usernameEl.textContent = 'Hi, ' + fallbackName;
         });
@@ -89,10 +155,15 @@
         var menuHtml = MENU_ITEMS.map(function (item) {
             var activeClass = (item.id === active && !item.isLogout) ? ' class="active"' : '';
             var idAttr = item.id === 'logout' ? ' id="logout-nav"' : '';
+            var dataNav = ' data-nav="' + item.id + '"';
             if (item.isLogout) {
-                return '<li' + idAttr + activeClass + ' data-logout="1">' + item.icon + item.label + '</li>';
+                return '<li' + idAttr + activeClass + dataNav + ' data-logout="1">' + item.icon + item.label + '</li>';
             }
-            return '<li' + activeClass + ' onclick="window.location.href=\'' + item.href + '\'">' + item.icon + item.label + '</li>';
+            if (item.id === 'book') {
+                var spec = getBookNavSpec();
+                return '<li' + activeClass + dataNav + ' onclick="window.location.href=\'' + spec.href + '\'">' + item.icon + spec.label + '</li>';
+            }
+            return '<li' + activeClass + dataNav + ' onclick="window.location.href=\'' + item.href + '\'">' + item.icon + item.label + '</li>';
         }).join('');
 
         container.innerHTML =
@@ -136,6 +207,11 @@
                         localStorage.removeItem('token');
                         localStorage.removeItem('username');
                         localStorage.removeItem('userType');
+                        localStorage.removeItem('studentAccountStatus');
+                        localStorage.removeItem('studentHasFreeTrial');
+                        localStorage.removeItem('studentIsSubscribed');
+                        localStorage.removeItem('studentPaymentStatus');
+                        localStorage.removeItem('studentSubscriptionStatus');
                     } catch (e) {}
                     window.location.replace('login.html');
                 });
@@ -169,7 +245,21 @@
     global.StudentSidebar = {
         render: render,
         MENU_ITEMS: MENU_ITEMS,
-        applyGreetingFromStorage: applyGreetingFromStorage
+        applyGreetingFromStorage: applyGreetingFromStorage,
+        refreshBookNavItem: refreshBookNavItem,
+        getBookNavSpec: getBookNavSpec,
+        loadProfileIntoSidebar: loadProfileIntoSidebar
     };
+
+    try {
+        var creditsBc = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('remoed-credits') : null;
+        if (creditsBc) {
+            creditsBc.onmessage = function (ev) {
+                if (!ev.data || ev.data.type !== 'credits-updated') return;
+                var root = document.getElementById('student-sidebar-root');
+                if (root) loadProfileIntoSidebar(root);
+            };
+        }
+    } catch (e) { /* ignore */ }
 })(typeof window !== 'undefined' ? window : this);
 

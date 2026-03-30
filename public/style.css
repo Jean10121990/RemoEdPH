@@ -7820,7 +7820,7 @@ body.page-student-profile{
         }.page-student-profile /* Profile Content Grid - Facebook Style */
         .profile-content-grid{
             display: grid;
-            grid-template-columns: 300px 1fr;
+            grid-template-columns: minmax(0, 300px) minmax(0, 1fr);
             gap: 24px;
         }.page-student-profile .profile-sidebar-card{
             background: white;
@@ -7830,6 +7830,9 @@ body.page-student-profile{
             height: fit-content;
             position: sticky;
             top: 24px;
+            min-width: 0;
+            max-width: 100%;
+            box-sizing: border-box;
         }.page-student-profile .profile-main-card{
             background: white;
             border-radius: 16px;
@@ -8078,29 +8081,37 @@ body.page-student-profile{
             padding: 20px;
             margin-bottom: 16px;
             border-left: 4px solid #1CA7E7;
+            overflow: hidden;
+            min-width: 0;
+            max-width: 100%;
+            box-sizing: border-box;
         }.page-student-profile .info-row{
             display: grid;
-            grid-template-columns: 110px 1fr;
-            gap: 12px;
+            grid-template-columns: minmax(0, 108px) minmax(0, 1fr);
+            gap: 10px 12px;
             align-items: start;
             padding: 12px 0;
             border-bottom: 1px solid #E8F4FD;
+            min-width: 0;
         }.page-student-profile .info-row:last-child{
             border-bottom: none;
         }.page-student-profile .info-label{
             font-weight: 700;
             color: #1E3A5F;
             min-width: 0;
-            font-size: 0.95rem;
-            white-space: nowrap;
+            font-size: 0.9rem;
+            white-space: normal;
+            word-break: break-word;
+            overflow-wrap: break-word;
+            line-height: 1.35;
         }.page-student-profile .info-value{
             color: #4A6FA5;
-            font-size: 0.95rem;
-            flex: 1;
-            word-break: normal;
-            overflow-wrap: break-word;
+            font-size: 0.9rem;
+            min-width: 0;
+            word-break: break-word;
+            overflow-wrap: anywhere;
             white-space: normal;
-            line-height: 1.35;
+            line-height: 1.4;
         }.page-student-profile .info-value.empty{
             color: #999;
             font-style: italic;
@@ -13197,6 +13208,80 @@ body.page-teacher-open-class{
             display: flex;
             align-items: center;
             gap: 16px;
+        }.page-teacher-open-class .open-class-toolbar-row{
+            display: flex;
+            align-items: center;
+            margin-bottom: 16px;
+            min-width: 0;
+        }.page-teacher-open-class .open-class-week-nav{
+            display: flex;
+            flex-wrap: nowrap;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+            flex: 1 1 auto;
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 4px;
+        }.page-teacher-open-class .open-class-week-nav .week-display{
+            flex: 0 0 auto;
+            white-space: nowrap;
+        }.page-teacher-open-class .open-class-toolbar-actions{
+            display: flex;
+            flex-wrap: nowrap;
+            align-items: center;
+            gap: 8px;
+            flex: 0 0 auto;
+            margin-left: 4px;
+            padding-left: 12px;
+            border-left: 2px solid rgba(90, 103, 216, 0.28);
+        }.page-teacher-open-class .open-class-toolbar-btn{
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border: none;
+            border-radius: 10px;
+            padding: 8px 12px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            font-family: "Comic Sans MS", "Comic Neue", "Chalkboard SE", "Trebuchet MS", "Segoe UI", cursive, sans-serif;
+            color: #fff;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            min-height: 40px;
+            white-space: nowrap;
+        }.page-teacher-open-class .open-class-toolbar-btn:hover{
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
+        }.page-teacher-open-class .open-class-toolbar-btn--open{
+            background: linear-gradient(180deg, #34ce57 0%, #28a745 55%, #1e7e34 100%);
+        }.page-teacher-open-class .open-class-toolbar-btn--close{
+            background: linear-gradient(180deg, #868e96 0%, #6c757d 50%, #495057 100%);
+        }.page-teacher-open-class .open-class-toolbar-btn--schedule{
+            background: #5a67d8;
+            box-shadow: 0 2px 10px rgba(90, 103, 216, 0.35);
+        }.page-teacher-open-class .open-class-toolbar-btn--schedule:hover{
+            background: #4c51bf;
+        }.page-teacher-open-class .open-class-toolbar-ico{
+            flex-shrink: 0;
+        }.page-teacher-open-class .open-class-toolbar-ico--sphere{
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #8ef5a8 0%, #28a745 45%, #145c24 100%);
+            box-shadow: inset -1px -1px 2px rgba(0, 0, 0, 0.25), 1px 1px 2px rgba(255, 255, 255, 0.35);
+        }.page-teacher-open-class .open-class-toolbar-ico--square{
+            width: 10px;
+            height: 10px;
+            border-radius: 2px;
+            background: linear-gradient(135deg, #e9d5ff 0%, #c4b5fd 45%, #a78bfa 100%);
+            box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.6), 1px 1px 2px rgba(0, 0, 0, 0.2);
+        }.page-teacher-open-class .open-class-week-nav .nav-btn{
+            min-width: 0;
+            padding: 10px 12px;
+            font-size: 0.82rem;
         }.page-teacher-open-class .nav-btn{
       background: linear-gradient(135deg, #ffe85a, #f4d03f);
       color: #333;
@@ -13380,6 +13465,21 @@ body.page-teacher-open-class{
                 min-width: 600px;
             }
         }
+
+/* PHT time notices: keep copy on one horizontal row; scroll horizontally on narrow viewports */
+#open-class-pht-note,
+#student-book-pht-note,
+#teacher-schedule-pht-note,
+#teacher-class-table-pht-note,
+.student-schedule-pht-note {
+    white-space: nowrap;
+    overflow-x: auto;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+}
 
 
 /* --- Source: public/teacher-peer-learning-connections.html --- */
@@ -14861,7 +14961,7 @@ body.page-teacher-profile{
         }.page-teacher-profile /* Profile Content Grid - Facebook Style */
         .profile-content-grid{
             display: grid;
-            grid-template-columns: 300px 1fr;
+            grid-template-columns: minmax(0, 300px) minmax(0, 1fr);
             gap: 24px;
         }.page-teacher-profile .profile-sidebar-card{
             background: white;
@@ -14871,6 +14971,9 @@ body.page-teacher-profile{
             height: fit-content;
             position: sticky;
             top: 24px;
+            min-width: 0;
+            max-width: 100%;
+            box-sizing: border-box;
         }.page-teacher-profile .profile-main-card{
             background: white;
             border-radius: 16px;
@@ -15349,6 +15452,7 @@ body.page-teacher-profile{
             padding: 12px 0;
             border-bottom: 1px solid #E8F4FD;
             gap: 8px;
+            min-width: 0;
         }.page-teacher-profile .info-row:last-child{
             border-bottom: none;
         }.page-teacher-profile .info-label{
@@ -15364,7 +15468,7 @@ body.page-teacher-profile{
             flex: 1;
             word-wrap: break-word;
             word-break: break-word;
-            overflow-wrap: break-word;
+            overflow-wrap: anywhere;
             line-height: 1.4;
             min-width: 0;
         }.page-teacher-profile .info-value.empty{
@@ -19022,4 +19126,45 @@ body.page-whiteboard{
             opacity: 0.9;
         }
 
+
+/* Student auth / payment / waiting-room: same Comic Sans stack as student portal (no student-portal-layout.css on these) */
+body.student-login-page,
+body.page-student-register,
+body.page-student-waiting-room,
+body.page-student-payment,
+body.page-student-reset-password,
+body.page-student-reschedule,
+body.page-student-forgot-password {
+  font-family: "Comic Sans MS", "Comic Neue", "Chalkboard SE", "Trebuchet MS", "Segoe UI", cursive, sans-serif;
+}
+body.student-login-page input,
+body.student-login-page select,
+body.student-login-page textarea,
+body.student-login-page button,
+body.page-student-register input,
+body.page-student-register select,
+body.page-student-register textarea,
+body.page-student-register button,
+body.page-student-waiting-room input,
+body.page-student-waiting-room select,
+body.page-student-waiting-room textarea,
+body.page-student-waiting-room button,
+body.page-student-payment input,
+body.page-student-payment select,
+body.page-student-payment textarea,
+body.page-student-payment button,
+body.page-student-reset-password input,
+body.page-student-reset-password select,
+body.page-student-reset-password textarea,
+body.page-student-reset-password button,
+body.page-student-reschedule input,
+body.page-student-reschedule select,
+body.page-student-reschedule textarea,
+body.page-student-reschedule button,
+body.page-student-forgot-password input,
+body.page-student-forgot-password select,
+body.page-student-forgot-password textarea,
+body.page-student-forgot-password button {
+  font-family: inherit;
+}
 

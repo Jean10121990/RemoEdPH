@@ -1,11 +1,13 @@
-/** Match server/payments.js PLAN_PRICING (single source for client display only; server recomputes totals). */
+/** Match server/config/planCredits.js + server/payments.js (client display; server is authoritative). */
+export const CREDITS_PER_MONTH = 22;
+
 export const EXCHANGE_RATE_USED = 60.03;
 
 export const PLAN_PRICING = {
-  spark: { usdDailyRate: 4.17, days: 22, name: "RemoSpark Plan" },
-  steady: { usdDailyRate: 4.08, days: 66, name: "RemoSteady Plan" },
-  scholar: { usdDailyRate: 4.0, days: 132, name: "RemoScholar Plan" },
-  summit: { usdDailyRate: 3.92, days: 246, name: "RemoSummit Plan" },
+  spark: { name: "RemoSpark Plan", months: 1, lessonCredits: 22, usdTotal: 91.74 },
+  steady: { name: "RemoSteady Plan", months: 3, lessonCredits: 66, usdTotal: 269.28 },
+  scholar: { name: "RemoScholar Plan", months: 6, lessonCredits: 132, usdTotal: 528.0 },
+  summit: { name: "RemoSummit Plan", months: 12, lessonCredits: 264, usdTotal: 964.32 },
 };
 
 export function buildPlanDescription(plan) {
@@ -15,7 +17,7 @@ export function buildPlanDescription(plan) {
 export function getPlanComputedAmounts(plan) {
   const config = PLAN_PRICING[plan];
   if (!config) return null;
-  const usdTotal = Number((config.usdDailyRate * config.days).toFixed(2));
+  const usdTotal = Number(Number(config.usdTotal).toFixed(2));
   const phpEstimate = Number((usdTotal * EXCHANGE_RATE_USED).toFixed(2));
   return { usdTotal, phpEstimate };
 }
@@ -29,7 +31,7 @@ export const PLAN_CARDS = [
     name: "RemoSpark (1 Month)",
     priceUsd: "$91.74 USD",
     pricePhp: "~₱5,507.15 PHP est.",
-    period: "$4.17/day x 22 days",
+    period: "22 lesson credits · 1 month · 22 credits/mo",
     tagline: "Spark their curiosity.",
     features: ["Perfect for beginners", "Access to digital library"],
   },
@@ -41,7 +43,7 @@ export const PLAN_CARDS = [
     name: "RemoSteady (3 Months)",
     priceUsd: "$269.28 USD",
     pricePhp: "~₱16,164.88 PHP est.",
-    period: "$4.08/day x 66 days",
+    period: "66 lesson credits · 3 months · 22 credits/mo",
     tagline: "Building a routine.",
     features: ["Digital print outs"],
   },
@@ -53,7 +55,7 @@ export const PLAN_CARDS = [
     name: "RemoScholar (6 Months)",
     priceUsd: "$528.00 USD",
     pricePhp: "~₱31,695.84 PHP est.",
-    period: "$4.00/day x 132 days",
+    period: "132 lesson credits · 6 months · 22 credits/mo",
     tagline: "Mastering the basics.",
     features: ["Mid-term progress report"],
   },
@@ -66,7 +68,7 @@ export const PLAN_CARDS = [
     name: "RemoSummit (12 Months)",
     priceUsd: "$964.32 USD",
     pricePhp: "~₱57,888.13 PHP est.",
-    period: "$3.92/day x 246 days",
+    period: "264 lesson credits · 12 months · 22 credits/mo",
     tagline: "Reaching the peak.",
     features: ["End-of-year certificate"],
   },

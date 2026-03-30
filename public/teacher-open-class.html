@@ -28,22 +28,24 @@
         <span class="quota" id="available-slots-count">Calculating available slots...</span>
       </div>
       
-      <!-- Combined Navigation and Action Buttons Row -->
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
-        <!-- Week Navigation -->
-        <div class="week-navigation" style="display: flex; align-items: center; gap: 12px;">
+      <!-- Week nav + slot actions on one row (saves vertical space) -->
+      <div class="open-class-toolbar-row">
+        <div class="week-navigation open-class-week-nav">
           <button class="nav-btn" id="prev-week">← Previous Week</button>
           <span class="week-display" id="week-display"></span>
           <button class="nav-btn" id="next-week">Next Week →</button>
           <button class="nav-btn today-btn" id="current-week" style="background: #28a745; color: white;">Today</button>
-        </div>
-        
-        <!-- Action Buttons -->
-        <div class="action-buttons" style="display: flex; gap: 8px;">
-          <button class="submit-btn" id="open-slots-btn" onclick="openSelectedSlots()" style="background: #28a745; color: white; padding: 8px 16px; font-size: 0.9rem;">🟢 Open Selected</button>
-          <button class="submit-btn" id="close-slots-btn" onclick="closeSelectedSlots()" style="background: #6c757d; color: white; padding: 8px 16px; font-size: 0.9rem;">⬜ Close Selected</button>
-          <button id="back-to-schedule-btn" class="back-btn" style="padding: 8px 16px; font-size: 0.9rem;">Back to Schedule</button>
-
+          <div class="open-class-toolbar-actions" role="group" aria-label="Open or close selected slots">
+            <button type="button" id="open-slots-btn" class="open-class-toolbar-btn open-class-toolbar-btn--open" onclick="openSelectedSlots()">
+              <span class="open-class-toolbar-ico open-class-toolbar-ico--sphere" aria-hidden="true"></span>
+              Open Selected
+            </button>
+            <button type="button" id="close-slots-btn" class="open-class-toolbar-btn open-class-toolbar-btn--close" onclick="closeSelectedSlots()">
+              <span class="open-class-toolbar-ico open-class-toolbar-ico--square" aria-hidden="true"></span>
+              Close Selected
+            </button>
+            <button type="button" id="back-to-schedule-btn" class="open-class-toolbar-btn open-class-toolbar-btn--schedule">Back to Schedule</button>
+          </div>
         </div>
       </div>
     </div>
@@ -111,8 +113,23 @@
   <script src="/socket.io/socket.io.js"></script>
   <script>
 
-  // Timezone helpers
-    let teacherTimezone = (window.TimezoneUtils && TimezoneUtils.getDetectedZone()) || 'UTC';
+  const OpenClassTZ = window.TimezoneUtils || {};
+  const OPEN_CLASS_FIRST_HOUR = OpenClassTZ.REMOED_OPERATING_START_HOUR != null ? OpenClassTZ.REMOED_OPERATING_START_HOUR : 6;
+  const OPEN_CLASS_END_HOUR_EXC = OpenClassTZ.REMOED_OPERATING_END_HOUR_EXCLUSIVE != null ? OpenClassTZ.REMOED_OPERATING_END_HOUR_EXCLUSIVE : 24;
+
+    const teacherTimezone = OpenClassTZ.REMOED_ANCHOR_ZONE || OpenClassTZ.REMOED_DISPLAY_ZONE || 'Asia/Manila';
+
+    function initOpenClassPhilippineTimeNote() {
+      if (document.getElementById('open-class-pht-note')) return;
+      const host = document.querySelector('.page-teacher-open-class .header-info');
+      if (!host) return;
+      const p = document.createElement('p');
+      p.id = 'open-class-pht-note';
+      p.style.cssText = 'margin:10px 0 0;font-size:0.78rem;color:#475569;font-weight:600;width:100%;';
+      p.textContent = 'All times are Philippine Time (PHT, Asia/Manila, UTC+8). Slots: 6:00 AM – midnight.';
+      host.appendChild(p);
+    }
+
     function getLocalDateString(date) {
       const { DateTime } = luxon;
       return DateTime.fromJSDate(date, { zone: teacherTimezone }).toFormat('yyyy-LL-dd');
@@ -191,7 +208,7 @@
     // Generate day headers for the current week
     function generateDayHeaders() {
       const { DateTime } = luxon;
-      const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+      const timeZone = teacherTimezone;
       const dayHeadersRow = document.getElementById('day-headers-row');
       
       // Clear existing day headers, but keep the 'Time' th
@@ -214,7 +231,7 @@
       }
     }
 
-    // Generate time slots (30-minute intervals from 01:00 to 24:00) - 24-hour format
+    // Generate time slots: 06:00–23:30 in teacherTimezone (Philippines-aligned)
     function generateTimeSlots() {
       console.log('Generating time slots...');
       console.log('Current week for time slots:', currentWeek.toISOString());
@@ -224,30 +241,31 @@
         return;
       }
       gridBody.innerHTML = '';
-      
-      const startHour = 0; // include midnight (00:00)
-      const endHour = 24;
-      
+
+      const { DateTime } = luxon;
+      const baseWeek = DateTime.fromJSDate(currentWeek, { zone: teacherTimezone });
+      const monday = baseWeek.minus({ days: baseWeek.weekday - 1 });
+      const weekDates = [];
+      for (let i = 0; i < 7; i++) {
+        weekDates.push(monday.plus({ days: i }).toISODate());
+      }
+
+      const startHour = OPEN_CLASS_FIRST_HOUR;
+      const endHour = OPEN_CLASS_END_HOUR_EXC;
+
       for (let hour = startHour; hour < endHour; hour++) {
         for (let minute = 0; minute < 60; minute += 30) {
           const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-          
+
           const timeRow = document.createElement('tr');
-          
-          // Time column
+
           const timeColumn = document.createElement('td');
           timeColumn.className = 'time-slot';
           timeColumn.textContent = formatTime24Hour(timeString);
           timeRow.appendChild(timeColumn);
-          
-                    // Day columns
-                  for (let day = 0; day < 7; day++) {
-          const date = new Date(currentWeek);
-          // Calculate Monday as the start of the week (Monday = 1, Sunday = 0)
-          const dayOfWeek = currentWeek.getDay();
-          const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // If Sunday, go back 6 days; if Monday, go back 0 days, etc.
-          date.setDate(currentWeek.getDate() - daysToMonday + day);
-            const dateString = getLocalDateString(date);
+
+          for (let day = 0; day < 7; day++) {
+            const dateString = weekDates[day];
             
             const slot = document.createElement('td');
             slot.className = 'time-slot';
@@ -1272,20 +1290,24 @@
       await initializeWeeklyGrid();
     });
 
-    // Update week display
+    // Update week display (week boundaries in Philippine Time)
     function updateWeekDisplay() {
-      const weekStart = getWeekStartDate(currentWeek);
-      const weekEnd = new Date(weekStart);
-      weekEnd.setDate(weekStart.getDate() + 6);
-      
-      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
-        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-      ];
-      
       const weekDisplay = document.getElementById('week-display');
-      weekDisplay.textContent = `${monthNames[weekStart.getMonth()]} ${weekStart.getDate()} - ${monthNames[weekEnd.getMonth()]} ${weekEnd.getDate()}, ${weekStart.getFullYear()}`;
-      
-      // Disable previous week button if we're in the past
+      const { DateTime } = luxon;
+      let weekStart;
+      if (DateTime) {
+        const base = DateTime.fromJSDate(currentWeek, { zone: teacherTimezone });
+        const mon = base.minus({ days: base.weekday - 1 });
+        const sun = mon.plus({ days: 6 });
+        weekDisplay.textContent = `${mon.toFormat('MMM d')} - ${sun.toFormat('MMM d, yyyy')} (Philippine Time, PHT)`;
+        weekStart = mon.toJSDate();
+      } else {
+        weekStart = getWeekStartDate(currentWeek);
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 6);
+        const pht = { timeZone: teacherTimezone };
+        weekDisplay.textContent = `${weekStart.toLocaleDateString('en-US', Object.assign({ month: 'short', day: 'numeric' }, pht))} - ${weekEnd.toLocaleDateString('en-US', Object.assign({ month: 'short', day: 'numeric', year: 'numeric' }, pht))} (Philippine Time, PHT)`;
+      }
       const prevBtn = document.getElementById('prev-week');
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -1359,6 +1381,7 @@
         return;
       }
       
+      initOpenClassPhilippineTimeNote();
       updateWeekDisplay();
       await initializeWeeklyGrid();
       

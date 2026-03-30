@@ -1,6 +1,35 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useReactMediaRecorder } from 'react-media-recorder';
 
+function LiveVideoPreview({ stream, className = '' }) {
+  const videoRef = useRef(null);
+
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el) return;
+    const hasLiveVideo = stream && stream.getVideoTracks().some((t) => t.readyState === 'live');
+    if (hasLiveVideo) {
+      el.srcObject = stream;
+      el.play().catch(() => {});
+    } else {
+      el.srcObject = null;
+    }
+    return () => {
+      if (el) el.srcObject = null;
+    };
+  }, [stream]);
+
+  return (
+    <video
+      ref={videoRef}
+      autoPlay
+      muted
+      playsInline
+      className={className}
+    />
+  );
+}
+
 const PEDAGOGICAL_QUESTIONS = [
   'How do you adjust instruction for students with mixed learning levels?',
   'Describe a strategy you use to keep disengaged students involved.',
@@ -31,8 +60,18 @@ const initialForm = {
   }
 };
 
+/** ngrok free tier may return an HTML warning page for programmatic requests unless this header is sent. */
+function tunnelSafeHeaders(extra = {}) {
+  if (typeof window === 'undefined') return extra;
+  const host = window.location.hostname || '';
+  const isNgrok = /\.ngrok-free\.dev$/i.test(host) || /\.ngrok\.io$/i.test(host) || /\.ngrok\.app$/i.test(host);
+  return isNgrok ? { ...extra, 'ngrok-skip-browser-warning': 'true' } : extra;
+}
+
 async function uploadToBucket(file, folder = 'applications') {
-  const endpoint = import.meta.env.VITE_STORAGE_UPLOAD_URL || '/api/upload/upload';
+  const base = typeof window !== 'undefined' ? window.location.origin : '';
+  const path = import.meta.env.VITE_STORAGE_UPLOAD_URL || '/api/upload/upload';
+  const endpoint = path.startsWith('http') ? path : `${base}${path}`;
   const uploader = import.meta.env.VITE_STORAGE_UPLOADER || 'application-form';
   const room = `${folder}-${new Date().toISOString().slice(0, 10)}`;
 
@@ -43,6 +82,7 @@ async function uploadToBucket(file, folder = 'applications') {
 
   const response = await fetch(endpoint, {
     method: 'POST',
+    headers: tunnelSafeHeaders(),
     body: formData
   });
 
@@ -59,13 +99,17 @@ async function uploadToBucket(file, folder = 'applications') {
 function Progress({ step }) {
   return (
     <div className="mb-8">
-      <div className="flex items-center justify-between text-xs font-medium text-slate-500">
-        <span>Step {step} of 4</span>
-        <span>Application</span>
+      <div className="flex items-center justify-between text-xs font-semibold text-remo-muted">
+        <span className="text-remo-ink">
+          Step <span className="text-remo-blue">{step}</span> of 4
+        </span>
+        <span className="rounded-full bg-remo-yellow-soft/80 px-2.5 py-0.5 text-[11px] font-bold text-amber-900">
+          Teaching application
+        </span>
       </div>
-      <div className="mt-2 h-2 w-full rounded-full bg-slate-200">
+      <div className="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-white/80 shadow-inner ring-1 ring-slate-200/80">
         <div
-          className="h-2 rounded-full bg-slate-900 transition-all"
+          className="h-full rounded-full bg-gradient-to-r from-remo-green via-remo-blue to-remo-yellow transition-all duration-500 ease-out"
           style={{ width: `${(step / 4) * 100}%` }}
         />
       </div>
@@ -78,12 +122,23 @@ function VideoRecorderCard({ title, description, onUploaded, uploadFolder }) {
   const [uploadError, setUploadError] = useState('');
   const autoStopRef = useRef(null);
 
-  const { status, startRecording, stopRecording, mediaBlobUrl, clearBlobUrl } =
-    useReactMediaRecorder({
-      video: true,
-      audio: true,
-      blobPropertyBag: { type: 'video/webm' }
-    });
+  const {
+    status,
+    startRecording,
+    stopRecording,
+    mediaBlobUrl,
+    clearBlobUrl,
+    previewStream,
+    error: recorderError
+  } = useReactMediaRecorder({
+    video: {
+      facingMode: 'user',
+      width: { ideal: 1280 },
+      height: { ideal: 720 }
+    },
+    audio: true,
+    blobPropertyBag: { type: 'video/webm' }
+  });
 
   useEffect(() => {
     if (status === 'recording') {
@@ -120,40 +175,87 @@ function VideoRecorderCard({ title, description, onUploaded, uploadFolder }) {
     }
   };
 
+  const showLivePreview =
+    previewStream &&
+    previewStream.getVideoTracks().some((t) => t.readyState === 'live');
+
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-      <h3 className="text-base font-semibold text-slate-900">{title}</h3>
-      <p className="mt-1 text-sm text-slate-600">{description}</p>
+    <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-remo ring-1 ring-remo-blue/5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h3 className="text-base font-bold text-remo-ink">{title}</h3>
+          <p className="mt-1 text-sm text-remo-muted">{description}</p>
+        </div>
+        <span
+          className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wide ${
+            status === 'recording'
+              ? 'bg-red-100 text-red-700 ring-1 ring-red-200'
+              : 'bg-slate-100 text-slate-600'
+          }`}
+        >
+          {status === 'recording' ? '● Recording' : status.replace(/_/g, ' ')}
+        </span>
+      </div>
+
+      <div className="mt-4 overflow-hidden rounded-xl border-2 border-dashed border-remo-green/30 bg-gradient-to-br from-teal-50/80 via-blue-50/50 to-amber-50/60">
+        {showLivePreview ? (
+          <LiveVideoPreview
+            stream={previewStream}
+            className="aspect-video w-full bg-slate-900 object-cover"
+          />
+        ) : (
+          <div className="flex aspect-video w-full flex-col items-center justify-center gap-2 px-4 text-center">
+            <span className="text-3xl" aria-hidden>
+              📹
+            </span>
+            <p className="text-sm font-medium text-remo-ink">Camera preview</p>
+            <p className="max-w-sm text-xs text-remo-muted">
+              Press <strong className="text-remo-blue">Start recording</strong> to open your camera and microphone.
+              Allow access when your browser asks.
+            </p>
+          </div>
+        )}
+      </div>
 
       <div className="mt-4 flex flex-wrap gap-2">
         <button
           type="button"
           onClick={startRecording}
-          className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
+          disabled={status === 'recording' || status === 'acquiring_media'}
+          className="rounded-lg bg-gradient-to-r from-remo-green to-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-teal-500/25 transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Start
+          Start recording
         </button>
         <button
           type="button"
           onClick={stopRecording}
-          className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          disabled={status !== 'recording' && status !== 'paused'}
+          className="rounded-lg border-2 border-remo-blue/40 bg-white px-4 py-2.5 text-sm font-semibold text-remo-blue hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40"
         >
           Stop
         </button>
         <button
           type="button"
           onClick={clearBlobUrl}
-          className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
         >
-          Clear
+          Clear clip
         </button>
       </div>
 
-      <p className="mt-3 text-xs uppercase tracking-wide text-slate-500">Recorder: {status}</p>
-      <p className="mt-1 text-xs text-slate-500">Auto-stops at 2:00.</p>
+      <p className="mt-2 text-xs text-remo-muted">Recording auto-stops at 2:00.</p>
+
+      {recorderError && recorderError !== '' && (
+        <p className="mt-2 text-sm font-medium text-amber-800">
+          Camera/mic: {recorderError}. Check browser permissions and try again.
+        </p>
+      )}
 
       {mediaBlobUrl && (
-        <video controls src={mediaBlobUrl} className="mt-4 w-full rounded-lg border border-slate-200" />
+        <div className="mt-4">
+          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-remo-muted">Playback</p>
+          <video controls src={mediaBlobUrl} className="w-full rounded-lg border border-slate-200 shadow-sm" />
+        </div>
       )}
 
       <div className="mt-4">
@@ -161,9 +263,9 @@ function VideoRecorderCard({ title, description, onUploaded, uploadFolder }) {
           type="button"
           onClick={handleUpload}
           disabled={!canUpload}
-          className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+          className="rounded-lg bg-gradient-to-r from-remo-blue to-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-blue-500/20 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
         >
-          {uploading ? 'Uploading...' : 'Upload to Bucket'}
+          {uploading ? 'Uploading...' : 'Upload to storage'}
         </button>
       </div>
 
@@ -176,7 +278,7 @@ function AudioRecorderCard({ title, description, onUploaded, uploadFolder }) {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
 
-  const { status, startRecording, stopRecording, mediaBlobUrl, clearBlobUrl } =
+  const { status, startRecording, stopRecording, mediaBlobUrl, clearBlobUrl, error: audioRecorderError } =
     useReactMediaRecorder({
       video: false,
       audio: true,
@@ -202,35 +304,41 @@ function AudioRecorderCard({ title, description, onUploaded, uploadFolder }) {
   };
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-      <h3 className="text-base font-semibold text-slate-900">{title}</h3>
-      <p className="mt-1 text-sm text-slate-600">{description}</p>
+    <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-remo ring-1 ring-remo-green/10">
+      <h3 className="text-base font-bold text-remo-ink">{title}</h3>
+      <p className="mt-1 text-sm text-remo-muted">{description}</p>
 
       <div className="mt-4 flex flex-wrap gap-2">
         <button
           type="button"
           onClick={startRecording}
-          className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
+          disabled={status === 'recording' || status === 'acquiring_media'}
+          className="rounded-lg bg-gradient-to-r from-remo-green to-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-teal-500/20 disabled:opacity-50"
         >
           Start
         </button>
         <button
           type="button"
           onClick={stopRecording}
-          className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          disabled={status !== 'recording' && status !== 'paused'}
+          className="rounded-lg border-2 border-remo-blue/40 bg-white px-4 py-2.5 text-sm font-semibold text-remo-blue hover:bg-blue-50 disabled:opacity-40"
         >
           Stop
         </button>
         <button
           type="button"
           onClick={clearBlobUrl}
-          className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          className="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
         >
           Clear
         </button>
       </div>
 
-      <p className="mt-3 text-xs uppercase tracking-wide text-slate-500">Recorder: {status}</p>
+      <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-remo-muted">Status: {status.replace(/_/g, ' ')}</p>
+
+      {audioRecorderError && (
+        <p className="mt-2 text-sm font-medium text-amber-800">Microphone: {audioRecorderError}</p>
+      )}
 
       {mediaBlobUrl && (
         <audio controls src={mediaBlobUrl} className="mt-4 w-full rounded-lg border border-slate-200" />
@@ -241,9 +349,9 @@ function AudioRecorderCard({ title, description, onUploaded, uploadFolder }) {
           type="button"
           onClick={handleUpload}
           disabled={!canUpload}
-          className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+          className="rounded-lg bg-gradient-to-r from-remo-yellow to-amber-500 px-4 py-2.5 text-sm font-semibold text-amber-950 shadow-md shadow-amber-500/25 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
         >
-          {uploading ? 'Uploading...' : 'Upload Voice Answer'}
+          {uploading ? 'Uploading...' : 'Upload voice answer'}
         </button>
       </div>
 
@@ -305,19 +413,32 @@ export default function App() {
         }
       };
 
-      const response = await fetch('/api/applications', {
+      const apiUrl = `${window.location.origin}/api/applications`;
+      const response = await fetch(apiUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: tunnelSafeHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify(payload)
       });
 
+      const ct = response.headers.get('content-type') || '';
+      const data = ct.includes('application/json') ? await response.json().catch(() => ({})) : {};
+
       if (!response.ok) {
-        throw new Error(`Submission failed (${response.status})`);
+        throw new Error(data.error || `Submission failed (${response.status})`);
+      }
+      if (data.success !== true) {
+        throw new Error(
+          data.error ||
+            'The server did not confirm your application. If you use ngrok, refresh and try again, or check the console.'
+        );
       }
 
-      alert('Application submitted successfully.');
-      setForm(initialForm);
-      setStep(1);
+      alert(
+        'Thank you for completing your tutor application.\n\n' +
+          'We will review your submission and email you with the results. This may take about three days to one week.\n\n' +
+          'Click OK to return to the homepage.'
+      );
+      window.location.replace(`${window.location.origin}/`);
     } catch (error) {
       alert(error.message || 'Failed to submit application.');
     } finally {
@@ -325,46 +446,72 @@ export default function App() {
     }
   };
 
+  const inputClass =
+    'w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm shadow-sm transition focus:border-remo-blue focus:outline-none focus:ring-2 focus:ring-remo-blue/20';
+
   return (
-    <div className="mx-auto min-h-screen max-w-5xl px-4 py-8">
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:p-8">
-        <header className="mb-8">
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Teaching Application</h1>
-          <p className="mt-2 text-sm text-slate-600">
-            Complete all four steps. Keep your responses clear, concise, and professional.
+    <form
+      className="contents"
+      onSubmit={(e) => {
+        e.preventDefault();
+      }}
+    >
+    <div className="mx-auto min-h-screen max-w-5xl px-4 py-10">
+      <div className="relative overflow-hidden rounded-3xl border border-white/60 bg-white/90 p-6 shadow-remo backdrop-blur-sm md:p-10">
+        <div
+          className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-gradient-to-br from-remo-green/20 via-remo-blue/15 to-remo-yellow/25 blur-3xl"
+          aria-hidden
+        />
+        <div
+          className="pointer-events-none absolute -bottom-24 -left-16 h-56 w-56 rounded-full bg-gradient-to-tr from-remo-blue/10 to-remo-yellow/20 blur-3xl"
+          aria-hidden
+        />
+
+        <header className="relative mb-8 border-b border-slate-100 pb-6">
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-remo-green">RemoEd · Teacher pipeline</p>
+          <h1 className="mt-2 bg-gradient-to-r from-remo-ink via-remo-blue to-remo-green bg-clip-text text-3xl font-bold tracking-tight text-transparent md:text-4xl">
+            Teaching Application
+          </h1>
+          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-remo-muted">
+            Complete all four steps. Keep your responses clear, concise, and professional. You’ll use your microphone in
+            step 2 and your <span className="font-semibold text-remo-blue">camera</span> for the short demo in step 3.
           </p>
         </header>
 
-        <Progress step={step} />
+        <div className="relative">
+          <Progress step={step} />
+        </div>
 
         {step === 1 && (
-          <section className="space-y-5">
-            <h2 className="text-lg font-medium text-slate-900">Step 1: Basic Info and Account</h2>
+          <section className="relative space-y-5">
+            <h2 className="text-lg font-bold text-remo-ink">
+              Step 1: <span className="text-remo-blue">Basic info</span> and account
+            </h2>
             <div className="grid gap-4 md:grid-cols-2">
               <div className="md:col-span-2">
-                <label className="mb-1 block text-sm font-medium text-slate-700">Full Name</label>
+                <label className="mb-1 block text-sm font-semibold text-slate-700">Full Name</label>
                 <input
                   value={form.fullName}
                   onChange={(e) => setField('fullName', e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+                  className={inputClass}
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Email</label>
+                <label className="mb-1 block text-sm font-semibold text-slate-700">Email</label>
                 <input
                   type="email"
                   value={form.email}
                   onChange={(e) => setField('email', e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+                  className={inputClass}
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Password</label>
+                <label className="mb-1 block text-sm font-semibold text-slate-700">Password</label>
                 <input
                   type="password"
                   value={form.password}
                   onChange={(e) => setField('password', e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+                  className={inputClass}
                 />
               </div>
             </div>
@@ -372,22 +519,27 @@ export default function App() {
         )}
 
         {step === 2 && (
-          <section className="space-y-5">
-            <h2 className="text-lg font-medium text-slate-900">Step 2: Pedagogical Voice Answers</h2>
-            <p className="text-sm text-slate-600">
+          <section className="relative space-y-5">
+            <h2 className="text-lg font-bold text-remo-ink">
+              Step 2: <span className="text-remo-green">Pedagogical</span> voice answers
+            </h2>
+            <p className="text-sm text-remo-muted">
               Record one voice answer per question, then upload each recording to your bucket.
             </p>
             <div className="space-y-4">
               {PEDAGOGICAL_QUESTIONS.map((question, idx) => (
-                <div key={question} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                  <p className="text-sm font-medium text-slate-800">
+                <div
+                  key={question}
+                  className="rounded-2xl border border-slate-200/90 bg-gradient-to-br from-white to-teal-50/30 p-4 shadow-sm"
+                >
+                  <p className="text-sm font-semibold text-slate-800">
                     Q{idx + 1}. {question}
                   </p>
                   <textarea
                     placeholder="Optional written summary..."
                     value={form.testAnswers[idx]}
                     onChange={(e) => setQuestionText(idx, e.target.value)}
-                    className="mt-3 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+                    className={`${inputClass} mt-3`}
                     rows={3}
                   />
                   <div className="mt-4">
@@ -399,7 +551,7 @@ export default function App() {
                     />
                   </div>
                   {form.testVideos[idx] && (
-                    <p className="mt-2 text-xs text-emerald-700">Uploaded URL: {form.testVideos[idx]}</p>
+                    <p className="mt-2 text-xs font-medium text-teal-700">Uploaded URL: {form.testVideos[idx]}</p>
                   )}
                 </div>
               ))}
@@ -408,11 +560,13 @@ export default function App() {
         )}
 
         {step === 3 && (
-          <section className="space-y-5">
-            <h2 className="text-lg font-medium text-slate-900">Step 3: Quick 2-Minute Lesson Demo</h2>
+          <section className="relative space-y-5">
+            <h2 className="text-lg font-bold text-remo-ink">
+              Step 3: <span className="text-remo-yellow">2-minute</span> lesson demo (camera)
+            </h2>
             <div className="grid gap-4 md:grid-cols-3">
-              <aside className="rounded-xl border border-slate-200 bg-slate-50 p-4 md:col-span-1">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Teaching Scenario</p>
+              <aside className="rounded-2xl border border-remo-blue/20 bg-gradient-to-b from-blue-50/80 to-white p-4 md:col-span-1">
+                <p className="text-xs font-bold uppercase tracking-wide text-remo-blue">Teaching scenario</p>
                 <div className="mt-2 text-sm text-slate-800">
                   <p className="font-semibold">Scenario Title:</p>
                   <p>{TEACHING_SCENARIO.title}</p>
@@ -434,7 +588,7 @@ export default function App() {
                   onUploaded={(url) => setField('demoVideoUrl', url)}
                 />
                 {form.demoVideoUrl && (
-                  <p className="mt-2 text-xs text-emerald-700">Uploaded URL: {form.demoVideoUrl}</p>
+                  <p className="mt-2 text-xs font-medium text-teal-700">Uploaded URL: {form.demoVideoUrl}</p>
                 )}
               </div>
             </div>
@@ -442,41 +596,45 @@ export default function App() {
         )}
 
         {step === 4 && (
-          <section className="space-y-5">
-            <h2 className="text-lg font-medium text-slate-900">Step 4: Document Upload</h2>
+          <section className="relative space-y-5">
+            <h2 className="text-lg font-bold text-remo-ink">
+              Step 4: <span className="text-remo-blue">Document</span> upload
+            </h2>
             <div className="grid gap-4 md:grid-cols-2">
-              <div className="rounded-xl border border-slate-200 p-4">
-                <label className="mb-2 block text-sm font-medium text-slate-700">National ID</label>
+              <div className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-sm">
+                <label className="mb-2 block text-sm font-semibold text-slate-700">National ID</label>
                 <input
                   type="file"
                   accept="image/*,.pdf"
                   onChange={(e) => uploadDocument('nationalId', e.target.files?.[0])}
-                  className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-900 file:px-3 file:py-2 file:text-sm file:font-medium file:text-white"
+                  className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-xl file:border-0 file:bg-gradient-to-r file:from-remo-green file:to-teal-600 file:px-4 file:py-2.5 file:text-sm file:font-semibold file:text-white"
                 />
                 {form.documents.nationalId && (
-                  <p className="mt-2 text-xs text-emerald-700">Uploaded URL: {form.documents.nationalId}</p>
+                  <p className="mt-2 text-xs font-medium text-teal-700">Uploaded URL: {form.documents.nationalId}</p>
                 )}
               </div>
-              <div className="rounded-xl border border-slate-200 p-4">
-                <label className="mb-2 block text-sm font-medium text-slate-700">NBI Clearance</label>
+              <div className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-sm">
+                <label className="mb-2 block text-sm font-semibold text-slate-700">NBI Clearance</label>
                 <input
                   type="file"
                   accept="image/*,.pdf"
                   onChange={(e) => uploadDocument('nbi', e.target.files?.[0])}
-                  className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-900 file:px-3 file:py-2 file:text-sm file:font-medium file:text-white"
+                  className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-xl file:border-0 file:bg-gradient-to-r file:from-remo-blue file:to-blue-600 file:px-4 file:py-2.5 file:text-sm file:font-semibold file:text-white"
                 />
-                {form.documents.nbi && <p className="mt-2 text-xs text-emerald-700">Uploaded URL: {form.documents.nbi}</p>}
+                {form.documents.nbi && (
+                  <p className="mt-2 text-xs font-medium text-teal-700">Uploaded URL: {form.documents.nbi}</p>
+                )}
               </div>
             </div>
           </section>
         )}
 
-        <footer className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-5">
+        <footer className="relative mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-6">
           <button
             type="button"
             onClick={() => setStep((s) => Math.max(1, s - 1))}
             disabled={step === 1}
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-xl border-2 border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-600 transition hover:border-remo-blue/40 hover:text-remo-blue disabled:cursor-not-allowed disabled:opacity-40"
           >
             Back
           </button>
@@ -486,7 +644,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => setStep((s) => Math.min(4, s + 1))}
-                className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
+                className="rounded-xl bg-gradient-to-r from-remo-ink via-slate-800 to-remo-blue px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-blue-900/20 transition hover:brightness-110"
               >
                 Continue
               </button>
@@ -495,14 +653,15 @@ export default function App() {
                 type="button"
                 onClick={submitApplication}
                 disabled={submitting}
-                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+                className="rounded-xl bg-gradient-to-r from-remo-green to-teal-600 px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-teal-600/25 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
               >
-                {submitting ? 'Submitting...' : 'Submit Application'}
+                {submitting ? 'Submitting...' : 'Submit application'}
               </button>
             )}
           </div>
         </footer>
       </div>
     </div>
+    </form>
   );
 }

@@ -2,7 +2,8 @@ const mongoose = require('mongoose');
 const { piiContactString } = require('../utils/piiMongoose');
 
 const studentSchema = new mongoose.Schema({
-  studentCode: { type: String, default: null, unique: true, sparse: true },
+  /** Official ID when assigned; omit field until set — do not default null (breaks sparse unique index). */
+  studentCode: { type: String, unique: true, sparse: true },
   username: { type: String, required: true, unique: true },
   email: { type: String, required: false, unique: true },
   password: { type: String, required: true },
@@ -45,7 +46,8 @@ const studentSchema = new mongoose.Schema({
   /** When set and in the future, login is rejected until this time */
   lockUntil: { type: Date, default: null },
   hasGeneratedPassword: { type: Boolean, default: false },
-  subscriptionPlan: { type: String }, // '1month', '3months', '6months', '1year'
+  /** Canonical ids: spark | steady | scholar | summit (aliases: 1month, 3months, 6months, 1year). Credits = months × 22; see server/config/planCredits.js */
+  subscriptionPlan: { type: String },
   subscriptionStartDate: { type: Date },
   subscriptionEndDate: { type: Date },
   subscriptionStatus: { type: String, enum: ['pending', 'active', 'expired', 'cancelled'], default: 'pending' },
@@ -63,12 +65,42 @@ const studentSchema = new mongoose.Schema({
     sessionId: { type: String, default: '' },
     createdAt: { type: Date, default: null }
   },
+  /**
+   * Conversion funnel: standard (default) → trial_active (claimed assessment token) →
+   * trial_completed (free class consumed) → active_subscriber (paid via PayMongo).
+   * Booking is blocked while trial_completed until payment promotes to active_subscriber.
+   */
+  accountStatus: {
+    type: String,
+    enum: ['standard', 'trial_active', 'trial_completed', 'active_subscriber'],
+    default: 'standard',
+  },
+  trialCompletedAt: { type: Date, default: null },
+  /**
+   * One free lesson from post-assessment registration; false after that class is completed.
+   */
+  hasFreeTrial: { type: Boolean, default: false },
+  /** First-visit welcome tour on student dashboard; cleared after dismiss. */
+  hasSeenWelcomeTour: { type: Boolean, default: false },
+  /** When the post-assessment free trial credit was granted (for 24h booking reminders). */
+  assessmentTrialGrantedAt: { type: Date, default: null },
+  /** Set when the gentle 'book your trial' reminder email was sent. */
+  trialBookingReminderSentAt: { type: Date, default: null },
+  /** Paid active subscription (synced with PayMongo webhooks / login self-heal). */
+  isSubscribed: { type: Boolean, default: false },
+  /**
+   * When true, the next class booked counts as the one free trial from level assessment;
+   * cleared after that class completes (credit consumed).
+   */
+  assessmentTrialCreditActive: { type: Boolean, default: false },
   // Lesson credits (used for flexible scheduling)
   creditBalance: { type: Number, default: 0 }, // pool of purchased credits not yet consumed by finished lessons
   /** Credits held for upcoming bookings (deducted from "available" until class is finished or cancelled). */
   reservedCredits: { type: Number, default: 0 },
   totalCreditsEarned: { type: Number, default: 0 }, // total credits ever purchased
   usedCredits: { type: Number, default: 0 }, // lifetime credits spent on bookings
+  /** Optional explicit pool size; booking math falls back to creditBalance when unset. */
+  totalCredits: { type: Number, default: null },
   /** Idempotency for PayMongo / multi-step payments */
   processedPaymentIds: { type: [String], default: [] },
   creditHistory: [{

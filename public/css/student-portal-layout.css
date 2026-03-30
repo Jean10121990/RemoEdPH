@@ -1,0 +1,651 @@
+/**
+ * Student portal layout: full-viewport sidebar (shared spacing with teacher-sidebar.css),
+ * compressed headers on Schedule / Book / Dashboard. Load after teacher-sidebar.css.
+ */
+
+/* Fallback when this file is loaded without teacher-sidebar.css (e.g. credits page) */
+:root {
+  --remoed-brand-blue: #5a67d8;
+  --remoed-brand-blue-soft: #818cf8;
+  --remoed-student-font: "Comic Sans MS", "Comic Neue", "Chalkboard SE", "Trebuchet MS", "Segoe UI", cursive, sans-serif;
+}
+
+/*
+ * Consistent kid-friendly type across student-facing screens (portal + credits shell).
+ * !important wins over body.page-student-* rules in style.css that set other fonts.
+ */
+html body.student-portal,
+html body.page-student-credits {
+  font-family: var(--remoed-student-font) !important;
+}
+
+body.student-portal .remoed-sidebar {
+  font-family: var(--remoed-student-font) !important;
+}
+
+body.student-portal input,
+body.student-portal select,
+body.student-portal textarea,
+body.student-portal button {
+  font-family: inherit !important;
+}
+
+body.page-student-credits,
+body.page-student-credits input,
+body.page-student-credits select,
+body.page-student-credits textarea,
+body.page-student-credits button {
+  font-family: var(--remoed-student-font) !important;
+}
+
+/* --- Sidebar: full viewport; menu spacing matches teacher-sidebar.css (reference UI) --- */
+body.student-portal nav.remoed-sidebar.remoed-sidebar {
+  height: 100vh;
+  max-height: 100vh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+body.student-portal .remoed-sidebar .sidebar-header,
+body.student-portal .remoed-sidebar .sidebar-user {
+  flex-shrink: 0;
+}
+
+/* Menu fills space under header/user; avoid scroll on typical laptop heights */
+body.student-portal .remoed-menu {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+body.student-portal .remoed-menu li#logout-nav {
+  margin-top: 0;
+  flex-shrink: 0;
+}
+
+@media (max-height: 580px) {
+  body.student-portal .remoed-menu {
+    overflow-y: auto;
+  }
+}
+
+/* Compact header + user; brand colors from :root in teacher-sidebar.css */
+body.student-portal .remoed-sidebar .sidebar-header {
+  padding: 6px 12px 7px;
+  border-bottom-width: 1px;
+}
+
+body.student-portal .remoed-sidebar .sidebar-header-inner {
+  gap: 8px;
+  align-items: center;
+}
+
+body.student-portal .remoed-sidebar .sidebar-logo-img {
+  width: 38px;
+  height: 38px;
+}
+
+body.student-portal .remoed-sidebar .sidebar-title {
+  font-size: 1.22rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--remoed-brand-blue) !important;
+  line-height: 1.15;
+}
+
+body.student-portal .remoed-sidebar .sidebar-subtitle {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--remoed-sidebar-subtitle) !important;
+  line-height: 1.2;
+  margin-top: 1px;
+}
+
+body.student-portal .remoed-sidebar .sidebar-user {
+  padding: 5px 12px 6px;
+  border-bottom-width: 1px;
+}
+
+body.student-portal .remoed-sidebar .sidebar-user-inner {
+  gap: 8px;
+}
+
+body.student-portal .remoed-sidebar #remoed-avatar {
+  width: 34px;
+  height: 34px;
+}
+
+body.student-portal .remoed-sidebar .remoed-username {
+  font-size: 1.02rem;
+  font-weight: 600;
+  max-width: 178px;
+  color: #000000 !important;
+}
+
+/* Distribute nav vertically so the column fills 100vh without dead space below Exit */
+body.student-portal nav.remoed-sidebar .remoed-menu {
+  padding: 4px 0 8px;
+  gap: 0;
+  justify-content: space-evenly;
+  align-items: stretch;
+}
+
+body.student-portal nav.remoed-sidebar .remoed-menu li {
+  padding: 7px 14px 7px 16px !important;
+  margin: 0 !important;
+  font-size: 1.02rem !important;
+  font-weight: 600 !important;
+  line-height: 1.25;
+  border-radius: 0 8px 8px 0 !important;
+  transform: none !important;
+  box-shadow: none !important;
+  border-left: 4px solid transparent;
+  flex: 0 0 auto;
+}
+
+body.student-portal nav.remoed-sidebar .remoed-menu li:not(.active):not(#logout-nav) {
+  color: var(--remoed-brand-blue) !important;
+  background: transparent !important;
+}
+
+body.student-portal nav.remoed-sidebar .remoed-menu li:not(.active):not(#logout-nav) svg {
+  stroke: var(--remoed-brand-blue) !important;
+}
+
+body.student-portal nav.remoed-sidebar .remoed-menu li:not(.active):not(#logout-nav):hover {
+  background: var(--remoed-sidebar-inactive-hover-bg) !important;
+  color: var(--remoed-sidebar-inactive-hover-text) !important;
+}
+
+body.student-portal nav.remoed-sidebar .remoed-menu li:not(.active):not(#logout-nav):hover svg {
+  stroke: var(--remoed-sidebar-inactive-hover-text) !important;
+}
+
+body.student-portal nav.remoed-sidebar .remoed-menu li.active {
+  background: linear-gradient(90deg, var(--remoed-sidebar-active-start) 0%, var(--remoed-sidebar-active-end) 100%) !important;
+  border-left-color: var(--remoed-sidebar-active-border) !important;
+  color: #fff !important;
+}
+
+body.student-portal nav.remoed-sidebar .remoed-menu li.active svg {
+  stroke: #fff !important;
+}
+
+body.student-portal nav.remoed-sidebar .remoed-menu svg {
+  width: 22px !important;
+  height: 22px !important;
+  flex-shrink: 0;
+}
+
+body.student-portal nav.remoed-sidebar .remoed-menu li#logout-nav {
+  color: #e74c3c !important;
+}
+
+body.student-portal nav.remoed-sidebar .remoed-menu li#logout-nav svg {
+  stroke: #e74c3c !important;
+}
+
+body.student-portal nav.remoed-sidebar .remoed-menu li#logout-nav:not(:hover) svg {
+  stroke: #e74c3c !important;
+}
+
+body.student-portal nav.remoed-sidebar .remoed-menu li#logout-nav:hover {
+  background: rgba(231, 76, 60, 0.1) !important;
+  color: #c0392b !important;
+}
+
+/* --- My Schedule: title row, then week controls (same pattern as Book a Class) --- */
+body.page-student-class-table .remoed-content {
+  padding: 8px 14px 12px;
+}
+
+.student-schedule-toolbar {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  margin-bottom: 6px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(90, 103, 216, 0.2);
+}
+
+.student-schedule-toolbar__title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--remoed-brand-blue);
+  text-shadow: 1px 1px 3px rgba(90, 103, 216, 0.12);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  line-height: 1.2;
+}
+
+.student-schedule-toolbar .week-navigation {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+body.page-student-class-table .feedback-reminder {
+  margin-bottom: 8px;
+  margin-top: 4px;
+}
+
+body.page-student-class-table .booking-legend.student-schedule-legend {
+  margin-bottom: 10px !important;
+  padding: 8px 10px !important;
+  border-radius: 8px;
+}
+
+body.page-student-class-table .booking-legend.student-schedule-legend h3 {
+  font-size: 0.95rem !important;
+  margin: 0 !important;
+  flex-shrink: 0;
+}
+
+body.page-student-class-table .booking-legend.student-schedule-legend > div {
+  font-size: 0.78rem !important;
+  gap: 6px !important;
+}
+
+/* --- Book a Class: title, then subtitle, then controls (week / timezone / View Schedule) --- */
+body.page-student-book .remoed-content {
+  padding: 8px 14px 12px;
+}
+
+.student-book-toolbar {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  margin-bottom: 6px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(90, 103, 216, 0.2);
+}
+
+.student-book-toolbar__title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--remoed-brand-blue);
+  text-shadow: 1px 1px 3px rgba(90, 103, 216, 0.12);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  line-height: 1.15;
+}
+
+.student-book-toolbar__hint {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #64748b;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.student-book-toolbar__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.student-book-toolbar__controls .week-navigation,
+.student-book-toolbar__controls .book-week-navigation {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+body.page-student-book .book-slot-legend-compact {
+  margin-bottom: 6px !important;
+  padding: 5px 8px !important;
+  border-radius: 8px;
+}
+
+body.page-student-book .book-slot-legend-compact > div {
+  font-size: 0.68rem !important;
+  gap: 4px !important;
+}
+
+/* Book / My Schedule — grid header & selected slot use brand indigo */
+body.page-student-book .grid-header {
+  background: linear-gradient(135deg, var(--remoed-brand-blue), var(--remoed-brand-blue-soft)) !important;
+}
+
+body.page-student-book .slot-cell.selected {
+  background: var(--remoed-brand-blue) !important;
+  box-shadow: 0 4px 12px rgba(90, 103, 216, 0.4) !important;
+}
+
+body.page-student-class-table .schedule-table th {
+  background: linear-gradient(135deg, var(--remoed-brand-blue), var(--remoed-brand-blue-soft)) !important;
+}
+
+body.page-student-class-table .weekly-grid {
+  box-shadow: 0 8px 32px rgba(90, 103, 216, 0.12) !important;
+  border: 1px solid rgba(90, 103, 216, 0.12) !important;
+}
+
+/* --- Dashboard: slimmer top bar + less content padding --- */
+body.page-student-dashboard .nav-header {
+  height: 48px;
+  padding: 0 1rem;
+}
+
+body.page-student-dashboard .remoed-content {
+  margin-top: 48px;
+  min-height: calc(100vh - 48px);
+  padding: 0.65rem 1rem 1rem;
+  padding-top: 0.7rem;
+}
+
+body.page-student-dashboard .nav-left h1 {
+  font-size: 1.12rem !important;
+  color: var(--remoed-brand-blue) !important;
+}
+
+body.page-student-dashboard .nav-icon {
+  width: 36px;
+  height: 36px;
+}
+
+body.page-student-dashboard .nav-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+@media (max-width: 900px) {
+  body.page-student-dashboard .remoed-content {
+    margin-top: 0;
+    min-height: auto;
+    padding-top: 0.75rem;
+  }
+}
+
+/* --- My Level (assessment): intro fits viewport; tighter hero + card --- */
+body.student-portal.page-student-assessment .remoed-content {
+  padding: 10px 20px 16px;
+  min-height: 100vh;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+body.student-portal.page-student-assessment .assessment-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+}
+
+body.student-portal.page-student-assessment #intro-screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+body.student-portal.page-student-assessment .assessment-header {
+  padding: 16px 20px;
+  margin-bottom: 12px;
+  border-radius: 16px;
+}
+
+body.student-portal.page-student-assessment .assessment-header h1 {
+  font-size: 1.45rem;
+  margin: 0 0 6px 0;
+}
+
+body.student-portal.page-student-assessment .assessment-header p {
+  font-size: 0.95rem;
+}
+
+body.student-portal.page-student-assessment .assessment-intro {
+  padding: 18px 20px;
+  margin-bottom: 16px;
+  border-radius: 16px;
+  flex: 1;
+  min-height: 0;
+}
+
+body.student-portal.page-student-assessment .assessment-intro h2 {
+  font-size: 1.25rem;
+  margin-bottom: 8px;
+}
+
+body.student-portal.page-student-assessment .assessment-intro h2:nth-of-type(1) {
+  margin-top: 0;
+}
+
+body.student-portal.page-student-assessment .assessment-intro h2:nth-of-type(2) {
+  margin-top: 14px;
+}
+
+body.student-portal.page-student-assessment .assessment-intro > p {
+  font-size: 0.95rem !important;
+  line-height: 1.5 !important;
+  margin-bottom: 12px !important;
+}
+
+body.student-portal.page-student-assessment .assessment-intro li {
+  padding: 6px 0;
+  font-size: 0.95rem;
+}
+
+body.student-portal.page-student-assessment .assessment-intro li::before {
+  font-size: 1.15rem;
+}
+
+body.student-portal.page-student-assessment .assessment-intro .start-btn {
+  padding: 12px 28px;
+  font-size: 1.05rem;
+  margin: 16px auto 8px;
+}
+
+/* =============================================================================
+   Student pages: replace legacy light cyan / indigo with dark RemoEd blue
+   (Watch Videos, Profile, Level Assessment, Credits)
+   ============================================================================= */
+
+/* --- Watch Videos --- */
+body.student-portal.page-student-watch-videos .content h1,
+body.student-portal.page-student-watch-videos h1 {
+  color: var(--remoed-brand-blue) !important;
+  text-shadow: none !important;
+}
+
+body.student-portal.page-student-watch-videos .card {
+  border-color: rgba(90, 103, 216, 0.18) !important;
+  box-shadow: 0 8px 28px rgba(90, 103, 216, 0.08) !important;
+}
+
+body.student-portal.page-student-watch-videos .coming {
+  border-color: rgba(90, 103, 216, 0.22) !important;
+  color: var(--remoed-brand-blue) !important;
+  background: rgba(90, 103, 216, 0.06) !important;
+}
+
+/* --- My Lesson Credits (shell page; may load only this file + style.css) --- */
+body.page-student-credits .brand-title {
+  color: var(--remoed-brand-blue) !important;
+}
+
+body.page-student-credits .balance:not(.balance-low) {
+  color: var(--remoed-brand-blue) !important;
+}
+
+body.page-student-credits .btn-link {
+  background: rgba(90, 103, 216, 0.1) !important;
+  color: var(--remoed-brand-blue) !important;
+}
+
+body.page-student-credits .btn-link:hover {
+  background: rgba(90, 103, 216, 0.16) !important;
+}
+
+body.page-student-credits .stat-pill {
+  background: rgba(90, 103, 216, 0.08) !important;
+  color: var(--remoed-brand-blue) !important;
+}
+
+body.page-student-credits .primary-btn {
+  background: linear-gradient(135deg, var(--remoed-brand-blue), var(--remoed-brand-blue-soft)) !important;
+  box-shadow: 0 8px 22px rgba(90, 103, 216, 0.28) !important;
+}
+
+/* --- Student Profile --- */
+body.student-portal.page-student-profile .profile-name-large {
+  color: var(--remoed-brand-blue) !important;
+  text-shadow: none !important;
+}
+
+body.student-portal.page-student-profile .profile-email-large {
+  color: var(--remoed-brand-blue) !important;
+  opacity: 0.88;
+}
+
+body.student-portal.page-student-profile .back-btn {
+  background: linear-gradient(135deg, var(--remoed-brand-blue), var(--remoed-brand-blue-soft)) !important;
+  box-shadow: 0 4px 14px rgba(90, 103, 216, 0.35) !important;
+}
+
+body.student-portal.page-student-profile .back-btn:hover {
+  box-shadow: 0 6px 20px rgba(90, 103, 216, 0.45) !important;
+}
+
+body.student-portal.page-student-profile .profile-avatar-large {
+  background: linear-gradient(135deg, var(--remoed-brand-blue), var(--remoed-brand-blue-soft)) !important;
+  box-shadow: 0 8px 24px rgba(90, 103, 216, 0.35) !important;
+}
+
+body.student-portal.page-student-profile .profile-avatar-large:hover {
+  box-shadow: 0 12px 32px rgba(90, 103, 216, 0.45) !important;
+}
+
+body.student-portal.page-student-profile .section-title {
+  color: var(--remoed-brand-blue) !important;
+}
+
+body.student-portal.page-student-profile .form-input:focus,
+body.student-portal.page-student-profile .form-textarea:focus {
+  border-color: var(--remoed-brand-blue) !important;
+  box-shadow: 0 0 0 4px rgba(90, 103, 216, 0.12) !important;
+}
+
+body.student-portal.page-student-profile .file-upload-label {
+  border-color: var(--remoed-brand-blue) !important;
+  color: var(--remoed-brand-blue) !important;
+  background: rgba(90, 103, 216, 0.05) !important;
+}
+
+body.student-portal.page-student-profile .edit-btn,
+body.student-portal.page-student-profile .add-btn {
+  background: linear-gradient(135deg, var(--remoed-brand-blue), var(--remoed-brand-blue-soft)) !important;
+  box-shadow: 0 4px 12px rgba(90, 103, 216, 0.3) !important;
+}
+
+body.student-portal.page-student-profile .edit-btn:hover,
+body.student-portal.page-student-profile .add-btn:hover {
+  box-shadow: 0 6px 20px rgba(90, 103, 216, 0.4) !important;
+}
+
+body.student-portal.page-student-profile .tab-btn.active {
+  color: var(--remoed-brand-blue) !important;
+  border-bottom-color: var(--remoed-brand-blue) !important;
+}
+
+body.student-portal.page-student-profile .tab-btn:hover {
+  color: var(--remoed-brand-blue) !important;
+  background: rgba(90, 103, 216, 0.06) !important;
+}
+
+body.student-portal.page-student-profile .info-card {
+  border-left-color: var(--remoed-brand-blue) !important;
+}
+
+/* --- Level Assessment --- */
+body.student-portal.page-student-assessment .assessment-header {
+  background: linear-gradient(135deg, var(--remoed-brand-blue), var(--remoed-brand-blue-soft)) !important;
+  box-shadow: 0 8px 24px rgba(90, 103, 216, 0.35) !important;
+}
+
+body.student-portal.page-student-assessment .assessment-intro h2 {
+  color: var(--remoed-brand-blue) !important;
+}
+
+body.student-portal.page-student-assessment .start-btn {
+  background: linear-gradient(135deg, var(--remoed-brand-blue), var(--remoed-brand-blue-soft)) !important;
+  box-shadow: 0 6px 20px rgba(90, 103, 216, 0.4) !important;
+}
+
+body.student-portal.page-student-assessment .start-btn:hover {
+  box-shadow: 0 10px 30px rgba(90, 103, 216, 0.5) !important;
+}
+
+body.student-portal.page-student-assessment .question-number {
+  background: linear-gradient(135deg, var(--remoed-brand-blue), var(--remoed-brand-blue-soft)) !important;
+  box-shadow: 0 4px 12px rgba(90, 103, 216, 0.35) !important;
+}
+
+body.student-portal.page-student-assessment .progress-fill {
+  background: linear-gradient(90deg, var(--remoed-brand-blue), var(--remoed-brand-blue-soft), #ffd700) !important;
+  box-shadow: 0 2px 8px rgba(90, 103, 216, 0.25) !important;
+}
+
+body.student-portal.page-student-assessment .option-btn:hover {
+  border-color: var(--remoed-brand-blue) !important;
+  box-shadow: 0 6px 20px rgba(90, 103, 216, 0.18) !important;
+}
+
+body.student-portal.page-student-assessment .option-btn.selected {
+  background: linear-gradient(135deg, var(--remoed-brand-blue), var(--remoed-brand-blue-soft)) !important;
+  box-shadow: 0 6px 20px rgba(90, 103, 216, 0.4) !important;
+}
+
+body.student-portal.page-student-assessment .next-btn {
+  background: linear-gradient(135deg, var(--remoed-brand-blue), var(--remoed-brand-blue-soft)) !important;
+}
+
+body.student-portal.page-student-assessment .cefr-level {
+  background: linear-gradient(135deg, var(--remoed-brand-blue), var(--remoed-brand-blue-soft)) !important;
+  box-shadow: 0 8px 24px rgba(90, 103, 216, 0.4) !important;
+}
+
+body.student-portal.page-student-assessment .level-description {
+  border-left-color: var(--remoed-brand-blue) !important;
+}
+
+body.student-portal.page-student-assessment .level-description h3 {
+  color: var(--remoed-brand-blue) !important;
+}
+
+body.student-portal.page-student-assessment .retake-btn {
+  background: linear-gradient(135deg, var(--remoed-brand-blue), var(--remoed-brand-blue-soft)) !important;
+}
+
+/* Post-assessment modal (inline styles in HTML) */
+body.student-portal.page-student-assessment .post-assessment-modal__score strong {
+  color: var(--remoed-brand-blue) !important;
+}
+
+body.student-portal.page-student-assessment .pam-btn-primary {
+  background: linear-gradient(135deg, var(--remoed-brand-blue), var(--remoed-brand-blue-soft)) !important;
+  box-shadow: 0 10px 24px rgba(90, 103, 216, 0.35) !important;
+}
+
+body.student-portal.page-student-assessment .pam-btn-secondary {
+  color: var(--remoed-brand-blue) !important;
+  border-color: rgba(90, 103, 216, 0.35) !important;
+}
+
+body.student-portal.page-student-assessment #score-display .assessment-score-pct {
+  color: var(--remoed-brand-blue) !important;
+}

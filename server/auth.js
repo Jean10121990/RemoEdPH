@@ -9,6 +9,7 @@ const {
 const Teacher = require('./models/Teacher');
 const Student = require('./models/Student');
 const Admin = require('./models/Admin');
+const AssessmentTrial = require('./models/AssessmentTrial');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret'; // Use a strong secret in production
@@ -389,12 +390,43 @@ router.post('/student-login', authLoginLimiter, async (req, res) => {
       console.log('Student hasGeneratedPassword:', student.hasGeneratedPassword);
       console.log('needsPasswordChange:', needsPasswordChange);
       
+      let accountStatus = student.accountStatus || 'standard';
+      if (student.paymentStatus === 'paid' && student.subscriptionStatus === 'active') {
+        const subPatch = {};
+        if (accountStatus !== 'active_subscriber') {
+          subPatch.accountStatus = 'active_subscriber';
+          accountStatus = 'active_subscriber';
+        }
+        if (student.isSubscribed !== true) {
+          subPatch.isSubscribed = true;
+        }
+        if (Object.keys(subPatch).length) {
+          await Student.updateOne({ _id: student._id }, { $set: subPatch });
+        }
+      }
+
+      const fresh = await Student.findById(student._id).lean();
+      const effectiveSubscribed = fresh
+        ? fresh.isSubscribed === true ||
+          (fresh.paymentStatus === 'paid' && fresh.subscriptionStatus === 'active')
+        : student.isSubscribed === true ||
+          (student.paymentStatus === 'paid' && student.subscriptionStatus === 'active');
+
+      const showWelcomeTour = fresh
+        ? fresh.hasSeenWelcomeTour !== true
+        : student.hasSeenWelcomeTour !== true;
+
       const response = { 
         success: true, 
         token, 
         studentId: student._id,
         username: student.username,
-        needsPasswordChange: needsPasswordChange
+        needsPasswordChange: needsPasswordChange,
+        accountStatus: (fresh && fresh.accountStatus) || accountStatus,
+        hasFreeTrial: fresh ? !!fresh.hasFreeTrial : !!student.hasFreeTrial,
+        isSubscribed: !!effectiveSubscribed,
+        showWelcomeTour: !!showWelcomeTour,
+        isFirstLogin: !!showWelcomeTour,
       };
       console.log('Sending response:', { ...response, token: '***' });
       res.json(response);
@@ -430,14 +462,14 @@ router.post('/student-login', authLoginLimiter, async (req, res) => {
 
 // Student registration endpoint
 router.post('/student-register', authRegisterLimiter, async (req, res) => {
-  const { username, email, password, referralCode } = req.body;
+  const { username, email, password, referralCode, assessmentTrialToken } = req.body;
   if (!username || !password) {
     return res.status(400).json({ success: false, message: 'Username and password required' });
   }
   if (!email) {
     return res.status(400).json({ success: false, message: 'Email address is required' });
   }
-  
+
   // Check if database is connected
   const mongoose = require('mongoose');
   if (mongoose.connection.readyState !== 1) {
@@ -446,6 +478,28 @@ router.post('/student-register', authRegisterLimiter, async (req, res) => {
       success: false, 
       message: 'Database connection unavailable. Please try again in a moment.' 
     });
+  }
+
+  let trial = null;
+  if (assessmentTrialToken && String(assessmentTrialToken).trim()) {
+    trial = await AssessmentTrial.findOne({
+      token: String(assessmentTrialToken).trim(),
+      redeemedByStudentId: null,
+    });
+    if (!trial) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or already used assessment trial link. Request a new results email from the assessment page.',
+      });
+    }
+    const em = String(email).trim().toLowerCase();
+    if (em !== trial.parentEmail) {
+      return res.status(400).json({
+        success: false,
+        message:
+          'Use the same email address you used for the level assessment to claim your free trial class.',
+      });
+    }
   }
   
   try {
@@ -496,6 +550,65 @@ router.post('/student-register', authRegisterLimiter, async (req, res) => {
     }
 
     await student.save();
+
+    if (trial) {
+      const now = new Date();
+      const redeem = await AssessmentTrial.findOneAndUpdate(
+        { _id: trial._id, redeemedByStudentId: null },
+        { $set: { redeemedByStudentId: student._id, redeemedAt: now } },
+        { new: true }
+      );
+      if (!redeem) {
+        return res.status(409).json({
+          success: false,
+          message: 'This assessment trial link was just used. Please refresh and try again.',
+        });
+      }
+      const prevBal = Math.max(0, Number(student.creditBalance) || 0);
+      const reserved = Math.max(0, Number(student.reservedCredits) || 0);
+      const balanceAfterPool = prevBal + 1;
+      const trialProfileSet = {
+        assessmentTrialCreditActive: true,
+        accountStatus: 'trial_active',
+        hasFreeTrial: true,
+        isSubscribed: false,
+        assessmentTrialGrantedAt: now,
+      };
+      if (redeem.cefrLevel) {
+        trialProfileSet.cefrLevel = redeem.cefrLevel;
+        trialProfileSet.leveling = redeem.cefrLevel;
+      }
+      if (redeem.score != null && redeem.score !== undefined) {
+        trialProfileSet.assessmentScore = Number(redeem.score) || 0;
+      }
+      trialProfileSet.assessmentDate = new Date();
+
+      await Student.updateOne(
+        { _id: student._id },
+        {
+          $inc: { creditBalance: 1, totalCreditsEarned: 1 },
+          $set: trialProfileSet,
+          $push: {
+            creditTransactions: {
+              date: now,
+              type: 'adjustment',
+              plan: 'assessment-trial',
+              description: 'Free trial class from level assessment',
+              credits: 1,
+              balanceAfter: Math.max(balanceAfterPool - reserved, 0),
+              amountPaid: 0,
+            },
+          },
+        }
+      );
+      return res.json({
+        success: true,
+        message: 'Student registered successfully. Log in to book your free trial class.',
+        studentId: student._id,
+        assessmentTrialActivated: true,
+      });
+    }
+
     res.json({ success: true, message: 'Student registered successfully', studentId: student._id });
   } catch (err) {
     console.error('❌ Student registration error:', err);
@@ -523,6 +636,69 @@ router.post('/student-register', authRegisterLimiter, async (req, res) => {
       message: errorMessage,
       error: process.env.NODE_ENV === 'development' ? err.message : undefined
     });
+  }
+});
+
+// After PayMongo checkout: finish profile with password check (no JWT yet)
+router.post('/complete-checkout-profile', authRegisterLimiter, async (req, res) => {
+  try {
+    const email = String(req.body.email || '').trim().toLowerCase();
+    const username = String(req.body.username || '').trim();
+    const password = req.body.password;
+    const firstName = String(req.body.firstName || '').trim();
+    const lastName = String(req.body.lastName || '').trim();
+    const contact = req.body.contact != null ? String(req.body.contact).trim() : '';
+
+    if (!email || !username || !password || !firstName || !lastName) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email, username, password, first name, and last name are required.',
+      });
+    }
+
+    if (mongoose.connection.readyState !== 1) {
+      return res.status(503).json({
+        success: false,
+        message: 'Database unavailable. Try again shortly.',
+      });
+    }
+
+    const student = await Student.findOne({ username });
+    const studentEmail = (student && student.email) ? String(student.email).toLowerCase() : '';
+    if (!student || studentEmail !== email) {
+      return res.status(404).json({
+        success: false,
+        message: 'No matching account. Check your username and email, or contact support.',
+      });
+    }
+
+    if (student.paymentStatus !== 'paid') {
+      return res.status(403).json({
+        success: false,
+        message: 'Payment not confirmed yet. If you just paid, wait a moment and try again.',
+      });
+    }
+
+    const passwordMatch = await bcrypt.compare(password, student.password);
+    if (!passwordMatch) {
+      return res.status(401).json({
+        success: false,
+        message: 'Password does not match the one you used at checkout.',
+      });
+    }
+
+    student.firstName = firstName;
+    student.lastName = lastName;
+    if (contact) student.contact = contact;
+    await student.save();
+
+    return res.json({
+      success: true,
+      message: 'Profile saved. You can log in with your username and password.',
+    });
+  } catch (err) {
+    console.error('complete-checkout-profile error:', err);
+    return res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 

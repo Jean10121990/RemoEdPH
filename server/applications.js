@@ -24,17 +24,64 @@ router.post('/applications', async (req, res) => {
       });
     }
 
-    const existing = await Application.findOne({ email: String(email).toLowerCase().trim() }).lean();
+    const emailNorm = String(email).toLowerCase().trim();
+    const existing = await Application.findOne({ email: emailNorm });
+
     if (existing) {
+      const stage = String(existing.currentStage || '').toLowerCase();
+
+      if (stage === 'passed') {
+        return res.status(409).json({
+          success: false,
+          error: 'This email already completed tutor screening. Contact support if you need help.'
+        });
+      }
+
+      if (stage === 'failed') {
+        const eligibleAt = existing.reapplyEligibleAt ? new Date(existing.reapplyEligibleAt) : null;
+        if (eligibleAt && Date.now() < eligibleAt.getTime()) {
+          return res.status(403).json({
+            success: false,
+            error: `You may re-apply on or after ${eligibleAt.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}.`,
+            reapplyEligibleAt: eligibleAt.toISOString()
+          });
+        }
+
+        existing.fullName = String(fullName).trim();
+        existing.password = String(password);
+        existing.currentStage = 'applied';
+        existing.status = true;
+        existing.failedAt = null;
+        existing.reapplyEligibleAt = null;
+        existing.passedAt = null;
+        existing.testAnswers = {
+          text: String(testAnswers.text || ''),
+          videoUrls: Array.isArray(testAnswers.videoUrls) ? testAnswers.videoUrls.filter(Boolean) : []
+        };
+        existing.demoVideoUrl = String(demoVideoUrl || '');
+        existing.uploadedDocuments = {
+          nbi: String((uploadedDocuments && uploadedDocuments.nbi) || ''),
+          nationalId: String((uploadedDocuments && uploadedDocuments.nationalId) || '')
+        };
+        await existing.save();
+
+        return res.json({
+          success: true,
+          message: 'Application submitted successfully.',
+          applicationId: existing._id,
+          reapplied: true
+        });
+      }
+
       return res.status(409).json({
         success: false,
-        error: 'An application with this email already exists.'
+        error: 'An application with this email is already in progress.'
       });
     }
 
     const doc = await Application.create({
       fullName: String(fullName).trim(),
-      email: String(email).toLowerCase().trim(),
+      email: emailNorm,
       password: String(password),
       currentStage,
       status: Boolean(status),

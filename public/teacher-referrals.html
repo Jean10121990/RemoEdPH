@@ -91,6 +91,7 @@
     </div>
   </div>
 
+  <script src="timezone-utils.js"></script>
   <script>
     (function () {
       const userType = localStorage.getItem('userType');
@@ -161,7 +162,8 @@
         }
         empty.style.display = 'none';
         tbody.innerHTML = rows.map((r) => {
-          const when = r.createdAt ? new Date(r.createdAt).toLocaleString() : '—';
+          const TU = window.TimezoneUtils || {};
+          const when = r.createdAt && TU.formatDateTimePhilippines ? TU.formatDateTimePhilippines(new Date(r.createdAt)) : (r.createdAt ? new Date(r.createdAt).toLocaleString() : '—');
           return (
             '<tr>' +
             '<td><span class="ref-tag">' + escapeHtml(r.referenceNumber || r.id || '') + '</span></td>' +

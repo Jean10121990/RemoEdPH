@@ -146,7 +146,7 @@
                         <div style="margin-top:12px;">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; font-size:0.8rem; color:#64748b;">
                                 <span>Growth Meter</span>
-                                <span id="growth-meter-label">0 / 160</span>
+                                <span id="growth-meter-label">0 / 245</span>
                             </div>
                             <div style="height:12px; border-radius:999px; background:#e2e8f0; overflow:hidden;">
                                 <div id="growth-meter-fill" style="height:100%; width:0%; background:linear-gradient(90deg, #A8E6CF 0%, #FFD700 100%); box-shadow:0 0 12px rgba(255, 215, 0, 0.45); transition:width 220ms ease;"></div>
@@ -158,7 +158,7 @@
                         <div class="form-group" style="margin-bottom:0;">
                             <label style="display:flex; align-items:center; gap:8px; font-weight:600;">
                                 <input type="checkbox" id="growth-degree4y">
-                                4-year English Degree (+20)
+                                College Degree (4-year) (+20)
                             </label>
                         </div>
                         <div class="form-group" style="margin-bottom:0;">
@@ -185,6 +185,17 @@
                         <div class="form-group" style="margin-bottom:0;">
                             <label style="font-weight:600;">Hire Date (Loyalty)</label>
                             <input type="date" id="growth-hire-date" class="form-input">
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label style="font-weight:600;">Teaching Experience (total years)</label>
+                            <select id="growth-teaching-exp" class="form-input" title="Classroom / formal teaching experience">
+                                <option value="none">None (+0)</option>
+                                <option value="y3">3 years (+20)</option>
+                                <option value="y5">5 years (+30)</option>
+                                <option value="y10">10 years (+40)</option>
+                                <option value="y15">15 years (+50)</option>
+                                <option value="y20plus">20+ years (+50)</option>
+                            </select>
                         </div>
                         <div class="form-group" style="margin-bottom:0;">
                             <label style="display:flex; align-items:center; gap:8px; font-weight:600;">
@@ -231,7 +242,7 @@
                     <div style="margin-top:16px; border:1px solid #e2e8f0; border-radius:10px; overflow:hidden;">
                         <div style="padding:10px 12px; background:#f1f5f9; font-weight:700; color:#334155;">Friendly Growth Path</div>
                         <div id="growth-path-view" style="padding:12px; display:grid; gap:8px;">
-                            <div data-tier="Seedling Educator" style="padding:10px; border:1px solid #cbd5e1; border-radius:8px; display:flex; justify-content:space-between; gap:10px; align-items:center;"><span>Seedling Educator: TESOL/TEYL/TEFL OR 4-year equivalent degree</span><span class="tier-check" style="opacity:0; transition:opacity 180ms ease; color:#166534;">✓</span></div>
+                            <div data-tier="Seedling Educator" style="padding:10px; border:1px solid #cbd5e1; border-radius:8px; display:flex; justify-content:space-between; gap:10px; align-items:center;"><span>Seedling Educator: TESOL/TEYL/TEFL OR College Degree 4-year equivalent degree</span><span class="tier-check" style="opacity:0; transition:opacity 180ms ease; color:#166534;">✓</span></div>
                             <div data-tier="Cultivator" style="padding:10px; border:1px solid #cbd5e1; border-radius:8px; display:flex; justify-content:space-between; gap:10px; align-items:center;"><span>Cultivator: 2+ years ESL experience</span><span class="tier-check" style="opacity:0; transition:opacity 180ms ease; color:#166534;">✓</span></div>
                             <div data-tier="Steward Mentor" class="tier-lockable" style="padding:10px; border:1px solid #cbd5e1; border-radius:8px; display:flex; justify-content:space-between; gap:10px; align-items:center;"><span>Steward Mentor: 3+ years + degree + TESOL/TEFL + all H.E.A.R.T. &amp; Code of Honor</span><span class="tier-check" style="opacity:0; transition:opacity 180ms ease; color:#166534;">✓</span></div>
                             <div data-tier="Legacy Guide" class="tier-lockable" style="padding:10px; border:1px solid #cbd5e1; border-radius:8px; display:flex; justify-content:space-between; gap:10px; align-items:center;"><span>Legacy Guide: 5+ years + core certifications + all H.E.A.R.T. &amp; Code of Honor</span><span class="tier-check" style="opacity:0; transition:opacity 180ms ease; color:#166534;">✓</span></div>
@@ -312,6 +323,7 @@
         </div>
     </div>
     
+    <script src="timezone-utils.js"></script>
     <script>
         // Role-based access control
         const userType = localStorage.getItem('userType');
@@ -323,6 +335,21 @@
         const token = localStorage.getItem('token');
         if (!token) {
             window.location.href = 'teacher-login.html';
+        }
+
+        /** Matches server REMOED_FOUNDER_TEACHER_EMAIL (comma-separated); defaults include CEO + co-founder. */
+        const REMOED_FOUNDER_TEACHER_EMAILS = ['jean10121990@gmail.com', 'plflores3301@gmail.com'];
+        let cachedTeacherEmailForLadder = '';
+
+        function isFounderTeacherAccount() {
+            const e = String(cachedTeacherEmailForLadder || '').toLowerCase().trim();
+            return REMOED_FOUNDER_TEACHER_EMAILS.includes(e);
+        }
+
+        function teachingExperiencePointsFromBand(band) {
+            const b = String(band || 'none');
+            const map = { none: 0, y3: 20, y5: 30, y10: 40, y15: 50, y20plus: 55 };
+            return map[b] !== undefined ? map[b] : 0;
         }
         
         // Update sidebar profile
@@ -345,6 +372,7 @@
                 if (response.ok) {
                     const data = await response.json();
                     if (data.profile) {
+                        cachedTeacherEmailForLadder = String(data.profile.email || '').toLowerCase().trim();
                         const firstName = data.profile.firstName || 'Teacher';
                         if (usernameEl) {
                             usernameEl.textContent = `Hi, ${firstName}`;
@@ -434,6 +462,18 @@
         }
 
         function calculateCareerGrowthClient() {
+            if (isFounderTeacherAccount()) {
+                return {
+                    points: 245,
+                    tier: 'Legacy Guide',
+                    founderLadder: true,
+                    allHeartCommitments: true,
+                    allHonorCommitments: true,
+                    allCommitmentsComplete: true,
+                    loyaltyYears: 25,
+                    loyaltyPoints: 35
+                };
+            }
             const hasEnglishDegree4Year = !!document.getElementById('growth-degree4y')?.checked;
             const hasTesolTeylTefl = !!document.getElementById('growth-tesol')?.checked;
             const hasIeltsCertificate = !!document.getElementById('growth-ielts')?.checked;
@@ -465,6 +505,8 @@
             if (hasMastersDegree) points += 30;
             if (hasDoctorateDegree) points += 30;
             points += loyaltyPoints;
+            const teachingBand = document.getElementById('growth-teaching-exp')?.value || 'none';
+            points += teachingExperiencePointsFromBand(teachingBand);
 
             const hasAtLeast2Years = ['2years', '3to5', '5plus'].includes(eslExperienceLevel);
             const hasAtLeast3Years = ['3to5', '5plus'].includes(eslExperienceLevel);
@@ -488,7 +530,8 @@
         }
 
         function renderCareerGrowth() {
-            const { points, tier, allHeartCommitments, allHonorCommitments, allCommitmentsComplete, loyaltyYears, loyaltyPoints } = calculateCareerGrowthClient();
+            const growth = calculateCareerGrowthClient();
+            const { points, tier, founderLadder, allHeartCommitments, allHonorCommitments, allCommitmentsComplete, loyaltyYears, loyaltyPoints } = growth;
             const pointsEl = document.getElementById('growth-points');
             const tierEl = document.getElementById('growth-tier');
             const meterFillEl = document.getElementById('growth-meter-fill');
@@ -497,10 +540,10 @@
             const shieldBadgeEl = document.getElementById('shield-badge');
             const legacyLeafBadgeEl = document.getElementById('legacy-leaf-badge');
             const loyaltyInfoEl = document.getElementById('growth-loyalty-info');
-            const maxPoints = 195;
+            const maxPoints = 245;
             const fillPercent = Math.max(0, Math.min(100, (points / maxPoints) * 100));
             if (pointsEl) pointsEl.textContent = String(points);
-            if (tierEl) tierEl.textContent = tier;
+            if (tierEl) tierEl.textContent = founderLadder ? 'Legacy Guide · Founder' : tier;
             if (meterFillEl) meterFillEl.style.width = `${fillPercent}%`;
             if (meterLabelEl) meterLabelEl.textContent = `${points} / ${maxPoints}`;
             if (loyaltyInfoEl) loyaltyInfoEl.textContent = `Loyalty: ${loyaltyYears} yrs (+${loyaltyPoints})`;
@@ -582,6 +625,7 @@
                 if (!response.ok) return;
                 const data = await response.json();
                 const profile = data.profile || {};
+                cachedTeacherEmailForLadder = String(profile.email || '').toLowerCase().trim();
                 const setChecked = (id, value) => {
                     const el = document.getElementById(id);
                     if (el) el.checked = !!value;
@@ -623,6 +667,8 @@
                 }
                 const esl = document.getElementById('growth-esl');
                 if (esl) esl.value = profile.eslExperienceLevel || 'none';
+                const tex = document.getElementById('growth-teaching-exp');
+                if (tex) tex.value = profile.teachingExperienceBand || 'none';
                 renderCareerGrowth();
             } catch (error) {
                 console.error('Error loading career growth data:', error);
@@ -690,7 +736,8 @@
                     honorIntegritySpeech: !!document.getElementById('honor-integrity-speech')?.checked,
                     honorGoodAttitudeAntiGreed: !!document.getElementById('honor-good-attitude')?.checked,
                     honorFinancialStewardship: !!document.getElementById('honor-financial')?.checked,
-                    hasValuesAlignment: !!growthState.allCommitmentsComplete
+                    hasValuesAlignment: !!growthState.allCommitmentsComplete,
+                    teachingExperienceBand: document.getElementById('growth-teaching-exp')?.value || 'none'
                 };
 
                 const saveResponse = await fetch('/api/teacher/profile', {
@@ -934,8 +981,8 @@
                     <tr>
                         <td><strong>${cert.name || 'N/A'}</strong></td>
                         <td>${cert.organization || 'N/A'}</td>
-                        <td>${cert.issueDate ? new Date(cert.issueDate).toLocaleDateString() : 'N/A'}</td>
-                        <td>${expiryDate ? expiryDate.toLocaleDateString() : 'No expiration'}</td>
+                        <td>${cert.issueDate && window.TimezoneUtils && window.TimezoneUtils.formatDateShortPhilippines ? window.TimezoneUtils.formatDateShortPhilippines(new Date(cert.issueDate)) : (cert.issueDate ? new Date(cert.issueDate).toLocaleDateString() : 'N/A')}</td>
+                        <td>${expiryDate ? (window.TimezoneUtils && window.TimezoneUtils.formatDateShortPhilippines ? window.TimezoneUtils.formatDateShortPhilippines(expiryDate) : expiryDate.toLocaleDateString()) : 'No expiration'}</td>
                         <td><span class="expiry-badge ${statusClass}">${statusText}</span></td>
                         <td>
                             <button class="btn-secondary" onclick="editCertification('${cert._id || cert.id}')" style="padding: 6px 12px; font-size: 0.85rem;">Edit</button>
@@ -1197,7 +1244,7 @@
                         <div class="assessment-card">
                             <div class="assessment-header">
                                 <div class="assessment-title">Latest Personality Assessment</div>
-                                <div class="assessment-date">${personality.completedAt ? new Date(personality.completedAt).toLocaleDateString() : 'N/A'}</div>
+                                <div class="assessment-date">${personality.completedAt && window.TimezoneUtils && window.TimezoneUtils.formatDateShortPhilippines ? window.TimezoneUtils.formatDateShortPhilippines(new Date(personality.completedAt)) : (personality.completedAt ? new Date(personality.completedAt).toLocaleDateString() : 'N/A')}</div>
                             </div>
                             <div style="margin-bottom: 16px; font-weight: 600; color: #1e293b;">
                                 Score: ${personality.score} / ${personality.total} (${percent}%)
@@ -1306,7 +1353,7 @@
                         ${historyItems.map(item => `
                             <div style="display:flex; justify-content: space-between; align-items:center; padding:10px 12px; background:#f8fafc; border-radius:10px;">
                                 <span style="font-weight:600; color:#1e293b;">
-                                    ${item.assessmentDate || item.date ? new Date(item.assessmentDate || item.date).toLocaleDateString() : 'N/A'}
+                                    ${item.assessmentDate || item.date ? (window.TimezoneUtils && window.TimezoneUtils.formatDateShortPhilippines ? window.TimezoneUtils.formatDateShortPhilippines(new Date(item.assessmentDate || item.date)) : new Date(item.assessmentDate || item.date).toLocaleDateString()) : 'N/A'}
                                 </span>
                                 <span style="color:#64748b; font-size:0.9rem;">
                                     ${item.assessedBy ? `By ${item.assessedBy}` : 'Assessment'}
@@ -1555,7 +1602,7 @@
             loadPersonalityAssessment();
             loadPeerTeachers();
             loadCareerGrowth();
-            ['growth-degree4y','growth-tesol','growth-ielts','growth-esl','growth-hire-date','growth-let','growth-masters','growth-doctorate','heart-hospitality','heart-excellence','heart-affection','heart-respect','heart-togetherness','honor-false-witness','honor-no-gossip','honor-integrity-speech','honor-good-attitude','honor-financial'].forEach((id) => {
+            ['growth-degree4y','growth-tesol','growth-ielts','growth-esl','growth-hire-date','growth-teaching-exp','growth-let','growth-masters','growth-doctorate','heart-hospitality','heart-excellence','heart-affection','heart-respect','heart-togetherness','honor-false-witness','honor-no-gossip','honor-integrity-speech','honor-good-attitude','honor-financial'].forEach((id) => {
                 const el = document.getElementById(id);
                 if (el) el.addEventListener('change', renderCareerGrowth);
             });

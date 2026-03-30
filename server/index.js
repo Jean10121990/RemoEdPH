@@ -12,6 +12,7 @@ const authRoutes = require('./auth');
 const teacherRoutes = require('./teacher');
 const studentRoutes = require('./student');
 const adminRoutes = require('./admin');
+const adminPortalVideoRoutes = require('./adminPortalVideoRoutes');
 const paymentRoutes = require('./payments');
 const webhookRoutes = require('./webhooks');
 const creditsRoutes = require('./credits.routes');
@@ -20,6 +21,7 @@ const fileRoutes = require('./fileRoutes');
 const announcementRoutes = require('./announcement');
 const lessonRoutes = require('./lessons');
 const classroomRecordingRouter = require('./classroomRecordingApi');
+const applicationRoutes = require('./applications');
 const Booking = require('./models/Booking');
 const Student = require('./models/Student');
 const { consumeReservedCreditForBooking } = require('./services/bookingCreditLedger');
@@ -32,10 +34,19 @@ const fsp = require('fs').promises;
 const FormData = require('form-data');
 const axios = require('axios');
 const { verifyToken, requireTeacher } = require('./authMiddleware');
+const { getClassroomEntryGate, EARLY_ENTRY_MINUTES } = require('./services/classroomEntryWindow');
 
 const app = express();
 
-if (String(process.env.TRUST_PROXY || '').toLowerCase() === 'true' || process.env.TRUST_PROXY === '1') {
+// Reverse proxies (ngrok, nginx, Cloud Run, etc.) send X-Forwarded-For. express-rate-limit validates that
+// trust proxy is enabled when that header is present, or it throws ValidationError (see ERR_ERL_UNEXPECTED_X_FORWARDED_FOR).
+const trustProxyRaw = process.env.TRUST_PROXY;
+const trustProxyOff = trustProxyRaw === '0' || String(trustProxyRaw || '').toLowerCase() === 'false';
+const trustProxyOn =
+  trustProxyRaw === '1' ||
+  String(trustProxyRaw || '').toLowerCase() === 'true' ||
+  (!trustProxyOff && process.env.NODE_ENV !== 'production');
+if (trustProxyOn) {
   app.set('trust proxy', 1);
 }
 
@@ -224,9 +235,15 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use('/api/auth', noStoreProtectedResponse, authRoutes);
 app.use('/api/teacher', noStoreProtectedResponse, teacherRoutes);
 app.use('/api/student', noStoreProtectedResponse, studentRoutes);
+// Public teacher application form: POST /api/applications
+app.use('/api', applicationRoutes);
 // Must be before /api/admin: same path prefix /api/admin/... is otherwise swallowed by adminRoutes → 404
 app.use('/api', noStoreProtectedResponse, classroomRecordingRouter);
-app.use('/api/admin', noStoreProtectedResponse, adminRouterLimiter, adminRoutes);
+// Portal videos routes are registered before the main admin router (large file) so paths always resolve.
+const adminApiCombined = express.Router();
+adminApiCombined.use(adminPortalVideoRoutes);
+adminApiCombined.use(adminRoutes);
+app.use('/api/admin', noStoreProtectedResponse, adminRouterLimiter, adminApiCombined);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/webhooks', webhookRoutes);
 app.use('/api/credits', noStoreProtectedResponse, adminRouterLimiter, creditsRoutes);
@@ -581,7 +598,16 @@ app.patch('/api/bookings/:bookingId/complete', verifyToken, requireTeacher, asyn
       return res.status(403).json({ success: false, error: 'Access denied. This booking does not belong to you.' });
     }
     if (booking.status === 'completed') {
-      return res.status(400).json({ success: false, error: 'Class is already completed' });
+      return res.json({
+        success: true,
+        message: 'Class already completed',
+        booking: {
+          id: booking._id,
+          status: booking.status,
+          finishedAt: booking.finishedAt,
+          classCompleted: booking.attendance && booking.attendance.classCompleted,
+        },
+      });
     }
 
     booking.status = 'completed';
@@ -630,11 +656,18 @@ app.post('/api/booking/:bookingId/complete', verifyToken, requireTeacher, async 
       });
     }
     
-    // Check if class is already completed
+    // Idempotent: final completion may already be set (e.g. after live session ended)
     if (booking.status === 'completed') {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Class is already completed' 
+      console.log('ℹ️ Class already completed (idempotent):', bookingId);
+      return res.json({
+        success: true,
+        message: 'Class already completed',
+        booking: {
+          id: booking._id,
+          status: booking.status,
+          finishedAt: booking.finishedAt,
+          classCompleted: booking.attendance && booking.attendance.classCompleted,
+        },
       });
     }
     
@@ -692,7 +725,7 @@ app.get('/api/feedback/check/:bookingId', verifyToken, requireTeacher, async (re
     const { bookingId } = req.params;
     
     // Check if feedback already exists for this booking
-    const existingFeedback = await Feedback.findOne({ bookingId });
+    const existingFeedback = await Feedback.findOne({ bookingId: String(bookingId) });
     
     res.json({
       success: true,
@@ -752,7 +785,7 @@ app.post('/api/feedback/submit', verifyToken, requireTeacher, async (req, res) =
     }
     
     // Check if feedback already exists for this booking
-    const existingFeedback = await Feedback.findOne({ bookingId });
+    const existingFeedback = await Feedback.findOne({ bookingId: String(bookingId) });
     if (existingFeedback) {
       // Check if the class was actually completed
       const booking = await Booking.findById(bookingId);
@@ -790,6 +823,16 @@ app.post('/api/feedback/submit', verifyToken, requireTeacher, async (req, res) =
       
       await feedback.save();
       console.log('✅ Teacher feedback submitted successfully');
+      try {
+        const { notifyStudentLesson1FeedbackReady } = require('./services/studentLessonFeedbackEmail');
+        setImmediate(() => {
+          notifyStudentLesson1FeedbackReady(booking).catch((err) =>
+            console.error('[lesson1 feedback email]', err.message || err)
+          );
+        });
+      } catch (e) {
+        console.error('[lesson1 feedback email] setup', e.message || e);
+      }
     }
     
     res.json({
@@ -1117,7 +1160,7 @@ app.post('/api/signaling/clear-room', (req, res) => {
   }
 });
 
-// Check if class time allows access to live classroom
+// Check if class time allows access to live classroom (strict: not before start − 10 min)
 app.post('/api/class/check-time-access', async (req, res) => {
   try {
     const { bookingId } = req.body;
@@ -1134,42 +1177,32 @@ app.post('/api/class/check-time-access', async (req, res) => {
       return res.status(404).json({ error: 'Booking not found' });
     }
     
-    // Calculate class start and end times
     const classStartTime = new Date(booking.date + ' ' + booking.time);
     const classEndTime = new Date(classStartTime.getTime() + (25 * 60 * 1000)); // 25 minutes
     const currentTime = new Date();
-    
-    // Debug logging
-    console.log(`⏰ Debug - Booking ${bookingId}:`);
-    console.log(`  - Booking date: ${booking.date}`);
-    console.log(`  - Booking time: ${booking.time}`);
-    console.log(`  - Class start time: ${classStartTime.toLocaleString()}`);
-    console.log(`  - Class end time: ${classEndTime.toLocaleString()}`);
-    console.log(`  - Current time: ${currentTime.toLocaleString()}`);
-    
-    // Check if current time is within class time window
+    const gate = getClassroomEntryGate(booking, currentTime.getTime());
+    const accessAllowed = gate.allowed;
+    const tooEarly = gate.code === 'TOO_EARLY';
     const isBeforeClass = currentTime < classStartTime;
     const isAfterClass = currentTime > classEndTime;
     const isDuringClass = currentTime >= classStartTime && currentTime <= classEndTime;
-    
-    // Allow access during class time OR if class hasn't started yet (for waiting room)
-    const accessAllowed = isDuringClass || isBeforeClass;
-    
-    console.log(`⏰ Class time check for booking ${bookingId}:`);
-    console.log(`  - Class start: ${classStartTime.toLocaleString()}`);
-    console.log(`  - Class end: ${classEndTime.toLocaleString()}`);
-    console.log(`  - Current time: ${currentTime.toLocaleString()}`);
-    console.log(`  - Access allowed: ${accessAllowed}`);
+
+    console.log(`⏰ Class entry check for booking ${bookingId}: accessAllowed=${accessAllowed} tooEarly=${tooEarly}`);
     
     res.json({
       accessAllowed,
+      tooEarly,
+      earlyEntryMinutes: EARLY_ENTRY_MINUTES,
+      opensAt: gate.opensAt || null,
+      scheduledStart: gate.scheduledStart || null,
       classStartTime: classStartTime.toISOString(),
       classEndTime: classEndTime.toISOString(),
       currentTime: currentTime.toISOString(),
       isBeforeClass,
       isAfterClass,
       isDuringClass,
-      bookingId
+      bookingId,
+      message: gate.message || null,
     });
     
   } catch (error) {
@@ -1331,6 +1364,30 @@ io.on('connection', socket => {
     socket.on('join', async (data) => {
         const { room, userType, userId, username } = data;
         console.log('🚪 Client', socket.id, 'joining room:', room, 'as', userType, username);
+
+        if (room && room !== 'default-room') {
+            try {
+                if (db.readyState === 1) {
+                    const bookingForGate = await Booking.findOne({ classroomId: room });
+                    if (bookingForGate) {
+                        const gate = getClassroomEntryGate(bookingForGate, Date.now());
+                        if (!gate.allowed && gate.code === 'TOO_EARLY') {
+                            socket.emit('entry-denied', {
+                                code: gate.code,
+                                opensAt: gate.opensAt,
+                                scheduledStart: gate.scheduledStart,
+                                message: gate.message || 'Class has not opened yet.',
+                                earlyEntryMinutes: EARLY_ENTRY_MINUTES,
+                            });
+                            console.log(`🚫 Socket join blocked (too early) room=${room} socket=${socket.id}`);
+                            return;
+                        }
+                    }
+                }
+            } catch (gateErr) {
+                console.warn('classroom entry gate error:', gateErr.message);
+            }
+        }
         
         // Store user session information
         userSessions.set(socket.id, { room, userType, userId, username });
@@ -1484,6 +1541,29 @@ io.on('connection', socket => {
         const userId = socket.id;
         
         console.log('🚪 Client', socket.id, 'joining room:', room, 'as', userType, username);
+
+        if (room && room !== 'default-room') {
+            try {
+                if (db.readyState === 1) {
+                    const bookingForGate = await Booking.findOne({ classroomId: room });
+                    if (bookingForGate) {
+                        const gate = getClassroomEntryGate(bookingForGate, Date.now());
+                        if (!gate.allowed && gate.code === 'TOO_EARLY') {
+                            socket.emit('entry-denied', {
+                                code: gate.code,
+                                opensAt: gate.opensAt,
+                                scheduledStart: gate.scheduledStart,
+                                message: gate.message || 'Class has not opened yet.',
+                                earlyEntryMinutes: EARLY_ENTRY_MINUTES,
+                            });
+                            return;
+                        }
+                    }
+                }
+            } catch (gateErr) {
+                console.warn('classroom entry gate (join-room) error:', gateErr.message);
+            }
+        }
         
         // Store user session information
         userSessions.set(socket.id, { room, userType, userId, username });
@@ -2283,6 +2363,12 @@ async function updateBookingAttendance(room, userType, userId, username) {
         const booking = await Booking.findOne({ classroomId: room });
         if (!booking) {
             console.log(`❌ No booking found for classroom ${room}`);
+            return;
+        }
+
+        const gate = getClassroomEntryGate(booking, Date.now());
+        if (!gate.allowed) {
+            console.log(`🚫 Entry window closed (too early) for ${userType} in room ${room}`);
             return;
         }
         

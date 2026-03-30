@@ -62,7 +62,11 @@
         </div>
     </div>
 
+    <script src="timezone-utils.js"></script>
     <script>
+        const _TUPh = window.TimezoneUtils || {};
+        function _fmtPhDate(d) { return _TUPh.formatDateShortPhilippines ? _TUPh.formatDateShortPhilippines(d) : d.toLocaleDateString(); }
+        function _fmtPhDateTime(d) { return _TUPh.formatDateTimePhilippines ? _TUPh.formatDateTimePhilippines(d) : d.toLocaleString(); }
         // Check authentication
         const userType = localStorage.getItem('userType');
         if (userType !== 'teacher') {
@@ -99,7 +103,7 @@
                 const statusBadge = document.getElementById('status-badge');
                 if (data.completed) {
                     statusBadge.className = 'status-badge status-completed';
-                    statusBadge.textContent = `✅ Completed on ${new Date(data.completedAt).toLocaleDateString()}`;
+                    statusBadge.textContent = `✅ Completed on ${_fmtPhDate(new Date(data.completedAt))}`;
                 } else {
                     statusBadge.className = 'status-badge status-pending';
                     statusBadge.textContent = '⏳ Assessment in progress';
@@ -116,7 +120,7 @@
                             </div>
                             <div class="info-item">
                                 <div class="info-label">Completed At</div>
-                                <div class="info-value">${data.tests.listening.completedAt ? new Date(data.tests.listening.completedAt).toLocaleString() : 'N/A'}</div>
+                                <div class="info-value">${data.tests.listening.completedAt ? _fmtPhDateTime(new Date(data.tests.listening.completedAt)) : 'N/A'}</div>
                             </div>
                         </div>
                         <div class="audio-player">
@@ -147,7 +151,7 @@
                             </div>
                             <div class="info-item">
                                 <div class="info-label">Completed At</div>
-                                <div class="info-value">${data.tests.typing.completedAt ? new Date(data.tests.typing.completedAt).toLocaleString() : 'N/A'}</div>
+                                <div class="info-value">${data.tests.typing.completedAt ? _fmtPhDateTime(new Date(data.tests.typing.completedAt)) : 'N/A'}</div>
                             </div>
                         </div>
                         ${data.tests.typing.text ? `
@@ -172,7 +176,7 @@
                             </div>
                             <div class="info-item">
                                 <div class="info-label">Completed At</div>
-                                <div class="info-value">${data.tests.reading.completedAt ? new Date(data.tests.reading.completedAt).toLocaleString() : 'N/A'}</div>
+                                <div class="info-value">${data.tests.reading.completedAt ? _fmtPhDateTime(new Date(data.tests.reading.completedAt)) : 'N/A'}</div>
                             </div>
                         </div>
                         ${data.tests.reading.text ? `
@@ -210,7 +214,7 @@
                             </div>
                             <div class="info-item">
                                 <div class="info-label">Completed At</div>
-                                <div class="info-value">${data.tests.grammar.completedAt ? new Date(data.tests.grammar.completedAt).toLocaleString() : 'N/A'}</div>
+                                <div class="info-value">${data.tests.grammar.completedAt ? _fmtPhDateTime(new Date(data.tests.grammar.completedAt)) : 'N/A'}</div>
                             </div>
                         </div>
                     `;
@@ -234,7 +238,7 @@
                             </div>
                             <div class="info-item">
                                 <div class="info-label">Completed At</div>
-                                <div class="info-value">${data.tests.vocabulary.completedAt ? new Date(data.tests.vocabulary.completedAt).toLocaleString() : 'N/A'}</div>
+                                <div class="info-value">${data.tests.vocabulary.completedAt ? _fmtPhDateTime(new Date(data.tests.vocabulary.completedAt)) : 'N/A'}</div>
                             </div>
                         </div>
                     `;
@@ -277,7 +281,7 @@
                             </div>
                             <div class="info-item">
                                 <div class="info-label">Completed At</div>
-                                <div class="info-value">${data.tests.pronunciation.completedAt ? new Date(data.tests.pronunciation.completedAt).toLocaleString() : 'N/A'}</div>
+                                <div class="info-value">${data.tests.pronunciation.completedAt ? _fmtPhDateTime(new Date(data.tests.pronunciation.completedAt)) : 'N/A'}</div>
                             </div>
                         </div>
                         ${wordsHtml}
