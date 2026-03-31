@@ -6,7 +6,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Live Classroom</title>
-  <link rel="stylesheet" href="live-classroom.css" />
   <!-- PDF.js library for embedded free PDF viewer -->
   <script type="module">
     import * as pdfjsLib from '/vendor/pdfjs/pdf.min.mjs';
@@ -51,6 +50,8 @@
     })();
   </script>
     <link rel="stylesheet" href="style.css">
+  <!-- After global styles so chat / layout rules are not overridden -->
+  <link rel="stylesheet" href="live-classroom.css" />
 </head>
 <body class="page-live-classroom">
   <div class="top-bar">
@@ -171,7 +172,7 @@
         <div class="chat-header">Class Chat</div>
         <div id="chat-messages" class="chat-messages"></div>
         <form id="chat-form" class="chat-form">
-          <input type="text" id="chat-input" class="chat-input" placeholder="Type your message here..." />
+          <textarea id="chat-input" class="chat-input" rows="2" placeholder="Type your message here..." aria-label="Chat message"></textarea>
           <button type="submit" class="chat-send">✈️</button>
         </form>
       </div>
@@ -4738,10 +4739,18 @@
       const chatInput = document.getElementById('chat-input');
       const chatMessages = document.getElementById('chat-messages');
 
+      /** Map exotic/IDE spaces to U+0020 so words don’t visually glue in some fonts; preserve newlines. */
+      function normalizeChatDisplayText(str) {
+        return String(str == null ? '' : str).replace(
+          /[\u00a0\u1680\u2000-\u200a\u202f\u205f\u3000\ufeff]/g,
+          ' '
+        );
+      }
+
       function addChatMessage(message, sender, isOwn = false, timestamp = null) {
         if (!chatMessages) return;
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `chat-message ${isOwn ? 'own' : ''}`;
+        const row = document.createElement('div');
+        row.className = `message-row${isOwn ? ' own' : ''}`;
 
         let chatDate = new Date();
         if (timestamp != null && timestamp !== '') {
@@ -4757,17 +4766,21 @@
           hour12: true
         });
 
+        const bubble = document.createElement('div');
+        bubble.className = 'message-bubble';
+
         const textEl = document.createElement('div');
-        textEl.className = 'chat-text';
-        textEl.textContent = message == null ? '' : String(message);
+        textEl.className = 'message-text';
+        textEl.textContent = normalizeChatDisplayText(message);
 
         const timeEl = document.createElement('div');
-        timeEl.className = 'chat-time';
+        timeEl.className = 'message-time';
         timeEl.textContent = timeStr;
 
-        messageDiv.appendChild(textEl);
-        messageDiv.appendChild(timeEl);
-        chatMessages.appendChild(messageDiv);
+        bubble.appendChild(textEl);
+        bubble.appendChild(timeEl);
+        row.appendChild(bubble);
+        chatMessages.appendChild(row);
         chatMessages.scrollTop = chatMessages.scrollHeight;
       }
 
@@ -4779,8 +4792,9 @@
       if (chatForm) {
         chatForm.addEventListener('submit', (e) => {
           e.preventDefault();
-          const message = chatInput?.value?.trim();
-          if (!message) return;
+          const raw = String(chatInput?.value ?? '');
+          if (!raw.trim()) return;
+          const message = raw.trim();
           
           // Create unique message ID to prevent duplicates
           const messageId = Date.now() + '-' + (messageIdCounter++) + '-' + Math.random().toString(36).substr(2, 9);
@@ -4810,8 +4824,12 @@
         });
       }
 
-      socket.on('chat-message', ({ message, sender, timestamp, messageId } = {}) => {
-        if (!message || !sender) {
+      socket.on('chat-message', (payload = {}) => {
+        const sender = payload.sender || payload.username;
+        const message = payload.message == null ? '' : String(payload.message);
+        const timestamp = payload.timestamp;
+        const messageId = payload.messageId;
+        if (!String(message).trim() || !sender) {
           console.warn('💬 Received invalid chat message:', { message, sender, timestamp, messageId });
           return;
         }

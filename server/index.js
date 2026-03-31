@@ -1695,28 +1695,32 @@ io.on('connection', socket => {
     
     // Handle chat messages
     socket.on('chat-message', (messageData) => {
-        const { room, message, username, timestamp } = messageData;
-        console.log('💬 Received chat message from', username, 'in room', room, ':', message);
-        
+        if (!messageData || typeof messageData !== 'object') return;
+        const room = messageData.room;
+        const sender = messageData.sender || messageData.username;
+        const message =
+            messageData.message == null ? '' : String(messageData.message);
+        const payload = { ...messageData, message, sender };
+        console.log('💬 Received chat message from', sender, 'in room', room, ':', message);
+
         // Store message in chat history
         if (!chatHistory.has(room)) {
             chatHistory.set(room, []);
         }
-        
+
         const roomHistory = chatHistory.get(room);
-        roomHistory.push(messageData);
-        
+        roomHistory.push(payload);
+
         // Keep only last 50 messages to prevent memory issues
         if (roomHistory.length > 50) {
             roomHistory.shift();
         }
-        
-        // Broadcast message to all users in the room
+
         const clients = io.sockets.adapter.rooms.get(room);
         console.log('📤 Broadcasting message to', clients ? clients.size : 0, 'clients in room', room);
-        io.to(room).emit('chat-message', messageData);
-        
-        console.log(`Chat message in room ${room}: ${username}: ${message}`);
+        io.to(room).emit('chat-message', payload);
+
+        console.log(`Chat message in room ${room}: ${sender}: ${message}`);
     });
 
     // Handle reward giving
