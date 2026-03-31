@@ -646,8 +646,59 @@
       let lastSocketDisconnectWarn = 0;
       let lastSocketConnectedLog = 0;
       
-      // Queue for ICE candidates received before remote description is set
-      const queuedIceCandidates = [];
+      // ICE candidates from signaling must wait until setRemoteDescription succeeds (trickle race)
+      const iceCandidatesQueue = [];
+      /** Serializes offer/answer handling so setRemoteDescription + candidate flush never races. */
+      let signalingChain = Promise.resolve();
+      let webrtcPeerEpoch = 0;
+
+      function enqueueSignaling(task) {
+        const epoch = webrtcPeerEpoch;
+        signalingChain = signalingChain
+          .then(() => {
+            if (epoch !== webrtcPeerEpoch) return;
+            return task();
+          })
+          .catch((err) => {
+            console.error('❌ Signaling error:', err && (err.message || err));
+          });
+        return signalingChain;
+      }
+
+      function shouldQueueRemoteIceCandidate() {
+        if (!peerConnection) return true;
+        if (isSettingRemoteDescription) return true;
+        return !peerConnection.remoteDescription;
+      }
+
+      /** Ignore duplicate offers only after negotiation completed (not initial stable + empty SDP). */
+      function isStaleIncomingOffer(pc) {
+        if (!pc || pc.signalingState !== 'stable') return false;
+        if (!pc.remoteDescription || !pc.localDescription) return false;
+        const cs = pc.connectionState;
+        const ice = pc.iceConnectionState;
+        return (
+          cs === 'connected' ||
+          ice === 'connected' ||
+          ice === 'completed'
+        );
+      }
+
+      async function processQueuedCandidates() {
+        if (!peerConnection || !peerConnection.remoteDescription) return;
+        if (iceCandidatesQueue.length === 0) return;
+        const batch = iceCandidatesQueue.splice(0, iceCandidatesQueue.length);
+        console.log(`📨 Processing ${batch.length} queued ICE candidate(s)...`);
+        for (const candidate of batch) {
+          try {
+            await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+          } catch (err) {
+            if (err.name !== 'OperationError' && err.name !== 'InvalidStateError') {
+              console.warn('⚠️ Queued ICE candidate error:', err.name, err.message);
+            }
+          }
+        }
+      }
       // Watchdogs: restart ICE if stuck in new/checking 5s; force reconnect if failed or disconnected 3s
       let iceRestartWatchdogId = null;
       let disconnectedWatchdogId = null;
@@ -864,12 +915,16 @@
             peerConnection = null;
             isCreatingOffer = false;
             isSettingRemoteDescription = false;
+            iceCandidatesQueue.length = 0;
           } else {
             // Connection exists and is valid, just ensure tracks are added
             addLocalTracksToPeerConnection();
             return;
           }
         }
+        iceCandidatesQueue.length = 0;
+        webrtcPeerEpoch++;
+        signalingChain = Promise.resolve();
         peerConnection = new RTCPeerConnection(rtcConfig);
         // Log why ICE candidate gathering fails (e.g. STUN blocked / network policy).
         let sawStunTimeout = false;
@@ -1473,39 +1528,41 @@
         }, 300); // Small delay to ensure tracks are added
       });
 
-      // Shared handler so we can retry locally without re-emitting to server (which would send to wrong peer)
+      // Shared handler — runs on a serialized chain so ICE never beats setRemoteDescription
       function handleIncomingOffer(offer) {
-        if (!offer || !peerConnection) return;
-        if (peerConnection.signalingState === 'stable') {
-          console.log('⚠️ Ignoring stale offer in handler - already stable');
-          return;
-        }
-        if (localStream) {
-          addLocalTracksToPeerConnection();
-        } else {
-          console.warn('📥 Answering offer without local camera/mic (receive-only remote video)');
-        }
-        console.log(`📊 Tracks ensured: local=${localStream ? localStream.getTracks().length : 0}, senders=${peerConnection.getSenders().length}`);
-        if (isSettingRemoteDescription) return;
-        isSettingRemoteDescription = true;
-        peerConnection.setRemoteDescription(new RTCSessionDescription(offer))
-          .then(() => {
-            console.log('✅ Remote description set, creating answer');
-            processQueuedIceCandidates();
+        enqueueSignaling(async () => {
+          if (!offer || !peerConnection) return;
+          if (isStaleIncomingOffer(peerConnection)) {
+            console.log('⚠️ Ignoring stale offer — negotiation already complete');
+            return;
+          }
+          if (localStream) {
+            addLocalTracksToPeerConnection();
+          } else {
+            console.warn('📥 Answering offer without local camera/mic (receive-only remote video)');
+          }
+          console.log(`📊 Tracks ensured: local=${localStream ? localStream.getTracks().length : 0}, senders=${peerConnection.getSenders().length}`);
+
+          isSettingRemoteDescription = true;
+          try {
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+            console.log('✅ Remote description set (offer), flushing ICE queue');
+            await processQueuedCandidates();
             startIceRestartWatchdog();
-            return peerConnection.createAnswer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
-          })
-          .then(answer => {
-            return peerConnection.setLocalDescription(answer).then(() => {
-              socket.emit('answer', { room, answer });
-              console.log('📤 Answer sent by', userType);
-              isSettingRemoteDescription = false;
+            const answer = await peerConnection.createAnswer({
+              offerToReceiveAudio: true,
+              offerToReceiveVideo: true
             });
-          })
-          .catch(err => {
+            await peerConnection.setLocalDescription(answer);
+            socket.emit('answer', { room, answer: peerConnection.localDescription });
+            console.log('📤 Answer sent by', userType);
+          } catch (err) {
             console.error('❌ Error handling offer:', err);
+          } finally {
             isSettingRemoteDescription = false;
-          });
+            await processQueuedCandidates();
+          }
+        });
       }
 
       socket.on('offer', ({ offer } = {}) => {
@@ -1520,9 +1577,8 @@
         if (!localStream) {
           console.warn('⚠️ Handling offer without local stream (recv-only answer)');
         }
-        // Perfect negotiation: ignore stale offers when already stable to avoid InvalidStateError
-        if (peerConnection.signalingState === 'stable') {
-          console.log('⚠️ Ignoring stale offer - connection already stable');
+        if (isStaleIncomingOffer(peerConnection)) {
+          console.log('⚠️ Ignoring stale offer — already connected');
           return;
         }
         if (peerConnection.remoteDescription) {
@@ -1538,14 +1594,13 @@
       });
 
       function handleIncomingAnswer(answer) {
-        if (!answer || !peerConnection) return;
-        if (isSettingRemoteDescription) return;
-        isSettingRemoteDescription = true;
-        peerConnection.setRemoteDescription(new RTCSessionDescription(answer))
-          .then(() => {
+        enqueueSignaling(async () => {
+          if (!answer || !peerConnection) return;
+          isSettingRemoteDescription = true;
+          try {
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
             console.log('✅ Remote description (answer) set successfully by', userType);
-            isSettingRemoteDescription = false;
-            processQueuedIceCandidates();
+            await processQueuedCandidates();
             setTimeout(() => {
               if (peerConnection) {
                 console.log('📊 Connection state after answer:', {
@@ -1555,11 +1610,13 @@
                 });
               }
             }, 500);
-          })
-          .catch(err => {
-            console.error('❌ Error setting remote description:', err);
+          } catch (err) {
+            console.error('❌ Error setting remote description (answer):', err);
+          } finally {
             isSettingRemoteDescription = false;
-          });
+            await processQueuedCandidates();
+          }
+        });
       }
 
       socket.on('answer', ({ answer } = {}) => {
@@ -1598,57 +1655,32 @@
         }
       });
 
-      // Function to add queued ICE candidates after remote description is set
-      function processQueuedIceCandidates() {
-        if (queuedIceCandidates.length > 0 && peerConnection && peerConnection.remoteDescription) {
-          console.log(`📨 Processing ${queuedIceCandidates.length} queued ICE candidates...`);
-          const candidates = [...queuedIceCandidates];
-          queuedIceCandidates.length = 0; // Clear queue
-          
-          candidates.forEach(candidate => {
-            peerConnection.addIceCandidate(new RTCIceCandidate(candidate))
-              .then(() => {
-                console.log('✅ Queued ICE candidate added successfully');
-              })
-              .catch(err => {
-                // Silently ignore - candidate might be invalid or connection already established
-                if (err.name !== 'OperationError' && err.name !== 'InvalidStateError') {
-                  console.warn('⚠️ Error adding queued ICE candidate:', err.name);
-                }
-              });
-          });
-        }
-      }
-      
       socket.on('ice-candidate', ({ candidate } = {}) => {
-        if (!peerConnection || !candidate) {
-          console.warn('⚠️ Cannot add ICE candidate:', { hasPeerConnection: !!peerConnection, hasCandidate: !!candidate });
+        if (!peerConnection) {
+          console.warn('⚠️ Cannot add ICE candidate: no peer connection');
           return;
         }
-        
+        if (!candidate || candidate.candidate == null || candidate.candidate === '') {
+          return;
+        }
+
         console.log('📨 Received ICE candidate, userType:', userType, 'candidate:', candidate.candidate ? candidate.candidate.substring(0, 50) + '...' : 'null');
-        
-        // Check if remote description is set
-        if (!peerConnection.remoteDescription) {
-          // Queue the candidate to add later
-          console.log('📦 Queueing ICE candidate (remote description not set yet)');
-          queuedIceCandidates.push(candidate);
+
+        if (shouldQueueRemoteIceCandidate()) {
+          console.log('📦 Queueing ICE candidate (remote description not ready)');
+          iceCandidatesQueue.push(candidate);
           return;
         }
-        
-        // Remote description is set, add candidate immediately
+
         peerConnection.addIceCandidate(new RTCIceCandidate(candidate))
           .then(() => {
             console.log('✅ ICE candidate added successfully');
           })
-          .catch(err => {
-            // Silently ignore common errors
-            if (err.name === 'InvalidStateError' && err.message.includes('remote description')) {
-              // Queue it for later
-              console.log('📦 Queueing ICE candidate (remote description issue)');
-              queuedIceCandidates.push(candidate);
+          .catch((err) => {
+            if (err.name === 'InvalidStateError' || (err.message && String(err.message).includes('remote description'))) {
+              console.log('📦 Queueing ICE candidate (add failed, will retry after remote SDP)');
+              iceCandidatesQueue.push(candidate);
             } else if (err.name !== 'OperationError') {
-              // Only log non-operation errors (operation errors are usually harmless)
               console.warn('⚠️ Error adding ICE candidate:', err.name, err.message);
             }
           });
