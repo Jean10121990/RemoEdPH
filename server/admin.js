@@ -16,12 +16,15 @@ const { verifyAdminApiAuth, requireAdmin, verifyToken, requireTeacher } = requir
 
 /**
  * RBAC for /api/admin/* — default: admin session/JWT only.
- * Exception: GET /teacher-rate and GET /teacher-rate/:id for authenticated teachers (service-fee UI).
+ * Exception: GET /teacher-rate (global rate only, no auth) for reliable service-fee UI.
+ * Exception: GET /teacher-rate/:id for authenticated teachers/admins (per-teacher rate).
  */
 function adminRouterRbac(req, res, next) {
   const p = req.path || '';
-  const teacherRateRead =
-    req.method === 'GET' && (p === '/teacher-rate' || p.startsWith('/teacher-rate/'));
+  if (req.method === 'GET' && p === '/teacher-rate') {
+    return next();
+  }
+  const teacherRateRead = req.method === 'GET' && p.startsWith('/teacher-rate/');
   if (teacherRateRead) {
     if (req.session && req.session.adminAuth === true && req.session.adminUsername) {
       req.user = {

@@ -470,12 +470,13 @@
           : `${new Date(startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${new Date(endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
         document.getElementById('pay-period').textContent = periodText;
         
-        // Fetch global rate from admin API
+        // Fetch global rate (GET /api/admin/teacher-rate is public; Bearer optional)
         const token = localStorage.getItem('token');
+        const rateHeaders = {};
+        if (token) rateHeaders['Authorization'] = `Bearer ${token}`;
         const rateResponse = await fetch(`/api/admin/teacher-rate`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+          credentials: 'include',
+          headers: rateHeaders
         });
         
         let teacherRate = 0; // Start with 0, will be updated from API
@@ -1507,10 +1508,10 @@
           return false;
         }
         
+        const rateHeaders = { 'Authorization': `Bearer ${token}` };
         const response = await fetch(`/api/admin/teacher-rate`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+          credentials: 'include',
+          headers: rateHeaders
         });
         
         if (!response.ok) {
@@ -1543,10 +1544,10 @@
       
       try {
         const token = localStorage.getItem('token');
+        const rateHeaders = token ? { 'Authorization': `Bearer ${token}` } : {};
         const response = await fetch(`/api/admin/teacher-rate`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+          credentials: 'include',
+          headers: rateHeaders
         });
         
         if (response.ok) {

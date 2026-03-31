@@ -23,12 +23,12 @@
             
             <!-- Tab Navigation -->
             <div class="tab-buttons">
-                <button class="tab-btn active" onclick="showTab('training', this)">📚 Training Portal</button>
-                <button class="tab-btn" onclick="showTab('certifications', this)">🏆 Certifications</button>
-                <button class="tab-btn" onclick="showTab('assessments', this)">📊 Skill Assessments</button>
-                <button class="tab-btn" onclick="showTab('personality', this)">🧭 Personality Assessment</button>
-                <button class="tab-btn" onclick="showTab('peer-learning', this)">👥 Peer Learning</button>
-                <button class="tab-btn" onclick="showTab('career-ladder', this)">🌿 Growth Path</button>
+                <button type="button" class="tab-btn active" data-career-tab="training" onclick="showTab('training', this)">📚 Training Portal</button>
+                <button type="button" class="tab-btn" data-career-tab="certifications" onclick="showTab('certifications', this)">🏆 Certifications</button>
+                <button type="button" class="tab-btn" data-career-tab="skill-personality" onclick="showTab('skill-personality', this)">📋 Skill &amp; Personality</button>
+                <button type="button" class="tab-btn" data-career-tab="teaching-abilities" onclick="showTab('teaching-abilities', this)">🎯 Teaching Abilities</button>
+                <button type="button" class="tab-btn" data-career-tab="peer-learning" onclick="showTab('peer-learning', this)">👥 Peer Learning</button>
+                <button type="button" class="tab-btn" data-career-tab="career-ladder" onclick="showTab('career-ladder', this)">🌿 Growth Path</button>
             </div>
             
             <!-- Training Portal Tab -->
@@ -74,31 +74,132 @@
                 </div>
             </div>
             
-            <!-- Skill Assessments Tab -->
-            <div id="assessments-tab" class="tab-content">
+            <!-- Skill + Personality (combined) -->
+            <div id="skill-personality-tab" class="tab-content">
                 <div class="section-card">
-                    <div class="section-title">📊 Skill Assessments</div>
+                    <div class="section-title">📊 Skill assessments</div>
                     <p style="color: #666; margin-bottom: 24px;">Periodic assessments help update your teaching levels and showcase your growth.</p>
                     <div id="abilities-container" style="margin-bottom: 20px;">
-                        <!-- Current teaching abilities will be loaded here -->
+                        <!-- Current skill snapshot will be loaded here -->
                     </div>
                     <div id="assessments-container">
                         <!-- Assessments will be loaded here -->
                     </div>
-                    
                     <div style="text-align: center; margin-top: 32px;">
-                        <button class="btn-primary" onclick="requestAssessment()">Request New Assessment</button>
+                        <button type="button" class="btn-primary" onclick="requestAssessment()">Request New Assessment</button>
+                    </div>
+                </div>
+                <div class="section-card" style="margin-top: 24px;">
+                    <div class="section-title">🧭 Personality assessment</div>
+                    <p style="color: #666; margin-bottom: 24px;">Review your scenario-based personality assessment results.</p>
+                    <div id="personality-assessments-container">
+                        <!-- Personality assessment results will be loaded here -->
                     </div>
                 </div>
             </div>
 
-            <!-- Personality Assessment Tab -->
-            <div id="personality-tab" class="tab-content">
-                <div class="section-card">
-                    <div class="section-title">🧭 Personality Assessment</div>
-                    <p style="color: #666; margin-bottom: 24px;">Review your scenario-based personality assessment results.</p>
-                    <div id="personality-assessments-container">
-                        <!-- Personality assessment results will be loaded here -->
+            <!-- Teaching Abilities (moved from Teacher Profile) -->
+            <div id="teaching-abilities-tab" class="tab-content">
+                <div class="section-card page-teacher-profile">
+                    <div class="section-title">Teaching Abilities Assessment</div>
+                    <div class="assessment-notice">
+                        <h4>Assessment-Based Leveling System</h4>
+                        <p>Your teaching abilities are assessed by <strong>RemoEd trainers and administrators</strong> through interviews, teaching demonstrations, and evaluation of your education level, certifications, work experience, and performance indicators. Levels are updated as you gain experience. This helps students find a strong match.</p>
+                        <div id="assessment-status-message" style="margin-top: 16px; padding: 12px; border-radius: 8px; display: none;"></div>
+                        <div style="margin-top: 16px;">
+                            <a href="teacher-assessment.html" class="btn btn-primary" id="assessment-button" style="display: inline-block; padding: 12px 24px; text-decoration: none; border-radius: 8px; background: #667eea; color: white; font-weight: 600;">
+                                🎯 Take Assessment Tests
+                            </a>
+                        </div>
+                    </div>
+                    <div class="assessment-criteria" style="margin: 16px 0 24px;">
+                        <h5 style="margin-bottom: 8px;">Assessment Criteria</h5>
+                        <ul class="criteria-list">
+                            <li class="criteria-item">✓ Complete your profile, upload certifications, and complete the interview to be assessed by a RemoEd trainer/admin</li>
+                        </ul>
+                    </div>
+                    <div class="skill-assessment-card">
+                        <div class="skill-header">
+                            <span class="skill-name">Listening Skills</span>
+                            <div class="assessed-level" id="listening-level-badge">
+                                <span class="skill-stars" id="listening-stars">☆☆☆☆☆</span>
+                                <span id="listening-level-text">Not Assessed</span>
+                            </div>
+                        </div>
+                        <div class="assessment-source">
+                            <span>Assessed by:</span>
+                            <span class="assessment-source-badge" id="listening-source">Pending</span>
+                        </div>
+                        <div class="teacher-description">
+                            <label>Your Teaching Approach (Optional)</label>
+                            <textarea class="form-textarea" id="listening-description" rows="3" placeholder="Describe your approach to teaching listening skills..." disabled></textarea>
+                        </div>
+                    </div>
+                    <div class="skill-assessment-card">
+                        <div class="skill-header">
+                            <span class="skill-name">Reading Skills</span>
+                            <div class="assessed-level" id="reading-level-badge">
+                                <span class="skill-stars" id="reading-stars">☆☆☆☆☆</span>
+                                <span id="reading-level-text">Not Assessed</span>
+                            </div>
+                        </div>
+                        <div class="assessment-source">
+                            <span>Assessed by:</span>
+                            <span class="assessment-source-badge" id="reading-source">Pending</span>
+                        </div>
+                        <div class="teacher-description">
+                            <label>Your Teaching Approach (Optional)</label>
+                            <textarea class="form-textarea" id="reading-description" rows="3" placeholder="Describe your approach to teaching reading skills..." disabled></textarea>
+                        </div>
+                    </div>
+                    <div class="skill-assessment-card">
+                        <div class="skill-header">
+                            <span class="skill-name">Speaking Skills</span>
+                            <div class="assessed-level" id="speaking-level-badge">
+                                <span class="skill-stars" id="speaking-stars">☆☆☆☆☆</span>
+                                <span id="speaking-level-text">Not Assessed</span>
+                            </div>
+                        </div>
+                        <div class="assessment-source">
+                            <span>Assessed by:</span>
+                            <span class="assessment-source-badge" id="speaking-source">Pending</span>
+                        </div>
+                        <div class="teacher-description">
+                            <label>Your Teaching Approach (Optional)</label>
+                            <textarea class="form-textarea" id="speaking-description" rows="3" placeholder="Describe your approach to teaching speaking skills..." disabled></textarea>
+                        </div>
+                    </div>
+                    <div class="skill-assessment-card">
+                        <div class="skill-header">
+                            <span class="skill-name">Writing Skills</span>
+                            <div class="assessed-level" id="writing-level-badge">
+                                <span class="skill-stars" id="writing-stars">☆☆☆☆☆</span>
+                                <span id="writing-level-text">Not Assessed</span>
+                            </div>
+                        </div>
+                        <div class="assessment-source">
+                            <span>Assessed by:</span>
+                            <span class="assessment-source-badge" id="writing-source">Pending</span>
+                        </div>
+                        <div class="teacher-description">
+                            <label>Your Teaching Approach (Optional)</label>
+                            <textarea class="form-textarea" id="writing-description" rows="3" placeholder="Describe your approach to teaching writing skills..." disabled></textarea>
+                        </div>
+                    </div>
+                    <div class="skill-assessment-card">
+                        <div class="skill-header">
+                            <span class="skill-name">Creativity &amp; Hobbies</span>
+                        </div>
+                        <div class="teacher-description">
+                            <label>Share Your Interests</label>
+                            <textarea class="form-textarea" id="creativity-hobbies" rows="4" placeholder="Share your creative pursuits and hobbies..." disabled></textarea>
+                            <small class="form-help" style="display: block; margin-top: 8px; color: #666; font-size: 0.85rem;">Your hobbies help build rapport with students.</small>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 8px; margin-top: 20px;">
+                        <button type="button" class="edit-btn" id="edit-teaching-abilities-btn" onclick="enableTeachingAbilitiesCareerEditing()">Edit Descriptions</button>
+                        <button type="button" class="save-btn" id="save-teaching-abilities-btn" onclick="saveTeachingAbilitiesCareer()" style="display: none;">Save Descriptions</button>
+                        <button type="button" class="cancel-btn" id="cancel-teaching-abilities-btn" onclick="cancelTeachingAbilitiesCareerEditing()" style="display: none;">Cancel</button>
                     </div>
                 </div>
             </div>
@@ -403,37 +504,29 @@
                 btn.classList.remove('active');
             });
             
-            document.getElementById(tabName + '-tab').classList.add('active');
+            const panel = document.getElementById(tabName + '-tab');
+            if (panel) panel.classList.add('active');
             
-            // Find and activate the clicked button
             if (clickedElement) {
                 clickedElement.classList.add('active');
             } else {
-                // Fallback: find button by data attribute or text
-                document.querySelectorAll('.tab-btn').forEach(btn => {
-                    if (btn.textContent.includes(tabName === 'training' ? 'Training' : 
-                                                  tabName === 'certifications' ? 'Certifications' :
-                                                  tabName === 'assessments' ? 'Assessments' :
-                                                  tabName === 'personality' ? 'Personality' : 'Peer')) {
-                        btn.classList.add('active');
-                    }
-                });
+                const match = document.querySelector('.tab-btn[data-career-tab="' + tabName + '"]');
+                if (match) match.classList.add('active');
             }
             
-            // Update URL hash without triggering navigation
             if (window.history && window.history.replaceState) {
                 window.history.replaceState(null, null, '#' + tabName);
             }
             
-            // Load data for the selected tab
             if (tabName === 'training') {
                 loadTrainingCourses();
             } else if (tabName === 'certifications') {
                 loadCertifications();
-            } else if (tabName === 'assessments') {
+            } else if (tabName === 'skill-personality') {
                 loadAssessments();
-            } else if (tabName === 'personality') {
                 loadPersonalityAssessment();
+            } else if (tabName === 'teaching-abilities') {
+                loadTeachingAbilitiesCareer();
             } else if (tabName === 'peer-learning') {
                 loadPeerTeachers();
             } else if (tabName === 'career-ladder') {
@@ -1187,9 +1280,9 @@
                 abilitiesContainer.innerHTML = `
                     <div class="assessment-card">
                         <div class="assessment-header">
-                            <div class="assessment-title">Current Teaching Abilities</div>
+                            <div class="assessment-title">Skill levels (assessment snapshot)</div>
                         </div>
-                        <div style="color: #666; margin-top: 8px;">No assessed abilities yet.</div>
+                        <div style="color: #666; margin-top: 8px;">No assessed abilities yet. For full ability profiles and descriptions, open the <strong>Teaching Abilities</strong> tab.</div>
                     </div>
                 `;
                 return;
@@ -1198,7 +1291,7 @@
             abilitiesContainer.innerHTML = `
                 <div class="assessment-card">
                     <div class="assessment-header">
-                        <div class="assessment-title">Current Teaching Abilities</div>
+                        <div class="assessment-title">Skill levels (assessment snapshot)</div>
                     </div>
                     <div class="skill-levels">
                         ${entries.map(([skill, data]) => `
@@ -1326,6 +1419,296 @@
                         <p>Unable to load personality assessment results.</p>
                     </div>
                 `;
+            }
+        }
+
+        // --- Teaching Abilities tab (moved from Teacher Profile) ---
+        function displayCareerTeachingSkill(skill, assessment) {
+            const starsEl = document.getElementById(skill + '-stars');
+            const levelTextEl = document.getElementById(skill + '-level-text');
+            const levelBadgeEl = document.getElementById(skill + '-level-badge');
+            const criteriaListEl = document.getElementById(skill + '-criteria-list');
+            const sourceEl = document.getElementById(skill + '-source');
+
+            if (!assessment || assessment.level === null || assessment.level === undefined) {
+                if (starsEl) starsEl.textContent = '☆☆☆☆☆';
+                if (levelTextEl) levelTextEl.textContent = 'Not Assessed';
+                if (levelBadgeEl) {
+                    levelBadgeEl.className = 'assessed-level';
+                    levelBadgeEl.style.background = 'linear-gradient(135deg, #6c757d, #5a6268)';
+                }
+                if (sourceEl) sourceEl.textContent = assessment?.source || 'Pending - Trainer/Admin';
+                if (criteriaListEl && assessment && assessment.criteria) {
+                    criteriaListEl.innerHTML = '';
+                    assessment.criteria.forEach(criterion => {
+                        const li = document.createElement('li');
+                        li.className = 'criteria-item';
+                        li.textContent = criterion;
+                        criteriaListEl.appendChild(li);
+                    });
+                }
+                return;
+            }
+
+            const level = assessment.level;
+            const levelNames = ['Beginner', 'Basic', 'Intermediate', 'Advanced', 'Expert', 'Master'];
+            const levelName = levelNames[level] || 'Beginner';
+            let starDisplay = '';
+            for (let i = 0; i < 5; i++) {
+                starDisplay += i < level ? '★' : '☆';
+            }
+            if (starsEl) starsEl.textContent = starDisplay;
+            if (levelTextEl) levelTextEl.textContent = levelName;
+            if (levelBadgeEl) {
+                levelBadgeEl.className = 'assessed-level';
+                if (level <= 1) levelBadgeEl.style.background = 'linear-gradient(135deg, #FFF3CD, #FFE69C)';
+                else if (level <= 2) levelBadgeEl.style.background = 'linear-gradient(135deg, #D1ECF1, #B8E0E8)';
+                else if (level <= 3) levelBadgeEl.style.background = 'linear-gradient(135deg, #D4EDDA, #C3E6CB)';
+                else if (level <= 4) levelBadgeEl.style.background = 'linear-gradient(135deg, #D1E7DD, #BADBCC)';
+                else levelBadgeEl.style.background = 'linear-gradient(135deg, #667eea, #764ba2)';
+            }
+            if (criteriaListEl && assessment.criteria) {
+                criteriaListEl.innerHTML = '';
+                assessment.criteria.forEach(criterion => {
+                    const li = document.createElement('li');
+                    li.className = 'criteria-item';
+                    li.textContent = criterion;
+                    criteriaListEl.appendChild(li);
+                });
+            }
+            if (sourceEl && assessment.source) {
+                let sourceText = assessment.source;
+                if (sourceText === 'system' || sourceText === 'System' || sourceText === 'AI') {
+                    sourceText = 'System (Auto)';
+                } else if (sourceText && sourceText !== 'Pending' && sourceText !== 'Pending - Trainer/Admin') {
+                    if (sourceText.toLowerCase().includes('admin') || sourceText === 'admin') sourceText = 'Admin';
+                    else if (sourceText.toLowerCase().includes('trainer') || sourceText === 'trainer') sourceText = 'Trainer';
+                    else sourceText = 'Trainer/Admin';
+                }
+                sourceEl.textContent = sourceText;
+            }
+        }
+
+        function enableTeachingAbilitiesCareerEditing() {
+            ['listening-description', 'reading-description', 'speaking-description', 'writing-description', 'creativity-hobbies'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.disabled = false;
+            });
+            const e = document.getElementById('edit-teaching-abilities-btn');
+            const s = document.getElementById('save-teaching-abilities-btn');
+            const c = document.getElementById('cancel-teaching-abilities-btn');
+            if (e) e.style.display = 'none';
+            if (s) s.style.display = 'inline-block';
+            if (c) c.style.display = 'inline-block';
+        }
+
+        function cancelTeachingAbilitiesCareerEditing() {
+            ['listening-description', 'reading-description', 'speaking-description', 'writing-description', 'creativity-hobbies'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.disabled = true;
+            });
+            const e = document.getElementById('edit-teaching-abilities-btn');
+            const s = document.getElementById('save-teaching-abilities-btn');
+            const c = document.getElementById('cancel-teaching-abilities-btn');
+            if (e) e.style.display = 'inline-block';
+            if (s) s.style.display = 'none';
+            if (c) c.style.display = 'none';
+            loadTeachingAbilitiesCareer();
+        }
+
+        function saveTeachingAbilitiesCareer() {
+            const t = localStorage.getItem('token');
+            if (!t) {
+                alert('Please log in again.');
+                return;
+            }
+            const teachingAbilities = {
+                listening: { description: (document.getElementById('listening-description') || {}).value || '' },
+                reading: { description: (document.getElementById('reading-description') || {}).value || '' },
+                speaking: { description: (document.getElementById('speaking-description') || {}).value || '' },
+                writing: { description: (document.getElementById('writing-description') || {}).value || '' },
+                creativityHobbies: (document.getElementById('creativity-hobbies') || {}).value || ''
+            };
+            fetch('/api/teacher/profile', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + t, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ teachingAbilities })
+            })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Teaching descriptions saved successfully.');
+                        cancelTeachingAbilitiesCareerEditing();
+                    } else {
+                        alert('Failed to save: ' + (data.error || data.message || 'Unknown error'));
+                    }
+                })
+                .catch(err => alert('Error saving: ' + err.message));
+        }
+
+        function applyCareerTeachingDescriptions(profile) {
+            if (!profile || !profile.teachingAbilities) return;
+            const ta = profile.teachingAbilities;
+            if (ta.listening && ta.listening.description && document.getElementById('listening-description')) {
+                document.getElementById('listening-description').value = ta.listening.description;
+            }
+            if (ta.reading && ta.reading.description && document.getElementById('reading-description')) {
+                document.getElementById('reading-description').value = ta.reading.description;
+            }
+            if (ta.speaking && ta.speaking.description && document.getElementById('speaking-description')) {
+                document.getElementById('speaking-description').value = ta.speaking.description;
+            }
+            if (ta.writing && ta.writing.description && document.getElementById('writing-description')) {
+                document.getElementById('writing-description').value = ta.writing.description;
+            }
+            if (ta.creativityHobbies && document.getElementById('creativity-hobbies')) {
+                document.getElementById('creativity-hobbies').value = ta.creativityHobbies;
+            }
+        }
+
+        function generateCareerAssessmentCriteria(profile, skill) {
+            const criteria = [];
+            if (profile.languageProficiency) {
+                if (profile.languageProficiency.test) {
+                    criteria.push(`Language Proficiency: ${profile.languageProficiency.test} (${profile.languageProficiency.level || 'Not specified'})`);
+                }
+                if (profile.languageProficiency.cefr) {
+                    criteria.push(`CEFR Level: ${profile.languageProficiency.cefr}`);
+                }
+            }
+            if (profile.certifications && profile.certifications.length > 0) {
+                const certs = profile.certifications.filter(c =>
+                    c.type && (c.type.includes('TEFL') || c.type.includes('TESOL') ||
+                        c.type.includes('CELTA') || c.type.includes('DipTESOL'))
+                );
+                if (certs.length > 0) {
+                    criteria.push(`Teaching Certifications: ${certs.map(c => c.type).join(', ')}`);
+                }
+            }
+            if (profile.education && profile.education.length > 0) {
+                const relevantDegrees = profile.education.filter(e =>
+                    e.field && (e.field.includes('Education') || e.field.includes('Linguistics') ||
+                        e.field.includes('TESOL') || e.field.includes('English'))
+                );
+                if (relevantDegrees.length > 0) {
+                    criteria.push(`Relevant Education: ${relevantDegrees.map(e => e.degree || e.field).join(', ')}`);
+                }
+            }
+            if (profile.workExperience && profile.workExperience.length > 0) {
+                const teachingExp = profile.workExperience.filter(w =>
+                    w.position && (w.position.toLowerCase().includes('teacher') ||
+                        w.position.toLowerCase().includes('instructor') ||
+                        w.position.toLowerCase().includes('tutor'))
+                );
+                if (teachingExp.length > 0) {
+                    const totalYears = teachingExp.reduce((sum, exp) => sum + (exp.yearsOfExperience || 0), 0);
+                    if (totalYears > 0) {
+                        criteria.push(`Teaching Experience: ${totalYears} year${totalYears > 1 ? 's' : ''}`);
+                    }
+                }
+            }
+            if (profile.performanceIndicators) {
+                if (profile.performanceIndicators.averageRating >= 4.5) {
+                    criteria.push(`Student Ratings: ${profile.performanceIndicators.averageRating.toFixed(1)}/5.0 (Excellent)`);
+                }
+                if (profile.performanceIndicators.completionRate >= 95) {
+                    criteria.push(`Completion Rate: ${profile.performanceIndicators.completionRate}% (High)`);
+                }
+            }
+            if (profile.assessments && profile.assessments[skill]) {
+                const skillAssessment = profile.assessments[skill];
+                if (skillAssessment.interviewScore) {
+                    criteria.push(`Interview Assessment: ${skillAssessment.interviewScore}/5`);
+                }
+                if (skillAssessment.trainerEvaluation) {
+                    criteria.push(`Trainer Evaluation: ${skillAssessment.trainerEvaluation}`);
+                }
+            }
+            return criteria.length > 0 ? criteria : ['Complete your profile, upload certifications, and complete the interview to be assessed'];
+        }
+
+        async function loadCareerAssessedLevels(profile) {
+            const t = localStorage.getItem('token');
+            if (!t) return;
+
+            if (profile.assessmentTests && profile.assessmentTests.completed) {
+                const statusMsg = document.getElementById('assessment-status-message');
+                const assessmentBtn = document.getElementById('assessment-button');
+                if (statusMsg) {
+                    statusMsg.style.display = 'block';
+                    statusMsg.style.background = '#d1fae5';
+                    statusMsg.style.color = '#065f46';
+                    statusMsg.style.border = '2px solid #10b981';
+                    statusMsg.innerHTML = '✅ <strong>Assessment Submitted!</strong> Your test results are awaiting review by RemoEd trainers/admins.';
+                }
+                if (assessmentBtn) {
+                    assessmentBtn.textContent = '✅ Assessment Completed - View Results';
+                    assessmentBtn.style.background = '#10b981';
+                    assessmentBtn.href = 'teacher-view-assessment.html';
+                }
+            }
+
+            try {
+                const response = await fetch('/api/teacher/assessed-abilities', {
+                    method: 'GET',
+                    headers: { 'Authorization': 'Bearer ' + t, 'Content-Type': 'application/json' }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.assessments) {
+                        ['listening', 'reading', 'speaking', 'writing'].forEach(skill => {
+                            if (data.assessments[skill]) {
+                                const assessment = data.assessments[skill];
+                                if (!assessment.criteria || assessment.criteria.length === 0) {
+                                    assessment.criteria = generateCareerAssessmentCriteria(profile, skill);
+                                }
+                                displayCareerTeachingSkill(skill, assessment);
+                            } else {
+                                displayCareerTeachingSkill(skill, {
+                                    level: null,
+                                    criteria: generateCareerAssessmentCriteria(profile, skill),
+                                    source: 'Pending'
+                                });
+                            }
+                        });
+                    }
+                } else {
+                    ['listening', 'reading', 'speaking', 'writing'].forEach(skill => {
+                        displayCareerTeachingSkill(skill, {
+                            level: null,
+                            criteria: generateCareerAssessmentCriteria(profile, skill),
+                            source: 'Pending'
+                        });
+                    });
+                }
+            } catch (e) {
+                console.error('Career teaching abilities assessed load:', e);
+                ['listening', 'reading', 'speaking', 'writing'].forEach(skill => {
+                    displayCareerTeachingSkill(skill, {
+                        level: null,
+                        criteria: generateCareerAssessmentCriteria(profile, skill),
+                        source: 'Pending'
+                    });
+                });
+            }
+        }
+
+        async function loadTeachingAbilitiesCareer() {
+            const t = localStorage.getItem('token');
+            if (!t) return;
+            try {
+                const response = await fetch('/api/teacher/profile', {
+                    method: 'GET',
+                    headers: { 'Authorization': 'Bearer ' + t, 'Content-Type': 'application/json' }
+                });
+                if (!response.ok) return;
+                const data = await response.json();
+                const profile = data.profile;
+                if (!profile) return;
+                applyCareerTeachingDescriptions(profile);
+                await loadCareerAssessedLevels(profile);
+            } catch (e) {
+                console.error('loadTeachingAbilitiesCareer:', e);
             }
         }
         
@@ -1565,29 +1948,19 @@
             const tabMap = {
                 'certifications': 'certifications',
                 'training': 'training',
-                'assessments': 'assessments',
-                'personality': 'personality',
+                'assessments': 'skill-personality',
+                'personality': 'skill-personality',
+                'skill-personality': 'skill-personality',
+                'teaching-abilities': 'teaching-abilities',
                 'peer-learning': 'peer-learning',
                 'career-ladder': 'career-ladder'
             };
                 
                 const tabName = tabMap[hash];
                 if (tabName) {
-                    // Find and click the appropriate tab button
-                    const tabButton = Array.from(document.querySelectorAll('.tab-btn')).find(btn => {
-                        return btn.textContent.includes(
-                            tabName === 'certifications' ? 'Certifications' :
-                            tabName === 'training' ? 'Training' :
-                            tabName === 'assessments' ? 'Assessments' :
-                            tabName === 'personality' ? 'Personality' :
-                            tabName === 'career-ladder' ? 'Growth Path' : 'Peer'
-                        );
-                    });
-                    
+                    const tabButton = document.querySelector('.tab-btn[data-career-tab="' + tabName + '"]');
                     if (tabButton) {
-                        setTimeout(() => {
-                            tabButton.click();
-                        }, 100);
+                        setTimeout(() => tabButton.click(), 100);
                     }
                 }
             }

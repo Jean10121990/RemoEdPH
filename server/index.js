@@ -269,55 +269,23 @@ app.use('/api/lessons', noStoreProtectedResponse, lessonRoutes);
 
 /**
  * WebRTC ICE servers for live-classroom.html
- * STUN helps with NAT; TURN relays traffic when P2P fails (common on strict networks / dev tunnels).
- * Set TURN_URLS + TURN_USERNAME + TURN_CREDENTIAL in .env for production reliability.
+ * STUN for NAT discovery; TURN relays when P2P fails.
+ * Optional: TURN_URL, TURN_USERNAME, TURN_CREDENTIAL in .env (e.g. turn:host:3478).
  */
 app.get('/api/rtc-config', (req, res) => {
-  const iceServers = [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' }
-  ];
-  const turnUrls = process.env.TURN_URLS || process.env.TURN_URI;
-  if (turnUrls) {
-    const rawList = turnUrls
-      .split(',')
-      .map((s) => String(s || '').trim())
-      .filter(Boolean)
-    const urls = rawList
-      .map((u) => {
-        // Allow: stun:, turn:, turns:
-        const lower = u.toLowerCase();
-        if (lower.startsWith('stun:') || lower.startsWith('turn:') || lower.startsWith('turns:')) return u;
-        // Common misconfig: "host:port" → assume TURN
-        if (/^[a-z0-9.-]+:\d+(\?.*)?$/i.test(u)) return `turn:${u}`;
-        // Reject obvious invalid URLs like https://...
-        return '';
-      })
-      .filter(Boolean);
+  const iceServers = [{ urls: 'stun:stun.l.google.com:19302' }];
 
-    // If user provided only host:port (or only turn:host:3478) and no turns:/tcp entry,
-    // add a safe fallback for restrictive networks: turns:host:443?transport=tcp
-    const hasTurns = urls.some((u) => String(u).toLowerCase().startsWith('turns:'));
-    if (!hasTurns) {
-      // Pick the first host from a turn url (or host:port input)
-      const first = urls[0] || '';
-      const m = String(first).match(/^(?:turns?:)?([^:?/]+)(?::(\d+))?/i);
-      const host = m && m[1] ? m[1] : '';
-      if (host) {
-        urls.unshift(`turns:${host}:443?transport=tcp`);
-      }
+  const turnUrl = String(process.env.TURN_URL || '').trim();
+  if (turnUrl) {
+    const server = { urls: turnUrl };
+    const user = String(process.env.TURN_USERNAME || '').trim();
+    if (user) {
+      server.username = user;
+      server.credential = String(process.env.TURN_CREDENTIAL || '');
     }
-    if (urls.length) {
-      const turnEntry = urls.length === 1 ? { urls: urls[0] } : { urls };
-      if (process.env.TURN_USERNAME) {
-        turnEntry.username = process.env.TURN_USERNAME;
-        turnEntry.credential = process.env.TURN_CREDENTIAL || '';
-      }
-      iceServers.push(turnEntry);
-    } else {
-      console.warn('⚠️ TURN_URLS is set but contains no valid stun/turn urls. Expected e.g. turn:host:3478 or turns:host:443?transport=tcp');
-    }
+    iceServers.push(server);
   }
+
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
   res.json({ iceServers });
 });

@@ -111,6 +111,20 @@
             window.location.href = 'index.html';
         }
         
+        /** Admin APIs accept session cookie and/or Bearer adminToken (see admin-login). */
+        function adminApiFetch(url, init) {
+            init = init || {};
+            var headers = new Headers(init.headers || {});
+            var token = localStorage.getItem('adminToken');
+            if (token) headers.set('Authorization', 'Bearer ' + token);
+            return fetch(url, Object.assign({}, init, { credentials: 'include', headers: headers }));
+        }
+
+        function apiErrorMessage(data, fallback) {
+            if (!data || typeof data !== 'object') return fallback || 'Request failed';
+            return data.message || data.error || fallback || 'Request failed';
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             if (window.AdminSidebar && typeof AdminSidebar.applyGreetingFromStorage === 'function') {
                 AdminSidebar.applyGreetingFromStorage();
@@ -222,7 +236,7 @@
 
         async function loadGlobalRate() {
             try {
-                const response = await fetch('/api/admin/global-rate');
+                const response = await adminApiFetch('/api/admin/global-rate');
                 const data = await response.json();
                 if (data.success) {
                     document.getElementById('global-rate').value = data.rate || 100;
@@ -244,7 +258,7 @@
             
             try {
                 // First update the global rate and all teachers
-                const updateResponse = await fetch('/api/admin/update-global-rate', {
+                const updateResponse = await adminApiFetch('/api/admin/update-global-rate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ rate: newRate })
@@ -252,13 +266,13 @@
                 
                 const updateData = await updateResponse.json();
                 
-                if (!updateData.success) {
-                    alert(updateData.message || 'Failed to update rate');
+                if (!updateResponse.ok || !updateData.success) {
+                    alert(apiErrorMessage(updateData, 'Failed to update rate'));
                     return;
                 }
                 
                 // Persist via API
-                const saveResponse = await fetch('/api/admin/save-global-rate', {
+                const saveResponse = await adminApiFetch('/api/admin/save-global-rate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ rate: newRate })
@@ -288,10 +302,10 @@
                     selectedPeriodKey = getPeriodKeyForDate(new Date());
                 }
                 
-                const response = await fetch(`/api/admin/teachers-weekly-salaries?period=${encodeURIComponent(selectedPeriodKey)}`);
+                const response = await adminApiFetch(`/api/admin/teachers-weekly-salaries?period=${encodeURIComponent(selectedPeriodKey)}`);
                 const data = await response.json();
                 
-                if (data.success) {
+                if (response.ok && data.success) {
                     displayTeachersList(data.teachers);
                     document.getElementById('teachers-list-container').style.display = 'block';
                     document.getElementById('dispense-btn').style.display = 'inline-block';
@@ -315,7 +329,7 @@
                         document.getElementById('disbursement-status').textContent = '';
                     }, 3000);
                 } else {
-                    alert('Error loading teachers: ' + data.message);
+                    alert('Error loading teachers: ' + apiErrorMessage(data, 'Please sign in again or refresh.'));
                 }
             } catch (error) {
                 console.error('Error loading teachers:', error);
@@ -383,7 +397,7 @@
                     selectedPeriodKey = getPeriodKeyForDate(new Date());
                 }
                 
-                const response = await fetch('/api/admin/dispense-salaries', {
+                const response = await adminApiFetch('/api/admin/dispense-salaries', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ period: selectedPeriodKey })
@@ -422,7 +436,7 @@
             try {
                 console.log('🔍 Loading teacher filter options...');
                 
-                const response = await fetch('/api/admin/teachers-list');
+                const response = await adminApiFetch('/api/admin/teachers-list');
                 console.log('🔍 Teachers list response status:', response.status);
                 
                 if (!response.ok) {
@@ -471,7 +485,7 @@
                 
                 console.log('🔍 Making request to:', url);
                 
-                const response = await fetch(url);
+                const response = await adminApiFetch(url);
                 console.log('🔍 Response status:', response.status);
                 
                 if (!response.ok) {
@@ -554,7 +568,7 @@
         async function editPayment(paymentId) {
             try {
                 // First, get the payment details
-                const response = await fetch(`/api/admin/payment/${paymentId}`);
+                const response = await adminApiFetch(`/api/admin/payment/${paymentId}`);
                 const data = await response.json();
                 
                 if (!data.success) {
@@ -576,7 +590,7 @@
                 }
                 
                 // Update the payment
-                const updateResponse = await fetch(`/api/admin/payment/${paymentId}`, {
+                const updateResponse = await adminApiFetch(`/api/admin/payment/${paymentId}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ amount: amount })
@@ -602,7 +616,7 @@
             }
             
             try {
-                const response = await fetch(`/api/admin/payment/${paymentId}`, {
+                const response = await adminApiFetch(`/api/admin/payment/${paymentId}`, {
                     method: 'DELETE'
                 });
                 
@@ -635,7 +649,12 @@
                     url += '?' + params.toString();
                 }
                 
-                const response = await fetch(url);
+                const response = await adminApiFetch(url);
+                if (!response.ok) {
+                    const errText = await response.text().catch(() => '');
+                    alert('Export failed: HTTP ' + response.status + (errText ? ' — ' + errText.slice(0, 120) : ''));
+                    return;
+                }
                 const blob = await response.blob();
                 
                 // Create download link
