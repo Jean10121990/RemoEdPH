@@ -673,8 +673,11 @@ video {
 .chat-text {
   font-size: 0.9rem;
   color: #1f2937;
+  overflow-wrap: break-word;
   word-wrap: break-word;
   margin-bottom: 2px;
+  /* Preserve spaces the user typed (HTML normal flow collapses whitespace otherwise) */
+  white-space: pre-wrap;
 }
 
 .chat-time {

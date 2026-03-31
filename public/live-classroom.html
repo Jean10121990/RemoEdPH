@@ -4742,13 +4742,31 @@
         if (!chatMessages) return;
         const messageDiv = document.createElement('div');
         messageDiv.className = `chat-message ${isOwn ? 'own' : ''}`;
-        
-        const time = timestamp || new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-        
-        messageDiv.innerHTML = `
-          <div class="chat-text">${escapeHtml(message)}</div>
-          <div class="chat-time">${time}</div>
-        `;
+
+        let chatDate = new Date();
+        if (timestamp != null && timestamp !== '') {
+          const d =
+            typeof timestamp === 'number' && Number.isFinite(timestamp)
+              ? new Date(timestamp)
+              : new Date(timestamp);
+          if (!Number.isNaN(d.getTime())) chatDate = d;
+        }
+        const timeStr = chatDate.toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true
+        });
+
+        const textEl = document.createElement('div');
+        textEl.className = 'chat-text';
+        textEl.textContent = message == null ? '' : String(message);
+
+        const timeEl = document.createElement('div');
+        timeEl.className = 'chat-time';
+        timeEl.textContent = timeStr;
+
+        messageDiv.appendChild(textEl);
+        messageDiv.appendChild(timeEl);
         chatMessages.appendChild(messageDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
       }
