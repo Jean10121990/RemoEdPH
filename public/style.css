@@ -2401,12 +2401,14 @@ body.page-forgot-password{
             position: absolute;
             top: -15px;
             right: 20px;
-            background: linear-gradient(135deg, #FFD700, #FFE66D);
-            color: #1E3A5F;
+            background: linear-gradient(135deg, #b8e3fb, #e3f5ff);
+            color: #0f4a6e;
             padding: 8px 20px;
             border-radius: 20px;
             font-weight: 800;
             font-size: 0.9rem;
+            border: 1px solid rgba(28, 167, 231, 0.35);
+            box-shadow: 0 2px 8px rgba(28, 167, 231, 0.12);
         }.page-index .plan-icon{
             width: 56px;
             height: 56px;
@@ -2702,7 +2704,12 @@ body.page-forgot-password{
             backdrop-filter: blur(8px);
         }.page-index .logo-section span, .page-index .section-title, .page-index .hero-copy h1{
             color: var(--remoed-navy) !important;
-        }.page-index .plan-badge, .page-index .plan-tag{
+        }.page-index .plan-badge{
+            background: linear-gradient(135deg, #b8e3fb, #e3f5ff) !important;
+            color: #0f4a6e !important;
+            border: 1px solid rgba(28, 167, 231, 0.35) !important;
+            box-shadow: 0 2px 8px rgba(28, 167, 231, 0.12) !important;
+        }.page-index .plan-tag{
             background: linear-gradient(135deg, var(--japandi-orange), #f7a55f) !important;
             color: #ffffff !important;
         }.page-index .hero.japandi-hero{

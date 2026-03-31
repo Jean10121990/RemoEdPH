@@ -353,6 +353,27 @@ body.page-index #plans .plans-grid {
   overflow: visible;
 }
 
+/* Plan cards — RemoEd character art instead of line icons */
+body.page-index #plans .plan-icon.plan-icon--character {
+  width: 100%;
+  max-width: 120px;
+  height: 112px;
+  min-height: 112px;
+  margin-bottom: 10px;
+  padding: 2px 4px 0;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 18px;
+}
+
+body.page-index #plans .plan-icon.plan-icon--character img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center bottom;
+  display: block;
+}
+
 body.page-index #plans .plan-recommended-ribbon {
   position: absolute;
   top: 0;
