@@ -14,6 +14,19 @@ const AdminAuditLog = require('./models/AdminAuditLog');
 const { decryptPiiString } = require('./utils/piiCrypto');
 const { verifyAdminApiAuth, requireAdmin, verifyToken, requireTeacher } = require('./authMiddleware');
 
+/** Turn stored issue screenshot (absolute path or /uploads/...) into a browser URL */
+function normalizeIssueScreenshotUrl(stored) {
+  if (stored == null || stored === '') return null;
+  const s = String(stored).trim();
+  if (!s) return null;
+  if (/^https?:\/\//i.test(s)) return s;
+  const normalized = s.replace(/\\/g, '/');
+  if (normalized.startsWith('/uploads/')) return normalized.replace(/\/{2,}/g, '/');
+  const idx = normalized.toLowerCase().indexOf('/uploads/');
+  if (idx !== -1) return normalized.slice(idx).replace(/\/{2,}/g, '/');
+  return null;
+}
+
 /**
  * RBAC for /api/admin/* — default: admin session/JWT only.
  * Exception: GET /teacher-rate (global rate only, no auth) for reliable service-fee UI.
@@ -3384,10 +3397,16 @@ router.get('/issues', verifyAdminApiAuth, requireAdmin, async (req, res) => {
       .sort({ submittedAt: -1 })
       .populate('teacherId', 'firstName lastName')
       .populate('studentId', 'firstName lastName');
-    
+
+    const issuesOut = issues.map((doc) => {
+      const o = doc.toObject ? doc.toObject() : doc;
+      o.screenshotPath = normalizeIssueScreenshotUrl(o.screenshotPath);
+      return o;
+    });
+
     res.json({
       success: true,
-      issues: issues
+      issues: issuesOut,
     });
   } catch (error) {
     console.error('Error fetching issues:', error);

@@ -347,6 +347,36 @@ const upload = multer({
   }
 });
 
+/** Issue reports: store under uploads/issue-screenshots and save URL as /uploads/... for admin QA hub */
+const issueScreenshotStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadDir = path.join(__dirname, '../uploads/issue-screenshots');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    const ext = path.extname(file.originalname || '').toLowerCase() || '.png';
+    cb(null, 'issue-' + uniqueSuffix + ext);
+  },
+});
+
+const issueScreenshotUpload = multer({
+  storage: issueScreenshotStorage,
+  fileFilter: function (req, file, cb) {
+    const allowed = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+    const ext = path.extname(file.originalname || '').toLowerCase();
+    if (allowed.includes(ext)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Screenshot must be an image (JPEG, PNG, GIF, or WebP).'), false);
+    }
+  },
+  limits: { fileSize: 10 * 1024 * 1024 },
+});
+
 // Test route to verify teacher routes are working
 router.get('/test', (req, res) => {
   res.json({ message: 'Teacher routes are working!' });
@@ -4745,7 +4775,7 @@ router.post('/booking/:bookingId/mark-student-absent', verifyToken, requireTeach
 });
 
 // Report class issue
-router.post('/report-issue', verifyToken, requireTeacher, upload.single('screenshot'), async (req, res) => {
+router.post('/report-issue', verifyToken, requireTeacher, issueScreenshotUpload.single('screenshot'), async (req, res) => {
   try {
     const { bookingId, teacherId, studentId, issueType, description, submittedAt } = req.body;
     
@@ -4781,11 +4811,11 @@ router.post('/report-issue', verifyToken, requireTeacher, upload.single('screens
       });
     }
     
-    // Handle file upload if screenshot is provided
+    // Public URL path (served by app.use('/uploads', ...)) — not absolute disk path
     let screenshotPath = null;
     if (req.file) {
-      screenshotPath = req.file.path;
-      console.log('📸 Screenshot uploaded:', req.file.filename);
+      screenshotPath = '/uploads/issue-screenshots/' + req.file.filename;
+      console.log('📸 Screenshot uploaded:', screenshotPath);
     }
     
     // Determine payment impact based on issue type

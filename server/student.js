@@ -1140,7 +1140,7 @@ router.post('/confirm-payment', async (req, res) => {
                 studentContact: encryptPiiString(student.contact || ''),
                 subscriptionPlan: student.subscriptionPlan || '',
                 amountPaid: paid,
-                commissionAmount: 25,
+                commissionAmount: 500,
                 status: 'successful'
               }
             },

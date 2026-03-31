@@ -13,7 +13,7 @@ const referralSchema = new mongoose.Schema(
     studentContact: piiContactString(''),
     subscriptionPlan: { type: String, default: '' }, // 1month/3months/6months/1year
     amountPaid: { type: Number, default: 0 }, // subscription amount (PHP)
-    commissionAmount: { type: Number, default: 25 }, // fixed commission per successful enrollee
+    commissionAmount: { type: Number, default: 500 }, // fixed commission per successful enrollee
     status: { type: String, enum: ['pending', 'successful', 'void'], default: 'successful' }
   },
   {

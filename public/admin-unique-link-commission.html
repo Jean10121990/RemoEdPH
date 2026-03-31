@@ -160,7 +160,7 @@
           <td>${r.studentContact || '—'}</td>
           <td>${r.subscriptionPlan || '—'}</td>
           <td>${fmtPeso(r.amountPaid || 0)}</td>
-          <td>${fmtPeso(r.commissionAmount || 25)}</td>
+          <td>${fmtPeso(r.commissionAmount || 500)}</td>
           <td>${r.createdAt ? new Date(r.createdAt).toLocaleString() : ''}</td>
         </tr>
       `).join('');

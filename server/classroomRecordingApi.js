@@ -176,6 +176,48 @@ function requireTeacherOrStudent(req, res, next) {
   return res.status(403).json({ success: false, message: 'Teacher or student session required.' });
 }
 
+/**
+ * FFmpeg remux/transcode after the HTTP response — prevents nginx/proxy 504 on /complete.
+ */
+function scheduleRecordingPostProcess(recordingId, sourceMime) {
+  const id = String(recordingId);
+  const mime = String(sourceMime || '');
+  setImmediate(() => {
+    (async () => {
+      if (!/webm/i.test(mime)) return;
+      try {
+        const doc = await ClassroomRecording.findById(id);
+        if (!doc || doc.status !== 'complete') return;
+        const currentAbs = path.join(__dirname, '../uploads', doc.relativePath);
+        if (!fs.existsSync(currentAbs)) return;
+
+        const mp4Abs = await transcodeWebmToMp4(currentAbs);
+        if (mp4Abs) {
+          const oldAbs = currentAbs;
+          const newRel = doc.relativePath.replace(/\.[^./\\]+$/, '.mp4');
+          doc.relativePath = newRel;
+          doc.mimeType = 'video/mp4';
+          await doc.save();
+          try {
+            await fsp.unlink(oldAbs);
+          } catch (e) {
+            /* ignore */
+          }
+          return;
+        }
+        const remuxed = await remuxSeekableWebm(currentAbs);
+        if (!remuxed) {
+          console.warn('classroom-recording remux skipped/failed for', id);
+        }
+      } catch (e) {
+        console.warn('classroom-recording post-process', id, e.message);
+      }
+    })().catch((err) => {
+      console.warn('classroom-recording post-process async', id, err.message);
+    });
+  });
+}
+
 /** Start upload session — returns id for chunk + complete URLs */
 router.post(
   '/classroom-recording/session',
@@ -310,34 +352,12 @@ router.post(
       const abs = path.join(__dirname, '../uploads', doc.relativePath);
       let st;
       try {
-        const sourceMime = String(mimeType || doc.mimeType || '');
-        if (/webm/i.test(sourceMime)) {
-          const mp4Abs = await transcodeWebmToMp4(abs);
-          if (mp4Abs) {
-            const oldAbs = abs;
-            const oldRel = doc.relativePath;
-            const newRel = oldRel.replace(/\.[^./\\]+$/, '.mp4');
-            doc.relativePath = newRel;
-            doc.mimeType = 'video/mp4';
-            try {
-              await fsp.unlink(oldAbs);
-            } catch (e) {
-              // ignore
-            }
-          } else {
-            // Fallback: keep WebM but attempt seekable remux.
-            const remuxed = await remuxSeekableWebm(abs);
-            if (!remuxed) {
-              console.warn('classroom-recording remux/transcode skipped/failed for', doc._id.toString());
-            }
-          }
-        }
-        const finalAbs = path.join(__dirname, '../uploads', doc.relativePath);
-        st = await fsp.stat(finalAbs);
+        st = await fsp.stat(abs);
       } catch (e) {
         return res.status(400).json({ success: false, message: 'Recording file missing' });
       }
 
+      const sourceMime = String(mimeType || doc.mimeType || '');
       doc.status = 'complete';
       doc.sizeBytes = st.size;
       doc.durationSec = durationSec != null ? Number(durationSec) : null;
@@ -345,6 +365,8 @@ router.post(
       await doc.save();
 
       res.json({ success: true, recordingId: doc._id.toString(), sizeBytes: doc.sizeBytes });
+
+      scheduleRecordingPostProcess(doc._id.toString(), sourceMime);
     } catch (err) {
       console.error('classroom-recording complete:', err);
       res.status(500).json({ success: false, message: err.message || 'Complete failed' });
