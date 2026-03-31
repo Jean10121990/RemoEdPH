@@ -223,7 +223,7 @@ body.page-index #plans .plan-btn {
   font-weight: 700;
   letter-spacing: 0.02em;
   cursor: pointer;
-  border-radius: 999px;
+  border-radius: 999px !important;
   background: linear-gradient(
     135deg,
     var(--remo-logo-green-deep),
@@ -317,7 +317,7 @@ body.page-index #signup-form button[type="submit"] {
   width: 100%;
   margin-top: 14px;
   padding: 14px 20px;
-  border-radius: 999px;
+  border-radius: 999px !important;
   border: 3px solid var(--remo-logo-yellow) !important;
   background: linear-gradient(
     135deg,
@@ -343,4 +343,94 @@ body.page-index #signup-form .assessment-btn:disabled,
 body.page-index #signup-form button[type="submit"]:disabled {
   opacity: 0.88;
   cursor: wait;
+}
+
+/* -------------------------------------------------------------------------- */
+/* RemoScholar (6 mo) — recommended: metallic ribbon + gold emphasis          */
+/* -------------------------------------------------------------------------- */
+
+body.page-index #plans .plans-grid {
+  overflow: visible;
+}
+
+body.page-index #plans .plan-recommended-ribbon {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  z-index: 5;
+  transform: translate(-50%, -46%);
+  padding: 8px 22px 10px;
+  border-radius: 999px;
+  font-family: "Quicksand", "Fredoka", "Segoe UI", sans-serif;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #1f1608;
+  background: linear-gradient(
+    45deg,
+    #bf953f,
+    #fcf6ba,
+    #b38728,
+    #fbf5b7,
+    #aa771c
+  );
+  background-size: 220% 220%;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  box-shadow:
+    0 4px 16px rgba(170, 119, 28, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.65);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  body.page-index #plans .plan-recommended-ribbon {
+    animation: plan-ribbon-shimmer 8s ease-in-out infinite;
+  }
+}
+
+@keyframes plan-ribbon-shimmer {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+body.page-index #plans .plan-card.plan-scholar.plan-recommended {
+  z-index: 3;
+  padding-top: 48px;
+  border-color: rgba(179, 135, 40, 0.55) !important;
+  box-shadow:
+    0 16px 40px rgba(36, 49, 66, 0.12),
+    0 0 0 2px rgba(191, 149, 63, 0.28),
+    0 8px 28px rgba(170, 119, 28, 0.18) !important;
+  transform: scale(1.05);
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease,
+    border-color 0.3s ease;
+}
+
+body.page-index #plans .plan-card.plan-scholar.plan-recommended:hover {
+  border-color: rgba(170, 119, 28, 0.75) !important;
+  box-shadow:
+    0 20px 44px rgba(36, 49, 66, 0.14),
+    0 0 0 2px rgba(191, 149, 63, 0.4),
+    0 12px 32px rgba(170, 119, 28, 0.22) !important;
+  transform: scale(1.05) translateY(-10px);
+}
+
+@media (max-width: 1100px) {
+  body.page-index #plans .plan-card.plan-scholar.plan-recommended {
+    transform: none;
+    padding-top: 44px;
+  }
+
+  body.page-index #plans .plan-card.plan-scholar.plan-recommended:hover {
+    transform: translateY(-10px);
+  }
 }
