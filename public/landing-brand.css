@@ -353,7 +353,7 @@ body.page-index #plans .plans-grid {
   overflow: visible;
 }
 
-/* Plan cards — RemoEd character art instead of line icons */
+/* Plan cards — RemoEd character art (PNGs with alpha; tray stays transparent) */
 body.page-index #plans .plan-icon.plan-icon--character {
   width: 100%;
   max-width: 120px;
@@ -361,9 +361,11 @@ body.page-index #plans .plan-icon.plan-icon--character {
   min-height: 112px;
   margin-bottom: 10px;
   padding: 2px 4px 0;
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.92);
-  border-radius: 18px;
+  overflow: visible;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none;
+  border-radius: 0;
 }
 
 body.page-index #plans .plan-icon.plan-icon--character img {
