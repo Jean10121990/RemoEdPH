@@ -581,6 +581,10 @@ router.get('/bookings', verifyToken, requireStudent, async (req, res) => {
           bookingId: bookingIdStr,
           teacherId: logicalTeacherId,
           studentId: { $in: uniqueIdentifiers },
+          $or: [
+            { feedbackRole: 'teacher_to_student' },
+            { feedbackRole: { $exists: false } },
+          ],
         }).lean();
 
         let teacherFeedback = null;
@@ -1332,10 +1336,11 @@ router.post('/feedback/submit', verifyToken, requireStudent, async (req, res) =>
       return res.status(400).json({ error: 'Rating must be between 1 and 5' });
     }
     
-    // Check if feedback already exists for this booking
+    // Check if student→teacher feedback already exists for this booking
     const existingFeedback = await Feedback.findOne({
       bookingId: bookingIdStr,
       studentId: req.user.studentId,
+      feedbackRole: 'student_to_teacher',
     });
     if (existingFeedback) {
       console.log('❌ Feedback already submitted for this booking');
@@ -1356,7 +1361,8 @@ router.post('/feedback/submit', verifyToken, requireStudent, async (req, res) =>
       studentId: req.user.studentId,
       rating: ratingNum,
       comment: comment || '',
-      lessonDate: new Date(booking.date)
+      lessonDate: new Date(booking.date),
+      feedbackRole: 'student_to_teacher',
     });
     
     await feedback.save();

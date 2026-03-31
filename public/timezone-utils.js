@@ -1,9 +1,21 @@
-// Shared timezone utilities using Luxon (client-side)
-// Assumes luxon is loaded globally as 'luxon' (via script tag).
+// Shared timezone utilities using Luxon (client-side).
+// Requires the Luxon global build: window.luxon (see HTML script order).
 
-const { DateTime, IANAZone } = luxon || {};
+'use strict';
+
+if (typeof window !== 'undefined' && !window.luxon) {
+  console.error(
+    '[RemoEd timezone-utils] window.luxon is missing. Load the Luxon global script before timezone-utils.js ' +
+      '(e.g. https://cdn.jsdelivr.net/npm/luxon@3.5.0/build/global/luxon.min.js). ' +
+      'If you see this after a deploy, the CDN may be blocked or the script order is wrong.'
+  );
+}
+
+const DateTime = typeof window !== 'undefined' && window.luxon ? window.luxon.DateTime : undefined;
+const IANAZone = typeof window !== 'undefined' && window.luxon ? window.luxon.IANAZone : undefined;
 
 function getDetectedZone() {
+  if (!IANAZone) return 'UTC';
   try {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
     if (tz && IANAZone.isValidZone(tz)) return tz;
@@ -37,6 +49,9 @@ function listTimezones() {
 }
 
 function toUtcIso(dateStr, timeStr, zone) {
+  if (!DateTime || !IANAZone) {
+    throw new Error('Luxon is not loaded; cannot convert to UTC ISO.');
+  }
   const z = zone && IANAZone.isValidZone(zone) ? zone : 'UTC';
   const dt = DateTime.fromISO(`${dateStr}T${timeStr}`, { zone: z });
   if (!dt.isValid) throw new Error(`Invalid date/time for zone ${z}`);
@@ -44,6 +59,9 @@ function toUtcIso(dateStr, timeStr, zone) {
 }
 
 function utcToLocalParts(utcIso, zone) {
+  if (!DateTime || !IANAZone) {
+    throw new Error('Luxon is not loaded; cannot convert UTC to local parts.');
+  }
   const z = zone && IANAZone.isValidZone(zone) ? zone : 'UTC';
   const dt = DateTime.fromISO(utcIso, { zone: 'UTC' }).setZone(z);
   if (!dt.isValid) throw new Error(`Invalid UTC datetime ${utcIso}`);
@@ -56,10 +74,16 @@ function utcToLocalParts(utcIso, zone) {
 }
 
 function nowUtcIso() {
+  if (!DateTime) return new Date().toISOString();
   return DateTime.utc().toISO();
 }
 
 function isPastUtc(utcIso) {
+  if (!DateTime) {
+    const now = Date.now();
+    const t = new Date(utcIso).getTime();
+    return Number.isFinite(t) && t < now;
+  }
   const now = DateTime.utc();
   const dt = DateTime.fromISO(utcIso, { zone: 'UTC' });
   return dt < now;

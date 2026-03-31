@@ -506,6 +506,13 @@ app.post('/api/convert-pptx', verifyToken, requireTeacher, (req, res) => {
 const Feedback = require('./models/Feedback');
 const IssueReport = require('./models/IssueReport');
 
+const {
+  FEEDBACK_ROLE_TEACHER_TO_STUDENT,
+  isBookingSessionFinalized,
+  emitBookingsUpdatedForTeacher,
+  finalizeBookingAfterTeacherFeedbackWrap,
+} = require('./services/teacherClassFinalize');
+
 // Mark student as absent (legacy route)
 app.post('/api/booking/:bookingId/mark-student-absent', verifyToken, requireTeacher, async (req, res) => {
   try {
@@ -530,11 +537,11 @@ app.post('/api/booking/:bookingId/mark-student-absent', verifyToken, requireTeac
       });
     }
     
-    // Check if booking is already marked as absent or completed
-    if (booking.status === 'completed' || booking.absentMarkedAt) {
+    // Check if booking is already finalized for pay/credits or absent-marked
+    if (isBookingSessionFinalized(booking) || booking.absentMarkedAt) {
       return res.status(400).json({ 
         success: false, 
-        error: 'Cannot mark student as absent for a completed or already absent-marked class' 
+        error: 'Cannot mark student as absent for a finalized or already absent-marked class' 
       });
     }
     
@@ -566,7 +573,66 @@ app.post('/api/booking/:bookingId/mark-student-absent', verifyToken, requireTeac
   }
 });
 
-// Complete a class (legacy route)
+// Teacher ended live session (WebRTC) — persists pending feedback; no credits / fee until feedback submit
+app.post('/api/booking/:bookingId/end-session', verifyToken, requireTeacher, async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const teacherId = req.user.teacherId;
+    const booking = await Booking.findById(bookingId);
+    if (!booking) {
+      return res.status(404).json({ success: false, error: 'Booking not found' });
+    }
+    if (booking.teacherId !== teacherId) {
+      return res.status(403).json({ success: false, error: 'Access denied. This booking does not belong to you.' });
+    }
+
+    const st = String(booking.status || '').toLowerCase();
+    if (['absent', 'cancelled', 'canceled'].includes(st)) {
+      return res.status(400).json({ success: false, error: 'Invalid booking state for end-session' });
+    }
+    if (isBookingSessionFinalized(booking)) {
+      return res.json({
+        success: true,
+        message: 'Class already finalized',
+        alreadyFinalized: true,
+        booking: {
+          id: booking._id,
+          status: booking.status,
+          finishedAt: booking.finishedAt,
+          classCompleted: !!(booking.attendance && booking.attendance.classCompleted),
+        },
+      });
+    }
+    if (st === 'pending_feedback') {
+      return res.json({
+        success: true,
+        message: 'Session already ended; submit feedback to finalize.',
+        pendingFeedback: true,
+        booking: { id: booking._id, status: booking.status, sessionEndedAt: booking.sessionEndedAt },
+      });
+    }
+
+    booking.sessionEndedAt = new Date();
+    booking.status = 'pending_feedback';
+    await booking.save();
+    await emitBookingsUpdatedForTeacher(teacherId, booking);
+
+    res.json({
+      success: true,
+      message: 'Live session ended. Submit feedback to finalize credits and teacher pay.',
+      booking: {
+        id: booking._id,
+        status: booking.status,
+        sessionEndedAt: booking.sessionEndedAt,
+      },
+    });
+  } catch (error) {
+    console.error('❌ Error end-session:', error);
+    res.status(500).json({ success: false, error: 'Failed to end session: ' + error.message });
+  }
+});
+
+// Retry ledger only if teacher wrap-up feedback exists (legacy / network recovery)
 app.patch('/api/bookings/:bookingId/complete', verifyToken, requireTeacher, async (req, res) => {
   try {
     const { bookingId } = req.params;
@@ -578,10 +644,10 @@ app.patch('/api/bookings/:bookingId/complete', verifyToken, requireTeacher, asyn
     if (booking.teacherId !== teacherId) {
       return res.status(403).json({ success: false, error: 'Access denied. This booking does not belong to you.' });
     }
-    if (booking.status === 'completed') {
+    if (isBookingSessionFinalized(booking)) {
       return res.json({
         success: true,
-        message: 'Class already completed',
+        message: 'Class already finalized',
         booking: {
           id: booking._id,
           status: booking.status,
@@ -591,22 +657,29 @@ app.patch('/api/bookings/:bookingId/complete', verifyToken, requireTeacher, asyn
       });
     }
 
-    booking.status = 'completed';
-    booking.finishedAt = new Date();
-    booking.attendance = booking.attendance || {};
-    booking.attendance.classCompleted = true;
-    await consumeReservedCreditForBooking(booking, 'Class finished');
-    await booking.save();
+    const teacherFb = await Feedback.findOne({
+      bookingId: String(bookingId),
+      feedbackRole: FEEDBACK_ROLE_TEACHER_TO_STUDENT,
+    });
+    if (!teacherFb) {
+      return res.status(400).json({
+        success: false,
+        error:
+          'Submit teacher feedback first (stars and comments). Finalization runs automatically after a successful feedback submit.',
+      });
+    }
 
+    await finalizeBookingAfterTeacherFeedbackWrap(booking, teacherId);
+    const fresh = await Booking.findById(bookingId);
     return res.json({
       success: true,
-      message: 'Class completed successfully',
+      message: 'Class finalized',
       booking: {
-        id: booking._id,
-        status: booking.status,
-        finishedAt: booking.finishedAt,
-        classCompleted: booking.attendance.classCompleted
-      }
+        id: fresh._id,
+        status: fresh.status,
+        finishedAt: fresh.finishedAt,
+        classCompleted: fresh.attendance && fresh.attendance.classCompleted,
+      },
     });
   } catch (error) {
     console.error('❌ Error completing class (PATCH /api/bookings):', error);
@@ -618,31 +691,28 @@ app.post('/api/booking/:bookingId/complete', verifyToken, requireTeacher, async 
   try {
     const { bookingId } = req.params;
     const teacherId = req.user.teacherId;
-    
-    console.log('✅ Completing class:', bookingId, 'for teacher:', teacherId);
-    
-    // Find the booking and verify it belongs to this teacher
+
+    console.log('✅ Completing class (retry/finalize):', bookingId, 'for teacher:', teacherId);
+
     const booking = await Booking.findById(bookingId);
     if (!booking) {
-      return res.status(404).json({ 
-        success: false, 
-        error: 'Booking not found' 
+      return res.status(404).json({
+        success: false,
+        error: 'Booking not found',
       });
     }
-    
+
     if (booking.teacherId !== teacherId) {
-      return res.status(403).json({ 
-        success: false, 
-        error: 'Access denied. This booking does not belong to you.' 
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied. This booking does not belong to you.',
       });
     }
-    
-    // Idempotent: final completion may already be set (e.g. after live session ended)
-    if (booking.status === 'completed') {
-      console.log('ℹ️ Class already completed (idempotent):', bookingId);
+
+    if (isBookingSessionFinalized(booking)) {
       return res.json({
         success: true,
-        message: 'Class already completed',
+        message: 'Class already finalized',
         booking: {
           id: booking._id,
           status: booking.status,
@@ -651,187 +721,220 @@ app.post('/api/booking/:bookingId/complete', verifyToken, requireTeacher, async 
         },
       });
     }
-    
-    // Update booking status to completed
-    booking.status = 'completed';
-    booking.finishedAt = new Date();
-    
-    // Set attendance.classCompleted to true for service fee calculation
-    if (!booking.attendance) {
-      booking.attendance = {};
-    }
-    booking.attendance.classCompleted = true;
-    await consumeReservedCreditForBooking(booking, 'Class finished');
-    
-    await booking.save();
-    
-    console.log('✅ Class completed successfully:', bookingId);
 
-    try {
-      realtime.emitAll('bookingsUpdated', {
-        teacherId,
-        bookingId: booking._id.toString(),
-        date: booking.date,
-        time: booking.time,
-        status: booking.status,
-        ts: Date.now()
+    const teacherFb = await Feedback.findOne({
+      bookingId: String(bookingId),
+      feedbackRole: FEEDBACK_ROLE_TEACHER_TO_STUDENT,
+    });
+    if (!teacherFb) {
+      return res.status(400).json({
+        success: false,
+        error:
+          'Submit teacher feedback first (stars and comments). Finalization runs automatically after a successful feedback submit.',
       });
-    } catch (emitErr) {
-      console.warn('bookingsUpdated emit (complete):', emitErr);
     }
-    
+
+    await finalizeBookingAfterTeacherFeedbackWrap(booking, teacherId);
+    const fresh = await Booking.findById(bookingId);
+
     res.json({
       success: true,
-      message: 'Class completed successfully',
+      message: 'Class finalized',
       booking: {
-        id: booking._id,
-        status: booking.status,
-        finishedAt: booking.finishedAt,
-        classCompleted: booking.attendance.classCompleted
-      }
+        id: fresh._id,
+        status: fresh.status,
+        finishedAt: fresh.finishedAt,
+        classCompleted: fresh.attendance && fresh.attendance.classCompleted,
+      },
     });
-    
   } catch (error) {
     console.error('❌ Error completing class:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Failed to complete class: ' + error.message 
+    res.status(500).json({
+      success: false,
+      error: 'Failed to complete class: ' + error.message,
     });
   }
 });
 
-// Check if feedback exists for a booking
+// Check teacher wrap-up feedback + finalization state for a booking
 app.get('/api/feedback/check/:bookingId', verifyToken, requireTeacher, async (req, res) => {
   try {
     const { bookingId } = req.params;
-    
-    // Check if feedback already exists for this booking
-    const existingFeedback = await Feedback.findOne({ bookingId: String(bookingId) });
-    
+    const booking = await Booking.findById(bookingId);
+    if (!booking) {
+      return res.status(404).json({ success: false, error: 'Booking not found' });
+    }
+    if (booking.teacherId !== req.user.teacherId) {
+      return res.status(403).json({ success: false, error: 'Access denied' });
+    }
+
+    const teacherFeedback = await Feedback.findOne({
+      bookingId: String(bookingId),
+      feedbackRole: FEEDBACK_ROLE_TEACHER_TO_STUDENT,
+    }).lean();
+
+    const sessionFinalized = isBookingSessionFinalized(booking);
+    const pendingSessionEnd = String(booking.status || '').toLowerCase() === 'pending_feedback';
+
     res.json({
       success: true,
-      exists: !!existingFeedback,
-      feedback: existingFeedback ? {
-        id: existingFeedback._id,
-        rating: existingFeedback.rating,
-        comment: existingFeedback.comment,
-        submittedAt: existingFeedback.submittedAt
-      } : null
+      exists: !!teacherFeedback,
+      hasTeacherFeedback: !!teacherFeedback,
+      sessionFinalized,
+      pendingSessionEnd,
+      bookingStatus: booking.status,
+      feedback: teacherFeedback
+        ? {
+            id: teacherFeedback._id,
+            rating: teacherFeedback.rating,
+            comment: teacherFeedback.comment,
+            submittedAt: teacherFeedback.submittedAt,
+          }
+        : null,
     });
-    
   } catch (error) {
     console.error('❌ Error checking feedback:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Failed to check feedback: ' + error.message 
+    res.status(500).json({
+      success: false,
+      error: 'Failed to check feedback: ' + error.message,
     });
   }
 });
 
-// Submit feedback (legacy route)
+// Submit teacher→student wrap-up feedback; then finalize credits + fee eligibility in one transaction path
 app.post('/api/feedback/submit', verifyToken, requireTeacher, async (req, res) => {
   try {
     const { bookingId, teacherId, studentId, rating, comment, submittedAt } = req.body;
-    
+
     if (!bookingId || !rating || rating < 1 || rating > 5) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Missing required fields or invalid rating' 
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields or invalid rating',
       });
     }
-    
+
     console.log('📝 Teacher feedback submission:', {
       bookingId,
       teacherId,
       studentId,
       rating,
       comment: comment ? comment.substring(0, 50) + '...' : 'No comment',
-      submittedAt
+      submittedAt,
     });
-    
-    // Find the booking and verify it belongs to this teacher
+
     const booking = await Booking.findById(bookingId);
     if (!booking) {
-      return res.status(404).json({ 
-        success: false, 
-        error: 'Booking not found' 
+      return res.status(404).json({
+        success: false,
+        error: 'Booking not found',
       });
     }
-    
+
     if (booking.teacherId !== teacherId) {
-      return res.status(403).json({ 
-        success: false, 
-        error: 'Access denied. This booking does not belong to you.' 
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied. This booking does not belong to you.',
       });
     }
-    
-    // Check if feedback already exists for this booking
-    const existingFeedback = await Feedback.findOne({ bookingId: String(bookingId) });
-    if (existingFeedback) {
-      // Check if the class was actually completed
-      const booking = await Booking.findById(bookingId);
-      if (booking && booking.status === 'completed') {
-        return res.status(400).json({ 
-          success: false, 
-          error: 'Feedback already submitted for this class' 
-        });
-      } else {
-        // Class wasn't completed, allow feedback update
-        console.log('⚠️ Feedback exists but class not completed, allowing update');
-      }
+
+    if (isBookingSessionFinalized(booking)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Feedback already submitted and class finalized for this session.',
+      });
     }
-    
-    // Create or update feedback
+
+    const timePart =
+      booking.time && String(booking.time).trim().length <= 5
+        ? `${String(booking.time).trim()}:00`
+        : String(booking.time || '12:00:00');
+    const lessonDate = new Date(`${booking.date}T${timePart}`);
+
+    let existingTeacherFeedback = await Feedback.findOne({
+      bookingId: String(bookingId),
+      feedbackRole: FEEDBACK_ROLE_TEACHER_TO_STUDENT,
+    });
+
     let feedback;
-    if (existingFeedback) {
-      // Update existing feedback
-      existingFeedback.rating = rating;
-      existingFeedback.comment = comment || '';
-      existingFeedback.submittedAt = submittedAt || new Date();
-      feedback = await existingFeedback.save();
+    if (existingTeacherFeedback) {
+      existingTeacherFeedback.rating = rating;
+      existingTeacherFeedback.comment = comment || '';
+      existingTeacherFeedback.submittedAt = submittedAt || new Date();
+      feedback = await existingTeacherFeedback.save();
       console.log('✅ Teacher feedback updated successfully');
     } else {
-      // Create new feedback
       feedback = new Feedback({
-        bookingId,
+        bookingId: String(bookingId),
         teacherId,
         studentId,
         rating,
         comment: comment || '',
         submittedAt: submittedAt || new Date(),
-        lessonDate: new Date(booking.date + 'T' + booking.time + ':00') // Convert booking date/time to lesson date
+        lessonDate,
+        feedbackRole: FEEDBACK_ROLE_TEACHER_TO_STUDENT,
       });
-      
       await feedback.save();
-      console.log('✅ Teacher feedback submitted successfully');
-      try {
-        const { notifyStudentLesson1FeedbackReady } = require('./services/studentLessonFeedbackEmail');
-        setImmediate(() => {
-          notifyStudentLesson1FeedbackReady(booking).catch((err) =>
-            console.error('[lesson1 feedback email]', err.message || err)
-          );
-        });
-      } catch (e) {
-        console.error('[lesson1 feedback email] setup', e.message || e);
-      }
+      console.log('✅ Teacher feedback created successfully');
     }
-    
+
+    try {
+      const StarReceived = require('./models/StarReceived');
+      await StarReceived.findOneAndUpdate(
+        {
+          bookingId: String(bookingId),
+          giverType: 'teacher',
+          recipientType: 'student',
+        },
+        {
+          recipientId: studentId,
+          recipientType: 'student',
+          giverId: teacherId,
+          giverType: 'teacher',
+          bookingId: String(bookingId),
+          rating,
+          feedbackId: feedback._id,
+          lessonDate,
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+    } catch (srErr) {
+      console.warn('StarReceived upsert:', srErr.message || srErr);
+    }
+
+    try {
+      const { notifyStudentLesson1FeedbackReady } = require('./services/studentLessonFeedbackEmail');
+      setImmediate(() => {
+        notifyStudentLesson1FeedbackReady(booking).catch((err) =>
+          console.error('[lesson1 feedback email]', err.message || err)
+        );
+      });
+    } catch (e) {
+      console.error('[lesson1 feedback email] setup', e.message || e);
+    }
+
+    await finalizeBookingAfterTeacherFeedbackWrap(booking, teacherId);
+    const saved = await Booking.findById(bookingId);
+
     res.json({
       success: true,
-      message: 'Feedback submitted successfully',
+      message: 'Feedback submitted and class finalized',
       feedback: {
         id: feedback._id,
         rating,
         comment: feedback.comment,
-        submittedAt: feedback.submittedAt
-      }
+        submittedAt: feedback.submittedAt,
+      },
+      booking: {
+        id: saved._id,
+        status: saved.status,
+        sessionFinalized: isBookingSessionFinalized(saved),
+      },
     });
-    
   } catch (error) {
     console.error('❌ Error submitting teacher feedback:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Failed to submit feedback: ' + error.message 
+    res.status(500).json({
+      success: false,
+      error: 'Failed to submit feedback: ' + error.message,
     });
   }
 });

@@ -99,6 +99,7 @@ async function consumeReservedCreditForBooking(booking, descriptionPrefix = 'Cla
 
   booking.creditConsumedAt = now;
   booking.creditReservationReleasedAt = null;
+  booking.creditsFinalized = true;
 
   return student._id;
 }

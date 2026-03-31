@@ -33,6 +33,13 @@ const feedbackSchema = new mongoose.Schema({
     lessonDate: {
         type: Date,
         required: true
+    },
+    /** Separates teacher→student class wrap-up from student→teacher session ratings (same collection). */
+    feedbackRole: {
+        type: String,
+        enum: ['teacher_to_student', 'student_to_teacher'],
+        default: 'teacher_to_student',
+        index: true
     }
 }, {
     timestamps: true
