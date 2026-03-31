@@ -252,10 +252,11 @@ app.use('/api/student', noStoreProtectedResponse, studentRoutes);
 app.use('/api', applicationRoutes);
 // Must be before /api/admin: same path prefix /api/admin/... is otherwise swallowed by adminRoutes → 404
 app.use('/api', noStoreProtectedResponse, classroomRecordingRouter);
-// Portal videos routes are registered before the main admin router (large file) so paths always resolve.
+// Main admin router MUST run before portal-video routes: portal router applies admin-only auth to every
+// request, which blocked public GET /api/admin/teacher-rate (teacher Teaching Fee page).
 const adminApiCombined = express.Router();
-adminApiCombined.use(adminPortalVideoRoutes);
 adminApiCombined.use(adminRoutes);
+adminApiCombined.use(adminPortalVideoRoutes);
 app.use('/api/admin', noStoreProtectedResponse, adminRouterLimiter, adminApiCombined);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/webhooks', webhookRoutes);
