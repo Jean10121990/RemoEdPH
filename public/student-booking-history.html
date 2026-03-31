@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="child-friendly-styles.css">
 <link rel="stylesheet" href="css/teacher-sidebar.css">
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/student-portal-layout.css">
 </head>
 <body  class="student-portal page-student-booking-history">
     <div class="remoed-main">
@@ -20,10 +21,7 @@
             <div class="booking-history-container">
                 <div class="booking-history-header">
                     <div>
-                        <h1 class="booking-history-title" style="font-size: 2rem; font-weight: 800; color: #1CA7E7; text-shadow: 2px 2px 4px rgba(28, 167, 231, 0.2); display: flex; align-items: center; gap: 12px;">
-                            <span>📚📶</span>
-                            <span>📜 My Classes</span>
-                        </h1>
+                        <h1 class="booking-history-title" style="font-size: 2rem; font-weight: 800; color: #5a67d8; text-shadow: 1px 1px 3px rgba(90, 103, 216, 0.12); margin: 0;">My Classes</h1>
                         <div class="booking-count" id="booking-count">Loading...</div>
                     </div>
                 </div>
@@ -60,6 +58,7 @@
         </div>
     </div>
 
+         <script src="timezone-utils.js"></script>
          <script>
          // Role-based access control
          const userType = localStorage.getItem('userType');
@@ -186,27 +185,21 @@
             }
         }
 
-        // Helper: parse booking date/time as UTC then convert to local
-        function parseBookingDateTime(booking) {
-            const dateStr = booking.date || '';
-            const timeStr = booking.time || '00:00';
-            const hasTZInfo = /[zZ]|[+-]\d\d:?\d\d$/.test(timeStr) || /[zZ]$/.test(dateStr) || /[+-]\d\d:?\d\d$/.test(dateStr);
-            const isoString = hasTZInfo ? `${dateStr}T${timeStr}` : `${dateStr}T${timeStr}Z`;
-            return new Date(isoString);
-        }
-        
-        function formatLocalTime(dateObj) {
-            return dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-        }
-        
-        function getTimeZoneAbbr(dateObj) {
-            try {
-                const parts = new Intl.DateTimeFormat('en-US', { timeZoneName: 'short' }).formatToParts(dateObj);
-                const tz = parts.find(p => p.type === 'timeZoneName');
-                return tz ? tz.value : '';
-            } catch (e) {
-                return '';
+        function bookingInstant(booking) {
+            const u = booking.dateTimeUtc || booking.dateTimeUTC || booking.datetimeUtc;
+            if (u) {
+                const t = new Date(u);
+                if (!isNaN(t.getTime())) return t;
             }
+            const dateStr = booking.date || '';
+            const timeStr = (booking.time || '00:00').toString().trim();
+            const hm = timeStr.length <= 5 ? timeStr + ':00' : timeStr;
+            if (!dateStr) return new Date(NaN);
+            return new Date(dateStr + 'T' + hm + '+08:00');
+        }
+
+        function parseBookingDateTime(booking) {
+            return bookingInstant(booking);
         }
         
         // Display bookings based on current filter
@@ -248,14 +241,14 @@
             const tableRows = bookings.map(booking => {
                 const status = getBookingStatus(booking);
                 const statusClass = `status-${status.toLowerCase().replace(/\s+/g, '-')}`;
-                const date = new Date(booking.date);
-                const formattedDate = date.toLocaleDateString('en-US', { 
-                    month: 'short', 
-                    day: 'numeric', 
-                    year: 'numeric' 
-                });
-                const localDateTime = parseBookingDateTime(booking);
-                const time = `${formatLocalTime(localDateTime)} ${getTimeZoneAbbr(localDateTime)}`;
+                const TU = window.TimezoneUtils || {};
+                const inst = bookingInstant(booking);
+                const formattedDate = TU.formatDateShortPhilippines
+                    ? TU.formatDateShortPhilippines(inst)
+                    : new Date(booking.date + 'T12:00:00+08:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                const time = TU.formatTime12hPhilippines
+                    ? `${TU.formatTime12hPhilippines(inst)} PHT`
+                    : inst.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
                 const duration = calculateDuration(booking);
                 const lesson = booking.lesson || 'N/A';
                 const teacherName = getTeacherName(booking);

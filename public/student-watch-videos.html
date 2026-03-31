@@ -1,32 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
-    <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Watch Videos - RemoEdPH</title>
-  <link rel="stylesheet" href="css/teacher-sidebar.css">`r`n    <link rel="stylesheet" href="style.css">`r`n</head>
-<body  class="student-portal page-student-watch-videos">
-  <div class="remoed-main">
-    <div id="student-sidebar-root"></div>
-    <div class="content">
-      <div class="card">
-        <h1>Watch Videos</h1>
-        <p>This section is ready for lesson videos, practice clips, and replay content.</p>
-        <div class="coming">Video library layout is active. You can now route and expand this page with real video content.</div>
-      </div>
-    </div>
-  </div>
-  <script src="js/student-sidebar.js"></script>
-  <script>
-    const userType = localStorage.getItem('userType');
-    if (userType !== 'student') {
-      alert('Access denied. This page is for students only.');
-      window.location.href = 'index.html';
-    }
-    StudentSidebar.render('student-sidebar-root', 'videos');
-  </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="refresh" content="0;url=student-dashboard.html">
+    <title>Redirecting…</title>
+    <script>
+        window.location.replace('student-dashboard.html');
+    </script>
+</head>
+<body>
+    <p><a href="student-dashboard.html">Continue to dashboard</a></p>
 </body>
 </html>
-

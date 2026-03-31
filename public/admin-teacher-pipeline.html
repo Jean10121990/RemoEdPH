@@ -5,9 +5,25 @@
     <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="js/admin-standalone-redirect.js"></script>
+  <script src="js/admin-embed-init.js"></script>
   <title>TeacherPipeline - Admin</title>
   <link rel="stylesheet" href="css/teacher-sidebar.css" />
     <link rel="stylesheet" href="style.css">
+  <style>
+    .page-admin-teacher-pipeline .action-btns { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .page-admin-teacher-pipeline .btn-delete {
+      background: #fef2f2;
+      color: #b91c1c;
+      border: 1px solid #fecaca;
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .page-admin-teacher-pipeline .btn-delete:hover { background: #fee2e2; color: #991b1b; }
+  </style>
 </head>
 <body class="page-admin-teacher-pipeline">
   <div class="layout">
@@ -76,7 +92,7 @@
       window.location.href = (function(){ try { var p = localStorage.getItem('remoedAdminEntryPath'); if (p && p.charAt(0) === '/') return p; } catch(e){} return 'index.html'; })();
     }
 
-    AdminSidebar.render('admin-sidebar-root', 'teacher-pipeline');
+    if (!window.__ADMIN_EMBED__) { AdminSidebar.render('admin-sidebar-root', 'teacher-pipeline'); }
 
     const bodyEl = document.getElementById('pipeline-body');
     const modal = document.getElementById('review-modal');
@@ -98,18 +114,45 @@
       return Math.round((idx / (stages.length - 2)) * 100);
     }
 
+    function formatStageLabel(stage) {
+      const s = (stage || 'applied').toString();
+      return s.charAt(0).toUpperCase() + s.slice(1);
+    }
+
+    function canDeleteApplicant(stage) {
+      const s = (stage || '').toString().toLowerCase();
+      return s === 'passed' || s === 'failed';
+    }
+
+    function canPassOrFail(stage) {
+      const s = (stage || '').toString().toLowerCase();
+      return s !== 'passed' && s !== 'failed';
+    }
+
     async function api(path, options = {}) {
-      const response = await fetch(path, {
-        ...options,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          ...(options.headers || {})
-        }
-      });
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+        ...(options.headers || {})
+      };
+      if (options.body != null && !(options.body instanceof FormData)) {
+        headers['Content-Type'] = 'application/json';
+      }
+      const response = await fetch(path, { ...options, headers });
       const json = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(json.error || `Request failed (${response.status})`);
       return json;
+    }
+
+    async function deleteApplicant(applicantId, displayName) {
+      const label = displayName && displayName !== applicantId ? displayName : 'this applicant';
+      if (!confirm(`Permanently delete ${label} from the pipeline? This cannot be undone.`)) return;
+      try {
+        // POST avoids DELETE being blocked by some proxies/ngrok configs; server also accepts DELETE
+        await api(`/api/admin/teacher-pipeline/applicants/${applicantId}/delete`, { method: 'POST', body: '{}' });
+        await loadApplicants();
+      } catch (error) {
+        alert(error.message);
+      }
     }
 
     async function loadApplicants() {
@@ -121,22 +164,63 @@
           bodyEl.innerHTML = '<tr><td colspan="6" class="muted" style="padding: 18px;">No applicants found.</td></tr>';
           return;
         }
-        bodyEl.innerHTML = rows.map((a) => `
+        bodyEl.innerHTML = rows.map((a) => {
+          const st = a.currentStage || 'applied';
+          const del = canDeleteApplicant(st)
+            ? `<button type="button" class="btn-delete" data-delete="${a._id}">Delete</button>`
+            : '';
+          const pf = canPassOrFail(st)
+            ? `<button type="button" class="btn btn-pass" data-pass-row="${a._id}" title="Pass applicant">Pass</button>
+               <button type="button" class="btn btn-fail" data-fail-row="${a._id}" title="Fail applicant">Fail</button>`
+            : '';
+          const reapply =
+            String(st).toLowerCase() === 'failed' && a.reapplyEligibleAt
+              ? `<div class="muted" style="margin-top:4px;font-size:11px;">Re-apply after: ${new Date(a.reapplyEligibleAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</div>`
+              : '';
+          return `
           <tr>
             <td>${a.fullName || '-'}</td>
             <td>${a.email || '-'}</td>
-            <td><span class="stage">${a.currentStage || 'applied'}</span></td>
+            <td><span class="stage">${formatStageLabel(st)}</span>${reapply}</td>
             <td>${a.hiredAt ? new Date(a.hiredAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: '2-digit' }) : '-'}</td>
             <td>
               <div class="progress-track"><div class="progress-fill" style="width:${a.progress ?? stageProgress(a.currentStage)}%"></div></div>
               <div class="muted" style="margin-top:4px;">${a.progress ?? stageProgress(a.currentStage)}%</div>
             </td>
-            <td><button class="btn btn-review" data-review="${a._id}">Review</button></td>
-          </tr>
-        `).join('');
+            <td class="action-btns">
+              <button class="btn btn-review" data-review="${a._id}">Review</button>
+              ${pf}
+              ${del}
+            </td>
+          </tr>`;
+        }).join('');
 
         Array.from(document.querySelectorAll('[data-review]')).forEach((btn) => {
           btn.addEventListener('click', () => openReview(btn.getAttribute('data-review')));
+        });
+        Array.from(document.querySelectorAll('[data-pass-row]')).forEach((btn) => {
+          btn.addEventListener('click', () => {
+            const id = btn.getAttribute('data-pass-row');
+            const row = rows.find((r) => String(r._id) === String(id));
+            const name = row ? (row.fullName || row.email || id) : id;
+            passApplicantById(id, name);
+          });
+        });
+        Array.from(document.querySelectorAll('[data-fail-row]')).forEach((btn) => {
+          btn.addEventListener('click', () => {
+            const id = btn.getAttribute('data-fail-row');
+            const row = rows.find((r) => String(r._id) === String(id));
+            const name = row ? (row.fullName || row.email || id) : id;
+            failApplicantById(id, name);
+          });
+        });
+        Array.from(document.querySelectorAll('[data-delete]')).forEach((btn) => {
+          btn.addEventListener('click', () => {
+            const id = btn.getAttribute('data-delete');
+            const row = rows.find((r) => String(r._id) === String(id));
+            const name = row ? (row.fullName || row.email || id) : id;
+            deleteApplicant(id, name);
+          });
         });
       } catch (error) {
         bodyEl.innerHTML = `<tr><td colspan="6" style="padding:18px;color:#dc2626;">${error.message}</td></tr>`;
@@ -164,7 +248,38 @@
           ? vids.map((url, idx) => `<a href="${url}" target="_blank" rel="noopener">Video Answer ${idx + 1}</a>`).join('')
           : '<span class="muted">No video answer URLs.</span>';
 
+        const stModal = String(applicant.currentStage || '').toLowerCase();
+        const terminal = stModal === 'passed' || stModal === 'failed';
+        passBtn.style.display = terminal ? 'none' : '';
+        failBtn.style.display = terminal ? 'none' : '';
+
         modal.style.display = 'block';
+      } catch (error) {
+        alert(error.message);
+      }
+    }
+
+    async function passApplicantById(applicantId, displayName, options = {}) {
+      const label = displayName && displayName !== applicantId ? displayName : 'this applicant';
+      if (!options.skipConfirm && !confirm(`Pass ${label}? An onboarding email with the sign-up link will be sent.`)) return;
+      try {
+        const result = await api(`/api/admin/teacher-pipeline/applicants/${applicantId}/pass`, { method: 'POST' });
+        const info = result.emailResult?.success ? 'Invitation email sent.' : `Email issue: ${result.emailResult?.error || 'unknown'}`;
+        alert(`Applicant passed. ${info}`);
+        await loadApplicants();
+      } catch (error) {
+        alert(error.message);
+      }
+    }
+
+    async function failApplicantById(applicantId, displayName, options = {}) {
+      const label = displayName && displayName !== applicantId ? displayName : 'this applicant';
+      if (!options.skipConfirm && !confirm(`Fail ${label}? They will be emailed and may re-apply after 3 months.`)) return;
+      try {
+        const result = await api(`/api/admin/teacher-pipeline/applicants/${applicantId}/fail`, { method: 'POST' });
+        const info = result.emailResult?.success ? 'Notification email sent.' : `Email issue: ${result.emailResult?.error || 'unknown'}`;
+        alert(`Applicant marked as failed. ${info}`);
+        await loadApplicants();
       } catch (error) {
         alert(error.message);
       }
@@ -174,13 +289,10 @@
       if (!selectedApplicantId) return;
       passBtn.disabled = true;
       try {
-        const result = await api(`/api/admin/teacher-pipeline/applicants/${selectedApplicantId}/pass`, { method: 'POST' });
-        const info = result.emailResult?.success ? 'Invitation email sent.' : `Email issue: ${result.emailResult?.error || 'unknown'}`;
-        alert(`Applicant passed. ${info}`);
+        await passApplicantById(selectedApplicantId, modalName.textContent.replace(/^Review:\s*/, ''), {
+          skipConfirm: true
+        });
         closeModal();
-        await loadApplicants();
-      } catch (error) {
-        alert(error.message);
       } finally {
         passBtn.disabled = false;
       }
@@ -190,12 +302,10 @@
       if (!selectedApplicantId) return;
       failBtn.disabled = true;
       try {
-        await api(`/api/admin/teacher-pipeline/applicants/${selectedApplicantId}/fail`, { method: 'POST' });
-        alert('Applicant marked as failed.');
+        await failApplicantById(selectedApplicantId, modalName.textContent.replace(/^Review:\s*/, ''), {
+          skipConfirm: true
+        });
         closeModal();
-        await loadApplicants();
-      } catch (error) {
-        alert(error.message);
       } finally {
         failBtn.disabled = false;
       }
@@ -208,6 +318,8 @@
       demoVideo.src = '';
       answerText.textContent = '';
       answerVideos.innerHTML = '';
+      passBtn.style.display = '';
+      failBtn.style.display = '';
     }
 
     document.getElementById('close-modal').addEventListener('click', closeModal);

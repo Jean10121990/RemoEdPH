@@ -283,10 +283,15 @@
         }
     }
 
+    function adminTimeLogModalIsOpen(modal) {
+        if (!modal) return false;
+        return window.getComputedStyle(modal).display !== 'none';
+    }
+
     window.showAdminTimeLogModal = function () {
         var modal = document.getElementById('admin-time-log-modal');
         if (!modal) return;
-        modal.style.display = 'block';
+        modal.style.display = 'flex';
         var ft = document.getElementById('admin-filter-type');
         if (ft) ft.value = 'week';
         loadAdminTimeLogsWithFilter();
@@ -324,6 +329,26 @@
 
         var applyBtn = document.getElementById('admin-apply-filter');
         if (applyBtn) applyBtn.addEventListener('click', loadAdminTimeLogsWithFilter);
+
+        var modal = document.getElementById('admin-time-log-modal');
+        if (modal) {
+            window.hideAdminTimeLogModal();
+            modal.addEventListener('click', function (e) {
+                if (e.target === modal) window.hideAdminTimeLogModal();
+            });
+            var panel = document.getElementById('admin-time-log-modal-panel');
+            if (panel) {
+                panel.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                });
+            }
+        }
+
+        document.addEventListener('keydown', function (ev) {
+            if (ev.key !== 'Escape') return;
+            var m = document.getElementById('admin-time-log-modal');
+            if (adminTimeLogModalIsOpen(m)) window.hideAdminTimeLogModal();
+        });
     };
 
     document.addEventListener('DOMContentLoaded', function () {

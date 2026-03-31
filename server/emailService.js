@@ -1,14 +1,35 @@
 const nodemailer = require('nodemailer');
 
+/**
+ * Gmail App Passwords are 16 characters; Google displays them as "xxxx xxxx xxxx xxxx".
+ * SMTP AUTH fails with 535-5.7.8 if spaces are left in SMTP_PASS.
+ */
+function normalizeSmtpAuth(host, user, pass) {
+  const hostNorm = String(host || 'smtp.gmail.com').trim();
+  const hostLower = hostNorm.toLowerCase();
+  const userNorm = String(user || '').trim();
+  let passNorm = pass == null ? '' : String(pass).trim();
+  if (hostLower.includes('gmail.com') || hostLower.includes('googlemail.com')) {
+    passNorm = passNorm.replace(/\s+/g, '');
+  }
+  return { host: hostNorm, user: userNorm, pass: passNorm };
+}
+
+const smtpAuth = normalizeSmtpAuth(
+  process.env.SMTP_HOST,
+  process.env.SMTP_USER,
+  process.env.SMTP_PASS
+);
+
 // Email service type: 'sendgrid', 'mailgun', or 'smtp' (optional - auto-detects if not set)
 const EMAIL_SERVICE_TYPE = process.env.EMAIL_SERVICE_TYPE;
 
 // Check which email service is configured
 const isSendGridConfigured = !!process.env.SENDGRID_API_KEY;
 const isMailgunConfigured = !!(process.env.MAILGUN_API_KEY && process.env.MAILGUN_DOMAIN);
-const isSMTPConfigured = process.env.SMTP_USER && process.env.SMTP_PASS && 
-                         process.env.SMTP_USER !== 'your-email@gmail.com' && 
-                         process.env.SMTP_PASS !== 'your-app-password';
+const isSMTPConfigured = smtpAuth.user && smtpAuth.pass &&
+                         smtpAuth.user !== 'your-email@gmail.com' &&
+                         smtpAuth.pass !== 'your-app-password';
 
 // Determine which service to use (priority: SendGrid > Mailgun > SMTP)
 // IMPORTANT: If SendGrid is available, ALWAYS use it (best for Cloud Run)
@@ -46,7 +67,7 @@ const isEmailConfigured = activeEmailService !== 'none';
 
 // SMTP configuration (for local development or fallback)
 const emailConfig = {
-  host: process.env.SMTP_HOST || 'smtp.gmail.com',
+  host: smtpAuth.host || 'smtp.gmail.com',
   port: parseInt(process.env.SMTP_PORT || '587', 10),
   secure: false, // true for 465, false for other ports
   requireTLS: true, // Require TLS for Gmail and most SMTP servers
@@ -57,8 +78,8 @@ const emailConfig = {
   connectionTimeout: 10000, // 10 seconds timeout
   greetingTimeout: 10000,
   auth: {
-    user: process.env.SMTP_USER || 'your-email@gmail.com',
-    pass: process.env.SMTP_PASS || 'your-app-password'
+    user: smtpAuth.user || 'your-email@gmail.com',
+    pass: smtpAuth.pass || 'your-app-password'
   }
 };
 
@@ -80,7 +101,15 @@ if (activeEmailService === 'smtp') {
     console.warn('⚠️  WARNING: SendGrid API key is configured but SMTP is being used!');
     console.warn('⚠️  Set EMAIL_SERVICE_TYPE=sendgrid or remove SMTP credentials to use SendGrid.');
   }
-  
+
+  const gmailHost = emailConfig.host.toLowerCase().includes('gmail');
+  if (gmailHost && smtpAuth.pass && smtpAuth.pass.length !== 16) {
+    console.warn(
+      '⚠️  Gmail App Passwords are exactly 16 characters (after removing spaces). ' +
+        '535-5.7.8 usually means wrong password type: use an App Password from Google Account → Security → 2-Step Verification → App passwords, not your normal Gmail password.'
+    );
+  }
+
   transporter = nodemailer.createTransport(emailConfig);
   // Verify transporter connection on startup (non-blocking)
   transporter.verify((error, success) => {
@@ -409,14 +438,14 @@ Please do not reply to this email.
     `
   }),
   teacherPipelineWelcome: (fullName, signupLink) => ({
-    subject: 'Welcome to the Team - RemoEdPH',
+    subject: "Congratulations! You've passed the RemoEd Tutor Screening",
     html: `
       <!DOCTYPE html>
       <html>
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Welcome to the Team - RemoEdPH</title>
+        <title>RemoEd Tutor Screening</title>
         <style>
           body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
           .container { max-width: 600px; margin: 0 auto; padding: 20px; }
@@ -430,20 +459,20 @@ Please do not reply to this email.
       <body>
         <div class="container">
           <div class="header">
-            <h1>Welcome to the Team</h1>
-            <p>RemoEdPH Teacher Pipeline</p>
+            <h1>You passed!</h1>
+            <p>RemoEd Tutor Screening</p>
           </div>
           <div class="content">
             <p>Hello ${fullName || 'Applicant'},</p>
-            <p>Congratulations! You passed our teacher pipeline. Please complete your official teacher portal sign-up using the secure link below.</p>
+            <p>Congratulations, you have passed! Please sign up through this link to complete your onboarding:</p>
             <div class="box">
-              <p><strong>Secure sign-up link:</strong></p>
+              <p><strong>Sign-up link:</strong></p>
               <p style="word-break: break-all;">${signupLink}</p>
             </div>
             <p style="text-align:center; margin-top: 20px;">
-              <a class="btn" href="${signupLink}">Complete Teacher Sign-up</a>
+              <a class="btn" href="${signupLink}">Complete onboarding</a>
             </p>
-            <p>This link is unique to your account and may expire. If you have trouble accessing it, please contact admin support.</p>
+            <p>This link is unique to your account and may expire. If you need help, contact support.</p>
           </div>
           <div class="footer">
             <p>This is an automated message from RemoEdPH. Please do not reply.</p>
@@ -453,18 +482,331 @@ Please do not reply to this email.
       </html>
     `,
     text: `
-Welcome to the Team - RemoEdPH
-
 Hello ${fullName || 'Applicant'},
 
-Congratulations! You passed our teacher pipeline.
-Complete your official teacher portal sign-up using this secure link:
+Congratulations, you have passed! Please sign up through this link to complete your onboarding:
 ${signupLink}
 
 This link is unique to your account and may expire.
-If you need help, contact admin support.
     `.trim()
-  })
+  }),
+  teacherPipelineFail: (fullName, reapplyLine) => ({
+    subject: 'Update on your RemoEd Tutor Application',
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>RemoEd Tutor Application</title>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: #334155; color: #fff; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background: #f9f9f9; padding: 24px; border-radius: 0 0 8px 8px; }
+          .footer { text-align: center; margin-top: 20px; color: #666; font-size: 13px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>Application update</h1>
+            <p>RemoEd Tutor Application</p>
+          </div>
+          <div class="content">
+            <p>Hello ${fullName || 'Applicant'},</p>
+            <p>Thank you for your interest. At this time, we won't be moving forward with your application, but you can try to re-apply again after 3 months.</p>
+            ${reapplyLine ? `<p><strong>${reapplyLine}</strong></p>` : ''}
+          </div>
+          <div class="footer">
+            <p>This is an automated message from RemoEdPH. Please do not reply.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+    text: `
+Hello ${fullName || 'Applicant'},
+
+Thank you for your interest. At this time, we won't be moving forward with your application, but you can try to re-apply again after 3 months.
+${reapplyLine ? `\n${reapplyLine}\n` : ''}
+    `.trim()
+  }),
+  assessmentResult: (
+    childName,
+    cefrLevel,
+    score,
+    registerUrl,
+    loginUrl,
+    plansUrl
+  ) => {
+    const base = process.env.FRONTEND_URL || 'http://localhost:5000';
+    const reg = registerUrl || `${base}/student-register.html`;
+    const login = loginUrl || `${base}/student-login.html`;
+    const plans = plansUrl || `${base}/index.html#plans`;
+    return {
+      subject: 'Your RemoEd Assessment Results are in! 📈',
+      html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Assessment results</title>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #1ca7e7, #14b8a6); color: white; padding: 22px; text-align: center; border-radius: 14px 14px 0 0; }
+          .content { background: #f8fafc; padding: 28px; border-radius: 0 0 14px 14px; }
+          .box { background: #fff; border: 2px solid #1ca7e7; border-radius: 12px; padding: 16px; margin: 16px 0; }
+          .btn { display: inline-block; background: #1ca7e7; color: #fff; padding: 14px 24px; text-decoration: none; border-radius: 12px; font-weight: 700; }
+          .btn-secondary { background: #6366f1; }
+          .remind { background: #ecfdf5; border: 1px solid #34d399; border-radius: 12px; padding: 14px; margin: 18px 0; }
+          .footer { text-align: center; margin-top: 22px; color: #666; font-size: 13px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1 style="margin:0;">Great work, ${childName}!</h1>
+            <p style="margin:8px 0 0; opacity:0.95;">Your results are ready</p>
+          </div>
+          <div class="content">
+            <p>You did a great job on your level assessment! To start learning with our expert tutors, please <strong>complete your registration</strong> and <strong>choose a plan</strong>.</p>
+            <div class="box">
+              <p><strong>Estimated CEFR level:</strong> ${cefrLevel}</p>
+              <p><strong>Score:</strong> ${score}</p>
+            </div>
+            <p style="text-align:center; margin: 22px 0;">
+              <a class="btn btn-secondary" href="${plans}">View subscription plans</a>
+            </p>
+            <div class="remind">
+              <strong>Free trial class</strong><br>
+              Create your account with the <strong>same email</strong> you used on the assessment to claim your complimentary trial lesson.
+            </div>
+            <p style="text-align:center; margin: 18px 0;">
+              <a class="btn" href="${reg}">Register &amp; save my results</a>
+            </p>
+            <p style="text-align:center;">
+              <a href="${login}" style="color:#1ca7e7;">Already registered? Student login</a>
+            </p>
+          </div>
+          <div class="footer">
+            <p>This is an automated message from RemoEdPH. Please do not reply.</p>
+          </div>
+        </div>
+      </body>
+      </html>`,
+      text: `
+Hi — results for ${childName}
+
+You did a great job on your level assessment! To start learning with our expert tutors, please complete your registration and choose a plan here:
+${plans}
+
+CEFR level: ${cefrLevel}
+Score: ${score}
+
+Register (same email as assessment): ${reg}
+Student login: ${login}
+      `.trim(),
+    };
+  },
+  trialConversionInvite: (greetName, plansUrl) => {
+    const base = process.env.FRONTEND_URL || 'http://localhost:5000';
+    const plans = plansUrl || `${base}/index.html#plans`;
+    const name = greetName || 'there';
+    return {
+      subject: 'How was your RemoEd Trial Class? 🎓',
+      html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Continue your RemoEd journey</title>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: #6366f1; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background: #f9f9f9; padding: 28px; border-radius: 0 0 8px 8px; }
+          .btn { display: inline-block; background: #6366f1; color: #fff; padding: 14px 26px; text-decoration: none; border-radius: 8px; font-weight: 700; }
+          .hint { background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 12px 14px; margin: 18px 0; font-size: 14px; }
+          .footer { text-align: center; margin-top: 22px; color: #666; font-size: 13px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1 style="margin:0;">Thanks for joining a trial class</h1>
+          </div>
+          <div class="content">
+            <p>Hi ${name},</p>
+            <p>We hope you enjoyed your free trial class! To continue your learning journey and unlock more sessions with our expert tutors, please subscribe to one of our learning plans.</p>
+            <p style="text-align:center; margin: 26px 0;">
+              <a class="btn" href="${plans}">View Subscription Plans</a>
+            </p>
+            <div class="hint">
+              <strong>Limited-time offer:</strong> Subscribe within the next <strong>24 hours</strong> to get <strong>10% off your first month</strong> (apply at checkout or mention to support if paying manually).
+            </div>
+            <p>We’re glad you’re part of RemoEdPH.</p>
+          </div>
+          <div class="footer">
+            <p>This is an automated message from RemoEdPH.</p>
+          </div>
+        </div>
+      </body>
+      </html>`,
+      text: `
+Hi ${name},
+
+We hope you enjoyed your free trial class! To continue your learning journey and unlock more sessions with our expert tutors, please subscribe to one of our learning plans.
+
+View Subscription Plans: ${plans}
+
+Limited-time offer: Subscribe within the next 24 hours to get 10% off your first month (apply at checkout or mention to support if paying manually).
+
+— RemoEdPH
+      `.trim(),
+    };
+  },
+  lesson2Invite: (greetName, plansUrl) => {
+    const base = process.env.FRONTEND_URL || 'http://localhost:5000';
+    const plans = plansUrl || `${base}/index.html#plans`;
+    const name = greetName || 'there';
+    return {
+      subject: 'Ready for Lesson 2? 🎓',
+      html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Continue with RemoEd</title>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #1e293b; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #0d9488, #1d9bf0); color: white; padding: 22px; text-align: center; border-radius: 16px 16px 0 0; }
+          .content { background: #f8fafc; padding: 28px; border-radius: 0 0 16px 16px; }
+          .btn { display: inline-block; background: linear-gradient(135deg, #1d9bf0, #14b8a6); color: #fff; padding: 14px 28px; text-decoration: none; border-radius: 999px; font-weight: 700; border: 2px solid rgba(250, 214, 72, 0.75); }
+          .footer { text-align: center; margin-top: 22px; color: #64748b; font-size: 13px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1 style="margin:0;">Hi ${name}!</h1>
+          </div>
+          <div class="content">
+            <p>We loved having you in your free trial class! Your journey doesn't have to stop here.</p>
+            <p><strong>Enroll in a plan today</strong> to unlock Lesson 2 and keep learning with your favorite RemoEd tutor.</p>
+            <p style="text-align:center; margin: 28px 0;">
+              <a class="btn" href="${plans}">View learning plans</a>
+            </p>
+          </div>
+          <div class="footer">
+            <p>This is an automated message from RemoEdPH.</p>
+          </div>
+        </div>
+      </body>
+      </html>`,
+      text: `
+Hi ${name},
+
+We loved having you in your free trial class! Your journey doesn't have to stop here. Enroll in a plan today to unlock Lesson 2 and keep learning with your favorite RemoEd tutor.
+
+Plans: ${plans}
+
+— RemoEdPH
+      `.trim(),
+    };
+  },
+  lesson1FeedbackReady: (greetName, dashboardUrl, plansUrl) => {
+    const base = process.env.FRONTEND_URL || 'http://localhost:5000';
+    const dash = dashboardUrl || `${base}/student-dashboard.html`;
+    const plans = plansUrl || `${base}/index.html#plans`;
+    const name = greetName || 'there';
+    return {
+      subject: 'Your RemoEd Lesson 1 Feedback is ready! 📚',
+      html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Your feedback is ready</title>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #292524; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #5c6d5c, #0d9488); color: #fafaf9; padding: 22px; text-align: center; border-radius: 16px 16px 0 0; }
+          .content { background: #faf8f5; padding: 28px; border-radius: 0 0 16px 16px; border: 1px solid #e7e5e4; border-top: none; }
+          .btn { display: inline-block; background: #115e59; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 999px; font-weight: 700; margin: 6px 4px; border: 2px solid rgba(250, 214, 72, 0.5); }
+          .btn-secondary { background: #44403c; }
+          .footer { text-align: center; margin-top: 22px; color: #78716c; font-size: 13px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1 style="margin:0; font-size: 1.15rem;">Hi ${name}!</h1>
+          </div>
+          <div class="content">
+            <p>Great job in your trial class! Check your feedback on your dashboard.</p>
+            <p>To keep the momentum going and book Lesson 2, please choose your learning plan:</p>
+            <p style="text-align:center; margin: 24px 0;">
+              <a class="btn" href="${dash}">Open my dashboard</a><br>
+              <a class="btn btn-secondary" href="${plans}">Choose my learning plan</a>
+            </p>
+          </div>
+          <div class="footer">
+            <p>This is an automated message from RemoEdPH.</p>
+          </div>
+        </div>
+      </body>
+      </html>`,
+      text: `
+Hi ${name},
+
+Great job in your trial class! Check your feedback on your dashboard. To keep the momentum going and book Lesson 2, please choose your learning plan here: ${plans}
+
+Dashboard: ${dash}
+
+— RemoEdPH
+      `.trim(),
+    };
+  },
+  trialBookingReminder: (greetName, bookUrl) => {
+    const base = process.env.FRONTEND_URL || 'http://localhost:5000';
+    const book = bookUrl || `${base}/student-book.html`;
+    const name = greetName || 'there';
+    return {
+      subject: 'Your free RemoEd trial class is waiting ✨',
+      html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #44403c; max-width: 600px; margin: 0 auto; padding: 24px;">
+        <p>Hi ${name},</p>
+        <p>Don't let your free credit sit unused — book your trial class today and meet your tutor!</p>
+        <p style="text-align:center; margin: 28px 0;">
+          <a href="${book}" style="display:inline-block; background:#115e59; color:#fff; padding:14px 28px; border-radius:999px; text-decoration:none; font-weight:700;">Book my free class</a>
+        </p>
+        <p style="color:#78716c; font-size:13px;">— RemoEdPH</p>
+      </body>
+      </html>`,
+      text: `
+Hi ${name},
+
+Don't let your free credit sit unused — book your trial class today!
+
+${book}
+
+— RemoEdPH
+      `.trim(),
+    };
+  },
 };
 
 // Send email using SendGrid API (using official @sendgrid/mail library)
@@ -788,40 +1130,172 @@ async function sendPasswordResetEmail(email, username, newPassword, userType) {
   });
 }
 
-async function sendTeacherPipelineWelcomeEmail(email, fullName, signupLink) {
+async function deliverTransactionalEmail(to, subject, html, text, contextLabel = 'email') {
+  if (!isEmailConfigured) {
+    return { success: false, error: 'Email service not configured', fallback: true };
+  }
   try {
-    if (!isEmailConfigured) {
-      return { success: false, error: 'Email service not configured', fallback: true };
-    }
-
-    const template = emailTemplates.teacherPipelineWelcome(fullName, signupLink);
-    let result;
-
     if (activeEmailService === 'sendgrid') {
-      result = await sendEmailViaSendGrid(email, template.subject, template.html, template.text);
-    } else if (activeEmailService === 'mailgun') {
-      result = await sendEmailViaMailgun(email, template.subject, template.html, template.text);
-    } else if (activeEmailService === 'smtp') {
+      return await sendEmailViaSendGrid(to, subject, html, text);
+    }
+    if (activeEmailService === 'mailgun') {
+      return await sendEmailViaMailgun(to, subject, html, text);
+    }
+    if (activeEmailService === 'smtp') {
       if (!transporterVerified) {
-        await transporter.verify();
-        transporterVerified = true;
+        try {
+          await transporter.verify();
+          transporterVerified = true;
+        } catch (verifyError) {
+          const safeError = String(verifyError).replace(/(password|pass|pwd)=[^\s&"']*/gi, '$1=***');
+          console.error(`❌ SMTP verification failed (${contextLabel}):`, safeError);
+          return {
+            success: false,
+            error: `SMTP connection failed: ${verifyError.message || 'Connection verification failed'}`
+          };
+        }
       }
       const info = await transporter.sendMail({
         from: `"RemoEdPH" <${emailConfig.auth.user}>`,
-        to: email,
-        subject: template.subject,
-        html: template.html,
-        text: template.text
+        to,
+        subject,
+        html,
+        text
       });
-      result = { success: true, messageId: info.messageId };
-    } else {
-      result = { success: false, error: 'No email service configured' };
+      return { success: true, messageId: info.messageId };
     }
-
-    return result;
+    return { success: false, error: 'No email service configured' };
   } catch (error) {
-    return { success: false, error: error.message || 'Failed to send teacher pipeline email' };
+    const msg = error.message || String(error);
+    if (/535|5\.7\.8|Invalid login/i.test(msg)) {
+      console.error(
+        '❌ Gmail SMTP auth rejected. Use SMTP_USER = full Gmail address and SMTP_PASS = 16-character App Password (no spaces).'
+      );
+    }
+    return { success: false, error: msg };
   }
+}
+
+async function sendTeacherPipelineWelcomeEmail(email, fullName, signupLink) {
+  const template = emailTemplates.teacherPipelineWelcome(fullName, signupLink);
+  return deliverTransactionalEmail(
+    email,
+    template.subject,
+    template.html,
+    template.text,
+    'teacher pipeline pass'
+  );
+}
+
+async function sendTeacherPipelineFailEmail(email, fullName, reapplyEligibleAt) {
+  const reapplyLine = reapplyEligibleAt
+    ? `You may submit a new application on or after ${reapplyEligibleAt.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      })}.`
+    : '';
+  const template = emailTemplates.teacherPipelineFail(fullName, reapplyLine);
+  return deliverTransactionalEmail(
+    email,
+    template.subject,
+    template.html,
+    template.text,
+    'teacher pipeline fail'
+  );
+}
+
+async function sendAssessmentEmail(to, childName, cefrLevel, score, registerUrl) {
+  const base = (process.env.FRONTEND_URL || 'http://localhost:5000').replace(/\/$/, '');
+  const reg = registerUrl || `${base}/student-register.html`;
+  const loginUrl = `${base}/student-login.html`;
+  const plansUrl = `${base}/index.html#plans`;
+  const template = emailTemplates.assessmentResult(
+    childName,
+    cefrLevel,
+    score,
+    reg,
+    loginUrl,
+    plansUrl
+  );
+  return deliverTransactionalEmail(
+    to,
+    template.subject,
+    template.html,
+    template.text,
+    'assessment result'
+  );
+}
+
+async function sendTrialConversionEmail(studentEmail, greetName) {
+  const to = String(studentEmail || '').trim();
+  if (!to) {
+    return { success: false, error: 'No student email' };
+  }
+  const base = (process.env.FRONTEND_URL || 'http://localhost:5000').replace(/\/$/, '');
+  const plansUrl = `${base}/index.html#plans`;
+  const template = emailTemplates.trialConversionInvite(greetName, plansUrl);
+  return deliverTransactionalEmail(
+    to,
+    template.subject,
+    template.html,
+    template.text,
+    'trial conversion'
+  );
+}
+
+async function sendLesson2InvitationEmail(studentEmail, greetName) {
+  const to = String(studentEmail || '').trim();
+  if (!to) {
+    return { success: false, error: 'No student email' };
+  }
+  const base = (process.env.FRONTEND_URL || 'http://localhost:5000').replace(/\/$/, '');
+  const plansUrl = `${base}/index.html#plans`;
+  const template = emailTemplates.lesson2Invite(greetName, plansUrl);
+  return deliverTransactionalEmail(
+    to,
+    template.subject,
+    template.html,
+    template.text,
+    'lesson 2 invitation'
+  );
+}
+
+async function sendLesson1FeedbackReadyEmail(
+  studentEmail,
+  greetName,
+  dashboardUrl,
+  plansUrl
+) {
+  const to = String(studentEmail || '').trim();
+  if (!to) {
+    return { success: false, error: 'No student email' };
+  }
+  const template = emailTemplates.lesson1FeedbackReady(greetName, dashboardUrl, plansUrl);
+  return deliverTransactionalEmail(
+    to,
+    template.subject,
+    template.html,
+    template.text,
+    'lesson 1 feedback ready'
+  );
+}
+
+async function sendTrialBookingReminderEmail(studentEmail, greetName) {
+  const to = String(studentEmail || '').trim();
+  if (!to) {
+    return { success: false, error: 'No student email' };
+  }
+  const base = (process.env.FRONTEND_URL || 'http://localhost:5000').replace(/\/$/, '');
+  const bookUrl = `${base}/student-book.html`;
+  const template = emailTemplates.trialBookingReminder(greetName, bookUrl);
+  return deliverTransactionalEmail(
+    to,
+    template.subject,
+    template.html,
+    template.text,
+    'trial booking reminder'
+  );
 }
 
 // Diagnostic function to check email configuration (without exposing credentials)
@@ -893,6 +1367,12 @@ module.exports = {
   sendTeacherRegistrationEmail,
   sendSubscriptionEmail,
   sendTeacherPipelineWelcomeEmail,
+  sendTeacherPipelineFailEmail,
+  sendAssessmentEmail,
+  sendTrialConversionEmail,
+  sendLesson2InvitationEmail,
+  sendLesson1FeedbackReadyEmail,
+  sendTrialBookingReminderEmail,
   sendEmail,
   getEmailConfigStatus,
   testEmailSending

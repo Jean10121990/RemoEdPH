@@ -10,6 +10,7 @@ const PendingRegistration = require('./models/PendingRegistration');
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
 const { isTokenBlacklisted } = require('./services/jwtBlacklist');
+const { normalizePlanId, PLAN_CREDITS } = require('./config/planCredits');
 
 /**
  * If Authorization: Bearer is present, verify JWT. Student tokens populate req.studentFromToken;
@@ -47,52 +48,45 @@ function optionalVerifyStudent(req, res, next) {
 const EXCHANGE_RATE_PHP = parseFloat(process.env.EXCHANGE_RATE_PHP) || 60.03;
 
 /**
- * Daily-rate bundle pricing (USD): total = usdDailyRate × days.
- * Spark 22d, Steady 66d, Scholar 132d, Summit 246d.
+ * Fixed USD totals per plan (checkout). Lesson credits = months × 22 (see config/planCredits.js).
  */
-const PLAN_PRICING = {
-  spark: { name: 'RemoSpark', usdDailyRate: 4.17, days: 22 },
-  steady: { name: 'RemoSteady', usdDailyRate: 4.08, days: 66 },
-  scholar: { name: 'RemoScholar', usdDailyRate: 4.0, days: 132 },
-  summit: { name: 'RemoSummit', usdDailyRate: 3.92, days: 246 }
+const PLAN_USD_TOTAL = {
+  spark: 91.74,
+  steady: 269.28,
+  scholar: 528.0,
+  summit: 964.32,
 };
-const PLAN_ALIASES = {
-  '1month': 'spark',
-  '3months': 'steady',
-  '6months': 'scholar',
-  '1year': 'summit'
-};
-
-function normalizePlanId(rawPlan) {
-  const key = String(rawPlan || '').toLowerCase();
-  return PLAN_ALIASES[key] || key;
-}
 
 function planDescription(plan) {
   const planKey = normalizePlanId(plan);
-  const cfg = PLAN_PRICING[planKey];
-  if (!cfg) return 'RemoEd Subscription Plan';
-  return `${cfg.name} Plan`;
+  const row = PLAN_CREDITS[planKey];
+  if (!row) return 'RemoEd Subscription Plan';
+  return `${row.label} Plan`;
 }
 
 function computePlanTotals(planId) {
   const planKey = normalizePlanId(planId);
-  const cfg = PLAN_PRICING[planKey];
-  if (!cfg) return null;
+  const row = PLAN_CREDITS[planKey];
+  const usdTotalRaw = PLAN_USD_TOTAL[planKey];
+  if (!row || usdTotalRaw == null) return null;
 
-  const usdTotal = Number((cfg.usdDailyRate * cfg.days).toFixed(2));
+  const usdTotal = Number(Number(usdTotalRaw).toFixed(2));
   const phpTotal = Number((usdTotal * EXCHANGE_RATE_PHP).toFixed(2));
   const amountCentavos = Math.round(phpTotal * 100);
+  const lessonCredits = row.credits;
 
   return {
     planId: planKey,
-    planName: cfg.name,
-    days: cfg.days,
-    usdDailyRate: cfg.usdDailyRate,
+    planName: row.label,
+    months: row.months,
+    lessonCredits,
+    credits: lessonCredits,
     usdTotal,
+    usdPerLesson:
+      lessonCredits > 0 ? Number((usdTotal / lessonCredits).toFixed(4)) : 0,
     phpTotal,
-    amountCentavos
-  }
+    amountCentavos,
+  };
 }
 
 router.post('/create-link', optionalVerifyStudent, async (req, res) => {

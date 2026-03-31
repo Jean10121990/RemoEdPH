@@ -6,6 +6,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <script src="js/admin-standalone-redirect.js"></script>
+    <script src="js/admin-embed-init.js"></script>
     <title>Lessons Library - RemoEdPH Admin</title>
     <link rel="stylesheet" href="modern-styles.css">
     <link rel="stylesheet" href="css/teacher-sidebar.css">
@@ -608,7 +610,7 @@
         <div id="admin-sidebar-root"></div>
         <script src="js/admin-session.js"></script>
         <script src="js/admin-sidebar.js"></script>
-        <script>AdminSidebar.render('admin-sidebar-root', 'lessons');</script>
+        <script>if (!window.__ADMIN_EMBED__) { AdminSidebar.render('admin-sidebar-root', 'qa-hub'); }</script>
 
         <div class="remoed-content">
             <div class="page-header">

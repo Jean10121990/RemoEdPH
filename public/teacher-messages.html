@@ -57,6 +57,7 @@
     </div>
 
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="timezone-utils.js"></script>
     <script>
         (function () {
             const token = localStorage.getItem('token');
@@ -81,8 +82,18 @@
                 : null;
 
             function esc(s) { return String(s || '').replace(/</g, '&lt;'); }
-            function fmtTime(ts) { return ts ? new Date(ts).toLocaleString() : ''; }
-            function fmtShort(ts) { return ts ? new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''; }
+            function fmtTime(ts) {
+                if (!ts) return '';
+                const TU = window.TimezoneUtils || {};
+                const d = new Date(ts);
+                return TU.formatDateTimePhilippines ? TU.formatDateTimePhilippines(d) : d.toLocaleString();
+            }
+            function fmtShort(ts) {
+                if (!ts) return '';
+                const TU = window.TimezoneUtils || {};
+                const d = new Date(ts);
+                return TU.formatTime12hPhilippines ? TU.formatTime12hPhilippines(d) : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            }
             function scrollToBottom() { chatScrollEl.scrollTop = chatScrollEl.scrollHeight; }
             function normalizeImg(src) {
                 const s = String(src || '').trim();
@@ -95,7 +106,8 @@
                 if (!lastAt) return 'Offline';
                 const d = new Date(lastAt);
                 if (Number.isNaN(d.getTime())) return 'Offline';
-                return `Last seen ${d.toLocaleString()}`;
+                const TU = window.TimezoneUtils || {};
+                return `Last seen ${TU.formatDateTimePhilippines ? TU.formatDateTimePhilippines(d) : d.toLocaleString()}`;
             }
 
             function renderChatList(filter = '') {

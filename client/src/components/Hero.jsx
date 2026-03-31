@@ -1,5 +1,4 @@
 import Guide from "./Guide.jsx";
-import { legacyUrl } from "../api/http.js";
 
 export default function Hero() {
   return (
@@ -19,12 +18,6 @@ export default function Hero() {
               </a>
               <Guide character="sophia" className="intro-kid" />
             </div>
-            <a href="#plans" className="cta-btn secondary">
-              View Plans
-            </a>
-            <a href={legacyUrl("/application-form")} className="cta-btn secondary">
-              Apply Now
-            </a>
           </div>
         </div>
         <div className="hero-media">

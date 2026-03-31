@@ -71,7 +71,7 @@ export default function SignupModal({
           planId: selectedPlan,
           description: buildPlanDescription(selectedPlan),
           referralCode: localStorage.getItem("referralCode") || "",
-          success_url: `${window.location.origin}/student-login.html?payment=success`,
+          success_url: `${window.location.origin}/student-login.html?payment=success&email=${encodeURIComponent(email.trim())}&username=${encodeURIComponent(username.trim())}`,
           cancel_url: cancelUrl,
           usd_total: amounts.usdTotal,
           exchange_rate_used: EXCHANGE_RATE_USED,

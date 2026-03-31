@@ -8,39 +8,10 @@
   <title>Teaching Fee - RemoEdPH</title>
   <link rel="stylesheet" href="modern-styles.css?v=6">
   <link rel="stylesheet" href="css/teacher-sidebar.css">
-<!-- Remo AI Chatbot Styles -->
-<script>
-    // Initialize sidebar info after DOM is parsed to avoid null element errors.
-    document.addEventListener('DOMContentLoaded', function () {
-      const username = localStorage.getItem('remoedUsername') || 'User';
-      const teacherId = localStorage.getItem('teacherId');
-
-      const usernameEl = document.getElementById('remoed-username');
-      const accountEmailEl = document.getElementById('account-email');
-
-      if (usernameEl) usernameEl.textContent = 'Loading...';
-      if (accountEmailEl) accountEmailEl.textContent = username;
-
-      // Use setAvatar when available; otherwise safely fallback to initials.
-      if (typeof setAvatar === 'function') {
-        try {
-          setAvatar({ imageUrl: '', displayName: username, imgSelector: '#profile-image', textSelector: '#avatar-text' });
-        } catch (e) {
-          // ignore and fallback
-          const at = document.getElementById('avatar-text');
-          if (at) at.textContent = username[0].toUpperCase();
-        }
-      } else {
-        const at = document.getElementById('avatar-text');
-        if (at) at.textContent = username[0].toUpperCase();
-      }
-
-      // Load profile picture if available and loader function exists
-      if (teacherId && typeof loadProfilePicture === 'function') {
-        try { loadProfilePicture(teacherId); } catch (e) { /* ignore */ }
-      }
-    });
-  </script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="page-teacher-service-fee">
+  <div class="remoed-main">
         <div id="teacher-sidebar-root"></div>
         <script src="js/teacher-sidebar.js"></script>
         <script>TeacherSidebar.render('teacher-sidebar-root', 'teaching-fee');</script>
@@ -395,12 +366,13 @@
             </div>
           </div>
         </div>
-          </div>
         </div>
       </div>
     </div>
   </div>
+  <script src="timezone-utils.js"></script>
   <script>
+    const TU = window.TimezoneUtils || {};
     // Set sidebar avatar and email (declare identifiers now; DOM ops deferred)
     const username = localStorage.getItem('remoedUsername') || 'User';
     const teacherId = localStorage.getItem('teacherId');
@@ -460,7 +432,7 @@
           
           startDate = monday.toISOString().split('T')[0];
           endDate = sunday.toISOString().split('T')[0];
-          weekLabel = `Week of ${monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+          weekLabel = `Week of ${TU.formatDateShortPhilippines ? TU.formatDateShortPhilippines(new Date(startDate + 'T12:00:00+08:00')) : monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
           
           console.log('🔍 Current week calculation (Global format):', {
             now: now.toISOString().split('T')[0],
@@ -480,7 +452,7 @@
           
           startDate = lastMonday.toISOString().split('T')[0];
           endDate = lastSunday.toISOString().split('T')[0];
-          weekLabel = `Week of ${lastMonday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+          weekLabel = `Week of ${TU.formatDateShortPhilippines ? TU.formatDateShortPhilippines(new Date(startDate + 'T12:00:00+08:00')) : lastMonday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
           
           console.log('🔍 Previous week calculation (Global format):', {
             now: now.toISOString().split('T')[0],
@@ -493,17 +465,18 @@
         }
         
         // Update pay period display with dynamic dates
-        const monday = new Date(startDate);
-        const endDay = new Date(endDate);
-        const periodText = `${monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${endDay.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+        const periodText = TU.formatDateShortPhilippines
+          ? `${TU.formatDateShortPhilippines(new Date(startDate + 'T12:00:00+08:00'))} - ${TU.formatDateShortPhilippines(new Date(endDate + 'T12:00:00+08:00'))}`
+          : `${new Date(startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${new Date(endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
         document.getElementById('pay-period').textContent = periodText;
         
-        // Fetch global rate from admin API
+        // Fetch global rate (GET /api/admin/teacher-rate is public; Bearer optional)
         const token = localStorage.getItem('token');
+        const rateHeaders = {};
+        if (token) rateHeaders['Authorization'] = `Bearer ${token}`;
         const rateResponse = await fetch(`/api/admin/teacher-rate`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+          credentials: 'include',
+          headers: rateHeaders
         });
         
         let teacherRate = 0; // Start with 0, will be updated from API
@@ -1170,7 +1143,9 @@
         const endDateStr = weekEnd.toISOString().split('T')[0];
         
         weeks.push({
-          label: `${weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
+          label: TU.formatDateShortPhilippines
+            ? `${TU.formatDateShortPhilippines(weekStart)} - ${TU.formatDateShortPhilippines(weekEnd)}`
+            : `${weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
           startDate: startDateStr,
           endDate: endDateStr
         });
@@ -1329,11 +1304,7 @@
         ${payments.map(payment => `
           <tr>
             <td style="font-weight: 500;">${payment.period || payment.duration || 'N/A'}</td>
-            <td>${payment.issueDate ? new Date(payment.issueDate).toLocaleDateString('en-US', { 
-              month: 'short', 
-              day: 'numeric', 
-              year: 'numeric' 
-            }) : 'N/A'}</td>
+            <td>${payment.issueDate && TU.formatDateShortPhilippines ? TU.formatDateShortPhilippines(new Date(payment.issueDate)) : (payment.issueDate ? new Date(payment.issueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A')}</td>
             <td style="font-weight: 600; color: #1ca7e7;">₱${(payment.amount || 0).toFixed(2)}</td>
             <td>
               <span style="color: ${getStatusColor(payment.status)}; font-weight: 600; padding: 4px 8px; border-radius: 4px; background: ${getStatusBackground(payment.status)};">
@@ -1402,7 +1373,7 @@
           paymentDetailsContainer.innerHTML = `
             <div style="background: #f8f9fa; border-radius: 8px; padding: 20px; border: 1px solid #e9ecef;">
               <h4 style="margin-top: 0; color: #333; border-bottom: 2px solid #1ca7e7; padding-bottom: 10px;">
-                Payment Summary for ${new Date(startDate).toLocaleDateString()} - ${new Date(endDate).toLocaleDateString()}
+                Payment Summary for ${TU.formatDateShortPhilippines ? TU.formatDateShortPhilippines(new Date(startDate + 'T12:00:00+08:00')) : new Date(startDate).toLocaleDateString()} - ${TU.formatDateShortPhilippines ? TU.formatDateShortPhilippines(new Date(endDate + 'T12:00:00+08:00')) : new Date(endDate).toLocaleDateString()}
               </h4>
               
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
@@ -1537,10 +1508,10 @@
           return false;
         }
         
+        const rateHeaders = { 'Authorization': `Bearer ${token}` };
         const response = await fetch(`/api/admin/teacher-rate`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+          credentials: 'include',
+          headers: rateHeaders
         });
         
         if (!response.ok) {
@@ -1573,10 +1544,10 @@
       
       try {
         const token = localStorage.getItem('token');
+        const rateHeaders = token ? { 'Authorization': `Bearer ${token}` } : {};
         const response = await fetch(`/api/admin/teacher-rate`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+          credentials: 'include',
+          headers: rateHeaders
         });
         
         if (response.ok) {
@@ -2179,11 +2150,9 @@
       const rows = Object.entries(dailyStats)
         .sort(([dateA], [dateB]) => dateA.localeCompare(dateB))
         .map(([date, stats]) => {
-          const formattedDate = new Date(date).toLocaleDateString('en-US', {
-            month: '2-digit',
-            day: '2-digit',
-            year: 'numeric'
-          });
+          const formattedDate = TU.formatDateShortPhilippines
+            ? TU.formatDateShortPhilippines(new Date(date + 'T12:00:00+08:00'))
+            : new Date(date).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
           
           return `
             <tr>

@@ -5,6 +5,8 @@
     <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="js/admin-standalone-redirect.js"></script>
+    <script src="js/admin-embed-init.js"></script>
     <title>User Management - RemoEdPH Admin</title>
     <link rel="stylesheet" href="modern-styles.css">
     <link rel="stylesheet" href="css/teacher-sidebar.css">
@@ -74,7 +76,7 @@
         <div id="admin-sidebar-root"></div>
         <script src="js/admin-session.js"></script>
         <script src="js/admin-sidebar.js"></script>
-        <script>AdminSidebar.render('admin-sidebar-root', 'users');</script>
+        <script>if (!window.__ADMIN_EMBED__) { AdminSidebar.render('admin-sidebar-root', 'users'); }</script>
         <div class="remoed-content">
             <div class="remoed-section">
                 <div class="remoed-section-title">User Management</div>
@@ -200,11 +202,6 @@
                     <div style="margin-bottom: 15px;">
                         <label for="lastName" style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">Last Name</label>
                         <input type="text" id="lastName" name="lastName" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
-                    </div>
-                    
-                    <div style="margin-bottom: 15px;">
-                        <label for="rate" style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">Hourly Rate (PHP)</label>
-                        <input type="number" id="rate" name="rate" min="0" step="0.01" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
                     </div>
                 </div>
                 
@@ -527,7 +524,6 @@
                 if (userType === 'teacher') {
                     document.getElementById('firstName').value = user.firstName || '';
                     document.getElementById('lastName').value = user.lastName || '';
-                    document.getElementById('rate').value = user.rate || '';
                 } else if (userType === 'student') {
                     document.getElementById('studentFirstName').value = user.firstName || '';
                     document.getElementById('studentLastName').value = user.lastName || '';

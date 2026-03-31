@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
   <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
+  <script src="js/classroom-entry.js"></script>
   <script>
     // Defer DOM operations until DOM is ready and guard element access to avoid errors.
     document.addEventListener('DOMContentLoaded', function () {
@@ -346,10 +347,21 @@
     let bookingsData = [];
     const teacherId = localStorage.getItem('teacherId');
 
-    // Timezone helpers (teacher's local timezone where available)
-    let teacherTimezone = (window.TimezoneUtils && TimezoneUtils.getDetectedZone && TimezoneUtils.getDetectedZone()) || Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Manila';
-    if (!IANAZoneLocal.isValidZone(teacherTimezone)) {
-      teacherTimezone = 'Asia/Manila';
+    const RemoedTZ = window.TimezoneUtils || {};
+    const TEACHER_SLOT_FIRST_HOUR = RemoedTZ.REMOED_OPERATING_START_HOUR != null ? RemoedTZ.REMOED_OPERATING_START_HOUR : 6;
+    const TEACHER_SLOT_END_HOUR_EXC = RemoedTZ.REMOED_OPERATING_END_HOUR_EXCLUSIVE != null ? RemoedTZ.REMOED_OPERATING_END_HOUR_EXCLUSIVE : 24;
+
+    const teacherTimezone = RemoedTZ.REMOED_ANCHOR_ZONE || RemoedTZ.REMOED_DISPLAY_ZONE || 'Asia/Manila';
+
+    function initTeacherPhilippineTimeNote() {
+      if (document.getElementById('teacher-class-table-pht-note')) return;
+      const controls = document.querySelector('.remoed-header-controls');
+      if (!controls) return;
+      const p = document.createElement('p');
+      p.id = 'teacher-class-table-pht-note';
+      p.style.cssText = 'margin:8px 0 0;width:100%;font-size:0.78rem;color:#475569;font-weight:600;';
+      p.textContent = 'All times are Philippine Time (PHT, Asia/Manila, UTC+8). Other regions on the same offset match this clock.';
+      controls.appendChild(p);
     }
 
     function getManilaNow() {
@@ -379,96 +391,71 @@
       loadScheduleData();
     }
 
-    // Generate day headers
+    // Generate day headers (week boundaries in teacher's aligned zone)
     function generateDayHeaders() {
       const { DateTime } = luxon;
-      const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
       const dayHeadersRow = document.getElementById('day-headers-row');
 
-      // Clear existing day headers, but keep the 'Time' th
       while (dayHeadersRow.children.length > 1) {
         dayHeadersRow.removeChild(dayHeadersRow.lastChild);
       }
 
-      const baseWeek = DateTime.fromJSDate(currentWeek, { zone: timeZone });
-      const monday = baseWeek.minus({ days: baseWeek.weekday - 1 }); // ISO weekday (1=Mon, 7=Sun)
+      const baseWeek = DateTime.fromJSDate(currentWeek, { zone: teacherTimezone });
+      const monday = baseWeek.minus({ days: baseWeek.weekday - 1 });
 
       for (let i = 0; i < 7; i++) {
         const day = monday.plus({ days: i });
-
         const dayTh = document.createElement('th');
         dayTh.className = 'remoed-day-column';
         dayTh.innerHTML = `${day.toFormat('ccc')}<br>${day.toFormat('LLLL d')}`;
         dayTh.dataset.date = day.toISODate();
-
         dayHeadersRow.appendChild(dayTh);
       }
     }
 
-    // Generate time slots (30-minute intervals from 00:00 to 24:00) - 24-hour format
+    // 30-minute slots from 06:00 through 23:30 in teacherTimezone (aligned region)
     function generateTimeSlots() {
       const gridBody = document.getElementById('time-slots-grid');
       gridBody.innerHTML = '';
-      
-      console.log('🔍 Generating time slots for currentWeek:', currentWeek.toISOString());
-      
-      const startHour = 0;
-      const endHour = 24;
-      
-      for (let hour = startHour; hour < endHour; hour++) {
+
+      const { DateTime } = luxon;
+      const baseWeek = DateTime.fromJSDate(currentWeek, { zone: teacherTimezone });
+      const monday = baseWeek.minus({ days: baseWeek.weekday - 1 });
+      const weekDates = [];
+      for (let i = 0; i < 7; i++) {
+        weekDates.push(monday.plus({ days: i }).toISODate());
+      }
+
+      const nowZ = DateTime.now().setZone(teacherTimezone);
+
+      for (let hour = TEACHER_SLOT_FIRST_HOUR; hour < TEACHER_SLOT_END_HOUR_EXC; hour++) {
         for (let minute = 0; minute < 60; minute += 30) {
           const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-          
+
           const timeRow = document.createElement('tr');
-          
-          // Time column
+
           const timeColumn = document.createElement('td');
           timeColumn.className = 'remoed-time-column';
           timeColumn.textContent = timeString;
           timeRow.appendChild(timeColumn);
-          
-          // Day columns
-                  for (let day = 0; day < 7; day++) {
-          const date = new Date(currentWeek);
-          // Calculate Monday as the start of the week (Monday = 1, Sunday = 0)
-          const dayOfWeek = currentWeek.getDay();
-          const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // If Sunday, go back 6 days; if Monday, go back 0 days, etc.
-          date.setDate(currentWeek.getDate() - daysToMonday + day);
-            const dateString = date.toISOString().split('T')[0];
-            
-            // Debug: Log the first few slots to see what dates are being generated
-            if (timeString === '09:00' && day < 3) {
-              console.log(`🔍 Generated slot for day ${day}: ${dateString} ${timeString}`);
-            }
-            
+
+          for (let day = 0; day < 7; day++) {
+            const dateString = weekDates[day];
+
             const slot = document.createElement('td');
             slot.className = 'remoed-time-slot';
             slot.dataset.date = dateString;
             slot.dataset.time = timeString;
-            
-                            // Check if slot is in the past (but don't mark as unavailable - let the data determine the status)
-                const slotDateTime = new Date(`${dateString}T${timeString}:00`);
-                const gridNow = new Date();
-                
-                // Check if the specific time has passed today
-                const currentDate = gridNow.toISOString().split('T')[0];
-                const currentTime = gridNow.toTimeString().split(' ')[0].substring(0, 5); // HH:MM format
-                
-                let isTimePassed = false;
-                if (dateString === currentDate) {
-                    // If it's today, check if the time has passed
-                    isTimePassed = timeString <= currentTime;
-                }
-                
-                // Only mark as unavailable if it's in the past AND not booked
-                if (slotDateTime <= gridNow && isTimePassed) {
-                  slot.classList.add('unavailable');
-                }
-            
-            // Append the slot to the timeRow
+
+            const slotStart = DateTime.fromISO(`${dateString}T${timeString}`, { zone: teacherTimezone });
+            const slotEnd = slotStart.plus({ minutes: 25 });
+            if (nowZ > slotEnd) {
+              slot.classList.add('unavailable');
+            }
+
             timeRow.appendChild(slot);
           }
-          
+
           gridBody.appendChild(timeRow);
         }
       }
@@ -480,12 +467,9 @@
       if (!teacherId) return;
       
       try {
-              const weekStart = new Date(currentWeek);
-      // Calculate Monday as the start of the week (Monday = 1, Sunday = 0)
-      const dayOfWeek = currentWeek.getDay();
-      const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // If Sunday, go back 6 days; if Monday, go back 0 days, etc.
-      weekStart.setDate(currentWeek.getDate() - daysToMonday);
-      const weekString = weekStart.toISOString().split('T')[0];
+      const { DateTime } = luxon;
+      const base = DateTime.fromJSDate(currentWeek, { zone: teacherTimezone });
+      const weekString = base.minus({ days: base.weekday - 1 }).toISODate();
         
         console.log('🔄 Loading FRESH schedule data for week:', weekString, 'teacherId:', teacherId);
         console.log('🔄 Current time:', new Date().toISOString());
@@ -1107,30 +1091,21 @@
       initializeWeeklyGrid();
     });
 
-    // Update week display
+    // Update week display (aligned zone)
     function updateWeekDisplay() {
-      const weekStart = new Date(currentWeek);
-      // Calculate Monday as the start of the week (Monday = 1, Sunday = 0)
-      const dayOfWeek = currentWeek.getDay();
-      const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // If Sunday, go back 6 days; if Monday, go back 0 days, etc.
-      weekStart.setDate(currentWeek.getDate() - daysToMonday);
-      const weekEnd = new Date(weekStart);
-      weekEnd.setDate(weekStart.getDate() + 6);
-      
       const display = document.getElementById('week-display');
-      display.textContent = `${weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+      const { DateTime } = luxon;
+      const base = DateTime.fromJSDate(currentWeek, { zone: teacherTimezone });
+      const mon = base.minus({ days: base.weekday - 1 });
+      const sun = mon.plus({ days: 6 });
+      display.textContent = `${mon.toFormat('MMM d')} - ${sun.toFormat('MMM d, yyyy')} (Philippine Time, PHT)`;
       
       // Allow navigation to previous weeks (remove the restriction)
       const prevBtn = document.getElementById('prev-week');
       prevBtn.disabled = false; // Always allow previous week navigation
       
       // Add debug info to console
-      console.log('Current week display:', {
-        currentWeek: currentWeek.toISOString(),
-        weekStart: weekStart.toISOString(),
-        weekEnd: weekEnd.toISOString(),
-        displayText: display.textContent
-      });
+      console.log('Current week display:', { currentWeek: currentWeek.toISOString(), displayText: display.textContent });
     }
 
     // Class Info Modal Functions
@@ -1191,14 +1166,9 @@
         showNotification('💡 Tip: This class was marked as student absent. Under the no-class, no-pay policy, there is no payment for this session.', 'info');
       }
       
-      // Format date
-      const date = new Date(booking.date);
-      const formattedDate = date.toLocaleDateString('en-US', { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
-      });
+      const formattedDate = RemoedTZ.formatYmdAsPhilippinesLongDate
+        ? RemoedTZ.formatYmdAsPhilippinesLongDate(booking.date)
+        : new Date(booking.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
       
       // Populate modal with booking data
       document.getElementById('class-date').textContent = formattedDate;
@@ -1230,16 +1200,37 @@
       console.log('  - Current time:', buttonNow.toISOString());
       console.log('  - Elapsed minutes:', buttonElapsedMinutes);
       console.log('  - Elapsed hours:', buttonElapsedHours.toFixed(2));
-      // Function to update button
+      // Function to update Enter button (10-minute early entry rule)
       const updateButton = () => {
         const joinBtn = document.getElementById('join-classroom-btn');
         if (!joinBtn) return;
-        joinBtn.textContent = 'Enter Live Classroom';
         joinBtn.onclick = () => joinClassroom();
+        if (window.RemoedClassroomEntry && currentBooking) {
+          const gate = window.RemoedClassroomEntry.getEntryGate(currentBooking);
+          if (!gate.allowed && gate.code === 'TOO_EARLY') {
+            joinBtn.disabled = true;
+            joinBtn.style.opacity = '0.65';
+            joinBtn.title = 'You can enter starting 10 minutes before the scheduled start time.';
+            const left = gate.opensAtMs != null ? gate.opensAtMs - Date.now() : 0;
+            joinBtn.textContent = left > 0
+              ? `Opens in ${window.RemoedClassroomEntry.formatOpensIn(left)}`
+              : 'Enter Live Classroom';
+            return;
+          }
+        }
+        joinBtn.disabled = false;
+        joinBtn.style.opacity = '1';
+        joinBtn.title = '';
+        joinBtn.textContent = 'Enter Live Classroom';
       };
       
-      // Update button immediately
+      // Update button immediately and keep countdown fresh while modal is open
+      if (window.__joinBtnCountdownTimer) {
+        clearInterval(window.__joinBtnCountdownTimer);
+        window.__joinBtnCountdownTimer = null;
+      }
       updateButton();
+      window.__joinBtnCountdownTimer = setInterval(updateButton, 1000);
       
       // Show class management buttons for classes that have started (15+ minutes) or are completed/absent
       // Removed 'past' status since we disabled automatic past marking
@@ -1289,6 +1280,10 @@
 
     function closeClassInfo() {
       document.getElementById('class-info-modal').classList.remove('show');
+      if (window.__joinBtnCountdownTimer) {
+        clearInterval(window.__joinBtnCountdownTimer);
+        window.__joinBtnCountdownTimer = null;
+      }
       currentBooking = null;
     }
 
@@ -1298,6 +1293,16 @@
       if (!classroomId) {
         alert('No classroom ID set for this booking.');
         return;
+      }
+      if (window.RemoedClassroomEntry) {
+        const gate = window.RemoedClassroomEntry.getEntryGate(currentBooking);
+        if (!gate.allowed && gate.code === 'TOO_EARLY') {
+          const when = gate.opensAtMs != null
+            ? (RemoedTZ.formatDateTimePhilippines ? RemoedTZ.formatDateTimePhilippines(new Date(gate.opensAtMs)) : new Date(gate.opensAtMs).toLocaleString('en-PH', { timeZone: teacherTimezone }))
+            : 'the allowed time';
+          alert(`Class hasn’t opened yet. You can enter starting 10 minutes before the scheduled start (from ${when}).`);
+          return;
+        }
       }
       const slotTime = currentBooking.time || '';
       const roomUrl = `live-classroom.html?room=${classroomId}&type=teacher&bookingId=${currentBooking._id}&slot=${encodeURIComponent(slotTime)}`;
@@ -1468,6 +1473,7 @@
       slotsData = [];
       bookingsData = [];
       
+      initTeacherPhilippineTimeNote();
       updateWeekDisplay();
       initializeWeeklyGrid();
       
@@ -1753,14 +1759,6 @@
             return;
         }
         
-        // Check if class is already completed
-        if (currentBooking.status === 'completed') {
-            showNotification('This class has already been completed', 'info');
-            closeClassInfo();
-            loadScheduleData(); // Refresh to show updated status
-            return;
-        }
-        
         // Check if feedback already exists for this booking
         try {
             const token = localStorage.getItem('token');
@@ -1786,7 +1784,7 @@
         }
         
         // Set class info in feedback modal
-        document.getElementById('feedback-class-info').textContent = `${new Date(currentBooking.date).toLocaleDateString()} at ${currentBooking.time}`;
+        document.getElementById('feedback-class-info').textContent = `${RemoedTZ.formatYmdAsPhilippinesLongDate ? RemoedTZ.formatYmdAsPhilippinesLongDate(currentBooking.date) : new Date(currentBooking.date).toLocaleDateString()} at ${currentBooking.time}`;
         document.getElementById('feedback-student-info').textContent = currentBooking.studentName || 'Unknown Student';
         
         // Reset star rating
@@ -1885,15 +1883,6 @@
             return;
         }
         
-        // Check if class is already completed
-        if (currentBooking.status === 'completed') {
-            showNotification('This class has already been completed', 'info');
-            closeClassFeedbackModal();
-            closeClassInfo();
-            loadScheduleData(); // Refresh to show updated status
-            return;
-        }
-        
         // Check if feedback already exists for this booking
         try {
             const token = localStorage.getItem('token');
@@ -1941,9 +1930,20 @@
                 studentId = studentId._id || studentId.id || studentId.username || 'unknown';
             }
             
+            let teacherIdForFeedback = localStorage.getItem('teacherId') || '';
+            if (currentBooking.teacherId != null) {
+                if (typeof currentBooking.teacherId === 'object') {
+                    teacherIdForFeedback = String(
+                      currentBooking.teacherId.teacherId || currentBooking.teacherId._id || teacherIdForFeedback
+                    );
+                } else {
+                    teacherIdForFeedback = String(currentBooking.teacherId);
+                }
+            }
+
             const feedbackData = {
                 bookingId: currentBooking._id,
-                teacherId: currentBooking.teacherId,
+                teacherId: teacherIdForFeedback,
                 studentId: studentId,
                 rating: selectedRating,
                 comment: comment,
@@ -1965,7 +1965,15 @@
                 return;
             }
             
-            // Then, complete the class
+            if (currentBooking.status === 'completed') {
+                showNotification('Feedback submitted successfully.', 'success');
+                closeClassFeedbackModal();
+                closeClassInfo();
+                loadScheduleData();
+                return;
+            }
+
+            // Then, complete the class (final DB status — idempotent if already completed server-side)
             console.log('🔄 Completing class:', currentBooking._id);
             const completeResponse = await fetch(`/api/booking/${currentBooking._id}/complete`, {
                 method: 'POST',
@@ -2048,7 +2056,7 @@
         }
         
         // Set class info in issue modal
-        document.getElementById('issue-class-info').textContent = `${new Date(currentBooking.date).toLocaleDateString()} at ${currentBooking.time}`;
+        document.getElementById('issue-class-info').textContent = `${RemoedTZ.formatYmdAsPhilippinesLongDate ? RemoedTZ.formatYmdAsPhilippinesLongDate(currentBooking.date) : new Date(currentBooking.date).toLocaleDateString()} at ${currentBooking.time}`;
         document.getElementById('issue-student-info').textContent = currentBooking.studentName || 'Unknown Student';
         
         // Clear form

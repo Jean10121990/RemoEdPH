@@ -21,6 +21,7 @@ const Feedback = require('./models/Feedback');
 const IssueReport = require('./models/IssueReport');
 const PeerMessage = require('./models/PeerMessage');
 const Referral = require('./models/Referral');
+const PortalVideo = require('./models/PortalVideo');
 const { verifyToken, requireTeacher, requireStudent, requireOwnTeacherData, requireOwnStudentData, logAccess } = require('./authMiddleware');
 const { JWT_EXPIRES_IN } = require('./config/authTokens');
 const { isTokenBlacklisted } = require('./services/jwtBlacklist');
@@ -28,6 +29,13 @@ const {
   consumeReservedCreditForBooking,
   releaseReservedCreditForBooking,
 } = require('./services/bookingCreditLedger');
+const { getClassroomEntryGate, EARLY_ENTRY_MINUTES } = require('./services/classroomEntryWindow');
+const {
+  getAvailableBookingCredits,
+  getCreditPoolTotal,
+  getReservedCredits,
+  reconcileStudentCreditBalanceIfDrifted,
+} = require('./services/studentCreditSummary');
 const realtime = require('./realtime');
 const { teacherPeerSearchLimiter } = require('./middleware/apiRateLimits');
 const { encryptPiiString, decryptPiiString } = require('./utils/piiCrypto');
@@ -1536,14 +1544,24 @@ router.post('/book-class', verifyToken, requireStudent, async (req, res) => {
     } = req.body;
     const preferredRaw = preferredTeacherId != null && preferredTeacherId !== '' ? preferredTeacherId : teacherId;
 
-    const student = await Student.findById(req.user.studentId);
+    let student = await Student.findById(req.user.studentId);
     if (!student) {
       return res.status(400).json({ error: 'Student not found' });
     }
+    if (await reconcileStudentCreditBalanceIfDrifted(req.user.studentId, student.toObject())) {
+      student = await Student.findById(req.user.studentId);
+    }
+    const effectiveSubscribed =
+      student.isSubscribed === true ||
+      (student.paymentStatus === 'paid' && student.subscriptionStatus === 'active');
     const studentId = student.username;
-    const currentTotalCredits = Number(student.totalCredits ?? student.creditBalance ?? 0);
-    const currentReservedCredits = Number(student.reservedCredits || 0);
-    const availableCredits = Math.max(currentTotalCredits - currentReservedCredits, 0);
+    const availableCredits = getAvailableBookingCredits(student);
+    if (!effectiveSubscribed && availableCredits <= 0) {
+      return res.status(403).json({
+        error: 'Subscription required to book your next lesson.',
+        code: 'SUBSCRIPTION_REQUIRED_LESSON_2',
+      });
+    }
     if (availableCredits <= 0) {
       return res.status(400).json({ error: 'Insufficient credits. Please top up your plan.' });
     }
@@ -1664,7 +1682,17 @@ router.post('/book-class', verifyToken, requireStudent, async (req, res) => {
       const reservedStudent = await Student.findOneAndUpdate(
         {
           _id: req.user.studentId,
-          $expr: { $gt: [{ $subtract: [{ $ifNull: ['$totalCredits', 0] }, { $ifNull: ['$reservedCredits', 0] }] }, 0] }
+          $expr: {
+            $gt: [
+              {
+                $subtract: [
+                  { $ifNull: ['$totalCredits', { $ifNull: ['$creditBalance', 0] }] },
+                  { $ifNull: ['$reservedCredits', 0] },
+                ],
+              },
+              0,
+            ],
+          },
         },
         {
           $inc: {
@@ -1728,7 +1756,8 @@ router.post('/book-class', verifyToken, requireStudent, async (req, res) => {
         lessonId: lessonId || null,
         studentLevel,
         classroomId,
-        status: 'Booked'
+        status: 'Booked',
+        isAssessmentFreeTrialBooking: !!student.assessmentTrialCreditActive,
       });
       try {
         if (session) {
@@ -1857,13 +1886,10 @@ router.post('/book-class', verifyToken, requireStudent, async (req, res) => {
       bookingMode: useTransactions ? 'transaction' : 'atomic-slot-lock',
       useTransactions,
       credits: {
-        balance: refreshedStudent?.creditBalance || 0,
-        totalCredits: refreshedStudent?.totalCredits ?? (refreshedStudent?.creditBalance || 0),
-        reservedCredits: refreshedStudent?.reservedCredits || 0,
-        availableCredits: Math.max(
-          Number(refreshedStudent?.totalCredits ?? refreshedStudent?.creditBalance ?? 0) - Number(refreshedStudent?.reservedCredits || 0),
-          0
-        ),
+        balance: getCreditPoolTotal(refreshedStudent),
+        totalCredits: getCreditPoolTotal(refreshedStudent),
+        reservedCredits: getReservedCredits(refreshedStudent),
+        availableCredits: getAvailableBookingCredits(refreshedStudent),
         usedCredits: refreshedStudent?.usedCredits ?? ((refreshedStudent?.totalCreditsEarned || 0) - (refreshedStudent?.creditBalance || 0))
       }
     });
@@ -2458,7 +2484,27 @@ router.post('/profile', verifyToken, requireTeacher, async (req, res) => {
         'documents.certifications': Array.isArray(profileData.documents?.certifications) ? profileData.documents.certifications : [],
         'documents.certificates': certificatesArray,
         'documents.validId': null,
-        'documents.validIds': validIdsArray
+        'documents.validIds': validIdsArray,
+        hireDate: profileData.hireDate || null,
+        hasEnglishDegree4Year: !!profileData.hasEnglishDegree4Year,
+        hasTesolTeylTefl: !!profileData.hasTesolTeylTefl,
+        hasIeltsCertificate: !!profileData.hasIeltsCertificate,
+        eslExperienceLevel: profileData.eslExperienceLevel || 'none',
+        teachingExperienceBand: profileData.teachingExperienceBand || 'none',
+        hasProfessionalLetLicense: !!profileData.hasProfessionalLetLicense,
+        hasMastersDegree: !!profileData.hasMastersDegree,
+        hasDoctorateDegree: !!profileData.hasDoctorateDegree,
+        heartHospitality: !!profileData.heartHospitality,
+        heartExcellence: !!profileData.heartExcellence,
+        heartAffection: !!profileData.heartAffection,
+        heartRespect: !!profileData.heartRespect,
+        heartTogetherness: !!profileData.heartTogetherness,
+        honorAvoidFalseWitness: !!profileData.honorAvoidFalseWitness,
+        honorNoGossipPolitics: !!profileData.honorNoGossipPolitics,
+        honorIntegritySpeech: !!profileData.honorIntegritySpeech,
+        honorGoodAttitudeAntiGreed: !!profileData.honorGoodAttitudeAntiGreed,
+        honorFinancialStewardship: !!profileData.honorFinancialStewardship,
+        hasValuesAlignment: !!profileData.hasValuesAlignment
       }
     };
     
@@ -3079,6 +3125,18 @@ router.post('/mark-user-entered', verifyToken, async (req, res) => {
       teacherEntered: booking.attendance?.teacherEntered,
       studentEntered: booking.attendance?.studentEntered
     });
+
+    const entryGate = getClassroomEntryGate(booking, Date.now());
+    if (!entryGate.allowed && entryGate.code === 'TOO_EARLY') {
+      return res.status(403).json({
+        success: false,
+        error: entryGate.message || 'Class has not opened yet.',
+        code: 'TOO_EARLY',
+        opensAt: entryGate.opensAt,
+        scheduledStart: entryGate.scheduledStart,
+        earlyEntryMinutes: EARLY_ENTRY_MINUTES,
+      });
+    }
     
     // Calculate late minutes for teacher entry
     let lateMinutes = 0;
@@ -4539,6 +4597,17 @@ router.post('/feedback/submit', verifyToken, requireTeacher, async (req, res) =>
     });
     
     await feedback.save();
+
+    try {
+      const { notifyStudentLesson1FeedbackReady } = require('./services/studentLessonFeedbackEmail');
+      setImmediate(() => {
+        notifyStudentLesson1FeedbackReady(booking).catch((err) =>
+          console.error('[lesson1 feedback email]', err.message || err)
+        );
+      });
+    } catch (e) {
+      console.error('[lesson1 feedback email] setup', e.message || e);
+    }
     
     // Save to StarReceived collection for student
     const StarReceived = require('./models/StarReceived');
@@ -4641,11 +4710,16 @@ router.post('/booking/:bookingId/complete', verifyToken, requireTeacher, async (
       });
     }
     
-    // Check if class is already completed
     if (booking.status === 'completed') {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Class is already completed'
+      return res.json({
+        success: true,
+        message: 'Class already completed',
+        booking: {
+          id: booking._id,
+          status: booking.status,
+          finishedAt: booking.finishedAt,
+          classCompleted: booking.attendance && booking.attendance.classCompleted,
+        },
       });
     }
     
@@ -6314,6 +6388,27 @@ router.delete('/connections/:connectionId', verifyToken, requireTeacher, async (
   } catch (error) {
     console.error('Error removing connection:', error);
     res.status(500).json({ error: 'Server error: ' + error.message });
+  }
+});
+
+/** Same library as students — for live classroom Videos tab (teacher token). */
+router.get('/portal-videos', verifyToken, requireTeacher, async (req, res) => {
+  try {
+    const list = await PortalVideo.find({ active: true }).sort({ createdAt: -1 }).lean();
+    res.json({
+      success: true,
+      videos: list.map((v) => ({
+        id: v._id,
+        title: v.title,
+        description: v.description || '',
+        url: v.relativeUrl,
+        mimeType: v.mimeType || 'video/mp4',
+        createdAt: v.createdAt,
+      })),
+    });
+  } catch (err) {
+    console.error('teacher portal-videos list:', err);
+    res.status(500).json({ success: false, message: 'Failed to load videos' });
   }
 });
 

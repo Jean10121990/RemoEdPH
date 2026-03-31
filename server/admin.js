@@ -16,12 +16,15 @@ const { verifyAdminApiAuth, requireAdmin, verifyToken, requireTeacher } = requir
 
 /**
  * RBAC for /api/admin/* — default: admin session/JWT only.
- * Exception: GET /teacher-rate and GET /teacher-rate/:id for authenticated teachers (service-fee UI).
+ * Exception: GET /teacher-rate (global rate only, no auth) for reliable service-fee UI.
+ * Exception: GET /teacher-rate/:id for authenticated teachers/admins (per-teacher rate).
  */
 function adminRouterRbac(req, res, next) {
   const p = req.path || '';
-  const teacherRateRead =
-    req.method === 'GET' && (p === '/teacher-rate' || p.startsWith('/teacher-rate/'));
+  if (req.method === 'GET' && p === '/teacher-rate') {
+    return next();
+  }
+  const teacherRateRead = req.method === 'GET' && p.startsWith('/teacher-rate/');
   if (teacherRateRead) {
     if (req.session && req.session.adminAuth === true && req.session.adminUsername) {
       req.user = {
@@ -65,7 +68,11 @@ const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const Application = require('./models/Application');
 const InvitationToken = require('./models/InvitationToken');
-const { sendTeacherRegistrationEmail, sendTeacherPipelineWelcomeEmail } = require('./emailService');
+const {
+  sendTeacherRegistrationEmail,
+  sendTeacherPipelineWelcomeEmail,
+  sendTeacherPipelineFailEmail
+} = require('./emailService');
 const {
   releaseReservedCreditForBooking,
   consumeReservedCreditForBooking,
@@ -351,6 +358,10 @@ router.get('/teacher-pipeline/applicants', verifyAdminApiAuth, requireAdmin, asy
       currentStage: a.currentStage || 'applied',
       status: Boolean(a.status),
       progress: toProgressPercent(a.currentStage),
+      hiredAt: a.hiredAt || null,
+      passedAt: a.passedAt || null,
+      failedAt: a.failedAt || null,
+      reapplyEligibleAt: a.reapplyEligibleAt || null,
       updatedAt: a.updatedAt
     }));
 
@@ -381,11 +392,31 @@ router.post('/teacher-pipeline/applicants/:id/fail', verifyAdminApiAuth, require
       return res.status(404).json({ success: false, error: 'Applicant not found' });
     }
 
+    const now = new Date();
+    const reapplyEligibleAt = new Date(now);
+    reapplyEligibleAt.setMonth(reapplyEligibleAt.getMonth() + 3);
+
     applicant.currentStage = 'failed';
     applicant.status = false;
+    applicant.failedAt = now;
+    applicant.reapplyEligibleAt = reapplyEligibleAt;
+    applicant.passedAt = null;
     await applicant.save();
 
-    res.json({ success: true, message: 'Applicant marked as failed' });
+    await InvitationToken.deleteMany({ applicationId: applicant._id });
+
+    const emailResult = await sendTeacherPipelineFailEmail(
+      applicant.email,
+      applicant.fullName,
+      reapplyEligibleAt
+    );
+
+    res.json({
+      success: true,
+      message: 'Applicant marked as failed',
+      reapplyEligibleAt,
+      emailResult
+    });
   } catch (error) {
     console.error('❌ Failed to mark applicant as failed:', error);
     res.status(500).json({ success: false, error: 'Failed to mark applicant as failed' });
@@ -401,6 +432,9 @@ router.post('/teacher-pipeline/applicants/:id/pass', verifyAdminApiAuth, require
 
     applicant.currentStage = 'passed';
     applicant.status = true;
+    applicant.passedAt = new Date();
+    applicant.failedAt = null;
+    applicant.reapplyEligibleAt = null;
     await applicant.save();
 
     // Reuse an active unused token if available, otherwise generate a new one.
@@ -438,6 +472,32 @@ router.post('/teacher-pipeline/applicants/:id/pass', verifyAdminApiAuth, require
     res.status(500).json({ success: false, error: 'Failed to pass applicant' });
   }
 });
+
+async function deleteTeacherPipelineApplicant(req, res) {
+  try {
+    const applicant = await Application.findById(req.params.id);
+    if (!applicant) {
+      return res.status(404).json({ success: false, error: 'Applicant not found' });
+    }
+    const stage = String(applicant.currentStage || '').toLowerCase();
+    if (stage !== 'passed' && stage !== 'failed') {
+      return res.status(400).json({
+        success: false,
+        error: 'Only applicants in Passed or Failed stage can be deleted.'
+      });
+    }
+    await InvitationToken.deleteMany({ applicationId: applicant._id });
+    await Application.findByIdAndDelete(req.params.id);
+    res.json({ success: true, message: 'Applicant removed from pipeline' });
+  } catch (error) {
+    console.error('❌ Failed to delete applicant:', error);
+    res.status(500).json({ success: false, error: 'Failed to delete applicant' });
+  }
+}
+
+router.delete('/teacher-pipeline/applicants/:id', verifyAdminApiAuth, requireAdmin, deleteTeacherPipelineApplicant);
+// POST alias: some reverse proxies / tunnels block DELETE; UI uses this path by default
+router.post('/teacher-pipeline/applicants/:id/delete', verifyAdminApiAuth, requireAdmin, deleteTeacherPipelineApplicant);
 
 // --- Referral / Commission tracking ---
 function generateReferralCodeAdmin() {

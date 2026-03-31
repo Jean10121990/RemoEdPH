@@ -7,6 +7,17 @@ async function findStudentForBooking(booking) {
   });
 }
 
+function coalesceLessonPool(student) {
+  const cb = Math.max(0, Number(student.creditBalance) || 0);
+  const res = Math.max(0, Number(student.reservedCredits) || 0);
+  const tcRaw = student.totalCredits;
+  const tc = tcRaw == null || tcRaw === '' ? null : Number(tcRaw);
+  if (Number.isFinite(tc) && tc > 0) {
+    return { poolTotal: tc, reserved: res, mode: 'totalCredits' };
+  }
+  return { poolTotal: cb + res, reserved: res, mode: 'balance' };
+}
+
 /**
  * Convert one reserved credit into a used lesson credit (MongoDB updates only).
  * Mutates booking in memory; caller must persist the booking document.
@@ -20,21 +31,31 @@ async function consumeReservedCreditForBooking(booking, descriptionPrefix = 'Cla
   const now = new Date();
   const safeReserved = Number(student.reservedCredits || 0);
   if (safeReserved <= 0) return student._id;
-  const safeTotal = Number(student.totalCredits || 0);
-  const nextReserved = Math.max(safeReserved - 1, 0);
-  const nextTotal = Math.max(safeTotal - 1, 0);
-  const nextAvailable = Math.max(nextTotal - nextReserved, 0);
+  const { poolTotal, reserved, mode } = coalesceLessonPool(student);
+  const nextReserved = Math.max(reserved - 1, 0);
+  const nextPoolTotal = Math.max(poolTotal - 1, 0);
+  const nextAvailable = Math.max(nextPoolTotal - nextReserved, 0);
   const planLabel = student.subscriptionPlan || '';
   const desc = `${descriptionPrefix} (${booking.date} ${booking.time})`;
+
+  const setDoc = {
+    reservedCredits: nextReserved,
+    creditBalance: nextAvailable,
+  };
+  if (mode === 'totalCredits') {
+    setDoc.totalCredits = nextPoolTotal;
+  }
+  if (booking.isAssessmentFreeTrialBooking) {
+    setDoc.accountStatus = 'trial_completed';
+    setDoc.trialCompletedAt = now;
+    setDoc.assessmentTrialCreditActive = false;
+    setDoc.hasFreeTrial = false;
+  }
 
   await Student.updateOne(
     { _id: student._id },
     {
-      $set: {
-        reservedCredits: nextReserved,
-        totalCredits: nextTotal,
-        creditBalance: nextAvailable,
-      },
+      $set: setDoc,
       $inc: { usedCredits: 1 },
       $push: {
         creditTransactions: {
@@ -57,6 +78,25 @@ async function consumeReservedCreditForBooking(booking, descriptionPrefix = 'Cla
     }
   );
 
+  if (booking.isAssessmentFreeTrialBooking && student.email) {
+    try {
+      const emailService = require('../emailService');
+      const greet =
+        [student.firstName, student.lastName].filter(Boolean).join(' ').trim() ||
+        (student.email ? String(student.email).split('@')[0] : '') ||
+        'there';
+      setImmediate(() => {
+        emailService
+          .sendLesson2InvitationEmail(student.email, greet)
+          .catch((err) =>
+            console.error('[lesson2 invite] email failed:', err.message || err)
+          );
+      });
+    } catch (e) {
+      console.error('[trial conversion] could not queue email:', e.message || e);
+    }
+  }
+
   booking.creditConsumedAt = now;
   booking.creditReservationReleasedAt = null;
 
@@ -72,18 +112,9 @@ async function releaseReservedCreditForBooking(booking) {
   const safeReserved = Number(student.reservedCredits || 0);
   if (safeReserved <= 0) return student._id;
 
-  const safeTotal = Number(student.totalCredits || 0);
-  const nextReserved = safeReserved - 1;
-  const nextAvailable = Math.max(safeTotal - nextReserved, 0);
-
   await Student.updateOne(
-    { _id: student._id },
-    {
-      $set: {
-        reservedCredits: nextReserved,
-        creditBalance: nextAvailable,
-      },
-    }
+    { _id: student._id, reservedCredits: { $gte: 1 } },
+    { $inc: { reservedCredits: -1, creditBalance: 1 } }
   );
   booking.creditReservationReleasedAt = new Date();
   return student._id;

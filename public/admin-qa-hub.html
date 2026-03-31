@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
+    <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QA Hub - RemoEdPH Admin</title>
+    <link rel="stylesheet" href="modern-styles.css">
+    <link rel="stylesheet" href="css/teacher-sidebar.css">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/admin-hub-shell.css">
+</head>
+<body class="admin-hub-page page-admin-qa-hub page-admin-classroom-recordings page-admin-issue-management">
+    <div class="remoed-main">
+        <div id="admin-sidebar-root"></div>
+        <script src="js/admin-session.js"></script>
+        <script src="js/admin-sidebar.js"></script>
+        <script>AdminSidebar.render('admin-sidebar-root', 'qa-hub');</script>
+        <div class="remoed-content">
+            <div class="remoed-section">
+                <div class="remoed-section-title">QA Hub</div>
+                <p class="muted" style="margin-top:0;margin-bottom:16px;">Lesson library, class recordings, and issue triage in one place.</p>
+
+                <div class="hub-tabs" role="tablist" aria-label="QA Hub sections">
+                    <button type="button" class="hub-tab hub-tab--active" role="tab" id="tab-library" aria-selected="true" aria-controls="qa-panel-library">Lesson Library</button>
+                    <button type="button" class="hub-tab" role="tab" id="tab-recordings" aria-selected="false" aria-controls="qa-panel-recordings">Lesson recordings</button>
+                    <button type="button" class="hub-tab" role="tab" id="tab-issues" aria-selected="false" aria-controls="qa-panel-issues">Issue Management</button>
+                </div>
+
+                <div id="qa-panel-library" class="hub-panel" role="tabpanel" aria-labelledby="tab-library">
+                    <p class="muted" style="margin-top:0;margin-bottom:10px;">Manage curricula and lesson files (embedded view).</p>
+                    <iframe id="iframe-lesson-library" class="hub-iframe" title="Lesson Library"></iframe>
+                </div>
+
+                <div id="qa-panel-recordings" class="hub-panel" role="tabpanel" aria-labelledby="tab-recordings" hidden>
+                    <div class="remoed-section-title" style="margin-top:0;">Lesson recordings (QA)</div>
+                    <p class="muted" style="margin-top:0;">Low-quality WebM clips from live class (remote view). Retention is set on the server (often 3 days or 1 week); expired files are removed on the scheduled cleanup (weekly by default, not daily) or use <strong>Purge expired</strong> anytime.</p>
+                    <div class="filters">
+                        <div>
+                            <label for="rec-date">Day (UTC)</label>
+                            <input type="date" id="rec-date" />
+                        </div>
+                        <button type="button" class="btn btn-primary" id="rec-refresh">Load</button>
+                        <button type="button" class="btn btn-secondary" id="rec-all" title="Last 300 recordings, any day">All dates</button>
+                        <button type="button" class="btn btn-secondary" id="rec-purge" title="Remove DB rows + files past expiry">Purge expired</button>
+                    </div>
+                    <div id="rec-msg"></div>
+                    <div style="overflow-x: auto;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Created (UTC)</th>
+                                    <th>Room</th>
+                                    <th>Booking</th>
+                                    <th>Teacher</th>
+                                    <th>By</th>
+                                    <th>Status</th>
+                                    <th>Size</th>
+                                    <th>Expires</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="rec-tbody">
+                                <tr><td colspan="9" class="muted">Loading…</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="qa-panel-issues" class="hub-panel" role="tabpanel" aria-labelledby="tab-issues" hidden>
+                    <div class="remoed-section-title" style="margin-top:0;">🔧 Class Issue Management</div>
+                    <div class="issue-filters">
+                        <div class="filter-group">
+                            <label>Status</label>
+                            <select id="status-filter">
+                                <option value="">All Status</option>
+                                <option value="pending">Pending</option>
+                                <option value="reviewed">Reviewed</option>
+                                <option value="resolved">Resolved</option>
+                                <option value="dismissed">Dismissed</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>Validity</label>
+                            <select id="validity-filter">
+                                <option value="">All Validity</option>
+                                <option value="pending_review">Pending Review</option>
+                                <option value="valid">Valid</option>
+                                <option value="invalid">Invalid</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>Issue Type</label>
+                            <select id="issue-type-filter">
+                                <option value="">All Types</option>
+                                <option value="Lesson Issue (Cannot preview lesson)">Lesson Issue</option>
+                                <option value="Technical Issue (Audio/Video problems)">Technical Issue</option>
+                                <option value="Student Behavior Issue">Student Behavior</option>
+                                <option value="Payment Issue">Payment Issue</option>
+                                <option value="Schedule Conflict">Schedule Conflict</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>Date Range</label>
+                            <input type="date" id="date-filter">
+                        </div>
+                        <div class="filter-group">
+                            <button class="btn btn-primary" onclick="loadIssues()">Apply Filters</button>
+                        </div>
+                    </div>
+                    <div id="issues-container"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="review-modal" class="review-modal">
+        <div class="review-modal-content">
+            <div class="review-modal-header">
+                <h2>Review Issue Report</h2>
+                <span class="close" onclick="closeReviewModal()">&times;</span>
+            </div>
+            <form class="review-form" id="review-form">
+                <input type="hidden" id="issue-id">
+                <div class="form-group">
+                    <label>Validity Status</label>
+                    <select id="validity-status" required>
+                        <option value="valid">Valid</option>
+                        <option value="invalid">Invalid</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Review Notes</label>
+                    <textarea id="admin-notes" placeholder="Enter your review notes and decision rationale..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="allow-reschedule"> Allow Student to Reschedule (if class is incomplete due to teacher technical issues)
+                    </label>
+                </div>
+                <div class="issue-actions">
+                    <button type="submit" class="btn btn-primary">Submit Review</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeReviewModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="resolve-modal" class="review-modal">
+        <div class="review-modal-content">
+            <div class="review-modal-header">
+                <h2>Mark Issue as Resolved</h2>
+                <span class="close" onclick="closeResolveModal()">&times;</span>
+            </div>
+            <form class="review-form" id="resolve-form">
+                <input type="hidden" id="resolve-issue-id">
+                <div class="form-group">
+                    <label>Resolution Type</label>
+                    <div class="resolution-options">
+                        <label class="resolution-option">
+                            <input type="radio" name="resolution-type" value="system-issue" onchange="toggleResolutionDetails()">
+                            <span class="option-text">
+                                <strong>System Issue</strong><br>
+                                <small>Teacher gets 10% of rate for effort, student can reschedule</small>
+                            </span>
+                        </label>
+                        <label class="resolution-option">
+                            <input type="radio" name="resolution-type" value="teacher-fault" onchange="toggleResolutionDetails()">
+                            <span class="option-text">
+                                <strong>Teacher Fault</strong><br>
+                                <small>No payment to teacher, specify reason</small>
+                            </span>
+                        </label>
+                        <label class="resolution-option">
+                            <input type="radio" name="resolution-type" value="student-issue" onchange="toggleResolutionDetails()">
+                            <span class="option-text">
+                                <strong>Student Issue</strong><br>
+                                <small>Pay teacher 50% of rate</small>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group" id="teacher-fault-reason" style="display: none;">
+                    <label>Reason for Teacher Fault</label>
+                    <textarea id="teacher-fault-reason-text" placeholder="Specify the reason why this is considered teacher fault..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Resolution Notes</label>
+                    <textarea id="resolve-notes" placeholder="Enter resolution details and any additional notes..."></textarea>
+                </div>
+                <div class="issue-actions">
+                    <button type="submit" class="btn btn-success">Mark as Resolved</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeResolveModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function checkAuth() {
+            const token = localStorage.getItem('adminToken');
+            if (!token) {
+                window.location.href = (function () {
+                    try {
+                        var p = localStorage.getItem('remoedAdminEntryPath');
+                        if (p && p.charAt(0) === '/') return p;
+                    } catch (e) {}
+                    return 'index.html';
+                })();
+                return false;
+            }
+            if (window.AdminSidebar && typeof AdminSidebar.applyGreetingFromStorage === 'function') {
+                AdminSidebar.applyGreetingFromStorage();
+            }
+            return true;
+        }
+
+        function setQaHash(tab) {
+            try {
+                var h = tab === 'issues' ? '#issues' : tab === 'recordings' ? '#recordings' : '#library';
+                if (window.location.hash !== h) {
+                    history.replaceState(null, '', 'admin-qa-hub.html' + h);
+                }
+            } catch (e) {}
+        }
+
+        function ensureLessonLibraryIframe() {
+            var f = document.getElementById('iframe-lesson-library');
+            if (!f || f.getAttribute('data-loaded')) return;
+            f.src = 'admin-lessons-library.html?adminEmbed=1';
+            f.setAttribute('data-loaded', '1');
+        }
+
+        function showQaTab(tab) {
+            var tabLib = document.getElementById('tab-library');
+            var tabRec = document.getElementById('tab-recordings');
+            var tabIss = document.getElementById('tab-issues');
+            var panLib = document.getElementById('qa-panel-library');
+            var panRec = document.getElementById('qa-panel-recordings');
+            var panIss = document.getElementById('qa-panel-issues');
+            if (!tabLib || !tabRec || !tabIss || !panLib || !panRec || !panIss) return;
+
+            var isLib = tab === 'library';
+            var isRec = tab === 'recordings';
+            var isIss = tab === 'issues';
+
+            tabLib.classList.toggle('hub-tab--active', isLib);
+            tabRec.classList.toggle('hub-tab--active', isRec);
+            tabIss.classList.toggle('hub-tab--active', isIss);
+            tabLib.setAttribute('aria-selected', isLib);
+            tabRec.setAttribute('aria-selected', isRec);
+            tabIss.setAttribute('aria-selected', isIss);
+
+            panLib.hidden = !isLib;
+            panRec.hidden = !isRec;
+            panIss.hidden = !isIss;
+
+            setQaHash(tab);
+
+            if (isLib) {
+                ensureLessonLibraryIframe();
+            } else if (isRec) {
+                loadList();
+            } else if (isIss) {
+                loadIssues();
+            }
+        }
+
+        function bytesLabel(n) {
+            if (n == null || isNaN(n)) return '—';
+            if (n < 1024) return n + ' B';
+            if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+            return (n / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
+        function esc(s) {
+            if (s == null) return '';
+            return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+        }
+
+        async function loadList() {
+            const tbody = document.getElementById('rec-tbody');
+            const msg = document.getElementById('rec-msg');
+            const token = localStorage.getItem('adminToken');
+            const dateEl = document.getElementById('rec-date');
+            var d = dateEl && dateEl.value ? dateEl.value : '';
+
+            if (!tbody || !msg) return;
+
+            msg.textContent = 'Loading…';
+            tbody.innerHTML = '<tr><td colspan="9" class="muted">Loading…</td></tr>';
+
+            var url = '/api/admin/classroom-recordings?limit=300';
+            if (d) url += '&date=' + encodeURIComponent(d);
+
+            try {
+                const r = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
+                const j = await r.json().catch(function () { return {}; });
+                if (!r.ok) {
+                    msg.textContent = j.message || j.error || 'Failed to load';
+                    tbody.innerHTML = '';
+                    return;
+                }
+                const rows = j.recordings || [];
+                msg.textContent = rows.length ? rows.length + ' recording(s)' : 'No recordings for this filter.';
+                if (!rows.length) {
+                    tbody.innerHTML = '<tr><td colspan="9" class="muted">No rows</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = rows.map(function (rec) {
+                    const st = rec.status === 'complete' ? 'pill pill-ok' : 'pill pill-warn';
+                    const created = rec.createdAt ? new Date(rec.createdAt).toISOString().replace('T', ' ').slice(0, 19) : '—';
+                    const exp = rec.expiresAt ? new Date(rec.expiresAt).toISOString().slice(0, 10) : '—';
+                    return (
+                        '<tr>' +
+                        '<td>' + esc(created) + '</td>' +
+                        '<td style="max-width:120px;word-break:break-all;">' + esc(rec.roomId) + '</td>' +
+                        '<td style="max-width:90px;word-break:break-all;">' + esc(rec.bookingId || '—') + '</td>' +
+                        '<td style="max-width:90px;word-break:break-all;">' + esc(rec.teacherId || '—') + '</td>' +
+                        '<td>' + esc(rec.recordedByRole || '—') + '</td>' +
+                        '<td><span class="' + st + '">' + esc(rec.status) + '</span></td>' +
+                        '<td>' + esc(bytesLabel(rec.sizeBytes)) + '</td>' +
+                        '<td>' + esc(exp) + '</td>' +
+                        '<td>' +
+                        '<button type="button" class="btn btn-primary" data-dl="' + esc(rec.id) + '" style="padding:4px 8px;font-size:0.75rem;">Download</button> ' +
+                        '<button type="button" class="btn btn-danger" data-del="' + esc(rec.id) + '" style="padding:4px 8px;font-size:0.75rem;">Delete</button>' +
+                        '</td>' +
+                        '</tr>'
+                    );
+                }).join('');
+
+                tbody.querySelectorAll('[data-dl]').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        downloadRec(btn.getAttribute('data-dl'));
+                    });
+                });
+                tbody.querySelectorAll('[data-del]').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        deleteRec(btn.getAttribute('data-del'));
+                    });
+                });
+            } catch (e) {
+                msg.textContent = e.message || String(e);
+                tbody.innerHTML = '';
+            }
+        }
+
+        async function downloadRec(id) {
+            const token = localStorage.getItem('adminToken');
+            try {
+                const r = await fetch('/api/admin/classroom-recordings/' + encodeURIComponent(id) + '/download', {
+                    headers: { Authorization: 'Bearer ' + token }
+                });
+                if (!r.ok) {
+                    const t = await r.text();
+                    alert('Download failed: ' + t);
+                    return;
+                }
+                const blob = await r.blob();
+                const ct = String(r.headers.get('content-type') || '').toLowerCase();
+                const ext = ct.indexOf('mp4') !== -1 ? 'mp4' : 'webm';
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = 'classroom-' + id + '.' + ext;
+                a.click();
+                URL.revokeObjectURL(a.href);
+            } catch (e) {
+                alert(e.message || String(e));
+            }
+        }
+
+        async function deleteRec(id) {
+            if (!confirm('Delete this recording file and database row?')) return;
+            const token = localStorage.getItem('adminToken');
+            try {
+                const r = await fetch('/api/admin/classroom-recordings/' + encodeURIComponent(id), {
+                    method: 'DELETE',
+                    headers: { Authorization: 'Bearer ' + token }
+                });
+                const j = await r.json().catch(function () { return {}; });
+                if (!r.ok) {
+                    alert(j.message || j.error || 'Delete failed');
+                    return;
+                }
+                loadList();
+            } catch (e) {
+                alert(e.message || String(e));
+            }
+        }
+
+        async function purgeExpired() {
+            if (!confirm('Remove all recordings past their expiry date?')) return;
+            const token = localStorage.getItem('adminToken');
+            const msg = document.getElementById('rec-msg');
+            try {
+                const r = await fetch('/api/admin/classroom-recordings/purge-expired', {
+                    method: 'POST',
+                    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }
+                });
+                const j = await r.json().catch(function () { return {}; });
+                if (!r.ok) {
+                    msg.textContent = j.message || j.error || 'Purge failed';
+                    return;
+                }
+                msg.textContent = 'Purge removed ' + (j.removed != null ? j.removed : 0) + ' file(s).';
+                loadList();
+            } catch (e) {
+                msg.textContent = e.message || String(e);
+            }
+        }
+
+        function loadIssues() {
+            const token = localStorage.getItem('adminToken');
+            const statusEl = document.getElementById('status-filter');
+            const validityEl = document.getElementById('validity-filter');
+            const issueTypeEl = document.getElementById('issue-type-filter');
+            const dateEl = document.getElementById('date-filter');
+            if (!statusEl) return;
+
+            const statusFilter = statusEl.value;
+            const validityFilter = validityEl ? validityEl.value : '';
+            const issueTypeFilter = issueTypeEl ? issueTypeEl.value : '';
+            const dateFilter = dateEl ? dateEl.value : '';
+
+            let url = '/api/admin/issues';
+            const params = new URLSearchParams();
+            if (statusFilter) params.append('status', statusFilter);
+            if (validityFilter) params.append('validityStatus', validityFilter);
+            if (issueTypeFilter) params.append('issueType', issueTypeFilter);
+            if (dateFilter) params.append('date', dateFilter);
+            if (params.toString()) url += '?' + params.toString();
+
+            fetch(url, { headers: { Authorization: 'Bearer ' + token } })
+                .then(function (response) { return response.json(); })
+                .then(function (data) {
+                    if (data.success) {
+                        displayIssues(data.issues);
+                    } else {
+                        showNotification('Failed to load issues: ' + data.message, 'error');
+                    }
+                })
+                .catch(function (error) {
+                    console.error('Error loading issues:', error);
+                    showNotification('Error loading issues', 'error');
+                });
+        }
+
+        function displayIssues(issues) {
+            const container = document.getElementById('issues-container');
+            if (!container) return;
+
+            if (issues.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #6b7280; padding: 40px;">No issues found matching the current filters.</p>';
+                return;
+            }
+
+            container.innerHTML = issues.map(function (issue) {
+                return `
+                <div class="issue-card">
+                    <div class="issue-header">
+                        <div class="issue-title">Issue #${issue._id.slice(-6)}</div>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <span class="issue-status status-${issue.status}">${issue.status.charAt(0).toUpperCase() + issue.status.slice(1)}</span>
+                            <span class="validity-badge validity-${issue.validityStatus || 'pending'}">${(issue.validityStatus || 'pending_review').replace('_', ' ').charAt(0).toUpperCase() + (issue.validityStatus || 'pending_review').replace('_', ' ').slice(1)}</span>
+                        </div>
+                    </div>
+                    <div class="issue-details">
+                        <div class="issue-detail"><label>Booking ID</label><span>${issue.bookingId}</span></div>
+                        <div class="issue-detail"><label>Issue Type</label><span>${issue.issueType}</span></div>
+                        <div class="issue-detail"><label>Teacher ID</label><span>${issue.teacherId}</span></div>
+                        <div class="issue-detail"><label>Student ID</label><span>${issue.studentId}</span></div>
+                        <div class="issue-detail"><label>Submitted</label><span>${new Date(issue.submittedAt).toLocaleString()}</span></div>
+                        <div class="issue-detail"><label>Payment Impact</label><span>Teacher: ${issue.teacherPaymentImpact}, Student: ${issue.studentPaymentImpact}</span></div>
+                    </div>
+                    <div class="issue-description"><h4>Description:</h4><p>${issue.description}</p></div>
+                    ${issue.screenshotPath ? `
+                        <div style="margin-bottom: 15px;">
+                            <h4 style="margin: 0 0 8px 0; font-size: 0.9rem; color: #374151;">Screenshot:</h4>
+                            <img src="${issue.screenshotPath}" alt="Issue Screenshot" class="screenshot-preview" onclick="window.open('${issue.screenshotPath}', '_blank')">
+                        </div>
+                    ` : ''}
+                    ${issue.canReschedule ? `
+                        <div class="reschedule-info">
+                            <h4>Reschedule Option Available</h4>
+                            <p>Student can reschedule this class until ${new Date(issue.rescheduleDeadline).toLocaleString()}</p>
+                            ${issue.rescheduleRequested ? '<p><strong>Reschedule has been requested by student</strong></p>' : ''}
+                        </div>
+                    ` : ''}
+                    ${issue.adminReviewNotes ? `
+                        <div class="issue-description"><h4>Admin Review Notes:</h4><p>${issue.adminReviewNotes}</p></div>
+                    ` : ''}
+                    <div class="issue-actions">
+                        ${issue.status === 'pending' ? `
+                            <button class="btn btn-primary" onclick="openReviewModal('${issue._id}')">Review Issue</button>
+                        ` : `
+                            <button class="btn btn-secondary" onclick="openReviewModal('${issue._id}')">Update Review</button>
+                        `}
+                        <button class="btn btn-success" onclick="markResolved('${issue._id}')">Mark Resolved</button>
+                        <button class="btn btn-danger" onclick="dismissIssue('${issue._id}')">Dismiss</button>
+                    </div>
+                </div>
+            `;
+            }).join('');
+        }
+
+        function openReviewModal(issueId) {
+            document.getElementById('issue-id').value = issueId;
+            document.getElementById('review-modal').style.display = 'block';
+        }
+
+        function closeReviewModal() {
+            document.getElementById('review-modal').style.display = 'none';
+            document.getElementById('review-form').reset();
+        }
+
+        function markResolved(issueId) {
+            document.getElementById('resolve-issue-id').value = issueId;
+            document.getElementById('resolve-modal').style.display = 'block';
+        }
+
+        function closeResolveModal() {
+            document.getElementById('resolve-modal').style.display = 'none';
+            document.getElementById('resolve-form').reset();
+            document.getElementById('teacher-fault-reason').style.display = 'none';
+        }
+
+        function toggleResolutionDetails() {
+            const selectedType = document.querySelector('input[name="resolution-type"]:checked');
+            const teacherFaultReason = document.getElementById('teacher-fault-reason');
+            if (selectedType && selectedType.value === 'teacher-fault') {
+                teacherFaultReason.style.display = 'block';
+            } else {
+                teacherFaultReason.style.display = 'none';
+            }
+        }
+
+        function dismissIssue(issueId) {
+            if (!confirm('Are you sure you want to dismiss this issue?')) return;
+            const token = localStorage.getItem('adminToken');
+            fetch('/api/admin/issues/dismiss', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+                body: JSON.stringify({ issueId })
+            })
+                .then(function (response) { return response.json(); })
+                .then(function (data) {
+                    if (data.success) {
+                        showNotification('Issue dismissed', 'success');
+                        loadIssues();
+                    } else {
+                        showNotification('Failed to dismiss issue: ' + data.message, 'error');
+                    }
+                })
+                .catch(function (error) {
+                    console.error('Error dismissing issue:', error);
+                    showNotification('Error dismissing issue', 'error');
+                });
+        }
+
+        function showNotification(message, type) {
+            const notification = document.createElement('div');
+            notification.style.cssText =
+                'position: fixed; top: 20px; right: 20px; padding: 12px 20px; border-radius: 6px; color: white; font-weight: 600; z-index: 10000; background: ' +
+                (type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#1ca7e7');
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            setTimeout(function () { notification.remove(); }, 3000);
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            if (!checkAuth()) return;
+
+            const dateEl = document.getElementById('rec-date');
+            if (dateEl) {
+                const t = new Date();
+                const y = t.getUTCFullYear();
+                const m = String(t.getUTCMonth() + 1).padStart(2, '0');
+                const d = String(t.getUTCDate()).padStart(2, '0');
+                dateEl.value = y + '-' + m + '-' + d;
+            }
+            document.getElementById('rec-refresh').addEventListener('click', loadList);
+            document.getElementById('rec-all').addEventListener('click', function () {
+                if (dateEl) dateEl.value = '';
+                loadList();
+            });
+            document.getElementById('rec-purge').addEventListener('click', purgeExpired);
+
+            const statusEl = document.getElementById('status-filter');
+            const validityEl = document.getElementById('validity-filter');
+            const issueTypeEl = document.getElementById('issue-type-filter');
+            const dateFilterEl = document.getElementById('date-filter');
+            [statusEl, validityEl, issueTypeEl].forEach(function (el) {
+                if (!el) return;
+                el.addEventListener('change', function () {
+                    if (!document.getElementById('qa-panel-issues').hidden) loadIssues();
+                });
+            });
+            if (dateFilterEl) {
+                dateFilterEl.addEventListener('change', function () {
+                    if (!document.getElementById('qa-panel-issues').hidden) loadIssues();
+                });
+            }
+
+            document.getElementById('tab-library').addEventListener('click', function () {
+                showQaTab('library');
+            });
+            document.getElementById('tab-recordings').addEventListener('click', function () {
+                showQaTab('recordings');
+            });
+            document.getElementById('tab-issues').addEventListener('click', function () {
+                showQaTab('issues');
+            });
+
+            document.getElementById('review-form').addEventListener('submit', function (e) {
+                e.preventDefault();
+                const issueId = document.getElementById('issue-id').value;
+                const validityStatus = document.getElementById('validity-status').value;
+                const adminNotes = document.getElementById('admin-notes').value;
+                const allowReschedule = document.getElementById('allow-reschedule').checked;
+                const token = localStorage.getItem('adminToken');
+                fetch('/api/admin/issues/review', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+                    body: JSON.stringify({
+                        issueId: issueId,
+                        validityStatus: validityStatus,
+                        adminReviewNotes: adminNotes,
+                        canReschedule: allowReschedule
+                    })
+                })
+                    .then(function (response) { return response.json(); })
+                    .then(function (data) {
+                        if (data.success) {
+                            showNotification('Issue reviewed successfully', 'success');
+                            closeReviewModal();
+                            loadIssues();
+                        } else {
+                            showNotification('Failed to review issue: ' + data.message, 'error');
+                        }
+                    })
+                    .catch(function (error) {
+                        console.error('Error reviewing issue:', error);
+                        showNotification('Error reviewing issue', 'error');
+                    });
+            });
+
+            document.getElementById('resolve-form').addEventListener('submit', function (e) {
+                e.preventDefault();
+                const issueId = document.getElementById('resolve-issue-id').value;
+                const resolutionType = document.querySelector('input[name="resolution-type"]:checked');
+                const teacherFaultReason = document.getElementById('teacher-fault-reason-text').value;
+                const resolveNotes = document.getElementById('resolve-notes').value;
+                if (!resolutionType) {
+                    showNotification('Please select a resolution type', 'error');
+                    return;
+                }
+                if (resolutionType.value === 'teacher-fault' && !teacherFaultReason.trim()) {
+                    showNotification('Please specify the reason for teacher fault', 'error');
+                    return;
+                }
+                const token = localStorage.getItem('adminToken');
+                fetch('/api/admin/issues/resolve', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+                    body: JSON.stringify({
+                        issueId: issueId,
+                        resolutionType: resolutionType.value,
+                        teacherFaultReason: teacherFaultReason,
+                        resolveNotes: resolveNotes
+                    })
+                })
+                    .then(function (response) { return response.json(); })
+                    .then(function (data) {
+                        if (data.success) {
+                            showNotification('Issue marked as resolved', 'success');
+                            closeResolveModal();
+                            loadIssues();
+                        } else {
+                            showNotification('Failed to resolve issue: ' + data.message, 'error');
+                        }
+                    })
+                    .catch(function (error) {
+                        console.error('Error resolving issue:', error);
+                        showNotification('Error resolving issue', 'error');
+                    });
+            });
+
+            function applyHash() {
+                var h = window.location.hash;
+                if (h === '#issues') showQaTab('issues');
+                else if (h === '#recordings') showQaTab('recordings');
+                else showQaTab('library');
+            }
+            applyHash();
+            window.addEventListener('hashchange', applyHash);
+        });
+    </script>
+</body>
+</html>

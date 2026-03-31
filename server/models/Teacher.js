@@ -38,6 +38,12 @@ const teacherSchema = new mongoose.Schema({
     enum: ['none', '2years', '3to5', '5plus'],
     default: 'none'
   },
+  /** Total years teaching (classroom / formal); points: 3y=20, 5y=30, 10y=40, 15y=50, 20+=50 */
+  teachingExperienceBand: {
+    type: String,
+    enum: ['none', 'y3', 'y5', 'y10', 'y15', 'y20plus'],
+    default: 'none'
+  },
   hasValuesAlignment: { type: Boolean, default: false },
   // H.E.A.R.T. commitments
   heartHospitality: { type: Boolean, default: false },

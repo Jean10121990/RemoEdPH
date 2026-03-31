@@ -66,6 +66,13 @@ body.page-index .logo-section span {
   }
 }
 
+/* Nav + hero CTAs: full pill corners (match .site-lang-switcher), overrides flatter japandi radius */
+body.page-index .nav-btn,
+body.page-index .cta-btn,
+body.page-index a.cta-btn {
+  border-radius: 999px !important;
+}
+
 /* Outline nav — readable + brand hover */
 body.page-index .nav-btn:not(.primary) {
   border-color: var(--remo-logo-blue) !important;
@@ -216,7 +223,7 @@ body.page-index #plans .plan-btn {
   font-weight: 700;
   letter-spacing: 0.02em;
   cursor: pointer;
-  border-radius: 20px;
+  border-radius: 999px;
   background: linear-gradient(
     135deg,
     var(--remo-logo-green-deep),
@@ -262,7 +269,7 @@ body.page-index .assessment-section .assessment-btn {
   font-weight: 800;
   letter-spacing: 0.02em;
   cursor: pointer;
-  border-radius: 20px !important;
+  border-radius: 999px !important;
   border: 3px solid var(--remo-logo-yellow) !important;
   background: linear-gradient(
     135deg,
@@ -310,7 +317,7 @@ body.page-index #signup-form button[type="submit"] {
   width: 100%;
   margin-top: 14px;
   padding: 14px 20px;
-  border-radius: 20px;
+  border-radius: 999px;
   border: 3px solid var(--remo-logo-yellow) !important;
   background: linear-gradient(
     135deg,

@@ -12,6 +12,7 @@ const authRoutes = require('./auth');
 const teacherRoutes = require('./teacher');
 const studentRoutes = require('./student');
 const adminRoutes = require('./admin');
+const adminPortalVideoRoutes = require('./adminPortalVideoRoutes');
 const paymentRoutes = require('./payments');
 const webhookRoutes = require('./webhooks');
 const creditsRoutes = require('./credits.routes');
@@ -20,6 +21,7 @@ const fileRoutes = require('./fileRoutes');
 const announcementRoutes = require('./announcement');
 const lessonRoutes = require('./lessons');
 const classroomRecordingRouter = require('./classroomRecordingApi');
+const applicationRoutes = require('./applications');
 const Booking = require('./models/Booking');
 const Student = require('./models/Student');
 const { consumeReservedCreditForBooking } = require('./services/bookingCreditLedger');
@@ -32,10 +34,19 @@ const fsp = require('fs').promises;
 const FormData = require('form-data');
 const axios = require('axios');
 const { verifyToken, requireTeacher } = require('./authMiddleware');
+const { getClassroomEntryGate, EARLY_ENTRY_MINUTES } = require('./services/classroomEntryWindow');
 
 const app = express();
 
-if (String(process.env.TRUST_PROXY || '').toLowerCase() === 'true' || process.env.TRUST_PROXY === '1') {
+// Reverse proxies (ngrok, nginx, Cloud Run, etc.) send X-Forwarded-For. express-rate-limit validates that
+// trust proxy is enabled when that header is present, or it throws ValidationError (see ERR_ERL_UNEXPECTED_X_FORWARDED_FOR).
+const trustProxyRaw = process.env.TRUST_PROXY;
+const trustProxyOff = trustProxyRaw === '0' || String(trustProxyRaw || '').toLowerCase() === 'false';
+const trustProxyOn =
+  trustProxyRaw === '1' ||
+  String(trustProxyRaw || '').toLowerCase() === 'true' ||
+  (!trustProxyOff && process.env.NODE_ENV !== 'production');
+if (trustProxyOn) {
   app.set('trust proxy', 1);
 }
 
@@ -44,10 +55,21 @@ function isAllowedOrigin(origin) {
   try {
     const u = new URL(origin);
     const host = String(u.hostname || '').toLowerCase();
+    
+    // 1. Allow localhost for development
     if (host === 'localhost' || host === '127.0.0.1') return true;
+    
+    // 2. Allow your production domain from .env
+    if (process.env.FRONTEND_URL) {
+      const allowedUrl = new URL(process.env.FRONTEND_URL);
+      if (host === allowedUrl.hostname.toLowerCase()) return true;
+    }
+
+    // 3. Allow tunnels for testing
     if (host.endsWith('.devtunnels.ms')) return true;
     if (host.endsWith('.ngrok.io')) return true;
     if (host.endsWith('.ngrok-free.dev')) return true;
+    
     return false;
   } catch {
     return false;
@@ -122,10 +144,12 @@ app.use(
 // Keep raw body for PayMongo webhook signature verification.
 app.use('/api/webhooks/paymongo', express.raw({ type: 'application/json' }));
 
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
-app.use(bodyParser.json({ limit: '50mb' }));
-app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
+// Large JSON bodies: lesson library uploads send base64 fileData (UI allows up to ~50MB files).
+const jsonBodyLimit = process.env.JSON_BODY_LIMIT || '52mb';
+app.use(express.json({ limit: jsonBodyLimit }));
+app.use(express.urlencoded({ extended: true, limit: jsonBodyLimit }));
+app.use(bodyParser.json({ limit: jsonBodyLimit }));
+app.use(bodyParser.urlencoded({ extended: true, limit: jsonBodyLimit }));
 
 const session = require('express-session');
 const rateLimit = require('express-rate-limit');
@@ -224,9 +248,15 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use('/api/auth', noStoreProtectedResponse, authRoutes);
 app.use('/api/teacher', noStoreProtectedResponse, teacherRoutes);
 app.use('/api/student', noStoreProtectedResponse, studentRoutes);
+// Public teacher application form: POST /api/applications
+app.use('/api', applicationRoutes);
 // Must be before /api/admin: same path prefix /api/admin/... is otherwise swallowed by adminRoutes → 404
 app.use('/api', noStoreProtectedResponse, classroomRecordingRouter);
-app.use('/api/admin', noStoreProtectedResponse, adminRouterLimiter, adminRoutes);
+// Portal videos routes are registered before the main admin router (large file) so paths always resolve.
+const adminApiCombined = express.Router();
+adminApiCombined.use(adminPortalVideoRoutes);
+adminApiCombined.use(adminRoutes);
+app.use('/api/admin', noStoreProtectedResponse, adminRouterLimiter, adminApiCombined);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/webhooks', webhookRoutes);
 app.use('/api/credits', noStoreProtectedResponse, adminRouterLimiter, creditsRoutes);
@@ -239,55 +269,23 @@ app.use('/api/lessons', noStoreProtectedResponse, lessonRoutes);
 
 /**
  * WebRTC ICE servers for live-classroom.html
- * STUN helps with NAT; TURN relays traffic when P2P fails (common on strict networks / dev tunnels).
- * Set TURN_URLS + TURN_USERNAME + TURN_CREDENTIAL in .env for production reliability.
+ * STUN for NAT discovery; TURN relays when P2P fails.
+ * Optional: TURN_URL, TURN_USERNAME, TURN_CREDENTIAL in .env (e.g. turn:host:3478).
  */
 app.get('/api/rtc-config', (req, res) => {
-  const iceServers = [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' }
-  ];
-  const turnUrls = process.env.TURN_URLS || process.env.TURN_URI;
-  if (turnUrls) {
-    const rawList = turnUrls
-      .split(',')
-      .map((s) => String(s || '').trim())
-      .filter(Boolean)
-    const urls = rawList
-      .map((u) => {
-        // Allow: stun:, turn:, turns:
-        const lower = u.toLowerCase();
-        if (lower.startsWith('stun:') || lower.startsWith('turn:') || lower.startsWith('turns:')) return u;
-        // Common misconfig: "host:port" → assume TURN
-        if (/^[a-z0-9.-]+:\d+(\?.*)?$/i.test(u)) return `turn:${u}`;
-        // Reject obvious invalid URLs like https://...
-        return '';
-      })
-      .filter(Boolean);
+  const iceServers = [{ urls: 'stun:stun.l.google.com:19302' }];
 
-    // If user provided only host:port (or only turn:host:3478) and no turns:/tcp entry,
-    // add a safe fallback for restrictive networks: turns:host:443?transport=tcp
-    const hasTurns = urls.some((u) => String(u).toLowerCase().startsWith('turns:'));
-    if (!hasTurns) {
-      // Pick the first host from a turn url (or host:port input)
-      const first = urls[0] || '';
-      const m = String(first).match(/^(?:turns?:)?([^:?/]+)(?::(\d+))?/i);
-      const host = m && m[1] ? m[1] : '';
-      if (host) {
-        urls.unshift(`turns:${host}:443?transport=tcp`);
-      }
+  const turnUrl = String(process.env.TURN_URL || '').trim();
+  if (turnUrl) {
+    const server = { urls: turnUrl };
+    const user = String(process.env.TURN_USERNAME || '').trim();
+    if (user) {
+      server.username = user;
+      server.credential = String(process.env.TURN_CREDENTIAL || '');
     }
-    if (urls.length) {
-      const turnEntry = urls.length === 1 ? { urls: urls[0] } : { urls };
-      if (process.env.TURN_USERNAME) {
-        turnEntry.username = process.env.TURN_USERNAME;
-        turnEntry.credential = process.env.TURN_CREDENTIAL || '';
-      }
-      iceServers.push(turnEntry);
-    } else {
-      console.warn('⚠️ TURN_URLS is set but contains no valid stun/turn urls. Expected e.g. turn:host:3478 or turns:host:443?transport=tcp');
-    }
+    iceServers.push(server);
   }
+
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
   res.json({ iceServers });
 });
@@ -581,7 +579,16 @@ app.patch('/api/bookings/:bookingId/complete', verifyToken, requireTeacher, asyn
       return res.status(403).json({ success: false, error: 'Access denied. This booking does not belong to you.' });
     }
     if (booking.status === 'completed') {
-      return res.status(400).json({ success: false, error: 'Class is already completed' });
+      return res.json({
+        success: true,
+        message: 'Class already completed',
+        booking: {
+          id: booking._id,
+          status: booking.status,
+          finishedAt: booking.finishedAt,
+          classCompleted: booking.attendance && booking.attendance.classCompleted,
+        },
+      });
     }
 
     booking.status = 'completed';
@@ -630,11 +637,18 @@ app.post('/api/booking/:bookingId/complete', verifyToken, requireTeacher, async 
       });
     }
     
-    // Check if class is already completed
+    // Idempotent: final completion may already be set (e.g. after live session ended)
     if (booking.status === 'completed') {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Class is already completed' 
+      console.log('ℹ️ Class already completed (idempotent):', bookingId);
+      return res.json({
+        success: true,
+        message: 'Class already completed',
+        booking: {
+          id: booking._id,
+          status: booking.status,
+          finishedAt: booking.finishedAt,
+          classCompleted: booking.attendance && booking.attendance.classCompleted,
+        },
       });
     }
     
@@ -692,7 +706,7 @@ app.get('/api/feedback/check/:bookingId', verifyToken, requireTeacher, async (re
     const { bookingId } = req.params;
     
     // Check if feedback already exists for this booking
-    const existingFeedback = await Feedback.findOne({ bookingId });
+    const existingFeedback = await Feedback.findOne({ bookingId: String(bookingId) });
     
     res.json({
       success: true,
@@ -752,7 +766,7 @@ app.post('/api/feedback/submit', verifyToken, requireTeacher, async (req, res) =
     }
     
     // Check if feedback already exists for this booking
-    const existingFeedback = await Feedback.findOne({ bookingId });
+    const existingFeedback = await Feedback.findOne({ bookingId: String(bookingId) });
     if (existingFeedback) {
       // Check if the class was actually completed
       const booking = await Booking.findById(bookingId);
@@ -790,6 +804,16 @@ app.post('/api/feedback/submit', verifyToken, requireTeacher, async (req, res) =
       
       await feedback.save();
       console.log('✅ Teacher feedback submitted successfully');
+      try {
+        const { notifyStudentLesson1FeedbackReady } = require('./services/studentLessonFeedbackEmail');
+        setImmediate(() => {
+          notifyStudentLesson1FeedbackReady(booking).catch((err) =>
+            console.error('[lesson1 feedback email]', err.message || err)
+          );
+        });
+      } catch (e) {
+        console.error('[lesson1 feedback email] setup', e.message || e);
+      }
     }
     
     res.json({
@@ -1117,7 +1141,7 @@ app.post('/api/signaling/clear-room', (req, res) => {
   }
 });
 
-// Check if class time allows access to live classroom
+// Check if class time allows access to live classroom (strict: not before start − 10 min)
 app.post('/api/class/check-time-access', async (req, res) => {
   try {
     const { bookingId } = req.body;
@@ -1134,42 +1158,32 @@ app.post('/api/class/check-time-access', async (req, res) => {
       return res.status(404).json({ error: 'Booking not found' });
     }
     
-    // Calculate class start and end times
     const classStartTime = new Date(booking.date + ' ' + booking.time);
     const classEndTime = new Date(classStartTime.getTime() + (25 * 60 * 1000)); // 25 minutes
     const currentTime = new Date();
-    
-    // Debug logging
-    console.log(`⏰ Debug - Booking ${bookingId}:`);
-    console.log(`  - Booking date: ${booking.date}`);
-    console.log(`  - Booking time: ${booking.time}`);
-    console.log(`  - Class start time: ${classStartTime.toLocaleString()}`);
-    console.log(`  - Class end time: ${classEndTime.toLocaleString()}`);
-    console.log(`  - Current time: ${currentTime.toLocaleString()}`);
-    
-    // Check if current time is within class time window
+    const gate = getClassroomEntryGate(booking, currentTime.getTime());
+    const accessAllowed = gate.allowed;
+    const tooEarly = gate.code === 'TOO_EARLY';
     const isBeforeClass = currentTime < classStartTime;
     const isAfterClass = currentTime > classEndTime;
     const isDuringClass = currentTime >= classStartTime && currentTime <= classEndTime;
-    
-    // Allow access during class time OR if class hasn't started yet (for waiting room)
-    const accessAllowed = isDuringClass || isBeforeClass;
-    
-    console.log(`⏰ Class time check for booking ${bookingId}:`);
-    console.log(`  - Class start: ${classStartTime.toLocaleString()}`);
-    console.log(`  - Class end: ${classEndTime.toLocaleString()}`);
-    console.log(`  - Current time: ${currentTime.toLocaleString()}`);
-    console.log(`  - Access allowed: ${accessAllowed}`);
+
+    console.log(`⏰ Class entry check for booking ${bookingId}: accessAllowed=${accessAllowed} tooEarly=${tooEarly}`);
     
     res.json({
       accessAllowed,
+      tooEarly,
+      earlyEntryMinutes: EARLY_ENTRY_MINUTES,
+      opensAt: gate.opensAt || null,
+      scheduledStart: gate.scheduledStart || null,
       classStartTime: classStartTime.toISOString(),
       classEndTime: classEndTime.toISOString(),
       currentTime: currentTime.toISOString(),
       isBeforeClass,
       isAfterClass,
       isDuringClass,
-      bookingId
+      bookingId,
+      message: gate.message || null,
     });
     
   } catch (error) {
@@ -1299,10 +1313,25 @@ app.get('/student-waiting-room', (req, res) => {
 
 // Error handling middleware
 app.use((err, req, res, next) => {
+  const tooLarge =
+    err &&
+    (err.type === 'entity.too.large' ||
+      err.status === 413 ||
+      err.statusCode === 413 ||
+      String(err.message || '').toLowerCase().includes('too large'));
+  if (tooLarge) {
+    console.warn('⚠️ Payload too large:', req.method, req.originalUrl, err.message || err.type);
+    return res.status(413).json({
+      success: false,
+      error: 'Request body too large',
+      hint:
+        'If this happens for small files on production, Nginx/Apache in front of Node is likely limiting the body (default often 1m). Raise client_max_body_size (Nginx) or LimitRequestBody (Apache). See RemoEdPH/deploy/nginx-increase-body-size.conf',
+    });
+  }
   console.error('Error:', err);
-  res.status(500).json({ 
+  res.status(500).json({
     error: 'Internal server error',
-    message: err.message 
+    message: err.message,
   });
 });
 
@@ -1331,6 +1360,30 @@ io.on('connection', socket => {
     socket.on('join', async (data) => {
         const { room, userType, userId, username } = data;
         console.log('🚪 Client', socket.id, 'joining room:', room, 'as', userType, username);
+
+        if (room && room !== 'default-room') {
+            try {
+                if (db.readyState === 1) {
+                    const bookingForGate = await Booking.findOne({ classroomId: room });
+                    if (bookingForGate) {
+                        const gate = getClassroomEntryGate(bookingForGate, Date.now());
+                        if (!gate.allowed && gate.code === 'TOO_EARLY') {
+                            socket.emit('entry-denied', {
+                                code: gate.code,
+                                opensAt: gate.opensAt,
+                                scheduledStart: gate.scheduledStart,
+                                message: gate.message || 'Class has not opened yet.',
+                                earlyEntryMinutes: EARLY_ENTRY_MINUTES,
+                            });
+                            console.log(`🚫 Socket join blocked (too early) room=${room} socket=${socket.id}`);
+                            return;
+                        }
+                    }
+                }
+            } catch (gateErr) {
+                console.warn('classroom entry gate error:', gateErr.message);
+            }
+        }
         
         // Store user session information
         userSessions.set(socket.id, { room, userType, userId, username });
@@ -1484,6 +1537,29 @@ io.on('connection', socket => {
         const userId = socket.id;
         
         console.log('🚪 Client', socket.id, 'joining room:', room, 'as', userType, username);
+
+        if (room && room !== 'default-room') {
+            try {
+                if (db.readyState === 1) {
+                    const bookingForGate = await Booking.findOne({ classroomId: room });
+                    if (bookingForGate) {
+                        const gate = getClassroomEntryGate(bookingForGate, Date.now());
+                        if (!gate.allowed && gate.code === 'TOO_EARLY') {
+                            socket.emit('entry-denied', {
+                                code: gate.code,
+                                opensAt: gate.opensAt,
+                                scheduledStart: gate.scheduledStart,
+                                message: gate.message || 'Class has not opened yet.',
+                                earlyEntryMinutes: EARLY_ENTRY_MINUTES,
+                            });
+                            return;
+                        }
+                    }
+                }
+            } catch (gateErr) {
+                console.warn('classroom entry gate (join-room) error:', gateErr.message);
+            }
+        }
         
         // Store user session information
         userSessions.set(socket.id, { room, userType, userId, username });
@@ -1619,28 +1695,32 @@ io.on('connection', socket => {
     
     // Handle chat messages
     socket.on('chat-message', (messageData) => {
-        const { room, message, username, timestamp } = messageData;
-        console.log('💬 Received chat message from', username, 'in room', room, ':', message);
-        
+        if (!messageData || typeof messageData !== 'object') return;
+        const room = messageData.room;
+        const sender = messageData.sender || messageData.username;
+        const message =
+            messageData.message == null ? '' : String(messageData.message);
+        const payload = { ...messageData, message, sender };
+        console.log('💬 Received chat message from', sender, 'in room', room, ':', message);
+
         // Store message in chat history
         if (!chatHistory.has(room)) {
             chatHistory.set(room, []);
         }
-        
+
         const roomHistory = chatHistory.get(room);
-        roomHistory.push(messageData);
-        
+        roomHistory.push(payload);
+
         // Keep only last 50 messages to prevent memory issues
         if (roomHistory.length > 50) {
             roomHistory.shift();
         }
-        
-        // Broadcast message to all users in the room
+
         const clients = io.sockets.adapter.rooms.get(room);
         console.log('📤 Broadcasting message to', clients ? clients.size : 0, 'clients in room', room);
-        io.to(room).emit('chat-message', messageData);
-        
-        console.log(`Chat message in room ${room}: ${username}: ${message}`);
+        io.to(room).emit('chat-message', payload);
+
+        console.log(`Chat message in room ${room}: ${sender}: ${message}`);
     });
 
     // Handle reward giving
@@ -2283,6 +2363,12 @@ async function updateBookingAttendance(room, userType, userId, username) {
         const booking = await Booking.findOne({ classroomId: room });
         if (!booking) {
             console.log(`❌ No booking found for classroom ${room}`);
+            return;
+        }
+
+        const gate = getClassroomEntryGate(booking, Date.now());
+        if (!gate.allowed) {
+            console.log(`🚫 Entry window closed (too early) for ${userType} in room ${room}`);
             return;
         }
         

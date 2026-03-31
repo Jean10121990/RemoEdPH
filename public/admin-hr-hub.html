@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
+    <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HR Hub - RemoEdPH Admin</title>
+    <link rel="stylesheet" href="modern-styles.css">
+    <link rel="stylesheet" href="css/teacher-sidebar.css">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/admin-hub-shell.css">
+</head>
+<body class="admin-hub-page page-admin-hr-hub">
+    <div class="remoed-main">
+        <div id="admin-sidebar-root"></div>
+        <script src="js/admin-session.js"></script>
+        <script src="js/admin-sidebar.js"></script>
+        <script>AdminSidebar.render('admin-sidebar-root', 'hr-hub');</script>
+        <div class="remoed-content">
+            <div class="remoed-section">
+                <div class="remoed-section-title">HR Hub</div>
+                <p class="muted" style="margin-top:0;margin-bottom:16px;">Users, teacher assessments, and hiring pipeline in one place.</p>
+
+                <div class="hub-tabs" role="tablist" aria-label="HR Hub sections">
+                    <button type="button" class="hub-tab hub-tab--active" role="tab" id="hr-tab-users" aria-selected="true" aria-controls="hr-panel-users">User Management</button>
+                    <button type="button" class="hub-tab" role="tab" id="hr-tab-assessments" aria-selected="false" aria-controls="hr-panel-assessments">Teacher Assessments</button>
+                    <button type="button" class="hub-tab" role="tab" id="hr-tab-pipeline" aria-selected="false" aria-controls="hr-panel-pipeline">Teacher Pipeline</button>
+                </div>
+
+                <div id="hr-panel-users" class="hub-panel" role="tabpanel" aria-labelledby="hr-tab-users">
+                    <iframe id="iframe-hr-users" class="hub-iframe" title="User Management"></iframe>
+                </div>
+                <div id="hr-panel-assessments" class="hub-panel" role="tabpanel" aria-labelledby="hr-tab-assessments" hidden>
+                    <iframe id="iframe-hr-assessments" class="hub-iframe" title="Teacher Assessments"></iframe>
+                </div>
+                <div id="hr-panel-pipeline" class="hub-panel" role="tabpanel" aria-labelledby="hr-tab-pipeline" hidden>
+                    <iframe id="iframe-hr-pipeline" class="hub-iframe" title="Teacher Pipeline"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        (function () {
+            var IFRAMES = {
+                users: { id: 'iframe-hr-users', src: 'admin-users.html?adminEmbed=1' },
+                assessments: { id: 'iframe-hr-assessments', src: 'admin-teacher-assessments.html?adminEmbed=1' },
+                pipeline: { id: 'iframe-hr-pipeline', src: 'admin-teacher-pipeline.html?adminEmbed=1' }
+            };
+
+            function checkAuth() {
+                var token = localStorage.getItem('adminToken');
+                if (!token) {
+                    window.location.href = (function () {
+                        try {
+                            var p = localStorage.getItem('remoedAdminEntryPath');
+                            if (p && p.charAt(0) === '/') return p;
+                        } catch (e) {}
+                        return 'index.html';
+                    })();
+                    return false;
+                }
+                if (window.AdminSidebar && typeof AdminSidebar.applyGreetingFromStorage === 'function') {
+                    AdminSidebar.applyGreetingFromStorage();
+                }
+                return true;
+            }
+
+            function ensureIframe(key) {
+                var cfg = IFRAMES[key];
+                if (!cfg) return;
+                var el = document.getElementById(cfg.id);
+                if (!el || el.getAttribute('data-loaded')) return;
+                el.src = cfg.src;
+                el.setAttribute('data-loaded', '1');
+            }
+
+            function setHash(tab) {
+                try {
+                    var h = tab === 'assessments' ? '#assessments' : tab === 'pipeline' ? '#pipeline' : '#users';
+                    if (window.location.hash !== h) {
+                        history.replaceState(null, '', 'admin-hr-hub.html' + h);
+                    }
+                } catch (e) {}
+            }
+
+            function showTab(tab) {
+                var map = [
+                    { key: 'users', t: 'hr-tab-users', p: 'hr-panel-users' },
+                    { key: 'assessments', t: 'hr-tab-assessments', p: 'hr-panel-assessments' },
+                    { key: 'pipeline', t: 'hr-tab-pipeline', p: 'hr-panel-pipeline' }
+                ];
+                map.forEach(function (row) {
+                    var on = row.key === tab;
+                    var tEl = document.getElementById(row.t);
+                    var pEl = document.getElementById(row.p);
+                    if (tEl) {
+                        tEl.classList.toggle('hub-tab--active', on);
+                        tEl.setAttribute('aria-selected', on);
+                    }
+                    if (pEl) pEl.hidden = !on;
+                });
+                setHash(tab);
+                ensureIframe(tab);
+            }
+
+            document.addEventListener('DOMContentLoaded', function () {
+                if (!checkAuth()) return;
+                document.getElementById('hr-tab-users').addEventListener('click', function () { showTab('users'); });
+                document.getElementById('hr-tab-assessments').addEventListener('click', function () { showTab('assessments'); });
+                document.getElementById('hr-tab-pipeline').addEventListener('click', function () { showTab('pipeline'); });
+                function applyHash() {
+                    var h = window.location.hash;
+                    if (h === '#assessments') showTab('assessments');
+                    else if (h === '#pipeline') showTab('pipeline');
+                    else showTab('users');
+                }
+                applyHash();
+                window.addEventListener('hashchange', applyHash);
+            });
+        })();
+    </script>
+</body>
+</html>

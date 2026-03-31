@@ -1,0 +1,31 @@
+/* Used with html.admin-embed when admin pages load inside hub iframes */
+
+html.admin-embed #admin-sidebar-root {
+    display: none !important;
+    width: 0 !important;
+    min-width: 0 !important;
+    height: 0 !important;
+    overflow: hidden !important;
+    flex: 0 0 0 !important;
+}
+
+html.admin-embed .remoed-main {
+    min-height: 100vh;
+}
+
+html.admin-embed .remoed-content {
+    margin-left: 0 !important;
+    max-width: none !important;
+    width: 100% !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+}
+
+/* Teacher Pipeline uses .layout + .content instead of .remoed-content */
+html.admin-embed body.page-admin-teacher-pipeline .content {
+    margin-left: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    box-sizing: border-box !important;
+}

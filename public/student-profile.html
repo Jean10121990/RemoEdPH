@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="child-friendly-styles.css">
 <link rel="stylesheet" href="css/teacher-sidebar.css">
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/student-portal-layout.css">
 </head>
 <body  class="student-portal page-student-profile">
     <div class="remoed-main">
@@ -472,27 +473,19 @@
             const fileInput = document.getElementById('profilePicture');
             if (!avatar || !fileInput) return;
 
-            // Only open the file picker when editing is enabled.
             avatar.addEventListener('click', () => {
-                const isEditing = document.getElementById('save-btn').style.display !== 'none';
-                if (!isEditing) {
-                    alert('Click "Edit Profile" to upload a new profile picture.');
-                    return;
-                }
-                // Ensure input is enabled before clicking
                 fileInput.disabled = false;
                 fileInput.click();
             });
 
-            // When a file is selected, preview it immediately in the avatar and sidebar
-            fileInput.addEventListener('change', function() {
+            // Preview immediately; save to server without requiring Edit Profile + Save
+            fileInput.addEventListener('change', function () {
                 const file = this.files && this.files[0];
                 if (!file) return;
                 const reader = new FileReader();
-                reader.onload = function(e) {
+                reader.onload = function (e) {
                     const dataUrl = e.target.result;
 
-                    // Main profile avatar
                     const mainImg = document.getElementById('profile-avatar-img');
                     const mainText = document.getElementById('profile-avatar-text');
                     if (mainImg) {
@@ -501,7 +494,6 @@
                     }
                     if (mainText) mainText.style.display = 'none';
 
-                    // Sidebar avatar
                     const sidebarImg = document.getElementById('profile-image');
                     const sidebarText = document.getElementById('avatar-text');
                     if (sidebarImg) {
@@ -510,7 +502,6 @@
                     }
                     if (sidebarText) sidebarText.style.display = 'none';
 
-                    // Document preview (if present)
                     const preview = document.getElementById('profile-preview');
                     if (preview) {
                         preview.src = dataUrl;
@@ -518,6 +509,21 @@
                     }
                 };
                 reader.readAsDataURL(file);
+
+                (async () => {
+                    const ok = await uploadFile(file, 'profilePicture');
+                    if (ok) {
+                        showSuccessMessage('Profile picture updated!');
+                        await loadProfile();
+                    } else {
+                        showSuccessMessage('Could not save profile picture. Try again.', 'error');
+                    }
+                    const editing = document.getElementById('save-btn').style.display !== 'none';
+                    if (!editing) {
+                        fileInput.disabled = true;
+                    }
+                    fileInput.value = '';
+                })();
             });
         }
 
@@ -983,32 +989,39 @@
         async function uploadFile(file, documentType) {
             try {
                 const token = localStorage.getItem('token');
-                const reader = new FileReader();
-                reader.onload = async function(e) {
-                    const fileData = {
+                if (!token) {
+                    console.error('uploadFile: no token');
+                    return false;
+                }
+                const fileDataUrl = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result);
+                    reader.onerror = () => reject(new Error('Could not read file'));
+                    reader.readAsDataURL(file);
+                });
+
+                const response = await fetch('/api/student/upload-document', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
                         documentType: documentType,
-                        fileData: e.target.result,
+                        fileData: fileDataUrl,
                         fileName: file.name
-                    };
+                    })
+                });
 
-                    const response = await fetch('/api/student/upload-document', {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(fileData)
-                    });
-
-                    if (response.ok) {
-                        console.log(`${documentType} uploaded successfully`);
-                    } else {
-                        console.error(`Failed to upload ${documentType}`);
-                    }
-                };
-                reader.readAsDataURL(file);
+                if (response.ok) {
+                    console.log(`${documentType} uploaded successfully`);
+                    return true;
+                }
+                console.error(`Failed to upload ${documentType}`, await response.text());
+                return false;
             } catch (error) {
                 console.error(`Error uploading ${documentType}:`, error);
+                return false;
             }
         }
 

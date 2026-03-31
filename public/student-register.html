@@ -25,6 +25,9 @@
 
         <h1 class="login-title">Student Registration</h1>
         <p class="login-subtitle">Create your account and start learning with RemoEdPH.</p>
+        <p class="login-subtitle" id="assessment-trial-hint" style="display:none; color:#0f766e; font-weight:600;">
+          You’re claiming your <strong>free trial class</strong> from the level assessment. Use the <strong>same email</strong> you used on the assessment, then log in and book your lesson.
+        </p>
 
         <form class="register-form" id="student-register-form">
           <div class="form-group">
@@ -98,7 +101,7 @@
       <div class="plans-grid-modal">
         <div class="plan-card-modal">
           <div class="plan-name-modal">RemoSpark</div>
-          <div class="plan-price-modal" style="font-size:1rem;">$4.17/day × 22d</div>
+          <div class="plan-price-modal" style="font-size:1rem;">22 credits · 1 mo · 22/mo</div>
           <div class="plan-period-modal"><strong>$91.74 USD</strong> · <strong>₱5,507.15</strong> est.</div>
           <ul class="plan-features-modal">
             <li>Unlimited Classes</li>
@@ -112,8 +115,8 @@
         <div class="plan-card-modal featured-modal">
           <div class="plan-badge-modal">Popular</div>
           <div class="plan-name-modal">RemoSteady</div>
-          <div class="plan-price-modal" style="font-size:1rem;">$4.08/day × 66d</div>
-          <div class="plan-period-modal"><strong>$269.28 USD</strong> · <strong>₱16,162.88</strong> est.</div>
+          <div class="plan-price-modal" style="font-size:1rem;">66 credits · 3 mo · 22/mo</div>
+          <div class="plan-period-modal"><strong>$269.28 USD</strong> · <strong>₱16,164.88</strong> est.</div>
           <ul class="plan-features-modal">
             <li>Unlimited Classes</li>
             <li>All Learning Games</li>
@@ -126,7 +129,7 @@
         
         <div class="plan-card-modal">
           <div class="plan-name-modal">RemoScholar</div>
-          <div class="plan-price-modal" style="font-size:1rem;">$4.00/day × 132d</div>
+          <div class="plan-price-modal" style="font-size:1rem;">132 credits · 6 mo · 22/mo</div>
           <div class="plan-period-modal"><strong>$528.00 USD</strong> · <strong>₱31,695.84</strong> est.</div>
           <ul class="plan-features-modal">
             <li>Unlimited Classes</li>
@@ -141,7 +144,7 @@
         
         <div class="plan-card-modal">
           <div class="plan-name-modal">RemoSummit</div>
-          <div class="plan-price-modal" style="font-size:1rem;">$3.92/day × 246d</div>
+          <div class="plan-price-modal" style="font-size:1rem;">264 credits · 12 mo · 22/mo</div>
           <div class="plan-period-modal"><strong>$964.32 USD</strong> · <strong>₱57,888.13</strong> est.</div>
           <ul class="plan-features-modal">
             <li>Unlimited Classes</li>
@@ -159,6 +162,20 @@
   </div>
   
   <script>
+    const urlParamsReg = new URLSearchParams(window.location.search);
+    const urlTrialToken = urlParamsReg.get('trial');
+    (function prefillFromAssessment() {
+      const pe = urlParamsReg.get('email');
+      if (pe) {
+        const emEl = document.getElementById('student-register-email');
+        if (emEl) emEl.value = decodeURIComponent(pe.replace(/\+/g, ' '));
+      }
+      if (urlTrialToken) {
+        const hint = document.getElementById('assessment-trial-hint');
+        if (hint) hint.style.display = 'block';
+      }
+    })();
+
     // Password toggle functionality
     function togglePassword() {
       const passwordInput = document.getElementById('student-register-password');
@@ -237,29 +254,34 @@
             username,
             email,
             password,
-            referralCode: localStorage.getItem('referralCode') || ''
+            referralCode: localStorage.getItem('referralCode') || '',
+            assessmentTrialToken: urlTrialToken || undefined
           })
         });
         
         const data = await response.json();
         
         if (data.success) {
-          errorDiv.textContent = '✅ Registration successful! Please choose a subscription plan.';
+          if (data.assessmentTrialActivated) {
+            errorDiv.textContent =
+              '✅ Account created! You have 1 free trial class — log in and book your lesson from your student dashboard. After your trial, you can pick a plan to continue.';
+            errorDiv.className = 'register-error register-success';
+            errorDiv.style.display = 'block';
+            submitBtn.textContent = '✅ Success!';
+            setTimeout(() => {
+              window.location.href = 'student-login.html';
+            }, 2200);
+            return;
+          }
+
+          errorDiv.textContent =
+            '✅ Account created! Log in to open your dashboard — start with a free trial class when you\'re ready, then pick a plan after your first lesson.';
           errorDiv.className = 'register-error register-success';
           errorDiv.style.display = 'block';
           submitBtn.textContent = '✅ Success!';
-          
-          // Store registration data for plan selection + PayMongo create-link
-          localStorage.setItem('newStudentEmail', email);
-          localStorage.setItem('newStudentUsername', username);
-          if (data.studentId) {
-            localStorage.setItem('newStudentId', String(data.studentId));
-          }
-          
-          // Show plan selection modal
           setTimeout(() => {
-            document.getElementById('plan-selection-modal').style.display = 'flex';
-          }, 1000);
+            window.location.href = 'student-login.html';
+          }, 2200);
         } else {
           errorDiv.textContent = data.message || 'Registration failed. Please try again.';
           errorDiv.className = 'register-error';

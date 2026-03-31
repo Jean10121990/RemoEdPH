@@ -261,6 +261,60 @@
       background: linear-gradient(135deg, var(--primary), var(--primary-dark)) !important;
     }
 
+    .checkout-profile-panel {
+      display: none;
+      margin-bottom: 20px;
+      padding: 18px 20px;
+      border-radius: 20px;
+      background: linear-gradient(145deg, #f8fafc, #eef6ff);
+      border: 1px solid rgba(28, 167, 231, 0.25);
+      text-align: left;
+    }
+    .checkout-profile-panel.is-visible { display: block; }
+    .checkout-profile-panel .cp-lead {
+      margin: 0 0 14px;
+      font-weight: 600;
+      color: #1e2a4a;
+      line-height: 1.5;
+    }
+    .checkout-profile-panel .cp-field {
+      margin-bottom: 12px;
+    }
+    .checkout-profile-panel label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #1e2a4a;
+      margin-bottom: 4px;
+    }
+    .checkout-profile-panel input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 12px 14px;
+      border-radius: 999px;
+      border: 1px solid #e2e8f0;
+      font-size: 1rem;
+    }
+    .checkout-profile-panel input[readonly] {
+      background: #f1f5f9;
+      color: #64748b;
+    }
+    .checkout-profile-panel .cp-submit {
+      width: 100%;
+      margin-top: 8px;
+      border-radius: 999px;
+      padding: 14px;
+      border: none;
+      font-weight: 700;
+      font-size: 1rem;
+      cursor: pointer;
+      background: linear-gradient(135deg, #1d9bf0, #14b8a6);
+      color: #fff;
+      box-shadow: 0 10px 24px rgba(29, 155, 240, 0.3);
+      border: 2px solid rgba(250, 214, 72, 0.75);
+    }
+    #checkout-profile-msg { margin-top: 10px; font-size: 0.9rem; }
+
     @media (max-width: 900px) {
       .login-card {
         grid-template-columns: 1fr;
@@ -315,11 +369,43 @@
         <h1 class="login-title" data-i18n="login_title">Student Login</h1>
         <p class="login-subtitle" data-i18n="login_subtitle">Jump back into your lessons and track your progress.</p>
 
+        <div id="checkout-profile-panel" class="checkout-profile-panel" aria-live="polite">
+          <p class="cp-lead">You're in! Payment went through. Please finish your profile — use the <strong>same password</strong> you entered at checkout.</p>
+          <form id="checkout-profile-form">
+            <div class="cp-field">
+              <label for="cp-email">Email</label>
+              <input type="email" id="cp-email" name="email" readonly autocomplete="email">
+            </div>
+            <div class="cp-field">
+              <label for="cp-username">Username</label>
+              <input type="text" id="cp-username" name="username" readonly autocomplete="username">
+            </div>
+            <div class="cp-field">
+              <label for="cp-password">Confirm password</label>
+              <input type="password" id="cp-password" name="password" required autocomplete="current-password" placeholder="Password from checkout">
+            </div>
+            <div class="cp-field">
+              <label for="cp-first">Student first name</label>
+              <input type="text" id="cp-first" name="firstName" required autocomplete="given-name" placeholder="First name">
+            </div>
+            <div class="cp-field">
+              <label for="cp-last">Student last name</label>
+              <input type="text" id="cp-last" name="lastName" required autocomplete="family-name" placeholder="Last name">
+            </div>
+            <div class="cp-field">
+              <label for="cp-contact">Contact (optional)</label>
+              <input type="text" id="cp-contact" name="contact" autocomplete="tel" placeholder="Phone for reminders">
+            </div>
+            <button type="submit" class="cp-submit">Save profile &amp; continue</button>
+          </form>
+          <div id="checkout-profile-msg"></div>
+        </div>
+
         <div id="student-login-error" class="remoed-status error" style="display: none;"></div>
         <form id="student-login-form">
           <div class="remoed-form-group">
-            <label for="student-email" class="remoed-form-label" data-i18n="student_id_label">Student ID</label>
-            <input type="text" id="student-email" class="remoed-form-input" data-i18n-placeholder="student_id_placeholder" placeholder="Enter your Student ID" required autocomplete="on">
+            <label for="student-email" class="remoed-form-label" data-i18n="student_id_label">Student username</label>
+            <input type="text" id="student-email" class="remoed-form-input" data-i18n-placeholder="student_id_placeholder" placeholder="Enter your student username" required autocomplete="username">
           </div>
           <div class="remoed-form-group">
             <label for="student-password" class="remoed-form-label" data-i18n="password_label">Password</label>
@@ -335,7 +421,7 @@
           </button>
         </form>
         <div class="links-container">
-          <a href="student-register.html" data-i18n="link_register">New here? Join the fun!</a>
+          <a href="#" id="join-fun-link" data-i18n="link_register">New here? Join the fun!</a>
           <a href="student-forgot-password.html" data-i18n="link_forgot">Forgot password?</a>
           <a href="index.html" data-i18n="link_home">Back to Home</a>
         </div>
@@ -380,6 +466,79 @@
   <script src="js/site-i18n.js"></script>
   <script>
     SiteI18n.init();
+
+    (function setupPostCheckoutProfile() {
+      var params = new URLSearchParams(window.location.search || '');
+      if (params.get('payment') !== 'success') return;
+      var em = params.get('email') || '';
+      var un = params.get('username') || '';
+      if (!em || !un) return;
+      var panel = document.getElementById('checkout-profile-panel');
+      var mainForm = document.getElementById('student-login-form');
+      if (!panel) return;
+      document.getElementById('cp-email').value = decodeURIComponent(em.replace(/\+/g, ' '));
+      document.getElementById('cp-username').value = decodeURIComponent(un.replace(/\+/g, ' '));
+      panel.classList.add('is-visible');
+      if (mainForm) mainForm.style.display = 'none';
+
+      document.getElementById('checkout-profile-form').onsubmit = async function (ev) {
+        ev.preventDefault();
+        var msg = document.getElementById('checkout-profile-msg');
+        var payload = {
+          email: document.getElementById('cp-email').value.trim(),
+          username: document.getElementById('cp-username').value.trim(),
+          password: document.getElementById('cp-password').value,
+          firstName: document.getElementById('cp-first').value.trim(),
+          lastName: document.getElementById('cp-last').value.trim(),
+          contact: document.getElementById('cp-contact').value.trim()
+        };
+        msg.textContent = '';
+        try {
+          var res = await fetch('/api/auth/complete-checkout-profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          var data = await res.json().catch(function () { return {}; });
+          if (!res.ok || !data.success) {
+            msg.style.color = '#b91c1c';
+            msg.textContent = data.message || 'Could not save profile.';
+            return;
+          }
+          msg.style.color = '#0f766e';
+          msg.textContent = 'Profile saved! You can log in below.';
+          panel.classList.remove('is-visible');
+          if (mainForm) mainForm.style.display = '';
+          try {
+            var u = new URL(window.location.href);
+            u.searchParams.delete('payment');
+            u.searchParams.delete('email');
+            u.searchParams.delete('username');
+            history.replaceState({}, '', u.pathname + u.search + u.hash);
+          } catch (e) {}
+        } catch (err) {
+          msg.style.color = '#b91c1c';
+          msg.textContent = 'Network error. Try again.';
+        }
+      };
+    })();
+
+    document.getElementById('join-fun-link').addEventListener('click', function (e) {
+      e.preventDefault();
+      var raw = null;
+      try { raw = sessionStorage.getItem('remoedGuestAssessmentPrefill'); } catch (err) {}
+      if (raw) {
+        window.location.href = 'student-assessment.html';
+        return;
+      }
+      try {
+        if (localStorage.getItem('remoedAssessmentInProgress') === '1') {
+          window.location.href = 'student-assessment.html';
+          return;
+        }
+      } catch (e2) {}
+      window.location.href = 'index.html#assessment';
+    });
 
     document.getElementById('student-login-form').onsubmit = async function(e) {
       e.preventDefault();
@@ -431,6 +590,16 @@
           localStorage.setItem('token', data.token);
           localStorage.setItem('studentId', data.studentId);
           localStorage.setItem('userType', 'student');
+          localStorage.setItem('studentAccountStatus', data.accountStatus || 'standard');
+          localStorage.setItem('studentHasFreeTrial', data.hasFreeTrial ? '1' : '0');
+          localStorage.setItem('studentIsSubscribed', data.isSubscribed ? '1' : '0');
+          try {
+            if (data.showWelcomeTour || data.isFirstLogin) {
+              sessionStorage.setItem('remoedShowWelcomeTour', '1');
+            } else {
+              sessionStorage.removeItem('remoedShowWelcomeTour');
+            }
+          } catch (e) {}
           
           // Check if user needs to change their generated password
           if (data.needsPasswordChange) {

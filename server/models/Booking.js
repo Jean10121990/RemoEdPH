@@ -34,6 +34,8 @@ const bookingSchema = new mongoose.Schema({
   creditsReserved: { type: Boolean, default: false },
   /** True after reserved credit was converted to a used credit (balance decremented, history updated). */
   creditsFinalized: { type: Boolean, default: false },
+  /** Booking used the single free trial credit from the public level assessment flow. */
+  isAssessmentFreeTrialBooking: { type: Boolean, default: false },
   // Cancellation tracking
   cancellationTime: { type: Date },
   cancellationReason: {

@@ -73,8 +73,6 @@
                 class="intro-kid"
               />
             </div>
-            <a href="#plans" class="cta-btn secondary">View Plans</a>
-            <a href="/application-form" class="cta-btn secondary">Apply Now</a>
           </div>
         </div>
         <div class="hero-media">
@@ -271,7 +269,7 @@
           <div class="plan-name">RemoSpark (1 Month)</div>
           <div class="plan-price">$91.74 USD</div>
           <div class="plan-price-local">~₱5,507.15 PHP est.</div>
-          <div class="plan-period"><strong>$4.17/day x 22 days</strong></div>
+          <div class="plan-period"><strong>22 lesson credits</strong> · 1 month · 22 credits/mo</div>
           <p class="plan-tagline">Spark their curiosity.</p>
           <ul class="plan-features">
             <li>Perfect for beginners</li>
@@ -301,7 +299,7 @@
           <div class="plan-name">RemoSteady (3 Months)</div>
           <div class="plan-price">$269.28 USD</div>
           <div class="plan-price-local">~₱16,164.88 PHP est.</div>
-          <div class="plan-period"><strong>$4.08/day x 66 days</strong></div>
+          <div class="plan-period"><strong>66 lesson credits</strong> · 3 months · 22 credits/mo</div>
           <p class="plan-tagline">Building a routine.</p>
           <ul class="plan-features">
             <li>Digital print outs</li>
@@ -330,7 +328,7 @@
           <div class="plan-name">RemoScholar (6 Months)</div>
           <div class="plan-price">$528.00 USD</div>
           <div class="plan-price-local">~₱31,695.84 PHP est.</div>
-          <div class="plan-period"><strong>$4.00/day x 132 days</strong></div>
+          <div class="plan-period"><strong>132 lesson credits</strong> · 6 months · 22 credits/mo</div>
           <p class="plan-tagline">Mastering the basics.</p>
           <ul class="plan-features">
             <li>Mid-term progress report</li>
@@ -358,7 +356,7 @@
           <div class="plan-name">RemoSummit (12 Months)</div>
           <div class="plan-price">$964.32 USD</div>
           <div class="plan-price-local">~₱57,888.13 PHP est.</div>
-          <div class="plan-period"><strong>$3.92/day x 246 days</strong></div>
+          <div class="plan-period"><strong>264 lesson credits</strong> · 12 months · 22 credits/mo</div>
           <p class="plan-tagline">Reaching the peak.</p>
           <ul class="plan-features">
             <li>End-of-year certificate</li>
@@ -437,11 +435,12 @@
     <script>
       let selectedPlan = "";
       const EXCHANGE_RATE_USED = 60.03;
+      /** 1 month = 22 lesson credits; USD totals match server/payments.js */
       const PLAN_PRICING = {
-        spark: { usdDailyRate: 4.17, days: 22, name: "RemoSpark Plan" },
-        steady: { usdDailyRate: 4.08, days: 66, name: "RemoSteady Plan" },
-        scholar: { usdDailyRate: 4.0, days: 132, name: "RemoScholar Plan" },
-        summit: { usdDailyRate: 3.92, days: 246, name: "RemoSummit Plan" },
+        spark: { name: "RemoSpark Plan", months: 1, lessonCredits: 22, usdTotal: 91.74 },
+        steady: { name: "RemoSteady Plan", months: 3, lessonCredits: 66, usdTotal: 269.28 },
+        scholar: { name: "RemoScholar Plan", months: 6, lessonCredits: 132, usdTotal: 528.0 },
+        summit: { name: "RemoSummit Plan", months: 12, lessonCredits: 264, usdTotal: 964.32 },
       };
       let assessmentData = null;
 
@@ -477,7 +476,7 @@
       function getPlanComputedAmounts(plan) {
         const config = PLAN_PRICING[plan];
         if (!config) return null;
-        const usdTotal = Number((config.usdDailyRate * config.days).toFixed(2));
+        const usdTotal = Number(Number(config.usdTotal).toFixed(2));
         const phpEstimate = Number((usdTotal * EXCHANGE_RATE_USED).toFixed(2));
         return { usdTotal, phpEstimate };
       }
@@ -508,6 +507,10 @@
           const contactNumber = document.getElementById("contact-number").value;
 
           assessmentData = { childName, parentEmail, contactNumber };
+
+          try {
+            localStorage.setItem("remoedAssessmentInProgress", "1");
+          } catch (e) {}
 
           const assessmentUrl = `student-assessment.html?childName=${encodeURIComponent(childName)}&parentEmail=${encodeURIComponent(parentEmail)}&contactNumber=${encodeURIComponent(contactNumber)}`;
           window.location.href = assessmentUrl;
@@ -548,9 +551,13 @@
               exchange_rate_used: EXCHANGE_RATE_USED,
             };
 
+            const payHeaders = { "Content-Type": "application/json" };
+            if (authStudent.token) {
+              payHeaders["Authorization"] = "Bearer " + authStudent.token;
+            }
             const response = await fetch("/api/payments/create-link", {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
+              headers: payHeaders,
               body: JSON.stringify(payload),
             });
             const result = await response.json();
@@ -582,7 +589,15 @@
         }
       }
 
-      // Check if returning from assessment
+      function scrollToPlansSection() {
+        const plansEl = document.getElementById("plans");
+        if (!plansEl) return;
+        setTimeout(() => {
+          plansEl.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 200);
+      }
+
+      // Returning from free assessment: prefill email and land on plans (Enroll sets plan + opens signup)
       document.addEventListener("DOMContentLoaded", function () {
         const urlParams = new URLSearchParams(window.location.search);
         const email = urlParams.get("email");
@@ -590,24 +605,32 @@
         const signup = urlParams.get("signup");
 
         if (email && cefrLevel) {
-          // Pre-fill email in signup form
-          if (document.getElementById("signup-email")) {
-            document.getElementById("signup-email").value = email;
+          const signupEmailEl = document.getElementById("signup-email");
+          if (signupEmailEl) signupEmailEl.value = email;
+
+          let legacySignupFixed = false;
+          // Legacy links used ?signup=true and opened the modal without a plan — send users to pricing instead
+          if (signup === "true") {
+            const u = new URL(window.location.href);
+            u.searchParams.delete("signup");
+            if (!u.hash || u.hash === "#") u.hash = "plans";
+            history.replaceState({}, "", u.pathname + u.search + u.hash);
+            legacySignupFixed = true;
           }
 
-          // Show signup modal automatically if signup=true
-          if (signup === "true") {
-            setTimeout(() => {
-              document.getElementById("signup-modal").classList.add("active");
-            }, 500);
-          } else {
-            // Show welcome message
+          scrollToPlansSection();
+
+          const onPlans =
+            legacySignupFixed || window.location.hash === "#plans";
+          if (!onPlans) {
             setTimeout(() => {
               alert(
-                `🎉 Welcome back! Your assessment result: ${cefrLevel}\n\nSign up now to access your results online and start learning!`,
+                `🎉 Your level: ${cefrLevel}\n\nChoose a learning plan below and tap Enroll Now to sign up.`,
               );
-            }, 500);
+            }, 600);
           }
+        } else if (window.location.hash === "#plans") {
+          scrollToPlansSection();
         }
       });
 
@@ -651,7 +674,7 @@
               planId: selectedPlan,
               description: buildPlanDescription(selectedPlan),
               referralCode: localStorage.getItem("referralCode") || "",
-              success_url: `${window.location.origin}/student-login.html?payment=success`,
+              success_url: `${window.location.origin}/student-login.html?payment=success&email=${encodeURIComponent(email)}&username=${encodeURIComponent(username)}`,
               cancel_url: `${window.location.origin}/index.html#plans`,
               usd_total: planAmounts.usdTotal,
               exchange_rate_used: EXCHANGE_RATE_USED,

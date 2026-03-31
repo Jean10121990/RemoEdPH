@@ -5,10 +5,15 @@ const Booking = require('./models/Booking');
 const CancellationRequest = require('./models/CancellationRequest');
 const Feedback = require('./models/Feedback');
 const StudentNotification = require('./models/StudentNotification');
+const AssessmentTrial = require('./models/AssessmentTrial');
 const Teacher = require('./models/Teacher');
 const Referral = require('./models/Referral');
+const PortalVideo = require('./models/PortalVideo');
 const { verifyToken, requireStudent } = require('./authMiddleware');
-const { buildStudentCreditApiResponse } = require('./services/studentCreditSummary');
+const {
+  buildStudentCreditApiResponse,
+  reconcileStudentCreditBalanceIfDrifted,
+} = require('./services/studentCreditSummary');
 const crypto = require('crypto');
 const { body, validationResult } = require('express-validator');
 const { encryptPiiString } = require('./utils/piiCrypto');
@@ -154,12 +159,69 @@ router.get('/profile', verifyToken, requireStudent, async (req, res) => {
         cefrLevel: student.cefrLevel,
         leveling: student.leveling,
         assessmentScore: student.assessmentScore,
-        assessmentDate: student.assessmentDate
+        assessmentDate: student.assessmentDate,
+        accountStatus: student.accountStatus || 'standard',
+        trialCompletedAt: student.trialCompletedAt || null,
+        subscriptionStatus: student.subscriptionStatus || 'pending',
+        paymentStatus: student.paymentStatus || 'unpaid',
+        hasFreeTrial: student.hasFreeTrial === true,
+        hasSeenWelcomeTour: student.hasSeenWelcomeTour === true,
+        isSubscribed:
+          student.isSubscribed === true ||
+          (student.paymentStatus === 'paid' && student.subscriptionStatus === 'active'),
+      }
+    });
+
+    setImmediate(async () => {
+      try {
+        const { sendTrialBookingReminderEmail } = require('./emailService');
+        if (
+          student.hasFreeTrial !== true ||
+          student.accountStatus !== 'trial_active' ||
+          !student.assessmentTrialGrantedAt ||
+          student.trialBookingReminderSentAt
+        ) {
+          return;
+        }
+        const hours =
+          (Date.now() - new Date(student.assessmentTrialGrantedAt).getTime()) / 3600000;
+        if (hours < 24) return;
+        const upd = await Student.findOneAndUpdate(
+          {
+            _id: student._id,
+            trialBookingReminderSentAt: null,
+            accountStatus: 'trial_active',
+            hasFreeTrial: true,
+          },
+          { $set: { trialBookingReminderSentAt: new Date() } },
+          { new: true }
+        );
+        if (!upd || !upd.email) return;
+        const greet =
+          [upd.firstName, upd.lastName].filter(Boolean).join(' ').trim() ||
+          (upd.email ? String(upd.email).split('@')[0] : '') ||
+          'there';
+        await sendTrialBookingReminderEmail(upd.email, greet).catch((err) =>
+          console.error('[trial booking reminder] email failed:', err.message || err)
+        );
+      } catch (e) {
+        console.error('[trial booking reminder]', e.message || e);
       }
     });
   } catch (error) {
     console.error('❌ Error fetching student profile:', error);
     res.status(500).json({ error: 'Server error: ' + error.message });
+  }
+});
+
+// Mark welcome tour completed (first-login onboarding)
+router.post('/welcome-tour/dismiss', verifyToken, requireStudent, async (req, res) => {
+  try {
+    await Student.updateOne({ _id: req.user.studentId }, { $set: { hasSeenWelcomeTour: true } });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('welcome-tour/dismiss:', error);
+    res.status(500).json({ success: false, error: 'Server error' });
   }
 });
 
@@ -503,25 +565,48 @@ router.get('/bookings', verifyToken, requireStudent, async (req, res) => {
       console.log(`🔍 Sample booking studentId: ${bookings[0].studentId}, date: ${bookings[0].date}, time: ${bookings[0].time}`);
     }
 
-    // Get teacher information for each booking
+    // Get teacher information + teacher→student feedback per booking
     const bookingsWithTeacherInfo = await Promise.all(
       bookings.map(async (booking) => {
         const bookingObj = booking.toObject();
-        
-        // Find teacher by teacherId string
+        const logicalTeacherId = bookingObj.teacherId;
+
         const Teacher = require('./models/Teacher');
-        const teacher = await Teacher.findOne({ teacherId: bookingObj.teacherId });
-        
+        const teacher = await Teacher.findOne({ teacherId: logicalTeacherId });
+
+        const bookingIdStr = String(bookingObj._id);
+        // Teacher→student feedback uses student username/email on the document, not Mongo _id
+        // (student→teacher feedback uses studentId = ObjectId and would wrongly match if included).
+        const teacherFeedbackDoc = await Feedback.findOne({
+          bookingId: bookingIdStr,
+          teacherId: logicalTeacherId,
+          studentId: { $in: uniqueIdentifiers },
+        }).lean();
+
+        let teacherFeedback = null;
+        if (teacherFeedbackDoc) {
+          teacherFeedback = {
+            rating: teacherFeedbackDoc.rating,
+            comment: teacherFeedbackDoc.comment || '',
+            submittedAt: teacherFeedbackDoc.submittedAt,
+          };
+        }
+
         return {
           ...bookingObj,
-          teacherId: teacher ? {
-            _id: teacher._id,
-            username: teacher.username,
-            firstName: teacher.firstName,
-            lastName: teacher.lastName,
-            photo: teacher.photo,
-            intro: teacher.intro
-          } : null
+          teacherLogicalId: logicalTeacherId,
+          teacherFeedback,
+          teacherId: teacher
+            ? {
+                _id: teacher._id,
+                teacherId: teacher.teacherId,
+                username: teacher.username,
+                firstName: teacher.firstName,
+                lastName: teacher.lastName,
+                photo: teacher.photo,
+                intro: teacher.intro,
+              }
+            : null,
         };
       })
     );
@@ -1078,9 +1163,14 @@ router.post('/confirm-payment', async (req, res) => {
 // Get credit summary + history for logged-in student
 router.get('/credits', verifyToken, requireStudent, async (req, res) => {
   try {
-    const student = await Student.findById(req.user.studentId).lean();
+    let student = await Student.findById(req.user.studentId).lean();
     if (!student) {
       return res.status(404).json({ success: false, error: 'Student not found' });
+    }
+
+    const healed = await reconcileStudentCreditBalanceIfDrifted(req.user.studentId, student);
+    if (healed) {
+      student = await Student.findById(req.user.studentId).lean();
     }
 
     const payload = buildStudentCreditApiResponse(student);
@@ -1151,34 +1241,64 @@ router.post('/send-assessment-email', async (req, res) => {
     let finalCefrLevel = cefrLevel;
     let finalScore = score;
     
-    if (!finalCefrLevel || !finalScore) {
+    if (!finalCefrLevel || finalScore == null) {
       // Try to find student and get their assessment
       const student = await Student.findOne({ email: parentEmail || email });
       if (student) {
         finalCefrLevel = student.cefrLevel || student.leveling || 'Not assessed yet';
-        finalScore = student.assessmentScore || 0;
+        finalScore = student.assessmentScore ?? 0;
       }
     }
-    
+
+    const toEmail = String(parentEmail || email || '')
+      .trim()
+      .toLowerCase();
+    if (!toEmail) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    await AssessmentTrial.deleteMany({
+      parentEmail: toEmail,
+      redeemedByStudentId: null,
+    });
+    const token = crypto.randomBytes(24).toString('hex');
+    await AssessmentTrial.create({
+      token,
+      parentEmail: toEmail,
+      childName: childName || '',
+      contactNumber: String(contactNumber || '').trim(),
+      cefrLevel: finalCefrLevel || '',
+      score: Number(finalScore) || 0,
+    });
+
+    const base = (process.env.FRONTEND_URL || 'http://localhost:5000').replace(/\/$/, '');
+    const registerUrl = `${base}/student-register.html?trial=${encodeURIComponent(token)}`;
+
     // Send email using email service
     const emailService = require('./emailService');
     const emailResult = await emailService.sendAssessmentEmail(
-      parentEmail || email,
+      toEmail,
       childName,
       finalCefrLevel || 'A1',
-      finalScore || 0
+      finalScore || 0,
+      registerUrl
     );
     
     if (emailResult.success) {
       console.log('✅ Assessment email sent successfully');
-      res.json({ success: true, message: 'Assessment results emailed successfully' });
+      res.json({
+        success: true,
+        message: 'Assessment results emailed successfully',
+        trialToken: token,
+      });
     } else {
       console.log('⚠️ Email not configured, but assessment data available');
       res.json({ 
         success: true, 
         message: 'Assessment data available. Email not configured.',
         fallback: true,
-        assessment: { cefrLevel: finalCefrLevel, score: finalScore }
+        assessment: { cefrLevel: finalCefrLevel, score: finalScore },
+        trialToken: token,
       });
     }
   } catch (error) {
@@ -1195,39 +1315,46 @@ router.post('/feedback/submit', verifyToken, requireStudent, async (req, res) =>
     console.log('🔍 Request body:', req.body);
     
     const { bookingId, teacherId, rating, comment } = req.body;
-    
-    // Validate required fields
-    if (!bookingId || !teacherId || !rating) {
-      console.log('❌ Missing required fields');
-      return res.status(400).json({ error: 'Missing required fields: bookingId, teacherId, rating' });
+    const bookingIdStr = bookingId != null ? String(bookingId).trim() : '';
+    const teacherIdStr = teacherId != null ? String(teacherId).trim() : '';
+    const ratingNum = Number(rating);
+
+    if (!bookingIdStr || !teacherIdStr || !Number.isFinite(ratingNum)) {
+      console.log('❌ Missing required fields', { bookingIdStr, teacherIdStr, rating });
+      return res.status(400).json({
+        error:
+          'Missing required fields: bookingId, teacherId, and a star rating (1–5). Select stars before submitting.',
+      });
     }
-    
-    // Validate rating
-    if (rating < 1 || rating > 5) {
+
+    if (ratingNum < 1 || ratingNum > 5) {
       console.log('❌ Invalid rating:', rating);
       return res.status(400).json({ error: 'Rating must be between 1 and 5' });
     }
     
     // Check if feedback already exists for this booking
-    const existingFeedback = await Feedback.findOne({ bookingId, studentId: req.user.studentId });
+    const existingFeedback = await Feedback.findOne({
+      bookingId: bookingIdStr,
+      studentId: req.user.studentId,
+    });
     if (existingFeedback) {
       console.log('❌ Feedback already submitted for this booking');
       return res.status(400).json({ error: 'Feedback already submitted for this class' });
     }
     
     // Get booking information for lesson date
-    const booking = await Booking.findById(bookingId);
+    const booking = await Booking.findById(bookingIdStr);
     if (!booking) {
-      console.log('❌ Booking not found:', bookingId);
+      console.log('❌ Booking not found:', bookingIdStr);
       return res.status(404).json({ error: 'Booking not found' });
     }
     
     // Create new feedback
     const feedback = new Feedback({
-      bookingId,
-      teacherId,
+      bookingId: bookingIdStr,
+      teacherId: teacherIdStr,
       studentId: req.user.studentId,
-      rating,
+      rating: ratingNum,
       comment: comment || '',
       lessonDate: new Date(booking.date)
     });
@@ -1237,24 +1364,24 @@ router.post('/feedback/submit', verifyToken, requireStudent, async (req, res) =>
     // Save to StarReceived collection for teacher
     const StarReceived = require('./models/StarReceived');
     const starReceived = new StarReceived({
-      recipientId: teacherId,
+      recipientId: teacherIdStr,
       recipientType: 'teacher',
       giverId: req.user.studentId || req.user.username,
       giverType: 'student',
-      bookingId: bookingId,
-      rating: rating,
+      bookingId: bookingIdStr,
+      rating: ratingNum,
       feedbackId: feedback._id,
       lessonDate: new Date(booking.date + 'T' + booking.time + ':00')
     });
     await starReceived.save();
-    console.log('⭐ Star saved to StarReceived collection for teacher:', teacherId);
+    console.log('⭐ Star saved to StarReceived collection for teacher:', teacherIdStr);
     
     console.log('✅ Feedback submitted successfully');
     console.log('📊 Feedback details:', {
-      bookingId,
-      teacherId,
+      bookingId: bookingIdStr,
+      teacherId: teacherIdStr,
       studentId: req.user.studentId,
-      rating,
+      rating: ratingNum,
       commentLength: comment ? comment.length : 0
     });
     
@@ -1263,7 +1390,7 @@ router.post('/feedback/submit', verifyToken, requireStudent, async (req, res) =>
       message: 'Feedback submitted successfully',
       feedback: {
         id: feedback._id,
-        rating,
+        rating: ratingNum,
         comment: feedback.comment,
         submittedAt: feedback.submittedAt
       }
@@ -1797,6 +1924,27 @@ router.post('/decline-reschedule', verifyToken, requireStudent, async (req, res)
       success: false,
       message: 'Error declining reschedule'
     });
+  }
+});
+
+/** Library videos uploaded by admins — watchable in live classroom (student token). */
+router.get('/portal-videos', verifyToken, requireStudent, async (req, res) => {
+  try {
+    const list = await PortalVideo.find({ active: true }).sort({ createdAt: -1 }).lean();
+    res.json({
+      success: true,
+      videos: list.map((v) => ({
+        id: String(v._id),
+        title: v.title,
+        description: v.description || '',
+        url: v.relativeUrl,
+        mimeType: v.mimeType || 'video/mp4',
+        createdAt: v.createdAt,
+      })),
+    });
+  } catch (err) {
+    console.error('portal-videos list:', err);
+    res.status(500).json({ success: false, message: 'Failed to load videos' });
   }
 });
 

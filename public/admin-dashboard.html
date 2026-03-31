@@ -1107,11 +1107,11 @@
         </div>
     </div>
 
-    <!-- Admin time log modal -->
-    <div id="admin-time-log-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1100;">
-        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:12px;padding:24px;max-width:720px;width:92%;max-height:85vh;overflow:auto;">
+    <!-- Admin time log modal (click dimmed area or press Escape to close) -->
+    <div id="admin-time-log-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1100;align-items:center;justify-content:center;">
+        <div id="admin-time-log-modal-panel" role="dialog" aria-modal="true" aria-labelledby="admin-time-log-title" style="position:relative;z-index:1;background:#fff;border-radius:12px;padding:24px;max-width:720px;width:92%;max-height:85vh;overflow:auto;box-shadow:0 20px 40px rgba(0,0,0,0.2);">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-                <h2 style="margin:0;color:#1ca7e7;">Admin Time Logs</h2>
+                <h2 id="admin-time-log-title" style="margin:0;color:#1ca7e7;">Admin Time Logs</h2>
                 <button type="button" id="admin-close-time-log" style="background:none;border:none;font-size:24px;cursor:pointer;color:#666;">&times;</button>
             </div>
             <div style="margin-bottom:16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
@@ -2319,5 +2319,7 @@
             }
         }
     </script>
+    <script src="js/portal-tour.js"></script>
+    <script src="js/admin-tour.js"></script>
 </body>
 </html> 
