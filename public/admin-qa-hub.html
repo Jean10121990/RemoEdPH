@@ -10,6 +10,22 @@
     <link rel="stylesheet" href="css/teacher-sidebar.css">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="css/admin-hub-shell.css">
+    <style>
+        .screenshot-preview {
+            max-width: 100%;
+            max-height: 220px;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+            cursor: pointer;
+            object-fit: contain;
+            background: #f8fafc;
+        }
+        .screenshot-preview.screenshot-missing {
+            cursor: default;
+            max-height: 160px;
+            border-style: dashed;
+        }
+    </style>
 </head>
 <body class="admin-hub-page page-admin-qa-hub page-admin-classroom-recordings page-admin-issue-management">
     <div class="remoed-main">
@@ -478,9 +494,18 @@
                     ${issue.screenshotPath ? `
                         <div style="margin-bottom: 15px;">
                             <h4 style="margin: 0 0 8px 0; font-size: 0.9rem; color: #374151;">Screenshot:</h4>
-                            <img src="${issue.screenshotPath}" alt="Issue Screenshot" class="screenshot-preview" onclick="window.open('${issue.screenshotPath}', '_blank')">
+                            <p style="margin:0 0 6px 0;font-size:0.8rem;"><a href="${esc(issue.screenshotPath)}" target="_blank" rel="noopener">Open full size</a></p>
+                            <img src="${esc(issue.screenshotPath)}" alt="Issue Screenshot" class="screenshot-preview" data-full-url="${esc(issue.screenshotPath)}"
+                                onclick="var u=this.getAttribute('data-full-url'); if(u) window.open(u,'_blank')"
+                                onerror="this.onerror=null;if(window.__QA_SCREENSHOT_FALLBACK){this.src=window.__QA_SCREENSHOT_FALLBACK;this.classList.add('screenshot-missing');}">
                         </div>
-                    ` : ''}
+                    ` : `
+                        <div style="margin-bottom: 15px;">
+                            <h4 style="margin: 0 0 8px 0; font-size: 0.9rem; color: #374151;">Screenshot:</h4>
+                            <img src="${window.__QA_SCREENSHOT_FALLBACK}" alt="No screenshot" class="screenshot-preview screenshot-missing" />
+                            <p class="muted" style="font-size:0.8rem;margin:6px 0 0 0;">No image on file or path could not be resolved.</p>
+                        </div>
+                    `}
                     ${issue.canReschedule ? `
                         <div class="reschedule-info">
                             <h4>Reschedule Option Available</h4>
@@ -571,6 +596,12 @@
 
         document.addEventListener('DOMContentLoaded', function () {
             if (!checkAuth()) return;
+
+            window.__QA_SCREENSHOT_FALLBACK =
+                'data:image/svg+xml,' +
+                encodeURIComponent(
+                    '<svg xmlns="http://www.w3.org/2000/svg" width="280" height="160" viewBox="0 0 280 160"><rect fill="#f1f5f9" width="280" height="160" rx="12"/><rect x="55" y="40" width="170" height="80" rx="8" fill="#e2e8f0" stroke="#cbd5e1"/><circle cx="95" cy="68" r="12" fill="#94a3b8"/><path d="M65 105 L110 72 L145 92 L205 58 L230 78 L230 110 L65 110 Z" fill="#cbd5e1" opacity="0.85"/><text x="140" y="142" text-anchor="middle" fill="#64748b" font-size="13" font-family="system-ui,sans-serif">Screenshot unavailable</text></svg>'
+                );
 
             const dateEl = document.getElementById('rec-date');
             if (dateEl) {

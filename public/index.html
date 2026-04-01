@@ -54,8 +54,7 @@
         <div class="hero-copy">
           <h1>Learn English at Home!</h1>
           <p>
-            Calm, playful English learning for children ages 2-6. Designed for
-            busy Filipino families using phones and tablets.
+            Calm, engaging English lessons for children ages 3-6. Designed for modern families across Asia—starting on your laptop, with mobile and tablet support coming soon.
           </p>
           <div class="cta-buttons">
             <div class="assessment-cta-wrap">
@@ -77,9 +76,12 @@
         </div>
         <div class="hero-media">
           <img
-            src="images/remo-jumping.png"
-            alt="Remo Robot mascot"
-            class="robot-float"
+            src="images/hero-remoed-illustration.png"
+            alt="Educator using RemoEd on laptop, tablet, and online lessons"
+            class="hero-illustration"
+            width="640"
+            height="480"
+            decoding="async"
           />
         </div>
       </div>
@@ -100,8 +102,7 @@
             <div class="benefit-bubble">
               <h3>Safe & Comfortable</h3>
               <p>
-                Learn in the safety and comfort of your own home. No need to
-                travel or worry about safety!
+                Learn in the safety and comfort of your own home. No commute needed or worry about safety!
               </p>
             </div>
           </div>
@@ -117,8 +118,7 @@
             <div class="benefit-bubble">
               <h3>Flexible Schedule</h3>
               <p>
-                Choose class times that work for your family. Learn at your own
-                pace!
+                Choose class times that work for your family. Book sessions that fit your family's routine.
               </p>
             </div>
           </div>
@@ -202,14 +202,21 @@
         straight to your email.
       </p>
       <p style="font-size: 1.05rem; margin-top: 10px">
-        No sign-up required. Perfect for first-time parents checking readiness.
+        Perfect for first-time parents checking readiness.
       </p>
       <div class="assessment-layout">
-        <div class="sophia-guide">
+        <div class="sophia-guide assessment-guide--robot">
           <div class="speech-bubble">
-            Hi! I'm Sophia. Let's find the perfect level for you!
+            Hi! I'm Remo. Let's find the perfect level for you!
           </div>
-          <img src="images/sophia-girl.png" alt="Sophia guide" />
+          <img
+            src="images/remo-jumping.png"
+            alt="Remo robot guide"
+            class="robot-float"
+            width="300"
+            height="300"
+            decoding="async"
+          />
         </div>
         <div class="assessment-form">
           <form id="assessment-form">
@@ -253,18 +260,14 @@
       <h2 class="section-title">Choose Your Learning Plan</h2>
       <div class="plans-grid">
         <div class="plan-card plan-spark">
-          <div class="plan-icon" aria-hidden="true">
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-              <path
-                d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"
-              />
-            </svg>
+          <div class="plan-icon plan-icon--character">
+            <img
+              src="images/plan-characters/plan-spark-robot.png"
+              alt="Remo robot mascot"
+              width="112"
+              height="110"
+              decoding="async"
+            />
           </div>
           <div class="plan-name">RemoSpark (1 Month)</div>
           <div class="plan-price">$91.74 USD</div>
@@ -272,8 +275,8 @@
           <div class="plan-period"><strong>22 lesson credits</strong> · 1 month · 22 credits/mo</div>
           <p class="plan-tagline">Spark their curiosity.</p>
           <ul class="plan-features">
-            <li>Perfect for beginners</li>
-            <li>Access to digital library</li>
+            <li>​Note: Credits remain active for 3 full months.</li>
+            <li>Access to digital and video library</li>
           </ul>
           <button class="plan-btn" onclick="selectPlan('spark', this)">
             Enroll Now
@@ -282,19 +285,14 @@
 
         <div class="plan-card plan-steady plan-popular">
           <div class="plan-badge">Save 2%</div>
-          <div class="plan-icon" aria-hidden="true">
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-              <path
-                d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"
-              />
-              <path d="M8 6h10M8 10h10M8 14h10" />
-            </svg>
+          <div class="plan-icon plan-icon--character">
+            <img
+              src="images/plan-characters/plan-steady-boy.png"
+              alt="RemoEd student mascot"
+              width="112"
+              height="110"
+              decoding="async"
+            />
           </div>
           <div class="plan-name">RemoSteady (3 Months)</div>
           <div class="plan-price">$269.28 USD</div>
@@ -302,6 +300,8 @@
           <div class="plan-period"><strong>66 lesson credits</strong> · 3 months · 22 credits/mo</div>
           <p class="plan-tagline">Building a routine.</p>
           <ul class="plan-features">
+            <li>Note: Credits remain active for 6 full months.</li>
+            <li>Access to digital and video library</li>
             <li>Digital print outs</li>
           </ul>
           <button class="plan-btn" onclick="selectPlan('steady', this)">
@@ -309,21 +309,19 @@
           </button>
         </div>
 
-        <div class="plan-card plan-scholar">
-          <div class="plan-badge">Save 4%</div>
-          <div class="plan-icon" aria-hidden="true">
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <path
-                d="M7 4h10a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-4 3V6a2 2 0 0 1 2-2z"
-              />
-              <path d="M9 8h8M9 11h6" />
-              <path d="M14.5 14.5l1.2 1.2 2.3-2.3" />
-            </svg>
+        <div class="plan-card plan-scholar plan-recommended">
+          <div class="plan-recommended-stack">
+            <div class="plan-recommended-ribbon">Recommended</div>
+            <div class="plan-badge">Save 4%</div>
+          </div>
+          <div class="plan-icon plan-icon--character">
+            <img
+              src="images/plan-characters/plan-scholar-sophia.png"
+              alt="Sophia, RemoEd scholar mascot"
+              width="112"
+              height="110"
+              decoding="async"
+            />
           </div>
           <div class="plan-name">RemoScholar (6 Months)</div>
           <div class="plan-price">$528.00 USD</div>
@@ -331,6 +329,9 @@
           <div class="plan-period"><strong>132 lesson credits</strong> · 6 months · 22 credits/mo</div>
           <p class="plan-tagline">Mastering the basics.</p>
           <ul class="plan-features">
+            <li>Note: Credits remain active for 12 full months</li>
+            <li>Access to digital and video library</li>
+            <li>Digital print outs</li>
             <li>Mid-term progress report</li>
           </ul>
           <button class="plan-btn" onclick="selectPlan('scholar', this)">
@@ -338,20 +339,16 @@
           </button>
         </div>
 
-        <div class="plan-card plan-summit plan-recommended">
-          <div class="plan-tag">Recommended</div>
+        <div class="plan-card plan-summit">
           <div class="plan-badge">Save 6%</div>
-          <div class="plan-icon" aria-hidden="true">
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <path d="M22 10l-10-5-10 5 10 5 10-5z" />
-              <path d="M6 12v5c0 1 3 3 6 3s6-2 6-3v-5" />
-              <path d="M22 10v6" />
-            </svg>
+          <div class="plan-icon plan-icon--character">
+            <img
+              src="images/plan-characters/plan-summit-sophia.png"
+              alt="Sophia celebrating, RemoEd mascot"
+              width="112"
+              height="110"
+              decoding="async"
+            />
           </div>
           <div class="plan-name">RemoSummit (12 Months)</div>
           <div class="plan-price">$964.32 USD</div>
@@ -359,6 +356,9 @@
           <div class="plan-period"><strong>264 lesson credits</strong> · 12 months · 22 credits/mo</div>
           <p class="plan-tagline">Reaching the peak.</p>
           <ul class="plan-features">
+            <li>Note: Credits remain active for 18 full months.</li>
+            <li>Access to digital and video library</li>
+            <li>Mid-term progress report</li>
             <li>End-of-year certificate</li>
           </ul>
           <button class="plan-btn" onclick="selectPlan('summit', this)">

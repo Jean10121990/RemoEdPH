@@ -172,7 +172,7 @@
         <div class="chat-header">Class Chat</div>
         <div id="chat-messages" class="chat-messages"></div>
         <form id="chat-form" class="chat-form">
-          <textarea id="chat-input" class="chat-input" rows="2" placeholder="Type your message here..." aria-label="Chat message"></textarea>
+          <textarea id="chat-input" class="chat-input" rows="2" placeholder="Type here — Enter to send, Shift+Enter for new line" title="Enter sends. Shift+Enter adds a line." aria-label="Chat message"></textarea>
           <button type="submit" class="chat-send">✈️</button>
         </form>
       </div>
@@ -230,6 +230,28 @@
       <p id="classroom-entry-blocked-sub" style="margin:0 0 16px; color:#64748b; font-size:0.95rem; line-height:1.5;"></p>
       <p id="classroom-entry-countdown" style="margin:0 0 20px; font-size:1.1rem; font-weight:600; color:#1ca7e7;"></p>
       <button type="button" onclick="window.location.href= (localStorage.getItem('userType')==='teacher') ? 'teacher-class-table.html' : 'student-class-table.html'" style="padding:10px 20px; border:none; border-radius:8px; background:#64748b; color:#fff; font-weight:600; cursor:pointer;">Back to schedule</button>
+    </div>
+  </div>
+
+  <div id="post-class-feedback-layer" class="post-class-feedback-layer" aria-hidden="true">
+    <div class="post-class-feedback-card">
+      <h2 class="post-class-feedback-title">Class ended — submit feedback</h2>
+      <p class="post-class-feedback-lead">The live session is closed. Add stars and a short comment to finalize student credits and your teaching fee.</p>
+      <label class="post-class-feedback-label">Student rating</label>
+      <div class="lc-feedback-stars" id="lc-feedback-stars" role="group" aria-label="Star rating">
+        <button type="button" class="lc-feedback-star" data-rating="1" aria-label="1 star">★</button>
+        <button type="button" class="lc-feedback-star" data-rating="2" aria-label="2 stars">★</button>
+        <button type="button" class="lc-feedback-star" data-rating="3" aria-label="3 stars">★</button>
+        <button type="button" class="lc-feedback-star" data-rating="4" aria-label="4 stars">★</button>
+        <button type="button" class="lc-feedback-star" data-rating="5" aria-label="5 stars">★</button>
+      </div>
+      <p id="lc-feedback-rating-hint" class="post-class-feedback-hint"></p>
+      <label class="post-class-feedback-label" for="lc-feedback-comment">Comments</label>
+      <textarea id="lc-feedback-comment" class="post-class-feedback-textarea" rows="4" maxlength="1000" placeholder="How did the student do today?"></textarea>
+      <div class="post-class-feedback-actions">
+        <button type="button" class="post-class-feedback-primary" id="lc-feedback-submit">Submit &amp; finalize</button>
+        <button type="button" class="post-class-feedback-secondary" id="lc-feedback-dismiss">Finish later from schedule</button>
+      </div>
     </div>
   </div>
 
@@ -2518,9 +2540,16 @@
             canvasContainer.style.overflow = 'hidden';
           }
 
-          // Block keyboard navigation for students
+          // Block keyboard navigation for students (PDF viewer); never steal Space/keys from chat or other inputs
           if (isStudent) {
             window.addEventListener('keydown', (e) => {
+              const t = e.target;
+              if (t && t.nodeType === Node.ELEMENT_NODE) {
+                const tag = t.tagName;
+                if (tag === 'TEXTAREA' || tag === 'INPUT' || tag === 'SELECT' || t.isContentEditable) {
+                  return;
+                }
+              }
               const keys = ['ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', ' ', 'Spacebar'];
               if (keys.includes(e.key)) {
                 e.preventDefault();
@@ -4824,6 +4853,15 @@
         });
       }
 
+      if (chatInput && chatForm) {
+        chatInput.addEventListener('keydown', (e) => {
+          if (e.key !== 'Enter') return;
+          if (e.shiftKey) return;
+          e.preventDefault();
+          chatForm.requestSubmit();
+        });
+      }
+
       socket.on('chat-message', (payload = {}) => {
         const sender = payload.sender || payload.username;
         const message = payload.message == null ? '' : String(payload.message);
@@ -4875,7 +4913,15 @@
 
       // Class timer: every lesson is 25 minutes — applies to all booked classes (all time slots, not just one). Timezone-agnostic; use Unix ms only.
       const SLOT_DURATION_MS = 1500000; // 25 minutes in ms (all lessons)
+      const ABSENT_UNLOCK_AFTER_MS = 15 * 60 * 1000; // same window as server no-show rule
       let startTs = null; // raw Unix ms; set once from DB/API or fallback
+      /** Scheduled class start (ms) for absent-button rule only; null if unknown */
+      let absentRuleStartMs = null;
+      /** Booking id for POST /api/booking/:id/mark-student-absent */
+      let classroomBookingMongoId = null;
+      /** Populated from booking fetch — needed for POST /api/feedback/submit */
+      let classroomStudentIdForFeedback = null;
+      let absentBtnPollId = null;
       let classTimerIntervalId = null;
       const classTimeElement = document.getElementById('class-time');
 
@@ -4915,6 +4961,28 @@
         return null;
       }
 
+      function updateTeacherAbsentButtonEligibility() {
+        const btn = document.getElementById('absent-btn');
+        if (!btn || userType !== 'teacher' || btn.style.display === 'none') return;
+
+        if (absentRuleStartMs == null) {
+          btn.disabled = true;
+          btn.title =
+            'Absent is available 15 minutes after the scheduled class start. Schedule could not be loaded from the booking.';
+          return;
+        }
+        const unlockAt = absentRuleStartMs + ABSENT_UNLOCK_AFTER_MS;
+        const now = Date.now();
+        if (now < unlockAt) {
+          btn.disabled = true;
+          const remMin = Math.max(1, Math.ceil((unlockAt - now) / 60000));
+          btn.title = `Available in ~${remMin} min (15 minutes after class start).`;
+          return;
+        }
+        btn.disabled = false;
+        btn.title = 'Mark student absent (no-class, no-pay policy)';
+      }
+
       // Format a UTC ISO or Unix ms as local time for display (e.g. Class Info modal).
       function formatScheduledTimeLocal(utcIsoOrMs) {
         if (utcIsoOrMs == null) return '--:--';
@@ -4932,6 +5000,11 @@
           const slotParam = getQueryParam('slot');
           const token = localStorage.getItem('token');
           let booking = null;
+
+          startTs = null;
+          absentRuleStartMs = null;
+          classroomBookingMongoId = bookingId || null;
+          classroomStudentIdForFeedback = null;
 
           if (bookingId) {
             try {
@@ -4959,7 +5032,16 @@
           }
 
           if (booking) {
-            startTs = getScheduledStartMs(booking);
+            classroomBookingMongoId = booking._id || booking.id || classroomBookingMongoId;
+            const sid = booking.studentId;
+            if (sid != null) {
+              classroomStudentIdForFeedback =
+                typeof sid === 'object' && sid !== null
+                  ? String(sid.username || sid.email || sid._id || sid.id || '')
+                  : String(sid);
+            }
+            absentRuleStartMs = getScheduledStartMs(booking);
+            startTs = absentRuleStartMs;
             if (startTs != null) {
               console.log('⏰ Class timer (25-min slot, Unix ms):', {
                 startTs,
@@ -4979,6 +5061,7 @@
               const d = new Date();
               d.setHours(h, m, 0, 0);
               startTs = d.getTime();
+              absentRuleStartMs = startTs;
               console.log('⏰ Class timer fallback: URL slot', slotParam, '→ startTs', startTs);
             }
           }
@@ -4996,6 +5079,12 @@
           if (classTimerIntervalId != null) clearInterval(classTimerIntervalId);
           updateClassTimer();
           classTimerIntervalId = setInterval(updateClassTimer, 1000);
+        }
+
+        updateTeacherAbsentButtonEligibility();
+        if (userType === 'teacher') {
+          if (absentBtnPollId != null) clearInterval(absentBtnPollId);
+          absentBtnPollId = setInterval(updateTeacherAbsentButtonEligibility, 15000);
         }
       }
 
@@ -5337,6 +5426,7 @@
         if (absentBtn) {
           absentBtn.style.display = 'block';
           absentBtn.style.visibility = 'visible';
+          updateTeacherAbsentButtonEligibility();
         }
         if (leaveBtn) leaveBtn.style.display = 'none';
       } else {
@@ -5351,82 +5441,230 @@
       }
 
       if (finishBtn) {
-        finishBtn.addEventListener('click', async () => {
-          if (confirm('Are you sure you want to finish the class? This will close the classroom for both you and the student.')) {
-            try {
-              // Save QA recording before tearing down WebRTC (otherwise upload never completes)
-              if (window.ClassroomQaRecording && typeof window.ClassroomQaRecording.stopAndFinalize === 'function') {
-                try {
-                  await Promise.race([
-                    window.ClassroomQaRecording.stopAndFinalize(),
-                    new Promise((_, reject) => setTimeout(() => reject(new Error('QA finalize timeout')), 40000))
-                  ]);
-                } catch (qaErr) {
-                  console.warn('QA recording finalize:', qaErr);
-                }
-              }
+        let lcFeedbackRating = 0;
 
-              const bookingId = getQueryParam('bookingId') || getQueryParam('bookingid');
-              
-              if (!bookingId) {
-                alert('Error: Could not find booking ID. Please close the window manually.');
+        function refreshLcStarUi() {
+          document.querySelectorAll('#lc-feedback-stars .lc-feedback-star').forEach((btn) => {
+            const r = parseInt(btn.dataset.rating, 10);
+            btn.classList.toggle('is-selected', r <= lcFeedbackRating);
+          });
+          const hints = {
+            1: 'Poor — needs significant support',
+            2: 'Fair — room to grow',
+            3: 'Good — on track',
+            4: 'Very good — strong session',
+            5: 'Excellent — outstanding'
+          };
+          const el = document.getElementById('lc-feedback-rating-hint');
+          if (el) el.textContent = lcFeedbackRating ? hints[lcFeedbackRating] || '' : 'Select 1–5 stars';
+        }
+
+        const lcStars = document.getElementById('lc-feedback-stars');
+        if (lcStars) {
+          lcStars.addEventListener('click', (e) => {
+            const t = e.target && e.target.closest && e.target.closest('.lc-feedback-star');
+            if (!t) return;
+            lcFeedbackRating = parseInt(t.dataset.rating, 10);
+            refreshLcStarUi();
+          });
+        }
+
+        const lcDismiss = document.getElementById('lc-feedback-dismiss');
+        if (lcDismiss) {
+          lcDismiss.addEventListener('click', () => {
+            window.location.href = 'teacher-class-table.html';
+          });
+        }
+
+        const lcSubmit = document.getElementById('lc-feedback-submit');
+        if (lcSubmit) {
+          lcSubmit.addEventListener('click', async () => {
+            const bid =
+              classroomBookingMongoId || getQueryParam('bookingId') || getQueryParam('bookingid');
+            const token = localStorage.getItem('token');
+            const tid = localStorage.getItem('teacherId') || '';
+            if (!bid || !token || !tid) {
+              alert('Missing booking or login. Finish feedback from your class schedule instead.');
+              window.location.href = 'teacher-class-table.html';
+              return;
+            }
+            if (!lcFeedbackRating) {
+              alert('Please select a star rating (1–5).');
+              return;
+            }
+            const ta = document.getElementById('lc-feedback-comment');
+            const comment = ta ? String(ta.value || '').trim() : '';
+            lcSubmit.disabled = true;
+            try {
+              const res = await fetch('/api/feedback/submit', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: 'Bearer ' + token
+                },
+                body: JSON.stringify({
+                  bookingId: bid,
+                  teacherId: tid,
+                  studentId: classroomStudentIdForFeedback || '',
+                  rating: lcFeedbackRating,
+                  comment: comment,
+                  submittedAt: new Date().toISOString()
+                })
+              });
+              const data = await res.json().catch(() => ({}));
+              if (!res.ok) {
+                alert(data.error || 'Could not submit feedback. Try again from your schedule.');
+                lcSubmit.disabled = false;
                 return;
               }
-
-              // Live session end only — final "completed" status and teacher feedback happen
-              // from the schedule: "Complete Class & Submit Feedback" (not here).
-
-              // Emit class-finished event to notify student
-              if (socket && socket.connected) {
-                socket.emit('class-finished', {
-                  room,
-                  userType: 'teacher',
-                  teacherId: userId || username
-                });
-                console.log('✅ Class finished event emitted to room:', room);
-              }
-
-              // Cleanup: Close peer connection and stop streams
-              if (peerConnection) {
-                peerConnection.close();
-                peerConnection = null;
-              }
-              if (localStream) {
-                localStream.getTracks().forEach(track => track.stop());
-                localStream = null;
-              }
-              if (socket) {
-                socket.disconnect();
-              }
-
-              // Close the window after a short delay to allow event to be sent
-              setTimeout(() => {
-                window.close();
-                // If window.close() doesn't work (some browsers block it), redirect instead
-                setTimeout(() => {
-                  window.location.href = 'teacher-class-table.html';
-                }, 100);
-              }, 500);
-            } catch (error) {
-              console.error('❌ Error finishing class:', error);
-              alert('Error finishing class: ' + error.message + '\nThe classroom will still close.');
-              // Close anyway
-              setTimeout(() => {
-                window.close();
-                setTimeout(() => {
-                  window.location.href = 'teacher-class-table.html';
-                }, 100);
-              }, 500);
+              alert(data.message || 'Feedback saved and class finalized.');
+              window.location.href = 'teacher-class-table.html';
+            } catch (err) {
+              console.error(err);
+              alert('Network error. Try again from your schedule.');
+              lcSubmit.disabled = false;
             }
+          });
+        }
+
+        function showPostClassFeedbackLayer() {
+          lcFeedbackRating = 0;
+          const ta = document.getElementById('lc-feedback-comment');
+          if (ta) ta.value = '';
+          refreshLcStarUi();
+          const layer = document.getElementById('post-class-feedback-layer');
+          if (layer) {
+            layer.classList.add('is-visible');
+            layer.setAttribute('aria-hidden', 'false');
+          }
+        }
+
+        finishBtn.addEventListener('click', async () => {
+          if (
+            !confirm(
+              'End the live session? The video call will stop. You can submit feedback on this screen to finalize credits and pay, or finish later from your schedule.'
+            )
+          ) {
+            return;
+          }
+          try {
+            if (window.ClassroomQaRecording && typeof window.ClassroomQaRecording.stopAndFinalize === 'function') {
+              try {
+                await Promise.race([
+                  window.ClassroomQaRecording.stopAndFinalize(),
+                  new Promise((_, reject) => setTimeout(() => reject(new Error('QA finalize timeout')), 40000))
+                ]);
+              } catch (qaErr) {
+                console.warn('QA recording finalize:', qaErr);
+              }
+            }
+
+            const bookingId = getQueryParam('bookingId') || getQueryParam('bookingid');
+
+            if (!bookingId) {
+              alert('Could not find booking ID.');
+              window.location.href = 'teacher-class-table.html';
+              return;
+            }
+
+            const token = localStorage.getItem('token');
+            if (token) {
+              try {
+                const endRes = await fetch(
+                  '/api/booking/' + encodeURIComponent(bookingId) + '/end-session',
+                  {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      Authorization: 'Bearer ' + token
+                    }
+                  }
+                );
+                if (!endRes.ok) {
+                  const ed = await endRes.json().catch(() => ({}));
+                  console.warn('end-session:', ed.error || endRes.status);
+                }
+              } catch (endErr) {
+                console.warn('end-session request failed:', endErr);
+              }
+            }
+
+            if (socket && socket.connected) {
+              socket.emit('class-finished', {
+                room,
+                userType: 'teacher',
+                teacherId: userId || username
+              });
+              console.log('✅ Class finished event emitted to room:', room);
+            }
+
+            if (peerConnection) {
+              peerConnection.close();
+              peerConnection = null;
+            }
+            if (localStream) {
+              localStream.getTracks().forEach((track) => track.stop());
+              localStream = null;
+            }
+            if (socket) {
+              socket.disconnect();
+            }
+
+            showPostClassFeedbackLayer();
+          } catch (error) {
+            console.error('❌ Error finishing class:', error);
+            alert('Error ending session: ' + error.message);
           }
         });
       }
 
       if (absentBtn) {
-        absentBtn.addEventListener('click', () => {
-          if (confirm('Mark student as absent?')) {
-            alert('Student marked as absent.');
-            // Add your absent logic here
+        absentBtn.addEventListener('click', async () => {
+          if (absentBtn.disabled) return;
+          const bid =
+            classroomBookingMongoId ||
+            getQueryParam('bookingId') ||
+            getQueryParam('bookingid');
+          if (!bid) {
+            alert('Could not find booking ID. Open the classroom from your schedule so the booking is linked.');
+            return;
+          }
+          if (
+            !confirm(
+              'Mark this student as absent? Under the no-class, no-pay policy, there will be no payment for this session.'
+            )
+          ) {
+            return;
+          }
+          const token = localStorage.getItem('token');
+          if (!token) {
+            alert('Please log in again to mark absent.');
+            return;
+          }
+          absentBtn.disabled = true;
+          try {
+            const response = await fetch(`/api/booking/${encodeURIComponent(bid)}/mark-student-absent`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`
+              }
+            });
+            const data = await response.json().catch(() => ({}));
+            if (response.ok) {
+              alert(data.message || 'Student marked as absent.');
+              if (absentBtnPollId != null) {
+                clearInterval(absentBtnPollId);
+                absentBtnPollId = null;
+              }
+            } else {
+              alert(data.error || 'Failed to mark student absent.');
+              updateTeacherAbsentButtonEligibility();
+            }
+          } catch (err) {
+            console.error('Mark absent:', err);
+            alert('Network error while marking absent. Try again.');
+            updateTeacherAbsentButtonEligibility();
           }
         });
       }

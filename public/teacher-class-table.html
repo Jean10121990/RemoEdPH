@@ -226,7 +226,7 @@
         <div class="feedback-details">
           <p><strong>Class:</strong> <span id="feedback-class-info"></span></p>
           <p><strong>Student:</strong> <span id="feedback-student-info"></span></p>
-          <p style="color: #666; font-style: italic; margin-bottom: 15px;">Please provide feedback before completing this class.</p>
+          <p style="color: #666; font-style: italic; margin-bottom: 15px;">Stars and comments finalize this lesson, student credits, and your teaching fee. If you clicked Finish in the live room first, you are in the right place.</p>
         
           <div class="form-group">
             <label for="feedback-rating">Student Rating:</label>
@@ -840,8 +840,16 @@
               isClassDurationPassed = currentDateTime > endTime;
           }
           
-          // Only mark as completed if the teacher manually completed it
-          if (booking.status === 'completed') {
+          // Session ended in classroom; teacher must still submit wrap-up feedback to get paid
+          if (String(booking.status).toLowerCase() === 'pending_feedback') {
+            console.log('⏳ Pending teacher feedback (live session ended)');
+            slotElement.classList.add('status-pending-feedback');
+            indicator = '!';
+            slotElement.style.cursor = 'pointer';
+            slotElement.style.fontWeight = 'bold';
+            slotElement.style.fontSize = '1.1em';
+            slotElement.onclick = (ev) => showClassInfo(booking, ev);
+          } else if (booking.status === 'completed') {
             console.log('✅ Marking as finished (manually completed by teacher)');
             slotElement.classList.add('status-completed');
             indicator = 'F';
@@ -958,6 +966,8 @@
             } else {
               statusText = 'Absent (Both entered)';
             }
+          } else if (String(booking.status).toLowerCase() === 'pending_feedback') {
+            statusText = 'Pending feedback — submit stars & comments to finalize';
           } else if (booking.status === 'completed') {
             statusText = booking.studentTechnicalIssues ? 'Class Completed (Student had technical issues)' : 'Class Completed';
           } else if (booking.absentMarkedAt) {
@@ -972,7 +982,12 @@
           slotElement.onclick = (ev) => showClassInfo(booking, ev);
           
           // Ensure CSS classes take precedence over inline styles for status-based styling
-          if (booking.status === 'completed' || booking.absentMarkedAt || booking.status === 'absent') {
+          if (
+            booking.status === 'completed' ||
+            booking.absentMarkedAt ||
+            booking.status === 'absent' ||
+            String(booking.status).toLowerCase() === 'pending_feedback'
+          ) {
             // Remove any inline background and color styles to let CSS classes work
             slotElement.style.removeProperty('background');
             slotElement.style.removeProperty('color');
@@ -1234,7 +1249,12 @@
       
       // Show class management buttons for classes that have started (15+ minutes) or are completed/absent
       // Removed 'past' status since we disabled automatic past marking
-      if (buttonElapsedMinutes >= 15 || booking.status === 'completed' || booking.status === 'absent') {
+      if (
+        buttonElapsedMinutes >= 15 ||
+        booking.status === 'completed' ||
+        String(booking.status).toLowerCase() === 'pending_feedback' ||
+        booking.status === 'absent'
+      ) {
         // Show class management buttons
         classManagementButtons.style.display = 'block';
         
@@ -1770,11 +1790,11 @@
                 });
                 
                 if (response.ok) {
-                    const feedbackExists = await response.json();
-                    if (feedbackExists.exists) {
+                    const feedbackState = await response.json();
+                    if (feedbackState.sessionFinalized) {
                         showNotification('Feedback already submitted for this class', 'info');
                         closeClassInfo();
-                        loadScheduleData(); // Refresh to show updated status
+                        loadScheduleData();
                         return;
                     }
                 }
@@ -1894,12 +1914,12 @@
                 });
                 
                 if (response.ok) {
-                    const feedbackExists = await response.json();
-                    if (feedbackExists.exists) {
+                    const feedbackState = await response.json();
+                    if (feedbackState.sessionFinalized) {
                         showNotification('Feedback already submitted for this class', 'info');
                         closeClassFeedbackModal();
                         closeClassInfo();
-                        loadScheduleData(); // Refresh to show updated status
+                        loadScheduleData();
                         return;
                     }
                 }
@@ -1964,78 +1984,18 @@
                 showNotification(`Failed to submit feedback: ${errorData.error || 'Unknown error'}`, 'error');
                 return;
             }
-            
-            if (currentBooking.status === 'completed') {
-                showNotification('Feedback submitted successfully.', 'success');
-                closeClassFeedbackModal();
-                closeClassInfo();
-                loadScheduleData();
-                return;
-            }
 
-            // Then, complete the class (final DB status — idempotent if already completed server-side)
-            console.log('🔄 Completing class:', currentBooking._id);
-            const completeResponse = await fetch(`/api/booking/${currentBooking._id}/complete`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-            
-            console.log('📡 Complete class response status:', completeResponse.status);
-            
-            if (completeResponse.ok) {
-                const completeData = await completeResponse.json();
-                console.log('✅ Class completion successful:', completeData);
-                showNotification('Class completed and feedback submitted successfully', 'success');
-                closeClassFeedbackModal();
-                closeClassInfo();
-                loadScheduleData(); // Refresh schedule
-                
-                // Update currentBooking status to prevent further attempts
-                if (currentBooking) {
-                    currentBooking.status = 'completed';
-                }
-            } else {
-                const errorData = await completeResponse.json();
-                console.error('❌ Class completion failed:', errorData);
-                showNotification(`Feedback submitted but failed to complete class: ${errorData.error || 'Unknown error'}`, 'warning');
-                
-                // Add retry button
-                const retryBtn = document.createElement('button');
-                retryBtn.textContent = 'Retry Class Completion';
-                retryBtn.className = 'remoed-btn remoed-btn-warning';
-                retryBtn.style.marginTop = '10px';
-                retryBtn.onclick = async () => {
-                    try {
-                        const retryResponse = await fetch(`/api/booking/${currentBooking._id}/complete`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${token}`
-                            }
-                        });
-                        
-                        if (retryResponse.ok) {
-                            showNotification('Class completed successfully on retry!', 'success');
-                            closeClassFeedbackModal();
-                            closeClassInfo();
-                            loadScheduleData();
-                        } else {
-                            const retryError = await retryResponse.json();
-                            showNotification(`Retry failed: ${retryError.error || 'Unknown error'}`, 'error');
-                        }
-                    } catch (retryError) {
-                        showNotification('Retry failed: ' + retryError.message, 'error');
-                    }
-                };
-                
-                // Add retry button to modal
-                const modalBody = document.querySelector('#class-feedback-modal .remoed-modal-body');
-                if (modalBody) {
-                    modalBody.appendChild(retryBtn);
-                }
+            const submitPayload = await feedbackResponse.json().catch(() => ({}));
+            console.log('✅ Feedback + finalize:', submitPayload);
+            showNotification(
+                submitPayload.message || 'Class completed and feedback submitted successfully',
+                'success'
+            );
+            closeClassFeedbackModal();
+            closeClassInfo();
+            loadScheduleData();
+            if (currentBooking) {
+                currentBooking.status = 'completed';
             }
         } catch (error) {
             console.error('Error submitting feedback and completing class:', error);

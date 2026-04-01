@@ -2401,12 +2401,14 @@ body.page-forgot-password{
             position: absolute;
             top: -15px;
             right: 20px;
-            background: linear-gradient(135deg, #FFD700, #FFE66D);
-            color: #1E3A5F;
+            background: linear-gradient(135deg, #b8e3fb, #e3f5ff);
+            color: #0f4a6e;
             padding: 8px 20px;
             border-radius: 20px;
             font-weight: 800;
             font-size: 0.9rem;
+            border: 1px solid rgba(28, 167, 231, 0.35);
+            box-shadow: 0 2px 8px rgba(28, 167, 231, 0.12);
         }.page-index .plan-icon{
             width: 56px;
             height: 56px;
@@ -2505,7 +2507,7 @@ body.page-forgot-password{
             background: linear-gradient(135deg, #1CA7E7, #5CB3FF);
             color: white;
             border: 2px solid #FFD700;
-            border-radius: 12px;
+            border-radius: 999px;
             font-size: 1.1rem;
             font-weight: 700;
             cursor: pointer;
@@ -2702,7 +2704,12 @@ body.page-forgot-password{
             backdrop-filter: blur(8px);
         }.page-index .logo-section span, .page-index .section-title, .page-index .hero-copy h1{
             color: var(--remoed-navy) !important;
-        }.page-index .plan-badge, .page-index .plan-tag{
+        }.page-index .plan-badge{
+            background: linear-gradient(135deg, #b8e3fb, #e3f5ff) !important;
+            color: #0f4a6e !important;
+            border: 1px solid rgba(28, 167, 231, 0.35) !important;
+            box-shadow: 0 2px 8px rgba(28, 167, 231, 0.12) !important;
+        }.page-index .plan-tag{
             background: linear-gradient(135deg, var(--japandi-orange), #f7a55f) !important;
             color: #ffffff !important;
         }.page-index .hero.japandi-hero{
@@ -8485,7 +8492,7 @@ body.page-student-register{
       background: linear-gradient(45deg, #667eea, #764ba2);
       color: white;
       border: 2px solid #FFD700;
-      border-radius: 10px;
+      border-radius: 999px;
       font-size: 1rem;
       font-weight: 700;
       cursor: pointer;
@@ -10818,6 +10825,28 @@ body.page-teacher-class-table-old{
       font-weight: bold;
       color: white;
       background: rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      width: 16px;
+      height: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }.page-teacher-class-table .status-pending-feedback{
+      background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+      color: white !important;
+      font-weight: 600 !important;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.2) !important;
+      border: 2px solid #b45309 !important;
+      box-shadow: 0 4px 12px rgba(245, 158, 11, 0.35) !important;
+    }.page-teacher-class-table .status-pending-feedback::after{
+      content: '!';
+      position: absolute;
+      top: 2px;
+      right: 4px;
+      font-size: 11px;
+      font-weight: bold;
+      color: white;
+      background: rgba(255, 255, 255, 0.25);
       border-radius: 50%;
       width: 16px;
       height: 16px;

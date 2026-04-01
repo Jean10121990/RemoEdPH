@@ -25,6 +25,8 @@ const bookingSchema = new mongoose.Schema({
   },
   // Timestamp when the class was marked completed. Needed for duration calculation
   finishedAt: { type: Date },
+  /** Set when the teacher ends the live session (Finish); financial finalization waits for teacher feedback. */
+  sessionEndedAt: { type: Date, default: null },
   lateMinutes: { type: Number, default: 0 }, // Number of minutes teacher was late
   // Student absent tracking
   absentMarkedAt: { type: Date },

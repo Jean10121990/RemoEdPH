@@ -29,6 +29,11 @@ const {
   consumeReservedCreditForBooking,
   releaseReservedCreditForBooking,
 } = require('./services/bookingCreditLedger');
+const {
+  FEEDBACK_ROLE_TEACHER_TO_STUDENT,
+  isBookingSessionFinalized,
+  finalizeBookingAfterTeacherFeedbackWrap,
+} = require('./services/teacherClassFinalize');
 const { getClassroomEntryGate, EARLY_ENTRY_MINUTES } = require('./services/classroomEntryWindow');
 const {
   getAvailableBookingCredits,
@@ -340,6 +345,36 @@ const upload = multer({
   limits: {
     fileSize: 10 * 1024 * 1024 // 10MB limit
   }
+});
+
+/** Issue reports: store under uploads/issue-screenshots and save URL as /uploads/... for admin QA hub */
+const issueScreenshotStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadDir = path.join(__dirname, '../uploads/issue-screenshots');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    const ext = path.extname(file.originalname || '').toLowerCase() || '.png';
+    cb(null, 'issue-' + uniqueSuffix + ext);
+  },
+});
+
+const issueScreenshotUpload = multer({
+  storage: issueScreenshotStorage,
+  fileFilter: function (req, file, cb) {
+    const allowed = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+    const ext = path.extname(file.originalname || '').toLowerCase();
+    if (allowed.includes(ext)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Screenshot must be an image (JPEG, PNG, GIF, or WebP).'), false);
+    }
+  },
+  limits: { fileSize: 10 * 1024 * 1024 },
 });
 
 // Test route to verify teacher routes are working
@@ -3049,30 +3084,27 @@ router.post('/mark-class-finished', verifyToken, requireTeacher, async (req, res
       meetsDurationRequirement = false;
     }
     
-    // Only mark as completed if duration requirement is met
+    // End live session only; credits and teacher pay finalize after teacher submits wrap-up feedback
     if (meetsDurationRequirement) {
-      booking.status = 'completed';
-      booking.finishedAt = new Date();
-      booking.attendance = booking.attendance || {};
-      booking.attendance.classCompleted = true;
-      
+      booking.sessionEndedAt = new Date();
+      booking.status = 'pending_feedback';
+
       // Add note if student had technical issues
       if (!studentEntered) {
         booking.studentTechnicalIssues = true;
         booking.technicalIssueNote = 'Student unable to access classroom due to technical difficulties (camera/microphone access issues)';
       }
-      
-      console.log(`✅ Class marked as completed - duration requirement met (${durationMinutes.toFixed(2)} minutes)`);
+
+      console.log(
+        `✅ Class session ended (pending feedback) — duration OK (${durationMinutes.toFixed(2)} minutes)`
+      );
     } else {
-      // Duration requirement not met - return error
-      return res.status(400).json({ 
-        success: false, 
-        error: `Class cannot be marked as finished. Duration must be 15-25 minutes. Current duration: ${durationMinutes.toFixed(2)} minutes.` 
+      return res.status(400).json({
+        success: false,
+        error: `Class cannot be marked as finished. Duration must be 15-25 minutes. Current duration: ${durationMinutes.toFixed(2)} minutes.`,
       });
     }
 
-    await consumeReservedCreditForBooking(booking, 'Class finished');
-    
     await booking.save();
     
     // Create notification with technical issue note if applicable
@@ -4538,115 +4570,14 @@ router.post('/remove-slide', verifyToken, requireTeacher, (req, res) => {
   });
 });
 
-// Submit teacher feedback for a class (legacy route for frontend compatibility)
-router.post('/feedback/submit', verifyToken, requireTeacher, async (req, res) => {
-  try {
-    const { bookingId, teacherId, studentId, rating, comment, submittedAt } = req.body;
-    
-    if (!bookingId || !rating || rating < 1 || rating > 5) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Missing required fields or invalid rating' 
-      });
-    }
-    
-    console.log('📝 Teacher feedback submission:', {
-      bookingId,
-      teacherId,
-      studentId,
-      rating,
-      comment: comment ? comment.substring(0, 50) + '...' : 'No comment',
-      submittedAt
-    });
-    console.log('🔍 Request body:', req.body);
-    
-    // Find the booking and verify it belongs to this teacher
-    const booking = await Booking.findById(bookingId);
-    if (!booking) {
-      return res.status(404).json({ 
-        success: false, 
-        error: 'Booking not found' 
-      });
-    }
-    
-    if (booking.teacherId !== teacherId) {
-      return res.status(403).json({ 
-        success: false, 
-        error: 'Access denied. This booking does not belong to you.' 
-      });
-    }
-    
-    // Check if feedback already exists for this booking
-    const existingFeedback = await Feedback.findOne({ bookingId });
-    if (existingFeedback) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Feedback already submitted for this class' 
-      });
-    }
-    
-    // Create new feedback
-    const feedback = new Feedback({
-      bookingId,
-      teacherId,
-      studentId,
-      rating,
-      comment: comment || '',
-      submittedAt: submittedAt || new Date(),
-      lessonDate: new Date(booking.date + 'T' + booking.time + ':00') // Convert booking date/time to lesson date
-    });
-    
-    await feedback.save();
-
-    try {
-      const { notifyStudentLesson1FeedbackReady } = require('./services/studentLessonFeedbackEmail');
-      setImmediate(() => {
-        notifyStudentLesson1FeedbackReady(booking).catch((err) =>
-          console.error('[lesson1 feedback email]', err.message || err)
-        );
-      });
-    } catch (e) {
-      console.error('[lesson1 feedback email] setup', e.message || e);
-    }
-    
-    // Save to StarReceived collection for student
-    const StarReceived = require('./models/StarReceived');
-    const starReceived = new StarReceived({
-      recipientId: studentId,
-      recipientType: 'student',
-      giverId: teacherId,
-      giverType: 'teacher',
-      bookingId: bookingId,
-      rating: rating,
-      feedbackId: feedback._id,
-      lessonDate: new Date(booking.date + 'T' + booking.time + ':00')
-    });
-    await starReceived.save();
-    console.log('⭐ Star saved to StarReceived collection for student:', studentId);
-    
-    console.log('✅ Teacher feedback submitted successfully');
-    
-    res.json({
-      success: true,
-      message: 'Feedback submitted successfully',
-      feedback: {
-        id: feedback._id,
-        rating,
-        comment: feedback.comment,
-        submittedAt: feedback.submittedAt
-      }
-    });
-    
-  } catch (error) {
-    console.error('❌ Error submitting teacher feedback:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Failed to submit feedback: ' + error.message 
-    });
-  }
+// Teacher wrap-up feedback must use POST /api/feedback/submit (finalizes credits + fee in one step).
+router.post('/feedback/submit', verifyToken, requireTeacher, (req, res) => {
+  res.status(400).json({
+    success: false,
+    error: 'Use POST /api/feedback/submit with the same JSON body (not /api/teacher/feedback/submit).',
+  });
 });
 
-// Complete a class (mark as finished) (legacy route for frontend compatibility)
 router.patch('/bookings/:bookingId/complete', verifyToken, requireTeacher, async (req, res) => {
   try {
     const { bookingId } = req.params;
@@ -4659,26 +4590,42 @@ router.patch('/bookings/:bookingId/complete', verifyToken, requireTeacher, async
     if (booking.teacherId !== teacherId) {
       return res.status(403).json({ success: false, error: 'Access denied. This booking does not belong to you.' });
     }
-    if (booking.status === 'completed') {
-      return res.status(400).json({ success: false, error: 'Class is already completed' });
+    if (isBookingSessionFinalized(booking)) {
+      return res.json({
+        success: true,
+        message: 'Class already finalized',
+        booking: {
+          id: booking._id,
+          status: booking.status,
+          finishedAt: booking.finishedAt,
+          classCompleted: booking.attendance && booking.attendance.classCompleted,
+        },
+      });
     }
 
-    booking.status = 'completed';
-    booking.finishedAt = new Date();
-    booking.attendance = booking.attendance || {};
-    booking.attendance.classCompleted = true;
-    await consumeReservedCreditForBooking(booking, 'Class finished');
-    await booking.save();
+    const teacherFb = await Feedback.findOne({
+      bookingId: String(bookingId),
+      feedbackRole: FEEDBACK_ROLE_TEACHER_TO_STUDENT,
+    });
+    if (!teacherFb) {
+      return res.status(400).json({
+        success: false,
+        error:
+          'Submit teacher feedback first (stars and comments). Finalization runs automatically after POST /api/feedback/submit.',
+      });
+    }
 
+    await finalizeBookingAfterTeacherFeedbackWrap(booking, teacherId);
+    const fresh = await Booking.findById(bookingId);
     return res.json({
       success: true,
-      message: 'Class completed successfully',
+      message: 'Class finalized',
       booking: {
-        id: booking._id,
-        status: booking.status,
-        finishedAt: booking.finishedAt,
-        classCompleted: booking.attendance.classCompleted
-      }
+        id: fresh._id,
+        status: fresh.status,
+        finishedAt: fresh.finishedAt,
+        classCompleted: fresh.attendance && fresh.attendance.classCompleted,
+      },
     });
   } catch (error) {
     console.error('❌ Error completing class (PATCH):', error);
@@ -4690,30 +4637,28 @@ router.post('/booking/:bookingId/complete', verifyToken, requireTeacher, async (
   try {
     const { bookingId } = req.params;
     const teacherId = req.user.teacherId;
-    
-    console.log('✅ Completing class:', bookingId, 'for teacher:', teacherId);
-    console.log('🔍 Request params:', req.params);
-    
-    // Find the booking and verify it belongs to this teacher
+
+    console.log('✅ Completing class (retry/finalize):', bookingId, 'for teacher:', teacherId);
+
     const booking = await Booking.findById(bookingId);
     if (!booking) {
-      return res.status(404).json({ 
-        success: false, 
-        error: 'Booking not found' 
+      return res.status(404).json({
+        success: false,
+        error: 'Booking not found',
       });
     }
-    
+
     if (booking.teacherId !== teacherId) {
-      return res.status(403).json({ 
-        success: false, 
-        error: 'Access denied. This booking does not belong to you.' 
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied. This booking does not belong to you.',
       });
     }
-    
-    if (booking.status === 'completed') {
+
+    if (isBookingSessionFinalized(booking)) {
       return res.json({
         success: true,
-        message: 'Class already completed',
+        message: 'Class already finalized',
         booking: {
           id: booking._id,
           status: booking.status,
@@ -4722,55 +4667,40 @@ router.post('/booking/:bookingId/complete', verifyToken, requireTeacher, async (
         },
       });
     }
-    
-    // Update booking status to completed
-    booking.status = 'completed';
-    booking.finishedAt = new Date();
-    
-    // Set attendance.classCompleted to true for service fee calculation
-    if (!booking.attendance) {
-      booking.attendance = {};
-    }
-    booking.attendance.classCompleted = true;
 
-    await consumeReservedCreditForBooking(booking, 'Class finished');
-    
-    await booking.save();
-    
-    console.log('✅ Class completed successfully:', bookingId);
-
-    try {
-      realtime.emitAll('bookingsUpdated', {
-        teacherId,
-        bookingId: booking._id.toString(),
-        date: booking.date,
-        time: booking.time,
-        status: booking.status,
-        ts: Date.now()
+    const teacherFb = await Feedback.findOne({
+      bookingId: String(bookingId),
+      feedbackRole: FEEDBACK_ROLE_TEACHER_TO_STUDENT,
+    });
+    if (!teacherFb) {
+      return res.status(400).json({
+        success: false,
+        error:
+          'Submit teacher feedback first (stars and comments). Finalization runs automatically after POST /api/feedback/submit.',
       });
-    } catch (emitErr) {
-      console.warn('bookingsUpdated emit (complete):', emitErr);
     }
-    
-    // Create notification
-    const notificationMessage = `Class completed for ${booking.date} at ${booking.time}`;
+
+    await finalizeBookingAfterTeacherFeedbackWrap(booking, teacherId);
+    const fresh = await Booking.findById(bookingId);
+
+    const notificationMessage = `Class completed for ${fresh.date} at ${fresh.time}`;
     await createNotification(teacherId, 'class-completed', notificationMessage);
-    
+
     res.json({
       success: true,
-      message: 'Class completed successfully',
+      message: 'Class finalized',
       booking: {
-        id: booking._id,
-        status: booking.status,
-        finishedAt: booking.finishedAt,
-        classCompleted: booking.attendance.classCompleted
-      }
+        id: fresh._id,
+        status: fresh.status,
+        finishedAt: fresh.finishedAt,
+        classCompleted: fresh.attendance && fresh.attendance.classCompleted,
+      },
     });
   } catch (error) {
     console.error('❌ Error completing class:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Failed to complete class: ' + error.message 
+    res.status(500).json({
+      success: false,
+      error: 'Failed to complete class: ' + error.message,
     });
   }
 });
@@ -4845,7 +4775,7 @@ router.post('/booking/:bookingId/mark-student-absent', verifyToken, requireTeach
 });
 
 // Report class issue
-router.post('/report-issue', verifyToken, requireTeacher, upload.single('screenshot'), async (req, res) => {
+router.post('/report-issue', verifyToken, requireTeacher, issueScreenshotUpload.single('screenshot'), async (req, res) => {
   try {
     const { bookingId, teacherId, studentId, issueType, description, submittedAt } = req.body;
     
@@ -4881,11 +4811,11 @@ router.post('/report-issue', verifyToken, requireTeacher, upload.single('screens
       });
     }
     
-    // Handle file upload if screenshot is provided
+    // Public URL path (served by app.use('/uploads', ...)) — not absolute disk path
     let screenshotPath = null;
     if (req.file) {
-      screenshotPath = req.file.path;
-      console.log('📸 Screenshot uploaded:', req.file.filename);
+      screenshotPath = '/uploads/issue-screenshots/' + req.file.filename;
+      console.log('📸 Screenshot uploaded:', screenshotPath);
     }
     
     // Determine payment impact based on issue type
