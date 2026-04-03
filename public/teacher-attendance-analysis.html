@@ -48,49 +48,6 @@
     <script src="https://cdn.jsdelivr.net/npm/luxon@3.5.0/build/global/luxon.min.js"></script>
     <script src="timezone-utils.js"></script>
     <script>
-        // Setup sidebar navigation links
-        function setupSidebarNavigation() {
-            const menuItems = document.querySelectorAll('.remoed-menu li');
-            menuItems.forEach(item => {
-                const text = item.textContent.trim();
-                
-                // Remove existing onclick and add new one to ensure it works
-                item.onclick = null;
-                
-                if (text.includes('Dashboard')) {
-                    item.onclick = () => window.location.href = 'teacher-dashboard.html';
-                    item.style.cursor = 'pointer';
-                } else if (text.includes('Class Schedule')) {
-                    item.onclick = () => window.location.href = 'teacher-class-table.html';
-                    item.style.cursor = 'pointer';
-                } else if (text.includes('Class Configuration')) {
-                    item.onclick = () => window.location.href = 'teacher-open-class.html';
-                    item.style.cursor = 'pointer';
-                } else if (text.includes('Device Check')) {
-                    item.onclick = () => window.location.href = 'device-check.html';
-                    item.style.cursor = 'pointer';
-                } else if (text.includes('Teaching Fee')) {
-                    item.onclick = () => window.location.href = 'teacher-service-fee.html';
-                    item.style.cursor = 'pointer';
-                } else if (text.includes('Performance Indicator')) {
-                    item.onclick = () => window.location.href = 'teacher-performance-indicator.html';
-                    item.style.cursor = 'pointer';
-                } else if (text.includes('Professional Development')) {
-                    item.onclick = () => window.location.href = 'teacher-professional-development.html';
-                    item.style.cursor = 'pointer';
-                } else if (text.includes('Profile') && !text.includes('Support')) {
-                    item.onclick = () => window.location.href = 'teacher-profile.html';
-                    item.style.cursor = 'pointer';
-                } else if (text.includes('Logout')) {
-                    item.onclick = () => {
-                        localStorage.clear();
-                        window.location.href = 'teacher-login.html';
-                    };
-                    item.style.cursor = 'pointer';
-                }
-            });
-        }
-        
         // Shared function to update sidebar username and profile
         async function updateSidebarProfile() {
             const username = localStorage.getItem('remoedUsername') || 'Teacher';

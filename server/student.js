@@ -9,6 +9,8 @@ const AssessmentTrial = require('./models/AssessmentTrial');
 const Teacher = require('./models/Teacher');
 const Referral = require('./models/Referral');
 const PortalVideo = require('./models/PortalVideo');
+const Lesson = require('./models/Lesson');
+const Curriculum = require('./models/Curriculum');
 const { verifyToken, requireStudent } = require('./authMiddleware');
 const {
   buildStudentCreditApiResponse,
@@ -628,6 +630,142 @@ router.get('/bookings', verifyToken, requireStudent, async (req, res) => {
   } catch (err) {
     console.error('❌ Error fetching student bookings:', err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+function collectStudentIdentifiers(req) {
+  const ids = [];
+  if (req.student && req.student.username) ids.push(req.student.username);
+  if (req.student && req.student.email) ids.push(req.student.email);
+  if (req.user && req.user.username) ids.push(req.user.username);
+  return [...new Set(ids.filter(Boolean))];
+}
+
+/** Maps DB / UI level strings to progress sidebar keys: nursery | kinder | prep */
+function normalizeProgressLevel(raw) {
+  const s = String(raw || '').toLowerCase();
+  if (s.includes('nursery')) return 'nursery';
+  if (s.includes('kinder')) return 'kinder';
+  if (s.includes('prep') || s.includes('preparatory')) return 'prep';
+  return null;
+}
+
+/** Parse "Batch X" / "Lesson Y" from stored booking title; or linear lesson index 1–220. */
+function levelFromLessonTitle(lessonTitle) {
+  const t = String(lessonTitle || '');
+  const m = t.match(/RemoEd\s+([A-Za-z]+)\s+English/i);
+  if (!m) return null;
+  return normalizeProgressLevel(m[1]);
+}
+
+function parseBatchLessonFromTitle(lessonTitle) {
+  const t = String(lessonTitle || '');
+  let batch = null;
+  let lessonNum = null;
+  const bMatch = t.match(/batch\s*(\d+)/i);
+  const lMatch = t.match(/lesson\s*(\d+)/i);
+  if (bMatch) batch = parseInt(bMatch[1], 10);
+  if (lMatch) lessonNum = parseInt(lMatch[1], 10);
+  if (batch != null && lessonNum != null && batch >= 1 && batch <= 10 && lessonNum >= 1 && lessonNum <= 22) {
+    return { batch, lessonNum };
+  }
+  if (lMatch && batch == null) {
+    const n = parseInt(lMatch[1], 10);
+    if (n >= 1 && n <= 220) {
+      return { batch: Math.ceil(n / 22), lessonNum: ((n - 1) % 22) + 1 };
+    }
+  }
+  return null;
+}
+
+function isBookingLessonCompleted(b) {
+  const st = String(b.status || '').toLowerCase();
+  if (st === 'completed') return true;
+  if (b.attendance && b.attendance.classCompleted) return true;
+  return false;
+}
+
+/**
+ * All non-cancelled bookings → completed lesson keys for the progress sidebar
+ * (3 levels × 10 batches × 22 lessons). Keys: "nursery:1:1" … "prep:10:22".
+ */
+router.get('/lesson-progress', verifyToken, requireStudent, async (req, res) => {
+  try {
+    const uniqueIdentifiers = collectStudentIdentifiers(req);
+    if (uniqueIdentifiers.length === 0) {
+      return res.status(400).json({ error: 'Student identifier missing' });
+    }
+
+    const bookings = await Booking.find({
+      studentId: { $in: uniqueIdentifiers },
+      status: { $ne: 'cancelled' },
+    })
+      .select('lesson studentLevel status attendance lessonId classroomId')
+      .lean();
+
+    const completed = bookings.filter(isBookingLessonCompleted);
+    const lessonIds = [...new Set(completed.map((b) => b.lessonId).filter(Boolean))];
+
+    let lessonMap = {};
+    if (lessonIds.length > 0) {
+      const lessons = await Lesson.find({ _id: { $in: lessonIds } })
+        .select('lessonNumber order curriculumId')
+        .lean();
+      const curIds = [...new Set(lessons.map((l) => l.curriculumId).filter(Boolean).map(String))];
+      const curricula =
+        curIds.length > 0
+          ? await Curriculum.find({ _id: { $in: curIds } }).select('level').lean()
+          : [];
+      const curById = Object.fromEntries(curricula.map((c) => [String(c._id), c]));
+      lessonMap = Object.fromEntries(
+        lessons.map((l) => [String(l._id), { ...l, curriculum: curById[String(l.curriculumId)] }])
+      );
+    }
+
+    const completedKeys = new Set();
+
+    for (const b of completed) {
+      let level = normalizeProgressLevel(b.studentLevel);
+      let batch = null;
+      let lessonNum = null;
+
+      if (b.lessonId && lessonMap[String(b.lessonId)]) {
+        const l = lessonMap[String(b.lessonId)];
+        const cLvl = normalizeProgressLevel(l.curriculum && l.curriculum.level);
+        if (cLvl) level = cLvl;
+        const num = Number(l.lessonNumber || l.order || 0);
+        if (num >= 1 && num <= 220) {
+          batch = Math.ceil(num / 22);
+          lessonNum = ((num - 1) % 22) + 1;
+        }
+      }
+
+      if (batch == null || lessonNum == null) {
+        const parsed = parseBatchLessonFromTitle(b.lesson);
+        if (parsed) {
+          batch = parsed.batch;
+          lessonNum = parsed.lessonNum;
+        }
+      }
+
+      if (!level) level = normalizeProgressLevel(b.studentLevel);
+      if (!level) level = levelFromLessonTitle(b.lesson);
+      if (!level || batch == null || lessonNum == null) continue;
+      if (batch < 1 || batch > 10 || lessonNum < 1 || lessonNum > 22) continue;
+
+      completedKeys.add(`${level}:${batch}:${lessonNum}`);
+    }
+
+    res.json({
+      success: true,
+      completedKeys: [...completedKeys],
+      levels: ['nursery', 'kinder', 'prep'],
+      batchesPerLevel: 10,
+      lessonsPerBatch: 22,
+    });
+  } catch (err) {
+    console.error('GET /student/lesson-progress:', err);
+    res.status(500).json({ error: 'Failed to load lesson progress' });
   }
 });
 

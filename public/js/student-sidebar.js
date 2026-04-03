@@ -14,6 +14,7 @@
         { id: 'classes', label: 'My Classes', href: 'student-booking-history.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>' },
         { id: 'games', label: 'Play & Learn', href: 'student-games-activities.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M6 12h4M8 10v4"/><path d="M15 11h.01M18 13h.01"/><rect x="2" y="7" width="20" height="10" rx="5"/></svg>' },
         { id: 'videos', label: 'Videos', href: 'student-videos.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><rect x="2" y="7" width="15" height="10" rx="2"/><path d="M17 10l5-3v10l-5-3z"/></svg>' },
+        { id: 'journey', label: 'My Learning Journey', href: 'student-learning-journey.html', studentOnly: true, icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M4 19h16"/><path d="M6 17l4-14 4 10 4-6 2 10"/><circle cx="8" cy="17" r="2"/><circle cx="12" cy="13" r="2"/><circle cx="16" cy="11" r="2"/><circle cx="18" cy="17" r="2"/></svg>' },
         { id: 'profile', label: 'My Profile', href: 'student-profile.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>' },
         { id: 'level', label: 'My Level', href: 'student-assessment.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 12h10M7 8h6M7 16h4"/></svg>' },
         { id: 'credits', label: 'My Credits', href: 'student-credits.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M2 10h20M7 14h4"/></svg>' },
@@ -45,6 +46,8 @@
                 return 'games';
             case 'student-videos.html':
                 return 'videos';
+            case 'student-learning-journey.html':
+                return 'journey';
             case 'student-profile.html':
                 return 'profile';
             case 'student-assessment.html':
@@ -53,6 +56,18 @@
                 return 'credits';
             default:
                 return null;
+        }
+    }
+
+    /** My Learning Journey: only for logged-in students (explicit nav visibility). */
+    function shouldShowLearningJourneyNav() {
+        try {
+            var ut = localStorage.getItem('userType');
+            if (ut === 'student') return true;
+            if (ut == null || ut === '') return true;
+            return false;
+        } catch (e) {
+            return true;
         }
     }
 
@@ -152,7 +167,11 @@
         if (!container) return;
 
         var active = activePageId || getActiveFromPath();
-        var menuHtml = MENU_ITEMS.map(function (item) {
+        var showJourney = shouldShowLearningJourneyNav();
+        var menuHtml = MENU_ITEMS.filter(function (item) {
+            if (item.studentOnly && !showJourney) return false;
+            return true;
+        }).map(function (item) {
             var activeClass = (item.id === active && !item.isLogout) ? ' class="active"' : '';
             var idAttr = item.id === 'logout' ? ' id="logout-nav"' : '';
             var dataNav = ' data-nav="' + item.id + '"';

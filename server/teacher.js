@@ -2149,7 +2149,13 @@ router.get('/booking/:bookingId', verifyToken, requireTeacher, async (req, res) 
     }
     
     console.log('🔍 Final names - Student:', studentName, 'Teacher:', teacherName);
-    
+
+    let resolvedLessonId = null;
+    if (!booking.lessonId) {
+      const { resolveLessonIdFromBooking } = require('./lessonResolveFromBooking');
+      resolvedLessonId = await resolveLessonIdFromBooking(booking);
+    }
+
     res.json({ 
       success: true, 
       booking: {
@@ -2158,12 +2164,16 @@ router.get('/booking/:bookingId', verifyToken, requireTeacher, async (req, res) 
         date: booking.date,
         time: booking.time,
         lesson: booking.lesson,
+        lessonId: booking.lessonId,
+        ...(resolvedLessonId ? { resolvedLessonId } : {}),
         studentLevel: booking.studentLevel,
         studentName: studentName,
         teacherName: teacherName,
         status: booking.status,
         finishedAt: booking.finishedAt,
-        attendance: booking.attendance
+        attendance: booking.attendance,
+        dateTimeUtc: booking.dateTimeUtc,
+        scheduledStartTime: getScheduledStartTime(booking)
       }
     });
   } catch (err) {
@@ -2375,12 +2385,19 @@ router.get('/booking/by-classroom/:classroomId', async (req, res) => {
       });
     }
 
+    let resolvedLessonId = null;
+    if (!booking.lessonId) {
+      const { resolveLessonIdFromBooking } = require('./lessonResolveFromBooking');
+      resolvedLessonId = await resolveLessonIdFromBooking(booking);
+    }
+
     // Prepare booking data with student and teacher names and canonical scheduled start for timer
     const bookingData = {
       ...booking.toObject(),
       studentName: studentName,
       teacherName: teacherName,
-      scheduledStartTime: getScheduledStartTime(booking)
+      scheduledStartTime: getScheduledStartTime(booking),
+      ...(resolvedLessonId ? { resolvedLessonId } : {}),
     };
 
     console.log('✅ API: Sending booking data:', bookingData);

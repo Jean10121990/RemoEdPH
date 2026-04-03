@@ -149,7 +149,12 @@ router.post('/admin-login', adminLoginLimiterExtra, async (req, res) => {
 
   const hash = getAdminPasswordHashField(admin);
   if (!hash) {
-    return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    return res.status(401).json({
+      success: false,
+      code: 'ADMIN_PASSWORD_NOT_SET',
+      message:
+        'No password on this account yet. Use the first-time setup link and token from your Super-Admin, then sign in.',
+    });
   }
 
   const match = await bcrypt.compare(password, hash);
@@ -163,8 +168,15 @@ router.post('/admin-login', adminLoginLimiterExtra, async (req, res) => {
     await admin.save().catch(() => {});
   }
 
+  const adminRole = admin.adminRole || 'super_admin';
   const token = jwt.sign(
-    { username: admin.username, isAdmin: true, role: 'admin' },
+    {
+      username: admin.username,
+      isAdmin: true,
+      role: 'admin',
+      adminRole,
+      adminId: String(admin._id),
+    },
     JWT_SECRET,
     { expiresIn: JWT_EXPIRES_IN }
   );
@@ -177,16 +189,64 @@ router.post('/admin-login', adminLoginLimiterExtra, async (req, res) => {
     req.session.adminAuth = true;
     req.session.adminUsername = admin.username;
     req.session.adminId = String(admin._id);
+    req.session.adminRole = adminRole;
 
     req.session.save((saveErr) => {
       if (saveErr) {
         console.error('Session save error:', saveErr);
         return res.status(500).json({ success: false, message: 'Could not save session' });
       }
-      console.log('Admin login successful (session + token):', { username: admin.username });
-      res.json({ success: true, token, username: admin.username });
+      console.log('Admin login successful (session + token):', { username: admin.username, adminRole });
+      res.json({ success: true, token, username: admin.username, adminRole });
     });
   });
+});
+
+/** First-time password for admins created without a password (Super-Admin receives one-time token). */
+router.post('/admin-first-setup', authRegisterLimiter, async (req, res) => {
+  try {
+    const { username, setupToken, password } = req.body || {};
+    if (!username || !setupToken || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Username, setup token, and new password are required.',
+      });
+    }
+    const pwdRe = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d]{8,}$/;
+    if (!pwdRe.test(String(password))) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 8 characters with uppercase, lowercase, and a number.',
+      });
+    }
+    const admin = await Admin.findOne({ username: String(username).trim() });
+    if (!admin || !admin.mustSetPassword || !admin.passwordSetupTokenHash) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid setup request or account already has a password.',
+      });
+    }
+    if (admin.passwordSetupExpires && admin.passwordSetupExpires < new Date()) {
+      return res.status(400).json({ success: false, message: 'Setup token has expired. Ask a Super-Admin to re-invite you.' });
+    }
+    const ok = await bcrypt.compare(String(setupToken), admin.passwordSetupTokenHash);
+    if (!ok) {
+      return res.status(401).json({ success: false, message: 'Invalid setup token.' });
+    }
+    admin.passwordHash = await bcrypt.hash(String(password), 12);
+    admin.password = undefined;
+    admin.mustSetPassword = false;
+    admin.passwordSetupTokenHash = null;
+    admin.passwordSetupExpires = null;
+    await admin.save();
+    res.json({
+      success: true,
+      message: 'Password saved. You can sign in from the admin login page.',
+    });
+  } catch (err) {
+    console.error('admin-first-setup:', err);
+    res.status(500).json({ success: false, message: 'Setup failed' });
+  }
 });
 
 router.post('/admin-logout', (req, res) => {

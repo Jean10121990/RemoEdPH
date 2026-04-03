@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
 const Teacher = require('./models/Teacher');
 const Student = require('./models/Student');
+const Admin = require('./models/Admin');
 const { isTokenBlacklisted } = require('./services/jwtBlacklist');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
@@ -48,6 +49,7 @@ const verifyAdminApiAuth = (req, res, next) => {
       isAdmin: true,
       role: 'admin',
       adminId: req.session.adminId || null,
+      adminRole: req.session.adminRole || 'super_admin',
     };
     return next();
   }
@@ -69,10 +71,82 @@ const verifyAdminApiAuth = (req, res, next) => {
     if (decoded.isAdmin !== true && decoded.role !== 'admin') {
       return res.status(403).json({ error: 'Access denied. Admin privileges required.' });
     }
-    req.user = decoded;
+    req.user = {
+      ...decoded,
+      adminRole: decoded.adminRole || 'super_admin',
+    };
     next();
   } catch (error) {
     return res.status(401).json({ error: 'Invalid token.' });
+  }
+};
+
+/**
+ * Scope non–super-admin roles from sensitive admin API areas.
+ * super_admin bypasses all checks.
+ */
+const adminRoleGate = (req, res, next) => {
+  if (!req.user || req.user.isAdmin !== true) return next();
+  const role = req.user.adminRole || 'super_admin';
+  if (role === 'super_admin') return next();
+  const p = req.path || '';
+
+  if (
+    p.includes('/settings/') ||
+    p.includes('/maintenance') ||
+    p.includes('/cleanup/')
+  ) {
+    return res.status(403).json({ error: 'Only Super-Admin can access system settings and maintenance.' });
+  }
+
+  if (role === 'admin_qa') {
+    if (
+      /\/payment|\/dispense|\/teachers-weekly-salaries|\/user|teacher-pipeline|teachers-list|students-list|admins-list|\/referral-link|unique-link|global-rate|save-global-rate|update-global-rate/.test(
+        p
+      )
+    ) {
+      return res.status(403).json({ error: 'Your admin role (QA) cannot access this resource.' });
+    }
+  }
+  if (role === 'admin_accounting') {
+    if (
+      /\/issues|issue-reports|\/user|teacher-pipeline|teachers-list|students-list|admins-list|^\/admins$/.test(p)
+    ) {
+      return res.status(403).json({ error: 'Your admin role (Accounting) cannot access this resource.' });
+    }
+  }
+  if (role === 'admin_hr') {
+    if (
+      /\/issues|issue-reports|payment|dispense|teachers-weekly-salaries|classroom-recordings|referral-link|unique-link|global-rate|save-global-rate|update-global-rate/.test(
+        p
+      )
+    ) {
+      return res.status(403).json({ error: 'Your admin role (HR) cannot access this resource.' });
+    }
+  }
+  return next();
+};
+
+/** Classroom recording admin routes (mounted separately) — QA + Super-Admin only. */
+const requireAdminQaOrSuper = (req, res, next) => {
+  const role = req.user && (req.user.adminRole || 'super_admin');
+  if (role === 'super_admin' || role === 'admin_qa') return next();
+  return res.status(403).json({ error: 'Your admin role cannot access lesson recordings.' });
+};
+
+const requireSuperAdminDb = async (req, res, next) => {
+  try {
+    if (!req.user || !req.user.username) {
+      return res.status(401).json({ error: 'Authentication required.' });
+    }
+    const admin = await Admin.findOne({ username: String(req.user.username).trim() }).lean();
+    const role = admin && admin.adminRole ? admin.adminRole : 'super_admin';
+    if (role !== 'super_admin') {
+      return res.status(403).json({ error: 'Only Super-Admin can perform this action.' });
+    }
+    next();
+  } catch (e) {
+    return res.status(500).json({ error: 'Authorization check failed.' });
   }
 };
 
@@ -241,6 +315,9 @@ const logAccess = (req, res, next) => {
 module.exports = {
   verifyToken,
   verifyAdminApiAuth,
+  adminRoleGate,
+  requireAdminQaOrSuper,
+  requireSuperAdminDb,
   requireTeacher,
   requireStudent,
   requireAdmin,

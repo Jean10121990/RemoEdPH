@@ -36,6 +36,7 @@
       <button type="submit" class="remoed-btn remoed-btn-primary" style="width: 100%;">Login</button>
     </form>
     <div style="text-align: center; margin-top: 1.5rem;">
+      <a href="admin-first-setup.html" style="color: #2563eb; text-decoration: none; font-size: 0.875rem; display: block; margin-bottom: 0.5rem;">First-time password setup</a>
       <a href="index.html" style="color: #2563eb; text-decoration: none; font-size: 0.875rem;">&larr; Back to Home</a>
     </div>
   </div>
@@ -84,10 +85,23 @@
         data = { success: false, message: 'Invalid server response.' };
       }
 
+      if (data.code === 'ADMIN_PASSWORD_NOT_SET') {
+        errorDiv.innerHTML = (data.message || 'Password not set yet.') + ' <a href="admin-first-setup.html" style="color:#1d4ed8;">First-time setup</a>';
+        errorDiv.style.display = 'block';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Login';
+        return;
+      }
+
       if (data.success && data.token) {
         localStorage.setItem('adminToken', data.token);
         localStorage.setItem('adminUsername', data.username);
-        localStorage.setItem('userType', 'admin'); // Add this line to set user type
+        localStorage.setItem('userType', 'admin');
+        if (data.adminRole) {
+          localStorage.setItem('adminRole', data.adminRole);
+        } else {
+          localStorage.removeItem('adminRole');
+        }
         window.location.href = 'admin-dashboard.html';
       } else {
         errorDiv.textContent = data.message || 'Invalid credentials.';

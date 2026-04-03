@@ -358,6 +358,7 @@ const protectedHtmlFiles = new Set([
   'student-dashboard.html',
   'teacher-dashboard.html',
   'student-profile.html',
+  'student-learning-journey.html',
   'teacher-profile.html',
   'teacher-view-profile.html',
   'login.html',
@@ -1337,6 +1338,11 @@ app.get('/api/student/booking/:bookingId', verifyToken, async (req, res) => {
 
     const bookingObj = booking.toObject ? booking.toObject() : { ...booking };
     bookingObj.scheduledStartTime = getScheduledStartTime(booking);
+    if (!bookingObj.lessonId) {
+      const { resolveLessonIdFromBooking } = require('./lessonResolveFromBooking');
+      const rid = await resolveLessonIdFromBooking(booking);
+      if (rid) bookingObj.resolvedLessonId = rid;
+    }
     console.log('✅ [STUDENT BOOKING] Booking found:', bookingId);
     res.json({ success: true, booking: bookingObj });
   } catch (error) {
@@ -1413,6 +1419,34 @@ app.get('/student-login', (req, res) => {
 
 app.get('/student-waiting-room', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/student-waiting-room.html'));
+});
+
+/**
+ * Legacy issue screenshots: DB may store /uploads/slides/screenshot-T-R.ext while the file was
+ * saved under uploads/issue-screenshots/issue-T-R.ext (same timestamp/random suffix). Static /uploads
+ * 404s when the slides path has no file — resolve the real file here before the JSON 404.
+ */
+app.get('/uploads/slides/:filename', (req, res, next) => {
+  try {
+    const uploadRoot = path.join(__dirname, '../uploads');
+    const raw = String(req.params.filename || '');
+    const safe = path.basename(raw);
+    if (!safe || safe !== raw || safe.includes('..')) return next();
+    const slidesPath = path.join(uploadRoot, 'slides', safe);
+    if (fs.existsSync(slidesPath) && fs.statSync(slidesPath).isFile()) {
+      return res.sendFile(slidesPath);
+    }
+    const m = /^screenshot-(.+)$/i.exec(safe);
+    if (m) {
+      const issuePath = path.join(uploadRoot, 'issue-screenshots', 'issue-' + m[1]);
+      if (fs.existsSync(issuePath) && fs.statSync(issuePath).isFile()) {
+        return res.sendFile(issuePath);
+      }
+    }
+    return next();
+  } catch (e) {
+    return next();
+  }
 });
 
 // Error handling middleware

@@ -576,11 +576,6 @@
                     ${prompts.map((prompt, idx) => 
                         `<button class="option-btn" onclick="changeWritingPrompt(${idx})">Prompt ${idx + 1}</button>`
                     ).join('')}
-                    <button class="next-btn" onclick="saveWriting()">💾 Save My Writing</button>
-                </div>
-                <div class="feedback-message" id="writing-feedback" style="display: none;"></div>
-                <div style="margin-top: 16px; padding: 12px; background: #f8f9fa; border-radius: 8px; font-size: 0.85rem; color: #666;">
-                    <strong>💡 Tip:</strong> Take your time to write a thoughtful response. You can save multiple writings and review them later.
                 </div>
             `;
         }
@@ -602,79 +597,6 @@
             if (writingArea) {
                 writingArea.value = '';
                 writingArea.focus();
-            }
-            
-            // Hide any previous feedback
-            const feedback = document.getElementById('writing-feedback');
-            if (feedback) {
-                feedback.style.display = 'none';
-            }
-        }
-
-        async function saveWriting() {
-            const writing = document.getElementById('writing-area').value;
-            const feedback = document.getElementById('writing-feedback');
-            
-            if (!writing.trim()) {
-                if (feedback) {
-                    feedback.innerHTML = '<p style="color: #d32f2f;">⚠️ Please write something before saving!</p>';
-                    feedback.className = 'feedback-message error';
-                    feedback.style.display = 'block';
-                }
-                return;
-            }
-            
-            try {
-                // Save to localStorage
-                const savedWritings = JSON.parse(localStorage.getItem('studentWritings') || '[]');
-                const writingEntry = {
-                    level: selectedLevel,
-                    skill: 'writing',
-                    prompt: document.getElementById('writing-prompt-text').textContent,
-                    content: writing,
-                    timestamp: new Date().toISOString(),
-                    date: new Date().toLocaleDateString()
-                };
-                
-                savedWritings.push(writingEntry);
-                localStorage.setItem('studentWritings', JSON.stringify(savedWritings));
-                
-                // Show success feedback
-                if (feedback) {
-                    feedback.innerHTML = `
-                        <div style="padding: 12px; background: #e8f5e9; border-radius: 8px; border: 1px solid #c3e6cb;">
-                            <p style="margin: 0 0 8px 0; color: #2e7d32; font-weight: 600;">✅ Writing saved successfully!</p>
-                            <p style="margin: 0; color: #2e7d32; font-size: 0.9rem;">Your writing has been saved. You can view it in your profile.</p>
-                        </div>
-                    `;
-                    feedback.className = 'feedback-message success';
-                    feedback.style.display = 'block';
-                }
-                
-                // Optionally save to server
-                const token = localStorage.getItem('token');
-                if (token) {
-                    try {
-                        await fetch('/api/student/save-writing', {
-                            method: 'POST',
-                            headers: {
-                                'Authorization': `Bearer ${token}`,
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify(writingEntry)
-                        });
-                    } catch (err) {
-                        console.log('Server save failed, but local save succeeded:', err);
-                    }
-                }
-                
-            } catch (error) {
-                console.error('Error saving writing:', error);
-                if (feedback) {
-                    feedback.innerHTML = '<p style="color: #d32f2f;">❌ Error saving writing. Please try again.</p>';
-                    feedback.className = 'feedback-message error';
-                    feedback.style.display = 'block';
-                }
             }
         }
 

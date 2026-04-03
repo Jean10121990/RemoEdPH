@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const router = express.Router();
 const Teacher = require('./models/Teacher');
 const Student = require('./models/Student');
@@ -12,7 +13,15 @@ const TimeLog = require('./models/TimeLog');
 const Referral = require('./models/Referral');
 const AdminAuditLog = require('./models/AdminAuditLog');
 const { decryptPiiString } = require('./utils/piiCrypto');
-const { verifyAdminApiAuth, requireAdmin, verifyToken, requireTeacher } = require('./authMiddleware');
+const {
+  verifyAdminApiAuth,
+  requireAdmin,
+  verifyToken,
+  requireTeacher,
+  adminRoleGate,
+} = require('./authMiddleware');
+const path = require('path');
+const multer = require('multer');
 
 /** Turn stored issue screenshot (absolute path or /uploads/...) into a browser URL */
 function normalizeIssueScreenshotUrl(stored) {
@@ -45,6 +54,7 @@ function adminRouterRbac(req, res, next) {
         isAdmin: true,
         role: 'admin',
         adminId: req.session.adminId || null,
+        adminRole: req.session.adminRole || 'super_admin',
       };
       return next();
     }
@@ -62,6 +72,214 @@ function adminRouterRbac(req, res, next) {
 }
 
 router.use(adminRouterRbac);
+router.use(adminRoleGate);
+
+const adminProfileUploadDir = path.join(__dirname, '../uploads/admin-profiles');
+try {
+  require('fs').mkdirSync(adminProfileUploadDir, { recursive: true });
+} catch (e) {
+  /* ignore */
+}
+
+const adminProfileStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, adminProfileUploadDir),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname || '') || '.bin';
+    const safe = String(req.user && req.user.username ? req.user.username : 'admin').replace(/[^a-zA-Z0-9_-]/g, '_');
+    cb(null, `${safe}-${Date.now()}${ext}`);
+  },
+});
+const adminProfileUpload = multer({
+  storage: adminProfileStorage,
+  limits: { fileSize: 8 * 1024 * 1024 },
+});
+
+function adminPublicUploadUrl(stored) {
+  if (!stored) return null;
+  const s = String(stored).replace(/\\/g, '/');
+  if (s.startsWith('/uploads/')) return s;
+  return `/uploads/${s.replace(/^\//, '')}`;
+}
+
+/** Resolve Admin doc from session adminId, JWT adminId, or username (case-insensitive). */
+async function resolveAdminDoc(req) {
+  const id = (req.user && req.user.adminId) || (req.session && req.session.adminId);
+  if (id && mongoose.isValidObjectId(String(id))) {
+    const byId = await Admin.findById(id);
+    if (byId) return byId;
+  }
+  const u = req.user && req.user.username && String(req.user.username).trim();
+  if (u) {
+    let a = await Admin.findOne({ username: u });
+    if (a) return a;
+    const esc = u.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    a = await Admin.findOne({ username: new RegExp(`^${esc}$`, 'i') });
+    if (a) return a;
+  }
+  return null;
+}
+
+function adminProfileJson(admin) {
+  const o = admin.toObject();
+  delete o.password;
+  delete o.passwordHash;
+  delete o.passwordSetupTokenHash;
+  o.profilePictureUrl = adminPublicUploadUrl(o.profilePicturePath);
+  o.idDocumentUrl = adminPublicUploadUrl(o.idDocumentPath);
+  o.nbiClearanceDocumentUrl = adminPublicUploadUrl(o.nbiClearanceDocumentPath);
+  return o;
+}
+
+/** Current admin profile (password hashes and setup tokens never returned). */
+router.get('/me', async (req, res) => {
+  try {
+    const admin = await resolveAdminDoc(req);
+    if (!admin) {
+      return res.status(401).json({
+        success: false,
+        message: 'Could not resolve your admin account. Log out and sign in again.',
+      });
+    }
+    res.json({ success: true, profile: adminProfileJson(admin) });
+  } catch (err) {
+    console.error('GET /admin/me:', err);
+    res.status(500).json({ success: false, message: 'Failed to load profile' });
+  }
+});
+
+/** Some clients request GET on the upload URL; redirect to the static file. */
+router.get('/me/profile-picture', async (req, res) => {
+  try {
+    const admin = await resolveAdminDoc(req);
+    if (!admin || !admin.profilePicturePath) {
+      return res.status(404).json({ success: false, message: 'No profile picture' });
+    }
+    const url = adminPublicUploadUrl(admin.profilePicturePath);
+    return res.redirect(302, url);
+  } catch (err) {
+    console.error('GET /me/profile-picture:', err);
+    res.status(500).end();
+  }
+});
+
+router.put('/me', async (req, res) => {
+  try {
+    const admin = await resolveAdminDoc(req);
+    if (!admin) {
+      return res.status(401).json({
+        success: false,
+        message: 'Could not resolve your admin account. Log out and sign in again.',
+      });
+    }
+
+    const b = req.body || {};
+    const stringFields = [
+      'firstName',
+      'lastName',
+      'email',
+      'address',
+      'contactPhone',
+      'education',
+      'experience',
+      'certificates',
+    ];
+    stringFields.forEach((k) => {
+      if (b[k] !== undefined) admin[k] = String(b[k]);
+    });
+    if (b.birthday !== undefined) {
+      admin.birthday = b.birthday ? new Date(b.birthday) : null;
+    }
+    if (b.nbiClearanceStatus !== undefined) {
+      const allowed = ['none', 'pending', 'submitted', 'verified'];
+      if (allowed.includes(String(b.nbiClearanceStatus))) {
+        admin.nbiClearanceStatus = b.nbiClearanceStatus;
+      }
+    }
+
+    const newPassword = b.newPassword && String(b.newPassword).trim();
+    if (newPassword) {
+      const pwdRe = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d]{8,}$/;
+      if (!pwdRe.test(newPassword)) {
+        return res.status(400).json({
+          success: false,
+          message: 'New password must be 8+ chars with uppercase, lowercase, and a number.',
+        });
+      }
+      const hash = admin.passwordHash || admin.password;
+      if (hash) {
+        const cur = b.currentPassword && String(b.currentPassword);
+        if (!cur || !(await bcrypt.compare(cur, hash))) {
+          return res.status(400).json({ success: false, message: 'Current password is incorrect.' });
+        }
+      }
+      admin.passwordHash = await bcrypt.hash(newPassword, 12);
+      admin.password = undefined;
+      admin.mustSetPassword = false;
+      admin.hasGeneratedPassword = false;
+    }
+
+    await admin.save();
+    res.json({ success: true, profile: adminProfileJson(admin) });
+  } catch (err) {
+    console.error('PUT /admin/me:', err);
+    res.status(500).json({ success: false, message: 'Failed to update profile' });
+  }
+});
+
+router.post('/me/profile-picture', adminProfileUpload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ success: false, message: 'No file' });
+    const admin = await resolveAdminDoc(req);
+    if (!admin) {
+      return res.status(401).json({ success: false, message: 'Could not resolve your admin account.' });
+    }
+    const rel = `admin-profiles/${req.file.filename}`;
+    admin.profilePicturePath = rel;
+    await admin.save();
+    res.json({ success: true, profilePictureUrl: adminPublicUploadUrl(rel) });
+  } catch (err) {
+    console.error('POST /me/profile-picture:', err);
+    res.status(500).json({ success: false, message: 'Upload failed' });
+  }
+});
+
+router.post('/me/id-document', adminProfileUpload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ success: false, message: 'No file' });
+    const admin = await resolveAdminDoc(req);
+    if (!admin) {
+      return res.status(401).json({ success: false, message: 'Could not resolve your admin account.' });
+    }
+    const rel = `admin-profiles/${req.file.filename}`;
+    admin.idDocumentPath = rel;
+    if (admin.nbiClearanceStatus === 'none') admin.nbiClearanceStatus = 'submitted';
+    await admin.save();
+    res.json({ success: true, idDocumentUrl: adminPublicUploadUrl(rel) });
+  } catch (err) {
+    console.error('POST /me/id-document:', err);
+    res.status(500).json({ success: false, message: 'Upload failed' });
+  }
+});
+
+router.post('/me/nbi-document', adminProfileUpload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ success: false, message: 'No file' });
+    const admin = await resolveAdminDoc(req);
+    if (!admin) {
+      return res.status(401).json({ success: false, message: 'Could not resolve your admin account.' });
+    }
+    const rel = `admin-profiles/${req.file.filename}`;
+    admin.nbiClearanceDocumentPath = rel;
+    if (admin.nbiClearanceStatus === 'none' || admin.nbiClearanceStatus === 'pending') {
+      admin.nbiClearanceStatus = 'submitted';
+    }
+    await admin.save();
+    res.json({ success: true, nbiClearanceDocumentUrl: adminPublicUploadUrl(rel) });
+  } catch (err) {
+    console.error('POST /me/nbi-document:', err);
+    res.status(500).json({ success: false, message: 'Upload failed' });
+  }
+});
 
 /** Recent admin audit events (credit grants, etc.). Query: ?action=&limit= */
 router.get('/audit-logs', async (req, res) => {
@@ -2287,18 +2505,32 @@ router.post('/user', async (req, res) => {
     console.log('=== TEACHER REGISTRATION ATTEMPT ===');
     console.log('Request body:', req.body);
     
-    const { userType, username, email, password, firstName, lastName, rate, studentFirstName, studentLastName } = req.body;
-    
-    // For teachers, only email, firstName, and lastName are required
-    if (!userType || !email) {
-      return res.status(400).json({ error: 'User type and email are required' });
+    const {
+      userType,
+      username,
+      email,
+      password,
+      firstName,
+      lastName,
+      rate,
+      studentFirstName,
+      studentLastName,
+      adminRole: requestedAdminRole,
+    } = req.body;
+
+    if (!userType) {
+      return res.status(400).json({ error: 'User type is required' });
     }
-    
-    // For students and admins, password is still required
-    if (userType !== 'teacher' && (!username || !password)) {
-      return res.status(400).json({ error: 'Username and password are required for students and admins' });
+    if (userType === 'teacher' && !email) {
+      return res.status(400).json({ error: 'Email is required for teachers' });
     }
-    
+    if (userType === 'student' && (!username || !email || !password)) {
+      return res.status(400).json({ error: 'Username, email and password are required for students' });
+    }
+    if (userType === 'admin' && !username) {
+      return res.status(400).json({ error: 'Username is required for admins' });
+    }
+
     // Check if email already exists
     let existingUser;
     switch (userType) {
@@ -2308,19 +2540,27 @@ router.post('/user', async (req, res) => {
       case 'student':
         existingUser = await Student.findOne({ $or: [{ username }, { email }] });
         break;
-      case 'admin':
-        existingUser = await Admin.findOne({ $or: [{ username }, { email }] });
+      case 'admin': {
+        const orAdmin = [{ username: String(username).trim() }];
+        if (email && String(email).trim()) {
+          orAdmin.push({ email: String(email).trim() });
+        }
+        existingUser = await Admin.findOne({ $or: orAdmin });
         break;
+      }
       default:
         return res.status(400).json({ error: 'Invalid user type' });
     }
-    
+
     if (existingUser) {
-      return res.status(400).json({ error: 'Email already exists' });
+      return res.status(400).json({ error: 'Username or email already exists' });
     }
-    
+
     let newUser;
-    let generatedUsername, generatedPassword, hashedPassword;
+    let generatedUsername;
+    let generatedPassword;
+    let hashedPassword;
+    let setupTokenPlain = null;
     
     switch (userType) {
       case 'teacher':
@@ -2403,14 +2643,44 @@ router.post('/user', async (req, res) => {
           lastName: studentLastName || ''
         });
         break;
-      case 'admin':
-        hashedPassword = await bcrypt.hash(password, 12);
-        newUser = new Admin({
-          username,
-          email,
-          passwordHash: hashedPassword,
-        });
+      case 'admin': {
+        const creator = await Admin.findOne({ username: String(req.user.username).trim() }).lean();
+        if (!creator || (creator.adminRole || 'super_admin') !== 'super_admin') {
+          return res.status(403).json({ error: 'Only Super-Admin can create admin accounts.' });
+        }
+        const allowedRoles = ['super_admin', 'admin_hr', 'admin_accounting', 'admin_qa'];
+        const assignedRole = allowedRoles.includes(String(requestedAdminRole))
+          ? String(requestedAdminRole)
+          : 'admin_hr';
+
+        const hasPassword = password && String(password).trim().length > 0;
+        if (hasPassword) {
+          hashedPassword = await bcrypt.hash(String(password).trim(), 12);
+          newUser = new Admin({
+            username: String(username).trim(),
+            email: email && String(email).trim() ? String(email).trim() : null,
+            adminRole: assignedRole,
+            passwordHash: hashedPassword,
+            mustSetPassword: false,
+            passwordSetupTokenHash: null,
+            passwordSetupExpires: null,
+          });
+        } else {
+          setupTokenPlain = crypto.randomBytes(32).toString('hex');
+          const tokenHash = await bcrypt.hash(setupTokenPlain, 10);
+          newUser = new Admin({
+            username: String(username).trim(),
+            email: email && String(email).trim() ? String(email).trim() : null,
+            adminRole: assignedRole,
+            passwordHash: null,
+            password: null,
+            mustSetPassword: true,
+            passwordSetupTokenHash: tokenHash,
+            passwordSetupExpires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          });
+        }
         break;
+      }
     }
     
     // Validate user data before saving
@@ -2509,12 +2779,20 @@ router.post('/user', async (req, res) => {
         });
       }
     } else {
-      // For non-teacher users
-      res.json({
+      const baseUser = { ...newUser.toObject(), password: undefined, passwordHash: undefined };
+      delete baseUser.passwordSetupTokenHash;
+      const payload = {
         success: true,
-        message: `${userType} created successfully`,
-        user: { ...newUser.toObject(), password: undefined, passwordHash: undefined }
-      });
+        message:
+          userType === 'admin' && setupTokenPlain
+            ? 'Admin created. Share the setup token with the user (valid 7 days). They must set a password before login.'
+            : `${userType} created successfully`,
+        user: baseUser,
+      };
+      if (userType === 'admin' && setupTokenPlain) {
+        payload.setupToken = setupTokenPlain;
+      }
+      res.json(payload);
     }
   } catch (err) {
       console.error('Error creating user:', err);
@@ -2527,12 +2805,23 @@ router.post('/user', async (req, res) => {
 router.put('/user/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
-    const { userType, username, email, password, firstName, lastName, rate, studentFirstName, studentLastName } = req.body;
-    
+    const {
+      userType,
+      username,
+      email,
+      password,
+      firstName,
+      lastName,
+      rate,
+      studentFirstName,
+      studentLastName,
+      adminRole: bodyAdminRolePut,
+    } = req.body;
+
     if (!userType) {
       return res.status(400).json({ error: 'User type is required' });
     }
-    
+
     let user;
     switch (userType) {
       case 'teacher':
@@ -2547,14 +2836,21 @@ router.put('/user/:userId', async (req, res) => {
       default:
         return res.status(400).json({ error: 'Invalid user type' });
     }
-    
+
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-    
+
+    if (userType === 'admin') {
+      const actor = await Admin.findOne({ username: String(req.user.username).trim() }).lean();
+      if (!actor || (actor.adminRole || 'super_admin') !== 'super_admin') {
+        return res.status(403).json({ error: 'Only Super-Admin can edit admin accounts.' });
+      }
+    }
+
     // Update fields
     if (username) user.username = username;
-    if (email) user.email = email;
+    if (email !== undefined) user.email = email || null;
     if (password) {
       const h = await bcrypt.hash(password, 12);
       if (userType === 'admin') {
@@ -2573,14 +2869,21 @@ router.put('/user/:userId', async (req, res) => {
     } else if (userType === 'student') {
       if (studentFirstName) user.firstName = studentFirstName;
       if (studentLastName) user.lastName = studentLastName;
+    } else if (userType === 'admin' && bodyAdminRolePut) {
+      const allowedRoles = ['super_admin', 'admin_hr', 'admin_accounting', 'admin_qa'];
+      if (allowedRoles.includes(String(bodyAdminRolePut))) {
+        user.adminRole = String(bodyAdminRolePut);
+      }
     }
-    
+
     await user.save();
-    
+
+    const out = { ...user.toObject(), password: undefined, passwordHash: undefined };
+    delete out.passwordSetupTokenHash;
     res.json({
       success: true,
       message: `${userType} updated successfully`,
-      user: { ...user.toObject(), password: undefined, passwordHash: undefined }
+      user: out,
     });
   } catch (err) {
     console.error('Error updating user:', err);
