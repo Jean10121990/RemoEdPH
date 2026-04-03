@@ -265,6 +265,74 @@ function listRemoedRegionTimezones() {
   return out;
 }
 
+/** HH:mm from booking.time string (DB stores UTC wall clock). */
+function normalizeBookingTimeHM(timeValue) {
+  if (timeValue == null || timeValue === '') return '00:00';
+  const parts = String(timeValue).split(':');
+  const hour = parseInt(parts[0], 10);
+  const minute = parseInt(parts[1] != null ? parts[1] : '0', 10);
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return '00:00';
+  return String(hour).padStart(2, '0') + ':' + String(minute).padStart(2, '0');
+}
+
+/**
+ * Instant (ms) for a booking: prefer dateTimeUtc / scheduledStartTime; else date+time as UTC (server pipeline).
+ */
+function bookingStartMsFromRecord(booking) {
+  if (!booking) return NaN;
+  const u =
+    booking.dateTimeUtc || booking.dateTimeUTC || booking.datetimeUtc || booking.scheduledStartTime;
+  if (u != null && String(u).trim() !== '') {
+    let s = String(u).trim();
+    if (!/[zZ]$/.test(s) && !/[+\-]\d{2}:?\d{2}$/.test(s) && s.indexOf('T') !== -1) {
+      s += 'Z';
+    }
+    const ms = new Date(s).getTime();
+    if (Number.isFinite(ms)) return ms;
+  }
+  if (booking.date) {
+    const hm = normalizeBookingTimeHM(booking.time);
+    const ms2 = new Date(booking.date + 'T' + hm + ':00.000Z').getTime();
+    if (Number.isFinite(ms2)) return ms2;
+  }
+  return NaN;
+}
+
+/** YYYY-MM-DD in Asia/Manila for the class start (for "Today" / sorting labels). */
+function bookingCalendarYmdPhilippines(booking) {
+  const ms = bookingStartMsFromRecord(booking);
+  if (!Number.isFinite(ms)) return '';
+  return formatYmdPhilippines(new Date(ms));
+}
+
+/** e.g. 9:30 am — Philippine local wall time for class start. */
+function bookingTimeLabel12hPhilippines(booking) {
+  const ms = bookingStartMsFromRecord(booking);
+  if (!Number.isFinite(ms)) return String(booking && booking.time != null ? booking.time : '');
+  return formatTime12hPhilippines(new Date(ms));
+}
+
+/** HH:mm 24h in Philippines (for live-classroom slot= query). */
+function bookingTimeHm24Philippines(booking) {
+  const ms = bookingStartMsFromRecord(booking);
+  if (!Number.isFinite(ms)) return normalizeBookingTimeHM(booking && booking.time);
+  try {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: REMOED_DISPLAY_ZONE,
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    }).formatToParts(new Date(ms));
+    const m = {};
+    parts.forEach(function (p) {
+      m[p.type] = p.value;
+    });
+    return m.hour + ':' + m.minute;
+  } catch (e) {
+    return normalizeBookingTimeHM(booking && booking.time);
+  }
+}
+
 // Export to window
 window.TimezoneUtils = {
   getDetectedZone,
@@ -288,5 +356,9 @@ window.TimezoneUtils = {
   formatTime12hPhilippines,
   formatYmdPhilippines,
   formatYmdAsPhilippinesLongDate,
-  addDaysYmdPhilippines
+  addDaysYmdPhilippines,
+  bookingStartMsFromRecord,
+  bookingCalendarYmdPhilippines,
+  bookingTimeLabel12hPhilippines,
+  bookingTimeHm24Philippines
 };

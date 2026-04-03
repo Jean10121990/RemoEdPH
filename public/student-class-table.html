@@ -1150,10 +1150,25 @@
       return PH_ZONE;
     }
 
+    /** Ensure ISO strings without offset are read as UTC (matches Mongo / server dateTimeUtc). */
+    function normalizeUtcIsoString(raw) {
+      if (raw == null || raw === '') return null;
+      if (typeof raw === 'object' && raw instanceof Date && !Number.isNaN(raw.getTime())) {
+        return raw.toISOString();
+      }
+      let str = String(raw).trim();
+      if (!str) return null;
+      if (/[zZ]$/.test(str)) return str;
+      if (/[+\-]\d{2}:\d{2}$/.test(str) || /[+\-]\d{4}$/.test(str)) return str;
+      if (str.includes('T')) return str + 'Z';
+      return str;
+    }
+
     // Fallback converter when Luxon is unavailable; only supports UTC -> target zone
     function utcToZoneParts(utcString, targetZone) {
       try {
-        const d = new Date(utcString);
+        const normalized = normalizeUtcIsoString(utcString);
+        const d = new Date(normalized || utcString);
         if (Number.isNaN(d.getTime())) return null;
         const formatter = new Intl.DateTimeFormat('en-CA', {
           timeZone: targetZone || PH_ZONE,
@@ -1181,77 +1196,70 @@
       const normalized = normalizeTimeToHHMM(booking.time);
       const zone = PH_ZONE;
 
-      if (!Lux || !normalized) {
-        return { date: booking.date, slot: normalized, label: normalized, zone };
+      if (!booking) {
+        return { date: '', slot: normalized, label: normalized, zone };
       }
 
-      // If we have an authoritative UTC, convert directly to the student's zone.
-      const utcString =
-        booking.dateTimeUtc ||
-        booking.dateTimeUTC ||
-        booking.datetimeUtc ||
-        booking.utc ||
-        booking.dateTime;
+      // Authoritative instants from API (UTC) → always convert to Philippines for display
+      const utcSources = [
+        booking.dateTimeUtc,
+        booking.dateTimeUTC,
+        booking.datetimeUtc,
+        booking.utc,
+        booking.dateTime,
+        booking.scheduledStartTime
+      ];
 
-      if (utcString) {
-        // Try Luxon first
+      for (const src of utcSources) {
+        const iso = normalizeUtcIsoString(src);
+        if (!iso) continue;
         if (Lux) {
-          const utcDt = Lux.fromISO(utcString, { zone: 'utc' });
+          const utcDt = Lux.fromISO(iso, { zone: 'utc' });
           if (utcDt.isValid) {
-            const local = utcDt.setZone(zone || PH_ZONE);
+            const local = utcDt.setZone(zone);
             return {
               date: local.toISODate(),
               slot: local.toFormat('HH:mm'),
               label: local.toFormat('hh:mm a'),
-              zone: zone || PH_ZONE
+              zone
             };
           }
         }
-        // Fallback using Intl if Luxon missing/invalid
-        const parts = utcToZoneParts(utcString, zone || PH_ZONE);
+        const parts = utcToZoneParts(iso, zone);
         if (parts) {
           return {
             date: parts.date,
             slot: parts.time,
             label: parts.time,
-            zone: zone || PH_ZONE
+            zone
           };
         }
       }
 
-      // Fallback: parse booking.date + booking.time using the student's zone (or offset if provided)
-      const isoCandidate = booking.time && booking.time.includes('T')
-        ? booking.time
-        : `${booking.date || ''}T${normalized}`;
-      const hasOffset = /[zZ]|[+\-]\d{2}:?\d{2}$/.test(isoCandidate);
-
-      if (Lux) {
-        const dt = hasOffset
-          ? Lux.fromISO(isoCandidate)
-          : Lux.fromISO(isoCandidate, { zone: zone || PH_ZONE });
-
-        if (!dt.isValid) {
-          return { date: booking.date, slot: normalized, label: normalized, zone };
+      // booking.date + booking.time are stored as UTC wall clock from the booking pipeline — not PH local.
+      if (booking.date && normalized) {
+        const utcWall = `${booking.date}T${normalized}:00.000Z`;
+        if (Lux) {
+          const utcDt = Lux.fromISO(utcWall, { zone: 'utc' });
+          if (utcDt.isValid) {
+            const local = utcDt.setZone(zone);
+            return {
+              date: local.toISODate(),
+              slot: local.toFormat('HH:mm'),
+              label: local.toFormat('hh:mm a'),
+              zone
+            };
+          }
         }
-
-        const local = dt.setZone(zone || PH_ZONE);
-        return {
-          date: local.toISODate(),
-          slot: local.toFormat('HH:mm'),
-          label: local.toFormat('hh:mm a'),
-          zone: zone || PH_ZONE
-        };
-      }
-
-      // Intl fallback (no offset parsing beyond UTC strings)
-      const parts = utcToZoneParts(isoCandidate, zone || PH_ZONE);
-      if (parts) {
-        return {
-          date: parts.date,
-          slot: parts.time,
-          label: parts.time,
-          zone: zone || PH_ZONE
-        };
+        const parts = utcToZoneParts(utcWall, zone);
+        if (parts) {
+          return {
+            date: parts.date,
+            slot: parts.time,
+            label: parts.time,
+            zone
+          };
+        }
       }
 
       return { date: booking.date, slot: normalized, label: normalized, zone };
@@ -1479,8 +1487,9 @@
       if (LuxModal) {
         const u = booking.dateTimeUtc || booking.dateTimeUTC || booking.datetimeUtc;
         if (u) {
-          const startU = LuxModal.fromISO(String(u), { zone: 'utc' });
-          if (startU.isValid) isPastOrStarted = startU <= LuxModal.now();
+          const isoU = normalizeUtcIsoString(u);
+          const startU = isoU ? LuxModal.fromISO(isoU, { zone: 'utc' }) : null;
+          if (startU && startU.isValid) isPastOrStarted = startU <= LuxModal.now();
         }
         if (!isPastOrStarted && timeInfoModal.date && timeInfoModal.slot) {
           const startL = LuxModal.fromISO(`${timeInfoModal.date}T${timeInfoModal.slot}`, { zone: PH_ZONE });
@@ -1625,7 +1634,8 @@
           return;
         }
       }
-      const slotTime = currentBookingInfo.time || '';
+      const tiJoin = bookingDisplayDateTime(currentBookingInfo);
+      const slotTime = tiJoin.slot || currentBookingInfo.time || '';
       const roomUrl = `live-classroom.html?room=${classroomId}&type=student&bookingId=${currentBookingInfo._id}&slot=${encodeURIComponent(slotTime)}`;
       window.open(roomUrl, '_blank');
     };
@@ -1640,8 +1650,9 @@
       if (LuxC) {
         const u = currentBookingInfo.dateTimeUtc || currentBookingInfo.dateTimeUTC || currentBookingInfo.datetimeUtc;
         if (u) {
-          const startU = LuxC.fromISO(String(u), { zone: 'utc' });
-          if (startU.isValid) cancelStarted = startU <= LuxC.now();
+          const isoU = normalizeUtcIsoString(u);
+          const startU = isoU ? LuxC.fromISO(isoU, { zone: 'utc' }) : null;
+          if (startU && startU.isValid) cancelStarted = startU <= LuxC.now();
         }
         if (!cancelStarted && tiCancel.date && tiCancel.slot) {
           const startL = LuxC.fromISO(`${tiCancel.date}T${tiCancel.slot}`, { zone: PH_ZONE });
@@ -1822,17 +1833,28 @@
     // Cancellation Modal Logic
     function showCancellationModal() {
       if (!currentBookingInfo) return;
-      
-      // Check if class has already started
-      const classDateTime = new Date(`${currentBookingInfo.date}T${currentBookingInfo.time}:00`);
-      const now = new Date();
-      
-      if (classDateTime <= now) {
+
+      const tiCan = bookingDisplayDateTime(currentBookingInfo);
+      const LuxM = window.luxon && window.luxon.DateTime;
+      let alreadyStarted = false;
+      if (LuxM && tiCan.date && tiCan.slot) {
+        const startL = LuxM.fromISO(`${tiCan.date}T${tiCan.slot}`, { zone: PH_ZONE });
+        if (startL.isValid) alreadyStarted = startL <= LuxM.now().setZone(PH_ZONE);
+      } else {
+        const classDateTime = new Date(`${currentBookingInfo.date}T${currentBookingInfo.time}:00Z`);
+        alreadyStarted = classDateTime <= new Date();
+      }
+
+      if (alreadyStarted) {
         alert('Cannot cancel a class that has already started.');
         return;
       }
-      
-              document.getElementById('cancel-class-info').textContent = `${currentBookingInfo.date} at ${formatTime24Hour(currentBookingInfo.time)}`;
+
+      const dateLineCan = TU.formatYmdAsPhilippinesLongDate
+        ? TU.formatYmdAsPhilippinesLongDate(tiCan.date || currentBookingInfo.date)
+        : String(tiCan.date || currentBookingInfo.date || '');
+      document.getElementById('cancel-class-info').textContent =
+        `${dateLineCan} at ${formatTime24Hour(tiCan.slot || currentBookingInfo.time)}`;
       // Handle both old and new teacher data structures for cancellation modal
       let cancelTeacherName = 'Unknown Teacher';
       if (currentBookingInfo.teacherId) {

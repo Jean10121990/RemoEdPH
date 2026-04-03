@@ -353,6 +353,40 @@
 
     const teacherTimezone = RemoedTZ.REMOED_ANCHOR_ZONE || RemoedTZ.REMOED_DISPLAY_ZONE || 'Asia/Manila';
 
+    function bookingStartMsForDisplay(b) {
+      return RemoedTZ.bookingStartMsFromRecord ? RemoedTZ.bookingStartMsFromRecord(b) : NaN;
+    }
+    function formatClassModalDateLong(b) {
+      const ms = bookingStartMsForDisplay(b);
+      if (Number.isFinite(ms) && RemoedTZ.formatDateLongPhilippines) {
+        return RemoedTZ.formatDateLongPhilippines(new Date(ms));
+      }
+      return RemoedTZ.formatYmdAsPhilippinesLongDate
+        ? RemoedTZ.formatYmdAsPhilippinesLongDate(b.date)
+        : String(b.date || '');
+    }
+    function formatClassModalTime12h(b) {
+      if (RemoedTZ.bookingTimeLabel12hPhilippines) {
+        return RemoedTZ.bookingTimeLabel12hPhilippines(b);
+      }
+      const ms = bookingStartMsForDisplay(b);
+      if (Number.isFinite(ms) && RemoedTZ.formatTime12hPhilippines) {
+        return RemoedTZ.formatTime12hPhilippines(new Date(ms));
+      }
+      return b.time || '';
+    }
+    function classScheduledStartDate(b) {
+      const ms = bookingStartMsForDisplay(b);
+      return Number.isFinite(ms) ? new Date(ms) : getManilaDate(b.date, b.time);
+    }
+    function liveClassroomSlotParam(b) {
+      if (RemoedTZ.bookingTimeHm24Philippines) {
+        const s = RemoedTZ.bookingTimeHm24Philippines(b);
+        if (s) return s;
+      }
+      return b.time || '';
+    }
+
     function initTeacherPhilippineTimeNote() {
       if (document.getElementById('teacher-class-table-pht-note')) return;
       const controls = document.querySelector('.remoed-header-controls');
@@ -1181,20 +1215,16 @@
         showNotification('💡 Tip: This class was marked as student absent. Under the no-class, no-pay policy, there is no payment for this session.', 'info');
       }
       
-      const formattedDate = RemoedTZ.formatYmdAsPhilippinesLongDate
-        ? RemoedTZ.formatYmdAsPhilippinesLongDate(booking.date)
-        : new Date(booking.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-      
-      // Populate modal with booking data
+      const formattedDate = formatClassModalDateLong(booking);
+
+      // Populate modal with booking data (times from UTC booking → Philippine display)
       document.getElementById('class-date').textContent = formattedDate;
-      // Format time as 24-hour format
-      let formattedTime = booking.time;
-      if (booking.time) {
-        const [hour, minute] = booking.time.split(':');
-        formattedTime = `${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`;
-      }
-      document.getElementById('class-time').textContent = formattedTime;
-      document.getElementById('class-student').textContent = booking.studentId?.firstName || booking.studentId?.username || 'Unknown Student';
+      document.getElementById('class-time').textContent = formatClassModalTime12h(booking);
+      document.getElementById('class-student').textContent =
+        booking.studentName ||
+        booking.studentId?.firstName ||
+        booking.studentId?.username ||
+        'Unknown Student';
       document.getElementById('class-level').textContent = booking.studentLevel || 'Not specified';
       document.getElementById('class-lesson').textContent = booking.lesson || 'Not specified';
       document.getElementById('classroom-id').textContent = booking.classroomId || 'Not set';
@@ -1202,8 +1232,7 @@
       // Check if class management buttons should be shown
       const classManagementButtons = document.getElementById('class-management-buttons');
       
-      // Parse date and time correctly (handle timezone)
-      const startTime = getManilaDate(booking.date, booking.time);
+      const startTime = classScheduledStartDate(booking);
       const buttonNow = getManilaNow();
       const buttonElapsedMinutes = Math.floor((buttonNow - startTime) / 1000 / 60);
       const buttonElapsedHours = buttonElapsedMinutes / 60;
@@ -1324,7 +1353,7 @@
           return;
         }
       }
-      const slotTime = currentBooking.time || '';
+      const slotTime = liveClassroomSlotParam(currentBooking);
       const roomUrl = `live-classroom.html?room=${classroomId}&type=teacher&bookingId=${currentBooking._id}&slot=${encodeURIComponent(slotTime)}`;
       window.open(roomUrl, '_blank');
     }
@@ -1365,7 +1394,7 @@
       if (!currentBooking) return;
       
       // Check if class has already started
-      const classDateTime = new Date(`${currentBooking.date}T${currentBooking.time}:00`);
+      const classDateTime = classScheduledStartDate(currentBooking);
       const cancelNow = new Date();
       
               if (classDateTime <= cancelNow) {
@@ -1804,7 +1833,7 @@
         }
         
         // Set class info in feedback modal
-        document.getElementById('feedback-class-info').textContent = `${RemoedTZ.formatYmdAsPhilippinesLongDate ? RemoedTZ.formatYmdAsPhilippinesLongDate(currentBooking.date) : new Date(currentBooking.date).toLocaleDateString()} at ${currentBooking.time}`;
+        document.getElementById('feedback-class-info').textContent = `${formatClassModalDateLong(currentBooking)} at ${formatClassModalTime12h(currentBooking)}`;
         document.getElementById('feedback-student-info').textContent = currentBooking.studentName || 'Unknown Student';
         
         // Reset star rating
@@ -2016,7 +2045,7 @@
         }
         
         // Set class info in issue modal
-        document.getElementById('issue-class-info').textContent = `${RemoedTZ.formatYmdAsPhilippinesLongDate ? RemoedTZ.formatYmdAsPhilippinesLongDate(currentBooking.date) : new Date(currentBooking.date).toLocaleDateString()} at ${currentBooking.time}`;
+        document.getElementById('issue-class-info').textContent = `${formatClassModalDateLong(currentBooking)} at ${formatClassModalTime12h(currentBooking)}`;
         document.getElementById('issue-student-info').textContent = currentBooking.studentName || 'Unknown Student';
         
         // Clear form

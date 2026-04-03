@@ -9,7 +9,8 @@ router.post('/applications', async (req, res) => {
     const {
       fullName,
       email,
-      password,
+      contactNo,
+      contactNumber,
       currentStage = 'applied',
       status = true,
       testAnswers = {},
@@ -17,10 +18,11 @@ router.post('/applications', async (req, res) => {
       uploadedDocuments = {}
     } = payload;
 
-    if (!fullName || !email || !password) {
+    const phone = String(contactNo ?? contactNumber ?? '').trim();
+    if (!fullName || !email || !phone) {
       return res.status(400).json({
         success: false,
-        error: 'fullName, email, and password are required.'
+        error: 'fullName, email, and contact number are required.'
       });
     }
 
@@ -48,7 +50,7 @@ router.post('/applications', async (req, res) => {
         }
 
         existing.fullName = String(fullName).trim();
-        existing.password = String(password);
+        existing.contactNo = phone;
         existing.currentStage = 'applied';
         existing.status = true;
         existing.failedAt = null;
@@ -82,7 +84,7 @@ router.post('/applications', async (req, res) => {
     const doc = await Application.create({
       fullName: String(fullName).trim(),
       email: emailNorm,
-      password: String(password),
+      contactNo: phone,
       currentStage,
       status: Boolean(status),
       testAnswers: {

@@ -2166,6 +2166,7 @@ router.get('/booking/:bookingId', verifyToken, requireTeacher, async (req, res) 
         lesson: booking.lesson,
         lessonId: booking.lessonId,
         ...(resolvedLessonId ? { resolvedLessonId } : {}),
+        studentId: booking.studentId,
         studentLevel: booking.studentLevel,
         studentName: studentName,
         teacherName: teacherName,

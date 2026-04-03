@@ -586,6 +586,7 @@ router.get('/teacher-pipeline/applicants', verifyAdminApiAuth, requireAdmin, asy
       _id: a._id,
       fullName: a.fullName || '',
       email: a.email || '',
+      contactNo: a.contactNo || '',
       currentStage: a.currentStage || 'applied',
       status: Boolean(a.status),
       progress: toProgressPercent(a.currentStage),
@@ -609,7 +610,9 @@ router.get('/teacher-pipeline/applicants/:id', verifyAdminApiAuth, requireAdmin,
     if (!applicant) {
       return res.status(404).json({ success: false, error: 'Applicant not found' });
     }
-    res.json({ success: true, applicant });
+    const safe = { ...applicant };
+    delete safe.password;
+    res.json({ success: true, applicant: safe });
   } catch (error) {
     console.error('❌ Failed to load applicant details:', error);
     res.status(500).json({ success: false, error: 'Failed to load applicant details' });

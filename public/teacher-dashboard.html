@@ -952,18 +952,13 @@
                 }
                 
                 const TU = window.TimezoneUtils || {};
-                const now = new Date();
-                function teacherBookingInstant(b) {
-                    const u = b.dateTimeUtc || b.dateTimeUTC;
-                    if (u) {
-                        const t = new Date(u);
-                        if (!isNaN(t.getTime())) return t;
-                    }
-                    const tm = (b.time || '00:00').toString().trim();
-                    const hm = tm.length <= 5 ? tm + ':00' : tm;
-                    return new Date((b.date || '') + 'T' + hm + '+08:00');
-                }
-                const futureBookings = bookings.filter(booking => teacherBookingInstant(booking) > now);
+                const now = Date.now();
+                const startMs = (b) =>
+                  TU.bookingStartMsFromRecord ? TU.bookingStartMsFromRecord(b) : NaN;
+                const futureBookings = bookings.filter((booking) => {
+                  const ms = startMs(booking);
+                  return Number.isFinite(ms) && ms > now;
+                });
                 
                 // Update badge count
                 badge.textContent = futureBookings.length;
@@ -976,18 +971,29 @@
                     const todayPh = TU.formatYmdPhilippines ? TU.formatYmdPhilippines(new Date()) : '';
                     const tomorrowPh = todayPh && TU.addDaysYmdPhilippines ? TU.addDaysYmdPhilippines(todayPh, 1) : '';
                     dropdownContent.innerHTML = upcoming.map(booking => {
-                        const isToday = todayPh && booking.date === todayPh;
-                        const isTomorrow = tomorrowPh && booking.date === tomorrowPh;
+                        const datePh =
+                          TU.bookingCalendarYmdPhilippines &&
+                          TU.bookingCalendarYmdPhilippines(booking);
+                        const isToday = todayPh && datePh === todayPh;
+                        const isTomorrow = tomorrowPh && datePh === tomorrowPh;
+                        const timePh =
+                          TU.bookingTimeLabel12hPhilippines &&
+                          TU.bookingTimeLabel12hPhilippines(booking);
+                        const slotPh =
+                          TU.bookingTimeHm24Philippines &&
+                          TU.bookingTimeHm24Philippines(booking);
                         let timeDisplay;
                         if (isToday) {
-                            timeDisplay = `Today, ${booking.time}`;
+                            timeDisplay = `Today, ${timePh || booking.time}`;
                         } else if (isTomorrow) {
-                            timeDisplay = `Tomorrow, ${booking.time}`;
+                            timeDisplay = `Tomorrow, ${timePh || booking.time}`;
                         } else {
-                            const shortD = TU.formatDateShortPhilippines
-                                ? TU.formatDateShortPhilippines(new Date(booking.date + 'T12:00:00+08:00'))
-                                : new Date(booking.date + 'T12:00:00+08:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-                            timeDisplay = `${shortD}, ${booking.time}`;
+                            const ms = startMs(booking);
+                            const shortD =
+                              Number.isFinite(ms) && TU.formatDateShortPhilippines
+                                ? TU.formatDateShortPhilippines(new Date(ms))
+                                : booking.date;
+                            timeDisplay = `${shortD}, ${timePh || booking.time}`;
                         }
                         
                         return `<div class="nav-dropdown-item">
@@ -996,7 +1002,7 @@
                                     <div style="font-size: 0.9rem; font-weight: 500;">${timeDisplay}</div>
                                     <div style="font-size: 0.8rem; color: #666;">${booking.studentId?.firstName || booking.studentId?.username || 'Unknown'}</div>
                                 </div>
-                                <button onclick="RemoedClassroomEntry.hrefIfAllowed('live-classroom.html?room=${booking.classroomId}&type=teacher&bookingId=${booking._id}', { date: '${booking.date}', time: '${booking.time}', scheduledStartTime: '${booking.scheduledStartTime || ''}', dateTimeUtc: '${booking.dateTimeUtc || ''}' })" 
+                                <button onclick="RemoedClassroomEntry.hrefIfAllowed('live-classroom.html?room=${booking.classroomId}&type=teacher&bookingId=${booking._id}&slot=${encodeURIComponent(slotPh || booking.time)}', { date: '${booking.date}', time: '${booking.time}', scheduledStartTime: '${booking.scheduledStartTime || ''}', dateTimeUtc: '${booking.dateTimeUtc || ''}' })" 
                                         style="background: #667eea; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; cursor: pointer;">
                                     Join
                                 </button>
@@ -1467,20 +1473,17 @@
       }
 
       const TU = window.TimezoneUtils || {};
-      function dashBookingInstant(b) {
-        const u = b.dateTimeUtc || b.dateTimeUTC;
-        if (u) {
-          const t = new Date(u);
-          if (!isNaN(t.getTime())) return t;
-        }
-        const tm = (b.time || '00:00').toString().trim();
-        const hm = tm.length <= 5 ? tm + ':00' : tm;
-        return new Date((b.date || '') + 'T' + hm + '+08:00');
-      }
-      const now = new Date();
-      const futureBookings = upcomingBookings.filter(booking => dashBookingInstant(booking) > now);
+      const dashMs = (b) =>
+        TU.bookingStartMsFromRecord ? TU.bookingStartMsFromRecord(b) : NaN;
+      const nowMs = Date.now();
+      const futureBookings = upcomingBookings.filter((booking) => {
+        const ms = dashMs(booking);
+        return Number.isFinite(ms) && ms > nowMs;
+      });
 
-      const sortedBookings = futureBookings.sort((a, b) => dashBookingInstant(a) - dashBookingInstant(b));
+      const sortedBookings = futureBookings.sort(
+        (a, b) => (dashMs(a) || 0) - (dashMs(b) || 0)
+      );
 
       const upcomingClasses = sortedBookings.slice(0, 3);
       
@@ -1490,29 +1493,36 @@
       const tomorrowPh = todayPh && TU.addDaysYmdPhilippines ? TU.addDaysYmdPhilippines(todayPh, 1) : '';
 
       upcomingList.innerHTML = upcomingClasses.map(booking => {
-        const classDate = dashBookingInstant(booking);
-        const timeDiff = classDate - now;
+        const startMs = dashMs(booking);
+        const timeDiff = Number.isFinite(startMs) ? startMs - nowMs : 0;
         const timeDiffHours = timeDiff / (1000 * 60 * 60);
 
-        const isToday = todayPh && booking.date === todayPh;
-        const isTomorrow = tomorrowPh && booking.date === tomorrowPh;
-        
+        const datePh =
+          TU.bookingCalendarYmdPhilippines && TU.bookingCalendarYmdPhilippines(booking);
+        const isToday = todayPh && datePh === todayPh;
+        const isTomorrow = tomorrowPh && datePh === tomorrowPh;
+        const timePh =
+          TU.bookingTimeLabel12hPhilippines && TU.bookingTimeLabel12hPhilippines(booking);
+        const slotPh =
+          TU.bookingTimeHm24Philippines && TU.bookingTimeHm24Philippines(booking);
+
         let timeDisplay;
         if (isToday) {
-          timeDisplay = `Today, ${booking.time}`;
+          timeDisplay = `Today, ${timePh || booking.time}`;
         } else if (isTomorrow) {
-          timeDisplay = `Tomorrow, ${booking.time}`;
+          timeDisplay = `Tomorrow, ${timePh || booking.time}`;
         } else {
-          const shortD = TU.formatDateShortPhilippines
-            ? TU.formatDateShortPhilippines(new Date(booking.date + 'T12:00:00+08:00'))
-            : new Date(booking.date + 'T12:00:00+08:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-          timeDisplay = `${shortD}, ${booking.time}`;
+          const shortD =
+            Number.isFinite(startMs) && TU.formatDateShortPhilippines
+              ? TU.formatDateShortPhilippines(new Date(startMs))
+              : booking.date;
+          timeDisplay = `${shortD}, ${timePh || booking.time}`;
         }
 
         // Determine button type and action
         let buttonClass = 'remoed-btn-primary';
         let buttonText = 'Join';
-        let buttonAction = `RemoedClassroomEntry.hrefIfAllowed('live-classroom.html?room=${booking.classroomId}&type=teacher&bookingId=${booking._id}', { date: '${booking.date}', time: '${booking.time}', scheduledStartTime: '${booking.scheduledStartTime || ''}', dateTimeUtc: '${booking.dateTimeUtc || ''}' })`;
+        let buttonAction = `RemoedClassroomEntry.hrefIfAllowed('live-classroom.html?room=${booking.classroomId}&type=teacher&bookingId=${booking._id}&slot=${encodeURIComponent(slotPh || booking.time)}', { date: '${booking.date}', time: '${booking.time}', scheduledStartTime: '${booking.scheduledStartTime || ''}', dateTimeUtc: '${booking.dateTimeUtc || ''}' })`;
 
         if (timeDiffHours > 2) {
           buttonClass = 'remoed-btn-yellow';

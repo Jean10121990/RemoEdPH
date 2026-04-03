@@ -839,6 +839,14 @@ app.post('/api/feedback/submit', verifyToken, requireTeacher, async (req, res) =
       });
     }
 
+    const effectiveStudentId = String(studentId || booking.studentId || '').trim();
+    if (!effectiveStudentId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Could not resolve student for this booking. Contact support.',
+      });
+    }
+
     if (isBookingSessionFinalized(booking)) {
       return res.status(400).json({
         success: false,
@@ -862,13 +870,14 @@ app.post('/api/feedback/submit', verifyToken, requireTeacher, async (req, res) =
       existingTeacherFeedback.rating = rating;
       existingTeacherFeedback.comment = comment || '';
       existingTeacherFeedback.submittedAt = submittedAt || new Date();
+      existingTeacherFeedback.studentId = effectiveStudentId;
       feedback = await existingTeacherFeedback.save();
       console.log('✅ Teacher feedback updated successfully');
     } else {
       feedback = new Feedback({
         bookingId: String(bookingId),
         teacherId,
-        studentId,
+        studentId: effectiveStudentId,
         rating,
         comment: comment || '',
         submittedAt: submittedAt || new Date(),
@@ -888,7 +897,7 @@ app.post('/api/feedback/submit', verifyToken, requireTeacher, async (req, res) =
           recipientType: 'student',
         },
         {
-          recipientId: studentId,
+          recipientId: effectiveStudentId,
           recipientType: 'student',
           giverId: teacherId,
           giverType: 'teacher',
