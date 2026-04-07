@@ -67,10 +67,11 @@ const isEmailConfigured = activeEmailService !== 'none';
 
 // SMTP configuration (for local development or fallback)
 const emailConfig = {
-  host: smtpAuth.host || 'smtp.gmail.com',
-  port: parseInt(process.env.SMTP_PORT || '587', 10),
-  secure: false, // true for 465, false for other ports
-  requireTLS: true, // Require TLS for Gmail and most SMTP servers
+  host: smtpAuth.host || 'smtp.hostinger.com',
+  //port: parseInt(process.env.SMTP_PORT || '587', 10),
+  port: 465,
+  secure: true, // true for 465, false for other ports
+  requireTLS: false, // Require TLS for Gmail and most SMTP servers
   tls: {
     // Do not fail on invalid certificates (useful for some SMTP servers)
     rejectUnauthorized: false
