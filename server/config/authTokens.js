@@ -10,16 +10,13 @@ const SESSION_MAX_AGE_MS =
   Number.isFinite(parsedSessionMs) && parsedSessionMs > 0 ? parsedSessionMs : 60 * 60 * 1000;
 
 function isProductionSecureCookie() {
-  return (
-    process.env.SESSION_COOKIE_SECURE === 'true' ||
-    (process.env.NODE_ENV === 'production' && process.env.SESSION_COOKIE_SECURE !== 'false')
-  );
+  // Security Hotspot: session cookies must be Secure.
+  // NOTE: This requires HTTPS; if you test locally over http://, cookies may not persist.
+  return true;
 }
 
 /** sameSite: 'strict' by default; set SESSION_COOKIE_SAMESITE=lax for looser dev setups */
 function sessionSameSite() {
-  const v = String(process.env.SESSION_COOKIE_SAMESITE || 'strict').toLowerCase();
-  if (v === 'lax' || v === 'none') return v;
   return 'strict';
 }
 

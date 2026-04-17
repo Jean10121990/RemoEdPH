@@ -2891,7 +2891,7 @@ router.post('/user', async (req, res) => {
         generatedUsername = await generateTemporaryUsername();
         console.log('Generated username:', generatedUsername);
         generatedPassword = generateStrongPassword();
-        console.log('Generated password:', generatedPassword);
+        // Do not log passwords (even temporary ones)
         hashedPassword = await bcrypt.hash(generatedPassword, 10);
         console.log('Password hashed successfully');
         

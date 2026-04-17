@@ -31,7 +31,7 @@ async function checkLoginCredentials() {
         
         if (teacher) {
             const passwordMatch = await bcrypt.compare(testPassword, teacher.password);
-            console.log('Password match:', passwordMatch);
+            console.log('Password match computed');
             console.log('Teacher ID:', teacher._id);
         } else {
             console.log('❌ Test teacher not found. Creating one...');
@@ -61,7 +61,7 @@ async function checkLoginCredentials() {
         
         if (student) {
             const passwordMatch = await bcrypt.compare(testStudentPassword, student.password);
-            console.log('Password match:', passwordMatch);
+            console.log('Password match computed');
             console.log('Student ID:', student._id);
         } else {
             console.log('❌ Test student not found. Creating one...');
@@ -83,10 +83,10 @@ async function checkLoginCredentials() {
         console.log('\n=== LOGIN CREDENTIALS SUMMARY ===');
         console.log('Teacher Login:');
         console.log('  Username: testteacher@remoedph.com');
-        console.log('  Password: teacher123');
+        console.log('  Password: [hidden]');
         console.log('\nStudent Login:');
         console.log('  Username: teststudent@remoedph.com');
-        console.log('  Password: student123');
+        console.log('  Password: [hidden]');
         
         console.log('\n=== TESTING SERVER ENDPOINTS ===');
         console.log('1. Go to http://localhost:5000/test-login.html');
