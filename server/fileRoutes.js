@@ -197,7 +197,11 @@ router.delete('/files/:fileId', async (req, res) => {
     // Delete file from disk
     const filePath = path.join(uploadsDir, file.filename);
     if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
+      try {
+        fs.unlinkSync(filePath);
+      } catch (unlinkErr) {
+        console.warn('File unlink failed (continuing DB delete):', unlinkErr && unlinkErr.message);
+      }
     }
 
     // Delete from MongoDB

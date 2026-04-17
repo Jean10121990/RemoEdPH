@@ -823,6 +823,9 @@ async function sendEmailViaSendGrid(to, subject, html, text) {
   const sgMail = require('@sendgrid/mail');
   
   // Set SendGrid API key
+  if (!process.env.SENDGRID_API_KEY) {
+    return { success: false, error: 'Missing SENDGRID_API_KEY' };
+  }
   sgMail.setApiKey(process.env.SENDGRID_API_KEY);
   
   const emailFrom = process.env.SENDGRID_FROM_EMAIL || process.env.SMTP_USER || 'noreply@remoedph.com';
@@ -870,7 +873,7 @@ async function sendEmailViaSendGrid(to, subject, html, text) {
       errorMessage = error.message;
     }
     
-    throw new Error(errorMessage);
+    return { success: false, error: errorMessage };
   }
 }
 
@@ -880,6 +883,9 @@ async function sendEmailViaMailgun(to, subject, html, text) {
   const FormData = require('form-data');
   
   const mailgunDomain = process.env.MAILGUN_DOMAIN;
+  if (!process.env.MAILGUN_API_KEY || !mailgunDomain) {
+    return { success: false, error: 'Missing MAILGUN_API_KEY or MAILGUN_DOMAIN' };
+  }
   const mailgunUrl = `https://api.mailgun.net/v3/${mailgunDomain}/messages`;
   const emailFrom = process.env.MAILGUN_FROM_EMAIL || `noreply@${mailgunDomain}`;
   
@@ -900,7 +906,7 @@ async function sendEmailViaMailgun(to, subject, html, text) {
     return { success: true, messageId: response.data.id || 'sent' };
   } catch (error) {
     const errorMessage = error.response?.data?.message || error.message || 'Mailgun API error';
-    throw new Error(errorMessage);
+    return { success: false, error: errorMessage };
   }
 }
 
@@ -917,7 +923,24 @@ async function sendEmail(to, template, data) {
       };
     }
 
-    const emailContent = emailTemplates[template](data.username, data.newPassword, data.userType);
+    const templateFn = emailTemplates[template];
+    if (typeof templateFn !== 'function') {
+      return {
+        success: false,
+        error: `Unknown email template: ${String(template || '') || '(missing)'}`,
+      };
+    }
+
+    let emailContent;
+    try {
+      emailContent = templateFn(data.username, data.newPassword, data.userType);
+    } catch (templateError) {
+      console.error('❌ Email template rendering failed:', {
+        template,
+        message: templateError && templateError.message,
+      });
+      return { success: false, error: 'Email template rendering failed' };
+    }
     
     console.log(`📧 Attempting to send email to: ${to} via ${activeEmailService.toUpperCase()}`);
     
@@ -1163,6 +1186,9 @@ async function deliverTransactionalEmailFrom(
   try {
     if (activeEmailService === 'sendgrid') {
       const sgMail = require('@sendgrid/mail');
+      if (!process.env.SENDGRID_API_KEY) {
+        return { success: false, error: 'Missing SENDGRID_API_KEY' };
+      }
       sgMail.setApiKey(process.env.SENDGRID_API_KEY);
       const response = await sgMail.send({
         to,
@@ -1178,6 +1204,9 @@ async function deliverTransactionalEmailFrom(
       const axios = require('axios');
       const FormData = require('form-data');
       const mailgunDomain = process.env.MAILGUN_DOMAIN;
+      if (!process.env.MAILGUN_API_KEY || !mailgunDomain) {
+        return { success: false, error: 'Missing MAILGUN_API_KEY or MAILGUN_DOMAIN' };
+      }
       const mailgunUrl = `https://api.mailgun.net/v3/${mailgunDomain}/messages`;
       const form = new FormData();
       form.append('from', `${fromDisp} <${fromAddr}>`);
