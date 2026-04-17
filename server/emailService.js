@@ -65,6 +65,13 @@ else if (isSMTPConfigured) {
 
 const isEmailConfigured = activeEmailService !== 'none';
 
+// SonarQube Security Hotspot: allow insecure TLS only when explicitly opted-in
+// or when using a known SMTP host that intermittently presents invalid/chain certificates (Hostinger).
+// This is intentionally a fallback to avoid delivery failures; keep this scoped.
+const allowInsecureSmtpTls =
+  String(process.env.SMTP_ALLOW_INSECURE_TLS || '').toLowerCase() === 'true' ||
+  /hostinger\.com$/i.test(String(smtpAuth.host || '').trim());
+
 // SMTP configuration (for local development or fallback)
 const emailConfig = {
   host: smtpAuth.host || 'smtp.hostinger.com',
@@ -73,8 +80,9 @@ const emailConfig = {
   secure: true, // true for 465, false for other ports
   requireTLS: false, // Require TLS for Gmail and most SMTP servers
   tls: {
-    // Do not fail on invalid certificates (useful for some SMTP servers)
-    rejectUnauthorized: false
+    // SonarQube Ignore: this is a scoped fallback for Hostinger / explicit opt-in.
+    // IMPORTANT: Do not change SMTP behavior unless you fully control the SMTP cert chain.
+    rejectUnauthorized: !allowInsecureSmtpTls
   },
   connectionTimeout: 10000, // 10 seconds timeout
   greetingTimeout: 10000,
@@ -1131,6 +1139,150 @@ async function sendPasswordResetEmail(email, username, newPassword, userType) {
   });
 }
 
+/** From-address for security alerts (must be deliverable by your provider). */
+const REMOED_SECURITY_ALERT_FROM_EMAIL =
+  process.env.REMOED_SECURITY_ALERT_FROM_EMAIL || 'support@remoedph.com';
+
+/**
+ * Send transactional mail with an explicit From (SendGrid / Mailgun / SMTP).
+ */
+async function deliverTransactionalEmailFrom(
+  to,
+  fromEmail,
+  fromName,
+  subject,
+  html,
+  text,
+  contextLabel = 'email'
+) {
+  if (!isEmailConfigured) {
+    return { success: false, error: 'Email service not configured', fallback: true };
+  }
+  const fromAddr = String(fromEmail || REMOED_SECURITY_ALERT_FROM_EMAIL).trim();
+  const fromDisp = String(fromName || 'RemoEdPH').trim();
+  try {
+    if (activeEmailService === 'sendgrid') {
+      const sgMail = require('@sendgrid/mail');
+      sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+      const response = await sgMail.send({
+        to,
+        from: { email: fromAddr, name: fromDisp },
+        subject,
+        text,
+        html,
+      });
+      const messageId = response[0]?.headers?.['x-message-id'] || 'sent';
+      return { success: true, messageId };
+    }
+    if (activeEmailService === 'mailgun') {
+      const axios = require('axios');
+      const FormData = require('form-data');
+      const mailgunDomain = process.env.MAILGUN_DOMAIN;
+      const mailgunUrl = `https://api.mailgun.net/v3/${mailgunDomain}/messages`;
+      const form = new FormData();
+      form.append('from', `${fromDisp} <${fromAddr}>`);
+      form.append('to', to);
+      form.append('subject', subject);
+      form.append('text', text);
+      form.append('html', html);
+      const response = await axios.post(mailgunUrl, form, {
+        headers: {
+          ...form.getHeaders(),
+          Authorization: `Basic ${Buffer.from(`api:${process.env.MAILGUN_API_KEY}`).toString('base64')}`,
+        },
+      });
+      return { success: true, messageId: response.data.id || 'sent' };
+    }
+    if (activeEmailService === 'smtp') {
+      if (!transporterVerified) {
+        try {
+          await transporter.verify();
+          transporterVerified = true;
+        } catch (verifyError) {
+          const safeErr = String(verifyError).replace(/(password|pass|pwd)=[^\s&"']*/gi, '$1=***');
+          console.error(`❌ SMTP verification failed (${contextLabel}):`, safeErr);
+          return {
+            success: false,
+            error: `SMTP connection failed: ${verifyError.message || 'Connection verification failed'}`,
+          };
+        }
+      }
+      const info = await transporter.sendMail({
+        from: `"${fromDisp}" <${fromAddr}>`,
+        to,
+        subject,
+        html,
+        text,
+      });
+      return { success: true, messageId: info.messageId };
+    }
+    return { success: false, error: 'No email service configured' };
+  } catch (error) {
+    const msg = error.message || String(error);
+    return { success: false, error: msg };
+  }
+}
+
+async function sendAdminNewLoginSecurityEmail(to, { deviceName, ip, occurredAt }) {
+  const toAddr = String(to || '').trim();
+  if (!toAddr) {
+    return { success: false, error: 'No recipient email' };
+  }
+  const esc = (s) =>
+    String(s == null ? '' : s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  const timeStr = occurredAt.toLocaleString('en-PH', {
+    timeZone: process.env.REMOED_TZ || 'Asia/Manila',
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
+  const subject = '⚠️ Security Alert: New Login for RemoEdPH';
+  const html = `
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body style="font-family:Segoe UI,Roboto,sans-serif;background:#f4f4f5;padding:24px;">
+  <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;padding:24px;border:1px solid #e4e4e7;">
+    <h1 style="font-size:1.125rem;color:#b45309;margin:0 0 12px;">Security alert</h1>
+    <p style="color:#3f3f46;line-height:1.5;margin:0 0 16px;">
+      A <strong>new sign-in</strong> was detected on your RemoEdPH admin account from a device or browser we have not recorded before.
+    </p>
+    <table style="width:100%;border-collapse:collapse;font-size:0.9rem;color:#18181b;">
+      <tr><td style="padding:8px 0;color:#71717a;">Device</td><td style="padding:8px 0;font-weight:600;">${esc(
+        deviceName || 'Unknown'
+      )}</td></tr>
+      <tr><td style="padding:8px 0;color:#71717a;">IP address</td><td style="padding:8px 0;font-weight:600;">${esc(
+        ip || '(unknown)'
+      )}</td></tr>
+      <tr><td style="padding:8px 0;color:#71717a;">Time</td><td style="padding:8px 0;font-weight:600;">${esc(timeStr)}</td></tr>
+    </table>
+    <p style="color:#71717a;font-size:0.8125rem;margin-top:20px;">
+      If this was you, you can ignore this message. If not, change your password and contact support immediately.
+    </p>
+  </div>
+</body></html>`.trim();
+  const text = [
+    'Security Alert: New Login for RemoEdPH',
+    '',
+    `Device: ${deviceName || 'Unknown'}`,
+    `IP: ${ip || '(unknown)'}`,
+    `Time: ${timeStr}`,
+    '',
+    'If this was not you, change your password and contact support.',
+  ].join('\n');
+  return deliverTransactionalEmailFrom(
+    toAddr,
+    REMOED_SECURITY_ALERT_FROM_EMAIL,
+    'RemoEdPH',
+    subject,
+    html,
+    text,
+    'admin new login security'
+  );
+}
+
 async function deliverTransactionalEmail(to, subject, html, text, contextLabel = 'email') {
   if (!isEmailConfigured) {
     return { success: false, error: 'Email service not configured', fallback: true };
@@ -1357,13 +1509,17 @@ async function testEmailSending(testEmail) {
   } catch (error) {
     return {
       success: false,
-      error: error.message,
+      error:
+        process.env.NODE_ENV === 'production'
+          ? 'Email test failed'
+          : String(error && error.message ? error.message : 'Email test failed'),
       status: getEmailConfigStatus()
     };
   }
 }
 
 module.exports = {
+  sendAdminNewLoginSecurityEmail,
   sendPasswordResetEmail,
   sendTeacherRegistrationEmail,
   sendSubscriptionEmail,

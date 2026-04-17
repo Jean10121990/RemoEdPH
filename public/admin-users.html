@@ -268,8 +268,8 @@
     <script src="avatar-helper.js"></script>
     <script>
         // Role-based access control
-        const userType = localStorage.getItem('userType');
-        if (userType !== 'admin') {
+        const lsPortalUserType = localStorage.getItem('userType');
+        if (lsPortalUserType !== 'admin') {
             alert('Access denied. This page is for administrators only.');
             window.location.href = 'index.html';
         }
@@ -497,9 +497,10 @@
 
         function addNewUser(userType) {
             document.getElementById('modal-title').textContent = `Add ${userType.charAt(0).toUpperCase() + userType.slice(1)}`;
+            // reset() restores fields to their HTML defaults and clears script-set values — run it first, then set hidden ids.
+            document.getElementById('user-form').reset();
             document.getElementById('user-id').value = '';
             document.getElementById('user-type').value = userType;
-            document.getElementById('user-form').reset();
             
             // Show/hide fields based on user type
             document.getElementById('teacher-fields').style.display = userType === 'teacher' ? 'block' : 'none';
@@ -698,7 +699,9 @@
                     loadUsers(); // Reload the current tab
                 } else {
                     const error = await response.json().catch(function () { return {}; });
-                    alert(`Error: ${error.error || error.message || 'Unknown error'}`);
+                    var em = error.error || error.message || 'Unknown error';
+                    if (error.detail) em += '\n\n' + error.detail;
+                    alert('Error: ' + em);
                 }
             } catch (error) {
                 console.error('Error saving user:', error);

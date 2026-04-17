@@ -72,7 +72,11 @@
     }
 
     function baseNameFromStorage() {
-        var raw = localStorage.getItem('studentUsername') || localStorage.getItem('username') || 'Student';
+        var raw =
+            localStorage.getItem('studentUsername') ||
+            localStorage.getItem('username') ||
+            localStorage.getItem('remoedUsername') ||
+            '';
         var cleaned = String(raw).replace(/^Hi,\s*/i, '').trim();
         return cleaned || 'Student';
     }
@@ -133,9 +137,11 @@
             headers: { 'Authorization': 'Bearer ' + token }
         }).then(function (r) { return r.ok ? r.json() : null;         }).then(function (data) {
             if (!data || !data.profile) return;
-            var firstName = (data.profile.firstName || fallbackName || 'Student').trim();
-            if (usernameEl) usernameEl.textContent = 'Hi, ' + firstName;
-            if (avatarTextEl) avatarTextEl.textContent = (firstName[0] || 'S').toUpperCase();
+            var fn = (data.profile.firstName || '').trim();
+            var un = (data.profile.username || '').trim();
+            var display = fn || un || fallbackName || 'Student';
+            if (usernameEl) usernameEl.textContent = 'Hi, ' + display;
+            if (avatarTextEl) avatarTextEl.textContent = (display[0] || 'S').toUpperCase();
 
             var imgSrc = data.profile.profilePicture || data.profile.photo || '';
             if (imgSrc && profileImageEl) {

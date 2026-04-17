@@ -586,7 +586,10 @@
           if (submitBtn) {
             submitBtn.textContent = SiteI18n.t('submit_success');
           }
-          localStorage.setItem('remoedUsername', data.username || email);
+          var uname = data.username || email;
+          localStorage.setItem('remoedUsername', uname);
+          localStorage.setItem('studentUsername', uname);
+          localStorage.setItem('username', uname);
           localStorage.setItem('token', data.token);
           localStorage.setItem('studentId', data.studentId);
           localStorage.setItem('userType', 'student');

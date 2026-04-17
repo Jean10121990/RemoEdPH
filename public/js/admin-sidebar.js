@@ -61,6 +61,19 @@
         if (avatarTextEl) avatarTextEl.textContent = (friendly[0] || 'A').toUpperCase();
     }
 
+    /** HR / QA / Accounting hub entries — visibility by adminRole (matches adminhr@ / adminqa@ / adminacct@ roles). */
+    function shouldShowNavItem(itemId) {
+        var role = '';
+        try {
+            role = String(localStorage.getItem('adminRole') || '').trim();
+        } catch (e) {}
+        if (!role || role === 'super_admin') return true;
+        if (itemId === 'hr-hub') return role === 'admin_hr';
+        if (itemId === 'qa-hub') return role === 'admin_qa';
+        if (itemId === 'accounting-hub') return role === 'admin_accounting';
+        return true;
+    }
+
     function render(containerIdOrElement, activePageId) {
         var container = typeof containerIdOrElement === 'string'
             ? document.getElementById(containerIdOrElement)
@@ -69,7 +82,9 @@
 
         var active = activePageId || getActiveFromPath();
 
-        var menuHtml = MENU_ITEMS.map(function (item) {
+        var menuHtml = MENU_ITEMS.filter(function (item) {
+            return shouldShowNavItem(item.id);
+        }).map(function (item) {
             var activeClass = (item.id === active && !item.isLogout) ? ' class="active"' : '';
             var idAttr = item.id === 'logout' ? ' id="logout-nav"' : '';
             var dataNav = ' data-nav="' + item.id + '"';
@@ -133,6 +148,7 @@
     global.AdminSidebar = {
         render: render,
         MENU_ITEMS: MENU_ITEMS,
-        applyGreetingFromStorage: applyGreetingFromStorage
+        applyGreetingFromStorage: applyGreetingFromStorage,
+        shouldShowNavItem: shouldShowNavItem
     };
 })(typeof window !== 'undefined' ? window : this);

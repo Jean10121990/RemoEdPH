@@ -1,9 +1,12 @@
 const express = require('express');
+const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const mongoose = require('mongoose');
 const router = express.Router();
 const Teacher = require('./models/Teacher');
 const Student = require('./models/Student');
 const Admin = require('./models/Admin');
+const LoginLog = require('./models/LoginLog');
 const CancellationRequest = require('./models/CancellationRequest');
 const Booking = require('./models/Booking');
 const Notification = require('./models/Notification');
@@ -19,8 +22,20 @@ const {
   verifyToken,
   requireTeacher,
   adminRoleGate,
+  requireAdminTwoFactorSatisfied,
+  requireAdminSessionValid,
 } = require('./authMiddleware');
+const QRCode = require('qrcode');
+const { authenticator } = require('otplib');
+const { encryptTotpSecret, decryptTotpSecret } = require('./utils/twoFactorSecretCrypto');
+const { ADMIN_2FA_ENROLLMENT_PURPOSE } = require('./utils/adminForce2fa');
+const { recordAdminLoginActivity, getAdminSessionVersion } = require('./services/adminLoginActivity');
+const { generateReferralCode } = require('./utils/referralCode');
+// Allow slight device clock drift during enrollment/verification.
+authenticator.options = { window: 2 };
 const path = require('path');
+const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
+const { JWT_EXPIRES_IN } = require('./config/authTokens');
 const multer = require('multer');
 
 /** Turn stored issue screenshot (absolute path or /uploads/...) into a browser URL */
@@ -35,6 +50,179 @@ function normalizeIssueScreenshotUrl(stored) {
   if (idx !== -1) return normalized.slice(idx).replace(/\/{2,}/g, '/');
   return null;
 }
+
+function parseEnrollmentToken(req) {
+  const b = req.body || {};
+  // Accept token via body or Authorization header.
+  const rawBody = b.enrollmentToken || b.token || '';
+  if (rawBody) return String(rawBody).trim();
+  const auth = req.headers && (req.headers.authorization || req.headers.Authorization);
+  const s = typeof auth === 'string' ? auth.trim() : '';
+  if (/^bearer\s+/i.test(s)) return s.replace(/^bearer\s+/i, '').trim();
+  return '';
+}
+
+async function loadAdminFromEnrollmentToken(req) {
+  const raw = parseEnrollmentToken(req);
+  if (!raw) {
+    return { error: 'enrollmentToken is required' };
+  }
+  let decoded;
+  try {
+    decoded = jwt.verify(raw, JWT_SECRET);
+  } catch (_e) {
+    return { error: 'Invalid or expired enrollment token' };
+  }
+  if (decoded.purpose !== ADMIN_2FA_ENROLLMENT_PURPOSE || !decoded.adminId) {
+    return { error: 'Invalid enrollment token' };
+  }
+  const admin = await Admin.findById(String(decoded.adminId));
+  if (!admin) {
+    return { error: 'Admin not found' };
+  }
+  if (admin.isTwoFactorEnabled === true) {
+    return { error: 'Two-factor is already enabled. Sign in from the login page.' };
+  }
+  return { admin };
+}
+
+async function loadAdminFromEnrollmentSessionOrToken(req) {
+  if (req.session && req.session.admin2faEnroll === true && req.session.admin2faEnrollAdminId) {
+    const admin = await Admin.findById(String(req.session.admin2faEnrollAdminId));
+    if (!admin) return { error: 'Admin not found' };
+    if (admin.isTwoFactorEnabled === true) {
+      return { error: 'Two-factor is already enabled. Sign in from the login page.' };
+    }
+    return { admin };
+  }
+  return loadAdminFromEnrollmentToken(req);
+}
+
+/**
+ * Passwordless 2FA enrollment (after admin-login returns enrollmentToken). Must run before adminRouterRbac.
+ */
+router.post('/2fa-setup-enrollment', async (req, res) => {
+  try {
+    const { admin, error } = await loadAdminFromEnrollmentSessionOrToken(req);
+    if (error) {
+      return res.status(401).json({ success: false, message: error });
+    }
+    let secretPlain;
+    if (admin.twoFactorSecret) {
+      secretPlain = decryptTotpSecret(admin.twoFactorSecret);
+      if (!secretPlain) {
+        // Secret was stored in an older/invalid format or encryption key rotated: re-enroll.
+        secretPlain = authenticator.generateSecret();
+        admin.twoFactorSecret = encryptTotpSecret(secretPlain);
+        admin.isTwoFactorEnabled = false;
+        admin.twoFactorEnabledAt = null;
+        await admin.save();
+      }
+    } else {
+      secretPlain = authenticator.generateSecret();
+      admin.twoFactorSecret = encryptTotpSecret(secretPlain);
+      admin.isTwoFactorEnabled = false;
+      admin.twoFactorEnabledAt = null;
+      await admin.save();
+    }
+    const otpauth = authenticator.keyuri(admin.username, 'RemoEdPH Admin', secretPlain);
+    const qrCodeData = await QRCode.toDataURL(otpauth);
+    return res.json({ qrCodeData, secret: secretPlain });
+  } catch (err) {
+    console.error('POST /2fa-setup-enrollment:', err);
+    res.status(500).json({ success: false, message: '2FA setup failed' });
+  }
+});
+
+/**
+ * First-time 2FA verification: sets isTwoFactorEnabled and issues admin session + JWT (no prior portal JWT).
+ */
+router.post('/verify-2fa', async (req, res) => {
+  try {
+    const { admin, error } = await loadAdminFromEnrollmentSessionOrToken(req);
+    if (error) {
+      console.log('verify-2fa missing/invalid enrollment token:', {
+        hasSession: !!(req.session && req.session.admin2faEnroll),
+        authHeaderPresent: !!(req.headers && req.headers.authorization),
+        bodyKeys: Object.keys(req.body || {}),
+      });
+      return res.status(401).json({ success: false, message: error });
+    }
+    console.log('verify-2fa admin:', { adminId: String(admin._id), username: admin.username });
+    console.log('Received Code:', req.body && req.body.code);
+    const code = (req.body && req.body.code != null && String(req.body.code).replace(/\s/g, '')) || '';
+    if (!/^\d{6}$/.test(code)) {
+      return res.status(400).json({ success: false, message: 'Enter a valid 6-digit code.' });
+    }
+    const plain = decryptTotpSecret(admin.twoFactorSecret);
+    if (!plain) {
+      return res.status(400).json({ success: false, message: 'Complete QR setup first (POST /api/admin/2fa-setup-enrollment).' });
+    }
+    const ok = authenticator.verify({ token: code, secret: plain });
+    console.log('verify-2fa result:', { ok });
+    if (!ok) {
+      return res.status(400).json({
+        success: false,
+        message:
+          'Invalid authentication code. Make sure you are using the latest “RemoEdPH Admin” entry you just scanned, and that your device time is set to automatic.',
+      });
+    }
+    admin.isTwoFactorEnabled = true;
+    admin.twoFactorEnabledAt = new Date();
+    await admin.save();
+
+    const adminRole = admin.adminRole || 'super_admin';
+    const sessionVersion = await getAdminSessionVersion(admin._id);
+    const token = jwt.sign(
+      {
+        username: admin.username,
+        isAdmin: true,
+        role: 'admin',
+        adminRole,
+        adminId: String(admin._id),
+        twoFactorVerified: true,
+        sessionVersion,
+      },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN }
+    );
+
+    req.session.regenerate((regenErr) => {
+      if (regenErr) {
+        console.error('Session regenerate error (enrollment verify-2fa):', regenErr);
+        return res.status(500).json({ success: false, message: 'Could not create session' });
+      }
+      req.session.adminAuth = true;
+      req.session.adminUsername = admin.username;
+      req.session.adminId = String(admin._id);
+      req.session.adminRole = adminRole;
+      req.session.admin2faVerified = true;
+      req.session.adminSessionVersion = sessionVersion;
+
+      req.session.save(async (saveErr) => {
+        if (saveErr) {
+          console.error('Session save error (enrollment verify-2fa):', saveErr);
+          return res.status(500).json({ success: false, message: 'Could not save session' });
+        }
+        try {
+          await recordAdminLoginActivity(req, admin);
+        } catch (logErr) {
+          console.error('Admin enrollment login activity:', logErr);
+        }
+        res.json({
+          success: true,
+          token,
+          username: admin.username,
+          adminRole,
+          message: 'Two-factor authentication is enabled. You are signed in.',
+        });
+      });
+    });
+  } catch (err) {
+    console.error('POST /verify-2fa (enrollment):', err);
+    res.status(500).json({ success: false, message: 'Verification failed' });
+  }
+});
 
 /**
  * RBAC for /api/admin/* — default: admin session/JWT only.
@@ -55,19 +243,28 @@ function adminRouterRbac(req, res, next) {
         role: 'admin',
         adminId: req.session.adminId || null,
         adminRole: req.session.adminRole || 'super_admin',
+        sessionVersion: req.session.adminSessionVersion,
       };
-      return next();
+      return requireAdminTwoFactorSatisfied(req, res, () => {
+        requireAdminSessionValid(req, res, next);
+      });
     }
-    return verifyToken(req, res, (err) => {
-      if (err) return;
+    return verifyToken(req, res, () => {
       const isAdmin = req.user && (req.user.isAdmin === true || req.user.role === 'admin');
-      if (isAdmin) return next();
+      if (isAdmin) {
+        return requireAdminTwoFactorSatisfied(req, res, () => {
+          requireAdminSessionValid(req, res, next);
+        });
+      }
       requireTeacher(req, res, next);
     });
   }
-  return verifyAdminApiAuth(req, res, (err) => {
-    if (err) return;
-    requireAdmin(req, res, next);
+  return verifyAdminApiAuth(req, res, () => {
+    requireAdminTwoFactorSatisfied(req, res, () => {
+      requireAdminSessionValid(req, res, () => {
+        requireAdmin(req, res, next);
+      });
+    });
   });
 }
 
@@ -124,6 +321,7 @@ function adminProfileJson(admin) {
   delete o.password;
   delete o.passwordHash;
   delete o.passwordSetupTokenHash;
+  delete o.twoFactorSecret;
   o.profilePictureUrl = adminPublicUploadUrl(o.profilePicturePath);
   o.idDocumentUrl = adminPublicUploadUrl(o.idDocumentPath);
   o.nbiClearanceDocumentUrl = adminPublicUploadUrl(o.nbiClearanceDocumentPath);
@@ -159,6 +357,154 @@ router.get('/me/profile-picture', async (req, res) => {
   } catch (err) {
     console.error('GET /me/profile-picture:', err);
     res.status(500).end();
+  }
+});
+
+/** Return QR for existing secret, or generate and save secret if missing. Enable with POST /2fa-verify. */
+router.post('/2fa-setup', async (req, res) => {
+  try {
+    const admin = await resolveAdminDoc(req);
+    if (!admin) {
+      return res.status(401).json({ success: false, message: 'Could not resolve your admin account.' });
+    }
+    let secret;
+    if (admin.twoFactorSecret) {
+      secret = decryptTotpSecret(admin.twoFactorSecret);
+      if (!secret) {
+        return res.status(500).json({
+          success: false,
+          message: 'Stored authenticator secret is unreadable. Contact support.',
+        });
+      }
+    } else {
+      secret = authenticator.generateSecret();
+      admin.twoFactorSecret = encryptTotpSecret(secret);
+      admin.isTwoFactorEnabled = false;
+      admin.twoFactorEnabledAt = null;
+      await admin.save();
+    }
+    const otpauth = authenticator.keyuri(admin.username, 'RemoEdPH Admin', secret);
+    const qrDataUrl = await QRCode.toDataURL(otpauth);
+    res.json({
+      success: true,
+      qrDataUrl,
+      manualEntryKey: secret,
+      message: 'Scan the QR code, then confirm with POST /api/admin/2fa-verify and your 6-digit code.',
+    });
+  } catch (err) {
+    console.error('POST /2fa-setup:', err);
+    res.status(500).json({ success: false, message: '2FA setup failed' });
+  }
+});
+
+/** Confirm enrollment: verifies code against stored secret and sets isTwoFactorEnabled true. */
+router.post('/2fa-verify', async (req, res) => {
+  try {
+    const admin = await resolveAdminDoc(req);
+    if (!admin) {
+      return res.status(401).json({ success: false, message: 'Could not resolve your admin account.' });
+    }
+    const code = (req.body && req.body.code != null && String(req.body.code).replace(/\s/g, '')) || '';
+    if (!/^\d{6}$/.test(code)) {
+      return res.status(400).json({ success: false, message: 'Enter a valid 6-digit code.' });
+    }
+    const plain = decryptTotpSecret(admin.twoFactorSecret);
+    if (!plain) {
+      return res.status(400).json({ success: false, message: 'Run 2FA setup first.' });
+    }
+    const ok = authenticator.verify({ token: code, secret: plain });
+    if (!ok) {
+      return res.status(400).json({ success: false, message: 'Invalid authentication code.' });
+    }
+    admin.isTwoFactorEnabled = true;
+    admin.twoFactorEnabledAt = new Date();
+    await admin.save();
+    if (req.session && req.session.adminAuth) {
+      req.session.admin2faVerified = true;
+      await new Promise((resolve, reject) => {
+        req.session.save((e) => (e ? reject(e) : resolve()));
+      });
+    }
+    const adminRole = admin.adminRole || 'super_admin';
+    const sessionVersion = Number(admin.sessionVersion) || 0;
+    const token = jwt.sign(
+      {
+        username: admin.username,
+        isAdmin: true,
+        role: 'admin',
+        adminRole,
+        adminId: String(admin._id),
+        twoFactorVerified: true,
+        sessionVersion,
+      },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN }
+    );
+    res.json({
+      success: true,
+      message: 'Two-factor authentication is enabled for your account.',
+      token,
+      adminRole,
+    });
+  } catch (err) {
+    console.error('POST /2fa-verify:', err);
+    res.status(500).json({ success: false, message: '2FA verification failed' });
+  }
+});
+
+/** Recent admin sign-ins (device / IP) for Security settings UI. */
+router.get('/security/login-logs', async (req, res) => {
+  try {
+    const admin = await resolveAdminDoc(req);
+    if (!admin) {
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+    const limit = Math.min(50, Math.max(1, parseInt(String(req.query.limit || '15'), 10) || 15));
+    const logs = await LoginLog.find({ adminId: admin._id })
+      .sort({ timestamp: -1 })
+      .limit(limit)
+      .lean();
+    res.json({ success: true, logs });
+  } catch (err) {
+    console.error('GET /security/login-logs:', err);
+    res.status(500).json({ success: false, message: 'Failed to load login activity' });
+  }
+});
+
+/** Bump sessionVersion so other browsers lose cookie/JWT validity; current session refreshed. */
+router.post('/security/logout-other-sessions', async (req, res) => {
+  try {
+    const admin = await resolveAdminDoc(req);
+    if (!admin) {
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+    admin.sessionVersion = (Number(admin.sessionVersion) || 0) + 1;
+    await admin.save();
+    const sv = Number(admin.sessionVersion) || 0;
+    if (req.session && req.session.adminAuth) {
+      req.session.adminSessionVersion = sv;
+      await new Promise((resolve, reject) => {
+        req.session.save((e) => (e ? reject(e) : resolve()));
+      });
+    }
+    const adminRole = admin.adminRole || 'super_admin';
+    const token = jwt.sign(
+      {
+        username: admin.username,
+        isAdmin: true,
+        role: 'admin',
+        adminRole,
+        adminId: String(admin._id),
+        twoFactorVerified: true,
+        sessionVersion: sv,
+      },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN }
+    );
+    res.json({ success: true, token, adminRole, message: 'Other sessions were signed out.' });
+  } catch (err) {
+    console.error('POST /security/logout-other-sessions:', err);
+    res.status(500).json({ success: false, message: 'Could not revoke other sessions' });
   }
 });
 
@@ -296,7 +642,6 @@ router.get('/audit-logs', async (req, res) => {
 });
 
 const bcrypt = require('bcrypt');
-const crypto = require('crypto');
 const Application = require('./models/Application');
 const InvitationToken = require('./models/InvitationToken');
 const {
@@ -332,7 +677,7 @@ function generateStrongPassword() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   let password = '';
   for (let i = 0; i < 10; i++) {
-    password += chars.charAt(Math.floor(Math.random() * chars.length));
+    password += chars.charAt(crypto.randomInt(0, chars.length));
   }
   return password;
 }
@@ -734,20 +1079,13 @@ router.delete('/teacher-pipeline/applicants/:id', verifyAdminApiAuth, requireAdm
 router.post('/teacher-pipeline/applicants/:id/delete', verifyAdminApiAuth, requireAdmin, deleteTeacherPipelineApplicant);
 
 // --- Referral / Commission tracking ---
-function generateReferralCodeAdmin() {
-  return (
-    Math.random().toString(36).slice(2, 8).toUpperCase() +
-    Math.random().toString(36).slice(2, 6).toUpperCase()
-  );
-}
-
 async function ensureTeacherReferralCode(teacher) {
   if (teacher.referralCode) return teacher.referralCode;
-  let code = generateReferralCodeAdmin();
+  let code = generateReferralCode();
   for (let i = 0; i < 5; i++) {
     const exists = await Teacher.findOne({ referralCode: code }).lean();
     if (!exists) break;
-    code = generateReferralCodeAdmin();
+    code = generateReferralCode();
   }
   teacher.referralCode = code;
   await teacher.save();
@@ -842,12 +1180,12 @@ router.get('/referral-link', verifyAdminApiAuth, requireAdmin, async (req, res) 
     }
 
     if (!admin.referralCode) {
-      let code = generateReferralCodeAdmin();
+      let code = generateReferralCode();
       for (let i = 0; i < 5; i++) {
         const existsTeacher = await Teacher.findOne({ referralCode: code }).lean();
         const existsAdmin = await Admin.findOne({ referralCode: code }).lean();
         if (!existsTeacher && !existsAdmin) break;
-        code = generateReferralCodeAdmin();
+        code = generateReferralCode();
       }
       admin.referralCode = code;
       await admin.save();
@@ -997,9 +1335,6 @@ router.post('/save-global-rate', async (req, res) => {
       });
     }
     
-    // Save to a GlobalSettings collection (create if doesn't exist)
-    const GlobalSettings = require('./models/GlobalSettings');
-    
     // Update or create global settings
     await GlobalSettings.findOneAndUpdate(
       {}, // Find any existing document
@@ -1034,10 +1369,6 @@ router.post('/save-global-rate', async (req, res) => {
 // GET user activity report
 router.get('/reports/user-activity', async (req, res) => {
   try {
-    const Teacher = require('./models/Teacher');
-    const Student = require('./models/Student');
-    const Booking = require('./models/Booking');
-    
     const [teachers, students, bookings] = await Promise.all([
       Teacher.countDocuments(),
       Student.countDocuments(),
@@ -1098,9 +1429,6 @@ router.get('/reports/user-activity', async (req, res) => {
 // GET financial report
 router.get('/reports/financial', async (req, res) => {
   try {
-    const GlobalSettings = require('./models/GlobalSettings');
-    const Booking = require('./models/Booking');
-    
     const settings = await GlobalSettings.findOne();
     const globalRate = settings?.globalRate || 100;
     
@@ -1135,9 +1463,6 @@ router.get('/reports/financial', async (req, res) => {
 // GET class performance report
 router.get('/reports/class-performance', async (req, res) => {
   try {
-    const Booking = require('./models/Booking');
-    const Teacher = require('./models/Teacher');
-    
     const bookings = await Booking.find();
     const teachers = await Teacher.find();
     
@@ -1188,9 +1513,6 @@ router.get('/reports/class-performance', async (req, res) => {
 // GET weekly summary report
 router.get('/reports/weekly-summary', async (req, res) => {
   try {
-    const Teacher = require('./models/Teacher');
-    const Student = require('./models/Student');
-    const Booking = require('./models/Booking');
     const Announcement = require('./models/Announcement');
     
     const oneWeekAgo = new Date();
@@ -1238,9 +1560,6 @@ router.get('/reports/weekly-summary', async (req, res) => {
 // GET debug teacher IDs
 router.get('/debug/teacher-ids', async (req, res) => {
   try {
-    const Booking = require('./models/Booking');
-    const Teacher = require('./models/Teacher');
-    
     const allBookings = await Booking.find();
     const allTeachers = await Teacher.find();
     
@@ -1265,9 +1584,6 @@ router.get('/debug/teacher-ids', async (req, res) => {
 // POST fix orphaned bookings
 router.post('/fix-orphaned-bookings', async (req, res) => {
   try {
-    const Booking = require('./models/Booking');
-    const Teacher = require('./models/Teacher');
-    
     // Find all bookings with orphaned teacher IDs
     const allBookings = await Booking.find();
     const allTeachers = await Teacher.find();
@@ -1276,8 +1592,7 @@ router.post('/fix-orphaned-bookings', async (req, res) => {
     let fixedCount = 0;
     for (const booking of allBookings) {
       if (!validTeacherIds.includes(booking.teacherId)) {
-        // Find the closest matching teacher ID (in this case, kjb00000001)
-        const closestTeacherId = validTeacherIds.find(id => id.startsWith('kjb'));
+        const closestTeacherId = validTeacherIds.find(Boolean);
         if (closestTeacherId) {
           booking.teacherId = closestTeacherId;
           await booking.save();
@@ -1313,10 +1628,6 @@ router.post('/reports/custom', async (req, res) => {
     const end = new Date(endDate);
     end.setHours(23, 59, 59, 999);
     
-    const Booking = require('./models/Booking');
-    const Teacher = require('./models/Teacher');
-    const Student = require('./models/Student');
-    
     let data = {};
     
     switch (reportType) {
@@ -1341,7 +1652,6 @@ router.post('/reports/custom', async (req, res) => {
           date: { $gte: startDate, $lte: endDate }
         });
         
-        const GlobalSettings = require('./models/GlobalSettings');
         const settings = await GlobalSettings.findOne();
         const rate = settings?.globalRate || 100;
         
@@ -1665,7 +1975,7 @@ router.post('/cleanup/logs', async (req, res) => {
     console.log('Cleaning up old logs...');
     
     // Simulate log cleanup
-    const removedCount = Math.floor(Math.random() * 100) + 50;
+    const removedCount = crypto.randomInt(50, 150);
     
     res.json({
       success: true,
@@ -1687,7 +1997,7 @@ router.post('/cleanup/backups', async (req, res) => {
     console.log('Cleaning up old backups...');
     
     // Simulate backup cleanup
-    const removedCount = Math.floor(Math.random() * 10) + 5;
+    const removedCount = crypto.randomInt(5, 15);
     
     res.json({
       success: true,
@@ -2509,7 +2819,7 @@ router.post('/user', async (req, res) => {
     console.log('Request body:', req.body);
     
     const {
-      userType,
+      userType: rawUserType,
       username,
       email,
       password,
@@ -2520,6 +2830,10 @@ router.post('/user', async (req, res) => {
       studentLastName,
       adminRole: requestedAdminRole,
     } = req.body;
+
+    const userType = String(rawUserType || '')
+      .trim()
+      .toLowerCase();
 
     if (!userType) {
       return res.status(400).json({ error: 'User type is required' });
@@ -2581,40 +2895,26 @@ router.post('/user', async (req, res) => {
         hashedPassword = await bcrypt.hash(generatedPassword, 10);
         console.log('Password hashed successfully');
         
-        // Generate teacherId (format: kjb + 8 digits)
-        // Find the highest existing teacherId number to avoid conflicts
-        const existingTeachers = await Teacher.find({}).select('teacherId');
-        let maxNumber = 0;
-        
-        existingTeachers.forEach(teacher => {
-          if (teacher.teacherId && teacher.teacherId.startsWith('kjb')) {
-            const numberPart = teacher.teacherId.substring(3);
-            const number = parseInt(numberPart, 10);
-            if (!isNaN(number) && number > maxNumber) {
-              maxNumber = number;
-            }
-          }
-        });
-        
-        const teacherIdNumber = (maxNumber + 1).toString().padStart(8, '0');
-        const teacherId = `kjb${teacherIdNumber}`;
-        console.log('Generated teacherId:', teacherId);
-        
         // Validate generated username
         if (!generatedUsername || generatedUsername.trim() === '') {
           throw new Error('Failed to generate valid username');
         }
-        
+
+        // Use the same string as portal login id (username is already unique on Teacher).
+        const teacherId = String(generatedUsername).trim();
+        console.log('Teacher teacherId (same as username):', teacherId);
+
         // Check if username already exists
         const existingUsername = await Teacher.findOne({ username: generatedUsername });
         if (existingUsername) {
           throw new Error(`Username ${generatedUsername} already exists`);
         }
-        
-        // Check if teacherId already exists
+
         const existingTeacherId = await Teacher.findOne({ teacherId: teacherId });
         if (existingTeacherId) {
-          throw new Error(`TeacherId ${teacherId} already exists`);
+          throw new Error(
+            `TeacherId ${teacherId} already exists (legacy id collision). Retry or pick another account.`
+          );
         }
         
         newUser = new Teacher({
@@ -2647,14 +2947,26 @@ router.post('/user', async (req, res) => {
         });
         break;
       case 'admin': {
-        const creator = await Admin.findOne({ username: String(req.user.username).trim() }).lean();
+        const creatorKey = String(req.user.username || req.user.email || '').trim();
+        let creator = null;
+        if (creatorKey) {
+          if (creatorKey.includes('@')) {
+            const esc = creatorKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            creator = await Admin.findOne({
+              $or: [{ username: creatorKey }, { email: new RegExp(`^${esc}$`, 'i') }],
+            }).lean();
+          } else {
+            creator = await Admin.findOne({ username: creatorKey }).lean();
+          }
+        }
         if (!creator || (creator.adminRole || 'super_admin') !== 'super_admin') {
           return res.status(403).json({ error: 'Only Super-Admin can create admin accounts.' });
         }
         const allowedRoles = ['super_admin', 'admin_hr', 'admin_accounting', 'admin_qa'];
-        const assignedRole = allowedRoles.includes(String(requestedAdminRole))
-          ? String(requestedAdminRole)
-          : 'admin_hr';
+        const roleNorm = String(requestedAdminRole || '')
+          .trim()
+          .toLowerCase();
+        const assignedRole = allowedRoles.includes(roleNorm) ? roleNorm : 'admin_hr';
 
         const hasPassword = password && String(password).trim().length > 0;
         if (hasPassword) {
@@ -2665,18 +2977,15 @@ router.post('/user', async (req, res) => {
             adminRole: assignedRole,
             passwordHash: hashedPassword,
             mustSetPassword: false,
-            passwordSetupTokenHash: null,
-            passwordSetupExpires: null,
           });
         } else {
           setupTokenPlain = crypto.randomBytes(32).toString('hex');
           const tokenHash = await bcrypt.hash(setupTokenPlain, 10);
+          // Omit password/passwordHash so schema defaults apply; explicit null has caused save issues on some stacks.
           newUser = new Admin({
             username: String(username).trim(),
             email: email && String(email).trim() ? String(email).trim() : null,
             adminRole: assignedRole,
-            passwordHash: null,
-            password: null,
             mustSetPassword: true,
             passwordSetupTokenHash: tokenHash,
             passwordSetupExpires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
@@ -2684,8 +2993,14 @@ router.post('/user', async (req, res) => {
         }
         break;
       }
+      default:
+        return res.status(400).json({ error: 'Invalid user type' });
     }
-    
+
+    if (!newUser) {
+      return res.status(400).json({ error: 'Could not build user record' });
+    }
+
     // Validate user data before saving
     if (!newUser.username || newUser.username.trim() === '') {
       throw new Error('Username cannot be null or empty');
@@ -2705,6 +3020,10 @@ router.post('/user', async (req, res) => {
           throw new Error(`TeacherId ${newUser.teacherId} already exists`);
         } else if (saveError.keyPattern && saveError.keyPattern.email) {
           throw new Error(`Email ${newUser.email} already exists`);
+        } else if (saveError.keyPattern && saveError.keyPattern.referralCode) {
+          throw new Error('Duplicate referral code — contact support to fix admin records.');
+        } else if (saveError.keyPattern && saveError.keyPattern.employeeId) {
+          throw new Error('Duplicate employee ID on admin record.');
         } else {
           throw new Error('Duplicate key error: ' + JSON.stringify(saveError.keyPattern));
         }
@@ -2782,7 +3101,21 @@ router.post('/user', async (req, res) => {
         });
       }
     } else {
-      const baseUser = { ...newUser.toObject(), password: undefined, passwordHash: undefined };
+      let baseUser;
+      try {
+        baseUser = newUser.toObject ? newUser.toObject({ versionKey: false }) : { ...newUser };
+      } catch (toObjErr) {
+        console.error('toObject failed for new user:', toObjErr);
+        baseUser = {
+          _id: newUser._id,
+          username: newUser.username,
+          email: newUser.email,
+          adminRole: newUser.adminRole,
+          userType,
+        };
+      }
+      delete baseUser.password;
+      delete baseUser.passwordHash;
       delete baseUser.passwordSetupTokenHash;
       const payload = {
         success: true,
@@ -2800,7 +3133,29 @@ router.post('/user', async (req, res) => {
   } catch (err) {
       console.error('Error creating user:', err);
       console.error('Error stack:', err.stack);
-      res.status(500).json({ error: 'Failed to create user' });
+      const msg = err && err.message ? String(err.message) : '';
+      if (err && (err.name === 'ValidationError' || err.name === 'CastError')) {
+        return res.status(400).json({
+          error:
+            err.name === 'CastError'
+              ? err.message || 'Invalid data'
+              : Object.values(err.errors || {})
+                  .map((e) => e.message)
+                  .join('; ') || 'Validation failed',
+        });
+      }
+      if (
+        msg &&
+        (/already exists/i.test(msg) ||
+          /duplicate key/i.test(msg) ||
+          /cannot be null or empty/i.test(msg) ||
+          /^Username /i.test(msg) ||
+          /^Email /i.test(msg) ||
+          /^TeacherId /i.test(msg))
+      ) {
+        return res.status(400).json({ error: msg });
+      }
+      res.status(500).json({ error: 'Failed to create user', detail: msg || undefined });
     }
 });
 
@@ -3215,7 +3570,10 @@ router.get('/teachers-list', async (req, res) => {
     console.error('❌ Error getting teachers list:', error);
     res.status(500).json({
       success: false,
-      message: error.message || 'Error retrieving teachers list'
+      message:
+        process.env.NODE_ENV === 'production'
+          ? 'Error retrieving teachers list'
+          : String(error && error.message ? error.message : 'Error retrieving teachers list'),
     });
   }
 });
@@ -3284,7 +3642,10 @@ router.get('/payment-history', async (req, res) => {
     console.error('❌ Error getting payment history:', error);
     res.status(500).json({
       success: false,
-      message: error.message || 'Error retrieving payment history'
+      message:
+        process.env.NODE_ENV === 'production'
+          ? 'Error retrieving payment history'
+          : String(error && error.message ? error.message : 'Error retrieving payment history'),
     });
   }
 });
@@ -3836,7 +4197,6 @@ router.post('/issues/resolve', verifyAdminApiAuth, requireAdmin, async (req, res
     await issue.save();
     
     // Mark the associated booking as completed when issue is resolved
-    const Booking = require('./models/Booking');
     try {
       const booking = await Booking.findById(issue.bookingId);
       if (booking && booking.status !== 'completed') {
@@ -4000,7 +4360,12 @@ router.get('/teacher-assessments', verifyAdminApiAuth, requireAdmin, async (req,
     });
   } catch (error) {
     console.error('Error fetching teacher assessments:', error);
-    res.status(500).json({ error: 'Server error: ' + error.message });
+    res.status(500).json({
+      error:
+        process.env.NODE_ENV === 'production'
+          ? 'Server error'
+          : String(error && error.message ? error.message : 'Server error'),
+    });
   }
 });
 
@@ -4049,7 +4414,12 @@ router.get('/teacher-assessments/:teacherId', verifyAdminApiAuth, requireAdmin, 
     });
   } catch (error) {
     console.error('Error fetching teacher assessment details:', error);
-    res.status(500).json({ error: 'Server error: ' + error.message });
+    res.status(500).json({
+      error:
+        process.env.NODE_ENV === 'production'
+          ? 'Server error'
+          : String(error && error.message ? error.message : 'Server error'),
+    });
   }
 });
 
@@ -4088,7 +4458,12 @@ router.post('/teacher-assessments/:teacherId/retake', verifyAdminApiAuth, requir
     });
   } catch (error) {
     console.error('Error enabling retake:', error);
-    res.status(500).json({ error: 'Server error: ' + error.message });
+    res.status(500).json({
+      error:
+        process.env.NODE_ENV === 'production'
+          ? 'Server error'
+          : String(error && error.message ? error.message : 'Server error'),
+    });
   }
 });
 
@@ -4211,7 +4586,12 @@ router.post('/teacher-assessments/:teacherId/recompute-scores', verifyAdminApiAu
     });
   } catch (error) {
     console.error('Error recomputing scores:', error);
-    res.status(500).json({ error: 'Server error: ' + error.message });
+    res.status(500).json({
+      error:
+        process.env.NODE_ENV === 'production'
+          ? 'Server error'
+          : String(error && error.message ? error.message : 'Server error'),
+    });
   }
 });
 
@@ -4334,7 +4714,12 @@ router.post('/assess-teacher/:teacherId', verifyAdminApiAuth, requireAdmin, asyn
     });
   } catch (error) {
     console.error('Error assessing teacher:', error);
-    res.status(500).json({ error: 'Server error: ' + error.message });
+    res.status(500).json({
+      error:
+        process.env.NODE_ENV === 'production'
+          ? 'Server error'
+          : String(error && error.message ? error.message : 'Server error'),
+    });
   }
 });
 

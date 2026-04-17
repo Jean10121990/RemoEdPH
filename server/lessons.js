@@ -138,7 +138,7 @@ router.post('/curriculum', authenticateToken, requireTeacher, async (req, res) =
     });
   } catch (error) {
     console.error('❌ [CREATE CURRICULUM] Error creating curriculum:', error);
-    res.status(500).json({ error: 'Failed to create curriculum: ' + error.message });
+    res.status(500).json({ error: 'Failed to create curriculum' });
   }
 });
 
@@ -202,7 +202,7 @@ router.put('/curriculum/:curriculumId', authenticateToken, requireTeacher, async
     });
   } catch (error) {
     console.error('❌ [UPDATE CURRICULUM] Error:', error);
-    res.status(500).json({ error: 'Failed to update curriculum: ' + error.message });
+    res.status(500).json({ error: 'Failed to update curriculum' });
   }
 });
 
@@ -288,7 +288,7 @@ router.post(
     });
   } catch (error) {
     console.error('❌ [CREATE] Error creating lesson:', error);
-    res.status(500).json({ error: 'Failed to create lesson: ' + error.message });
+    res.status(500).json({ error: 'Failed to create lesson' });
   }
 });
 
@@ -368,7 +368,7 @@ router.delete('/curriculum/:curriculumId/lessons', authenticateToken, requireTea
     });
   } catch (error) {
     console.error('❌ [DELETE ALL] Error deleting lessons:', error);
-    res.status(500).json({ error: 'Failed to delete lessons: ' + error.message });
+    res.status(500).json({ error: 'Failed to delete lessons' });
   }
 });
 
@@ -398,7 +398,7 @@ router.delete('/lesson/:lessonId', authenticateToken, requireTeacher, async (req
     });
   } catch (error) {
     console.error('❌ [DELETE] Error deleting lesson:', error);
-    res.status(500).json({ error: 'Failed to delete lesson: ' + error.message });
+    res.status(500).json({ error: 'Failed to delete lesson' });
   }
 });
 
@@ -696,7 +696,7 @@ router.post('/lesson/:lessonId/upload-file', authenticateToken, requireTeacher, 
   } catch (error) {
     console.error('❌ [UPLOAD] Error uploading lesson file:', error);
     console.error('❌ [UPLOAD] Error stack:', error.stack);
-    res.status(500).json({ error: 'Failed to upload file: ' + error.message });
+    res.status(500).json({ error: 'Failed to upload file' });
   }
 });
 

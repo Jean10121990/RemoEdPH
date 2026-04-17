@@ -31,6 +31,30 @@
                     <div class="setting-description">Configure security settings for the platform including password policies and session management.</div>
                     <button class="btn btn-primary" onclick="openSecuritySettings()">Configure Security</button>
                 </div>
+
+                <div class="setting-card" id="login-activity-card">
+                    <div class="setting-title">📋 Login activity</div>
+                    <div class="setting-description">Last 15 sign-ins to your admin account. New devices trigger an email from <strong>support@remoedph.com</strong> if your profile has an email address.</div>
+                    <div style="margin-bottom: 12px;">
+                        <button type="button" class="btn btn-secondary" id="btn-logout-other-sessions">Logout all other sessions</button>
+                    </div>
+                    <p id="login-activity-status" class="muted" style="font-size:0.875rem; display:none;"></p>
+                    <div style="overflow-x: auto;">
+                        <table style="width:100%; border-collapse: collapse; font-size: 0.875rem;">
+                            <thead>
+                                <tr style="text-align:left; border-bottom: 1px solid #e2e8f0;">
+                                    <th style="padding:8px 6px;">Device</th>
+                                    <th style="padding:8px 6px;">Browser / OS</th>
+                                    <th style="padding:8px 6px;">IP</th>
+                                    <th style="padding:8px 6px;">Last seen</th>
+                                </tr>
+                            </thead>
+                            <tbody id="login-activity-tbody">
+                                <tr><td colspan="4" style="padding:12px 6px; color:#64748b;">Loading…</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
                 
                 <div class="setting-card">
                     <div class="setting-title">📧 Email Settings</div>
@@ -73,10 +97,94 @@
             window.location.href = 'index.html';
         }
         
+        function adminAuthHeaders(includeJson) {
+            const t = localStorage.getItem('adminToken');
+            const h = {};
+            if (includeJson) h['Content-Type'] = 'application/json';
+            if (t) h['Authorization'] = 'Bearer ' + t;
+            return h;
+        }
+
+        function formatLoginTime(iso) {
+            if (!iso) return '—';
+            try {
+                return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+            } catch (e) {
+                return String(iso);
+            }
+        }
+
+        async function loadLoginActivity() {
+            const tbody = document.getElementById('login-activity-tbody');
+            if (!tbody) return;
+            try {
+                const r = await fetch('/api/admin/security/login-logs?limit=15', {
+                    credentials: 'include',
+                    headers: adminAuthHeaders(false)
+                });
+                const j = await r.json().catch(function () { return {}; });
+                if (!r.ok) {
+                    tbody.innerHTML = '<tr><td colspan="4" style="padding:12px 6px; color:#b91c1c;">' + (j.message || j.error || 'Could not load activity') + '</td></tr>';
+                    return;
+                }
+                const logs = j.logs || [];
+                if (!logs.length) {
+                    tbody.innerHTML = '<tr><td colspan="4" style="padding:12px 6px; color:#64748b;">No sign-ins recorded yet.</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = logs.map(function (row) {
+                    const icon = row.isMobile ? '📱' : '🖥️';
+                    const browserOs = [row.browser || '', row.os || ''].filter(Boolean).join(' · ') || '—';
+                    return '<tr style="border-bottom:1px solid #f1f5f9;">' +
+                        '<td style="padding:8px 6px; white-space:nowrap;">' + icon + '</td>' +
+                        '<td style="padding:8px 6px;">' + escapeHtml(browserOs) + '</td>' +
+                        '<td style="padding:8px 6px; font-family:monospace;">' + escapeHtml(row.ip || '—') + '</td>' +
+                        '<td style="padding:8px 6px;">' + escapeHtml(formatLoginTime(row.timestamp)) + '</td>' +
+                        '</tr>';
+                }).join('');
+            } catch (e) {
+                tbody.innerHTML = '<tr><td colspan="4" style="padding:12px 6px; color:#b91c1c;">Network error.</td></tr>';
+            }
+        }
+
+        function escapeHtml(s) {
+            return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        document.getElementById('btn-logout-other-sessions').addEventListener('click', async function () {
+            if (!confirm('Sign out all other browsers and devices? This device will stay signed in.')) return;
+            const statusEl = document.getElementById('login-activity-status');
+            statusEl.style.display = 'block';
+            statusEl.textContent = 'Working…';
+            try {
+                const r = await fetch('/api/admin/security/logout-other-sessions', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: adminAuthHeaders(true),
+                    body: '{}'
+                });
+                const j = await r.json().catch(function () { return {}; });
+                if (!r.ok) {
+                    statusEl.textContent = j.message || j.error || 'Request failed';
+                    statusEl.style.color = '#b91c1c';
+                    return;
+                }
+                if (j.token) localStorage.setItem('adminToken', j.token);
+                if (j.adminRole) localStorage.setItem('adminRole', j.adminRole);
+                statusEl.textContent = j.message || 'Other sessions were signed out.';
+                statusEl.style.color = '#15803d';
+                loadLoginActivity();
+            } catch (e) {
+                statusEl.textContent = 'Network error.';
+                statusEl.style.color = '#b91c1c';
+            }
+        });
+
         document.addEventListener('DOMContentLoaded', function() {
             if (window.AdminSidebar && typeof AdminSidebar.applyGreetingFromStorage === 'function') {
                 AdminSidebar.applyGreetingFromStorage();
             }
+            loadLoginActivity();
         });
 
         async function openSecuritySettings() {

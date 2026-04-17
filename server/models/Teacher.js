@@ -2,7 +2,8 @@ const mongoose = require('mongoose');
 const { piiContactString } = require('../utils/piiMongoose');
 
 const teacherSchema = new mongoose.Schema({
-  teacherId: { type: String, required: true, unique: true }, // Company format: KBF07202500001
+  /** Stable id for slots/bookings — same as `username` for new accounts; legacy kjb/T* values still supported. */
+  teacherId: { type: String, required: true, unique: true },
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   hireDate: { type: Date, default: null },

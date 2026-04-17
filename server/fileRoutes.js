@@ -2,6 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const File = require('./models/File');
 const { fileUploadLimiter } = require('./middleware/apiRateLimits');
 
@@ -20,7 +21,7 @@ const storage = multer.diskStorage({
   },
   filename: function (req, file, cb) {
     // Generate unique filename with timestamp
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const uniqueSuffix = Date.now() + '-' + crypto.randomInt(0, 1e9);
     cb(null, uniqueSuffix + '-' + file.originalname);
   }
 });
@@ -217,9 +218,19 @@ router.use((error, req, res, next) => {
     if (error.code === 'LIMIT_FILE_SIZE') {
       return res.status(400).json({ error: 'File too large. Maximum size is 100MB.' });
     }
-    return res.status(400).json({ error: error.message || 'Upload failed.' });
+    return res.status(400).json({
+      error:
+        process.env.NODE_ENV === 'production'
+          ? 'Upload failed.'
+          : String(error && error.message ? error.message : 'Upload failed.'),
+    });
   }
-  return res.status(400).json({ error: error.message || 'Upload failed.' });
+  return res.status(400).json({
+    error:
+      process.env.NODE_ENV === 'production'
+        ? 'Upload failed.'
+        : String(error && error.message ? error.message : 'Upload failed.'),
+  });
 });
 
 module.exports = router; 

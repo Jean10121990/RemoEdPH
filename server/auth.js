@@ -24,6 +24,17 @@ const {
 const crypto = require('crypto');
 const mongoose = require('mongoose');
 const { sendPasswordResetEmail } = require('./emailService');
+const { recordAdminLoginActivity, getAdminSessionVersion } = require('./services/adminLoginActivity');
+const {
+  ADMIN_2FA_ENROLLMENT_PURPOSE,
+  requiresForced2faEnrollment,
+} = require('./utils/adminForce2fa');
+const { decryptTotpSecret } = require('./utils/twoFactorSecretCrypto');
+const { authenticator } = require('otplib');
+
+authenticator.options = { window: 1 };
+
+const ADMIN_2FA_PENDING_PURPOSE = 'admin_2fa_pending';
 
 function getAdminPasswordHashField(adminDoc) {
   return adminDoc.passwordHash || adminDoc.password || '';
@@ -60,45 +71,25 @@ function generateStrongPassword() {
   let password = '';
   
   // Ensure at least one character from each category
-  password += uppercase[Math.floor(Math.random() * uppercase.length)];
-  password += lowercase[Math.floor(Math.random() * lowercase.length)];
-  password += numbers[Math.floor(Math.random() * numbers.length)];
+  password += uppercase[crypto.randomInt(0, uppercase.length)];
+  password += lowercase[crypto.randomInt(0, lowercase.length)];
+  password += numbers[crypto.randomInt(0, numbers.length)];
   
   // Fill the remaining 7 characters with random characters from all categories
   const allChars = uppercase + lowercase + numbers;
   for (let i = 0; i < 7; i++) {
-    password += allChars[Math.floor(Math.random() * allChars.length)];
+    password += allChars[crypto.randomInt(0, allChars.length)];
   }
   
-  // Shuffle the password to make it more random
-  return password.split('').sort(() => Math.random() - 0.5).join('');
-}
-
-// Helper: generate teacherId in the format T<initials><MYYYY><#####>
-async function generateTeacherIdFor(teacherData) {
-  const { firstName = '', middleName = '', lastName = '', username = '' } = teacherData || {};
-  const takeInitial = (s) => (s && s.trim().length > 0 ? s.trim()[0].toUpperCase() : 'X');
-
-  let initials = '';
-  if (firstName || middleName || lastName) {
-    initials = `${takeInitial(firstName)}${takeInitial(middleName)}${takeInitial(lastName)}`;
-  } else {
-    // Fallback: derive up to 3 initials from username segments
-    const parts = (username || '').split(/[^A-Za-z]+/).filter(Boolean);
-    const chars = parts.map(p => p[0]?.toUpperCase()).slice(0, 3);
-    while (chars.length < 3) chars.push('X');
-    initials = chars.join('');
+  // Shuffle using Fisher–Yates with crypto RNG
+  const a = password.split('');
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = crypto.randomInt(0, i + 1);
+    const tmp = a[i];
+    a[i] = a[j];
+    a[j] = tmp;
   }
-
-  const now = new Date();
-  const monthNoPad = String(now.getMonth() + 1); // per spec, no leading zero e.g., 7 for July
-  const year = String(now.getFullYear());
-  const prefix = `T${initials}${monthNoPad}${year}`; // e.g., TKBF72025
-
-  // Count existing teachers with this prefix to assign next sequence
-  const count = await Teacher.countDocuments({ teacherId: { $regex: `^${prefix}` } });
-  const seq = String(count + 1).padStart(5, '0');
-  return `${prefix}${seq}`; // e.g., TKBF7202500001
+  return a.join('');
 }
 
 // Bootstrap admin from .env (plaintext password only in env; stored as bcrypt in MongoDB)
@@ -129,59 +120,120 @@ setTimeout(seedAdminFromEnv, 2000);
 
 // Admin login endpoint (rate-limited; sets httpOnly session cookie + optional legacy JWT)
 router.post('/admin-login', adminLoginLimiterExtra, async (req, res) => {
-  const { username, password } = req.body;
-  if (!username || !password) {
-    return res.status(400).json({ success: false, message: 'Username and password are required' });
-  }
+  try {
+    const { username, password } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ success: false, message: 'Username and password are required' });
+    }
 
-  const admin = await Admin.findOne({ username: String(username).trim() });
-  if (!admin) {
-    return res.status(401).json({ success: false, message: 'Invalid credentials' });
-  }
+    const uid = String(username).trim();
+    const uidEsc = uid.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const admin = await Admin.findOne({
+      $or: [{ username: uid }, { email: new RegExp(`^${uidEsc}$`, 'i') }],
+    });
+    if (!admin) {
+      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    }
 
-  if (admin.status === 'suspended') {
-    console.log('Admin is suspended:', admin.username);
-    return res.status(403).json({
-      success: false,
-      message: 'Your account has been suspended. Please contact the system administrator.',
+    if (admin.status === 'suspended') {
+      console.log('Admin is suspended:', admin.username);
+      return res.status(403).json({
+        success: false,
+        message: 'Your account has been suspended. Please contact the system administrator.',
+      });
+    }
+
+    const hash = getAdminPasswordHashField(admin);
+    if (!hash) {
+      return res.status(401).json({
+        success: false,
+        code: 'ADMIN_PASSWORD_NOT_SET',
+        message:
+          'No password on this account yet. Use the first-time setup link and token from your Super-Admin, then sign in.',
+      });
+    }
+
+    const match = await bcrypt.compare(password, hash);
+    if (!match) {
+      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    }
+
+    if (admin.password && !admin.passwordHash) {
+      admin.passwordHash = admin.password;
+      admin.password = undefined;
+      await admin.save().catch(() => {});
+    }
+
+    const adminRole = admin.adminRole || 'super_admin';
+
+  if (requiresForced2faEnrollment(admin)) {
+    const enrollmentToken = jwt.sign(
+      {
+        purpose: ADMIN_2FA_ENROLLMENT_PURPOSE,
+        adminId: String(admin._id),
+      },
+      JWT_SECRET,
+      { expiresIn: '30m' }
+    );
+    // Create a short-lived enrollment session so the setup page can POST only {code}.
+    return req.session.regenerate((regenErr) => {
+      if (regenErr) {
+        console.error('Session regenerate error (2fa enrollment):', regenErr);
+        return res.status(500).json({ success: false, message: 'Could not create enrollment session' });
+      }
+      req.session.admin2faEnroll = true;
+      req.session.admin2faEnrollAdminId = String(admin._id);
+      req.session.admin2faEnrollToken = enrollmentToken;
+      req.session.save((saveErr) => {
+        if (saveErr) {
+          console.error('Session save error (2fa enrollment):', saveErr);
+          return res.status(500).json({ success: false, message: 'Could not save enrollment session' });
+        }
+        return res.json({
+          success: true,
+          require2FASetup: true,
+          enrollmentToken,
+          setupPath: '/admin/2fa-setup',
+          username: admin.username,
+          message: 'Complete two-factor setup before accessing the admin portal.',
+        });
+      });
     });
   }
 
-  const hash = getAdminPasswordHashField(admin);
-  if (!hash) {
-    return res.status(401).json({
-      success: false,
-      code: 'ADMIN_PASSWORD_NOT_SET',
-      message:
-        'No password on this account yet. Use the first-time setup link and token from your Super-Admin, then sign in.',
-    });
-  }
-
-  const match = await bcrypt.compare(password, hash);
-  if (!match) {
-    return res.status(401).json({ success: false, message: 'Invalid credentials' });
-  }
-
-  if (admin.password && !admin.passwordHash) {
-    admin.passwordHash = admin.password;
-    admin.password = undefined;
-    await admin.save().catch(() => {});
-  }
-
-  const adminRole = admin.adminRole || 'super_admin';
-  const token = jwt.sign(
-    {
+    if (admin.isTwoFactorEnabled === true) {
+    const tempToken = jwt.sign(
+      {
+        purpose: ADMIN_2FA_PENDING_PURPOSE,
+        adminId: String(admin._id),
+      },
+      JWT_SECRET,
+      { expiresIn: '10m' }
+    );
+    return res.json({
+      success: true,
+      require2FA: true,
+      tempToken,
       username: admin.username,
-      isAdmin: true,
-      role: 'admin',
-      adminRole,
-      adminId: String(admin._id),
-    },
-    JWT_SECRET,
-    { expiresIn: JWT_EXPIRES_IN }
-  );
+    });
+  }
 
-  req.session.regenerate((regenErr) => {
+    const sessionVersion = await getAdminSessionVersion(admin._id);
+    const token = jwt.sign(
+      {
+        username: admin.username,
+        isAdmin: true,
+        role: 'admin',
+        adminRole,
+        adminId: String(admin._id),
+        twoFactorVerified: true,
+        sessionVersion,
+      },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN }
+    );
+
+    req.session.regenerate((regenErr) => {
     if (regenErr) {
       console.error('Session regenerate error:', regenErr);
       return res.status(500).json({ success: false, message: 'Could not create session' });
@@ -190,16 +242,113 @@ router.post('/admin-login', adminLoginLimiterExtra, async (req, res) => {
     req.session.adminUsername = admin.username;
     req.session.adminId = String(admin._id);
     req.session.adminRole = adminRole;
+    req.session.admin2faVerified = true;
+    req.session.adminSessionVersion = sessionVersion;
 
-    req.session.save((saveErr) => {
+    req.session.save(async (saveErr) => {
       if (saveErr) {
         console.error('Session save error:', saveErr);
         return res.status(500).json({ success: false, message: 'Could not save session' });
       }
+      try {
+        await recordAdminLoginActivity(req, admin);
+      } catch (logErr) {
+        console.error('Admin login activity:', logErr);
+      }
       console.log('Admin login successful (session + token):', { username: admin.username, adminRole });
       res.json({ success: true, token, username: admin.username, adminRole });
     });
-  });
+    });
+  } catch (err) {
+    console.error('admin-login error:', err);
+    return res.status(500).json({ success: false, message: 'Login failed' });
+  }
+});
+
+/** Complete admin sign-in when TOTP is enabled (after password step). Issues session + JWT with twoFactorVerified. */
+router.post('/verify-2fa', adminLoginLimiterExtra, async (req, res) => {
+  try {
+    const { tempToken, code } = req.body || {};
+    const digits = code != null ? String(code).replace(/\s/g, '') : '';
+    if (!tempToken || !/^\d{6}$/.test(digits)) {
+      return res.status(400).json({
+        success: false,
+        message: 'tempToken and a valid 6-digit code are required.',
+      });
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(String(tempToken), JWT_SECRET);
+    } catch (_e) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid or expired verification token. Sign in again.',
+      });
+    }
+    if (decoded.purpose !== ADMIN_2FA_PENDING_PURPOSE || !decoded.adminId) {
+      return res.status(401).json({ success: false, message: 'Invalid verification token.' });
+    }
+
+    const admin = await Admin.findById(String(decoded.adminId));
+    if (!admin || admin.status === 'suspended' || !admin.isTwoFactorEnabled) {
+      return res.status(401).json({ success: false, message: 'Invalid verification request.' });
+    }
+
+    const plainSecret = decryptTotpSecret(admin.twoFactorSecret);
+    if (!plainSecret) {
+      return res.status(500).json({ success: false, message: 'Two-factor is misconfigured. Contact support.' });
+    }
+    const ok = authenticator.verify({ token: digits, secret: plainSecret });
+    if (!ok) {
+      return res.status(401).json({ success: false, message: 'Invalid authentication code.' });
+    }
+
+    const adminRole = admin.adminRole || 'super_admin';
+    const sessionVersion = await getAdminSessionVersion(admin._id);
+    const token = jwt.sign(
+      {
+        username: admin.username,
+        isAdmin: true,
+        role: 'admin',
+        adminRole,
+        adminId: String(admin._id),
+        twoFactorVerified: true,
+        sessionVersion,
+      },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN }
+    );
+
+    req.session.regenerate((regenErr) => {
+      if (regenErr) {
+        console.error('Session regenerate error (verify-2fa):', regenErr);
+        return res.status(500).json({ success: false, message: 'Could not create session' });
+      }
+      req.session.adminAuth = true;
+      req.session.adminUsername = admin.username;
+      req.session.adminId = String(admin._id);
+      req.session.adminRole = adminRole;
+      req.session.admin2faVerified = true;
+      req.session.adminSessionVersion = sessionVersion;
+
+      req.session.save(async (saveErr) => {
+        if (saveErr) {
+          console.error('Session save error (verify-2fa):', saveErr);
+          return res.status(500).json({ success: false, message: 'Could not save session' });
+        }
+        try {
+          await recordAdminLoginActivity(req, admin);
+        } catch (logErr) {
+          console.error('Admin verify-2fa login activity:', logErr);
+        }
+        res.json({ success: true, token, username: admin.username, adminRole });
+      });
+    });
+  } catch (err) {
+    console.error('verify-2fa:', err);
+    res.status(500).json({ success: false, message: 'Verification failed' });
+  }
 });
 
 /** First-time password for admins created without a password (Super-Admin receives one-time token). */
@@ -365,9 +514,16 @@ router.post('/register', authRegisterLimiter, async (req, res) => {
       }
     }
     
-    // Generate unique teacherId using new format
-    const teacherId = await generateTeacherIdFor({ firstName, middleName, lastName, username });
-    
+    // teacherId is the same stable string as login username (unique on Teacher).
+    const teacherId = String(username).trim();
+    const teacherIdTaken = await Teacher.findOne({ teacherId });
+    if (teacherIdTaken) {
+      return res.status(409).json({
+        success: false,
+        message: 'That teacher id is already in use. Choose a different username.',
+      });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
     const teacher = new Teacher({ 
       username,
@@ -531,7 +687,6 @@ router.post('/student-register', authRegisterLimiter, async (req, res) => {
   }
 
   // Check if database is connected
-  const mongoose = require('mongoose');
   if (mongoose.connection.readyState !== 1) {
     console.error('❌ Database not connected. Connection state:', mongoose.connection.readyState);
     return res.status(503).json({ 

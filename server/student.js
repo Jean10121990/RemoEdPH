@@ -19,6 +19,7 @@ const {
 const crypto = require('crypto');
 const { body, validationResult } = require('express-validator');
 const { encryptPiiString } = require('./utils/piiCrypto');
+const { getBookingStartAsDate } = require('./utils/bookingScheduledStart');
 
 const router = express.Router();
 
@@ -140,6 +141,7 @@ router.get('/profile', verifyToken, requireStudent, async (req, res) => {
 
     res.json({
       profile: {
+        username: student.username,
         firstName: student.firstName,
         middleName: student.middleName,
         lastName: student.lastName,
@@ -212,7 +214,12 @@ router.get('/profile', verifyToken, requireStudent, async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Error fetching student profile:', error);
-    res.status(500).json({ error: 'Server error: ' + error.message });
+    res.status(500).json({
+      error:
+        process.env.NODE_ENV === 'production'
+          ? 'Server error'
+          : String(error && error.message ? error.message : 'Server error'),
+    });
   }
 });
 
@@ -289,7 +296,12 @@ router.post('/profile', verifyToken, requireStudent, async (req, res) => {
     res.json({ message: 'Profile updated successfully', student });
   } catch (error) {
     console.error('Error updating student profile:', error);
-    res.status(500).json({ error: 'Server error: ' + error.message });
+    res.status(500).json({
+      error:
+        process.env.NODE_ENV === 'production'
+          ? 'Server error'
+          : String(error && error.message ? error.message : 'Server error'),
+    });
   }
 });
 
@@ -366,17 +378,18 @@ router.post('/request-cancellation', verifyToken, requireStudent, async (req, re
       });
     }
     
-    // Check if class has already started
-    const classDateTime = new Date(`${booking.date}T${booking.time}:00`);
+    // Check if class has already started (align with dateTimeUtc / zones, not naive local Date)
+    const classDateTime = getBookingStartAsDate(booking);
     const now = new Date();
-    
-    if (classDateTime <= now) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Cannot cancel a class that has already started' 
+    if (!classDateTime || classDateTime <= now) {
+      return res.status(400).json({
+        success: false,
+        error: !classDateTime
+          ? 'Cannot determine class schedule for cancellation'
+          : 'Cannot cancel a class that has already started',
       });
     }
-    
+
     // Check if there's already a pending cancellation request
     const existingRequest = await CancellationRequest.findOne({
       bookingId,
@@ -454,13 +467,14 @@ router.post('/cancel-booking', verifyToken, requireStudent, async (req, res) => 
     }
     
     // Check if class has already started or completed
-    const classDateTime = new Date(`${booking.date}T${booking.time}:00`);
+    const classDateTime = getBookingStartAsDate(booking);
     const now = new Date();
-    
-    if (classDateTime <= now) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Cannot cancel a class that has already started or completed' 
+    if (!classDateTime || classDateTime <= now) {
+      return res.status(400).json({
+        success: false,
+        error: !classDateTime
+          ? 'Cannot determine class schedule for cancellation'
+          : 'Cannot cancel a class that has already started or completed',
       });
     }
     
@@ -955,7 +969,12 @@ router.post('/update-settings', verifyToken, requireStudent, async (req, res) =>
     
   } catch (error) {
     console.error('❌ Error updating student settings:', error);
-    res.status(500).json({ error: 'Server error: ' + error.message });
+    res.status(500).json({
+      error:
+        process.env.NODE_ENV === 'production'
+          ? 'Server error'
+          : String(error && error.message ? error.message : 'Server error'),
+    });
   }
 });
 
@@ -1028,7 +1047,12 @@ router.post('/save-assessment', verifyToken, requireStudent, saveAssessmentValid
     });
   } catch (error) {
     console.error('❌ Error saving assessment result:', error);
-    res.status(500).json({ error: 'Server error: ' + error.message });
+    res.status(500).json({
+      error:
+        process.env.NODE_ENV === 'production'
+          ? 'Server error'
+          : String(error && error.message ? error.message : 'Server error'),
+    });
   }
 });
 
@@ -1114,7 +1138,12 @@ router.post('/subscribe', async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Error processing subscription:', error);
-    res.status(500).json({ error: 'Server error: ' + error.message });
+    res.status(500).json({
+      error:
+        process.env.NODE_ENV === 'production'
+          ? 'Server error'
+          : String(error && error.message ? error.message : 'Server error'),
+    });
   }
 });
 
@@ -1140,7 +1169,13 @@ router.get('/checkout-session', async (req, res) => {
       }
     });
   } catch (error) {
-    res.status(500).json({ success: false, error: 'Server error: ' + error.message });
+    res.status(500).json({
+      success: false,
+      error:
+        process.env.NODE_ENV === 'production'
+          ? 'Server error'
+          : String(error && error.message ? error.message : 'Server error'),
+    });
   }
 });
 
@@ -1298,7 +1333,13 @@ router.post('/confirm-payment', async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Error confirming payment:', error);
-    res.status(500).json({ success: false, error: 'Server error: ' + error.message });
+    res.status(500).json({
+      success: false,
+      error:
+        process.env.NODE_ENV === 'production'
+          ? 'Server error'
+          : String(error && error.message ? error.message : 'Server error'),
+    });
   }
 });
 
@@ -1319,7 +1360,13 @@ router.get('/credits', verifyToken, requireStudent, async (req, res) => {
     res.json(payload);
   } catch (error) {
     console.error('❌ Error fetching student credits:', error);
-    res.status(500).json({ success: false, error: 'Server error: ' + error.message });
+    res.status(500).json({
+      success: false,
+      error:
+        process.env.NODE_ENV === 'production'
+          ? 'Server error'
+          : String(error && error.message ? error.message : 'Server error'),
+    });
   }
 });
 
@@ -1360,7 +1407,12 @@ router.post('/send-subscription-email', async (req, res) => {
     }
   } catch (error) {
     console.error('❌ Error sending subscription confirmation email:', error);
-    res.status(500).json({ error: 'Server error: ' + error.message });
+    res.status(500).json({
+      error:
+        process.env.NODE_ENV === 'production'
+          ? 'Server error'
+          : String(error && error.message ? error.message : 'Server error'),
+    });
   }
 });
 
@@ -1445,7 +1497,12 @@ router.post('/send-assessment-email', async (req, res) => {
     }
   } catch (error) {
     console.error('❌ Error sending assessment email:', error);
-    res.status(500).json({ error: 'Server error: ' + error.message });
+    res.status(500).json({
+      error:
+        process.env.NODE_ENV === 'production'
+          ? 'Server error'
+          : String(error && error.message ? error.message : 'Server error'),
+    });
   }
 });
 
@@ -1542,7 +1599,12 @@ router.post('/feedback/submit', verifyToken, requireStudent, async (req, res) =>
     
   } catch (error) {
     console.error('❌ Error submitting feedback:', error);
-    res.status(500).json({ error: 'Server error: ' + error.message });
+    res.status(500).json({
+      error:
+        process.env.NODE_ENV === 'production'
+          ? 'Server error'
+          : String(error && error.message ? error.message : 'Server error'),
+    });
   }
 });
 
@@ -1564,7 +1626,12 @@ router.get('/feedback/history', verifyToken, requireStudent, async (req, res) =>
     
   } catch (error) {
     console.error('❌ Error fetching feedback history:', error);
-    res.status(500).json({ error: 'Server error: ' + error.message });
+    res.status(500).json({
+      error:
+        process.env.NODE_ENV === 'production'
+          ? 'Server error'
+          : String(error && error.message ? error.message : 'Server error'),
+    });
   }
 });
 
@@ -1651,7 +1718,7 @@ router.get('/class-access/:bookingId', verifyToken, requireStudent, async (req, 
     console.error('❌ Error checking class access:', error);
     res.status(500).json({ 
       allowed: false, 
-      message: 'Server error: ' + error.message 
+      message: process.env.NODE_ENV === 'production' ? 'Server error' : String(error && error.message ? error.message : 'Server error')
     });
   }
 });
@@ -1714,7 +1781,7 @@ router.post('/booking/:bookingId/mark-absent', verifyToken, requireStudent, asyn
     console.error('❌ Error marking student as absent:', error);
     res.status(500).json({ 
       success: false, 
-      error: 'Failed to mark student as absent: ' + error.message 
+      error: 'Failed to mark student as absent'
     });
   }
 });

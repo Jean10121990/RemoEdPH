@@ -68,6 +68,7 @@
                                 <button type="button" class="tab-button" data-adm-tab="pro" onclick="admShowTab('pro', this)">Professional</button>
                                 <button type="button" class="tab-button" data-adm-tab="docs" onclick="admShowTab('docs', this)">Documents</button>
                                 <button type="button" class="tab-button" data-adm-tab="password" onclick="admShowTab('password', this)">Password</button>
+                                <button type="button" class="tab-button" data-adm-tab="security" onclick="admShowTab('security', this)">Security</button>
                             </div>
                         </div>
 
@@ -166,6 +167,25 @@
                             </div>
                         </div>
 
+                        <div id="adm-tab-security" class="tab-content">
+                            <p class="muted" style="font-size:0.9rem;margin-bottom:12px;">Authenticator apps will show the issuer <strong>RemoEdPH Admin</strong>. After you enable 2FA, you will be asked for a code each time you sign in.</p>
+                            <p style="margin:8px 0;"><span class="muted">Two-factor status:</span> <span id="twofa-status">—</span></p>
+                            <div style="margin:16px 0;">
+                                <button type="button" class="back-btn" id="twofa-setup-btn" style="background:#1d4ed8;color:#fff;border:none;">Generate QR code</button>
+                            </div>
+                            <div id="twofa-qr-wrap" style="display:none;margin:12px 0;">
+                                <img id="twofa-qr" src="" alt="2FA QR" style="max-width:220px;border:1px solid #e2e8f0;padding:8px;background:#fff;">
+                                <p class="muted" style="font-size:0.85rem;margin-top:8px;">Scan the code, then enter the current 6-digit code below to turn on 2FA.</p>
+                            </div>
+                            <div class="form-grid" style="max-width:320px;">
+                                <div class="form-group">
+                                    <label class="form-label">Code from app</label>
+                                    <input type="text" class="form-input" id="twofa-code" inputmode="numeric" maxlength="8" placeholder="000000" autocomplete="one-time-code">
+                                </div>
+                            </div>
+                            <button type="button" class="back-btn" id="twofa-enable-btn" style="background:#0f766e;color:#fff;border:none;">Confirm &amp; enable</button>
+                        </div>
+
                         <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid #e2e8f0;">
                             <button type="button" class="back-btn" id="save-profile" style="background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;font-weight:600;">Save changes</button>
                         </div>
@@ -209,7 +229,7 @@
         }
 
         function admShowTab(id, btn) {
-            ['personal', 'pro', 'docs', 'password'].forEach(function (key) {
+            ['personal', 'pro', 'docs', 'password', 'security'].forEach(function (key) {
                 var p = document.getElementById('adm-tab-' + key);
                 if (p) p.classList.toggle('active', key === id);
             });
@@ -275,6 +295,11 @@
             } else if (nbiLink && nbiNone) {
                 nbiLink.style.display = 'none';
                 nbiNone.style.display = 'inline';
+            }
+
+            var tw = document.getElementById('twofa-status');
+            if (tw) {
+                tw.textContent = p.isTwoFactorEnabled ? 'Enabled' : 'Not enabled';
             }
         }
 
@@ -347,6 +372,58 @@
                 if (!r.ok) throw new Error(j.message || 'Upload failed');
                 showMsg('NBI document saved.', false);
                 inp.value = '';
+                loadProfile();
+            } catch (e) {
+                showMsg(e.message, true);
+            }
+        };
+
+        document.getElementById('twofa-setup-btn').onclick = async function () {
+            showMsg('', false);
+            try {
+                var r = await fetch('/api/admin/2fa-setup', {
+                    method: 'POST',
+                    headers: authHeaders(true),
+                    credentials: 'include',
+                    body: '{}'
+                });
+                var j = await r.json().catch(function () { return {}; });
+                if (!r.ok) throw new Error(j.message || j.error || 'Setup failed');
+                var img = document.getElementById('twofa-qr');
+                if (j.qrDataUrl && img) {
+                    img.src = j.qrDataUrl;
+                    document.getElementById('twofa-qr-wrap').style.display = 'block';
+                }
+                showMsg('Scan the QR code with your authenticator app, then enter the 6-digit code and click Confirm.', false);
+            } catch (e) {
+                showMsg(e.message, true);
+            }
+        };
+
+        document.getElementById('twofa-enable-btn').onclick = async function () {
+            var code = (document.getElementById('twofa-code').value || '').replace(/\s/g, '');
+            if (!/^\d{6}$/.test(code)) {
+                showMsg('Enter a valid 6-digit code.', true);
+                return;
+            }
+            showMsg('', false);
+            try {
+                var r = await fetch('/api/admin/2fa-verify', {
+                    method: 'POST',
+                    headers: authHeaders(true),
+                    credentials: 'include',
+                    body: JSON.stringify({ code: code })
+                });
+                var j = await r.json().catch(function () { return {}; });
+                if (!r.ok) throw new Error(j.message || j.error || 'Verification failed');
+                document.getElementById('twofa-code').value = '';
+                if (j.token) {
+                    localStorage.setItem('adminToken', j.token);
+                }
+                if (j.adminRole) {
+                    localStorage.setItem('adminRole', j.adminRole);
+                }
+                showMsg(j.message || 'Two-factor authentication is enabled.', false);
                 loadProfile();
             } catch (e) {
                 showMsg(e.message, true);

@@ -2,12 +2,12 @@ const mongoose = require('mongoose');
 
 const ADMIN_ROLES = ['super_admin', 'admin_hr', 'admin_accounting', 'admin_qa'];
 
+/** Staff admin account (portal “admin user”). Includes TOTP 2FA fields for RBAC sign-in. */
 const adminSchema = new mongoose.Schema({
+  /** Optional HR / payroll id — not unique (multiple unset values caused duplicate index errors). */
   employeeId: {
     type: String,
     default: null,
-    unique: true,
-    sparse: true
   },
   username: {
     type: String,
@@ -35,14 +35,22 @@ const adminSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   },
-  // Referral link code (used for commission tracking)
-  referralCode: { type: String, default: null, unique: true, sparse: true },
+  /** Optional referral link code — not unique (many admins have none; unique+sparse still E11000 on some DBs). */
+  referralCode: { type: String, default: null },
   status: { type: String, enum: ['active', 'suspended'], default: 'active' },
   hasGeneratedPassword: { type: Boolean, default: false },
   /** Super-admin created account without password — user completes setup via token. */
   mustSetPassword: { type: Boolean, default: false },
   passwordSetupTokenHash: { type: String, default: null },
   passwordSetupExpires: { type: Date, default: null },
+  /** Encrypted TOTP shared secret (AES-GCM at rest). */
+  twoFactorSecret: { type: String },
+  /** When true, admin must complete TOTP at sign-in (see /api/auth/verify-2fa). */
+  isTwoFactorEnabled: { type: Boolean, default: false },
+  /** JWTs issued before this time (unix iat) are rejected once 2FA is on (Bearer-only clients). */
+  twoFactorEnabledAt: { type: Date, default: null },
+  /** Incremented to invalidate other sessions (see POST /api/admin/security/logout-other-sessions). */
+  sessionVersion: { type: Number, default: 0 },
   firstName: { type: String, default: '' },
   lastName: { type: String, default: '' },
   address: { type: String, default: '' },
