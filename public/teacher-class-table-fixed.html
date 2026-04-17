@@ -171,10 +171,10 @@
           <div id="cancellation-form" style="display: none; margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e0e6ed;">
             <h4 style="margin: 0 0 10px 0; color: #dc3545;">Cancellation Request</h4>
             <div class="form-group">
-              <label for="cancellation-reason" style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">Reason for Cancellation:</label>
-              <textarea id="cancellation-reason" placeholder="Please provide a detailed reason for cancellation (minimum 10 characters)..." rows="4" maxlength="500" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;"></textarea>
+              <label for="cancellation-reason-inline" style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">Reason for Cancellation:</label>
+              <textarea id="cancellation-reason-inline" placeholder="Please provide a detailed reason for cancellation (minimum 10 characters)..." rows="4" maxlength="500" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;"></textarea>
               <div class="char-count" style="margin-top: 5px; font-size: 0.8rem; color: #666;">
-                <span id="char-count">0</span>/500 characters
+                <span id="char-count-inline">0</span>/500 characters
               </div>
             </div>
             <div style="display: flex; gap: 10px; margin-top: 10px;">
@@ -202,10 +202,10 @@
           <p><strong>Class:</strong> <span id="cancel-class-info"></span></p>
           <p><strong>Student:</strong> <span id="cancel-student-info"></span></p>
           <div class="form-group">
-            <label for="cancellation-reason">Reason for Cancellation:</label>
-            <textarea id="cancellation-reason" placeholder="Please provide a detailed reason for cancellation (minimum 10 characters)..." rows="4" maxlength="500"></textarea>
+            <label for="cancellation-reason-modal">Reason for Cancellation:</label>
+            <textarea id="cancellation-reason-modal" placeholder="Please provide a detailed reason for cancellation (minimum 10 characters)..." rows="4" maxlength="500"></textarea>
             <div class="char-count">
-              <span id="char-count">0</span>/500 characters
+              <span id="char-count-modal">0</span>/500 characters
             </div>
           </div>
         </div>
@@ -1193,9 +1193,9 @@
       }
     }
 
-    // Add event listener for character count
+    // Character count listener (modal textarea only)
     document.addEventListener('DOMContentLoaded', function() {
-      const reasonTextarea = document.getElementById('cancellation-reason');
+      const reasonTextarea = document.getElementById('cancellation-reason-modal');
       if (reasonTextarea) {
         reasonTextarea.addEventListener('input', updateCharCount);
       }
@@ -1226,30 +1226,33 @@
     
     function showCancellationForm() {
       document.getElementById('cancellation-form').style.display = 'block';
-      document.getElementById('cancellation-reason').value = ''; // Clear previous reason
-      document.getElementById('char-count').textContent = '0';
-      document.getElementById('cancellation-reason').focus();
+      document.getElementById('cancellation-reason-inline').value = ''; // Clear previous reason
+      document.getElementById('char-count-inline').textContent = '0';
+      document.getElementById('cancellation-reason-inline').focus();
       
       // Add character count listener
-      document.getElementById('cancellation-reason').addEventListener('input', function() {
+      document.getElementById('cancellation-reason-inline').addEventListener('input', function() {
         const count = this.value.length;
-        document.getElementById('char-count').textContent = count;
+        document.getElementById('char-count-inline').textContent = count;
       });
     }
     
     function hideCancellationForm() {
       document.getElementById('cancellation-form').style.display = 'none';
-      document.getElementById('cancellation-reason').value = '';
-      document.getElementById('char-count').textContent = '0';
+      document.getElementById('cancellation-reason-inline').value = '';
+      document.getElementById('char-count-inline').textContent = '0';
     }
 
     function updateCharCount() {
-      const reason = document.getElementById('cancellation-reason').value;
-      document.getElementById('char-count').textContent = reason.length;
+      const el = document.getElementById('cancellation-reason-modal');
+      if (!el) return;
+      document.getElementById('char-count-modal').textContent = String(el.value.length);
     }
 
     async function submitCancellationRequest() {
-      const reason = document.getElementById('cancellation-reason').value.trim();
+      const modalEl = document.getElementById('cancellation-reason-modal');
+      const inlineEl = document.getElementById('cancellation-reason-inline');
+      const reason = String((modalEl && modalEl.value) || (inlineEl && inlineEl.value) || '').trim();
       
       if (reason.length < 10) {
         alert('Cancellation reason must be at least 10 characters long.');
