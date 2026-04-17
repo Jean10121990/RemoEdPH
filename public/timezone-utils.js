@@ -254,7 +254,9 @@ function listRemoedRegionTimezones() {
     seen.add(z);
     out.push(z);
   });
-  out.sort();
+  out.sort(function (a, b) {
+    return String(a).localeCompare(String(b), 'en', { sensitivity: 'base' });
+  });
   const ix = out.indexOf(REMOED_ANCHOR_ZONE);
   if (ix > 0) {
     out.splice(ix, 1);
