@@ -197,19 +197,59 @@
                 });
 
                 if (response.ok) {
-                    const booking = await response.json();
-                    
+                    const data = await response.json();
+                    const b = data.booking || data;
+
+                    function normTime(t) {
+                      if (!t) return '';
+                      const [h = '', m = '0'] = String(t).split(':');
+                      const hi = parseInt(h, 10);
+                      const mi = parseInt(m, 10);
+                      if (Number.isNaN(hi) || Number.isNaN(mi)) return '';
+                      return `${String(hi).padStart(2, '0')}:${String(mi).padStart(2, '0')}`;
+                    }
+                    function phFromBooking(booking) {
+                      const Lux = window.luxon && window.luxon.DateTime;
+                      const zone = 'Asia/Manila';
+                      const norm = normTime(booking.time);
+                      const sources = [
+                        booking.dateTimeUtc,
+                        booking.dateTimeUTC,
+                        booking.datetimeUtc,
+                        booking.scheduledStartTime
+                      ];
+                      for (const src of sources) {
+                        if (src == null || src === '') continue;
+                        let iso = String(src).trim();
+                        if (iso.includes('T') && !/[zZ]$/.test(iso) && !/[+\-]\d{2}:?\d{2}$/.test(iso)) iso += 'Z';
+                        if (Lux) {
+                          const dt = Lux.fromISO(iso, { zone: 'utc' });
+                          if (dt.isValid) {
+                            const local = dt.setZone(zone);
+                            return { date: local.toISODate(), time: local.toFormat('HH:mm') };
+                          }
+                        }
+                      }
+                      if (booking.date && norm && Lux) {
+                        const dt = Lux.fromISO(`${booking.date}T${norm}:00.000Z`, { zone: 'utc' });
+                        if (dt.isValid) {
+                          const local = dt.setZone(zone);
+                          return { date: local.toISODate(), time: local.toFormat('HH:mm') };
+                        }
+                      }
+                      return { date: booking.date, time: norm || booking.time || '' };
+                    }
+
+                    const ph = phFromBooking(b);
                     document.getElementById('class-date').textContent = window.TimezoneUtils && window.TimezoneUtils.formatYmdAsPhilippinesLongDate
-                        ? window.TimezoneUtils.formatYmdAsPhilippinesLongDate(booking.date)
-                        : new Date(booking.date).toLocaleDateString();
-                    document.getElementById('class-time').textContent = booking.time;
+                        ? window.TimezoneUtils.formatYmdAsPhilippinesLongDate(ph.date)
+                        : ph.date;
+                    document.getElementById('class-time').textContent = ph.time;
                     document.getElementById('class-info').style.display = 'block';
-                    
-                    // If no room parameter was provided, use the classroomId from booking
-                    if (!room && booking.classroomId) {
-                        console.log('🏠 Using classroomId from booking:', booking.classroomId);
-                        // Update the room variable for the rest of the script
-                        window.room = booking.classroomId;
+
+                    if (!room && b.classroomId) {
+                        console.log('🏠 Using classroomId from booking:', b.classroomId);
+                        window.room = b.classroomId;
                     }
                 }
             } catch (error) {

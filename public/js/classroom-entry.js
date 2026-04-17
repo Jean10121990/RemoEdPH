@@ -14,10 +14,17 @@
       var t = new Date(s).getTime();
       if (Number.isFinite(t)) return t;
     }
+    // booking.date + booking.time are UTC wall clock from the server (same as student schedule).
     if (booking.date && booking.time) {
       var tm = String(booking.time).trim();
-      var localIso = booking.date + 'T' + (tm.length <= 5 ? tm + ':00' : tm);
-      var ms = new Date(localIso).getTime();
+      var segs = tm.split(':');
+      var h = parseInt(segs[0], 10);
+      var m = parseInt(segs[1] != null ? segs[1] : '0', 10);
+      if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
+      var hh = String(h).padStart(2, '0');
+      var mm = String(m).padStart(2, '0');
+      var utcIso = booking.date + 'T' + hh + ':' + mm + ':00.000Z';
+      var ms = new Date(utcIso).getTime();
       return Number.isFinite(ms) ? ms : null;
     }
     return null;

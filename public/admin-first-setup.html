@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin first-time setup - RemoEdPH</title>
+    <link rel="stylesheet" href="modern-styles.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="js/admin-session.js"></script>
+</head>
+<body class="page-admin-login">
+  <div class="remoed-form" style="margin: 50px auto; max-width: 440px; width: 90%;">
+    <div class="remoed-logo" style="justify-content: center; margin-bottom: 1.5rem;">
+      <img src="remoed-logo.png" alt="RemoEdPH Logo">
+      <span class="remoed-title">RemoEdPH</span>
+    </div>
+    <h2 class="remoed-form-title">Set your admin password</h2>
+    <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 1rem;">Use the username chosen by your Super-Admin and the one-time token they shared with you. After saving, sign in from the admin login page.</p>
+    <div id="setup-error" class="remoed-status error" style="display: none;"></div>
+    <div id="setup-ok" class="remoed-status success" style="display: none;"></div>
+    <form id="setup-form">
+      <div class="remoed-form-group">
+        <label class="remoed-form-label" for="su-username">Username</label>
+        <input type="text" id="su-username" class="remoed-form-input" required autocomplete="username">
+      </div>
+      <div class="remoed-form-group">
+        <label class="remoed-form-label" for="su-token">Setup token</label>
+        <input type="text" id="su-token" class="remoed-form-input" required autocomplete="off" placeholder="Paste token from Super-Admin">
+      </div>
+      <div class="remoed-form-group">
+        <label class="remoed-form-label" for="su-password">New password</label>
+        <input type="password" id="su-password" class="remoed-form-input" required autocomplete="new-password" minlength="8">
+      </div>
+      <div class="remoed-form-group">
+        <label class="remoed-form-label" for="su-password2">Confirm password</label>
+        <input type="password" id="su-password2" class="remoed-form-input" required autocomplete="new-password" minlength="8">
+      </div>
+      <button type="submit" class="remoed-btn remoed-btn-primary" style="width: 100%;">Save password</button>
+    </form>
+    <div style="text-align: center; margin-top: 1.25rem;">
+      <a href="admin-login.html" style="color: #2563eb; text-decoration: none; font-size: 0.875rem;">Admin login</a>
+    </div>
+  </div>
+  <script>
+    document.getElementById('setup-form').onsubmit = async function (e) {
+      e.preventDefault();
+      var err = document.getElementById('setup-error');
+      var ok = document.getElementById('setup-ok');
+      err.style.display = 'none';
+      ok.style.display = 'none';
+      var username = document.getElementById('su-username').value.trim();
+      var setupToken = document.getElementById('su-token').value.trim();
+      var password = document.getElementById('su-password').value;
+      var password2 = document.getElementById('su-password2').value;
+      if (password !== password2) {
+        err.textContent = 'Passwords do not match.';
+        err.style.display = 'block';
+        return;
+      }
+      var btn = this.querySelector('button[type="submit"]');
+      btn.disabled = true;
+      btn.textContent = 'Saving…';
+      try {
+        var r = await fetch('/api/auth/admin-first-setup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: username, setupToken: setupToken, password: password })
+        });
+        var data = await r.json().catch(function () { return {}; });
+        if (r.ok && data.success) {
+          ok.textContent = data.message || 'Success. Redirecting to login…';
+          ok.style.display = 'block';
+          setTimeout(function () { window.location.href = 'admin-login.html'; }, 1500);
+        } else {
+          err.textContent = data.message || 'Setup failed.';
+          err.style.display = 'block';
+          btn.disabled = false;
+          btn.textContent = 'Save password';
+        }
+      } catch (ex) {
+        err.textContent = 'Could not reach the server.';
+        err.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Save password';
+      }
+    };
+  </script>
+</body>
+</html>

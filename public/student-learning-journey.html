@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Learning Journey - RemoEdPH</title>
+    <link rel="stylesheet" href="modern-styles.css">
+    <link rel="stylesheet" href="child-friendly-styles.css">
+    <link rel="stylesheet" href="css/teacher-sidebar.css">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/student-portal-layout.css">
+</head>
+<body class="student-portal page-student-learning-journey">
+    <div class="remoed-main">
+        <div id="student-sidebar-root"></div>
+        <script src="js/student-lesson-progress-api.js"></script>
+        <script src="js/student-sidebar.js"></script>
+        <script>StudentSidebar.render('student-sidebar-root', 'journey');</script>
+        <div class="remoed-content">
+            <div class="lj-page">
+                <header class="lj-hero">
+                    <h1>My Learning Journey</h1>
+                    <p>Follow your path through RemoEd English. Each dot is one lesson; glowing dots are lessons you finished. Earn a trophy when you complete all 22 lessons in a batch.</p>
+                    <button type="button" class="lj-back" onclick="window.location.href='student-dashboard.html'">← Back to dashboard</button>
+                </header>
+                <div class="lj-level-tabs" role="tablist" aria-label="Level">
+                    <button type="button" class="lj-tab active" data-level="nursery" role="tab" aria-selected="true">Nursery</button>
+                    <button type="button" class="lj-tab" data-level="kinder" role="tab" aria-selected="false">Kinder</button>
+                    <button type="button" class="lj-tab" data-level="prep" role="tab" aria-selected="false">Prep</button>
+                </div>
+                <div id="lj-trail-root" class="lj-trail-root" aria-busy="true">Loading your journey…</div>
+            </div>
+        </div>
+    </div>
+    <script>
+        (function () {
+            var userType = localStorage.getItem('userType');
+            if (userType !== 'student') {
+                alert('Access denied. This page is for students only.');
+                window.location.href = 'index.html';
+                return;
+            }
+
+            var LEVEL_META = {
+                nursery: 'Nursery',
+                kinder: 'Kinder',
+                prep: 'Prep'
+            };
+
+            var completedSet = null;
+
+            function renderLevel(levelKey) {
+                var root = document.getElementById('lj-trail-root');
+                if (!root || !completedSet) return;
+                var label = LEVEL_META[levelKey] || levelKey;
+                var html = '';
+                for (var b = 1; b <= 10; b++) {
+                    var doneInBatch = 0;
+                    var nodes = '';
+                    for (var le = 1; le <= 22; le++) {
+                        var key = levelKey + ':' + b + ':' + le;
+                        var ok = completedSet.has(key);
+                        if (ok) doneInBatch++;
+                        var tip = 'RemoEd ' + label + ' English — Batch ' + b + ' — Lesson ' + le + (ok ? ' (done)' : '');
+                        var safe = String(tip).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+                        nodes += '<div class="lj-node' + (ok ? ' lj-node--done' : '') + '" role="img" aria-label="' + safe + '" title="' + safe + '"></div>';
+                    }
+                    var batchComplete = doneInBatch === 22;
+                    html += '<section class="lj-batch" aria-labelledby="lj-batch-' + levelKey + '-' + b + '">';
+                    html += '<h2 class="lj-batch-head" id="lj-batch-' + levelKey + '-' + b + '">';
+                    if (batchComplete) {
+                        html += '<span class="lj-trophy" aria-hidden="true" title="Batch complete">🏆</span> ';
+                    }
+                    html += 'Batch ' + b;
+                    html += ' <span class="lj-batch-count">' + doneInBatch + '/22</span>';
+                    if (batchComplete) {
+                        html += ' <span class="lj-badge">Batch completed</span>';
+                    }
+                    html += '</h2>';
+                    html += '<div class="lj-trail" aria-hidden="false">' + nodes + '</div>';
+                    html += '</section>';
+                }
+                root.innerHTML = html;
+                root.setAttribute('aria-busy', 'false');
+            }
+
+            function setActiveTab(levelKey) {
+                document.querySelectorAll('.lj-tab').forEach(function (btn) {
+                    var on = btn.getAttribute('data-level') === levelKey;
+                    btn.classList.toggle('active', on);
+                    btn.setAttribute('aria-selected', on ? 'true' : 'false');
+                });
+                renderLevel(levelKey);
+            }
+
+            document.addEventListener('DOMContentLoaded', function () {
+                var root = document.getElementById('lj-trail-root');
+                if (!window.RemoEdLessonProgress) {
+                    if (root) root.textContent = 'Progress script failed to load.';
+                    return;
+                }
+                RemoEdLessonProgress.loadCompletedKeys()
+                    .then(function (set) {
+                        completedSet = set;
+                        setActiveTab('nursery');
+                    })
+                    .catch(function (e) {
+                        if (root) {
+                            root.textContent = (e && e.message) ? e.message : 'Could not load your journey.';
+                            root.setAttribute('aria-busy', 'false');
+                        }
+                    });
+
+                document.querySelectorAll('.lj-tab').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        setActiveTab(btn.getAttribute('data-level'));
+                    });
+                });
+            });
+        })();
+    </script>
+</body>
+</html>

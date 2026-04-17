@@ -55,7 +55,33 @@ const connectDB = async () => {
     if (dbName) {
       console.log(`📊 Database name: ${dbName}`);
     }
-    
+
+    // Legacy: unique+sparse on optional admin fields caused E11000 when many docs had null / missing values.
+    try {
+      const coll = mongoose.connection.collection('admins');
+      const idx = await coll.indexes();
+      for (let i = 0; i < idx.length; i++) {
+        const spec = idx[i];
+        const k = spec.key || {};
+        const keys = Object.keys(k);
+        const field = keys.length === 1 ? keys[0] : '';
+        if (
+          spec.unique &&
+          (field === 'employeeId' || field === 'referralCode') &&
+          spec.name &&
+          spec.name !== '_id_'
+        ) {
+          await coll.dropIndex(spec.name);
+          console.log(`✅ Dropped legacy unique index ${spec.name} on admins.${field}`);
+        }
+      }
+    } catch (e) {
+      const m = e && e.message ? String(e.message) : String(e);
+      if (!/ns not found|NamespaceNotFound/i.test(m)) {
+        console.warn('⚠️ admins index cleanup:', m);
+      }
+    }
+
     return true;
   } catch (err) {
     // Safely extract error message without exposing credentials

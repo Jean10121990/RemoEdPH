@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Set up 2FA - RemoEdPH Admin</title>
+  <link rel="stylesheet" href="/admin/modern-styles.css">
+  <link rel="stylesheet" href="/admin/style.css">
+  <script src="/admin/js/admin-session.js"></script>
+</head>
+<body class="page-admin-login">
+  <div class="remoed-form" style="margin: 40px auto; max-width: 420px; width: 92%;">
+    <div class="remoed-logo" style="justify-content: center; margin-bottom: 1rem;">
+      <img src="/admin/remoed-logo.png" alt="RemoEdPH Logo">
+      <span class="remoed-title">RemoEdPH</span>
+    </div>
+    <h2 class="remoed-form-title">Two-factor setup</h2>
+    <p style="font-size: 0.875rem; color: #64748b; margin-bottom: 1rem;">
+      Scan the QR code with your authenticator app (issuer: <strong>RemoEdPH Admin</strong>). Then enter the 6-digit code to finish.
+    </p>
+    <div id="setup-error" class="remoed-status error" style="display: none;"></div>
+    <div id="qr-wrap" style="text-align: center; margin: 1rem 0; min-height: 120px;">
+      <p id="qr-loading" class="muted">Loading QR code…</p>
+      <img id="qr-img" alt="Authenticator QR" style="display: none; max-width: 220px; margin: 0 auto; border: 1px solid #e2e8f0; padding: 8px; background: #fff;">
+    </div>
+    <div class="remoed-form-group">
+      <label for="enroll-code" class="remoed-form-label">6-digit code</label>
+      <input type="text" id="enroll-code" class="remoed-form-input" inputmode="numeric" maxlength="8" placeholder="000000" autocomplete="one-time-code">
+    </div>
+    <button type="button" id="enroll-submit" class="remoed-btn remoed-btn-primary" style="width: 100%;">Verify &amp; continue</button>
+    <p style="text-align: center; margin-top: 1rem;">
+      <a href="/index.html" style="color: #2563eb; font-size: 0.875rem;">Back to home</a>
+    </p>
+  </div>
+  <script>
+    (function () {
+      var params = new URLSearchParams(window.location.search || '');
+      var token = params.get('t') || sessionStorage.getItem('admin2faEnrollmentToken') || '';
+      if (!token) {
+        document.getElementById('setup-error').textContent = 'Missing setup session. Sign in again from the admin login page.';
+        document.getElementById('setup-error').style.display = 'block';
+        document.getElementById('qr-loading').style.display = 'none';
+        document.getElementById('enroll-submit').disabled = true;
+        return;
+      }
+      sessionStorage.setItem('admin2faEnrollmentToken', token);
+
+      function showErr(msg) {
+        var el = document.getElementById('setup-error');
+        el.textContent = msg;
+        el.style.display = 'block';
+      }
+
+      async function loadQr() {
+        try {
+          var r = await fetch('/api/admin/2fa-setup-enrollment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ enrollmentToken: token })
+          });
+          var j = await r.json().catch(function () { return {}; });
+          if (!r.ok) {
+            document.getElementById('qr-loading').style.display = 'none';
+            showErr(j.message || j.error || 'Could not load QR code');
+            return;
+          }
+          document.getElementById('qr-loading').style.display = 'none';
+          if (j.qrCodeData) {
+            var img = document.getElementById('qr-img');
+            img.src = j.qrCodeData;
+            img.style.display = 'block';
+          }
+        } catch (e) {
+          document.getElementById('qr-loading').style.display = 'none';
+          showErr('Network error while loading QR.');
+        }
+      }
+
+      document.getElementById('enroll-submit').onclick = async function () {
+        var btn = this;
+        var code = (document.getElementById('enroll-code').value || '').replace(/\s/g, '');
+        document.getElementById('setup-error').style.display = 'none';
+        if (!/^\d{6}$/.test(code)) {
+          showErr('Enter a valid 6-digit code.');
+          return;
+        }
+        btn.disabled = true;
+        btn.textContent = 'Verifying…';
+        try {
+          var r = await fetch('/api/admin/verify-2fa', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+            credentials: 'include',
+            body: JSON.stringify({ code: code, token: token })
+          });
+          var j = await r.json().catch(function () { return {}; });
+          if (!r.ok || !j.success || !j.token) {
+            showErr(j.message || j.error || 'Verification failed');
+            btn.disabled = false;
+            btn.textContent = 'Verify & continue';
+            return;
+          }
+          sessionStorage.removeItem('admin2faEnrollmentToken');
+          localStorage.setItem('adminToken', j.token);
+          localStorage.setItem('adminUsername', j.username);
+          localStorage.setItem('userType', 'admin');
+          if (j.adminRole) localStorage.setItem('adminRole', j.adminRole);
+          else localStorage.removeItem('adminRole');
+          window.location.href = '/admin/admin-dashboard.html';
+        } catch (e) {
+          showErr('Network error.');
+          btn.disabled = false;
+          btn.textContent = 'Verify & continue';
+        }
+      };
+
+      loadQr();
+    })();
+  </script>
+</body>
+</html>

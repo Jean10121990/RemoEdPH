@@ -1,4 +1,6 @@
 require('dotenv').config();
+// Patch Express to forward async handler rejections to error middleware (Sonar Reliability).
+require('express-async-errors');
 const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
@@ -23,20 +25,18 @@ const lessonRoutes = require('./lessons');
 const classroomRecordingRouter = require('./classroomRecordingApi');
 const applicationRoutes = require('./applications');
 const Booking = require('./models/Booking');
-const Student = require('./models/Student');
 const { consumeReservedCreditForBooking } = require('./services/bookingCreditLedger');
 const LessonMaterial = require('./models/LessonMaterial');
 const { DateTime } = require('luxon');
 // LessonSlides model removed - PPTX conversion still works but slides are not saved to database
 const fs = require('fs');
-const fsp = require('fs').promises;
 // AdmZip removed - no longer needed for file conversion
-const FormData = require('form-data');
-const axios = require('axios');
 const { verifyToken, requireTeacher } = require('./authMiddleware');
 const { getClassroomEntryGate, EARLY_ENTRY_MINUTES } = require('./services/classroomEntryWindow');
 
 const app = express();
+// Reduce fingerprinting: hide Express signature header.
+app.disable('x-powered-by');
 
 // Reverse proxies (ngrok, nginx, Cloud Run, etc.) send X-Forwarded-For. express-rate-limit validates that
 // trust proxy is enabled when that header is present, or it throws ValidationError (see ERR_ERL_UNEXPECTED_X_FORWARDED_FOR).
@@ -113,7 +113,17 @@ const userSessions = new Map(); // socketId -> { room, userType, userId, usernam
 
 // Store REST API signaling messages
 const signalingMessages = new Map(); // room -> [messages]
-const messageId = 0;
+
+/** Cap Map size by removing oldest inserted keys (prevents unbounded growth). */
+function capMapSize(map, maxEntries) {
+  if (!map || typeof map.size !== 'number') return;
+  const max = Math.max(1, Number(maxEntries) || 1);
+  while (map.size > max) {
+    const firstKey = map.keys().next().value;
+    if (firstKey === undefined) break;
+    map.delete(firstKey);
+  }
+}
 
 // Lesson materials are now stored in database (LessonMaterial model)
 // Keep in-memory cache for quick access during active sessions
@@ -154,7 +164,6 @@ app.use(bodyParser.urlencoded({ extended: true, limit: jsonBodyLimit }));
 const session = require('express-session');
 const rateLimit = require('express-rate-limit');
 const { getAdminLoginPathSegment } = require('./utils/adminRouteConfig');
-const { adminIpWhitelistForLoginPage } = require('./middleware/adminLoginPageGuard');
 const { sessionCookieBase } = require('./config/authTokens');
 const { postApiLogout } = require('./logoutApi');
 const { noStoreProtectedResponse } = require('./middleware/noStoreProtected');
@@ -179,7 +188,7 @@ app.use(
 
 app.post('/api/logout', postApiLogout);
 
-// Obfuscated admin login HTML (blocks legacy /admin-login URLs; optional IP allowlist)
+// Obfuscated admin login HTML (blocks legacy /admin-login URLs; access via RBAC + 2FA after sign-in)
 const adminLoginHtmlPath = path.join(__dirname, '../public/admin-login.html');
 const adminLoginPathSeg = getAdminLoginPathSegment();
 app.get(['/admin-login', '/admin-login.html'], (req, res) => {
@@ -190,8 +199,16 @@ app.get(['/admin-login', '/admin-login.html'], (req, res) => {
       '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Not found</title></head><body><h1>Not found</h1></body></html>'
     );
 });
-app.get(`/${adminLoginPathSeg}`, adminIpWhitelistForLoginPage, (req, res) => {
+app.get(`/${adminLoginPathSeg}`, (req, res) => {
   res.sendFile(adminLoginHtmlPath);
+});
+const admin2faSetupHtmlPath = path.join(__dirname, '../public/admin-2fa-setup.html');
+app.get('/admin/2fa-setup', (req, res) => {
+  res.sendFile(admin2faSetupHtmlPath);
+});
+const admin2faVerifyHtmlPath = path.join(__dirname, '../public/admin-2fa-verify.html');
+app.get('/admin/2fa-verify', (req, res) => {
+  res.sendFile(admin2faVerifyHtmlPath);
 });
 console.log(`🔐 Admin login page path: /${adminLoginPathSeg} (set ADMIN_LOGIN_PATH in .env for production)`);
 
@@ -243,6 +260,9 @@ app.use('/vendor/pdfjs', express.static(path.join(__dirname, '../node_modules/pd
 
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
+// Serve admin static assets under /admin to avoid relative-path MIME issues
+app.use('/admin', express.static(path.join(__dirname, '../public')));
 
 // API Routes (no-store on role-protected APIs)
 app.use('/api/auth', noStoreProtectedResponse, authRoutes);
@@ -358,6 +378,7 @@ const protectedHtmlFiles = new Set([
   'student-dashboard.html',
   'teacher-dashboard.html',
   'student-profile.html',
+  'student-learning-journey.html',
   'teacher-profile.html',
   'teacher-view-profile.html',
   'login.html',
@@ -423,16 +444,13 @@ app.post('/api/email/test', async (req, res) => {
     const result = await testEmailSending(email);
     res.json(result);
   } catch (error) {
-    res.status(500).json({ 
-      success: false, 
-      error: error.message 
+    const msg = error && error.message ? String(error.message) : 'Email test failed';
+    res.status(500).json({
+      success: false,
+      error: process.env.NODE_ENV === 'production' ? 'Email test failed' : msg,
     });
   }
 }); // Lesson tracker and curriculum routes
-
-async function ensureDir(dirPath) {
-  await fsp.mkdir(dirPath, { recursive: true });
-}
 
 // Get already-converted slides for a booking (students and teachers can access)
 app.get('/api/slides/:bookingId', verifyToken, async (req, res) => {
@@ -448,49 +466,12 @@ app.get('/api/slides/:bookingId', verifyToken, async (req, res) => {
       success: false, 
       error: 'LessonSlides collection removed. Slides are no longer stored in the database.' 
     });
-    
-    /* Old code removed - LessonSlides collection no longer exists
-    const lessonSlides = await LessonSlides.findOne({ 
-      bookingId, 
-      isActive: true 
-    }).sort({ uploadedAt: -1 });
-    
-    if (!lessonSlides) {
-      console.log(`⚠️ No slides document found for booking ${bookingId}`);
-      return res.status(404).json({ 
-        success: false, 
-        error: 'No slides found for this booking. Teacher needs to convert the PPTX file first.' 
-      });
-    }
-    
-    if (!lessonSlides.slides || lessonSlides.slides.length === 0) {
-      console.log(`⚠️ Slides document found but empty for booking ${bookingId}`);
-      return res.status(404).json({ 
-        success: false, 
-        error: 'No slides found for this booking. Teacher needs to convert the PPTX file first.' 
-      });
-    }
-    
-    console.log(`✅ Found ${lessonSlides.slides.length} slides for booking ${bookingId}`);
-    
-    // Ensure imageUrl is absolute if it's relative
-    const slides = lessonSlides.slides.map(slide => ({
-      ...slide.toObject ? slide.toObject() : slide,
-      imageUrl: slide.imageUrl || slide.originalFile,
-      // Make sure URLs are accessible
-      originalFile: slide.originalFile || slide.imageUrl
-    }));
-    
-    res.json({
-      success: true,
-      slides,
-      totalSlides: lessonSlides.totalSlides || slides.length,
-      title: lessonSlides.title
-    });
-    */
   } catch (error) {
     console.error('❌ Error fetching slides:', error);
-    res.status(500).json({ success: false, error: 'Failed to fetch slides: ' + error.message });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch slides',
+    });
   }
 });
 
@@ -505,7 +486,7 @@ app.post('/api/convert-pptx', verifyToken, requireTeacher, (req, res) => {
 // Add legacy routes for frontend compatibility
 // These routes are needed because the frontend calls them directly
 const Feedback = require('./models/Feedback');
-const IssueReport = require('./models/IssueReport');
+// IssueReport is handled by the admin router; kept out of legacy index routes.
 
 const {
   FEEDBACK_ROLE_TEACHER_TO_STUDENT,
@@ -569,7 +550,7 @@ app.post('/api/booking/:bookingId/mark-student-absent', verifyToken, requireTeac
     console.error('❌ Error marking student as absent:', error);
     res.status(500).json({ 
       success: false, 
-      error: 'Failed to mark student as absent: ' + error.message 
+      error: 'Failed to mark student as absent'
     });
   }
 });
@@ -629,7 +610,7 @@ app.post('/api/booking/:bookingId/end-session', verifyToken, requireTeacher, asy
     });
   } catch (error) {
     console.error('❌ Error end-session:', error);
-    res.status(500).json({ success: false, error: 'Failed to end session: ' + error.message });
+    res.status(500).json({ success: false, error: 'Failed to end session' });
   }
 });
 
@@ -684,7 +665,7 @@ app.patch('/api/bookings/:bookingId/complete', verifyToken, requireTeacher, asyn
     });
   } catch (error) {
     console.error('❌ Error completing class (PATCH /api/bookings):', error);
-    return res.status(500).json({ success: false, error: 'Failed to complete class: ' + error.message });
+    return res.status(500).json({ success: false, error: 'Failed to complete class' });
   }
 });
 
@@ -752,7 +733,7 @@ app.post('/api/booking/:bookingId/complete', verifyToken, requireTeacher, async 
     console.error('❌ Error completing class:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to complete class: ' + error.message,
+      error: 'Failed to complete class',
     });
   }
 });
@@ -797,7 +778,7 @@ app.get('/api/feedback/check/:bookingId', verifyToken, requireTeacher, async (re
     console.error('❌ Error checking feedback:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to check feedback: ' + error.message,
+      error: 'Failed to check feedback',
     });
   }
 });
@@ -838,6 +819,14 @@ app.post('/api/feedback/submit', verifyToken, requireTeacher, async (req, res) =
       });
     }
 
+    const effectiveStudentId = String(studentId || booking.studentId || '').trim();
+    if (!effectiveStudentId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Could not resolve student for this booking. Contact support.',
+      });
+    }
+
     if (isBookingSessionFinalized(booking)) {
       return res.status(400).json({
         success: false,
@@ -861,13 +850,14 @@ app.post('/api/feedback/submit', verifyToken, requireTeacher, async (req, res) =
       existingTeacherFeedback.rating = rating;
       existingTeacherFeedback.comment = comment || '';
       existingTeacherFeedback.submittedAt = submittedAt || new Date();
+      existingTeacherFeedback.studentId = effectiveStudentId;
       feedback = await existingTeacherFeedback.save();
       console.log('✅ Teacher feedback updated successfully');
     } else {
       feedback = new Feedback({
         bookingId: String(bookingId),
         teacherId,
-        studentId,
+        studentId: effectiveStudentId,
         rating,
         comment: comment || '',
         submittedAt: submittedAt || new Date(),
@@ -887,7 +877,7 @@ app.post('/api/feedback/submit', verifyToken, requireTeacher, async (req, res) =
           recipientType: 'student',
         },
         {
-          recipientId: studentId,
+          recipientId: effectiveStudentId,
           recipientType: 'student',
           giverId: teacherId,
           giverType: 'teacher',
@@ -935,7 +925,7 @@ app.post('/api/feedback/submit', verifyToken, requireTeacher, async (req, res) =
     console.error('❌ Error submitting teacher feedback:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to submit feedback: ' + error.message,
+      error: 'Failed to submit feedback',
     });
   }
 });
@@ -959,7 +949,7 @@ app.get('/api', (req, res) => {
   } catch (error) {
     res.status(500).json({
       status: 'ERROR',
-      message: error.message,
+      message: process.env.NODE_ENV === 'production' ? 'Internal server error' : String(error && error.message ? error.message : 'Internal server error'),
       timestamp: new Date().toISOString()
     });
   }
@@ -978,7 +968,7 @@ app.get('/api/health', (req, res) => {
   } catch (error) {
     res.status(500).json({
       status: 'ERROR',
-      message: error.message,
+      message: process.env.NODE_ENV === 'production' ? 'Internal server error' : String(error && error.message ? error.message : 'Internal server error'),
       timestamp: new Date().toISOString()
     });
   }
@@ -998,7 +988,7 @@ app.post('/api/admin/check-absent-students', async (req, res) => {
     console.error('❌ Error in manual absent check:', error);
     res.status(500).json({ 
       success: false, 
-      error: 'Failed to check absent students: ' + error.message 
+      error: 'Failed to check absent students'
     });
   }
 });
@@ -1020,10 +1010,11 @@ app.post('/api/signaling/send', (req, res) => {
     // Initialize room if it doesn't exist
     if (!signalingMessages.has(room)) {
       signalingMessages.set(room, []);
+      capMapSize(signalingMessages, 500);
     }
     
     const message = {
-      id: Date.now() + Math.random(),
+      id: crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex'),
       room,
       userType,
       type,
@@ -1148,7 +1139,7 @@ app.post('/api/signaling/teacher-present', (req, res) => {
     
     // Store a teacher presence message
     const message = {
-      id: Date.now() + Math.random(),
+      id: crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex'),
       room: room,
       userType: 'teacher',
       type: 'teacher-present',
@@ -1159,6 +1150,7 @@ app.post('/api/signaling/teacher-present', (req, res) => {
     
     if (!signalingMessages.has(room)) {
       signalingMessages.set(room, []);
+      capMapSize(signalingMessages, 500);
     }
     signalingMessages.get(room).push(message);
     
@@ -1297,26 +1289,7 @@ app.post('/api/class/check-time-access', async (req, res) => {
 });
 
 // Canonical scheduled start time for classroom timer (UTC ISO string). If string from DB doesn't end in 'Z', append 'Z' so it's treated as UTC.
-function getScheduledStartTime(booking) {
-  if (!booking) return null;
-  if (booking.dateTimeUtc) {
-    let utc = booking.dateTimeUtc;
-    if (typeof utc === 'string') {
-      utc = utc.trim();
-      if (!/Z$/i.test(utc)) utc = utc + 'Z';
-    }
-    const d = utc instanceof Date ? utc : new Date(utc);
-    return isNaN(d.getTime()) ? null : d.toISOString();
-  }
-  if (booking.date && booking.time) {
-    const zone = booking.teacherLocalZone || booking.studentLocalZone || 'Asia/Manila';
-    const timeNorm = booking.time.length <= 5 ? booking.time + ':00' : booking.time;
-    const dt = DateTime.fromISO(`${booking.date}T${timeNorm}`, { zone });
-    if (!dt.isValid) return null;
-    return dt.toUTC().toISO();
-  }
-  return null;
-}
+const { getScheduledStartTime } = require('./utils/bookingScheduledStart');
 
 // Get student booking information
 app.get('/api/student/booking/:bookingId', verifyToken, async (req, res) => {
@@ -1337,11 +1310,16 @@ app.get('/api/student/booking/:bookingId', verifyToken, async (req, res) => {
 
     const bookingObj = booking.toObject ? booking.toObject() : { ...booking };
     bookingObj.scheduledStartTime = getScheduledStartTime(booking);
+    if (!bookingObj.lessonId) {
+      const { resolveLessonIdFromBooking } = require('./lessonResolveFromBooking');
+      const rid = await resolveLessonIdFromBooking(booking);
+      if (rid) bookingObj.resolvedLessonId = rid;
+    }
     console.log('✅ [STUDENT BOOKING] Booking found:', bookingId);
     res.json({ success: true, booking: bookingObj });
   } catch (error) {
     console.error('❌ [STUDENT BOOKING] Error fetching student booking:', error);
-    res.status(500).json({ success: false, error: 'Failed to fetch booking information: ' + error.message });
+    res.status(500).json({ success: false, error: 'Failed to fetch booking information' });
   }
 });
 
@@ -1415,6 +1393,34 @@ app.get('/student-waiting-room', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/student-waiting-room.html'));
 });
 
+/**
+ * Legacy issue screenshots: DB may store /uploads/slides/screenshot-T-R.ext while the file was
+ * saved under uploads/issue-screenshots/issue-T-R.ext (same timestamp/random suffix). Static /uploads
+ * 404s when the slides path has no file — resolve the real file here before the JSON 404.
+ */
+app.get('/uploads/slides/:filename', (req, res, next) => {
+  try {
+    const uploadRoot = path.join(__dirname, '../uploads');
+    const raw = String(req.params.filename || '');
+    const safe = path.basename(raw);
+    if (!safe || safe !== raw || safe.includes('..')) return next();
+    const slidesPath = path.join(uploadRoot, 'slides', safe);
+    if (fs.existsSync(slidesPath) && fs.statSync(slidesPath).isFile()) {
+      return res.sendFile(slidesPath);
+    }
+    const m = /^screenshot-(.+)$/i.exec(safe);
+    if (m) {
+      const issuePath = path.join(uploadRoot, 'issue-screenshots', 'issue-' + m[1]);
+      if (fs.existsSync(issuePath) && fs.statSync(issuePath).isFile()) {
+        return res.sendFile(issuePath);
+      }
+    }
+    return next();
+  } catch (e) {
+    return next();
+  }
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   const tooLarge =
@@ -1432,16 +1438,24 @@ app.use((err, req, res, next) => {
         'If this happens for small files on production, Nginx/Apache in front of Node is likely limiting the body (default often 1m). Raise client_max_body_size (Nginx) or LimitRequestBody (Apache). See RemoEdPH/deploy/nginx-increase-body-size.conf',
     });
   }
-  console.error('Error:', err);
-  res.status(500).json({
-    error: 'Internal server error',
-    message: err.message,
-  });
+  const status = Number(err && (err.statusCode || err.status)) || 500;
+  const msg = err && err.message ? String(err.message) : 'Internal server error';
+  const safeMsg = msg.replace(/\/\/([^:]+):([^@]+)@/g, '//$1:***@');
+  console.error('Error:', safeMsg);
+  // Avoid leaking internals in production responses.
+  const body = process.env.NODE_ENV === 'production'
+    ? { error: status === 500 ? 'Internal server error' : safeMsg }
+    : { error: status === 500 ? 'Internal server error' : safeMsg, message: safeMsg };
+  return res.status(status).json(body);
 });
 
 // 404 handler
 app.use((req, res) => {
-  res.status(404).json({ error: 'Route not found' });
+  const accept = String(req.headers && req.headers.accept ? req.headers.accept : '');
+  if (accept.includes('text/html')) {
+    return res.status(404).type('html').send('<!doctype html><html><body><h1>Not found</h1></body></html>');
+  }
+  return res.status(404).json({ error: 'Route not found' });
 });
 
 // Socket.IO signaling server functionality
@@ -1545,7 +1559,7 @@ io.on('connection', socket => {
         // Also send a signaling message to indicate teacher presence
         if (userType === 'teacher') {
             const message = {
-                id: Date.now() + Math.random(),
+                id: crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex'),
                 room: room,
                 userType: 'teacher',
                 type: 'teacher-joined',
@@ -1590,7 +1604,7 @@ io.on('connection', socket => {
         
         // Also store as a signaling message for REST API
         const message = {
-            id: Date.now() + Math.random(),
+            id: crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex'),
             room: room,
             userType: userType,
             type: 'disconnect-call',
@@ -1601,6 +1615,7 @@ io.on('connection', socket => {
         
         if (!signalingMessages.has(room)) {
             signalingMessages.set(room, []);
+            capMapSize(signalingMessages, 500);
         }
         signalingMessages.get(room).push(message);
         
@@ -1617,7 +1632,7 @@ io.on('connection', socket => {
         
         // Also store as a signaling message for REST API
         const message = {
-            id: Date.now() + Math.random(),
+            id: crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex'),
             room: room,
             userType: userType,
             type: 'class-finished',
@@ -1628,6 +1643,7 @@ io.on('connection', socket => {
         
         if (!signalingMessages.has(room)) {
             signalingMessages.set(room, []);
+            capMapSize(signalingMessages, 500);
         }
         signalingMessages.get(room).push(message);
         
@@ -1705,7 +1721,7 @@ io.on('connection', socket => {
         // Also send a signaling message to indicate teacher presence
         if (userType === 'teacher') {
             const message = {
-                id: Date.now() + Math.random(),
+                id: crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex'),
                 room: room,
                 userType: 'teacher',
                 type: 'teacher-joined',
@@ -1716,6 +1732,7 @@ io.on('connection', socket => {
             
             if (!signalingMessages.has(room)) {
                 signalingMessages.set(room, []);
+            capMapSize(signalingMessages, 500);
             }
             signalingMessages.get(room).push(message);
             
@@ -1810,6 +1827,7 @@ io.on('connection', socket => {
         // Store message in chat history
         if (!chatHistory.has(room)) {
             chatHistory.set(room, []);
+            capMapSize(chatHistory, 500);
         }
 
         const roomHistory = chatHistory.get(room);
@@ -1868,6 +1886,7 @@ io.on('connection', socket => {
         // Store in chat history
         if (!chatHistory.has(room)) {
             chatHistory.set(room, []);
+            capMapSize(chatHistory, 500);
         }
         const roomHistory = chatHistory.get(room);
         roomHistory.push(rewardMessage);
@@ -2090,7 +2109,10 @@ io.on('connection', socket => {
                 console.log(`📄 [SERVER] Processing PDF file: ${material.name}, size: ${(material.data?.length || 0) / 1024} KB`);
             }
 
-            const materialId = material.id || material.materialId || (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`);
+            const materialId =
+                material.id ||
+                material.materialId ||
+                (crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex'));
             const uploader = material.uploader || socket.username || 'Unknown';
 
             // Check if material already exists for this room
@@ -2636,7 +2658,13 @@ try {
   try {
     const minimalApp = require('express')();
     minimalApp.get('/', (req, res) => {
-      res.json({ error: 'Server initialization failed', message: error.message });
+      res.json({
+        error: 'Server initialization failed',
+        message:
+          process.env.NODE_ENV === 'production'
+            ? 'Internal server error'
+            : String(error && error.message ? error.message : 'Internal server error'),
+      });
     });
     const minimalHttp = require('http').createServer(minimalApp);
     minimalHttp.listen(PORT, '0.0.0.0', () => {

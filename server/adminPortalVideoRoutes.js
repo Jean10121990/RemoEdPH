@@ -6,6 +6,7 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
+const crypto = require('crypto');
 const PortalVideo = require('./models/PortalVideo');
 const { verifyAdminApiAuth, requireAdmin } = require('./authMiddleware');
 
@@ -25,7 +26,7 @@ const portalVideoStorage = multer.diskStorage({
     cb(null, dir);
   },
   filename(req, file, cb) {
-    const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    const unique = Date.now() + '-' + crypto.randomInt(0, 1e9);
     const ext = path.extname(file.originalname || '') || '.mp4';
     cb(null, 'pv-' + unique + ext);
   },

@@ -1,6 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -12,6 +13,7 @@ const Student = require('./models/Student');
 const TeacherSlot = require('./models/TeacherSlot');
 const Booking = require('./models/Booking');
 const { DateTime } = require('luxon');
+const { getScheduledStartTime, getBookingStartAsDate } = require('./utils/bookingScheduledStart');
 const Notification = require('./models/Notification');
 const TimeLog = require('./models/TimeLog');
 const CancellationRequest = require('./models/CancellationRequest');
@@ -25,6 +27,7 @@ const PortalVideo = require('./models/PortalVideo');
 const { verifyToken, requireTeacher, requireStudent, requireOwnTeacherData, requireOwnStudentData, logAccess } = require('./authMiddleware');
 const { JWT_EXPIRES_IN } = require('./config/authTokens');
 const { isTokenBlacklisted } = require('./services/jwtBlacklist');
+const { generateReferralCode } = require('./utils/referralCode');
 const {
   consumeReservedCreditForBooking,
   releaseReservedCreditForBooking,
@@ -211,10 +214,6 @@ async function createNotification(teacherId, type, message) {
 const router = express.Router();
 
 // --- Teacher referral link (commission) ---
-function generateReferralCode() {
-  // Short, URL-friendly code
-  return Math.random().toString(36).slice(2, 8).toUpperCase() + Math.random().toString(36).slice(2, 6).toUpperCase();
-}
 
 router.get('/referral-link', verifyToken, requireTeacher, async (req, res) => {
   try {
@@ -326,7 +325,7 @@ const storage = multer.diskStorage({
     cb(null, uploadDir);
   },
   filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const uniqueSuffix = Date.now() + '-' + crypto.randomInt(0, 1e9);
     cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
   }
 });
@@ -357,7 +356,7 @@ const issueScreenshotStorage = multer.diskStorage({
     cb(null, uploadDir);
   },
   filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    const uniqueSuffix = Date.now() + '-' + crypto.randomInt(0, 1e9);
     const ext = path.extname(file.originalname || '').toLowerCase() || '.png';
     cb(null, 'issue-' + uniqueSuffix + ext);
   },
@@ -947,28 +946,6 @@ function toUtcFromLocal(dateStr, timeStr, zone) {
   return { utcIso: dt.toUTC().toISO(), zoneUsed: z };
 }
 
-// Canonical scheduled start time for classroom timer (UTC ISO string). If string from DB doesn't end in 'Z', append 'Z' so it's treated as UTC.
-function getScheduledStartTime(booking) {
-  if (!booking) return null;
-  if (booking.dateTimeUtc) {
-    let utc = booking.dateTimeUtc;
-    if (typeof utc === 'string') {
-      utc = utc.trim();
-      if (!/Z$/i.test(utc)) utc = utc + 'Z';
-    }
-    const d = utc instanceof Date ? utc : new Date(utc);
-    return isNaN(d.getTime()) ? null : d.toISOString();
-  }
-  if (booking.date && booking.time) {
-    const zone = booking.teacherLocalZone || booking.studentLocalZone || 'Asia/Manila';
-    const timeNorm = booking.time.length <= 5 ? booking.time + ':00' : booking.time;
-    const dt = DateTime.fromISO(`${booking.date}T${timeNorm}`, { zone });
-    if (!dt.isValid) return null;
-    return dt.toUTC().toISO();
-  }
-  return null;
-}
-
 // Save open slots - Protected: Only authenticated teachers can access their own data
 router.post('/open-slot', async (req, res) => {
   try {
@@ -1226,7 +1203,7 @@ router.get('/slots', async (req, res) => {
       'Pragma': 'no-cache',
       'Expires': '0',
       'Last-Modified': new Date().toUTCString(),
-      'ETag': `"${Date.now()}-${Math.random()}"`
+      'ETag': `"${Date.now()}-${crypto.randomBytes(8).toString('hex')}"`
     });
     
     // Convert provided identifier to canonical teacherId (Txxxxx)
@@ -2149,7 +2126,13 @@ router.get('/booking/:bookingId', verifyToken, requireTeacher, async (req, res) 
     }
     
     console.log('🔍 Final names - Student:', studentName, 'Teacher:', teacherName);
-    
+
+    let resolvedLessonId = null;
+    if (!booking.lessonId) {
+      const { resolveLessonIdFromBooking } = require('./lessonResolveFromBooking');
+      resolvedLessonId = await resolveLessonIdFromBooking(booking);
+    }
+
     res.json({ 
       success: true, 
       booking: {
@@ -2158,12 +2141,17 @@ router.get('/booking/:bookingId', verifyToken, requireTeacher, async (req, res) 
         date: booking.date,
         time: booking.time,
         lesson: booking.lesson,
+        lessonId: booking.lessonId,
+        ...(resolvedLessonId ? { resolvedLessonId } : {}),
+        studentId: booking.studentId,
         studentLevel: booking.studentLevel,
         studentName: studentName,
         teacherName: teacherName,
         status: booking.status,
         finishedAt: booking.finishedAt,
-        attendance: booking.attendance
+        attendance: booking.attendance,
+        dateTimeUtc: booking.dateTimeUtc,
+        scheduledStartTime: getScheduledStartTime(booking)
       }
     });
   } catch (err) {
@@ -2375,12 +2363,19 @@ router.get('/booking/by-classroom/:classroomId', async (req, res) => {
       });
     }
 
+    let resolvedLessonId = null;
+    if (!booking.lessonId) {
+      const { resolveLessonIdFromBooking } = require('./lessonResolveFromBooking');
+      resolvedLessonId = await resolveLessonIdFromBooking(booking);
+    }
+
     // Prepare booking data with student and teacher names and canonical scheduled start for timer
     const bookingData = {
       ...booking.toObject(),
       studentName: studentName,
       teacherName: teacherName,
-      scheduledStartTime: getScheduledStartTime(booking)
+      scheduledStartTime: getScheduledStartTime(booking),
+      ...(resolvedLessonId ? { resolvedLessonId } : {}),
     };
 
     console.log('✅ API: Sending booking data:', bookingData);
@@ -3477,17 +3472,18 @@ router.post('/request-cancellation', verifyToken, requireTeacher, async (req, re
       });
     }
     
-    // Check if class has already started
-    const classDateTime = new Date(`${booking.date}T${booking.time}:00`);
+    // Check if class has already started (use same instant as schedule APIs — not naive local Date)
+    const classDateTime = getBookingStartAsDate(booking);
     const now = new Date();
-    
-    if (classDateTime <= now) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Cannot cancel a class that has already started' 
+    if (!classDateTime || classDateTime <= now) {
+      return res.status(400).json({
+        success: false,
+        error: !classDateTime
+          ? 'Cannot determine class schedule for cancellation'
+          : 'Cannot cancel a class that has already started',
       });
     }
-    
+
     // Check if there's already a pending cancellation request
     const existingRequest = await CancellationRequest.findOne({
       bookingId,
@@ -4358,7 +4354,7 @@ router.post('/give-reward', verifyToken, requireTeacher, async (req, res) => {
     console.error('Error giving reward:', error);
     res.status(500).json({ 
       success: false, 
-      error: 'Failed to give reward: ' + error.message 
+      error: 'Failed to give reward'
     });
   }
 });
@@ -4432,7 +4428,7 @@ router.get('/lesson-slides/:bookingId', verifyToken, requireTeacher, async (req,
     console.error('Error fetching lesson slides:', error);
     res.status(500).json({ 
       success: false, 
-      error: 'Failed to fetch lesson slides: ' + error.message 
+      error: 'Failed to fetch lesson slides'
     });
   }
 });
@@ -4542,7 +4538,7 @@ router.post('/upload-slides', verifyToken, requireTeacher, upload.array('slides'
     console.error('Error uploading lesson slides:', error);
     res.status(500).json({ 
       success: false, 
-      error: 'Failed to upload lesson slides: ' + error.message 
+      error: 'Failed to upload lesson slides'
     });
   }
 });
@@ -4629,7 +4625,7 @@ router.patch('/bookings/:bookingId/complete', verifyToken, requireTeacher, async
     });
   } catch (error) {
     console.error('❌ Error completing class (PATCH):', error);
-    return res.status(500).json({ success: false, error: 'Failed to complete class: ' + error.message });
+    return res.status(500).json({ success: false, error: 'Failed to complete class' });
   }
 });
 
@@ -4700,7 +4696,7 @@ router.post('/booking/:bookingId/complete', verifyToken, requireTeacher, async (
     console.error('❌ Error completing class:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to complete class: ' + error.message,
+      error: 'Failed to complete class',
     });
   }
 });
@@ -4769,7 +4765,7 @@ router.post('/booking/:bookingId/mark-student-absent', verifyToken, requireTeach
     console.error('❌ Error marking student as absent:', error);
     res.status(500).json({ 
       success: false, 
-      error: 'Failed to mark student as absent: ' + error.message 
+      error: 'Failed to mark student as absent'
     });
   }
 });
@@ -4874,7 +4870,7 @@ router.post('/report-issue', verifyToken, requireTeacher, issueScreenshotUpload.
     console.error('❌ Error submitting issue report:', error);
     res.status(500).json({ 
       success: false, 
-      error: 'Failed to submit issue report: ' + error.message 
+      error: 'Failed to submit issue report'
     });
   }
 });
@@ -4931,7 +4927,7 @@ router.get('/check-class-issues', verifyToken, requireTeacher, async (req, res) 
     console.error('❌ Error checking class issues:', error);
     res.status(500).json({ 
       success: false, 
-      error: 'Failed to check class issues: ' + error.message 
+      error: 'Failed to check class issues'
     });
   }
 });
@@ -5261,7 +5257,7 @@ router.get('/attendance-analysis', verifyToken, requireTeacher, async (req, res)
     console.error('❌ Error stack:', error.stack);
     res.status(500).json({ 
       success: false,
-      error: 'Failed to generate attendance analysis: ' + error.message 
+      error: 'Failed to generate attendance analysis'
     });
   }
 });
@@ -5312,7 +5308,12 @@ router.get('/certifications', verifyToken, requireTeacher, async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching certifications:', error);
-    res.status(500).json({ error: 'Server error: ' + error.message });
+    res.status(500).json({
+      error:
+        process.env.NODE_ENV === 'production'
+          ? 'Server error'
+          : String(error && error.message ? error.message : 'Server error'),
+    });
   }
 });
 
@@ -5372,7 +5373,12 @@ router.post('/certifications', verifyToken, requireTeacher, async (req, res) => 
   } catch (error) {
     console.error('Error adding certification:', error);
     console.error('Error stack:', error.stack);
-    res.status(500).json({ error: 'Server error: ' + error.message });
+    res.status(500).json({
+      error:
+        process.env.NODE_ENV === 'production'
+          ? 'Server error'
+          : String(error && error.message ? error.message : 'Server error'),
+    });
   }
 });
 
@@ -5407,7 +5413,12 @@ router.put('/certifications/:certId', verifyToken, requireTeacher, async (req, r
     });
   } catch (error) {
     console.error('Error updating certification:', error);
-    res.status(500).json({ error: 'Server error: ' + error.message });
+    res.status(500).json({
+      error:
+        process.env.NODE_ENV === 'production'
+          ? 'Server error'
+          : String(error && error.message ? error.message : 'Server error'),
+    });
   }
 });
 
@@ -5430,7 +5441,12 @@ router.delete('/certifications/:certId', verifyToken, requireTeacher, async (req
     });
   } catch (error) {
     console.error('Error deleting certification:', error);
-    res.status(500).json({ error: 'Server error: ' + error.message });
+    res.status(500).json({
+      error:
+        process.env.NODE_ENV === 'production'
+          ? 'Server error'
+          : String(error && error.message ? error.message : 'Server error'),
+    });
   }
 });
 
@@ -5448,7 +5464,12 @@ router.get('/assessments', verifyToken, requireTeacher, async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching assessments:', error);
-    res.status(500).json({ error: 'Server error: ' + error.message });
+    res.status(500).json({
+      error:
+        process.env.NODE_ENV === 'production'
+          ? 'Server error'
+          : String(error && error.message ? error.message : 'Server error'),
+    });
   }
 });
 
@@ -5470,7 +5491,12 @@ router.post('/assessments/request', verifyToken, requireTeacher, async (req, res
     });
   } catch (error) {
     console.error('Error requesting assessment:', error);
-    res.status(500).json({ error: 'Server error: ' + error.message });
+    res.status(500).json({
+      error:
+        process.env.NODE_ENV === 'production'
+          ? 'Server error'
+          : String(error && error.message ? error.message : 'Server error'),
+    });
   }
 });
 
@@ -5554,7 +5580,12 @@ router.post('/save-assessment-test', verifyToken, requireTeacher, async (req, re
     });
   } catch (error) {
     console.error('Error saving assessment test:', error);
-    res.status(500).json({ error: 'Server error: ' + error.message });
+    res.status(500).json({
+      error:
+        process.env.NODE_ENV === 'production'
+          ? 'Server error'
+          : String(error && error.message ? error.message : 'Server error'),
+    });
   }
 });
 
@@ -5732,7 +5763,12 @@ router.post('/complete-assessment', verifyToken, requireTeacher, async (req, res
     });
   } catch (error) {
     console.error('Error completing assessment:', error);
-    res.status(500).json({ error: 'Server error: ' + error.message });
+    res.status(500).json({
+      error:
+        process.env.NODE_ENV === 'production'
+          ? 'Server error'
+          : String(error && error.message ? error.message : 'Server error'),
+    });
   }
 });
 
@@ -5768,7 +5804,12 @@ router.get('/assessment-results', verifyToken, requireTeacher, async (req, res) 
     });
   } catch (error) {
     console.error('Error fetching assessment results:', error);
-    res.status(500).json({ error: 'Server error: ' + error.message });
+    res.status(500).json({
+      error:
+        process.env.NODE_ENV === 'production'
+          ? 'Server error'
+          : String(error && error.message ? error.message : 'Server error'),
+    });
   }
 });
 
@@ -5906,7 +5947,12 @@ router.get('/assessed-abilities', verifyToken, requireTeacher, async (req, res) 
     });
   } catch (error) {
     console.error('Error fetching assessed abilities:', error);
-    res.status(500).json({ error: 'Server error: ' + error.message });
+    res.status(500).json({
+      error:
+        process.env.NODE_ENV === 'production'
+          ? 'Server error'
+          : String(error && error.message ? error.message : 'Server error'),
+    });
   }
 });
 
@@ -5959,7 +6005,12 @@ router.get('/peers', teacherPeerSearchLimiter, verifyToken, requireTeacher, asyn
     });
   } catch (error) {
     console.error('Error fetching peer teachers:', error);
-    res.status(500).json({ error: 'Server error: ' + error.message });
+    res.status(500).json({
+      error:
+        process.env.NODE_ENV === 'production'
+          ? 'Server error'
+          : String(error && error.message ? error.message : 'Server error'),
+    });
   }
 });
 
@@ -6050,7 +6101,12 @@ router.post('/connection-requests', verifyToken, requireTeacher, async (req, res
     if (error.code === 11000) {
       return res.status(400).json({ error: 'Connection request already exists' });
     }
-    res.status(500).json({ error: 'Server error: ' + error.message });
+    res.status(500).json({
+      error:
+        process.env.NODE_ENV === 'production'
+          ? 'Server error'
+          : String(error && error.message ? error.message : 'Server error'),
+    });
   }
 });
 
@@ -6097,7 +6153,12 @@ router.get('/connections', verifyToken, requireTeacher, async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching connections:', error);
-    res.status(500).json({ error: 'Server error: ' + error.message });
+    res.status(500).json({
+      error:
+        process.env.NODE_ENV === 'production'
+          ? 'Server error'
+          : String(error && error.message ? error.message : 'Server error'),
+    });
   }
 });
 
@@ -6140,7 +6201,12 @@ router.get('/connection-requests/pending', verifyToken, requireTeacher, async (r
     });
   } catch (error) {
     console.error('Error fetching pending requests:', error);
-    res.status(500).json({ error: 'Server error: ' + error.message });
+    res.status(500).json({
+      error:
+        process.env.NODE_ENV === 'production'
+          ? 'Server error'
+          : String(error && error.message ? error.message : 'Server error'),
+    });
   }
 });
 
@@ -6183,7 +6249,12 @@ router.get('/connection-requests/sent', verifyToken, requireTeacher, async (req,
     });
   } catch (error) {
     console.error('Error fetching sent requests:', error);
-    res.status(500).json({ error: 'Server error: ' + error.message });
+    res.status(500).json({
+      error:
+        process.env.NODE_ENV === 'production'
+          ? 'Server error'
+          : String(error && error.message ? error.message : 'Server error'),
+    });
   }
 });
 
@@ -6217,7 +6288,12 @@ router.post('/connection-requests/:requestId/accept', verifyToken, requireTeache
     });
   } catch (error) {
     console.error('Error accepting connection request:', error);
-    res.status(500).json({ error: 'Server error: ' + error.message });
+    res.status(500).json({
+      error:
+        process.env.NODE_ENV === 'production'
+          ? 'Server error'
+          : String(error && error.message ? error.message : 'Server error'),
+    });
   }
 });
 
@@ -6251,7 +6327,12 @@ router.post('/connection-requests/:requestId/decline', verifyToken, requireTeach
     });
   } catch (error) {
     console.error('Error declining connection request:', error);
-    res.status(500).json({ error: 'Server error: ' + error.message });
+    res.status(500).json({
+      error:
+        process.env.NODE_ENV === 'production'
+          ? 'Server error'
+          : String(error && error.message ? error.message : 'Server error'),
+    });
   }
 });
 
@@ -6285,7 +6366,12 @@ router.delete('/connection-requests/:requestId', verifyToken, requireTeacher, as
     });
   } catch (error) {
     console.error('Error cancelling connection request:', error);
-    res.status(500).json({ error: 'Server error: ' + error.message });
+    res.status(500).json({
+      error:
+        process.env.NODE_ENV === 'production'
+          ? 'Server error'
+          : String(error && error.message ? error.message : 'Server error'),
+    });
   }
 });
 
@@ -6317,7 +6403,12 @@ router.delete('/connections/:connectionId', verifyToken, requireTeacher, async (
     });
   } catch (error) {
     console.error('Error removing connection:', error);
-    res.status(500).json({ error: 'Server error: ' + error.message });
+    res.status(500).json({
+      error:
+        process.env.NODE_ENV === 'production'
+          ? 'Server error'
+          : String(error && error.message ? error.message : 'Server error'),
+    });
   }
 });
 

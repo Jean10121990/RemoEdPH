@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile Settings - RemoEdPH Admin</title>
+    <link rel="stylesheet" href="modern-styles.css">
+    <link rel="stylesheet" href="css/teacher-sidebar.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="page-teacher-profile">
+    <div class="remoed-main">
+        <div id="admin-sidebar-root"></div>
+        <script src="js/admin-session.js"></script>
+        <script src="js/admin-sidebar.js"></script>
+        <script>AdminSidebar.render('admin-sidebar-root', 'profile-settings');</script>
+        <div class="remoed-content">
+            <div class="profile-container">
+                <div class="success-message" id="profile-msg-ok" style="display: none;"></div>
+                <div class="error-message" id="profile-msg-err" style="display: none;"></div>
+
+                <div class="profile-header">
+                    <div class="profile-avatar-large" id="profile-avatar-large" title="Change photo">
+                        <img id="profile-avatar-img" src="" alt="" style="width:100%; height:100%; object-fit:cover; border-radius:50%; display:none;">
+                        <span id="profile-avatar-text" style="font-size:3rem; font-weight:bold; color:#fff;">A</span>
+                        <div class="upload-overlay">Photo</div>
+                    </div>
+                    <input type="file" id="pic-file" accept="image/*" style="display: none;">
+                    <div class="profile-header-info">
+                        <h1 class="profile-name-large" id="hdr-name">Admin</h1>
+                        <p class="profile-email-large" id="hdr-email">—</p>
+                        <p class="profile-email-large" id="hdr-role" style="font-size:0.95rem; color:#64748b;">—</p>
+                        <div class="profile-actions">
+                            <button type="button" class="back-btn" onclick="document.getElementById('pic-file').click()">Change photo</button>
+                            <a href="admin-settings.html" class="back-btn" style="text-decoration:none;display:inline-block;">System settings</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="profile-content-grid">
+                    <div class="profile-sidebar-card">
+                        <h3 class="section-title" style="font-size: 1.15rem; margin-bottom: 16px;">Quick info</h3>
+                        <div class="info-card">
+                            <div class="info-row">
+                                <span class="info-label">Username</span>
+                                <span class="info-value" id="sb-user">—</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Portal role</span>
+                                <span class="info-value" id="sb-role">—</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Contact</span>
+                                <span class="info-value" id="sb-contact">—</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Birthday</span>
+                                <span class="info-value" id="sb-bday">—</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="profile-main-card">
+                        <div class="tab-container">
+                            <div class="tab-buttons">
+                                <button type="button" class="tab-button active" data-adm-tab="personal" onclick="admShowTab('personal', this)">Personal</button>
+                                <button type="button" class="tab-button" data-adm-tab="pro" onclick="admShowTab('pro', this)">Professional</button>
+                                <button type="button" class="tab-button" data-adm-tab="docs" onclick="admShowTab('docs', this)">Documents</button>
+                                <button type="button" class="tab-button" data-adm-tab="password" onclick="admShowTab('password', this)">Password</button>
+                                <button type="button" class="tab-button" data-adm-tab="security" onclick="admShowTab('security', this)">Security</button>
+                            </div>
+                        </div>
+
+                        <div id="adm-tab-personal" class="tab-content active">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label class="form-label">First name</label>
+                                    <input type="text" class="form-input" id="f-firstName">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Last name</label>
+                                    <input type="text" class="form-input" id="f-lastName">
+                                </div>
+                                <div class="form-group full-width">
+                                    <label class="form-label">Email</label>
+                                    <input type="email" class="form-input" id="f-email">
+                                </div>
+                                <div class="form-group full-width">
+                                    <label class="form-label">Address</label>
+                                    <textarea class="form-textarea" id="f-address" rows="2"></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Contact</label>
+                                    <input type="text" class="form-input" id="f-contact" placeholder="Phone">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Birthday</label>
+                                    <input type="date" class="form-input" id="f-birthday">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="adm-tab-pro" class="tab-content">
+                            <div class="form-grid">
+                                <div class="form-group full-width">
+                                    <label class="form-label">Education</label>
+                                    <textarea class="form-textarea" id="f-education" rows="3"></textarea>
+                                </div>
+                                <div class="form-group full-width">
+                                    <label class="form-label">Experience</label>
+                                    <textarea class="form-textarea" id="f-experience" rows="3"></textarea>
+                                </div>
+                                <div class="form-group full-width">
+                                    <label class="form-label">Certificates</label>
+                                    <textarea class="form-textarea" id="f-certificates" rows="3"></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="adm-tab-docs" class="tab-content">
+                            <p class="muted" style="font-size:0.9rem;margin-bottom:12px;">Government ID and NBI clearance tracking.</p>
+                            <p style="margin:8px 0;">
+                                <span class="muted">ID on file:</span>
+                                <a id="id-doc-link" href="#" style="display:none;" target="_blank" rel="noopener">Open</a>
+                                <span id="id-doc-none" class="muted">None</span>
+                            </p>
+                            <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:16px;">
+                                <input type="file" id="id-file" accept=".pdf,image/*">
+                                <button type="button" class="back-btn" id="id-upload" style="background:#475569;color:#fff;border:none;">Upload ID</button>
+                            </div>
+                            <div class="form-group" style="max-width:320px;">
+                                <label class="form-label">NBI clearance</label>
+                                <select class="form-input" id="f-nbi">
+                                    <option value="none">None</option>
+                                    <option value="pending">Pending</option>
+                                    <option value="submitted">Submitted</option>
+                                    <option value="verified">Verified</option>
+                                </select>
+                            </div>
+                            <p style="margin:12px 0 4px;">
+                                <span class="muted">NBI document on file:</span>
+                                <a id="nbi-doc-link" href="#" style="display:none;" target="_blank" rel="noopener">Open</a>
+                                <span id="nbi-doc-none" class="muted">None</span>
+                            </p>
+                            <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+                                <input type="file" id="nbi-file" accept=".pdf,image/*">
+                                <button type="button" class="back-btn" id="nbi-upload" style="background:#0f766e;color:#fff;border:none;">Upload NBI</button>
+                            </div>
+                        </div>
+
+                        <div id="adm-tab-password" class="tab-content">
+                            <p class="muted" style="font-size:0.9rem;margin-bottom:12px;">Only fill these fields when changing your password. Current password is required if you already have one.</p>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label class="form-label">Current</label>
+                                    <input type="password" class="form-input" id="pw-current" autocomplete="current-password">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">New</label>
+                                    <input type="password" class="form-input" id="pw-new" autocomplete="new-password">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Confirm</label>
+                                    <input type="password" class="form-input" id="pw-new2" autocomplete="new-password">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="adm-tab-security" class="tab-content">
+                            <p class="muted" style="font-size:0.9rem;margin-bottom:12px;">Authenticator apps will show the issuer <strong>RemoEdPH Admin</strong>. After you enable 2FA, you will be asked for a code each time you sign in.</p>
+                            <p style="margin:8px 0;"><span class="muted">Two-factor status:</span> <span id="twofa-status">—</span></p>
+                            <div style="margin:16px 0;">
+                                <button type="button" class="back-btn" id="twofa-setup-btn" style="background:#1d4ed8;color:#fff;border:none;">Generate QR code</button>
+                            </div>
+                            <div id="twofa-qr-wrap" style="display:none;margin:12px 0;">
+                                <img id="twofa-qr" src="" alt="2FA QR" style="max-width:220px;border:1px solid #e2e8f0;padding:8px;background:#fff;">
+                                <p class="muted" style="font-size:0.85rem;margin-top:8px;">Scan the code, then enter the current 6-digit code below to turn on 2FA.</p>
+                            </div>
+                            <div class="form-grid" style="max-width:320px;">
+                                <div class="form-group">
+                                    <label class="form-label">Code from app</label>
+                                    <input type="text" class="form-input" id="twofa-code" inputmode="numeric" maxlength="8" placeholder="000000" autocomplete="one-time-code">
+                                </div>
+                            </div>
+                            <button type="button" class="back-btn" id="twofa-enable-btn" style="background:#0f766e;color:#fff;border:none;">Confirm &amp; enable</button>
+                        </div>
+
+                        <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid #e2e8f0;">
+                            <button type="button" class="back-btn" id="save-profile" style="background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;font-weight:600;">Save changes</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        if (localStorage.getItem('userType') !== 'admin') {
+            alert('Access denied.');
+            window.location.href = 'index.html';
+        }
+
+        function authHeaders(json) {
+            var t = localStorage.getItem('adminToken');
+            var h = {};
+            if (json) h['Content-Type'] = 'application/json';
+            if (t) h['Authorization'] = 'Bearer ' + t;
+            return h;
+        }
+
+        function roleLabel(r) {
+            var m = { super_admin: 'Super-Admin', admin_hr: 'Admin — HR', admin_accounting: 'Admin — Accounting', admin_qa: 'Admin — QA' };
+            return m[r] || r || 'Admin';
+        }
+
+        function showMsg(t, isErr) {
+            var ok = document.getElementById('profile-msg-ok');
+            var er = document.getElementById('profile-msg-err');
+            ok.style.display = 'none';
+            er.style.display = 'none';
+            if (!t) return;
+            if (isErr) {
+                er.textContent = t;
+                er.style.display = 'block';
+            } else {
+                ok.textContent = t;
+                ok.style.display = 'block';
+            }
+        }
+
+        function admShowTab(id, btn) {
+            ['personal', 'pro', 'docs', 'password', 'security'].forEach(function (key) {
+                var p = document.getElementById('adm-tab-' + key);
+                if (p) p.classList.toggle('active', key === id);
+            });
+            document.querySelectorAll('.profile-main-card .tab-button').forEach(function (b) {
+                b.classList.toggle('active', b.getAttribute('data-adm-tab') === id);
+            });
+        }
+
+        function fillForm(p) {
+            var fn = p.firstName || '';
+            var ln = p.lastName || '';
+            document.getElementById('f-firstName').value = fn;
+            document.getElementById('f-lastName').value = ln;
+            document.getElementById('f-email').value = p.email || '';
+            document.getElementById('f-address').value = p.address || '';
+            document.getElementById('f-contact').value = p.contactPhone || '';
+            document.getElementById('f-birthday').value = p.birthday ? String(p.birthday).slice(0, 10) : '';
+            document.getElementById('f-education').value = p.education || '';
+            document.getElementById('f-experience').value = p.experience || '';
+            document.getElementById('f-certificates').value = p.certificates || '';
+            document.getElementById('f-nbi').value = p.nbiClearanceStatus || 'none';
+
+            var dispName = (fn + ' ' + ln).trim() || (p.username || 'Admin');
+            document.getElementById('hdr-name').textContent = dispName;
+            document.getElementById('hdr-email').textContent = p.email || localStorage.getItem('adminUsername') || '—';
+            document.getElementById('hdr-role').textContent = roleLabel(p.adminRole);
+
+            document.getElementById('sb-user').textContent = p.username || localStorage.getItem('adminUsername') || '—';
+            document.getElementById('sb-role').textContent = roleLabel(p.adminRole);
+            document.getElementById('sb-contact').textContent = p.contactPhone || '—';
+            document.getElementById('sb-bday').textContent = p.birthday ? new Date(p.birthday).toLocaleDateString() : '—';
+
+            var img = document.getElementById('profile-avatar-img');
+            var tx = document.getElementById('profile-avatar-text');
+            if (p.profilePictureUrl) {
+                img.src = p.profilePictureUrl;
+                img.style.display = 'block';
+                tx.style.display = 'none';
+            } else {
+                img.removeAttribute('src');
+                img.style.display = 'none';
+                tx.style.display = 'inline-block';
+                tx.textContent = (dispName.charAt(0) || 'A').toUpperCase();
+            }
+
+            var link = document.getElementById('id-doc-link');
+            var none = document.getElementById('id-doc-none');
+            if (p.idDocumentUrl) {
+                link.href = p.idDocumentUrl;
+                link.style.display = 'inline';
+                none.style.display = 'none';
+            } else {
+                link.style.display = 'none';
+                none.style.display = 'inline';
+            }
+
+            var nbiLink = document.getElementById('nbi-doc-link');
+            var nbiNone = document.getElementById('nbi-doc-none');
+            if (p.nbiClearanceDocumentUrl && nbiLink && nbiNone) {
+                nbiLink.href = p.nbiClearanceDocumentUrl;
+                nbiLink.style.display = 'inline';
+                nbiNone.style.display = 'none';
+            } else if (nbiLink && nbiNone) {
+                nbiLink.style.display = 'none';
+                nbiNone.style.display = 'inline';
+            }
+
+            var tw = document.getElementById('twofa-status');
+            if (tw) {
+                tw.textContent = p.isTwoFactorEnabled ? 'Enabled' : 'Not enabled';
+            }
+        }
+
+        async function loadProfile() {
+            showMsg('', false);
+            try {
+                var r = await fetch('/api/admin/me', { headers: authHeaders(false), credentials: 'include' });
+                var j = await r.json().catch(function () { return {}; });
+                if (!r.ok) throw new Error(j.message || j.error || 'Could not load profile');
+                fillForm(j.profile || {});
+            } catch (e) {
+                showMsg(e.message || 'Load failed', true);
+            }
+        }
+
+        document.getElementById('profile-avatar-large').addEventListener('click', function () {
+            document.getElementById('pic-file').click();
+        });
+
+        document.getElementById('pic-file').addEventListener('change', async function () {
+            if (!this.files || !this.files[0]) return;
+            var fd = new FormData();
+            fd.append('file', this.files[0]);
+            showMsg('Uploading photo…', false);
+            try {
+                var r = await fetch('/api/admin/me/profile-picture', {
+                    method: 'POST',
+                    headers: authHeaders(false),
+                    credentials: 'include',
+                    body: fd
+                });
+                var j = await r.json().catch(function () { return {}; });
+                if (!r.ok) throw new Error(j.message || 'Upload failed');
+                showMsg('Photo updated.', false);
+                this.value = '';
+                loadProfile();
+            } catch (e) {
+                showMsg(e.message, true);
+                this.value = '';
+            }
+        });
+
+        document.getElementById('id-upload').onclick = async function () {
+            var inp = document.getElementById('id-file');
+            if (!inp.files || !inp.files[0]) { showMsg('Choose a file first.', true); return; }
+            var fd = new FormData();
+            fd.append('file', inp.files[0]);
+            showMsg('Uploading…', false);
+            try {
+                var r = await fetch('/api/admin/me/id-document', { method: 'POST', headers: authHeaders(false), credentials: 'include', body: fd });
+                var j = await r.json().catch(function () { return {}; });
+                if (!r.ok) throw new Error(j.message || 'Upload failed');
+                showMsg('ID saved.', false);
+                inp.value = '';
+                loadProfile();
+            } catch (e) {
+                showMsg(e.message, true);
+            }
+        };
+
+        document.getElementById('nbi-upload').onclick = async function () {
+            var inp = document.getElementById('nbi-file');
+            if (!inp.files || !inp.files[0]) { showMsg('Choose an NBI file first.', true); return; }
+            var fd = new FormData();
+            fd.append('file', inp.files[0]);
+            showMsg('Uploading NBI…', false);
+            try {
+                var r = await fetch('/api/admin/me/nbi-document', { method: 'POST', headers: authHeaders(false), credentials: 'include', body: fd });
+                var j = await r.json().catch(function () { return {}; });
+                if (!r.ok) throw new Error(j.message || 'Upload failed');
+                showMsg('NBI document saved.', false);
+                inp.value = '';
+                loadProfile();
+            } catch (e) {
+                showMsg(e.message, true);
+            }
+        };
+
+        document.getElementById('twofa-setup-btn').onclick = async function () {
+            showMsg('', false);
+            try {
+                var r = await fetch('/api/admin/2fa-setup', {
+                    method: 'POST',
+                    headers: authHeaders(true),
+                    credentials: 'include',
+                    body: '{}'
+                });
+                var j = await r.json().catch(function () { return {}; });
+                if (!r.ok) throw new Error(j.message || j.error || 'Setup failed');
+                var img = document.getElementById('twofa-qr');
+                if (j.qrDataUrl && img) {
+                    img.src = j.qrDataUrl;
+                    document.getElementById('twofa-qr-wrap').style.display = 'block';
+                }
+                showMsg('Scan the QR code with your authenticator app, then enter the 6-digit code and click Confirm.', false);
+            } catch (e) {
+                showMsg(e.message, true);
+            }
+        };
+
+        document.getElementById('twofa-enable-btn').onclick = async function () {
+            var code = (document.getElementById('twofa-code').value || '').replace(/\s/g, '');
+            if (!/^\d{6}$/.test(code)) {
+                showMsg('Enter a valid 6-digit code.', true);
+                return;
+            }
+            showMsg('', false);
+            try {
+                var r = await fetch('/api/admin/2fa-verify', {
+                    method: 'POST',
+                    headers: authHeaders(true),
+                    credentials: 'include',
+                    body: JSON.stringify({ code: code })
+                });
+                var j = await r.json().catch(function () { return {}; });
+                if (!r.ok) throw new Error(j.message || j.error || 'Verification failed');
+                document.getElementById('twofa-code').value = '';
+                if (j.token) {
+                    localStorage.setItem('adminToken', j.token);
+                }
+                if (j.adminRole) {
+                    localStorage.setItem('adminRole', j.adminRole);
+                }
+                showMsg(j.message || 'Two-factor authentication is enabled.', false);
+                loadProfile();
+            } catch (e) {
+                showMsg(e.message, true);
+            }
+        };
+
+        document.getElementById('save-profile').onclick = async function () {
+            var n = document.getElementById('pw-new').value;
+            var n2 = document.getElementById('pw-new2').value;
+            if (n || n2) {
+                if (n !== n2) { showMsg('New passwords do not match.', true); return; }
+            }
+            var body = {
+                firstName: document.getElementById('f-firstName').value,
+                lastName: document.getElementById('f-lastName').value,
+                email: document.getElementById('f-email').value,
+                address: document.getElementById('f-address').value,
+                contactPhone: document.getElementById('f-contact').value,
+                birthday: document.getElementById('f-birthday').value || null,
+                education: document.getElementById('f-education').value,
+                experience: document.getElementById('f-experience').value,
+                certificates: document.getElementById('f-certificates').value,
+                nbiClearanceStatus: document.getElementById('f-nbi').value
+            };
+            if (n) {
+                body.newPassword = n;
+                body.currentPassword = document.getElementById('pw-current').value;
+            }
+            showMsg('Saving…', false);
+            try {
+                var r = await fetch('/api/admin/me', {
+                    method: 'PUT',
+                    headers: authHeaders(true),
+                    credentials: 'include',
+                    body: JSON.stringify(body)
+                });
+                var j = await r.json().catch(function () { return {}; });
+                if (!r.ok) throw new Error(j.message || j.error || 'Save failed');
+                document.getElementById('pw-current').value = '';
+                document.getElementById('pw-new').value = '';
+                document.getElementById('pw-new2').value = '';
+                fillForm(j.profile || {});
+                showMsg('Profile saved.', false);
+            } catch (e) {
+                showMsg(e.message, true);
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', function () {
+            if (window.AdminSidebar && AdminSidebar.applyGreetingFromStorage) AdminSidebar.applyGreetingFromStorage();
+            loadProfile();
+        });
+    </script>
+</body>
+</html>

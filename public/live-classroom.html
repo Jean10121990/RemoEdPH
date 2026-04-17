@@ -309,27 +309,25 @@
         console.log('✅ Socket.IO connected successfully, socket ID:', socket.id);
         // Auto-load lesson from booking if available (only if not already loaded)
         setTimeout(() => {
-          // Check if lesson already loaded
           if (lessonState.size === 0) {
             console.log('📚 Loading lesson from booking after socket connection...');
             loadLessonFromBooking();
           } else {
             console.log('📚 Lesson already loaded, skipping auto-load');
           }
-        }, 500);
+        }, 0);
         // Request materials only if lesson wasn't auto-loaded from booking
         // This prevents redundant requests and errors
         if (room && lessonState.size === 0) {
           // Wait a moment to see if auto-load completes first
           setTimeout(() => {
-            // Only request if still no materials (auto-load didn't work)
             if (lessonState.size === 0) {
               console.log('📚 Requesting lesson materials from server (auto-load had no materials)');
               socket.emit('lesson-materials-request', { room });
             } else {
               console.log('📚 Materials already loaded via auto-load, skipping server request');
             }
-          }, 2000); // Wait 2 seconds for auto-load to complete
+          }, 600);
         }
         // Set up reward animation listener early when socket connects
         if (typeof setupRewardAnimationListener === 'function') {
@@ -5001,27 +4999,40 @@
           const token = localStorage.getItem('token');
           let booking = null;
 
+          window.__liveClassroomScheduledStartMs = undefined;
           startTs = null;
           absentRuleStartMs = null;
           classroomBookingMongoId = bookingId || null;
           classroomStudentIdForFeedback = null;
 
-          if (bookingId) {
+          const hdrTimer = token ? { 'Authorization': `Bearer ${token}` } : {};
+
+          if (userType === 'teacher' && bookingId) {
             try {
-              const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-              const resp = await fetch(`/api/student/booking/${bookingId}`, { headers });
+              const resp = await fetch(`/api/teacher/booking/${encodeURIComponent(bookingId)}`, { headers: hdrTimer });
               if (resp.ok) {
                 const data = await resp.json();
                 booking = data.booking || data;
               }
             } catch (e) {
-              console.warn('Failed to fetch booking via student endpoint:', e);
+              console.warn('Failed to fetch booking via teacher endpoint (timer):', e);
+            }
+          }
+
+          if (!booking && bookingId) {
+            try {
+              const resp = await fetch(`/api/student/booking/${encodeURIComponent(bookingId)}`, { headers: hdrTimer });
+              if (resp.ok) {
+                const data = await resp.json();
+                booking = data.booking || data;
+              }
+            } catch (e) {
+              console.warn('Failed to fetch booking via student endpoint (timer):', e);
             }
           }
           if (!booking && classroomId && classroomId !== 'default-room') {
             try {
-              const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-              const resp = await fetch(`/api/teacher/booking/by-classroom/${classroomId}`, { headers });
+              const resp = await fetch(`/api/teacher/booking/by-classroom/${encodeURIComponent(classroomId)}`, { headers: hdrTimer });
               if (resp.ok) {
                 const data = await resp.json();
                 booking = data.booking || data;
@@ -5048,9 +5059,10 @@
                 diffMs: Date.now() - startTs
               });
             }
-            if (booking.lessonId) {
-              console.log('📚 [AUTO-LOAD] Booking has lessonId, loading lesson files:', booking.lessonId);
-              loadLessonFilesFromBooking(booking.lessonId);
+            const tlid = getLessonIdFromBooking(booking);
+            if (tlid) {
+              console.log('📚 [AUTO-LOAD] (timer) Resolved lesson from booking, loading files:', tlid);
+              loadLessonFilesFromBooking(tlid);
             }
           }
 
@@ -5074,6 +5086,9 @@
           console.error('❌ Error initializing class timer:', error);
           startTs = Date.now();
         }
+
+        window.__liveClassroomScheduledStartMs =
+          absentRuleStartMs != null ? absentRuleStartMs : null;
 
         if (classTimeElement) {
           if (classTimerIntervalId != null) clearInterval(classTimerIntervalId);
@@ -5109,6 +5124,27 @@
         classTimeElement.title = '';
       }
       
+      /** BSON / string safe lesson id for /api/lessons/lesson/:id/... */
+      function normalizeLessonIdForApi(lessonId) {
+        if (lessonId == null || lessonId === '') return '';
+        if (typeof lessonId === 'object' && lessonId !== null) {
+          if (lessonId.$oid) return String(lessonId.$oid);
+          return String(lessonId._id || lessonId.id || '');
+        }
+        return String(lessonId);
+      }
+
+      /** Same lesson the student booked: stored lessonId, server resolvedLessonId (level+title), or populated lesson. */
+      function getLessonIdFromBooking(booking) {
+        if (!booking) return '';
+        if (booking.lessonId) return normalizeLessonIdForApi(booking.lessonId);
+        if (booking.resolvedLessonId) return normalizeLessonIdForApi(booking.resolvedLessonId);
+        if (booking.lesson && typeof booking.lesson === 'object' && booking.lesson._id) {
+          return normalizeLessonIdForApi(booking.lesson._id);
+        }
+        return '';
+      }
+
       // Auto-load lesson from booking
       async function loadLessonFromBooking() {
         try {
@@ -5117,15 +5153,24 @@
           const token = localStorage.getItem('token');
           
           let booking = null;
-          
-          // Try to fetch booking data
-          if (bookingId) {
+          const headers = {};
+          if (token) headers['Authorization'] = `Bearer ${token}`;
+
+          if (userType === 'teacher' && bookingId) {
             try {
-              const headers = {};
-              if (token) {
-                headers['Authorization'] = `Bearer ${token}`;
+              const resp = await fetch(`/api/teacher/booking/${encodeURIComponent(bookingId)}`, { headers });
+              if (resp.ok) {
+                const data = await resp.json();
+                booking = data.booking || data;
               }
-              const resp = await fetch(`/api/student/booking/${bookingId}`, { headers });
+            } catch (e) {
+              console.warn('Failed to fetch booking via teacher endpoint:', e);
+            }
+          }
+
+          if (!booking && bookingId) {
+            try {
+              const resp = await fetch(`/api/student/booking/${encodeURIComponent(bookingId)}`, { headers });
               if (resp.ok) {
                 const data = await resp.json();
                 booking = data.booking || data;
@@ -5138,11 +5183,7 @@
           // If no booking yet, try classroom endpoint
           if (!booking && classroomId && classroomId !== 'default-room') {
             try {
-              const headers = {};
-              if (token) {
-                headers['Authorization'] = `Bearer ${token}`;
-              }
-              const resp = await fetch(`/api/teacher/booking/by-classroom/${classroomId}`, { headers });
+              const resp = await fetch(`/api/teacher/booking/by-classroom/${encodeURIComponent(classroomId)}`, { headers });
               if (resp.ok) {
                 const data = await resp.json();
                 booking = data.booking || data;
@@ -5152,21 +5193,17 @@
             }
           }
           
-          if (booking && booking.lessonId) {
-            console.log('📚 [AUTO-LOAD] Found booking with lessonId:', booking.lessonId);
-            loadLessonFilesFromBooking(booking.lessonId);
-          } else {
-            console.log('📚 [AUTO-LOAD] No lessonId found in booking', { 
-              hasBooking: !!booking, 
-              bookingKeys: booking ? Object.keys(booking) : [],
-              bookingId: booking?._id || booking?.id,
-              lessonId: booking?.lessonId 
+          const lid = getLessonIdFromBooking(booking);
+          if (lid) {
+            console.log('📚 [AUTO-LOAD] Resolved lesson from booking (library):', lid);
+            loadLessonFilesFromBooking(lid);
+          } else if (booking) {
+            console.log('📚 [AUTO-LOAD] Could not resolve lesson from booking', {
+              bookingKeys: Object.keys(booking),
+              bookingId: booking._id || booking.id,
+              lesson: booking.lesson,
+              studentLevel: booking.studentLevel,
             });
-            // Try to load lesson from booking object directly if lessonId is nested
-            if (booking && booking.lesson && booking.lesson._id) {
-              console.log('📚 [AUTO-LOAD] Found lesson in nested booking.lesson:', booking.lesson._id);
-              loadLessonFilesFromBooking(booking.lesson._id);
-            }
           }
         } catch (error) {
           console.error('❌ [AUTO-LOAD] Error loading lesson from booking:', error);
@@ -5204,8 +5241,13 @@
       // Load lesson files from booking's lessonId
       async function loadLessonFilesFromBooking(lessonId) {
         try {
-          console.log('📚 [AUTO-LOAD] Loading lesson files for lessonId:', lessonId);
-          loadTeacherNotesForClassroom(lessonId);
+          const lid = normalizeLessonIdForApi(lessonId);
+          if (!lid) {
+            console.warn('📚 [AUTO-LOAD] Missing lesson id after normalize');
+            return;
+          }
+          console.log('📚 [AUTO-LOAD] Loading lesson files for lessonId:', lid);
+          loadTeacherNotesForClassroom(lid);
 
           const token = localStorage.getItem('token');
           
@@ -5214,8 +5256,10 @@
             headers['Authorization'] = `Bearer ${token}`;
           }
           
-          // Fetch lesson files WITH data for classroom use
-          const response = await fetch(`/api/lessons/lesson/${lessonId}/files?withData=true`, { headers });
+          const response = await fetch(
+            `/api/lessons/lesson/${encodeURIComponent(lid)}/files?withData=true`,
+            { headers }
+          );
           
           if (!response.ok) {
             throw new Error(`Failed to load lesson files: ${response.statusText}`);

@@ -24,7 +24,11 @@
     bookingId: '',
     maxMs: 25 * 60 * 1000,
     chunkMs: 20000,
-    screenStream: null
+    screenStream: null,
+    /** Web Audio context used to mix tab audio + teacher mic into one track */
+    recordingAudioContext: null,
+    /** Extra getUserMedia({audio}) stream we own — stop on teardown */
+    micStreamForRecording: null
   };
 
   function getParam(name) {
@@ -85,6 +89,125 @@
       }
     }
     return null;
+  }
+
+  /** Live mic from the same WebRTC stream as #local-video (teacher). */
+  function getTeacherMicStreamFromClassroom() {
+    var localV = document.getElementById('local-video');
+    if (!localV || !localV.srcObject) return null;
+    var ls = localV.srcObject;
+    var tracks = ls.getAudioTracks ? ls.getAudioTracks() : [];
+    tracks = tracks.filter(function (t) {
+      return t && t.readyState !== 'ended';
+    });
+    if (!tracks.length) return null;
+    return new MediaStream(tracks);
+  }
+
+  /**
+   * If classroom preview has no audio track yet, request mic-only (does not replace WebRTC).
+   * Returns { stream, owned } — owned true means caller must stop tracks when done.
+   */
+  function ensureTeacherMicStreamForRecording() {
+    var fromClass = getTeacherMicStreamFromClassroom();
+    if (fromClass && fromClass.getAudioTracks().length) {
+      return Promise.resolve({ stream: fromClass, owned: false });
+    }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      return Promise.resolve({ stream: null, owned: false });
+    }
+    return navigator.mediaDevices
+      .getUserMedia({ audio: true, video: false })
+      .then(function (s) {
+        return { stream: s, owned: true };
+      })
+      .catch(function () {
+        return { stream: null, owned: false };
+      });
+  }
+
+  /**
+   * Build one MediaStream: display video + (tab audio + mic mixed when both exist).
+   */
+  function composeDisplayAndMicStreams(displayStream, micWrap) {
+    micWrap = micWrap || {};
+    var micStream = micWrap.stream;
+    var micStreamOwned = micWrap.owned ? micStream : null;
+
+    var videoTracks = displayStream.getVideoTracks().slice();
+    var displayAudioTracks = displayStream.getAudioTracks().slice();
+    var micAudioTracks =
+      micStream && micStream.getAudioTracks
+        ? micStream.getAudioTracks().filter(function (t) {
+            return t && t.readyState !== 'ended';
+          })
+        : [];
+
+    var hadMic = micAudioTracks.length > 0;
+
+    if (!hadMic) {
+      var out0 = new MediaStream();
+      videoTracks.forEach(function (t) {
+        out0.addTrack(t);
+      });
+      displayAudioTracks.forEach(function (t) {
+        out0.addTrack(t);
+      });
+      return { stream: out0, audioContext: null, micStreamOwned: micStreamOwned, hadMic: false };
+    }
+
+    if (displayAudioTracks.length === 0) {
+      var out1 = new MediaStream();
+      videoTracks.forEach(function (t) {
+        out1.addTrack(t);
+      });
+      micAudioTracks.forEach(function (t) {
+        out1.addTrack(t);
+      });
+      return { stream: out1, audioContext: null, micStreamOwned: micStreamOwned, hadMic: true };
+    }
+
+    var Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) {
+      var out2 = new MediaStream();
+      videoTracks.forEach(function (t) {
+        out2.addTrack(t);
+      });
+      displayAudioTracks.forEach(function (t) {
+        out2.addTrack(t);
+      });
+      micAudioTracks.forEach(function (t) {
+        out2.addTrack(t);
+      });
+      return { stream: out2, audioContext: null, micStreamOwned: micStreamOwned, hadMic: true };
+    }
+
+    var ctx = new Ctx();
+    var dest = ctx.createMediaStreamDestination();
+    try {
+      if (displayAudioTracks.length) {
+        ctx.createMediaStreamSource(new MediaStream(displayAudioTracks)).connect(dest);
+      }
+    } catch (e) {
+      console.warn('QA recording: tab audio mix failed', e);
+    }
+    try {
+      if (micAudioTracks.length) {
+        ctx.createMediaStreamSource(new MediaStream(micAudioTracks)).connect(dest);
+      }
+    } catch (e2) {
+      console.warn('QA recording: microphone mix failed', e2);
+    }
+
+    var mixedAudio = dest.stream.getAudioTracks();
+    var out3 = new MediaStream();
+    videoTracks.forEach(function (t) {
+      out3.addTrack(t);
+    });
+    mixedAudio.forEach(function (t) {
+      out3.addTrack(t);
+    });
+    return { stream: out3, audioContext: ctx, micStreamOwned: micStreamOwned, hadMic: true };
   }
 
   /** Whole-class/tab recording (teacher): capture the visible classroom as a screen recording. */
@@ -208,6 +331,21 @@
     }
   }
 
+  function teardownRecordingExtras() {
+    if (state.recordingAudioContext) {
+      try {
+        state.recordingAudioContext.close();
+      } catch (e) {}
+      state.recordingAudioContext = null;
+    }
+    if (state.micStreamForRecording) {
+      try {
+        state.micStreamForRecording.getTracks().forEach(function (t) { t.stop(); });
+      } catch (e) {}
+      state.micStreamForRecording = null;
+    }
+  }
+
   function resetAfterStopUi() {
     if (state.btnStart) state.btnStart.disabled = false;
     if (state.btnStop) {
@@ -223,6 +361,7 @@
       } catch (e) {}
       state.screenStream = null;
     }
+    teardownRecordingExtras();
   }
 
   /**
@@ -285,11 +424,38 @@
         return got;
       })
       .then(function (got) {
-        return startSession().then(function (id) { return { got: got, id: id }; });
+        if (got.mode !== 'screen_tab') {
+          return Promise.resolve(got);
+        }
+        return ensureTeacherMicStreamForRecording().then(function (micWrap) {
+          var composed = composeDisplayAndMicStreams(got.stream, micWrap);
+          state.recordingAudioContext = composed.audioContext;
+          state.micStreamForRecording = composed.micStreamOwned || null;
+          if (!composed.hadMic) {
+            setStatus(
+              'Tab capture only — microphone not added. Turn on mic in the classroom first, then Stop and Start again.'
+            );
+          } else if (got.stream.getAudioTracks().length) {
+            setStatus('Recording: tab sound + your microphone (mixed).');
+          } else {
+            setStatus(
+              'Recording: your microphone. Enable “Share tab audio” when prompted to also capture lesson video sound.'
+            );
+          }
+          return { stream: composed.stream, mode: got.mode };
+        });
+      })
+      .then(function (finalGot) {
+        return startSession().then(function (id) {
+          return { got: finalGot, id: id };
+        });
       })
       .then(function (ctx) {
         state.recordingId = ctx.id;
-        var opts = { videoBitsPerSecond: 280000, audioBitsPerSecond: 48000 };
+        if (state.recordingAudioContext && state.recordingAudioContext.state === 'suspended') {
+          state.recordingAudioContext.resume().catch(function () {});
+        }
+        var opts = { videoBitsPerSecond: 280000, audioBitsPerSecond: 64000 };
         if (mimeType) opts.mimeType = mimeType;
         var mr;
         try {
@@ -298,6 +464,13 @@
           try {
             mr = mimeType ? new MediaRecorder(ctx.got.stream, { mimeType: mimeType }) : new MediaRecorder(ctx.got.stream);
           } catch (e2) {
+            teardownRecordingExtras();
+            if (state.screenStream) {
+              try {
+                state.screenStream.getTracks().forEach(function (t) { t.stop(); });
+              } catch (e3) {}
+              state.screenStream = null;
+            }
             return abortSession().then(function () {
               throw e2;
             });
@@ -360,6 +533,13 @@
         if (state.btnStart) state.btnStart.disabled = false;
         state.recordingId = null;
         state.mediaRecorder = null;
+        teardownRecordingExtras();
+        if (state.screenStream) {
+          try {
+            state.screenStream.getTracks().forEach(function (t) { t.stop(); });
+          } catch (e2) {}
+          state.screenStream = null;
+        }
         throw e;
       });
   }
@@ -487,7 +667,7 @@
       var hint = state.panel.querySelector('#qa-rec-hint');
       if (hint) {
         hint.textContent =
-          'Teachers: click Start and choose \"This tab (Live Classroom)\". If wrong tab is captured, Stop then Start again.';
+          'Choose “This tab” and enable “Share tab audio” for class sound. Your microphone is mixed in automatically from the live classroom (same as “Teacher (You)” preview).';
       }
       setStatus(
         cfg.enabled

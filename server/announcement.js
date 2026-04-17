@@ -137,7 +137,13 @@ router.post('/announcement/delete', async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     console.error('Error deleting announcement:', error);
-    res.status(500).json({ success: false, message: error.message || 'Error deleting announcement' });
+    res.status(500).json({
+      success: false,
+      message:
+        process.env.NODE_ENV === 'production'
+          ? 'Error deleting announcement'
+          : String(error && error.message ? error.message : 'Error deleting announcement'),
+    });
   }
 });
 

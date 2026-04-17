@@ -40,6 +40,7 @@
               <tr>
                 <th>Applicant</th>
                 <th>Email</th>
+                <th>Contact</th>
                 <th>Stage</th>
                 <th>Hiring Date</th>
                 <th>Progress</th>
@@ -47,7 +48,7 @@
               </tr>
             </thead>
             <tbody id="pipeline-body">
-              <tr><td colspan="6" class="muted" style="padding: 18px;">Loading applicants...</td></tr>
+              <tr><td colspan="7" class="muted" style="padding: 18px;">Loading applicants...</td></tr>
             </tbody>
           </table>
         </div>
@@ -62,6 +63,10 @@
         <button class="btn" id="close-modal">Close</button>
       </div>
       <div class="modal-body">
+        <div class="panel">
+          <div class="muted">Contact no.</div>
+          <div id="applicant-contact" style="margin-top: 8px;">—</div>
+        </div>
         <div class="panel">
           <div class="muted">Lesson demo video</div>
           <video id="demo-video" controls style="width: 100%; margin-top: 8px; border-radius: 8px; background: #000;"></video>
@@ -101,6 +106,7 @@
     const demoVideoLink = document.getElementById('demo-video-link');
     const answerText = document.getElementById('answer-text');
     const answerVideos = document.getElementById('answer-videos');
+    const applicantContact = document.getElementById('applicant-contact');
     const passBtn = document.getElementById('modal-pass');
     const failBtn = document.getElementById('modal-fail');
 
@@ -156,12 +162,12 @@
     }
 
     async function loadApplicants() {
-      bodyEl.innerHTML = '<tr><td colspan="6" class="muted" style="padding: 18px;">Loading applicants...</td></tr>';
+      bodyEl.innerHTML = '<tr><td colspan="7" class="muted" style="padding: 18px;">Loading applicants...</td></tr>';
       try {
         const data = await api('/api/admin/teacher-pipeline/applicants');
         const rows = data.applicants || [];
         if (!rows.length) {
-          bodyEl.innerHTML = '<tr><td colspan="6" class="muted" style="padding: 18px;">No applicants found.</td></tr>';
+          bodyEl.innerHTML = '<tr><td colspan="7" class="muted" style="padding: 18px;">No applicants found.</td></tr>';
           return;
         }
         bodyEl.innerHTML = rows.map((a) => {
@@ -181,6 +187,7 @@
           <tr>
             <td>${a.fullName || '-'}</td>
             <td>${a.email || '-'}</td>
+            <td>${a.contactNo || '-'}</td>
             <td><span class="stage">${formatStageLabel(st)}</span>${reapply}</td>
             <td>${a.hiredAt ? new Date(a.hiredAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: '2-digit' }) : '-'}</td>
             <td>
@@ -223,7 +230,7 @@
           });
         });
       } catch (error) {
-        bodyEl.innerHTML = `<tr><td colspan="6" style="padding:18px;color:#dc2626;">${error.message}</td></tr>`;
+        bodyEl.innerHTML = `<tr><td colspan="7" style="padding:18px;color:#dc2626;">${error.message}</td></tr>`;
       }
     }
 
@@ -234,6 +241,7 @@
         selectedApplicantId = applicant._id;
 
         modalName.textContent = `Review: ${applicant.fullName || applicant.email || 'Applicant'}`;
+        if (applicantContact) applicantContact.textContent = applicant.contactNo || '—';
 
         const demoUrl = applicant.demoVideoUrl || '';
         demoVideo.src = demoUrl;

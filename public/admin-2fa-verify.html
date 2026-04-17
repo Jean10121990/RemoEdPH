@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verify 2FA - RemoEdPH Admin</title>
+  <link rel="stylesheet" href="/admin/modern-styles.css">
+  <link rel="stylesheet" href="/admin/style.css">
+  <script src="/admin/js/admin-session.js"></script>
+</head>
+<body class="page-admin-login">
+  <div class="remoed-form" style="margin: 40px auto; max-width: 420px; width: 92%;">
+    <div class="remoed-logo" style="justify-content: center; margin-bottom: 1rem;">
+      <img src="/admin/remoed-logo.png" alt="RemoEdPH Logo">
+      <span class="remoed-title">RemoEdPH</span>
+    </div>
+    <h2 class="remoed-form-title">Two-factor verification</h2>
+    <p style="font-size: 0.875rem; color: #64748b; margin-bottom: 1rem;">
+      Enter the 6-digit code from your authenticator app. No QR scan is required for future logins.
+    </p>
+    <div id="verify-error" class="remoed-status error" style="display: none;"></div>
+    <div class="remoed-form-group">
+      <label for="code" class="remoed-form-label">6-digit code</label>
+      <input type="text" id="code" class="remoed-form-input" inputmode="numeric" maxlength="8" placeholder="000000" autocomplete="one-time-code">
+    </div>
+    <button type="button" id="verify-btn" class="remoed-btn remoed-btn-primary" style="width: 100%;">Verify &amp; continue</button>
+    <p style="text-align: center; margin-top: 1rem;">
+      <a href="/index.html" style="color: #2563eb; font-size: 0.875rem;">Back to home</a>
+    </p>
+  </div>
+  <script>
+    (function () {
+      var params = new URLSearchParams(window.location.search || '');
+      var tempToken = params.get('t') || sessionStorage.getItem('admin2faTempToken') || '';
+      if (!tempToken) {
+        var er = document.getElementById('verify-error');
+        er.textContent = 'Missing verification session. Please sign in again.';
+        er.style.display = 'block';
+        document.getElementById('verify-btn').disabled = true;
+        return;
+      }
+      sessionStorage.setItem('admin2faTempToken', tempToken);
+
+      function showErr(msg) {
+        var el = document.getElementById('verify-error');
+        el.textContent = msg;
+        el.style.display = 'block';
+      }
+
+      document.getElementById('verify-btn').onclick = async function () {
+        var btn = this;
+        var code = (document.getElementById('code').value || '').replace(/\s/g, '');
+        document.getElementById('verify-error').style.display = 'none';
+        if (!/^\d{6}$/.test(code)) {
+          showErr('Enter a valid 6-digit code.');
+          return;
+        }
+        btn.disabled = true;
+        btn.textContent = 'Verifying…';
+        try {
+          var r = await fetch('/api/auth/verify-2fa', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ tempToken: tempToken, code: code })
+          });
+          var j = await r.json().catch(function () { return {}; });
+          if (!r.ok || !j.success || !j.token) {
+            showErr(j.message || j.error || 'Verification failed');
+            btn.disabled = false;
+            btn.textContent = 'Verify & continue';
+            return;
+          }
+          sessionStorage.removeItem('admin2faTempToken');
+          localStorage.setItem('adminToken', j.token);
+          localStorage.setItem('adminUsername', j.username);
+          localStorage.setItem('userType', 'admin');
+          if (j.adminRole) localStorage.setItem('adminRole', j.adminRole);
+          else localStorage.removeItem('adminRole');
+          window.location.href = '/admin/admin-dashboard.html';
+        } catch (e) {
+          showErr('Network error.');
+          btn.disabled = false;
+          btn.textContent = 'Verify & continue';
+        }
+      };
+    })();
+  </script>
+</body>
+</html>
+

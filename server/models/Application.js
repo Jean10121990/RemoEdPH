@@ -15,9 +15,16 @@ const applicationSchema = new mongoose.Schema(
       lowercase: true,
       trim: true
     },
+    /** Legacy: some older applications only have this (bcrypt). New applications use contactNo only. */
     password: {
       type: String,
-      required: true
+      required: false,
+      default: null
+    },
+    contactNo: {
+      type: String,
+      default: '',
+      trim: true
     },
     currentStage: {
       type: String,
@@ -85,8 +92,13 @@ const applicationSchema = new mongoose.Schema(
 
 applicationSchema.pre('save', async function applicationPreSave(next) {
   if (!this.isModified('password')) return next();
+  const p = this.password;
+  if (p == null || String(p).trim() === '') {
+    this.password = undefined;
+    return next();
+  }
   try {
-    this.password = await bcrypt.hash(this.password, 10);
+    this.password = await bcrypt.hash(String(p), 10);
     return next();
   } catch (error) {
     return next(error);
@@ -94,6 +106,7 @@ applicationSchema.pre('save', async function applicationPreSave(next) {
 });
 
 applicationSchema.methods.comparePassword = function comparePassword(candidatePassword) {
+  if (!this.password) return Promise.resolve(false);
   return bcrypt.compare(candidatePassword, this.password);
 };
 

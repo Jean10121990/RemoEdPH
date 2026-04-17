@@ -607,7 +607,10 @@ async function handlePaymongoWebhook(req, res) {
       return res.status(200).json({
         received: true,
         processed: false,
-        error: error.message || 'Webhook processing failed'
+        error:
+          process.env.NODE_ENV === 'production'
+            ? 'Webhook processing failed'
+            : String(error && error.message ? error.message : 'Webhook processing failed'),
       });
     }
   }

@@ -50,7 +50,7 @@ const TEACHING_SCENARIO = {
 const initialForm = {
   fullName: '',
   email: '',
-  password: '',
+  contactNo: '',
   testAnswers: ['', '', ''],
   testVideos: ['', '', ''],
   demoVideoUrl: '',
@@ -399,7 +399,7 @@ export default function App() {
       const payload = {
         fullName: form.fullName,
         email: form.email,
-        password: form.password,
+        contactNo: String(form.contactNo || '').trim(),
         currentStage: 'applied',
         status: true,
         testAnswers: {
@@ -485,7 +485,7 @@ export default function App() {
         {step === 1 && (
           <section className="relative space-y-5">
             <h2 className="text-lg font-bold text-remo-ink">
-              Step 1: <span className="text-remo-blue">Basic info</span> and account
+              Step 1: <span className="text-remo-blue">Basic info</span> and contact
             </h2>
             <div className="grid gap-4 md:grid-cols-2">
               <div className="md:col-span-2">
@@ -506,11 +506,14 @@ export default function App() {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-semibold text-slate-700">Password</label>
+                <label className="mb-1 block text-sm font-semibold text-slate-700">Contact no.</label>
                 <input
-                  type="password"
-                  value={form.password}
-                  onChange={(e) => setField('password', e.target.value)}
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  placeholder="e.g. +63 9xx xxx xxxx"
+                  value={form.contactNo}
+                  onChange={(e) => setField('contactNo', e.target.value)}
                   className={inputClass}
                 />
               </div>

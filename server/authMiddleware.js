@@ -2,9 +2,111 @@ const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
 const Teacher = require('./models/Teacher');
 const Student = require('./models/Student');
+const Admin = require('./models/Admin');
 const { isTokenBlacklisted } = require('./services/jwtBlacklist');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
+
+const ADMIN_2FA_SETUP_PATHS = new Set(['/2fa-setup', '/2fa-verify']);
+
+/**
+ * Invalidate other sessions via Admin.sessionVersion (Bearer + cookie must match DB).
+ */
+const requireAdminSessionValid = async (req, res, next) => {
+  try {
+    if (!req.user || req.user.isAdmin !== true) {
+      return next();
+    }
+    const adminId = req.user.adminId;
+    if (!adminId || !mongoose.isValidObjectId(String(adminId))) {
+      return next();
+    }
+    const admin = await Admin.findById(String(adminId)).select('sessionVersion').lean();
+    if (!admin) {
+      return res.status(401).json({ error: 'Invalid session.', code: 'ADMIN_SESSION_REVOKED' });
+    }
+    const dbSv = Number(admin.sessionVersion) || 0;
+    const fromSession = !!(req.session && req.session.adminAuth === true);
+    const tokenSv = fromSession ? req.session.adminSessionVersion : req.user.sessionVersion;
+    if ((tokenSv === undefined || tokenSv === null) && dbSv > 0) {
+      return res.status(401).json({
+        error: 'Session expired. Please sign in again.',
+        code: 'ADMIN_SESSION_REVOKED',
+      });
+    }
+    if (Number(tokenSv || 0) !== dbSv) {
+      return res.status(401).json({
+        error: 'Session expired. Please sign in again.',
+        code: 'ADMIN_SESSION_REVOKED',
+      });
+    }
+    return next();
+  } catch (e) {
+    return res.status(500).json({ error: 'Session check failed.' });
+  }
+};
+
+/**
+ * When an admin has TOTP enabled, require a post-2FA session flag or a JWT with twoFactorVerified.
+ * Exempts POST /2fa-setup and POST /2fa-verify (enrollment) from this check.
+ */
+const requireAdminTwoFactorSatisfied = async (req, res, next) => {
+  try {
+    const p = req.path || '';
+    const method = req.method || '';
+    if (method === 'POST' && ADMIN_2FA_SETUP_PATHS.has(p)) {
+      return next();
+    }
+    if (!req.user || (req.user.isAdmin !== true && req.user.role !== 'admin')) {
+      return next();
+    }
+    const adminId = req.user.adminId;
+    if (!adminId || !mongoose.isValidObjectId(String(adminId))) {
+      return res.status(403).json({
+        error: 'Two-factor authentication required.',
+        code: 'ADMIN_2FA_REQUIRED',
+      });
+    }
+    const admin = await Admin.findById(String(adminId)).select('isTwoFactorEnabled twoFactorEnabledAt').lean();
+    if (!admin) {
+      return res.status(401).json({ error: 'Invalid admin session.', code: 'ADMIN_2FA_REQUIRED' });
+    }
+    if (!admin.isTwoFactorEnabled) {
+      return next();
+    }
+
+    const fromSession = !!(req.session && req.session.adminAuth === true);
+    if (fromSession) {
+      if (req.session.admin2faVerified === true) {
+        return next();
+      }
+      return res.status(403).json({
+        error: 'Two-factor authentication required.',
+        code: 'ADMIN_2FA_REQUIRED',
+      });
+    }
+
+    if (req.user.twoFactorVerified !== true) {
+      return res.status(403).json({
+        error: 'Two-factor authentication required.',
+        code: 'ADMIN_2FA_REQUIRED',
+      });
+    }
+    if (admin.twoFactorEnabledAt) {
+      const enabledSec = Math.floor(new Date(admin.twoFactorEnabledAt).getTime() / 1000);
+      const iat = Number(req.user.iat);
+      if (Number.isFinite(iat) && Number.isFinite(enabledSec) && iat < enabledSec - 1) {
+        return res.status(403).json({
+          error: 'Sign in again after enabling two-factor authentication.',
+          code: 'ADMIN_2FA_REQUIRED',
+        });
+      }
+    }
+    return next();
+  } catch (e) {
+    return res.status(500).json({ error: 'Authorization check failed.' });
+  }
+};
 
 // Middleware to verify JWT token
 const verifyToken = (req, res, next) => {
@@ -48,6 +150,8 @@ const verifyAdminApiAuth = (req, res, next) => {
       isAdmin: true,
       role: 'admin',
       adminId: req.session.adminId || null,
+      adminRole: req.session.adminRole || 'super_admin',
+      sessionVersion: req.session.adminSessionVersion,
     };
     return next();
   }
@@ -69,10 +173,87 @@ const verifyAdminApiAuth = (req, res, next) => {
     if (decoded.isAdmin !== true && decoded.role !== 'admin') {
       return res.status(403).json({ error: 'Access denied. Admin privileges required.' });
     }
-    req.user = decoded;
+    req.user = {
+      ...decoded,
+      adminRole: decoded.adminRole || 'super_admin',
+    };
     next();
   } catch (error) {
     return res.status(401).json({ error: 'Invalid token.' });
+  }
+};
+
+/**
+ * Scope non–super-admin roles from sensitive admin API areas.
+ * super_admin bypasses all checks.
+ */
+const adminRoleGate = (req, res, next) => {
+  if (!req.user || req.user.isAdmin !== true) return next();
+  const role = req.user.adminRole || 'super_admin';
+  if (role === 'super_admin') return next();
+  const p = req.path || '';
+
+  if (
+    p.includes('/settings/') ||
+    p.includes('/maintenance') ||
+    p.includes('/cleanup/')
+  ) {
+    return res.status(403).json({ error: 'Only Super-Admin can access system settings and maintenance.' });
+  }
+
+  // Match /user CRUD only — NOT paths like /messages/users (substring "/user" inside "/users").
+  const userMgmtRe = /^\/user(\/|$|\?)/;
+
+  if (role === 'admin_qa') {
+    if (
+      /\/payment|\/dispense|\/teachers-weekly-salaries|teacher-pipeline|teachers-list|students-list|admins-list|\/referral-link|unique-link|global-rate|save-global-rate|update-global-rate/.test(
+        p
+      ) ||
+      userMgmtRe.test(p)
+    ) {
+      return res.status(403).json({ error: 'Your admin role (QA) cannot access this resource.' });
+    }
+  }
+  if (role === 'admin_accounting') {
+    if (
+      /\/issues|issue-reports|teacher-pipeline|teachers-list|students-list|admins-list|^\/admins$/.test(p) ||
+      userMgmtRe.test(p)
+    ) {
+      return res.status(403).json({ error: 'Your admin role (Accounting) cannot access this resource.' });
+    }
+  }
+  if (role === 'admin_hr') {
+    if (
+      /\/issues|issue-reports|payment|dispense|teachers-weekly-salaries|classroom-recordings|referral-link|unique-link|global-rate|save-global-rate|update-global-rate/.test(
+        p
+      )
+    ) {
+      return res.status(403).json({ error: 'Your admin role (HR) cannot access this resource.' });
+    }
+  }
+  return next();
+};
+
+/** Classroom recording admin routes (mounted separately) — QA + Super-Admin only. */
+const requireAdminQaOrSuper = (req, res, next) => {
+  const role = req.user && (req.user.adminRole || 'super_admin');
+  if (role === 'super_admin' || role === 'admin_qa') return next();
+  return res.status(403).json({ error: 'Your admin role cannot access lesson recordings.' });
+};
+
+const requireSuperAdminDb = async (req, res, next) => {
+  try {
+    if (!req.user || !req.user.username) {
+      return res.status(401).json({ error: 'Authentication required.' });
+    }
+    const admin = await Admin.findOne({ username: String(req.user.username).trim() }).lean();
+    const role = admin && admin.adminRole ? admin.adminRole : 'super_admin';
+    if (role !== 'super_admin') {
+      return res.status(403).json({ error: 'Only Super-Admin can perform this action.' });
+    }
+    next();
+  } catch (e) {
+    return res.status(500).json({ error: 'Authorization check failed.' });
   }
 };
 
@@ -241,6 +422,11 @@ const logAccess = (req, res, next) => {
 module.exports = {
   verifyToken,
   verifyAdminApiAuth,
+  requireAdminTwoFactorSatisfied,
+  requireAdminSessionValid,
+  adminRoleGate,
+  requireAdminQaOrSuper,
+  requireSuperAdminDb,
   requireTeacher,
   requireStudent,
   requireAdmin,

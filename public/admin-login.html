@@ -35,11 +35,37 @@
       </div>
       <button type="submit" class="remoed-btn remoed-btn-primary" style="width: 100%;">Login</button>
     </form>
+    <div id="admin-2fa-panel" style="display: none;">
+      <p class="remoed-form-label" style="margin-bottom: 0.5rem;">Two-factor authentication</p>
+      <p style="font-size: 0.875rem; color: #64748b; margin-bottom: 1rem;">Enter the 6-digit code from your authenticator app.</p>
+      <div class="remoed-form-group">
+        <label for="admin-2fa-code" class="remoed-form-label">Authentication code</label>
+        <input type="text" id="admin-2fa-code" class="remoed-form-input" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="000000" autocomplete="one-time-code">
+      </div>
+      <button type="button" id="admin-2fa-submit" class="remoed-btn remoed-btn-primary" style="width: 100%;">Verify &amp; continue</button>
+      <button type="button" id="admin-2fa-back" class="remoed-btn" style="width: 100%; margin-top: 0.5rem; background: #e2e8f0; color: #334155;">Back</button>
+    </div>
     <div style="text-align: center; margin-top: 1.5rem;">
+      <a href="admin-first-setup.html" style="color: #2563eb; text-decoration: none; font-size: 0.875rem; display: block; margin-bottom: 0.5rem;">First-time password setup</a>
       <a href="index.html" style="color: #2563eb; text-decoration: none; font-size: 0.875rem;">&larr; Back to Home</a>
     </div>
   </div>
   <script>
+    let admin2faTempToken = '';
+
+    function applyAdminSession(data) {
+      if (!data || !data.token) return;
+      localStorage.setItem('adminToken', data.token);
+      localStorage.setItem('adminUsername', data.username);
+      localStorage.setItem('userType', 'admin');
+      if (data.adminRole) {
+        localStorage.setItem('adminRole', data.adminRole);
+      } else {
+        localStorage.removeItem('adminRole');
+      }
+      window.location.href = 'admin-dashboard.html';
+    }
+
     document.getElementById('admin-login-form').onsubmit = async function(e) {
       e.preventDefault();
       const username = document.getElementById('admin-username').value.trim();
@@ -74,6 +100,8 @@
         errorDiv.style.background = '#fff3cd';
         errorDiv.style.borderColor = '#ffeaa7';
         errorDiv.style.color = '#856404';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Login';
         return;
       }
       
@@ -84,17 +112,88 @@
         data = { success: false, message: 'Invalid server response.' };
       }
 
+      if (data.code === 'ADMIN_PASSWORD_NOT_SET') {
+        errorDiv.innerHTML = (data.message || 'Password not set yet.') + ' <a href="admin-first-setup.html" style="color:#1d4ed8;">First-time setup</a>';
+        errorDiv.style.display = 'block';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Login';
+        return;
+      }
+
+      if (data.success && data.require2FASetup && data.enrollmentToken) {
+        try {
+          sessionStorage.setItem('admin2faEnrollmentToken', data.enrollmentToken);
+        } catch (e) {}
+        var setupUrl = (data.setupPath || '/admin/2fa-setup') + '?t=' + encodeURIComponent(data.enrollmentToken);
+        window.location.href = setupUrl;
+        return;
+      }
+
+      if (data.success && data.require2FA && data.tempToken) {
+        admin2faTempToken = data.tempToken;
+        try { sessionStorage.setItem('admin2faTempToken', data.tempToken); } catch (e) {}
+        window.location.href = '/admin/2fa-verify?t=' + encodeURIComponent(data.tempToken);
+        return;
+      }
+
       if (data.success && data.token) {
-        localStorage.setItem('adminToken', data.token);
-        localStorage.setItem('adminUsername', data.username);
-        localStorage.setItem('userType', 'admin'); // Add this line to set user type
-        window.location.href = 'admin-dashboard.html';
+        applyAdminSession(data);
       } else {
         errorDiv.textContent = data.message || 'Invalid credentials.';
         errorDiv.style.display = 'block';
         submitBtn.disabled = false;
         submitBtn.textContent = 'Login';
       }
+    };
+
+    document.getElementById('admin-2fa-back').onclick = function() {
+      admin2faTempToken = '';
+      document.getElementById('admin-2fa-panel').style.display = 'none';
+      document.getElementById('admin-login-form').style.display = 'block';
+      document.getElementById('admin-login-error').style.display = 'none';
+    };
+
+    document.getElementById('admin-2fa-submit').onclick = async function() {
+      const errorDiv = document.getElementById('admin-login-error');
+      const btn = document.getElementById('admin-2fa-submit');
+      const code = (document.getElementById('admin-2fa-code').value || '').replace(/\s/g, '');
+      errorDiv.style.display = 'none';
+      if (!admin2faTempToken) {
+        errorDiv.textContent = 'Session expired. Please sign in again.';
+        errorDiv.style.display = 'block';
+        return;
+      }
+      btn.disabled = true;
+      btn.textContent = 'Verifying...';
+      let response;
+      try {
+        response = await fetch('/api/auth/verify-2fa', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ tempToken: admin2faTempToken, code: code })
+        });
+      } catch (err) {
+        errorDiv.textContent = 'Unable to reach the server.';
+        errorDiv.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Verify & continue';
+        return;
+      }
+      let data = {};
+      try {
+        data = await response.json();
+      } catch (err2) {
+        data = { success: false, message: 'Invalid server response.' };
+      }
+      if (data.success && data.token) {
+        applyAdminSession(data);
+        return;
+      }
+      errorDiv.textContent = data.message || 'Verification failed.';
+      errorDiv.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Verify & continue';
     };
     
     // Password toggle functionality

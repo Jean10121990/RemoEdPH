@@ -151,6 +151,7 @@
                         <thead>
                             <tr>
                                 <th>Username</th>
+                                <th>Role</th>
                                 <th>Status</th>
                                 <th>Join Date</th>
                                 <th>Actions</th>
@@ -184,13 +185,23 @@
                 
                 <div style="margin-bottom: 15px;">
                     <label for="email" style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">Email</label>
-                    <input type="email" id="email" name="email" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
+                    <input type="email" id="email" name="email" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
+                </div>
+
+                <div id="admin-only-fields" style="display: none; margin-bottom: 15px;">
+                    <label for="adminRole" style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">Admin portal role</label>
+                    <select id="adminRole" name="adminRole" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
+                        <option value="admin_hr">Admin — HR</option>
+                        <option value="admin_accounting">Admin — Accounting</option>
+                        <option value="admin_qa">Admin — QA</option>
+                        <option value="super_admin">Super-Admin</option>
+                    </select>
                 </div>
                 
                 <div style="margin-bottom: 15px;">
                     <label for="password" style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">Password</label>
                     <input type="password" id="password" name="password" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
-                    <small style="color: #666;">Leave blank to keep current password when editing</small>
+                    <small id="password-hint" style="color: #666;">Leave blank to keep current password when editing</small>
                 </div>
                 
                 <div id="teacher-fields" style="display: none;">
@@ -257,8 +268,8 @@
     <script src="avatar-helper.js"></script>
     <script>
         // Role-based access control
-        const userType = localStorage.getItem('userType');
-        if (userType !== 'admin') {
+        const lsPortalUserType = localStorage.getItem('userType');
+        if (lsPortalUserType !== 'admin') {
             alert('Access denied. This page is for administrators only.');
             window.location.href = 'index.html';
         }
@@ -266,6 +277,12 @@
         document.addEventListener('DOMContentLoaded', function() {
             if (window.AdminSidebar && typeof AdminSidebar.applyGreetingFromStorage === 'function') {
                 AdminSidebar.applyGreetingFromStorage();
+            }
+
+            var isSuper = localStorage.getItem('adminRole') === 'super_admin';
+            var addAdminBtn = document.querySelector('#admins-tab .action-btn.btn-edit');
+            if (addAdminBtn && !isSuper) {
+                addAdminBtn.style.display = 'none';
             }
 
             // Load initial data
@@ -418,13 +435,19 @@
                 
                 const tbody = document.getElementById('admins-tbody');
                 if (!admins.length) {
-                    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #888;">No admins found</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #888;">No admins found</td></tr>';
                     return;
                 }
+
+                const roleLabel = (r) => {
+                    const m = { super_admin: 'Super-Admin', admin_hr: 'HR', admin_accounting: 'Accounting', admin_qa: 'QA' };
+                    return m[r] || r || '—';
+                };
                 
                 tbody.innerHTML = admins.map(admin => `
                     <tr>
                         <td>${admin.username}</td>
+                        <td>${roleLabel(admin.adminRole)}</td>
                         <td><span class="status-badge ${admin.status === 'suspended' ? 'status-inactive' : 'status-active'}">${admin.status === 'suspended' ? 'Suspended' : 'Active'}</span></td>
                         <td>${new Date(admin.createdAt).toLocaleDateString()}</td>
                         <td>
@@ -449,7 +472,7 @@
                 `).join('');
             } catch (error) {
                 console.error('Error loading admins:', error);
-                document.getElementById('admins-tbody').innerHTML = '<tr><td colspan="4" style="text-align: center; color: #e74c3c;">Error loading admins</td></tr>';
+                document.getElementById('admins-tbody').innerHTML = '<tr><td colspan="5" style="text-align: center; color: #e74c3c;">Error loading admins</td></tr>';
             }
         }
 
@@ -474,13 +497,20 @@
 
         function addNewUser(userType) {
             document.getElementById('modal-title').textContent = `Add ${userType.charAt(0).toUpperCase() + userType.slice(1)}`;
+            // reset() restores fields to their HTML defaults and clears script-set values — run it first, then set hidden ids.
+            document.getElementById('user-form').reset();
             document.getElementById('user-id').value = '';
             document.getElementById('user-type').value = userType;
-            document.getElementById('user-form').reset();
             
             // Show/hide fields based on user type
             document.getElementById('teacher-fields').style.display = userType === 'teacher' ? 'block' : 'none';
             document.getElementById('student-fields').style.display = userType === 'student' ? 'block' : 'none';
+            document.getElementById('admin-only-fields').style.display = userType === 'admin' ? 'block' : 'none';
+            document.getElementById('email').required = userType === 'teacher' || userType === 'student';
+            document.getElementById('password-hint').textContent =
+                userType === 'admin'
+                    ? 'Optional for new admins: leave blank and share the setup token so they set a password in Profile / first-time setup.'
+                    : 'Leave blank to keep current password when editing';
             
             // Hide username field for teachers (auto-generated)
             if (userType === 'teacher') {
@@ -489,6 +519,12 @@
                 document.getElementById('password').required = false;
                 document.getElementById('password').style.display = 'none';
                 document.getElementById('password').parentElement.style.display = 'none';
+            } else if (userType === 'admin') {
+                document.getElementById('username-field').style.display = 'block';
+                document.getElementById('username').required = true;
+                document.getElementById('password').required = false;
+                document.getElementById('password').style.display = 'block';
+                document.getElementById('password').parentElement.style.display = 'block';
             } else {
                 document.getElementById('username-field').style.display = 'block';
                 document.getElementById('username').required = true;
@@ -516,10 +552,19 @@
                 // Show/hide fields based on user type
                 document.getElementById('teacher-fields').style.display = userType === 'teacher' ? 'block' : 'none';
                 document.getElementById('student-fields').style.display = userType === 'student' ? 'block' : 'none';
+                document.getElementById('admin-only-fields').style.display = userType === 'admin' ? 'block' : 'none';
+                document.getElementById('email').required = userType === 'teacher' || userType === 'student';
+                document.getElementById('password-hint').textContent =
+                    userType === 'admin'
+                        ? 'Set a new password here, or leave blank to keep the current one.'
+                        : 'Leave blank to keep current password when editing';
                 
                 // Show username field for editing (even for teachers)
                 document.getElementById('username-field').style.display = 'block';
                 document.getElementById('username').required = true;
+                document.getElementById('password').style.display = 'block';
+                document.getElementById('password').parentElement.style.display = 'block';
+                document.getElementById('password').required = false;
                 
                 if (userType === 'teacher') {
                     document.getElementById('firstName').value = user.firstName || '';
@@ -527,6 +572,8 @@
                 } else if (userType === 'student') {
                     document.getElementById('studentFirstName').value = user.firstName || '';
                     document.getElementById('studentLastName').value = user.lastName || '';
+                } else if (userType === 'admin' && user.adminRole) {
+                    document.getElementById('adminRole').value = user.adminRole;
                 }
                 
                 document.getElementById('user-modal').style.display = 'block';
@@ -612,6 +659,12 @@
                 delete userData.username;
                 delete userData.password;
             }
+            if (userData.userType === 'admin' && !String(userData.password || '').trim()) {
+                delete userData.password;
+            }
+            if (userData.userType !== 'admin') {
+                delete userData.adminRole;
+            }
             
             try {
                 const url = userData.userId ? 
@@ -619,12 +672,14 @@
                     `/api/admin/user?type=${userData.userType}`;
                 
                 const method = userData.userId ? 'PUT' : 'POST';
+                const token = localStorage.getItem('adminToken');
+                const headers = { 'Content-Type': 'application/json' };
+                if (token) headers['Authorization'] = 'Bearer ' + token;
                 
                 const response = await fetch(url, {
                     method: method,
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: headers,
+                    credentials: 'include',
                     body: JSON.stringify(userData)
                 });
                 
@@ -634,6 +689,8 @@
                     if (userData.userType === 'teacher' && result.credentials) {
                         // Show credentials for teachers when email is not configured
                         alert(`Teacher created successfully!\n\nGenerated Credentials:\nUsername: ${result.credentials.username}\nPassword: ${result.credentials.password}\n\nPlease save these credentials and share them with the teacher.`);
+                    } else if (userData.userType === 'admin' && result.setupToken) {
+                        alert(`Admin created.\n\nUsername: ${userData.username}\n\nOne-time setup token (valid 7 days — copy now):\n${result.setupToken}\n\nThe user opens Admin Login → First-time password setup, then Profile settings as needed.`);
                     } else {
                     alert(`${userData.userType.charAt(0).toUpperCase() + userData.userType.slice(1)} ${userData.userId ? 'updated' : 'created'} successfully`);
                     }
@@ -641,8 +698,10 @@
                     closeUserModal();
                     loadUsers(); // Reload the current tab
                 } else {
-                    const error = await response.json();
-                    alert(`Error: ${error.message || 'Unknown error'}`);
+                    const error = await response.json().catch(function () { return {}; });
+                    var em = error.error || error.message || 'Unknown error';
+                    if (error.detail) em += '\n\n' + error.detail;
+                    alert('Error: ' + em);
                 }
             } catch (error) {
                 console.error('Error saving user:', error);

@@ -1136,7 +1136,39 @@
             window.location.href = 'index.html';
         }
         
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                var t = localStorage.getItem('adminToken');
+                var r = await fetch('/api/admin/me', {
+                    credentials: 'include',
+                    headers: t ? { Authorization: 'Bearer ' + t } : {}
+                });
+                if (r.status === 403) {
+                    var j = await r.json().catch(function () { return {}; });
+                    if (j.code === 'ADMIN_2FA_REQUIRED') {
+                        localStorage.removeItem('adminToken');
+                        localStorage.removeItem('adminRole');
+                        localStorage.removeItem('adminUsername');
+                        localStorage.removeItem('userType');
+                        if (window.RemoedAdminSession) RemoedAdminSession.redirectToAdminLogin();
+                        else window.location.href = 'admin-login.html';
+                        return;
+                    }
+                }
+                if (r.status === 401) {
+                    var j2 = await r.json().catch(function () { return {}; });
+                    if (j2.code === 'ADMIN_SESSION_REVOKED') {
+                        localStorage.removeItem('adminToken');
+                        localStorage.removeItem('adminRole');
+                        localStorage.removeItem('adminUsername');
+                        localStorage.removeItem('userType');
+                        if (window.RemoedAdminSession) RemoedAdminSession.redirectToAdminLogin();
+                        else window.location.href = 'admin-login.html';
+                        return;
+                    }
+                }
+            } catch (e) { /* non-fatal */ }
+
             // Load dashboard data
             loadDashboardData();
             loadTopPerformers();
