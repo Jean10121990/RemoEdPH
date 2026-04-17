@@ -454,7 +454,7 @@ router.post('/login', authLoginLimiter, async (req, res) => {
     }
     
     const passwordMatch = await bcrypt.compare(password, teacher.password);
-    console.log('Password match:', passwordMatch);
+    // Do not log password checks (avoid leaking auth signals)
     
     if (passwordMatch) {
       await resetLoginAttempts(teacher);
@@ -593,7 +593,7 @@ router.post('/student-login', authLoginLimiter, async (req, res) => {
     }
     
     const passwordMatch = await bcrypt.compare(password, student.password);
-    console.log('Password match:', passwordMatch);
+    // Do not log password checks (avoid leaking auth signals)
     if (passwordMatch) {
       await resetLoginAttempts(student);
       const token = jwt.sign(

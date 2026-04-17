@@ -1,6 +1,19 @@
 // Remo AI Icon Generator - Reusable function for all pages
 function getRemoAIIcon(size = 28, strokeColor = '#1a1a1a', fillColor = 'white', uniqueId = null) {
-    const id = uniqueId || 'remoEye' + Date.now() + Math.random().toString(36).substr(2, 9);
+    function cryptoSuffix(len) {
+        const alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789';
+        const buf = new Uint8Array(len);
+        if (window.crypto && window.crypto.getRandomValues) {
+            window.crypto.getRandomValues(buf);
+            let out = '';
+            for (let i = 0; i < buf.length; i++) out += alphabet[buf[i] % alphabet.length];
+            return out;
+        }
+        const base = (Date.now().toString(36) + String(performance && performance.now ? performance.now() : 0).replace('.', '')).toLowerCase();
+        const cleaned = base.replace(/[^a-z0-9]/g, '');
+        return (cleaned + cleaned).slice(0, len);
+    }
+    const id = uniqueId || 'remoEye' + Date.now() + cryptoSuffix(9);
     return `<svg viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg" style="width: ${size}px; height: ${size}px;">
         <defs>
             <radialGradient id="${id}" cx="50%" cy="50%">

@@ -5974,11 +5974,13 @@ router.get('/peers', teacherPeerSearchLimiter, verifyToken, requireTeacher, asyn
     };
     
     if (search) {
+      const s = String(search || '').trim().slice(0, 80);
+      const safe = s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       query.$or = [
-        { firstName: { $regex: search, $options: 'i' } },
-        { lastName: { $regex: search, $options: 'i' } },
-        { fullname: { $regex: search, $options: 'i' } },
-        { experience: { $regex: search, $options: 'i' } }
+        { firstName: { $regex: safe, $options: 'i' } },
+        { lastName: { $regex: safe, $options: 'i' } },
+        { fullname: { $regex: safe, $options: 'i' } },
+        { experience: { $regex: safe, $options: 'i' } }
       ];
     }
     

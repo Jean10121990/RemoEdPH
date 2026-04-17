@@ -21,7 +21,17 @@ document.addEventListener('DOMContentLoaded', function() {
         videoRoomBtn.addEventListener('click', function() {
             // Always generate a random room ID client-side
             function generateRoomId() {
-                return Math.random().toString(36).substr(2, 8);
+                const alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789';
+                const buf = new Uint8Array(8);
+                if (window.crypto && window.crypto.getRandomValues) {
+                    window.crypto.getRandomValues(buf);
+                    let out = '';
+                    for (let i = 0; i < buf.length; i++) out += alphabet[buf[i] % alphabet.length];
+                    return out;
+                }
+                // Fallback only if WebCrypto is unavailable (not cryptographically secure)
+                const base = (Date.now().toString(36) + String(performance && performance.now ? performance.now() : 0).replace('.', '')).toLowerCase();
+                return base.replace(/[^a-z0-9]/g, '').slice(-8).padStart(8, '0');
             }
             const room = generateRoomId();
             window.location.href = 'video-room?room=' + encodeURIComponent(room);

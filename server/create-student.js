@@ -13,7 +13,7 @@ async function createTestStudent() {
     if (existingStudent) {
       console.log('✅ Test student already exists!');
       console.log('📧 Username: teststudent@remoedph.com');
-      console.log('🔑 Password: student123');
+      console.log('🔑 Password: [hidden]');
       console.log('🆔 Student ID:', existingStudent._id);
     } else {
       // Create test student
@@ -30,7 +30,7 @@ async function createTestStudent() {
       await student.save();
       console.log('✅ Test student created successfully!');
       console.log('📧 Username: teststudent@remoedph.com');
-      console.log('🔑 Password: student123');
+      console.log('🔑 Password: [hidden]');
       console.log('🆔 Student ID:', student._id);
     }
 
