@@ -267,6 +267,17 @@
 
     <script src="avatar-helper.js"></script>
     <script>
+        /** Admin API: send JWT if present and session cookie (admin portal) for verifyAdminApiAuth */
+        function adminApiFetchInit(init) {
+            const o = init && typeof init === 'object' ? Object.assign({}, init) : {};
+            const token = localStorage.getItem('adminToken') || '';
+            const headers = Object.assign({}, o.headers || {});
+            if (token) headers['Authorization'] = 'Bearer ' + token;
+            o.headers = headers;
+            o.credentials = 'include';
+            return o;
+        }
+
         // Role-based access control
         const lsPortalUserType = localStorage.getItem('userType');
         if (lsPortalUserType !== 'admin') {
@@ -316,10 +327,20 @@
 
         async function loadTeachers() {
             try {
-                const response = await fetch('/api/admin/teachers-list');
-                const teachers = await response.json();
+                const response = await fetch('/api/admin/teachers-list', adminApiFetchInit());
+                const raw = await response.json();
+                const teachers = Array.isArray(raw) ? raw : [];
                 
                 const tbody = document.getElementById('teachers-tbody');
+                if (response.status === 401 || response.status === 403) {
+                    const msg = (raw && raw.error) ? raw.error : 'Unauthorized. Please sign in again.';
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #e74c3c;">' + msg + '</td></tr>';
+                    return;
+                }
+                if (!response.ok) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #e74c3c;">' + ((raw && raw.error) || 'Failed to load teachers') + '</td></tr>';
+                    return;
+                }
                 if (!teachers.length) {
                     tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #888;">No teachers found</td></tr>';
                     return;
@@ -367,10 +388,20 @@
 
         async function loadStudents() {
             try {
-                const response = await fetch('/api/admin/students-list');
-                const students = await response.json();
+                const response = await fetch('/api/admin/students-list', adminApiFetchInit());
+                const raw = await response.json();
+                const students = Array.isArray(raw) ? raw : [];
                 
                 const tbody = document.getElementById('students-tbody');
+                if (response.status === 401 || response.status === 403) {
+                    const msg = (raw && raw.error) ? raw.error : 'Unauthorized. Please sign in again.';
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #e74c3c;">' + msg + '</td></tr>';
+                    return;
+                }
+                if (!response.ok) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #e74c3c;">' + ((raw && raw.error) || 'Failed to load students') + '</td></tr>';
+                    return;
+                }
                 if (!students.length) {
                     tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #888;">No students found</td></tr>';
                     return;
@@ -430,10 +461,20 @@
 
         async function loadAdmins() {
             try {
-                const response = await fetch('/api/admin/admins');
-                const admins = await response.json();
+                const response = await fetch('/api/admin/admins', adminApiFetchInit());
+                const raw = await response.json();
+                const admins = Array.isArray(raw) ? raw : [];
                 
                 const tbody = document.getElementById('admins-tbody');
+                if (response.status === 401 || response.status === 403) {
+                    const msg = (raw && raw.error) ? raw.error : 'Unauthorized. Please sign in again.';
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #e74c3c;">' + msg + '</td></tr>';
+                    return;
+                }
+                if (!response.ok) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #e74c3c;">' + ((raw && raw.error) || 'Failed to load admins') + '</td></tr>';
+                    return;
+                }
                 if (!admins.length) {
                     tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #888;">No admins found</td></tr>';
                     return;
@@ -538,8 +579,13 @@
 
         async function editUser(userId, userType) {
             try {
-                const response = await fetch(`/api/admin/user/${userId}?type=${userType}`);
-                const user = await response.json();
+                const response = await fetch(`/api/admin/user/${userId}?type=${userType}`, adminApiFetchInit());
+                const user = await response.json().catch(() => ({}));
+                
+                if (!response.ok) {
+                    const msg = (user && (user.error || user.message)) || 'Unauthorized. Please sign in again.';
+                    throw new Error(msg);
+                }
                 
                 document.getElementById('modal-title').textContent = `Edit ${userType.charAt(0).toUpperCase() + userType.slice(1)}`;
                 document.getElementById('user-id').value = userId;
@@ -579,7 +625,7 @@
                 document.getElementById('user-modal').style.display = 'block';
             } catch (error) {
                 console.error('Error loading user data:', error);
-                alert('Error loading user data');
+                alert(error && error.message ? error.message : 'Error loading user data');
             }
         }
 
@@ -590,9 +636,9 @@
         async function suspendUser(userId, userType) {
             if (confirm(`Are you sure you want to suspend this ${userType}?`)) {
                 try {
-                    const response = await fetch(`/api/admin/user/${userId}/suspend?type=${userType}`, {
+                    const response = await fetch(`/api/admin/user/${userId}/suspend?type=${userType}`, adminApiFetchInit({
                         method: 'PUT'
-                    });
+                    }));
                     
                     if (response.ok) {
                         alert(`${userType.charAt(0).toUpperCase() + userType.slice(1)} suspended successfully`);
@@ -610,9 +656,9 @@
         async function unsuspendUser(userId, userType) {
             if (confirm(`Are you sure you want to unsuspend this ${userType}?`)) {
                 try {
-                    const response = await fetch(`/api/admin/user/${userId}/unsuspend?type=${userType}`, {
+                    const response = await fetch(`/api/admin/user/${userId}/unsuspend?type=${userType}`, adminApiFetchInit({
                         method: 'PUT'
-                    });
+                    }));
                     
                     if (response.ok) {
                         alert(`${userType.charAt(0).toUpperCase() + userType.slice(1)} unsuspended successfully`);
@@ -630,9 +676,9 @@
         async function deleteUser(userId, userType) {
             if (confirm(`Are you sure you want to delete this ${userType}? This action cannot be undone.`)) {
                 try {
-                    const response = await fetch(`/api/admin/user/${userId}?type=${userType}`, {
+                    const response = await fetch(`/api/admin/user/${userId}?type=${userType}`, adminApiFetchInit({
                         method: 'DELETE'
-                    });
+                    }));
                     
                     if (response.ok) {
                         alert(`${userType.charAt(0).toUpperCase() + userType.slice(1)} deleted successfully`);
@@ -672,16 +718,11 @@
                     `/api/admin/user?type=${userData.userType}`;
                 
                 const method = userData.userId ? 'PUT' : 'POST';
-                const token = localStorage.getItem('adminToken');
-                const headers = { 'Content-Type': 'application/json' };
-                if (token) headers['Authorization'] = 'Bearer ' + token;
-                
-                const response = await fetch(url, {
+                const response = await fetch(url, adminApiFetchInit({
                     method: method,
-                    headers: headers,
-                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(userData)
-                });
+                }));
                 
                 if (response.ok) {
                     const result = await response.json();

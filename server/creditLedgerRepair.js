@@ -15,27 +15,36 @@ function _purchaseFingerprint(h) {
  * Prefers creditHistory over transaction and rows with balanceAfter set.
  */
 function dedupeMergedCreditRows(rows) {
+  const isPurchaseRow = (r) =>
+    r.type === 'purchase' || (r.type !== 'use' && Number(r.credits) > 0);
+
   const rank = (r) => {
     let s = 0;
-    if (r.source === 'creditHistory') s += 8;
+    const purchase = isPurchaseRow(r);
+    if (purchase) {
+      if (r.source === 'creditHistory') s += 8;
+    } else {
+      // Usage / deductions: prefer creditTransactions (richer description, canonical ledger).
+      if (r.source === 'transaction') s += 8;
+    }
     if (r.balanceAfter != null && r.balanceAfter !== '') s += 4;
-    if (r.type === 'purchase' && String(r.description || '').startsWith('Purchase')) s += 2;
+    if (purchase && r.type === 'purchase' && String(r.description || '').startsWith('Purchase')) s += 2;
     return s;
   };
 
   const best = new Map();
   for (const row of rows) {
     let key;
-    if (row.type === 'purchase') {
+    if (isPurchaseRow(row)) {
       const pid = String(row.paymentId || '').trim();
       key = pid
         ? `p:${pid}`
         : `p:${Math.floor(new Date(row.date || 0).getTime() / 1000)}:${Number(row.credits)}:${String(row.plan || '')}:${Number(row.amountPaid || 0)}`;
     } else {
       const pid = String(row.paymentId || '').trim();
-      key = pid
-        ? `u:${pid}`
-        : `u:${Math.floor(new Date(row.date || 0).getTime() / 1000)}:${Number(row.credits)}:${String(row.description || '').slice(0, 120)}`;
+      // Same millisecond + same delta => one ledger event (e.g. creditTransactions + creditHistory for one class).
+      const ts = new Date(row.date || 0).getTime();
+      key = pid ? `u:${pid}` : `u:${ts}:${Number(row.credits)}`;
     }
     const prev = best.get(key);
     if (!prev || rank(row) > rank(prev)) best.set(key, row);

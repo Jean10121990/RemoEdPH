@@ -98,6 +98,17 @@ const studentSchema = new mongoose.Schema({
   /** Credits held for upcoming bookings (deducted from "available" until class is finished or cancelled). */
   reservedCredits: { type: Number, default: 0 },
   totalCreditsEarned: { type: Number, default: 0 }, // total credits ever purchased
+  /** Cumulative lifetime lesson credits purchased (subscription top-ups); mirrors purchase $inc with totalCreditsEarned. */
+  totalLessonsPurchased: { type: Number, default: 0 },
+  /**
+   * Learning-journey batch unlock totals by portal level tab (nursery / kinder / prep).
+   * Incremented with each plan purchase for all keys so tabs stay aligned; use for level-scoped rules later.
+   */
+  learningJourneyPurchasedByLevel: {
+    nursery: { type: Number, default: 0 },
+    kinder: { type: Number, default: 0 },
+    prep: { type: Number, default: 0 },
+  },
   usedCredits: { type: Number, default: 0 }, // lifetime credits spent on bookings
   /** Optional explicit pool size; booking math falls back to creditBalance when unset. */
   totalCredits: { type: Number, default: null },

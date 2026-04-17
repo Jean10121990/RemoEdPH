@@ -1,4 +1,5 @@
 const Student = require('../models/Student');
+const CreditAudit = require('../models/CreditAudit');
 
 async function findStudentForBooking(booking) {
   if (!booking || !booking.studentId) return null;
@@ -22,7 +23,7 @@ function coalesceLessonPool(student) {
  * Convert one reserved credit into a used lesson credit (MongoDB updates only).
  * Mutates booking in memory; caller must persist the booking document.
  */
-async function consumeReservedCreditForBooking(booking, descriptionPrefix = 'Class finished') {
+async function consumeReservedCreditForBooking(booking, descriptionPrefix = 'Class finished', opts = {}) {
   if (!booking || booking.creditConsumedAt || booking.creditReservationReleasedAt) {
     return null;
   }
@@ -30,8 +31,20 @@ async function consumeReservedCreditForBooking(booking, descriptionPrefix = 'Cla
   if (!student) return null;
   const now = new Date();
   const safeReserved = Number(student.reservedCredits || 0);
-  if (safeReserved <= 0) return student._id;
   const { poolTotal, reserved, mode } = coalesceLessonPool(student);
+  const isTrial = !!booking.isAssessmentFreeTrialBooking;
+  if (!isTrial && poolTotal <= 0) {
+    const err = new Error('No credits available for this booking');
+    err.code = 'NO_CREDITS';
+    throw err;
+  }
+  if (safeReserved <= 0) {
+    // Booking did not reserve a credit (legacy / inconsistent state). Do not silently "complete" without charging.
+    const err = new Error('No reserved credits available for this booking');
+    err.code = 'NO_RESERVED_CREDIT';
+    throw err;
+  }
+
   const nextReserved = Math.max(reserved - 1, 0);
   const nextPoolTotal = Math.max(poolTotal - 1, 0);
   const nextAvailable = Math.max(nextPoolTotal - nextReserved, 0);
@@ -52,8 +65,9 @@ async function consumeReservedCreditForBooking(booking, descriptionPrefix = 'Cla
     setDoc.hasFreeTrial = false;
   }
 
+  const session = opts && opts.session ? opts.session : undefined;
   await Student.updateOne(
-    { _id: student._id },
+    { _id: student._id, reservedCredits: { $gte: 1 } },
     {
       $set: setDoc,
       $inc: { usedCredits: 1 },
@@ -67,15 +81,32 @@ async function consumeReservedCreditForBooking(booking, descriptionPrefix = 'Cla
           balanceAfter: nextAvailable,
           amountPaid: 0,
         },
-        creditHistory: {
-          date: now,
-          plan: planLabel,
-          credits: -1,
-          amountPaid: 0,
-          paymentId: '',
-        },
       },
     }
+  ).session(session || null);
+
+  // Immutable audit log (separate collection)
+  const actorType = (opts && opts.actorType) || 'system';
+  const actorId = (opts && opts.actorId) || '';
+  await CreditAudit.create(
+    [
+      {
+        studentId: student._id,
+        bookingId: booking._id || null,
+        deltaCredits: -1,
+        reason: descriptionPrefix,
+        description: desc,
+        actorType,
+        actorId,
+        meta: {
+          date: booking.date,
+          time: booking.time,
+          mode,
+          wasTrial: !!booking.isAssessmentFreeTrialBooking,
+        },
+      },
+    ],
+    session ? { session } : undefined
   );
 
   if (booking.isAssessmentFreeTrialBooking && student.email) {

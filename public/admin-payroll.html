@@ -436,7 +436,7 @@
             try {
                 console.log('🔍 Loading teacher filter options...');
                 
-                const response = await adminApiFetch('/api/admin/teachers-list');
+                const response = await adminApiFetch('/api/admin/teachers-filter-list');
                 console.log('🔍 Teachers list response status:', response.status);
                 
                 if (!response.ok) {

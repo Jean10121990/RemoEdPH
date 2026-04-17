@@ -136,7 +136,12 @@
                     } catch (e) {}
                     var W = typeof window !== 'undefined' ? window : null;
                     if (W) {
-                        W.location.replace('login.html?r=a');
+                        // Backward-compatible: send admins to the real admin login entry (obfuscated path if remembered).
+                        if (W.RemoedAdminSession && typeof W.RemoedAdminSession.redirectToAdminLogin === 'function') {
+                            W.RemoedAdminSession.redirectToAdminLogin();
+                        } else {
+                            W.location.replace('admin-login.html?r=a');
+                        }
                     }
                 });
             });

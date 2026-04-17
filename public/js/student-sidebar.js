@@ -124,7 +124,11 @@
     }
 
     function loadProfileIntoSidebar(container) {
-        var token = localStorage.getItem('studentToken') || localStorage.getItem('token');
+        var token =
+            localStorage.getItem('remoed_user_token') ||
+            sessionStorage.getItem('remoed_user_token') ||
+            localStorage.getItem('studentToken') ||
+            localStorage.getItem('token');
         if (!token) return;
 
         var usernameEl = container.querySelector('#remoed-username');
@@ -219,13 +223,20 @@
         var logoutLi = container.querySelector('#logout-nav');
         if (logoutLi) {
             logoutLi.addEventListener('click', function () {
-                var token = localStorage.getItem('studentToken') || localStorage.getItem('token') || '';
+                var token =
+                    localStorage.getItem('remoed_user_token') ||
+                    sessionStorage.getItem('remoed_user_token') ||
+                    localStorage.getItem('studentToken') ||
+                    localStorage.getItem('token') ||
+                    '';
                 var opts = { method: 'POST', credentials: 'include' };
                 if (token) {
                     opts.headers = { Authorization: 'Bearer ' + token };
                 }
                 fetch('/api/logout', opts).catch(function () {}).finally(function () {
                     try {
+                        localStorage.removeItem('remoed_user_token');
+                        sessionStorage.removeItem('remoed_user_token');
                         localStorage.removeItem('studentToken');
                         localStorage.removeItem('studentId');
                         localStorage.removeItem('studentUsername');
@@ -238,7 +249,7 @@
                         localStorage.removeItem('studentPaymentStatus');
                         localStorage.removeItem('studentSubscriptionStatus');
                     } catch (e) {}
-                    window.location.replace('login.html');
+                    window.location.replace('/login/');
                 });
             });
         }

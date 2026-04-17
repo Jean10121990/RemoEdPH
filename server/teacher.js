@@ -3272,9 +3272,51 @@ router.post('/mark-student-absent', verifyToken, requireTeacher, async (req, res
     booking.absentAt = new Date();
     booking.absentReason = 'Student did not attend the class';
 
-    await consumeReservedCreditForBooking(booking, 'Student absent');
-    
-    await booking.save();
+    const useTransactions =
+      String(process.env.USE_TRANSACTIONS || '').toLowerCase() !== 'false';
+
+    function isTransactionUnsupportedError(err) {
+      const msg = String(err && (err.message || err)).toLowerCase();
+      return (
+        msg.includes('transaction numbers are only allowed') ||
+        msg.includes('replica set') ||
+        msg.includes('mongos') ||
+        msg.includes('does not support transactions')
+      );
+    }
+
+    if (useTransactions) {
+      const session = await mongoose.startSession();
+      try {
+        await session.withTransaction(async () => {
+          booking.$session(session);
+          await consumeReservedCreditForBooking(booking, 'Student absent', {
+            session,
+            actorType: 'teacher',
+            actorId: String(teacherId || ''),
+          });
+          await booking.save({ session });
+        });
+      } catch (txnErr) {
+        if (isTransactionUnsupportedError(txnErr)) {
+          await consumeReservedCreditForBooking(booking, 'Student absent', {
+            actorType: 'teacher',
+            actorId: String(teacherId || ''),
+          });
+          await booking.save();
+        } else {
+          throw txnErr;
+        }
+      } finally {
+        session.endSession();
+      }
+    } else {
+      await consumeReservedCreditForBooking(booking, 'Student absent', {
+        actorType: 'teacher',
+        actorId: String(teacherId || ''),
+      });
+      await booking.save();
+    }
     
     // Create notification
     const notificationMessage = `Student marked as absent for ${booking.date} at ${booking.time}`;
@@ -3287,6 +3329,10 @@ router.post('/mark-student-absent', verifyToken, requireTeacher, async (req, res
     });
   } catch (err) {
     console.error('Error marking student as absent:', err);
+    const code = String(err && err.code ? err.code : '');
+    if (code === 'NO_CREDITS' || code === 'NO_RESERVED_CREDIT') {
+      return res.status(400).json({ success: false, error: 'Student has no available credits for this booking.' });
+    }
     res.status(500).json({ error: 'Failed to mark student as absent' });
   }
 });
@@ -4746,9 +4792,51 @@ router.post('/booking/:bookingId/mark-student-absent', verifyToken, requireTeach
     booking.absentType = 'student';
     booking.absentReason = 'Marked as absent by teacher';
 
-    await consumeReservedCreditForBooking(booking, 'Student absent');
-    
-    await booking.save();
+    const useTransactions =
+      String(process.env.USE_TRANSACTIONS || '').toLowerCase() !== 'false';
+
+    function isTransactionUnsupportedError(err) {
+      const msg = String(err && (err.message || err)).toLowerCase();
+      return (
+        msg.includes('transaction numbers are only allowed') ||
+        msg.includes('replica set') ||
+        msg.includes('mongos') ||
+        msg.includes('does not support transactions')
+      );
+    }
+
+    if (useTransactions) {
+      const session = await mongoose.startSession();
+      try {
+        await session.withTransaction(async () => {
+          booking.$session(session);
+          await consumeReservedCreditForBooking(booking, 'Student absent', {
+            session,
+            actorType: 'teacher',
+            actorId: String(teacherId || ''),
+          });
+          await booking.save({ session });
+        });
+      } catch (txnErr) {
+        if (isTransactionUnsupportedError(txnErr)) {
+          await consumeReservedCreditForBooking(booking, 'Student absent', {
+            actorType: 'teacher',
+            actorId: String(teacherId || ''),
+          });
+          await booking.save();
+        } else {
+          throw txnErr;
+        }
+      } finally {
+        session.endSession();
+      }
+    } else {
+      await consumeReservedCreditForBooking(booking, 'Student absent', {
+        actorType: 'teacher',
+        actorId: String(teacherId || ''),
+      });
+      await booking.save();
+    }
     
     console.log('✅ Student marked as absent successfully');
     
@@ -4768,9 +4856,16 @@ router.post('/booking/:bookingId/mark-student-absent', verifyToken, requireTeach
     
   } catch (error) {
     console.error('❌ Error marking student as absent:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Failed to mark student as absent'
+    const code = String(error && error.code ? error.code : '');
+    if (code === 'NO_CREDITS' || code === 'NO_RESERVED_CREDIT') {
+      return res.status(400).json({
+        success: false,
+        error: 'Student has no available credits for this booking.',
+      });
+    }
+    res.status(500).json({
+      success: false,
+      error: 'Failed to mark student as absent',
     });
   }
 });

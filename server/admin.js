@@ -3546,10 +3546,10 @@ router.post('/review-time-log-request', async (req, res) => {
 
 // Payment History Management Endpoints
 
-// GET teachers list for filter dropdown
-router.get('/teachers-list', async (req, res) => {
+// GET teachers for payment-history filter dropdown (object shape — do not reuse /teachers-list; that route is the flat array for User Management).
+router.get('/teachers-filter-list', async (req, res) => {
   try {
-    console.log('🔍 Teachers list request received');
+    console.log('🔍 Teachers filter list request received');
     
     const teachers = await Teacher.find({}).select('email username firstName lastName');
     console.log(`📊 Found ${teachers.length} teachers`);
@@ -3567,7 +3567,7 @@ router.get('/teachers-list', async (req, res) => {
       teachers: teachersList
     });
   } catch (error) {
-    console.error('❌ Error getting teachers list:', error);
+    console.error('❌ Error getting teachers filter list:', error);
     res.status(500).json({
       success: false,
       message:
@@ -4208,8 +4208,51 @@ router.post('/issues/resolve', verifyAdminApiAuth, requireAdmin, async (req, res
           booking.attendance = {};
         }
         booking.attendance.classCompleted = true;
-        await consumeReservedCreditForBooking(booking, 'Class finished');
-        await booking.save();
+        const useTransactions =
+          String(process.env.USE_TRANSACTIONS || '').toLowerCase() !== 'false';
+
+        function isTransactionUnsupportedError(error) {
+          const msg = String(error && (error.message || error)).toLowerCase();
+          return (
+            msg.includes('transaction numbers are only allowed') ||
+            msg.includes('replica set') ||
+            msg.includes('mongos') ||
+            msg.includes('does not support transactions')
+          );
+        }
+
+        if (useTransactions) {
+          const session = await mongoose.startSession();
+          try {
+            await session.withTransaction(async () => {
+              booking.$session(session);
+              await consumeReservedCreditForBooking(booking, 'Class finished', {
+                session,
+                actorType: 'admin',
+                actorId: String(req.user?.adminId || req.user?.username || ''),
+              });
+              await booking.save({ session });
+            });
+          } catch (txnErr) {
+            if (isTransactionUnsupportedError(txnErr)) {
+              await consumeReservedCreditForBooking(booking, 'Class finished', {
+                actorType: 'admin',
+                actorId: String(req.user?.adminId || req.user?.username || ''),
+              });
+              await booking.save();
+            } else {
+              throw txnErr;
+            }
+          } finally {
+            session.endSession();
+          }
+        } else {
+          await consumeReservedCreditForBooking(booking, 'Class finished', {
+            actorType: 'admin',
+            actorId: String(req.user?.adminId || req.user?.username || ''),
+          });
+          await booking.save();
+        }
         console.log(`✅ Marked booking ${issue.bookingId} as completed due to resolved issue`);
       }
     } catch (bookingError) {

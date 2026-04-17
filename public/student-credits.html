@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="css/student-portal-layout.css">
   <script src="https://cdn.jsdelivr.net/npm/luxon@3.5.0/build/global/luxon.min.js"></script>
   <script src="timezone-utils.js"></script>
+  <script src="js/user-session.js"></script>
 </head>
 <body class="page-student-credits">
   <div class="shell">
@@ -104,7 +105,51 @@
     }
 
     function getStudentToken() {
-      return localStorage.getItem('studentToken') || localStorage.getItem('token') || '';
+      if (window.RemoedUserSession && typeof window.RemoedUserSession.getUserToken === 'function') {
+        return window.RemoedUserSession.getUserToken() || '';
+      }
+      try {
+        return (
+          localStorage.getItem('remoed_user_token') ||
+          sessionStorage.getItem('remoed_user_token') ||
+          localStorage.getItem('studentToken') ||
+          localStorage.getItem('token') ||
+          sessionStorage.getItem('token') ||
+          ''
+        );
+      } catch (e) {
+        return '';
+      }
+    }
+
+    /** JWT payload for UI only (not verified here). */
+    function parseJwtPayloadNoVerify(jwt) {
+      if (!jwt || typeof jwt !== 'string') return null;
+      var parts = jwt.split('.');
+      if (parts.length < 2) return null;
+      try {
+        var b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+        var padded = b64 + '='.repeat((4 - (b64.length % 4)) % 4);
+        var json = atob(padded);
+        return JSON.parse(json);
+      } catch (e) {
+        return null;
+      }
+    }
+
+    /** Unified login stores studentId in JWT, not always in localStorage. */
+    function getStudentIdForCheckout() {
+      var sid = localStorage.getItem('studentId');
+      if (sid) return sid;
+      var p = parseJwtPayloadNoVerify(getStudentToken());
+      if (p && String(p.userRole || '') === 'student' && p.studentId != null && String(p.studentId) !== '') {
+        sid = String(p.studentId);
+        try {
+          localStorage.setItem('studentId', sid);
+        } catch (e) {}
+        return sid;
+      }
+      return '';
     }
 
     function openRefillPanel() {
@@ -116,13 +161,19 @@
 
     async function startRefillCheckout() {
       var token = getStudentToken();
-      var studentId = localStorage.getItem('studentId');
+      var studentId = getStudentIdForCheckout();
       var sel = document.getElementById('refill-plan-select');
       var btn = document.getElementById('refill-pay-btn');
       var statusEl = document.getElementById('refill-status');
-      if (!token || !studentId) {
+      if (!token) {
         alert('Please log in as a student to purchase a plan.');
-        window.location.href = 'student-login.html';
+        window.location.replace('/login/');
+        return;
+      }
+      var claims = parseJwtPayloadNoVerify(token);
+      if (!claims || String(claims.userRole || '') !== 'student') {
+        alert('Please sign in with a student account to purchase a plan.');
+        window.location.replace('/login/');
         return;
       }
       if (!sel) return;
@@ -135,12 +186,12 @@
       }
       try {
         var payload = {
-          userId: studentId,
           planId: planId,
           description: 'RemoEd — ' + label,
           success_url: window.location.origin + '/student-credits.html?payment=success',
           cancel_url: window.location.origin + '/student-credits.html?payment=cancelled',
         };
+        if (studentId) payload.userId = studentId;
         var res = await fetch('/api/payments/create-link', {
           method: 'POST',
           headers: {
@@ -179,58 +230,45 @@
     function buildHistoryRows(data) {
       const tx = Array.isArray(data.credits) ? data.credits : [];
       const hist = Array.isArray(data.creditHistory) ? data.creditHistory : [];
-      const fromHist = hist.map((item) => ({
-        date: item.date,
-        type: item.credits >= 0 ? 'purchase' : 'use',
-        plan: item.plan,
-        description:
-          item.credits >= 0
-            ? 'Plan purchase (' + (item.plan || 'Subscription') + ')'
-            : 'Class booked (' + (item.plan || 'Subscription') + ')',
-        credits: item.credits,
-        balanceAfter: item.balanceAfter != null ? item.balanceAfter : '',
-        amountPaid: item.amountPaid || 0
-      }));
-      const fromTx = tx.map((row) => ({
-        date: row.date,
-        type: row.type,
-        plan: row.plan,
-        description: row.description || row.plan || '',
-        credits: row.credits,
-        balanceAfter: row.balanceAfter != null ? row.balanceAfter : '',
-        amountPaid: row.amountPaid || 0
-      }));
+      // Server splits: deductions in `credits`, top-ups in `creditHistory` (no overlap) — avoids double rows.
+      const fromHist = hist.map(function (item) {
+        const c = Number(item.credits);
+        return {
+          date: item.date,
+          type: c >= 0 ? 'purchase' : 'use',
+          plan: item.plan,
+          description:
+            c >= 0
+              ? 'Plan purchase (' + (item.plan || 'Subscription') + ')'
+              : 'Lesson completed (' + (item.plan || 'Lesson') + ')',
+          credits: item.credits,
+          balanceAfter: item.balanceAfter != null ? item.balanceAfter : '',
+          amountPaid: item.amountPaid || 0
+        };
+      });
+      const fromTx = tx.map(function (row) {
+        return {
+          date: row.date,
+          type: row.type,
+          plan: row.plan,
+          description: row.description || row.plan || '',
+          credits: row.credits,
+          balanceAfter: row.balanceAfter != null ? row.balanceAfter : '',
+          amountPaid: row.amountPaid || 0
+        };
+      });
       const list = fromTx.concat(fromHist);
       list.sort(function (a, b) {
         return new Date(b.date || 0) - new Date(a.date || 0);
       });
-      const seen = new Set();
-      const deduped = [];
-      for (var i = 0; i < list.length; i++) {
-        var row = list[i];
-        var t = row.date ? new Date(row.date).getTime() : 0;
-        var key =
-          String(Math.floor(t / 60000)) +
-          '|' +
-          String(row.credits) +
-          '|' +
-          String(row.description || '') +
-          '|' +
-          String(row.plan || '') +
-          '|' +
-          String(row.type || '');
-        if (seen.has(key)) continue;
-        seen.add(key);
-        deduped.push(row);
-      }
-      return deduped;
+      return list;
     }
 
     async function loadCredits() {
       const token = getStudentToken();
       if (!token) {
         alert('Please log in as a student to view credits.');
-        window.location.href = 'student-login.html';
+        window.location.replace('/login/');
         return;
       }
       try {
@@ -241,6 +279,8 @@
         if (!res.ok || !data.success) {
           throw new Error(data.error || ('Failed to load credits (' + res.status + ')'));
         }
+
+        getStudentIdForCheckout();
 
         const name = localStorage.getItem('remoedUsername') || localStorage.getItem('studentName') || '';
         const greet = document.getElementById('credits-greeting');

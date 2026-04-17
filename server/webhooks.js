@@ -401,7 +401,11 @@ async function handlePaymongoWebhook(req, res) {
           },
           $inc: {
             creditBalance: creditsToAdd,
-            totalCreditsEarned: creditsToAdd
+            totalCreditsEarned: creditsToAdd,
+            totalLessonsPurchased: creditsToAdd,
+            'learningJourneyPurchasedByLevel.nursery': creditsToAdd,
+            'learningJourneyPurchasedByLevel.kinder': creditsToAdd,
+            'learningJourneyPurchasedByLevel.prep': creditsToAdd,
           },
           $push: {
             processedPaymentIds: idempotencyKey,
@@ -520,7 +524,11 @@ async function handlePaymongoWebhook(req, res) {
           {
             $inc: {
               creditBalance: creditsToAdd,
-              totalCreditsEarned: creditsToAdd
+              totalCreditsEarned: creditsToAdd,
+              totalLessonsPurchased: creditsToAdd,
+              'learningJourneyPurchasedByLevel.nursery': creditsToAdd,
+              'learningJourneyPurchasedByLevel.kinder': creditsToAdd,
+              'learningJourneyPurchasedByLevel.prep': creditsToAdd,
             },
             $push: {
               processedPaymentIds: idempotencyKey,

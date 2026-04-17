@@ -19,7 +19,8 @@
       global.location.href = p;
       return;
     }
-    global.location.href = 'index.html';
+    // Safe fallback for admin pages served under /admin/* static.
+    global.location.href = '/admin/admin-login.html';
   }
 
   /** Call from admin-login.html on load (before or after login UI). */

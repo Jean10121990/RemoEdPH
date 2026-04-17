@@ -7,6 +7,7 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path');
 const crypto = require('crypto');
+const mongoose = require('mongoose');
 const { db, connectDB } = require('./db');
 
 // Import route files
@@ -261,8 +262,19 @@ app.use('/vendor/pdfjs', express.static(path.join(__dirname, '../node_modules/pd
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
+// Public student/teacher login portal (NOT under /admin)
+const portalLoginDir = path.join(__dirname, '../login');
+app.use('/login', express.static(portalLoginDir));
+app.get(['/login', '/login/'], noStoreProtectedResponse, (req, res) => {
+  res.sendFile(path.join(portalLoginDir, 'index.html'));
+});
+
 // Serve admin static assets under /admin to avoid relative-path MIME issues
-app.use('/admin', express.static(path.join(__dirname, '../public')));
+// IMPORTANT: keep /admin for admin portal assets only — do not serve directory index files here.
+app.get(['/admin', '/admin/', '/admin/index.html'], noStoreProtectedResponse, (req, res) => {
+  res.status(404).type('html').send('<!doctype html><html><head><meta charset="utf-8"><title>Not found</title></head><body><h1>Not found</h1></body></html>');
+});
+app.use('/admin', express.static(path.join(__dirname, '../public'), { index: false }));
 
 // API Routes (no-store on role-protected APIs)
 app.use('/api/auth', noStoreProtectedResponse, authRoutes);
@@ -381,9 +393,6 @@ const protectedHtmlFiles = new Set([
   'student-learning-journey.html',
   'teacher-profile.html',
   'teacher-view-profile.html',
-  'login.html',
-  'student-login.html',
-  'teacher-login.html',
 ]);
 try {
   fs.readdirSync(publicDir).forEach((name) => {
@@ -396,6 +405,20 @@ protectedHtmlFiles.forEach((htmlName) => {
   app.get(`/${htmlName}`, noStoreProtectedResponse, (req, res) => {
     res.sendFile(path.join(publicDir, htmlName));
   });
+});
+
+// Legacy login pages → unified login page
+app.get(
+  ['/student-login', '/student-login.html', '/teacher-login', '/teacher-login.html'],
+  noStoreProtectedResponse,
+  (req, res) => {
+    res.redirect(302, '/login/');
+  }
+);
+
+// Back-compat: old unified login path
+app.get(['/login.html'], noStoreProtectedResponse, (req, res) => {
+  res.redirect(302, '/login/');
 });
 
 // Browsers request /favicon.ico by default; serve site logo PNG.
@@ -531,8 +554,53 @@ app.post('/api/booking/:bookingId/mark-student-absent', verifyToken, requireTeac
     booking.absentMarkedAt = new Date();
     booking.absentType = 'student';
     booking.absentReason = 'Marked as absent by teacher';
-    
-    await booking.save();
+
+    const useTransactions =
+      String(process.env.USE_TRANSACTIONS || '').toLowerCase() !== 'false';
+
+    function isTransactionUnsupportedError(err) {
+      const msg = String(err && (err.message || err)).toLowerCase();
+      return (
+        msg.includes('transaction numbers are only allowed') ||
+        msg.includes('replica set') ||
+        msg.includes('mongos') ||
+        msg.includes('does not support transactions')
+      );
+    }
+
+    // Policy: booked slot = used slot. Consume one reserved credit (or fail if none).
+    if (useTransactions) {
+      const session = await mongoose.startSession();
+      try {
+        await session.withTransaction(async () => {
+          booking.$session(session);
+          await consumeReservedCreditForBooking(booking, 'Student absent', {
+            session,
+            actorType: 'teacher',
+            actorId: String(teacherId || ''),
+          });
+          await booking.save({ session });
+        });
+      } catch (txnErr) {
+        if (isTransactionUnsupportedError(txnErr)) {
+          await consumeReservedCreditForBooking(booking, 'Student absent', {
+            actorType: 'teacher',
+            actorId: String(teacherId || ''),
+          });
+          await booking.save();
+        } else {
+          throw txnErr;
+        }
+      } finally {
+        session.endSession();
+      }
+    } else {
+      await consumeReservedCreditForBooking(booking, 'Student absent', {
+        actorType: 'teacher',
+        actorId: String(teacherId || ''),
+      });
+      await booking.save();
+    }
     
     console.log('✅ Student marked as absent successfully');
     
@@ -548,9 +616,16 @@ app.post('/api/booking/:bookingId/mark-student-absent', verifyToken, requireTeac
     
   } catch (error) {
     console.error('❌ Error marking student as absent:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Failed to mark student as absent'
+    const code = String(error && error.code ? error.code : '');
+    if (code === 'NO_CREDITS' || code === 'NO_RESERVED_CREDIT') {
+      return res.status(400).json({
+        success: false,
+        error: 'Student has no available credits for this booking.',
+      });
+    }
+    res.status(500).json({
+      success: false,
+      error: 'Failed to mark student as absent',
     });
   }
 });
@@ -1379,14 +1454,6 @@ app.get('/', (req, res) => {
 
 app.get('/teachers', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/teachers.html'));
-});
-
-app.get('/teacher-login', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/teacher-login.html'));
-});
-
-app.get('/student-login', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/student-login.html'));
 });
 
 app.get('/student-waiting-room', (req, res) => {
@@ -2463,10 +2530,67 @@ async function checkAndMarkAbsentStudents() {
         booking.status = 'absent';
         booking.absentReason = 'Student did not enter classroom within 15 minutes of class start';
         booking.absentMarkedAt = new Date();
-        await consumeReservedCreditForBooking(booking, 'Student absent');
-        
-        await booking.save();
-        console.log(`✅ Student marked as absent for booking ${booking._id}`);
+        try {
+          const useTransactions =
+            String(process.env.USE_TRANSACTIONS || '').toLowerCase() !== 'false';
+
+          function isTransactionUnsupportedError(err) {
+            const msg = String(err && (err.message || err)).toLowerCase();
+            return (
+              msg.includes('transaction numbers are only allowed') ||
+              msg.includes('replica set') ||
+              msg.includes('mongos') ||
+              msg.includes('does not support transactions')
+            );
+          }
+
+          if (useTransactions) {
+            const session = await mongoose.startSession();
+            try {
+              await session.withTransaction(async () => {
+                booking.$session(session);
+                await consumeReservedCreditForBooking(booking, 'Student absent', {
+                  session,
+                  actorType: 'system',
+                  actorId: 'attendance-checker',
+                });
+                await booking.save({ session });
+              });
+            } catch (txnErr) {
+              if (isTransactionUnsupportedError(txnErr)) {
+                await consumeReservedCreditForBooking(booking, 'Student absent', {
+                  actorType: 'system',
+                  actorId: 'attendance-checker',
+                });
+                await booking.save();
+              } else {
+                throw txnErr;
+              }
+            } finally {
+              session.endSession();
+            }
+          } else {
+            await consumeReservedCreditForBooking(booking, 'Student absent', {
+              actorType: 'system',
+              actorId: 'attendance-checker',
+            });
+            await booking.save();
+          }
+
+          console.log(`✅ Student marked as absent for booking ${booking._id}`);
+        } catch (absentErr) {
+          const code = String(absentErr && absentErr.code ? absentErr.code : '');
+          if (code === 'NO_CREDITS' || code === 'NO_RESERVED_CREDIT') {
+            console.warn(
+              `⚠️  Could not consume credit for absent booking ${booking._id}: ${code}`
+            );
+          } else {
+            console.error(
+              `❌ Failed to mark absent + consume credit for booking ${booking._id}:`,
+              absentErr
+            );
+          }
+        }
       }
     }
   } catch (error) {

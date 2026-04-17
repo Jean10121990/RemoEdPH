@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
+    <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+    <title>Login - RemoEdPH</title>
+    <link rel="stylesheet" href="/modern-styles.css" />
+    <style>
+      :root {
+        --primary: #667eea;
+        --primary-dark: #764ba2;
+        --surface: #ffffff;
+        --text: #1e2a4a;
+        --muted: #6b7280;
+        --stroke: #e7eaf3;
+        --bg: #efefff;
+      }
+      body {
+        margin: 0;
+        padding: 24px;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        color: var(--text);
+        background: radial-gradient(circle at top, #f7f7ff, var(--bg));
+      }
+      .login-card {
+        width: min(980px, 100%);
+        display: grid;
+        grid-template-columns: 1.05fr 0.95fr;
+        background: var(--surface);
+        border-radius: 28px;
+        box-shadow: 0 30px 60px rgba(31, 41, 55, 0.18);
+        border: 1px solid rgba(102, 126, 234, 0.1);
+        overflow: hidden;
+      }
+      .panel {
+        padding: 44px 52px;
+      }
+      .visual {
+        background: linear-gradient(135deg, #4c1d95 0%, #312e81 45%, #0f172a 100%);
+        color: #f8fafc;
+        padding: 44px 40px;
+        display: flex;
+        align-items: center;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 18px;
+      }
+      .brand img {
+        height: 44px;
+      }
+      .brand-name {
+        font-weight: 800;
+        color: var(--primary);
+        font-size: 1.4rem;
+        letter-spacing: 0.5px;
+      }
+      .brand-subtitle {
+        font-size: 0.9rem;
+        color: var(--muted);
+      }
+      .title {
+        font-size: 1.9rem;
+        margin: 6px 0 6px;
+        color: var(--text);
+        font-weight: 800;
+      }
+      .subtitle {
+        margin: 0 0 24px;
+        color: var(--muted);
+        font-size: 0.98rem;
+        line-height: 1.55;
+      }
+      .field {
+        margin-bottom: 16px;
+      }
+      label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 700;
+        color: var(--text);
+        font-size: 0.95rem;
+      }
+      input {
+        width: 100%;
+        border: 1px solid var(--stroke);
+        border-radius: 14px;
+        padding: 12px 16px;
+        font-size: 1rem;
+        background: #fbfbff;
+        box-sizing: border-box;
+      }
+      input:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+      }
+      .btn {
+        width: 100%;
+        border: none;
+        border-radius: 14px;
+        padding: 12px 16px;
+        font-weight: 800;
+        font-size: 1rem;
+        color: #fff;
+        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+        cursor: pointer;
+      }
+      .btn:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+      }
+      .status {
+        display: none;
+        border-radius: 12px;
+        padding: 12px;
+        font-weight: 600;
+        margin-bottom: 16px;
+        border: 1px solid #fecaca;
+        background: #fff1f2;
+        color: #b91c1c;
+      }
+      .links {
+        margin-top: 16px;
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .links a {
+        color: var(--primary);
+        font-weight: 700;
+        text-decoration: none;
+      }
+      .visual h3 {
+        margin: 0 0 12px;
+        font-size: 1.6rem;
+        font-weight: 800;
+        color: #ffffff;
+      }
+      .visual p {
+        margin: 0;
+        color: rgba(248, 250, 252, 0.9);
+        line-height: 1.65;
+      }
+      @media (max-width: 900px) {
+        .login-card {
+          grid-template-columns: 1fr;
+        }
+        .visual {
+          display: none;
+        }
+        .panel {
+          padding: 34px 24px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="login-card">
+      <div class="panel">
+        <div class="brand">
+          <img src="/images/remoed-logo-new.png" alt="RemoEdPH" />
+          <div>
+            <div class="brand-name">RemoEdPH</div>
+            <div class="brand-subtitle">Building Confident English Speakers.</div>
+          </div>
+        </div>
+
+        <p class="subtitle">Fill up the necessary details to login to your account.</p>
+
+        <div id="login-error" class="status"></div>
+
+        <form id="unified-login-form" autocomplete="on" novalidate>
+          <div class="field">
+            <label for="email">Email or Username</label>
+            <input id="email" name="email" type="text" placeholder="you@example.com or username" required autofocus />
+          </div>
+          <div class="field">
+            <label for="password">Password</label>
+            <input id="password" name="password" type="password" placeholder="Enter your password" required autocomplete="current-password" />
+          </div>
+          <div class="field" style="display:flex; align-items:center; justify-content:space-between; gap: 12px;">
+            <label style="display:flex; align-items:center; gap:10px; margin: 0; font-weight:700; cursor:pointer;">
+              <input id="remember-me" type="checkbox" style="width:18px; height:18px; margin:0;" />
+              Remember me on this device
+            </label>
+          </div>
+          <button id="login-btn" type="submit" class="btn">Login</button>
+        </form>
+
+        <div class="links">
+          <a href="/forgot-password.html">Forgot password?</a>
+          <a href="/index.html">Back to Home</a>
+        </div>
+      </div>
+
+      <div class="visual">
+        <div>
+          <h3>Welcome to RemoEdPH</h3>
+          <p>Your gateway to AI-powered English learning. Please enter your details to access your personalized dashboard.</p>
+        </div>
+      </div>
+    </div>
+
+    <script src="/login/login.js"></script>
+  </body>
+</html>
+

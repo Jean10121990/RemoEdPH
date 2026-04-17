@@ -676,6 +676,131 @@ router.post('/student-login', authLoginLimiter, async (req, res) => {
   }
 });
 
+/**
+ * Unified login for Student + Teacher.
+ * Strict isolation: does NOT search Admin collection.
+ *
+ * Request: { email, password }
+ * Response (success): { success:true, token, userRole, redirectTo }
+ */
+router.post('/unified-login', authLoginLimiter, async (req, res) => {
+  const { email, password, rememberMe } = req.body || {};
+  const identifierRaw = String(email || '').trim();
+  const identifierLower = identifierRaw.toLowerCase();
+
+  if (!identifierRaw || !password) {
+    return res.status(400).json({ success: false, message: 'Email/username and password are required' });
+  }
+
+  // If an admin email is submitted here, do not reveal anything (admins use separate route).
+  const forcedAdminIdentifier = String(process.env.FORCE_2FA_ADMIN_IDENTIFIER || 'admin@remoedph.com')
+    .trim()
+    .toLowerCase();
+  if (identifierLower === forcedAdminIdentifier) {
+    return res.status(401).json({ success: false, message: 'Invalid email or password' });
+  }
+
+  const esc = identifierRaw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const identRe = new RegExp(`^${esc}$`, 'i');
+
+  try {
+    const expiresIn = rememberMe ? '30d' : '2h';
+
+    // Fast dual-search across separate collections (do not query Admin).
+    const [student, teacher] = await Promise.all([
+      Student.findOne({ $or: [{ email: identRe }, { username: identRe }] }),
+      Teacher.findOne({ $or: [{ email: identRe }, { username: identRe }] }),
+    ]);
+
+    // Prevent ambiguous matches (should not happen; keep response generic).
+    if (student && teacher) {
+      return res.status(401).json({ success: false, message: 'Invalid email or password' });
+    }
+
+    // Not found
+    if (!student && !teacher) {
+      return res.status(401).json({ success: false, message: 'Invalid email or password' });
+    }
+
+    if (teacher) {
+      // Pending / under review teachers: allow flexible status values seen in legacy docs.
+      const st = String(teacher.status || '').toLowerCase();
+      if (teacher.isApproved === false) {
+        return res
+          .status(403)
+          .json({ success: false, message: 'Your teacher account is pending approval' });
+      }
+      if (st && st !== 'active' && st !== 'suspended') {
+        return res
+          .status(403)
+          .json({ success: false, message: 'Your teacher account is currently under review.' });
+      }
+      if (st === 'suspended') {
+        return res.status(403).json({
+          success: false,
+          message: 'Your account has been suspended. Please contact the administrator.',
+        });
+      }
+
+      if (isAccountLocked(teacher)) {
+        return res.status(423).json({ success: false, message: lockoutMessage() });
+      }
+
+      const ok = await bcrypt.compare(String(password), teacher.password);
+      if (!ok) {
+        await applyFailedLogin(teacher);
+        return res.status(401).json({ success: false, message: 'Invalid email or password' });
+      }
+
+      await resetLoginAttempts(teacher);
+      const token = jwt.sign(
+        { userRole: 'teacher', username: teacher.username, teacherId: teacher.teacherId },
+        JWT_SECRET,
+        { expiresIn }
+      );
+      return res.json({
+        success: true,
+        token,
+        userRole: 'teacher',
+        redirectTo: '/teacher/dashboard',
+      });
+    }
+
+    // Student
+    if (student.status === 'suspended') {
+      return res.status(403).json({
+        success: false,
+        message: 'Your account has been suspended. Please contact the administrator.',
+      });
+    }
+    if (isAccountLocked(student)) {
+      return res.status(423).json({ success: false, message: lockoutMessage() });
+    }
+
+    const ok = await bcrypt.compare(String(password), student.password);
+    if (!ok) {
+      await applyFailedLogin(student);
+      return res.status(401).json({ success: false, message: 'Invalid email or password' });
+    }
+
+    await resetLoginAttempts(student);
+    const token = jwt.sign(
+      { userRole: 'student', username: student.username, studentId: student._id },
+      JWT_SECRET,
+      { expiresIn }
+    );
+    return res.json({
+      success: true,
+      token,
+      userRole: 'student',
+      redirectTo: '/student/dashboard',
+    });
+  } catch (err) {
+    console.error('Unified login error:', err);
+    return res.status(500).json({ success: false, message: 'Login failed. Please try again.' });
+  }
+});
+
 // Student registration endpoint
 router.post('/student-register', authRegisterLimiter, async (req, res) => {
   const { username, email, password, referralCode, assessmentTrialToken } = req.body;
@@ -801,7 +926,14 @@ router.post('/student-register', authRegisterLimiter, async (req, res) => {
       await Student.updateOne(
         { _id: student._id },
         {
-          $inc: { creditBalance: 1, totalCreditsEarned: 1 },
+          $inc: {
+            creditBalance: 1,
+            totalCreditsEarned: 1,
+            totalLessonsPurchased: 1,
+            'learningJourneyPurchasedByLevel.nursery': 1,
+            'learningJourneyPurchasedByLevel.kinder': 1,
+            'learningJourneyPurchasedByLevel.prep': 1,
+          },
           $set: trialProfileSet,
           $push: {
             creditTransactions: {

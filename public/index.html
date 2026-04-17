@@ -1,6 +1,44 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <script>
+      /* Index redirect guard — same token rules as /login/login.js (no extra network). Runs before CSS/images. */
+      (function () {
+        try {
+          var tok =
+            localStorage.getItem('remoed_user_token') ||
+            sessionStorage.getItem('remoed_user_token') ||
+            localStorage.getItem('token') ||
+            sessionStorage.getItem('token') ||
+            '';
+          if (!tok) return;
+          var parts = String(tok).split('.');
+          if (parts.length < 2) return;
+          var b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+          var json = decodeURIComponent(
+            atob(b64)
+              .split('')
+              .map(function (c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+              })
+              .join('')
+          );
+          var p = JSON.parse(json);
+          if (!p || !p.exp) return;
+          var now = Math.floor(Date.now() / 1000);
+          if (Number(p.exp) <= now) return;
+          var role = p.userRole ? String(p.userRole) : '';
+          if (role === 'teacher') {
+            window.location.replace('/teacher-dashboard.html');
+            return;
+          }
+          if (role === 'student') {
+            window.location.replace('/student-dashboard.html');
+            return;
+          }
+        } catch (_e) {}
+      })();
+    </script>
     <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
     <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
     <meta charset="UTF-8" />
@@ -46,15 +84,12 @@
         <a href="#assessment" class="nav-btn">Free Assessment</a>
         <a href="#plans" class="nav-btn">Plans</a>
         <a href="/application-form" class="nav-btn">Apply Now</a>
-        <a href="teacher-login.html" class="nav-btn">Teacher Login</a>
+        <a href="/login/" class="nav-btn primary">Login</a>
         <select
           class="site-lang-switcher"
           id="nav-lang-switcher"
           aria-label="Language"
         ></select>
-        <a href="student-login.html" class="nav-btn primary" data-i18n="login_title"
-          >Student Login</a
-        >
       </div>
     </nav>
 
@@ -684,7 +719,7 @@
               planId: selectedPlan,
               description: buildPlanDescription(selectedPlan),
               referralCode: localStorage.getItem("referralCode") || "",
-              success_url: `${window.location.origin}/student-login.html?payment=success&email=${encodeURIComponent(email)}&username=${encodeURIComponent(username)}`,
+              success_url: `${window.location.origin}/login/?payment=success&email=${encodeURIComponent(email)}&username=${encodeURIComponent(username)}`,
               cancel_url: `${window.location.origin}/index.html#plans`,
               usd_total: planAmounts.usdTotal,
               exchange_rate_used: EXCHANGE_RATE_USED,
