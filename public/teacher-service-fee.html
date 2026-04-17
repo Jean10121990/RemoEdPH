@@ -2098,8 +2098,9 @@
       // Initialize all dates in range with 0 counts
       const start = new Date(startDate);
       const end = new Date(endDate);
-      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-        const dateStr = d.toISOString().split('T')[0];
+      const endTime = end.getTime();
+      for (let t = start.getTime(); t <= endTime; t += 24 * 60 * 60 * 1000) {
+        const dateStr = new Date(t).toISOString().split('T')[0];
         dailyStats[dateStr] = {
           total: 0,
           completed: 0
