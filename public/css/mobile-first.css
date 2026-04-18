@@ -109,17 +109,21 @@ canvas {
 }
 
 @media (max-width: 768px) {
-  .remoed-nav-backdrop {
+  /* Lives inside .remoed-main (see portal-layout.js) so it stacks below the drawer nav, above .remoed-content */
+  .remoed-main > .remoed-nav-backdrop {
     display: none;
     position: fixed;
     inset: 0;
-    z-index: 160;
+    z-index: 150;
     background: rgba(15, 23, 42, 0.42);
     backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    pointer-events: none;
   }
 
-  body.remoed-drawer-open .remoed-nav-backdrop {
+  body.remoed-drawer-open .remoed-main > .remoed-nav-backdrop {
     display: block;
+    pointer-events: auto;
   }
 
   .remoed-main {
@@ -135,7 +139,7 @@ canvas {
     flex-shrink: 0;
     position: sticky;
     top: 0;
-    z-index: 120;
+    z-index: 180;
     min-height: 52px;
     padding: 6px 16px;
     padding-left: max(16px, env(safe-area-inset-left));
@@ -154,6 +158,24 @@ canvas {
     overflow: visible;
     position: relative;
     z-index: 0;
+  }
+
+  /* Drawer open: sidebar stack above in-main backdrop + dimmed content */
+  body.remoed-drawer-open .remoed-main > [id$="-sidebar-root"] {
+    z-index: 220;
+  }
+
+  /* Flex items can use z-index without position:relative — avoids breaking layout/sticky inside .remoed-content */
+  body.remoed-drawer-open .remoed-main > .remoed-content {
+    z-index: 10;
+  }
+
+  body.remoed-drawer-open .remoed-main > .nav-header {
+    z-index: 210;
+  }
+
+  body.remoed-drawer-open .remoed-mobile-topbar {
+    z-index: 230;
   }
 
   html body .remoed-main > [id$="-sidebar-root"] > nav.remoed-sidebar {

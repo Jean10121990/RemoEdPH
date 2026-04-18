@@ -103,13 +103,21 @@
         return { label: 'Book Class', href: 'student-book.html' };
     }
 
+    function menuIconWrap(svgHtml) {
+        return '<span class="remoed-menu-icon" aria-hidden="true">' + svgHtml + '</span>';
+    }
+
+    function menuLabelWrap(text) {
+        return '<span class="remoed-menu-label">' + String(text).replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</span>';
+    }
+
     function refreshBookNavItem(container) {
         if (!container) return;
         var li = container.querySelector('li[data-nav="book"]');
         if (!li) return;
         var spec = getBookNavSpec();
         var icon = MENU_ITEMS.filter(function (x) { return x.id === 'book'; })[0].icon;
-        li.innerHTML = icon + spec.label;
+        li.innerHTML = menuIconWrap(icon) + menuLabelWrap(spec.label);
         li.onclick = function () {
             window.location.href = spec.href;
         };
@@ -190,22 +198,28 @@
             var activeClass = (item.id === active && !item.isLogout) ? ' class="active"' : '';
             var idAttr = item.id === 'logout' ? ' id="logout-nav"' : '';
             var dataNav = ' data-nav="' + item.id + '"';
+            var label = item.label;
+            var bookSpec = null;
+            if (item.id === 'book') {
+                bookSpec = getBookNavSpec();
+                label = bookSpec.label;
+            }
+            var inner = menuIconWrap(item.icon) + menuLabelWrap(label);
             if (item.isLogout) {
-                return '<li' + idAttr + activeClass + dataNav + ' data-logout="1">' + item.icon + item.label + '</li>';
+                return '<li' + idAttr + activeClass + dataNav + ' data-logout="1">' + inner + '</li>';
             }
             if (item.id === 'book') {
-                var spec = getBookNavSpec();
-                return '<li' + activeClass + dataNav + ' onclick="window.location.href=\'' + spec.href + '\'">' + item.icon + spec.label + '</li>';
+                return '<li' + activeClass + dataNav + ' onclick="window.location.href=\'' + bookSpec.href + '\'">' + inner + '</li>';
             }
-            return '<li' + activeClass + dataNav + ' onclick="window.location.href=\'' + item.href + '\'">' + item.icon + item.label + '</li>';
+            return '<li' + activeClass + dataNav + ' onclick="window.location.href=\'' + item.href + '\'">' + inner + '</li>';
         }).join('');
 
         container.innerHTML =
             '<nav class="remoed-sidebar">' +
             '  <div class="sidebar-header">' +
-            '    <div class="sidebar-header-inner">' +
-            '      <img class="sidebar-logo-img" src="images/remoed-logo.png" alt="RemoEdPH" onerror="this.src=\'remoed-logo.png\'">' +
-            '      <div>' +
+            '    <div class="sidebar-header-inner logo-container logo-section">' +
+            '      <img class="sidebar-logo-img sidebar-logo" src="images/remoed-logo.png" alt="RemoEdPH" onerror="this.src=\'remoed-logo.png\'">' +
+            '      <div class="sidebar-brand">' +
             '        <div class="sidebar-title">RemoEdPH</div>' +
             '        <div class="sidebar-subtitle">Student Portal</div>' +
             '      </div>' +
@@ -291,8 +305,14 @@
         if (document.getElementById('student-no-motion-style')) return;
         var style = document.createElement('style');
         style.id = 'student-no-motion-style';
+        /* Do not target nav.remoed-sidebar itself — mobile drawer uses transform transition (mobile-first.css). */
         style.textContent = [
-            '.student-portal .remoed-sidebar, .student-portal .remoed-sidebar * {',
+            '.student-portal .remoed-sidebar .sidebar-header,',
+            '.student-portal .remoed-sidebar .sidebar-header *,',
+            '.student-portal .remoed-sidebar .sidebar-user,',
+            '.student-portal .remoed-sidebar .sidebar-user *,',
+            '.student-portal .remoed-sidebar .remoed-menu li,',
+            '.student-portal .remoed-sidebar .remoed-menu li * {',
             '  animation: none !important;',
             '  transition: none !important;',
             '}',

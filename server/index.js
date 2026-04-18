@@ -13,7 +13,7 @@ const { db, connectDB } = require('./db');
 // Import route files
 const authRoutes = require('./auth');
 const teacherRoutes = require('./teacher');
-const studentRoutes = require('./student');
+const studentRoutes = require('./routes/studentRoutes');
 const adminRoutes = require('./admin');
 const adminPortalVideoRoutes = require('./adminPortalVideoRoutes');
 const paymentRoutes = require('./payments');
@@ -39,6 +39,7 @@ const jwt = require('jsonwebtoken');
 const { isTokenBlacklisted } = require('./services/jwtBlacklist');
 const SOCKET_AUTH_JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
 const { getClassroomEntryGate, EARLY_ENTRY_MINUTES } = require('./services/classroomEntryWindow');
+const { primeRedisConnection } = require('./utils/redisClient');
 
 const app = express();
 // Reduce fingerprinting: hide Express signature header.
@@ -438,6 +439,7 @@ if (fs.existsSync(clientIndex)) {
 const publicDir = path.join(__dirname, '../public');
 const protectedHtmlFiles = new Set([
   'student-dashboard.html',
+  'student-booking-history.html',
   'teacher-dashboard.html',
   'student-profile.html',
   'student-learning-journey.html',
@@ -2784,6 +2786,9 @@ const startServer = () => {
       console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
       console.log(`🔗 API base: http://localhost:${PORT}/api`);
       console.log(`🔌 Socket.IO signaling server running on 0.0.0.0:${PORT}`);
+
+      // Redis: connect in background — never block listen; cache paths use getRedis() with fast timeouts.
+      primeRedisConnection();
       
       // Now that server is listening, do other initialization
       // Verify Cloudmersive API key configuration

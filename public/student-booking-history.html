@@ -12,6 +12,7 @@
 <link rel="stylesheet" href="css/teacher-sidebar.css">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="css/student-portal-layout.css">
+    <link rel="stylesheet" href="css/student-sidebar.css">
     <script src="js/user-session.js"></script>
 </head>
 <body  class="student-portal page-student-booking-history">
@@ -60,14 +61,48 @@
         </div>
     </div>
 
-         <script src="https://cdn.jsdelivr.net/npm/luxon@3.5.0/build/global/luxon.min.js"></script>
+         <!-- Same-origin Luxon avoids Brave/Edge tracking-prevention blocking third-party CDNs -->
+         <script src="/vendor/luxon.min.js"></script>
          <script src="timezone-utils.js"></script>
          <script>
-         // Role-based access control
-         const userType = localStorage.getItem('userType');
+         function safeStorageGet(key) {
+             try {
+                 return localStorage.getItem(key);
+             } catch (_e) {
+                 return null;
+             }
+         }
+
+         // Role-based access control (storage may throw under strict tracking prevention)
+         var userType = '';
+         try {
+             userType = (localStorage.getItem('userType') || localStorage.getItem('userRole') || '').trim();
+         } catch (_e) {
+             userType = '';
+         }
          if (userType !== 'student') {
-           alert('Access denied. This page is for students only.');
+           alert('Access denied. This page is for students only. If your browser blocks storage, allow site data for this site or try another browser.');
            window.location.href = 'index.html';
+         }
+
+         function getStudentAuthToken() {
+             try {
+                 if (typeof RemoedUserSession !== 'undefined' && RemoedUserSession.getUserToken) {
+                     var t = RemoedUserSession.getUserToken();
+                     if (t) return t;
+                 }
+             } catch (_e) {}
+             try {
+                 return (
+                     localStorage.getItem('remoed_student_token') ||
+                     localStorage.getItem('remoed_student_auth') ||
+                     localStorage.getItem('token') ||
+                     localStorage.getItem('remoed_user_token') ||
+                     ''
+                 );
+             } catch (_e) {
+                 return '';
+             }
          }
          
          let allBookings = [];
@@ -75,8 +110,8 @@
 
          // Load booking history on page load
          document.addEventListener('DOMContentLoaded', function() {
-             const username = localStorage.getItem('remoedUsername');
-             const studentId = localStorage.getItem('studentId');
+             const username = safeStorageGet('remoedUsername');
+             const studentId = safeStorageGet('studentId');
              
              if (username) {
                  document.getElementById('remoed-username').textContent = username;
@@ -89,7 +124,7 @@
              }
              
              document.getElementById('logout-nav').onclick = function() {
-                 localStorage.clear();
+                 try { localStorage.clear(); } catch (_e) {}
                  window.location.href = 'student-login.html';
              };
              
@@ -97,85 +132,44 @@
              setupFilterTabs();
          });
 
-        // Helper function to get Monday of a week
-        function getWeekStart(date) {
-            const d = new Date(date);
-            const day = d.getDay();
-            const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
-            const monday = new Date(d.setDate(diff));
-            return monday.getFullYear() + '-' + 
-                   String(monday.getMonth() + 1).padStart(2, '0') + '-' + 
-                   String(monday.getDate()).padStart(2, '0');
-        }
-        
-        // Load booking history from API
+        // Load booking history from API (single round-trip; server batch-loads teachers + feedback)
         async function loadBookingHistory() {
             try {
-                const token = localStorage.getItem('token');
+                const token = getStudentAuthToken();
                 if (!token) {
                     console.error('No authentication token found');
                     showError('Please log in to view your booking history');
                     return;
                 }
 
-                // Fetch bookings for multiple weeks to get all history
-                // Get bookings from the past 6 months
-                const allBookingsData = [];
-                const today = new Date();
-                const weeksToFetch = 26; // 6 months = ~26 weeks
-                
-                // Fetch bookings in parallel batches to speed up loading
-                const fetchPromises = [];
-                for (let i = 0; i < weeksToFetch; i++) {
-                    const weekDate = new Date(today);
-                    weekDate.setDate(today.getDate() - (i * 7));
-                    const weekString = getWeekStart(weekDate);
-                    
-                    fetchPromises.push(
-                        fetch(`/api/student/bookings?week=${weekString}`, {
-                            method: 'GET',
-                            headers: {
-                                'Authorization': `Bearer ${token}`,
-                                'Content-Type': 'application/json',
-                                'Cache-Control': 'no-cache',
-                                'Pragma': 'no-cache'
-                            }
-                        }).then(async response => {
-                            if (response.ok) {
-                                const data = await response.json();
-                                return data.bookings || [];
-                            }
-                            return [];
-                        }).catch(err => {
-                            console.log(`Skipping week ${weekString}:`, err.message);
-                            return [];
-                        })
-                    );
+                var BOOKING_HISTORY_WEEKS = 26;
+                var qs = new URLSearchParams();
+                qs.set('weeks', String(BOOKING_HISTORY_WEEKS));
+                var historyUrl = '/api/student/bookings/history?' + qs.toString();
+
+                const response = await fetch(historyUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                        'Cache-Control': 'no-cache',
+                        'Pragma': 'no-cache'
+                    }
+                });
+
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        showError('Booking history service not found (404). Ensure the server is updated and you open this site from the same origin as the API.');
+                    } else {
+                        showError('Could not load booking history (HTTP ' + response.status + '). Please try again.');
+                    }
+                    return;
                 }
-                
-                // Wait for all requests to complete
-                const results = await Promise.all(fetchPromises);
-                results.forEach(bookings => {
-                    if (bookings && bookings.length > 0) {
-                        allBookingsData.push(...bookings);
-                    }
-                });
-                
-                console.log('📋 Total bookings loaded:', allBookingsData.length);
-                allBookings = allBookingsData;
-                
-                // Remove duplicates based on _id
-                const uniqueBookings = [];
-                const seenIds = new Set();
-                allBookings.forEach(booking => {
-                    if (booking._id && !seenIds.has(booking._id.toString())) {
-                        seenIds.add(booking._id.toString());
-                        uniqueBookings.push(booking);
-                    }
-                });
-                allBookings = uniqueBookings;
-                
-                console.log('📋 Unique bookings after deduplication:', allBookings.length);
+
+                const data = await response.json();
+                allBookings = Array.isArray(data.bookings) ? data.bookings : [];
+
+                console.log('📋 Bookings loaded:', allBookings.length);
                 displayBookings(allBookings);
                 updateBookingCount(allBookings.length);
             } catch (error) {
@@ -486,7 +480,7 @@
             }
             
             try {
-                const token = localStorage.getItem('token');
+                const token = getStudentAuthToken();
                 const response = await fetch(`/api/student/booking/${bookingId}/request-cancellation`, {
                     method: 'POST',
                     headers: {
@@ -528,13 +522,13 @@
          // Load profile picture from backend
          async function loadProfilePicture(studentId) {
              try {
-                 const token = localStorage.getItem('token');
+                 const token = getStudentAuthToken();
                  if (!token) {
                      console.log('🔍 No token found for profile picture');
                      return;
                  }
                  
-                 const username = localStorage.getItem('remoedUsername') || 'Student';
+                 const username = safeStorageGet('remoedUsername') || 'Student';
                  console.log('🔍 Loading profile picture for studentId:', studentId);
                  console.log('🔍 Username from localStorage:', username);
                  

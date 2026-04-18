@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="js/security-guard.js?v=1"></script>
+    <script src="js/user-session.js"></script>
     <title>👤 My Profile - RemoEdPH</title>
     <link rel="stylesheet" href="modern-styles.css">
     <link rel="stylesheet" href="child-friendly-styles.css">
@@ -23,8 +24,8 @@
         .remoed-content { 
             flex: 1; 
             padding: 24px 32px; 
-            margin-left: 260px;
-            max-width: calc(100vw - 260px);
+            margin-left: 280px;
+            max-width: calc(100vw - 280px);
             background: #F0F2F5;
         }
         
@@ -578,6 +579,7 @@
     </style>
     <link rel="stylesheet" href="css/teacher-sidebar.css">
     <link rel="stylesheet" href="css/student-portal-layout.css">
+    <link rel="stylesheet" href="css/student-sidebar.css">
 </head>
 <body class="student-portal page-student-profile">
     <div class="remoed-main">
@@ -853,6 +855,23 @@
 
     <script src="avatar-helper.js"></script>
     <script>
+        /** Bearer for /api/student/* — aligns with remoed_student_auth / remoed_student_token from login. */
+        function getStudentAuthToken() {
+            try {
+                if (typeof RemoedUserSession !== 'undefined' && RemoedUserSession.getUserToken) {
+                    var t = RemoedUserSession.getUserToken();
+                    if (t) return t;
+                }
+            } catch (_e) {}
+            return (
+                localStorage.getItem('remoed_student_token') ||
+                localStorage.getItem('remoed_student_auth') ||
+                localStorage.getItem('token') ||
+                localStorage.getItem('remoed_user_token') ||
+                ''
+            );
+        }
+
         // Role-based access control
         const userType = localStorage.getItem('userType');
         if (userType !== 'student') {
@@ -897,7 +916,7 @@
     // Load profile picture from backend (uses shared setAvatar)
     async function loadProfilePicture(studentId) {
         try {
-            const token = localStorage.getItem('token');
+            const token = getStudentAuthToken();
             if (!token) {
                 console.log('🔍 No token found for profile picture');
                 return;
@@ -1105,10 +1124,10 @@
 
                 async function loadProfile() {
             try {
-                const token = localStorage.getItem('token');
+                const token = getStudentAuthToken();
                 const username = localStorage.getItem('remoedUsername') || 'Student';
                 const studentId = localStorage.getItem('studentId');
-                
+
                 console.log('🔍 Loading profile with token:', token ? 'Token exists' : 'No token');
                 console.log('🔍 Username from localStorage:', username);
                 console.log('🔍 Student ID from localStorage:', studentId);
@@ -1417,7 +1436,7 @@
 
             try {
                 // Get token from localStorage
-                const token = localStorage.getItem('token');
+                const token = getStudentAuthToken();
                 if (!token) {
                     throw new Error('No authentication token found. Please login again.');
                 }
@@ -1550,7 +1569,7 @@
 
         async function uploadFile(file, documentType) {
             try {
-                const token = localStorage.getItem('token');
+                const token = getStudentAuthToken();
                 const reader = new FileReader();
                 reader.onload = async function(e) {
                     const fileData = {
@@ -1690,7 +1709,7 @@
             }
             
             try {
-                const token = localStorage.getItem('token');
+                const token = getStudentAuthToken();
                 const settingsData = {
                     newEmail: newEmail || undefined,
                     newUsername: newUsername || undefined,
@@ -1791,7 +1810,7 @@
         // Debug function to test API connection
         async function testApiConnection() {
             console.log('🔍 Testing API connection...');
-            const token = localStorage.getItem('token');
+            const token = getStudentAuthToken();
             const studentId = localStorage.getItem('studentId');
             const username = localStorage.getItem('remoedUsername');
             

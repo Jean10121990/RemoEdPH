@@ -1,0 +1,164 @@
+/**
+ * Student portal sidebar — horizontal logo + brand (logo-section), z-index for visibility.
+ * Load after css/student-portal-layout.css. Scoped with body.student-portal.
+ */
+
+body.student-portal .remoed-sidebar .sidebar-header {
+  display: flex;
+  justify-content: flex-start;
+  align-items: stretch;
+  width: 100%;
+  box-sizing: border-box;
+  height: auto;
+  min-height: 0;
+  overflow: visible;
+  background-color: #ffffff;
+  padding: 0;
+}
+
+/* Step 1 + 4: horizontal row, top padding below hamburger, stacking context */
+body.student-portal .remoed-sidebar .logo-section,
+body.student-portal .remoed-sidebar .sidebar-header-inner.logo-container.logo-section {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+  margin: 0;
+  text-align: left;
+  position: relative;
+  z-index: 10;
+  padding: 50px 15px 20px 20px;
+}
+
+/* Brand text: full width of row, one line, no ellipsis (sidebar width 280px in portal layout). */
+body.student-portal .remoed-sidebar .sidebar-brand {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: unset;
+  text-align: left;
+  margin: 0;
+}
+
+body.student-portal .remoed-sidebar .sidebar-brand .sidebar-title,
+body.student-portal .remoed-sidebar .sidebar-brand .sidebar-subtitle {
+  display: inline;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  margin: 0;
+  text-align: left;
+}
+
+body.student-portal .remoed-sidebar .sidebar-brand .sidebar-subtitle::before {
+  content: " ";
+}
+
+/* Step 2: logo */
+body.student-portal .remoed-sidebar .sidebar-logo-img,
+body.student-portal .remoed-sidebar .sidebar-logo {
+  width: 40px;
+  height: auto;
+  max-height: 40px;
+  display: block;
+  margin: 0;
+  margin-right: 10px;
+  flex-shrink: 0;
+  object-fit: contain;
+  object-position: center center;
+}
+
+body.student-portal .remoed-sidebar .sidebar-user {
+  text-align: left;
+  box-sizing: border-box;
+  padding: 16px 20px 16px 25px;
+}
+
+body.student-portal .remoed-sidebar .sidebar-user-inner {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  margin-left: 0;
+  text-align: left;
+}
+
+body.student-portal .remoed-sidebar .remoed-username {
+  text-align: left;
+  margin-left: 0;
+}
+
+@media (max-width: 768px) {
+  html body.student-portal .remoed-main > [id$="-sidebar-root"] > nav.remoed-sidebar {
+    width: min(88vw, 280px) !important;
+    max-width: 280px !important;
+  }
+
+  body.student-portal .remoed-sidebar .logo-section,
+  body.student-portal .remoed-sidebar .sidebar-header-inner.logo-container.logo-section {
+    padding: 50px 15px 20px 20px;
+    flex-direction: row;
+    align-items: center;
+    position: relative;
+    z-index: 10;
+  }
+
+  body.student-portal .remoed-sidebar .sidebar-logo-img,
+  body.student-portal .remoed-sidebar .sidebar-logo {
+    width: 40px;
+    height: auto;
+    max-height: 40px;
+    margin-right: 10px;
+    flex-shrink: 0;
+    object-fit: contain;
+    object-position: center center;
+  }
+}
+
+/* Tablet: full 280px rail (student-portal-layout) — same horizontal header as desktop */
+@media (min-width: 769px) and (max-width: 1024px) {
+  body.student-portal .remoed-sidebar .logo-section,
+  body.student-portal .remoed-sidebar .sidebar-header-inner.logo-container.logo-section {
+    padding: 50px 15px 18px 20px;
+    justify-content: flex-start;
+    align-items: center;
+  }
+
+  body.student-portal .remoed-sidebar .sidebar-brand {
+    width: 100%;
+    max-width: 100%;
+    overflow: visible;
+    text-overflow: unset;
+    white-space: nowrap;
+  }
+
+  body.student-portal .remoed-sidebar .sidebar-logo-img,
+  body.student-portal .remoed-sidebar .sidebar-logo {
+    width: 40px;
+    max-height: 40px;
+    height: auto !important;
+    margin-right: 10px !important;
+    object-fit: contain;
+    object-position: center center;
+  }
+
+  body.student-portal .remoed-sidebar .sidebar-user {
+    padding: 16px 20px 16px 20px;
+  }
+
+  body.student-portal .remoed-sidebar .sidebar-user-inner {
+    justify-content: flex-start !important;
+  }
+}

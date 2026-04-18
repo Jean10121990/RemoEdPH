@@ -6,8 +6,8 @@
 if (typeof window !== 'undefined' && !window.luxon) {
   console.error(
     '[RemoEd timezone-utils] window.luxon is missing. Load the Luxon global script before timezone-utils.js ' +
-      '(e.g. https://cdn.jsdelivr.net/npm/luxon@3.5.0/build/global/luxon.min.js). ' +
-      'If you see this after a deploy, the CDN may be blocked or the script order is wrong.'
+      '(e.g. /vendor/luxon.min.js — same-origin avoids tracking-prevention blocking CDNs). ' +
+      'If you see this after a deploy, check script order or blocked scripts.'
   );
 }
 

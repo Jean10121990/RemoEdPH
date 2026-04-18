@@ -48,7 +48,7 @@
     "pdf-poppler": "^0.2.1",
     "pdf2pic": "^3.2.0",
     "qrcode": "^1.5.4",
-    "redis": "^4.7.0",
+    "redis": "^4.7.1",
     "socket.io": "^4.8.1"
   },
   "devDependencies": {

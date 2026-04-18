@@ -3,9 +3,11 @@
  * Key: teacher:slots:{teacherId} — value JSON { week, allSlotsFlag, tz, payload } with 300s TTL.
  * (Legacy key slots:{...} is deleted on invalidate for one-time cleanup.)
  */
-const { getRedis } = require('../utils/redisClient');
+const { withRedis } = require('../utils/redisClient');
 
 const TTL_SEC = 300;
+/** Skip Redis SET when serialized value exceeds this — stringify + network can exceed DB read cost. */
+const MAX_CACHE_VALUE_BYTES = Number(process.env.REDIS_SLOTS_CACHE_MAX_BYTES || 384 * 1024);
 
 function cacheKey(teacherId) {
   const tid = String(teacherId || '').trim();
@@ -21,14 +23,7 @@ function legacySlotsCacheKey(teacherId) {
  * @returns {Promise<{ slots: any[], bookings: any[] } | null>}
  */
 async function readTeacherSlotsCache(teacherId, week, allSlotsFlag, tz) {
-  const r = await getRedis();
-  if (!r) return null;
-  let raw;
-  try {
-    raw = await r.get(cacheKey(teacherId));
-  } catch (e) {
-    return null;
-  }
+  const raw = await withRedis((r) => r.get(cacheKey(teacherId)));
   if (!raw) return null;
   try {
     const o = JSON.parse(raw);
@@ -48,30 +43,33 @@ async function readTeacherSlotsCache(teacherId, week, allSlotsFlag, tz) {
  * @param {object} payload — { slots, bookings }
  */
 async function writeTeacherSlotsCache(teacherId, week, allSlotsFlag, tz, payload) {
-  const r = await getRedis();
-  if (!r) return;
-  const body = JSON.stringify({
+  // Single compact JSON object (no pretty-print) — smallest stringify for Redis value size.
+  const envelope = {
     week: String(week),
     allSlotsFlag: Boolean(allSlotsFlag),
     tz: tz == null ? '' : String(tz),
     payload,
-  });
+  };
+  let body;
   try {
-    await r.set(cacheKey(teacherId), body, { EX: TTL_SEC });
+    body = JSON.stringify(envelope);
   } catch (_e) {
-    /* ignore */
+    return;
   }
+  if (typeof body === 'string' && Buffer.byteLength(body, 'utf8') > MAX_CACHE_VALUE_BYTES) {
+    return;
+  }
+  const key = cacheKey(teacherId);
+  await withRedis((r) => r.set(key, body, { EX: TTL_SEC }));
 }
 
 async function invalidateSlotsCache(teacherId) {
-  const r = await getRedis();
-  if (!r) return;
-  try {
-    await r.del(cacheKey(teacherId));
-    await r.del(legacySlotsCacheKey(teacherId));
-  } catch (_e) {
-    /* ignore */
-  }
+  const k1 = cacheKey(teacherId);
+  const k2 = legacySlotsCacheKey(teacherId);
+  await withRedis(async (r) => {
+    await r.del(k1);
+    await r.del(k2);
+  });
 }
 
 module.exports = {

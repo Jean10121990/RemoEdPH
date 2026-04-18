@@ -5,7 +5,7 @@
  * - student:profile:${studentId}
  * - teacher:slots:${teacherId} — implemented in services/slotsRedisCache.js (same string shape)
  */
-const { getRedis } = require('./utils/redisClient');
+const { withRedis } = require('./utils/redisClient');
 
 const PROFILE_TTL_SEC = 120;
 
@@ -18,39 +18,43 @@ function teacherSlotsCacheKey(teacherId) {
 }
 
 async function getStudentProfileFromCache(studentId) {
-  const r = await getRedis();
-  if (!r) return null;
-  let raw;
   try {
-    raw = await r.get(studentProfileCacheKey(studentId));
-  } catch (_e) {
-    return null;
-  }
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw);
-  } catch (_e) {
+    const key = studentProfileCacheKey(studentId);
+    const raw = await withRedis((r) => r.get(key));
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw);
+    } catch (_e) {
+      return null;
+    }
+  } catch (e) {
+    console.warn('[studentController] Redis unavailable for profile cache read:', e.message || e);
     return null;
   }
 }
 
 async function setStudentProfileCache(studentId, body) {
-  const r = await getRedis();
-  if (!r) return;
   try {
-    await r.set(studentProfileCacheKey(studentId), JSON.stringify(body), { EX: PROFILE_TTL_SEC });
-  } catch (_e) {
-    /* ignore */
+    let payload;
+    try {
+      payload = JSON.stringify(body);
+    } catch (e) {
+      console.warn('[studentController] profile cache skip (not serializable):', e.message || e);
+      return;
+    }
+    const key = studentProfileCacheKey(studentId);
+    await withRedis((r) => r.set(key, payload, { EX: PROFILE_TTL_SEC }));
+  } catch (e) {
+    console.warn('[studentController] Redis unavailable for profile cache write:', e.message || e);
   }
 }
 
 async function invalidateStudentProfileCache(studentId) {
-  const r = await getRedis();
-  if (!r) return;
   try {
-    await r.del(studentProfileCacheKey(studentId));
-  } catch (_e) {
-    /* ignore */
+    const key = studentProfileCacheKey(studentId);
+    await withRedis((r) => r.del(key));
+  } catch (e) {
+    console.warn('[studentController] Redis unavailable for profile cache invalidate:', e.message || e);
   }
 }
 

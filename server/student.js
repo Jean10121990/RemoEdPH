@@ -531,21 +531,140 @@ router.get('/cancellation-requests', verifyToken, requireStudent, async (req, re
   }
 });
 
+function collectStudentIdentifiers(req) {
+  const ids = [];
+  if (req.student && req.student.username) ids.push(req.student.username);
+  if (req.student && req.student.email) ids.push(req.student.email);
+  if (req.student && req.student._id) ids.push(String(req.student._id));
+  if (req.user && req.user.username) ids.push(req.user.username);
+  if (req.user && req.user.studentId) ids.push(String(req.user.studentId));
+  return [...new Set(ids.filter(Boolean))];
+}
+
+function formatLocalYMD(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/** Accepts clean integers; ignores junk like "26:1" or repeated query params. */
+function parseHistoryWeeksParam(raw, fallback = 26) {
+  const first = Array.isArray(raw) ? raw[0] : raw;
+  if (first == null || first === '') return fallback;
+  const m = String(first).trim().match(/^\s*(\d+)/);
+  if (!m) return fallback;
+  const n = parseInt(m[1], 10);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(104, Math.max(1, n));
+}
+
+/**
+ * Batch-load Teacher + teacher→student Feedback for a booking list (avoids N+1 queries per row).
+ */
+async function enrichStudentBookingsWithTeachersAndFeedback(bookings, uniqueIdentifiers) {
+  if (!bookings || bookings.length === 0) return [];
+
+  const bookingObjs = bookings.map((b) => (b && typeof b.toObject === 'function' ? b.toObject() : { ...b }));
+  const logicalTeacherIds = [...new Set(bookingObjs.map((b) => b.teacherId).filter(Boolean))];
+
+  const teachers =
+    logicalTeacherIds.length > 0
+      ? await Teacher.find({ teacherId: { $in: logicalTeacherIds } }).lean()
+      : [];
+  const teacherByTid = new Map(teachers.map((t) => [t.teacherId, t]));
+
+  const bookingIdStrs = bookingObjs.map((b) => String(b._id));
+  const feedbackDocs =
+    bookingIdStrs.length > 0
+      ? await Feedback.find({
+          bookingId: { $in: bookingIdStrs },
+          studentId: { $in: uniqueIdentifiers },
+          $or: [{ feedbackRole: 'teacher_to_student' }, { feedbackRole: { $exists: false } }],
+        }).lean()
+      : [];
+
+  const feedbackKey = (bid, tid) => `${String(bid)}|${String(tid)}`;
+  const feedbackMap = new Map();
+  for (const f of feedbackDocs) {
+    feedbackMap.set(feedbackKey(f.bookingId, f.teacherId), f);
+  }
+
+  return bookingObjs.map((bookingObj) => {
+    const logicalTeacherId = bookingObj.teacherId;
+    const teacher = logicalTeacherId ? teacherByTid.get(logicalTeacherId) : null;
+    const bookingIdStr = String(bookingObj._id);
+    const teacherFeedbackDoc = feedbackMap.get(feedbackKey(bookingIdStr, logicalTeacherId));
+
+    let teacherFeedback = null;
+    if (teacherFeedbackDoc) {
+      teacherFeedback = {
+        rating: teacherFeedbackDoc.rating,
+        comment: teacherFeedbackDoc.comment || '',
+        submittedAt: teacherFeedbackDoc.submittedAt,
+      };
+    }
+
+    return {
+      ...bookingObj,
+      teacherLogicalId: logicalTeacherId,
+      teacherFeedback,
+      teacherId: teacher
+        ? {
+            _id: teacher._id,
+            teacherId: teacher.teacherId,
+            username: teacher.username,
+            firstName: teacher.firstName,
+            lastName: teacher.lastName,
+            photo: teacher.photo,
+            intro: teacher.intro,
+          }
+        : null,
+    };
+  });
+}
+
+// One query + batch enrichment for booking history page (replaces many /bookings?week= calls).
+router.get('/bookings/history', verifyToken, requireStudent, async (req, res) => {
+  try {
+    const uniqueIdentifiers = collectStudentIdentifiers(req);
+    if (uniqueIdentifiers.length === 0) {
+      return res.status(400).json({ error: 'Student identifier missing' });
+    }
+
+    const weeks = parseHistoryWeeksParam(req.query.weeks, 26);
+    const today = new Date();
+    const start = new Date(today);
+    start.setDate(today.getDate() - weeks * 7);
+    const dateFrom = formatLocalYMD(start);
+    const end = new Date(today);
+    end.setDate(today.getDate() + 14);
+    const dateTo = formatLocalYMD(end);
+
+    const bookings = await Booking.find({
+      studentId: { $in: uniqueIdentifiers },
+      date: { $gte: dateFrom, $lte: dateTo },
+    })
+      .sort({ date: -1, time: -1 })
+      .lean();
+
+    const bookingsWithTeacherInfo = await enrichStudentBookingsWithTeachersAndFeedback(
+      bookings,
+      uniqueIdentifiers
+    );
+    res.json({ bookings: bookingsWithTeacherInfo });
+  } catch (err) {
+    console.error('❌ Error fetching student bookings history:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Get student bookings for a week
 router.get('/bookings', verifyToken, requireStudent, async (req, res) => {
   try {
     const { week } = req.query;
-    const studentIdentifiers = [];
-    if (req.student && req.student.username) {
-      studentIdentifiers.push(req.student.username);
-    }
-    if (req.student && req.student.email) {
-      studentIdentifiers.push(req.student.email);
-    }
-    if (req.user && req.user.username) {
-      studentIdentifiers.push(req.user.username);
-    }
-    const uniqueIdentifiers = [...new Set(studentIdentifiers)];
+    console.log('Fetching bookings for:', req.user.id);
+    const uniqueIdentifiers = collectStudentIdentifiers(req);
 
     if (uniqueIdentifiers.length === 0) {
       console.log('❌ No student identifiers available for bookings query', { user: req.user });
@@ -553,7 +672,7 @@ router.get('/bookings', verifyToken, requireStudent, async (req, res) => {
     }
 
     const studentIdentifierForLog = uniqueIdentifiers[0];
-    
+
     if (!week) {
       return res.status(400).json({ error: 'Missing week parameter' });
     }
@@ -564,99 +683,60 @@ router.get('/bookings', verifyToken, requireStudent, async (req, res) => {
     const end = new Date(start);
     end.setDate(start.getDate() + 7);
     // Format end date as YYYY-MM-DD (use local date to avoid timezone issues)
-    const endDateString = end.getFullYear() + '-' + 
-                         String(end.getMonth() + 1).padStart(2, '0') + '-' + 
-                         String(end.getDate()).padStart(2, '0');
+    const endDateString =
+      end.getFullYear() +
+      '-' +
+      String(end.getMonth() + 1).padStart(2, '0') +
+      '-' +
+      String(end.getDate()).padStart(2, '0');
 
     console.log(`🔍 Looking for bookings for student identifiers: ${uniqueIdentifiers.join(', ')} in week: ${week}`);
     console.log(`🔍 Date range: ${week} to ${endDateString} (exclusive)`);
-    console.log(`🔍 Student from req.student:`, req.student ? { username: req.student.username, email: req.student.email, _id: req.student._id } : 'null');
-    console.log(`🔍 User from token:`, req.user ? { username: req.user.username, studentId: req.user.studentId } : 'null');
+    console.log(
+      `🔍 Student from req.student:`,
+      req.student ? { username: req.student.username, email: req.student.email, _id: req.student._id } : 'null'
+    );
+    console.log(
+      `🔍 User from token:`,
+      req.user ? { username: req.user.username, studentId: req.user.studentId } : 'null'
+    );
 
     const bookings = await Booking.find({
       studentId: { $in: uniqueIdentifiers },
       date: { $gte: week, $lt: endDateString },
-      status: { $ne: 'cancelled' }
-    });
-    
+      status: { $ne: 'cancelled' },
+    }).lean();
+
     console.log(`🔍 Raw bookings query result count: ${bookings.length}`);
     if (bookings.length > 0) {
-      console.log(`🔍 Sample booking studentId: ${bookings[0].studentId}, date: ${bookings[0].date}, time: ${bookings[0].time}`);
+      console.log(
+        `🔍 Sample booking studentId: ${bookings[0].studentId}, date: ${bookings[0].date}, time: ${bookings[0].time}`
+      );
     }
 
-    // Get teacher information + teacher→student feedback per booking
-    const bookingsWithTeacherInfo = await Promise.all(
-      bookings.map(async (booking) => {
-        const bookingObj = booking.toObject();
-        const logicalTeacherId = bookingObj.teacherId;
-
-        const Teacher = require('./models/Teacher');
-        const teacher = await Teacher.findOne({ teacherId: logicalTeacherId });
-
-        const bookingIdStr = String(bookingObj._id);
-        // Teacher→student feedback uses student username/email on the document, not Mongo _id
-        // (student→teacher feedback uses studentId = ObjectId and would wrongly match if included).
-        const teacherFeedbackDoc = await Feedback.findOne({
-          bookingId: bookingIdStr,
-          teacherId: logicalTeacherId,
-          studentId: { $in: uniqueIdentifiers },
-          $or: [
-            { feedbackRole: 'teacher_to_student' },
-            { feedbackRole: { $exists: false } },
-          ],
-        }).lean();
-
-        let teacherFeedback = null;
-        if (teacherFeedbackDoc) {
-          teacherFeedback = {
-            rating: teacherFeedbackDoc.rating,
-            comment: teacherFeedbackDoc.comment || '',
-            submittedAt: teacherFeedbackDoc.submittedAt,
-          };
-        }
-
-        return {
-          ...bookingObj,
-          teacherLogicalId: logicalTeacherId,
-          teacherFeedback,
-          teacherId: teacher
-            ? {
-                _id: teacher._id,
-                teacherId: teacher.teacherId,
-                username: teacher.username,
-                firstName: teacher.firstName,
-                lastName: teacher.lastName,
-                photo: teacher.photo,
-                intro: teacher.intro,
-              }
-            : null,
-        };
-      })
+    const bookingsWithTeacherInfo = await enrichStudentBookingsWithTeachersAndFeedback(
+      bookings,
+      uniqueIdentifiers
     );
 
     console.log(`✅ Found ${bookingsWithTeacherInfo.length} bookings for student ${studentIdentifierForLog} in week ${week}`);
-    console.log('🔍 Bookings found:', bookingsWithTeacherInfo.map(b => ({
-      id: b._id,
-      date: b.date,
-      time: b.time,
-      studentId: b.studentId,
-      teacherId: b.teacherId
-    })));
-    
+    console.log(
+      '🔍 Bookings found:',
+      bookingsWithTeacherInfo.map((b) => ({
+        id: b._id,
+        date: b.date,
+        time: b.time,
+        studentId: b.studentId,
+        teacherId: b.teacherId,
+      }))
+    );
+
     res.json({ bookings: bookingsWithTeacherInfo });
   } catch (err) {
     console.error('❌ Error fetching student bookings:', err);
     res.status(500).json({ error: err.message });
   }
 });
-
-function collectStudentIdentifiers(req) {
-  const ids = [];
-  if (req.student && req.student.username) ids.push(req.student.username);
-  if (req.student && req.student.email) ids.push(req.student.email);
-  if (req.user && req.user.username) ids.push(req.user.username);
-  return [...new Set(ids.filter(Boolean))];
-}
 
 /** Maps DB / UI level strings to progress sidebar keys: nursery | kinder | prep */
 function normalizeProgressLevel(raw) {

@@ -144,7 +144,7 @@
         .nav-header {
             position: fixed;
             top: 0;
-            left: 260px;
+            left: 280px;
             right: 0;
             height: 55px;
             background: #ffffff;
@@ -579,6 +579,7 @@
     </style>
     <link rel="stylesheet" href="css/teacher-sidebar.css">
     <link rel="stylesheet" href="css/student-portal-layout.css">
+    <link rel="stylesheet" href="css/student-sidebar.css">
 </head>
   <body class="student-portal page-student-dashboard">
     <!-- Main Layout: Sidebar + Content -->
@@ -647,7 +648,8 @@
         <script src="js/student-sidebar.js"></script>
         <script>StudentSidebar.render('student-sidebar-root', 'dashboard');</script>
         <div class="remoed-content" style="position: relative; z-index: 2; overflow-y: auto; overflow-x: visible;">
-            
+            <!-- Populated by loadUpcomingClasses(); hidden so layout matches pre-fix grid (dropdown still shows schedule) -->
+            <ul id="upcoming-classes-list" class="notification-list upcoming-classes-list" hidden></ul>
             <!-- Primary Charts Grid (Total Classes & Completed Classes) -->
             <div class="charts-grid">
                 <!-- Total Classes Booked Chart -->

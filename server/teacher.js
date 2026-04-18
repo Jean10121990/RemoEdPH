@@ -33,6 +33,7 @@ const { verifyToken, requireTeacher, requireStudent, requireOwnTeacherData, requ
 const { JWT_EXPIRES_IN } = require('./config/authTokens');
 const { isTokenBlacklisted } = require('./services/jwtBlacklist');
 const { generateReferralCode } = require('./utils/referralCode');
+/** Slots cache-aside (Redis): ./services/slotsRedisCache.js → ../utils/redisClient.js */
 const slotsRedisCache = require('./services/slotsRedisCache');
 const studentController = require('./studentController');
 const {

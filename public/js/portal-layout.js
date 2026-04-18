@@ -87,6 +87,12 @@
   }
 
   function labelFromMenuLi(li) {
+    var lab = li.querySelector && li.querySelector('.remoed-menu-label');
+    if (lab && lab.textContent) {
+      var t = lab.textContent.replace(/\s+/g, ' ').trim();
+      if (t.length > 14) return t.slice(0, 13) + '\u2026';
+      return t;
+    }
     var text = '';
     li.childNodes.forEach(function (n) {
       if (n.nodeType === 3) text += n.textContent;
@@ -244,7 +250,13 @@
     backdrop.className = 'remoed-nav-backdrop';
     backdrop.id = 'remoed-nav-backdrop';
     backdrop.setAttribute('aria-hidden', 'true');
-    document.body.appendChild(backdrop);
+    // Keep backdrop inside .remoed-main (before sidebar) so z-index stacks with the drawer, not above the whole main.
+    var sidebarRoot = main.querySelector('[id$="-sidebar-root"]');
+    if (sidebarRoot) {
+      main.insertBefore(backdrop, sidebarRoot);
+    } else {
+      main.appendChild(backdrop);
+    }
 
     var nav =
       main.querySelector('nav.remoed-sidebar') ||
