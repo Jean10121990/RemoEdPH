@@ -106,11 +106,13 @@
           if (window.RemoedAdminSession && RemoedAdminSession.setAuthToken) {
             RemoedAdminSession.setAuthToken(j.token);
           } else {
+            localStorage.setItem('remoed_admin_auth', j.token);
             localStorage.setItem('remoed_admin_token', j.token);
             localStorage.setItem('adminToken', j.token);
           }
           localStorage.setItem('adminUsername', j.username);
           localStorage.setItem('userType', 'admin');
+          localStorage.setItem('userRole', 'admin');
           if (j.adminRole) localStorage.setItem('adminRole', j.adminRole);
           else localStorage.removeItem('adminRole');
           window.location.replace('/admin/admin-dashboard.html');

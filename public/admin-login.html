@@ -13,8 +13,10 @@
     .admin-2fa-enroll-modal__backdrop { position: absolute; inset: 0; background: rgba(15, 23, 42, 0.55); }
     .admin-2fa-enroll-modal__panel { position: relative; z-index: 1; max-height: 90vh; overflow-y: auto; }
   </style>
+  <!-- This file is only served at the obfuscated path (see server/index.js). Must run before security-guard.js. -->
+  <script>window.__REMOED_ADMIN_LOGIN_HTML__ = true;</script>
   <script src="js/admin-session.js"></script>
-  <script src="js/security-guard.js?v=4"></script>
+  <script src="js/security-guard.js?v=5"></script>
 </head>
 <body class="page-admin-login">
   <script>if (window.RemoedAdminSession) RemoedAdminSession.rememberCurrentPathAsAdminEntry();</script>
@@ -106,11 +108,13 @@
       if (window.RemoedAdminSession && RemoedAdminSession.setAuthToken) {
         RemoedAdminSession.setAuthToken(data.token);
       } else {
+        localStorage.setItem('remoed_admin_auth', data.token);
         localStorage.setItem('remoed_admin_token', data.token);
         localStorage.setItem('adminToken', data.token);
       }
       localStorage.setItem('adminUsername', data.username);
       localStorage.setItem('userType', 'admin');
+      localStorage.setItem('userRole', 'admin');
       if (data.adminRole) {
         localStorage.setItem('adminRole', data.adminRole);
       } else {

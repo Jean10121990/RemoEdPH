@@ -27,6 +27,7 @@
     try {
       var tok = String(t || '');
       if (!tok) return;
+      global.localStorage.setItem('remoed_admin_auth', tok);
       global.localStorage.setItem(LS_ADMIN, tok);
       global.localStorage.setItem('adminToken', tok);
     } catch (e) {}

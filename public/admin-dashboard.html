@@ -1153,11 +1153,11 @@
                 return RemoedAdminSession.getAuthToken();
             }
             return (
-                localStorage.getItem('remoed_admin_token') ||
                 localStorage.getItem('remoed_admin_auth') ||
+                localStorage.getItem('remoed_admin_token') ||
                 localStorage.getItem('adminToken') ||
-                sessionStorage.getItem('remoed_admin_token') ||
                 sessionStorage.getItem('remoed_admin_auth') ||
+                sessionStorage.getItem('remoed_admin_token') ||
                 sessionStorage.getItem('adminToken') ||
                 ''
             );
@@ -1175,13 +1175,14 @@
                 localStorage.removeItem('adminRole');
                 localStorage.removeItem('adminUsername');
                 localStorage.removeItem('userType');
+                localStorage.removeItem('userRole');
             } catch (_e) { /* ignore */ }
             if (window.RemoedAdminSession && typeof window.RemoedAdminSession.redirectToAdminLogin === 'function') {
                 window.RemoedAdminSession.redirectToAdminLogin();
                 return;
             }
             // Same folder as dashboard: /admin/admin-login.html
-            window.location.href = 'admin-login.html';
+            window.location.replace('admin-login.html');
         }
 
         async function adminApiFetch(url, init) {
@@ -1226,8 +1227,9 @@
                         localStorage.removeItem('adminRole');
                         localStorage.removeItem('adminUsername');
                         localStorage.removeItem('userType');
+                        localStorage.removeItem('userRole');
                         if (window.RemoedAdminSession) RemoedAdminSession.redirectToAdminLogin();
-                        else window.location.href = 'admin-login.html';
+                        else window.location.replace('admin-login.html');
                         return;
                     }
                 }
@@ -1243,8 +1245,9 @@
                         localStorage.removeItem('adminRole');
                         localStorage.removeItem('adminUsername');
                         localStorage.removeItem('userType');
+                        localStorage.removeItem('userRole');
                         if (window.RemoedAdminSession) RemoedAdminSession.redirectToAdminLogin();
-                        else window.location.href = 'admin-login.html';
+                        else window.location.replace('admin-login.html');
                         return;
                     }
                 }

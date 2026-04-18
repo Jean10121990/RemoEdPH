@@ -9,6 +9,17 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
 
 const ADMIN_2FA_SETUP_PATHS = new Set(['/2fa-setup', '/2fa-verify']);
 
+/** Normalize JWT/string role claims (handles "Admin" vs "admin"). */
+function normRoleClaim(v) {
+  return String(v == null ? '' : v).trim().toLowerCase();
+}
+
+function jwtPayloadIsAdmin(decoded) {
+  if (!decoded) return false;
+  if (decoded.isAdmin === true) return true;
+  return normRoleClaim(decoded.role) === 'admin';
+}
+
 /**
  * Invalidate other sessions via Admin.sessionVersion (Bearer + cookie must match DB).
  */
@@ -57,7 +68,7 @@ const requireAdminTwoFactorSatisfied = async (req, res, next) => {
     if (method === 'POST' && ADMIN_2FA_SETUP_PATHS.has(p)) {
       return next();
     }
-    if (!req.user || (req.user.isAdmin !== true && req.user.role !== 'admin')) {
+    if (!req.user || (req.user.isAdmin !== true && normRoleClaim(req.user.role) !== 'admin')) {
       return next();
     }
     const adminId = req.user.adminId;
@@ -134,15 +145,15 @@ const verifyToken = (req, res, next) => {
     // Path-scoped portal tokens on the client: remoed_admin_token / remoed_teacher_token (see public/js/user-session.js).
 
     const pathOnly = String(req.originalUrl || req.url || '').split('?')[0];
-    const adminClaims = decoded.isAdmin === true || decoded.role === 'admin';
+    const adminClaims = jwtPayloadIsAdmin(decoded);
     const teacherish =
-      decoded.userType === 'teacher' ||
-      decoded.userRole === 'teacher' ||
-      decoded.role === 'teacher' ||
+      normRoleClaim(decoded.userType) === 'teacher' ||
+      normRoleClaim(decoded.userRole) === 'teacher' ||
+      normRoleClaim(decoded.role) === 'teacher' ||
       !!decoded.teacherId;
     const studentish =
-      decoded.userRole === 'student' ||
-      decoded.userType === 'student' ||
+      normRoleClaim(decoded.userRole) === 'student' ||
+      normRoleClaim(decoded.userType) === 'student' ||
       (decoded.studentId && !decoded.teacherId);
 
     if (pathOnly.startsWith('/api/admin')) {
@@ -211,7 +222,7 @@ const verifyAdminApiAuth = (req, res, next) => {
       return res.status(401).json({ error: 'Token has been revoked.' });
     }
     const decoded = jwt.verify(token, JWT_SECRET);
-    if (decoded.isAdmin !== true && decoded.role !== 'admin') {
+    if (!jwtPayloadIsAdmin(decoded)) {
       return res.status(403).json({ error: 'Access denied. Admin privileges required.' });
     }
     req.user = {
@@ -299,12 +310,12 @@ const requireSuperAdminDb = async (req, res, next) => {
 };
 
 function jwtLooksLikeAdmin(u) {
-  return !!(u && (u.isAdmin === true || u.role === 'admin'));
+  return !!(u && jwtPayloadIsAdmin(u));
 }
 
 function jwtLooksLikeStudent(u) {
   if (!u) return false;
-  if (u.userRole === 'student' || u.userType === 'student') return true;
+  if (normRoleClaim(u.userRole) === 'student' || normRoleClaim(u.userType) === 'student') return true;
   if (u.studentId && !u.teacherId) return true;
   return false;
 }
@@ -313,9 +324,9 @@ function jwtLooksLikeTeacher(u) {
   if (!u) return false;
   if (jwtLooksLikeAdmin(u) || jwtLooksLikeStudent(u)) return false;
   return (
-    u.userType === 'teacher' ||
-    u.userRole === 'teacher' ||
-    u.role === 'teacher' ||
+    normRoleClaim(u.userType) === 'teacher' ||
+    normRoleClaim(u.userRole) === 'teacher' ||
+    normRoleClaim(u.role) === 'teacher' ||
     !!u.teacherId
   );
 }
@@ -479,7 +490,7 @@ const requireAdmin = async (req, res, next) => {
     }
 
     // Check admin only from verified claims (JWT or session) — do not infer from username
-    const isAdmin = req.user.isAdmin === true || req.user.role === 'admin';
+    const isAdmin = jwtPayloadIsAdmin(req.user);
     
     console.log('Admin check result:', {
       isAdmin: req.user.isAdmin,
@@ -512,7 +523,7 @@ const logAccess = (req, res, next) => {
     ? 'teacher'
     : req.user?.studentId
       ? 'student'
-      : req.user?.isAdmin || req.user?.role === 'admin'
+      : req.user && jwtPayloadIsAdmin(req.user)
         ? 'admin'
         : 'unknown';
   const userId = req.user?.teacherId || req.user?.studentId || req.user?.username || 'unknown';

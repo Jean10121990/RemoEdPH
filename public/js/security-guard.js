@@ -16,6 +16,10 @@
   }
 
   function portalKindFromPath() {
+    /* admin-login.html is served only at ADMIN_LOGIN_PATH (e.g. /admin-portal_...). That path still starts with "/admin-", so without this flag it would be treated as the protected admin portal and redirect to index. */
+    if (typeof window !== 'undefined' && window.__REMOED_ADMIN_LOGIN_HTML__ === true) {
+      return 'public';
+    }
     var p = (window.location.pathname || '').toLowerCase();
     if (p.indexOf('super-monitor') !== -1) return 'admin';
     if (p.startsWith('/admin-') || p.indexOf('/admin/') !== -1) {
@@ -45,7 +49,8 @@
 
   function getSessionRoleFromStorage() {
     try {
-      return (localStorage.getItem('userRole') || localStorage.getItem('userType') || '').trim();
+      // Prefer userType so admin login (sets userType only) wins over a stale userRole from another portal.
+      return (localStorage.getItem('userType') || localStorage.getItem('userRole') || '').trim();
     } catch (_e) {
       return '';
     }
@@ -55,10 +60,10 @@
     try {
       if (portal === 'admin') {
         return (
-          localStorage.getItem(LS_ADMIN) ||
-          sessionStorage.getItem(LS_ADMIN) ||
           localStorage.getItem('remoed_admin_auth') ||
           sessionStorage.getItem('remoed_admin_auth') ||
+          localStorage.getItem(LS_ADMIN) ||
+          sessionStorage.getItem(LS_ADMIN) ||
           localStorage.getItem('adminToken') ||
           sessionStorage.getItem('adminToken') ||
           ''
@@ -119,11 +124,18 @@
     return nowSec >= Number(pl.exp);
   }
 
+  function normJwtRole(v) {
+    return String(v == null ? '' : v).trim().toLowerCase();
+  }
+
   function roleFromJwt(pl) {
     if (!pl) return '';
-    if (pl.isAdmin === true || pl.role === 'admin') return 'admin';
-    if (pl.userRole === 'teacher' || pl.userType === 'teacher' || pl.role === 'teacher') return 'teacher';
-    if (pl.userRole === 'student' || pl.userType === 'student') return 'student';
+    var rr = normJwtRole(pl.role);
+    var ur = normJwtRole(pl.userRole);
+    var ut = normJwtRole(pl.userType);
+    if (pl.isAdmin === true || rr === 'admin') return 'admin';
+    if (ur === 'teacher' || ut === 'teacher' || rr === 'teacher') return 'teacher';
+    if (ur === 'student' || ut === 'student') return 'student';
     if (pl.teacherId && !pl.studentId) return 'teacher';
     if (pl.studentId && !pl.teacherId) return 'student';
     return '';
@@ -286,7 +298,10 @@
 
     var onStudentLogin = path.indexOf('student-login') !== -1 || href.indexOf('student-login') !== -1;
     var onTeacherLogin = path.indexOf('teacher-login') !== -1 || href.indexOf('teacher-login') !== -1;
-    var onAdminLogin = /admin-login/.test(path) || /admin-login/.test(href);
+    var onAdminLogin =
+      (typeof window !== 'undefined' && window.__REMOED_ADMIN_LOGIN_HTML__ === true) ||
+      /admin-login/.test(path) ||
+      /admin-login/.test(href);
     var onUnifiedLogin =
       path === '/login' ||
       path === '/login/' ||
@@ -328,7 +343,10 @@
   var p = (window.location.pathname || '').toLowerCase();
   if (
     p === '/' ||
+    !p ||
     p.endsWith('/index.html') ||
+    p.endsWith('login.html') ||
+    p.indexOf('login.html') !== -1 ||
     p.indexOf('catalog') !== -1 ||
     p.indexOf('privacy') !== -1 ||
     p.indexOf('terms-of-service') !== -1 ||
