@@ -57,26 +57,59 @@ if (trustProxyOn) {
   app.set('trust proxy', 1);
 }
 
+/** Comma-separated origins or bare hostnames (e.g. https://app.example.com,www.example.com). */
+function parseCorsOriginList(raw) {
+  if (!raw || typeof raw !== 'string') return [];
+  return raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+function originHostMatchesEntry(originUrl, entry) {
+  if (!entry) return false;
+  try {
+    const o = new URL(originUrl);
+    const host = String(o.hostname || '').toLowerCase();
+    if (entry.includes('://')) {
+      const e = new URL(entry);
+      return host === String(e.hostname || '').toLowerCase();
+    }
+    const e = String(entry).toLowerCase().replace(/^\*\./, '');
+    return host === e || host.endsWith(`.${e}`);
+  } catch {
+    return false;
+  }
+}
+
 function isAllowedOrigin(origin) {
   if (!origin) return true; // curl / same-origin / server-to-server
   try {
     const u = new URL(origin);
     const host = String(u.hostname || '').toLowerCase();
-    
-    // 1. Allow localhost for development
+
+    // 1. Allow localhost for development (any port)
     if (host === 'localhost' || host === '127.0.0.1') return true;
-    
-    // 2. Allow your production domain from .env
+
+    // 2. Production / Hostinger: primary site URL
     if (process.env.FRONTEND_URL) {
       const allowedUrl = new URL(process.env.FRONTEND_URL);
       if (host === allowedUrl.hostname.toLowerCase()) return true;
     }
 
-    // 3. Allow tunnels for testing
+    // 3. Extra origins (local Vite + Hostinger www apex, staging, etc.)
+    const extras = parseCorsOriginList(
+      process.env.CORS_ORIGINS || process.env.ALLOWED_ORIGINS || ''
+    );
+    for (const entry of extras) {
+      if (originHostMatchesEntry(origin, entry)) return true;
+    }
+
+    // 4. Tunnels for testing
     if (host.endsWith('.devtunnels.ms')) return true;
     if (host.endsWith('.ngrok.io')) return true;
     if (host.endsWith('.ngrok-free.dev')) return true;
-    
+
     return false;
   } catch {
     return false;

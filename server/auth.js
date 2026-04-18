@@ -554,13 +554,10 @@ router.post('/login', authLoginLimiter, async (req, res) => {
       );
       console.log('Token generated successfully');
       console.log('Sending response:', { success: true, token: token.substring(0, 20) + '...', teacherId: teacher.teacherId });
-      
-      // Set CORS headers explicitly
-      res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
-      res.header('Access-Control-Allow-Credentials', 'true');
-      res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept');
-      
+
+      // CORS is handled globally by server/index.js (credentials + allowed origins). Do not set
+      // Access-Control-Allow-Origin: * here — browsers reject * with credentials:true.
+
       // Check if user has a generated password and needs to change it
       const needsPasswordChange = teacher.hasGeneratedPassword;
       console.log('Teacher hasGeneratedPassword:', teacher.hasGeneratedPassword);
@@ -735,6 +732,18 @@ router.post('/student-login', authLoginLimiter, async (req, res) => {
         isFirstLogin: !!showWelcomeTour,
       };
       console.log('Sending response:', { ...response, token: '***' });
+      try {
+        const { withRedis } = require('./utils/redisClient');
+        const sid = String(student._id || '').trim();
+        if (sid) {
+          await withRedis((r) => r.set(`login:touch:${sid}`, '1', { EX: 600 }));
+        }
+      } catch (loginRedisErr) {
+        console.error(
+          '[student-login] Redis optional step failed (login continues):',
+          loginRedisErr && loginRedisErr.message ? loginRedisErr.message : loginRedisErr
+        );
+      }
       res.json(response);
     } else {
       console.log('Password incorrect');
@@ -900,6 +909,18 @@ router.post('/unified-login', authLoginLimiter, async (req, res) => {
       JWT_SECRET,
       { expiresIn }
     );
+    try {
+      const { withRedis } = require('./utils/redisClient');
+      const sid = String(student._id || '').trim();
+      if (sid) {
+        await withRedis((r) => r.set(`login:touch:${sid}`, '1', { EX: 600 }));
+      }
+    } catch (loginRedisErr) {
+      console.error(
+        '[unified-login] Redis optional step failed (login continues):',
+        loginRedisErr && loginRedisErr.message ? loginRedisErr.message : loginRedisErr
+      );
+    }
     return res.json({
       success: true,
       token,

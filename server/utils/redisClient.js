@@ -8,7 +8,23 @@
  */
 const { createClient } = require('redis');
 
-const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
+/**
+ * Redis URL resolution:
+ * - REDIS_DISABLED=1 → no Redis.
+ * - REDIS_URL set to empty/whitespace in .env → no Redis (Hostinger without Redis; avoids 500s from bad connects).
+ * - REDIS_URL unset → default redis://127.0.0.1:6379 (local dev).
+ * - REDIS_URL non-empty → use as-is.
+ */
+function resolveRedisUrl() {
+  if (process.env.REDIS_DISABLED === '1') return '';
+  const raw = process.env.REDIS_URL;
+  if (raw === undefined) return 'redis://127.0.0.1:6379';
+  const t = String(raw).trim();
+  if (t === '') return '';
+  return t;
+}
+
+const REDIS_URL = resolveRedisUrl();
 const CONNECT_FAIL_COOLDOWN_MS = 60 * 1000;
 /** Default 1.5s — fail fast so handlers fall through to MongoDB instead of long hangs. */
 const REDIS_FAIL_FAST_MS = Number(process.env.REDIS_FAIL_FAST_MS || 1500);
@@ -63,7 +79,7 @@ async function awaitConnectCapped(p, ms) {
  * Start Redis handshake in the background (do not await at server boot).
  */
 function primeRedisConnection() {
-  if (process.env.REDIS_DISABLED === '1') return;
+  if (process.env.REDIS_DISABLED === '1' || !REDIS_URL) return;
   setImmediate(() => {
     getRedis().catch(() => {});
   });
@@ -75,7 +91,7 @@ function primeRedisConnection() {
  */
 async function getRedis() {
   try {
-    if (process.env.REDIS_DISABLED === '1') {
+    if (process.env.REDIS_DISABLED === '1' || !REDIS_URL) {
       return null;
     }
     if (client && client.isOpen && client.isReady) {
