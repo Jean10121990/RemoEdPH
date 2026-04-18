@@ -1213,7 +1213,29 @@
         
         console.log('🔍 Debug - Making request to:', url);
         console.log('🔍 Debug - Authorization header:', `Bearer ${token.substring(0, 20)}...`);
-        
+
+        var statsBar = document.getElementById('payment-statistics');
+        if (statsBar) {
+          statsBar.style.display = 'block';
+        }
+
+        var suffix = params.toString() ? ('?' + params.toString()) : '';
+        var finHeaders = { 'Authorization': 'Bearer ' + token };
+        try {
+          var finRes = await fetch('/api/teacher/payment-financials' + suffix, { headers: finHeaders });
+          if (finRes.ok) {
+            var finData = await finRes.json();
+            if (finData.success) {
+              document.getElementById('total-paid').textContent = '₱' + (Number(finData.totalEarned) || 0).toFixed(2);
+              document.getElementById('total-pending').textContent = '₱' + (Number(finData.pendingPayout) || 0).toFixed(2);
+              document.getElementById('total-records').textContent = String(finData.recordCount != null ? finData.recordCount : '—');
+              document.getElementById('avg-amount').textContent = '₱' + (Number(finData.avgAmount) || 0).toFixed(2);
+            }
+          }
+        } catch (_finErr) {
+          /* totals row fills after payment-history */
+        }
+
         const response = await fetch(url, {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -1244,8 +1266,9 @@
               payment.status === 'Pending' || payment.status === 'pending' || payment.status === 'Processing'
             );
           }
-          
-          displayPaymentHistoryTable(payments);
+
+          var useServerTotals = data.totals && filterType !== 'paid' && filterType !== 'pending';
+          displayPaymentHistoryTable(payments, useServerTotals ? data.totals : null);
           } else {
           throw new Error(data.error || 'Failed to load payment history');
         }
@@ -1263,8 +1286,9 @@
       }
     }
     
-    // Display payment history in table format
-    function displayPaymentHistoryTable(payments) {
+    // Display payment history in table format.
+    // serverTotals: from Mongo aggregation (aligned with /api/teacher/payment-history); omit when client filtered paid/pending only.
+    function displayPaymentHistoryTable(payments, serverTotals) {
       const tbody = document.getElementById('payment-history-tbody');
       
       if (payments.length === 0) {
@@ -1279,25 +1303,38 @@
         return dateB - dateA;
       });
       
-      // Calculate statistics
-      const totalAmount = payments.reduce((sum, payment) => sum + (payment.amount || 0), 0);
-      const paidPayments = payments.filter(p => {
-        const status = (p.status || '').toLowerCase();
-        return status === 'success' || status === 'paid';
-      });
-      const pendingPayments = payments.filter(p => {
-        const status = (p.status || '').toLowerCase();
-        return status === 'pending' || status === 'processing';
-      });
-      const totalPaid = paidPayments.reduce((sum, payment) => sum + (payment.amount || 0), 0);
-      const totalPending = pendingPayments.reduce((sum, payment) => sum + (payment.amount || 0), 0);
-      const avgAmount = payments.length > 0 ? totalAmount / payments.length : 0;
-      
-      // Update statistics display
-      document.getElementById('total-paid').textContent = `₱${totalPaid.toFixed(2)}`;
-      document.getElementById('total-pending').textContent = `₱${totalPending.toFixed(2)}`;
-      document.getElementById('total-records').textContent = payments.length;
-      document.getElementById('avg-amount').textContent = `₱${avgAmount.toFixed(2)}`;
+      var totalAmount;
+      var totalPaid;
+      var totalPending;
+      var avgAmount;
+      var recordCount;
+
+      if (serverTotals && typeof serverTotals.totalPaid === 'number') {
+        totalAmount = serverTotals.totalAmount || 0;
+        totalPaid = serverTotals.totalPaid || 0;
+        totalPending = serverTotals.totalPending || 0;
+        recordCount = serverTotals.recordCount != null ? serverTotals.recordCount : payments.length;
+        avgAmount = serverTotals.avgAmount != null ? serverTotals.avgAmount : (recordCount > 0 ? totalAmount / recordCount : 0);
+      } else {
+        totalAmount = payments.reduce(function(sum, payment) { return sum + (payment.amount || 0); }, 0);
+        var paidPayments = payments.filter(function(p) {
+          var status = (p.status || '').toLowerCase();
+          return status === 'success' || status === 'paid';
+        });
+        var pendingPayments = payments.filter(function(p) {
+          var status = (p.status || '').toLowerCase();
+          return status === 'pending' || status === 'processing';
+        });
+        totalPaid = paidPayments.reduce(function(sum, payment) { return sum + (payment.amount || 0); }, 0);
+        totalPending = pendingPayments.reduce(function(sum, payment) { return sum + (payment.amount || 0); }, 0);
+        recordCount = payments.length;
+        avgAmount = payments.length > 0 ? totalAmount / payments.length : 0;
+      }
+
+      document.getElementById('total-paid').textContent = '₱' + totalPaid.toFixed(2);
+      document.getElementById('total-pending').textContent = '₱' + totalPending.toFixed(2);
+      document.getElementById('total-records').textContent = String(recordCount);
+      document.getElementById('avg-amount').textContent = '₱' + avgAmount.toFixed(2);
       
       tbody.innerHTML = `
         <tr style="background: #f8f9fa; font-weight: bold;">

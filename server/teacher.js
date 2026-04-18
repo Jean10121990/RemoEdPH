@@ -53,6 +53,7 @@ const {
 } = require('./services/teacherClassFinalize');
 const { getClassroomEntryGate, EARLY_ENTRY_MINUTES } = require('./services/classroomEntryWindow');
 const realtime = require('./realtime');
+const { withRedis } = require('./utils/redisClient');
 const { teacherPeerSearchLimiter } = require('./middleware/apiRateLimits');
 const { encryptPiiString, decryptPiiString } = require('./utils/piiCrypto');
 
@@ -1357,20 +1358,18 @@ router.get('/slots', async (req, res) => {
         // Try to find student by ID first (if studentId is an ObjectId)
         if (booking.studentId && booking.studentId.length === 24) {
           try {
-            student = await Student.findById(booking.studentId);
+            student = await Student.findById(booking.studentId).select(
+              'username email firstName lastName profilePicture photo'
+            );
           } catch (err) {
             console.log('Error finding student by ID:', err.message);
           }
         }
-        
-        // If not found by ID, try by username/email
+
         if (!student) {
-          student = await Student.findOne({ 
-            $or: [
-              { username: booking.studentId },
-              { email: booking.studentId }
-            ]
-          });
+          student = await Student.findOne({
+            $or: [{ username: booking.studentId }, { email: booking.studentId }],
+          }).select('username email firstName lastName profilePicture photo');
         }
         
         // Check for resolved issues for this booking
@@ -1383,16 +1382,22 @@ router.get('/slots', async (req, res) => {
         const studentName = student
           ? `${student.firstName || ''} ${student.lastName || ''}`.trim() || student.username
           : String(booking.studentId);
+        const studentProfilePicture = student
+          ? student.profilePicture || student.photo || null
+          : null;
         return {
           ...bookingObj,
           studentName,
+          studentProfilePicture,
           lessonTopic: booking.lesson || '',
-          studentId: student ? {
-            username: student.username,
-            firstName: student.firstName,
-            lastName: student.lastName
-          } : { username: booking.studentId },
-          hasResolvedIssue: resolvedIssues.length > 0
+          studentId: student
+            ? {
+                username: student.username,
+                firstName: student.firstName,
+                lastName: student.lastName,
+              }
+            : { username: booking.studentId },
+          hasResolvedIssue: resolvedIssues.length > 0,
         };
       })
     );
@@ -1683,21 +1688,37 @@ router.get('/booking/:bookingId', verifyToken, requireTeacher, async (req, res) 
       time: booking.time
     });
     
-    // Get student information - studentId is stored as username/email string
-    const student = await Student.findOne({ 
-      $or: [
-        { username: booking.studentId },
-        { email: booking.studentId }
-      ]
-    });
+    let student = await Student.findOne({
+      $or: [{ username: booking.studentId }, { email: booking.studentId }],
+    })
+      .select('firstName lastName username profilePicture photo')
+      .lean();
+    if (
+      !student &&
+      booking.studentId &&
+      String(booking.studentId).length === 24 &&
+      mongoose.Types.ObjectId.isValid(booking.studentId)
+    ) {
+      student = await Student.findById(booking.studentId)
+        .select('firstName lastName username profilePicture photo')
+        .lean();
+    }
     console.log('🔍 Student found:', student ? 'YES' : 'NO');
-    console.log('🔍 Student data:', student ? {
-      firstName: student.firstName,
-      lastName: student.lastName,
-      username: student.username
-    } : 'No student data');
-    
+    console.log(
+      '🔍 Student data:',
+      student
+        ? {
+            firstName: student.firstName,
+            lastName: student.lastName,
+            username: student.username,
+          }
+        : 'No student data'
+    );
+
     let studentName = 'Unknown Student';
+    const studentProfilePicture = student
+      ? student.profilePicture || student.photo || null
+      : null;
     if (student) {
       if (student.firstName) {
         studentName = student.firstName;
@@ -1745,6 +1766,7 @@ router.get('/booking/:bookingId', verifyToken, requireTeacher, async (req, res) 
         studentId: booking.studentId,
         studentLevel: booking.studentLevel,
         studentName: studentName,
+        studentProfilePicture,
         teacherName: teacherName,
         status: booking.status,
         finishedAt: booking.finishedAt,
@@ -3188,6 +3210,157 @@ router.get('/cancellation-requests', verifyToken, requireTeacher, async (req, re
   }
 });
 
+/** Lean booking fields for teacher class lists / history (avoid full lesson blobs). */
+const TEACHER_CLASSES_BOOKING_SELECT =
+  '_id studentId teacherId date time status lesson studentLevel lateMinutes attendance finishedAt absentMarkedAt';
+const TEACHER_CLASS_HISTORY_DEFAULT_LIMIT = 40;
+const TEACHER_CLASS_HISTORY_MAX_LIMIT = 100;
+
+/**
+ * Batch-load students keyed by _id, username, and lowercased email for booking.studentId strings.
+ * @returns {{ lookup: (raw: string) => { firstName?: string, lastName?: string, username?: string, display: string, profilePicture: string|null } | null }}
+ */
+async function buildStudentLookupForBookingIds(studentIdValues) {
+  const ids = [...new Set((studentIdValues || []).filter(Boolean).map((x) => String(x)))];
+  if (ids.length === 0) {
+    return { lookup: () => null };
+  }
+  const oidRegex = /^[a-fA-F0-9]{24}$/;
+  const objectIds = ids.filter((id) => mongoose.Types.ObjectId.isValid(id) && oidRegex.test(id));
+  const stringIds = ids.filter((id) => !objectIds.includes(id));
+
+  const $or = [];
+  if (stringIds.length) {
+    $or.push({ username: { $in: stringIds } });
+    $or.push({ email: { $in: stringIds } });
+  }
+  if (objectIds.length) {
+    $or.push({ _id: { $in: objectIds.map((id) => new mongoose.Types.ObjectId(id)) } });
+  }
+  if ($or.length === 0) {
+    return { lookup: () => null };
+  }
+
+  const students = await Student.find({ $or })
+    .select('username email firstName lastName profilePicture photo')
+    .lean();
+
+  const byKey = new Map();
+  for (const st of students) {
+    const display =
+      `${st.firstName || ''} ${st.lastName || ''}`.trim() || st.username || 'Unknown';
+    const row = {
+      firstName: st.firstName,
+      lastName: st.lastName,
+      username: st.username,
+      display,
+      profilePicture: st.profilePicture || st.photo || null,
+    };
+    byKey.set(String(st._id), row);
+    if (st.username) byKey.set(String(st.username), row);
+    if (st.email) byKey.set(String(st.email).toLowerCase(), row);
+  }
+
+  function lookup(raw) {
+    if (raw == null || raw === '') return null;
+    const s = String(raw);
+    return byKey.get(s) || byKey.get(s.toLowerCase()) || null;
+  }
+
+  return { lookup };
+}
+
+// Recent classes for teacher portal (lean + limit; same row shape as /classes where applicable).
+router.get('/classes/history', verifyToken, requireTeacher, async (req, res) => {
+  try {
+    const teacherId = req.user.teacherId;
+    const limRaw = parseInt(String(req.query.limit || '').trim(), 10);
+    const limit = Number.isFinite(limRaw)
+      ? Math.min(TEACHER_CLASS_HISTORY_MAX_LIMIT, Math.max(1, limRaw))
+      : TEACHER_CLASS_HISTORY_DEFAULT_LIMIT;
+
+    const bookings = await Booking.find({ teacherId })
+      .select(TEACHER_CLASSES_BOOKING_SELECT)
+      .sort({ date: -1, time: -1 })
+      .limit(limit)
+      .lean();
+
+    const { lookup } = await buildStudentLookupForBookingIds(bookings.map((b) => b.studentId));
+
+    const teacherDoc = await Teacher.findOne({ teacherId })
+      .select('firstName lastName email fullname')
+      .lean();
+    const teacherDisplayName =
+      teacherDoc?.firstName || teacherDoc?.fullname || teacherDoc?.email || 'Unknown';
+
+    const bookingIds = bookings.map((b) => String(b._id));
+    const cancellationRequests =
+      bookingIds.length > 0
+        ? await CancellationRequest.find({
+            bookingId: { $in: bookingIds.map((id) => new mongoose.Types.ObjectId(id)) },
+          }).lean()
+        : [];
+
+    const cancellationMap = {};
+    cancellationRequests.forEach((c) => {
+      cancellationMap[c.bookingId.toString()] = c;
+    });
+
+    const resolvedIssues =
+      bookingIds.length > 0
+        ? await IssueReport.find({
+            bookingId: { $in: bookingIds },
+            status: 'resolved',
+          }).lean()
+        : [];
+
+    const resolvedIssueMap = {};
+    resolvedIssues.forEach((issue) => {
+      if (!resolvedIssueMap[issue.bookingId]) {
+        resolvedIssueMap[issue.bookingId] = [];
+      }
+      resolvedIssueMap[issue.bookingId].push(issue);
+    });
+
+    const classes = bookings.map((booking) => {
+      const st = lookup(booking.studentId);
+      const classData = {
+        id: booking._id,
+        date: booking.date,
+        time: booking.time,
+        status: booking.status,
+        lesson: booking.lesson,
+        studentLevel: booking.studentLevel,
+        studentName: st?.display || String(booking.studentId || 'Unknown'),
+        teacherName: teacherDisplayName,
+        lateMinutes: booking.lateMinutes || 0,
+        attendance: booking.attendance || {},
+        finishedAt: booking.finishedAt,
+        absentMarkedAt: booking.absentMarkedAt,
+        cancellationReason: null,
+        cancellationTime: null,
+        hasResolvedIssue: (resolvedIssueMap[booking._id.toString()] || []).length > 0,
+      };
+      if (booking.status === 'cancelled') {
+        const cancellation = cancellationMap[booking._id.toString()];
+        if (cancellation) {
+          classData.cancellationReason = {
+            reason: cancellation.reason,
+            rejected: cancellation.rejected || false,
+          };
+          classData.cancellationTime = cancellation.createdAt;
+        }
+      }
+      return classData;
+    });
+
+    res.json({ success: true, classes, limit });
+  } catch (err) {
+    console.error('Error fetching teacher class history:', err);
+    res.status(500).json({ error: 'Failed to fetch class history' });
+  }
+});
+
 // Get teacher classes for week (for frontend) - supports both authenticated and unauthenticated
 router.get('/classes', async (req, res) => {
   try {
@@ -3217,48 +3390,55 @@ router.get('/classes', async (req, res) => {
     if (isAuthenticated && startDate && endDate) {
       console.log('Authenticated request - fetching classes for date range:', startDate, 'to', endDate);
       
-      // Find all bookings for the teacher in the specified date range
       const bookings = await Booking.find({
         teacherId: authenticatedTeacherId,
         date: {
           $gte: startDate,
-          $lte: endDate
-        }
+          $lte: endDate,
+        },
       })
-      .populate('studentId', 'firstName lastName username')
-      .populate('teacherId', 'firstName lastName email')
-      .sort({ date: 1, time: 1 });
-      
-      // Get cancellation requests for these bookings
-      const bookingIds = bookings.map(booking => booking._id.toString());
-      const cancellationRequests = await CancellationRequest.find({
-        bookingId: { $in: bookingIds.map(id => new mongoose.Types.ObjectId(id)) }
-      });
-      
-      // Create a map of bookingId to cancellation request
+        .select(TEACHER_CLASSES_BOOKING_SELECT)
+        .sort({ date: 1, time: 1 })
+        .lean();
+
+      const { lookup } = await buildStudentLookupForBookingIds(bookings.map((b) => b.studentId));
+      const teacherDoc = await Teacher.findOne({ teacherId: authenticatedTeacherId })
+        .select('firstName lastName email fullname')
+        .lean();
+      const teacherDisplayName =
+        teacherDoc?.firstName || teacherDoc?.fullname || teacherDoc?.email || 'Unknown';
+
+      const bookingIds = bookings.map((booking) => booking._id.toString());
+      const cancellationRequests =
+        bookingIds.length > 0
+          ? await CancellationRequest.find({
+              bookingId: { $in: bookingIds.map((id) => new mongoose.Types.ObjectId(id)) },
+            }).lean()
+          : [];
+
       const cancellationMap = {};
-      cancellationRequests.forEach(cancellation => {
+      cancellationRequests.forEach((cancellation) => {
         cancellationMap[cancellation.bookingId.toString()] = cancellation;
       });
-      
-      // Get resolved issues for all bookings
-      const IssueReport = require('./models/IssueReport');
-      const resolvedIssues = await IssueReport.find({
-        bookingId: { $in: bookingIds },
-        status: 'resolved'
-      });
-      
-      // Create a map of bookingId to resolved issue
+
+      const resolvedIssues =
+        bookingIds.length > 0
+          ? await IssueReport.find({
+              bookingId: { $in: bookingIds },
+              status: 'resolved',
+            }).lean()
+          : [];
+
       const resolvedIssueMap = {};
-      resolvedIssues.forEach(issue => {
+      resolvedIssues.forEach((issue) => {
         if (!resolvedIssueMap[issue.bookingId]) {
           resolvedIssueMap[issue.bookingId] = [];
         }
         resolvedIssueMap[issue.bookingId].push(issue);
       });
-      
-      // Process bookings to include deduction information
-      const classes = bookings.map(booking => {
+
+      const classes = bookings.map((booking) => {
+        const st = lookup(booking.studentId);
         const classData = {
           id: booking._id,
           date: booking.date,
@@ -3266,32 +3446,31 @@ router.get('/classes', async (req, res) => {
           status: booking.status,
           lesson: booking.lesson,
           studentLevel: booking.studentLevel,
-          studentName: booking.studentId?.firstName || booking.studentId?.username || 'Unknown',
-          teacherName: booking.teacherId?.firstName || booking.teacherId?.email || 'Unknown',
+          studentName: st?.display || String(booking.studentId || 'Unknown'),
+          teacherName: teacherDisplayName,
           lateMinutes: booking.lateMinutes || 0,
           attendance: booking.attendance || {},
           finishedAt: booking.finishedAt,
           absentMarkedAt: booking.absentMarkedAt,
           cancellationReason: null,
           cancellationTime: null,
-          hasResolvedIssue: (resolvedIssueMap[booking._id.toString()] || []).length > 0
+          hasResolvedIssue: (resolvedIssueMap[booking._id.toString()] || []).length > 0,
         };
-        
-        // Add cancellation information if status is cancelled
+
         if (booking.status === 'cancelled') {
           const cancellation = cancellationMap[booking._id.toString()];
           if (cancellation) {
             classData.cancellationReason = {
               reason: cancellation.reason,
-              rejected: cancellation.rejected || false
+              rejected: cancellation.rejected || false,
             };
             classData.cancellationTime = cancellation.createdAt;
           }
         }
-        
+
         return classData;
       });
-      
+
       res.json({ success: true, classes });
       
     } else if (!isAuthenticated && teacherId && week) {
@@ -3321,8 +3500,8 @@ router.get('/classes', async (req, res) => {
       const bookings = await Booking.find({
         teacherId: actualTeacherId,
         date: { $gte: week, $lt: end.toISOString().slice(0, 10) },
-        status: { $ne: 'cancelled' }
-      });
+        status: { $ne: 'cancelled' },
+      }).lean();
 
       res.json({ bookings });
       
@@ -3579,11 +3758,12 @@ router.get('/weekly-payment-summary', verifyToken, requireTeacher, async (req, r
 
     console.log(`Fetching weekly payment summary for teacher ${teacherId} from ${startDate} to ${endDate}`);
 
-    // Fetch all bookings for the teacher within the specified date range
     const bookings = await Booking.find({
       teacherId,
-      date: { $gte: startDate, $lte: endDate }
-    });
+      date: { $gte: startDate, $lte: endDate },
+    })
+      .select('_id date time status attendance finishedAt lateMinutes')
+      .lean();
 
     // Fetch all cancellation requests related to these bookings
     const bookingIds = bookings.map(b => b._id);
@@ -3790,45 +3970,206 @@ router.get('/weekly-payment-summary', verifyToken, requireTeacher, async (req, r
   }
 });
 
+const PAYMENT_SVC_FEE_CACHE_TTL_SEC = 300;
+
+function paymentFinancialsRedisKey(teacherId, startDate, endDate) {
+  const s = startDate ? String(startDate) : 'all';
+  const e = endDate ? String(endDate) : 'all';
+  return `remoed:teacher:payfin:${teacherId}:${s}:${e}`;
+}
+
+/** $match stages after unwind for optional issueDate range (inclusive). */
+function teacherPaymentHistoryDateMatchStages(startDate, endDate) {
+  if (!startDate || !endDate) return [];
+  return [
+    {
+      $match: {
+        'paymentHistory.issueDate': {
+          $gte: new Date(startDate),
+          $lte: new Date(endDate),
+        },
+      },
+    },
+  ];
+}
+
+const _paymentStatusLower = {
+  $toLower: { $trim: { input: { $ifNull: ['$paymentHistory.status', ''] } } },
+};
+
+function teacherPaymentHistoryPrefixStages(teacherId, startDate, endDate) {
+  return [
+    { $match: { teacherId } },
+    { $unwind: { path: '$paymentHistory', preserveNullAndEmptyArrays: false } },
+    ...teacherPaymentHistoryDateMatchStages(startDate, endDate),
+  ];
+}
+
+const _paymentHistoryTotalsGroup = {
+  $group: {
+    _id: null,
+    totalAmount: { $sum: { $ifNull: ['$paymentHistory.amount', 0] } },
+    recordCount: { $sum: 1 },
+    totalPaid: {
+      $sum: {
+        $cond: [
+          { $in: [_paymentStatusLower, ['success', 'paid']] },
+          { $ifNull: ['$paymentHistory.amount', 0] },
+          0,
+        ],
+      },
+    },
+    totalPending: {
+      $sum: {
+        $cond: [
+          { $in: [_paymentStatusLower, ['pending', 'processing']] },
+          { $ifNull: ['$paymentHistory.amount', 0] },
+          0,
+        ],
+      },
+    },
+  },
+};
+
+function aggregateTeacherPaymentHistoryPipeline(teacherId, startDate, endDate) {
+  return [
+    ...teacherPaymentHistoryPrefixStages(teacherId, startDate, endDate),
+    {
+      $facet: {
+        payments: [
+          { $sort: { 'paymentHistory.issueDate': -1 } },
+          {
+            $project: {
+              _id: '$paymentHistory._id',
+              amount: '$paymentHistory.amount',
+              status: '$paymentHistory.status',
+              issueDate: '$paymentHistory.issueDate',
+              duration: '$paymentHistory.duration',
+              period: '$paymentHistory.duration',
+              studentName: {
+                $ifNull: ['$paymentHistory.studentName', ''],
+              },
+            },
+          },
+        ],
+        totals: [_paymentHistoryTotalsGroup],
+      },
+    },
+  ];
+}
+
+async function aggregateTeacherPaymentHistoryTotalsOnly(teacherId, startDate, endDate) {
+  const pipeline = [
+    ...teacherPaymentHistoryPrefixStages(teacherId, startDate, endDate),
+    _paymentHistoryTotalsGroup,
+  ];
+  const [t] = await Teacher.aggregate(pipeline);
+  const recordCount = t?.recordCount || 0;
+  const totalAmount = t?.totalAmount || 0;
+  return {
+    totalPaid: t?.totalPaid || 0,
+    totalPending: t?.totalPending || 0,
+    totalAmount,
+    recordCount,
+    avgAmount: recordCount > 0 ? totalAmount / recordCount : 0,
+  };
+}
+
+async function aggregateTeacherPaymentHistory(teacherId, startDate, endDate) {
+  const [row] = await Teacher.aggregate(
+    aggregateTeacherPaymentHistoryPipeline(teacherId, startDate, endDate)
+  );
+  const payments = (row && row.payments) || [];
+  const t = (row && row.totals && row.totals[0]) || {
+    totalAmount: 0,
+    recordCount: 0,
+    totalPaid: 0,
+    totalPending: 0,
+  };
+  const recordCount = t.recordCount || 0;
+  const totalAmount = t.totalAmount || 0;
+  const totals = {
+    totalPaid: t.totalPaid || 0,
+    totalPending: t.totalPending || 0,
+    totalAmount,
+    recordCount,
+    avgAmount: recordCount > 0 ? totalAmount / recordCount : 0,
+  };
+  return { payments, totals };
+}
+
+// Cached totals for service-fee header (Redis 5 min); same aggregation numbers as payment-history.
+router.get('/payment-financials', verifyToken, requireTeacher, async (req, res) => {
+  try {
+    const teacherId = req.user.teacherId;
+    const { startDate, endDate } = req.query;
+    const key = paymentFinancialsRedisKey(teacherId, startDate, endDate);
+
+    const cached = await withRedis((r) => r.get(key));
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        return res.json({ success: true, ...parsed, cached: true });
+      } catch (_e) {
+        /* fall through */
+      }
+    }
+
+    const exists = await Teacher.findOne({ teacherId }).select('_id').lean();
+    if (!exists) {
+      return res.status(404).json({ success: false, error: 'Teacher not found' });
+    }
+
+    const totals = await aggregateTeacherPaymentHistoryTotalsOnly(teacherId, startDate, endDate);
+    const payload = {
+      totalEarned: totals.totalPaid,
+      pendingPayout: totals.totalPending,
+      totalAmount: totals.totalAmount,
+      recordCount: totals.recordCount,
+      avgAmount: totals.avgAmount,
+    };
+    await withRedis((r) => r.setEx(key, PAYMENT_SVC_FEE_CACHE_TTL_SEC, JSON.stringify(payload)));
+
+    res.json({ success: true, ...payload, cached: false });
+  } catch (error) {
+    console.error('Error fetching payment financials:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch payment totals' });
+  }
+});
+
 // Get payment history for teacher
 router.get('/payment-history', verifyToken, requireTeacher, async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
     const teacherId = req.user.teacherId;
-    
+
     console.log(`Fetching payment history for teacher ${teacherId}`);
     console.log(`Date range: ${startDate || 'all'} to ${endDate || 'all'}`);
-    
-    // Find the teacher to get their profile
-    const teacher = await Teacher.findOne({ teacherId });
-    if (!teacher) {
+
+    const exists = await Teacher.findOne({ teacherId }).select('_id').lean();
+    if (!exists) {
       return res.status(404).json({ success: false, error: 'Teacher not found' });
     }
-    
-    // Get payment history from teacher's profile
-    const paymentHistory = teacher.paymentHistory || [];
-    
-    // Filter by date range if provided
-    let filteredPayments = paymentHistory;
-    if (startDate && endDate) {
-      filteredPayments = paymentHistory.filter(payment => {
-        const paymentDate = new Date(payment.issueDate);
-        const start = new Date(startDate);
-        const end = new Date(endDate);
-        return paymentDate >= start && paymentDate <= end;
-      });
-    }
-    
-    // Sort by issue date (newest first)
-    filteredPayments.sort((a, b) => new Date(b.issueDate) - new Date(a.issueDate));
-    
-    console.log(`Found ${filteredPayments.length} payment records`);
-    
+
+    const { payments, totals } = await aggregateTeacherPaymentHistory(teacherId, startDate, endDate);
+
+    const cacheKey = paymentFinancialsRedisKey(teacherId, startDate, endDate);
+    const cachePayload = {
+      totalEarned: totals.totalPaid,
+      pendingPayout: totals.totalPending,
+      totalAmount: totals.totalAmount,
+      recordCount: totals.recordCount,
+      avgAmount: totals.avgAmount,
+    };
+    await withRedis((r) => r.setEx(cacheKey, PAYMENT_SVC_FEE_CACHE_TTL_SEC, JSON.stringify(cachePayload)));
+
+    console.log(`Found ${payments.length} payment records (aggregated)`);
+
     res.json({
       success: true,
-      payments: filteredPayments
+      payments,
+      totals,
     });
-    
   } catch (error) {
     console.error('Error fetching payment history:', error);
     res.status(500).json({ success: false, error: 'Failed to fetch payment history' });

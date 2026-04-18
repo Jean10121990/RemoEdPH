@@ -243,7 +243,12 @@ const teacherSchema = new mongoose.Schema({
     remark: { type: Number, default: 0 },
     paymentMethod: { type: String },
     account: { type: String },
-    status: { type: String }
+    /** Dispersed / pending / failed — indexed with teacherId for fee views */
+    status: { type: String },
+    /** Optional mirror for admin queries (defaults unset; use status if blank) */
+    paymentStatus: { type: String },
+    /** Short label for statements (optional) */
+    studentName: { type: String },
   }],
   
   // Original fields
@@ -318,5 +323,8 @@ const teacherSchema = new mongoose.Schema({
 teacherSchema.index({ email: 1, teacherId: 1 });
 teacherSchema.index({ email: 1, status: 1 });
 teacherSchema.index({ teacherId: 1, status: 1 });
+// Service-fee / payout: teacher + line status (multikey on paymentHistory)
+teacherSchema.index({ teacherId: 1, 'paymentHistory.status': 1 });
+teacherSchema.index({ teacherId: 1, 'paymentHistory.paymentStatus': 1 });
 
 module.exports = mongoose.model('Teacher', teacherSchema); 

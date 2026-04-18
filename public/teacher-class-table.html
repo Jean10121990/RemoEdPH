@@ -148,6 +148,9 @@
             <label style="font-weight: bold; color: #000; font-size: 0.8rem; min-width: 70px;">Student:</label>
             <span id="class-student" style="color: #000; font-weight: bold; flex: 1;"></span>
           </div>
+          <div id="class-student-photo-wrap" style="display: none; margin: 6px 0 0 78px;">
+            <img id="class-student-photo" alt="" width="48" height="48" loading="lazy" decoding="async" style="border-radius: 50%; object-fit: cover; border: 1px solid #e0e6ed;" />
+          </div>
           <div class="detail-row" style="margin: 0; display: flex; align-items: center; gap: 8px;">
             <label style="font-weight: bold; color: #000; font-size: 0.8rem; min-width: 70px;">Level:</label>
             <span id="class-level" style="color: #000; font-weight: bold; flex: 1;"></span>
@@ -1163,6 +1166,42 @@
     let currentBooking = null;
     let selectedRating = 0;
 
+    function hideClassStudentPhoto() {
+      const wrap = document.getElementById('class-student-photo-wrap');
+      const img = document.getElementById('class-student-photo');
+      if (!wrap || !img) return;
+      img.onload = null;
+      img.onerror = null;
+      img.removeAttribute('src');
+      wrap.style.display = 'none';
+    }
+
+    /** Defer student avatar network load until after text fields render (lazy / idle). */
+    function queueClassStudentPhoto(url) {
+      hideClassStudentPhoto();
+      if (!url || String(url).trim() === '') return;
+      const wrap = document.getElementById('class-student-photo-wrap');
+      const img = document.getElementById('class-student-photo');
+      if (!wrap || !img) return;
+      const u = String(url).trim();
+      const apply = function() {
+        img.onload = function() {
+          wrap.style.display = 'block';
+        };
+        img.onerror = function() {
+          hideClassStudentPhoto();
+        };
+        img.src = u;
+      };
+      if (typeof requestIdleCallback === 'function') {
+        requestIdleCallback(function() {
+          apply();
+        }, { timeout: 2000 });
+      } else {
+        setTimeout(apply, 0);
+      }
+    }
+
     async function showClassInfo(booking, ev) {
       currentBooking = booking;
       
@@ -1179,7 +1218,11 @@
           if (freshBookingResp.ok) {
             const freshData = await freshBookingResp.json();
             if (freshData.booking) {
+              const prevPic = booking.studentProfilePicture;
               booking = { ...booking, ...freshData.booking };
+              if (prevPic && !booking.studentProfilePicture) {
+                booking.studentProfilePicture = prevPic;
+              }
               currentBooking = booking;
             }
           }
@@ -1227,6 +1270,11 @@
         booking.studentId?.firstName ||
         booking.studentId?.username ||
         'Unknown Student';
+      const rosterPic =
+        booking.studentProfilePicture ||
+        (booking.studentId && (booking.studentId.profilePicture || booking.studentId.photo)) ||
+        '';
+      queueClassStudentPhoto(rosterPic);
       document.getElementById('class-level').textContent = booking.studentLevel || 'Not specified';
       document.getElementById('class-lesson').textContent = booking.lesson || 'Not specified';
       document.getElementById('classroom-id').textContent = booking.classroomId || 'Not set';
@@ -1331,6 +1379,7 @@
 
     function closeClassInfo() {
       document.getElementById('class-info-modal').classList.remove('show');
+      hideClassStudentPhoto();
       if (window.__joinBtnCountdownTimer) {
         clearInterval(window.__joinBtnCountdownTimer);
         window.__joinBtnCountdownTimer = null;
