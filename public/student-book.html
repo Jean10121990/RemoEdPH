@@ -19,83 +19,6 @@
             display: flex; 
             min-height: 100vh; 
         }
-        .remoed-sidebar { 
-            width: 260px; 
-            min-width: 260px;
-            background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%); 
-            box-shadow: 4px 0 20px rgba(102, 126, 234, 0.1); 
-            padding: 0; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: stretch;
-            position: fixed;
-            height: 100vh;
-            z-index: 100;
-            border-right: 1px solid rgba(102, 126, 234, 0.1);
-        }
-        .remoed-logo { 
-            display: flex; 
-            align-items: center; 
-            gap: 14px; 
-        }
-        .remoed-logo img { 
-            height: 48px; 
-        }
-        .remoed-title { 
-            font-size: 1.7rem; 
-            font-weight: 700; 
-            color: #667eea; 
-            letter-spacing: 1px; 
-        }
-        .remoed-user { 
-            display: flex; 
-            align-items: center; 
-            gap: 10px; 
-        }
-        .remoed-avatar { 
-            width: 72px; 
-            height: 72px; 
-            border-radius: 50%; 
-            background: #667eea; 
-            color: #fff; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            font-weight: bold; 
-            font-size: 2.2rem; 
-        }
-        .remoed-username { 
-            color: #667eea; 
-            font-weight: 600; 
-        }
-        .remoed-menu { 
-            list-style: none; 
-            padding: 0; 
-            margin: 0; 
-        }
-        .remoed-menu li { 
-            padding: 14px 32px; 
-            color: #667eea; 
-            font-weight: 500; 
-            cursor: pointer; 
-            display: flex; 
-            align-items: center; 
-            gap: 12px; 
-            border-left: 4px solid transparent; 
-            transition: background 0.2s, border-color 0.2s; 
-        }
-        .remoed-menu li.active, .remoed-menu li:hover { 
-            background: linear-gradient(90deg, #667eea 0%, #5a67d8 100%); 
-            border-left: 4px solid #667eea; 
-            color: white; 
-            transform: translateX(4px);
-            transition: all 0.3s ease;
-        }
-        .remoed-menu svg { 
-            width: 20px; 
-            height: 20px; 
-            stroke: currentColor;
-        }
         .remoed-content { 
             flex: 1; 
             padding: 20px 32px 20px 32px;
@@ -1068,8 +991,9 @@
         }
     </style>
     <link rel="stylesheet" href="css/teacher-sidebar.css">
+    <link rel="stylesheet" href="css/student-portal-layout.css">
 </head>
-<body class="student-portal">
+<body class="student-portal page-student-book">
     <div class="remoed-main">
         <div id="student-sidebar-root"></div>
         <script src="js/student-sidebar.js"></script>
@@ -1243,6 +1167,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/luxon@3.5.0/build/global/luxon.min.js"></script>
     <script src="timezone-utils.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
     <script>
         // Role-based access control
         const userType = localStorage.getItem('userType');
@@ -1368,6 +1293,37 @@
         let selectedSlots = new Map(); // Map to store selected slots: key = "date-time", value = {date, time, teacher}
         let availableSlots = new Map(); // Map to store available slots data
         let bookedSlots = new Map(); // Map to store booked slots data
+
+        function getStudentCalendarScopedTeacherId() {
+            try {
+                const hid = document.getElementById('booked-teacher-id');
+                if (hid && hid.value && String(hid.value).trim()) return String(hid.value).trim();
+                const pt = sessionStorage.getItem('prefillPreferredTeacherId');
+                if (pt && String(pt).trim()) return String(pt).trim();
+            } catch (e) {
+                /* ignore */
+            }
+            return '';
+        }
+
+        (function setupStudentBookingRealtime() {
+            if (typeof io !== 'function') return;
+            const rt = localStorage.getItem('token');
+            if (!rt) return;
+            try {
+                const socket = io(window.location.origin, { auth: { token: rt } });
+                const onSlotsOrBookings = (payload) => {
+                    if (!payload || payload.teacherId == null || String(payload.teacherId).trim() === '') return;
+                    const scope = getStudentCalendarScopedTeacherId();
+                    if (scope && String(payload.teacherId).trim() !== scope) return;
+                    void loadAvailableSlots();
+                };
+                socket.on('slotsUpdated', onSlotsOrBookings);
+                socket.on('bookingsUpdated', onSlotsOrBookings);
+            } catch (e) {
+                console.warn('student booking realtime', e);
+            }
+        })();
         
         // Initialize the page
         document.addEventListener('DOMContentLoaded', function() {
@@ -1696,9 +1652,18 @@
                 const token = localStorage.getItem('token');
                 console.log('🔍 Student booking - Token exists:', !!token);
                 console.log('🔍 Loading available slots for week:', weekString);
-                
-                // Get all available slots for this week (no specific teacher filter for students)
-                const response = await fetch(`/api/teacher/slots?week=${weekString}&tz=${encodeURIComponent(userTimezone)}`, {
+
+                let scopedTeacherParam = '';
+                try {
+                    const pt = sessionStorage.getItem('prefillPreferredTeacherId');
+                    if (pt && String(pt).trim()) {
+                        scopedTeacherParam = `&teacherId=${encodeURIComponent(String(pt).trim())}`;
+                    }
+                } catch (e) {
+                    console.warn('prefillPreferredTeacherId for slots', e);
+                }
+
+                const response = await fetch(`/api/teacher/slots?week=${weekString}&tz=${encodeURIComponent(userTimezone)}${scopedTeacherParam}`, {
                     headers: {
                         'Authorization': `Bearer ${token}`,
                         'Cache-Control': 'no-cache',
@@ -1775,11 +1740,14 @@
                         const tid = slot.teacherId;
                         const tname = slot.teacherName || tid;
                         const existing = availableSlots.get(key);
+                        const sid = slot._id != null ? String(slot._id) : '';
                         if (existing) {
                             const ids = new Set(existing.candidateTeacherIds || (existing.teacherId ? [existing.teacherId] : []));
                             if (tid) ids.add(tid);
                             const names = { ...(existing.teacherNames || {}) };
                             if (tid) names[tid] = tname;
+                            const slotIdsByTeacherId = { ...(existing.slotIdsByTeacherId || {}) };
+                            if (tid && sid) slotIdsByTeacherId[tid] = sid;
                             availableSlots.set(key, {
                                 ...existing,
                                 ...slot,
@@ -1787,12 +1755,15 @@
                                 teacherId: tid || existing.teacherId,
                                 candidateTeacherIds: [...ids],
                                 teacherNames: names,
+                                slotIdsByTeacherId,
                                 localDate: local.date,
                                 localTime: local.time,
                                 localLabel: local.label,
                                 clientTz: tz
                             });
                         } else {
+                            const slotIdsByTeacherId = {};
+                            if (tid && sid) slotIdsByTeacherId[tid] = sid;
                             availableSlots.set(key, {
                                 ...slot,
                                 utc,
@@ -1801,7 +1772,8 @@
                                 localLabel: local.label,
                                 clientTz: tz,
                                 candidateTeacherIds: tid ? [tid] : [],
-                                teacherNames: tid ? { [tid]: tname } : {}
+                                teacherNames: tid ? { [tid]: tname } : {},
+                                slotIdsByTeacherId
                             });
                         }
                     });
@@ -1912,20 +1884,8 @@
                     // Remove click handler for past slots
                     cell.onclick = null;
 
-                } else if (bookedSlots.has(slotKey)) {
-                    // Slot is booked (red) - show as booked
-                    cell.classList.remove('available', 'unavailable', 'past');
-                    cell.classList.add('booked');
-                    cell.textContent = 'Booked';
-                    cell.style.cursor = 'not-allowed';
-                    cell.style.fontWeight = 'bold';
-                    cell.style.fontSize = '0.8rem';
-                    cell.style.color = '#dc3545';
-                    // Remove click handler for booked slots
-                    cell.onclick = null;
-
                 } else if (availableSlotsArray.includes(slotKey)) {
-                    // Slot is available (green) - only if it actually exists in database
+                    // Open slot for at least one teacher — show before global "booked" so another teacher's booking does not ghost-block this cell
                     cell.classList.remove('unavailable', 'past', 'booked');
                     cell.classList.add('available');
                     cell.textContent = 'Book Now';
@@ -1933,9 +1893,18 @@
                     cell.style.fontWeight = 'bold';
                     cell.style.fontSize = '0.8rem';
                     cell.style.color = '#28a745';
-                    // Ensure click handler is set for available slots
                     cell.onclick = () => toggleSlot(date, time);
                     availableCount++;
+                } else if (bookedSlots.has(slotKey)) {
+                    cell.classList.remove('available', 'unavailable', 'past');
+                    cell.classList.add('booked');
+                    cell.textContent = 'Booked';
+                    cell.style.cursor = 'not-allowed';
+                    cell.style.fontWeight = 'bold';
+                    cell.style.fontSize = '0.8rem';
+                    cell.style.color = '#dc3545';
+                    cell.onclick = null;
+
                 } else {
                     // Slot is not available (grey) - this includes slots that don't exist
                     cell.classList.remove('available', 'unavailable', 'past');
@@ -1973,7 +1942,7 @@
             const isTimePassed = isSameDay && (Lux ? slotLocal <= now : slotLocal.getTime() <= now.getTime());
             
             const isAvailable = availableSlots.has(slotKey);
-            const isBooked = bookedSlots.has(slotKey);
+            const isBooked = !isAvailable && bookedSlots.has(slotKey);
             
             console.log(`Toggling slot: ${date} ${time}`);
             console.log(`  - Slot key: ${slotKey}`);
@@ -2786,6 +2755,29 @@
                     bookedHid && bookedHid.value ? String(bookedHid.value).trim() : '';
                 const assignmentMode = modeEl && modeEl.value ? modeEl.value : 'firstAvailable';
 
+                const slotIdsByT = slot.slotIdsByTeacherId || {};
+                const candIds = slot.candidateTeacherIds || (slot.teacherId ? [slot.teacherId] : []);
+                const sortedTids = [...new Set(candIds.map((x) => String(x).trim()).filter(Boolean))].sort((a, b) =>
+                    a.localeCompare(b, undefined, { sensitivity: 'base' })
+                );
+                let slotMongoId = '';
+                if (preferredTeacherId && slotIdsByT[preferredTeacherId]) {
+                    slotMongoId = String(slotIdsByT[preferredTeacherId]);
+                } else if (sortedTids.length && slotIdsByT[sortedTids[0]]) {
+                    slotMongoId = String(slotIdsByT[sortedTids[0]]);
+                } else if (slot._id != null) {
+                    slotMongoId = String(slot._id);
+                }
+                if (!slotMongoId) {
+                    showMessage(
+                        'Error: Missing slot reference for this teacher. Please refresh the calendar and try again.',
+                        'error'
+                    );
+                    bookBtn.disabled = false;
+                    bookBtnText.textContent = 'Book Class';
+                    return;
+                }
+
                 const requestBody = {
                     date: slot.date,
                     time: slot.time,
@@ -2793,7 +2785,8 @@
                     timezone: userTimezone,
                     lesson: finalLessonTitle,
                     lessonId: lessonId,
-                    studentLevel: studentLevel
+                    studentLevel: studentLevel,
+                    slotId: slotMongoId
                 };
                 if (preferredTeacherId) {
                     requestBody.teacherId = preferredTeacherId;

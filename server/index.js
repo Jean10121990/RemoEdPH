@@ -335,6 +335,9 @@ app.get('/api/rtc-config', (req, res) => {
   res.json({ iceServers });
 });
 
+const Application = require('./models/Application');
+const InvitationToken = require('./models/InvitationToken');
+
 // Protected teacher signup route: requires a valid invitation token in URL.
 app.get('/teacher-signup', async (req, res) => {
   try {
@@ -366,6 +369,41 @@ app.get('/teacher-signup', async (req, res) => {
 
 // Prevent bypassing invitation checks via direct file URL.
 app.get('/teacher-signup.html', (req, res) => res.redirect('/'));
+
+/**
+ * Entry page for passed applicants (email links with ?appId= + invitation).
+ * If `invitation` is present, it must match a valid unused invite for a passed application (same as /teacher-signup).
+ * If only `appId` is present, the static page resolves an invite via /api/auth/teacher-signup/invitation-by-application.
+ */
+app.get('/register.html', async (req, res) => {
+  try {
+    const token = String(req.query.invitation || '').trim();
+    const appIdFromQuery = String(req.query.appId || '').trim();
+    if (!token && !appIdFromQuery) {
+      return res.redirect('/');
+    }
+    if (token) {
+      const invitation = await InvitationToken.findOne({ token, isUsed: false }).lean();
+      if (!invitation) {
+        return res.redirect('/');
+      }
+      if (!invitation.expiresAt || new Date(invitation.expiresAt) <= new Date()) {
+        return res.redirect('/');
+      }
+      const application = await Application.findById(invitation.applicationId).lean();
+      if (!application || application.currentStage !== 'passed') {
+        return res.redirect('/');
+      }
+      if (appIdFromQuery && String(application._id) !== appIdFromQuery) {
+        return res.redirect('/');
+      }
+    }
+    return res.sendFile(path.join(__dirname, '../public/register.html'));
+  } catch (error) {
+    console.error('GET /register.html failed:', error);
+    return res.redirect('/');
+  }
+});
 
 // Public teacher application form (React build output).
 const applicationFormDist = path.join(__dirname, '../application-form/dist');
@@ -455,10 +493,9 @@ app.get('/api/email/status', (req, res) => {
     success: true,
     email: status,
     environment: {
-      hasSendGridKey: !!process.env.SENDGRID_API_KEY,
-      sendGridKeyLength: process.env.SENDGRID_API_KEY ? process.env.SENDGRID_API_KEY.length : 0,
       emailServiceType: process.env.EMAIL_SERVICE_TYPE || '(not set)',
-      sendGridFromEmail: process.env.SENDGRID_FROM_EMAIL || '(not set)'
+      smtpHost: process.env.SMTP_HOST || '(default smtp.hostinger.com)',
+      emailUserSet: !!(process.env.EMAIL_USER || process.env.SMTP_USER),
     }
   });
 });

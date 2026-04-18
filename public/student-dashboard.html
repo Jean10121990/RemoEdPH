@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="js/security-guard.js?v=1"></script>
+    <script src="js/security-guard.js?v=4"></script>
+    <script src="js/dashboard-history-lock.js?v=1"></script>
     <title>Student Dashboard - RemoEdPH</title>
     <link rel="stylesheet" href="modern-styles.css">
     <link rel="stylesheet" href="child-friendly-styles.css">
@@ -567,33 +568,6 @@
             }
         }
         
-        /* Override modern-styles.css sidebar styles to match teacher dashboard */
-        .remoed-menu li { 
-            padding: 14px 32px; 
-            color: #667eea; 
-            font-weight: 500; 
-            cursor: pointer; 
-            display: flex; 
-            align-items: center; 
-            gap: 12px; 
-            border-left: 4px solid transparent; 
-            transition: background 0.2s, border-color 0.2s; 
-        }
-        
-        .remoed-menu li.active, .remoed-menu li:hover { 
-            background: linear-gradient(90deg, #667eea 0%, #5a67d8 100%) !important; 
-            border-left: 4px solid #667eea !important; 
-            color: white !important; 
-            transform: translateX(4px) !important;
-            transition: all 0.3s ease !important;
-        }
-        
-        .remoed-menu svg { 
-            width: 20px; 
-            height: 20px; 
-            stroke: currentColor; 
-        }
-
         /* Remove decorative motion/noise on dashboard */
         .fun-card::before,
         .safe-content-badge,
@@ -604,8 +578,9 @@
         }
     </style>
     <link rel="stylesheet" href="css/teacher-sidebar.css">
+    <link rel="stylesheet" href="css/student-portal-layout.css">
 </head>
-  <body class="student-portal">
+  <body class="student-portal page-student-dashboard">
     <!-- Main Layout: Sidebar + Content -->
     <div class="remoed-main">
         <!-- Navigation Header -->
@@ -875,7 +850,7 @@
     const userType = localStorage.getItem('userType');
     if (userType !== 'student') {
       alert('Access denied. This page is for students only.');
-      window.location.href = 'index.html';
+      window.location.replace('index.html');
     }
     
         document.addEventListener('DOMContentLoaded', function() {
@@ -892,11 +867,8 @@
         loadProfilePicture(studentId);
       }
       
-      document.getElementById('logout-nav').onclick = function() {
-        localStorage.clear();
-        window.location.href = 'student-login.html';
-      };
-      
+      // Logout: handled by js/student-sidebar.js (localStorage.clear + sessionStorage.clear + replace)
+
       // Load chart data
       loadChartData();
       

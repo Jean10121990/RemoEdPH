@@ -117,7 +117,7 @@
       }
 
       function authHeaders(json) {
-        var t = localStorage.getItem('adminToken');
+        var t = localStorage.getItem('remoed_admin_token') || localStorage.getItem('remoed_admin_auth') || localStorage.getItem('adminToken');
         var h = {};
         if (json) h['Content-Type'] = 'application/json';
         if (t) h['Authorization'] = 'Bearer ' + t;

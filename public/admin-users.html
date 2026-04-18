@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script src="js/security-guard.js?v=2"></script>
     <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
     <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
     <meta charset="UTF-8">
@@ -270,7 +271,7 @@
         /** Admin API: send JWT if present and session cookie (admin portal) for verifyAdminApiAuth */
         function adminApiFetchInit(init) {
             const o = init && typeof init === 'object' ? Object.assign({}, init) : {};
-            const token = localStorage.getItem('adminToken') || '';
+            const token = (window.RemoedAdminSession && RemoedAdminSession.getAuthToken ? RemoedAdminSession.getAuthToken() : (localStorage.getItem('remoed_admin_token')||localStorage.getItem('remoed_admin_auth')||localStorage.getItem('adminToken')||'')) || '';
             const headers = Object.assign({}, o.headers || {});
             if (token) headers['Authorization'] = 'Bearer ' + token;
             o.headers = headers;

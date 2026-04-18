@@ -24,6 +24,14 @@ function isJwtValid(token) {
 
 function getStoredUserToken() {
   return (
+    localStorage.getItem('remoed_teacher_token') ||
+    sessionStorage.getItem('remoed_teacher_token') ||
+    localStorage.getItem('remoed_teacher_auth') ||
+    sessionStorage.getItem('remoed_teacher_auth') ||
+    localStorage.getItem('remoed_student_token') ||
+    sessionStorage.getItem('remoed_student_token') ||
+    localStorage.getItem('remoed_student_auth') ||
+    sessionStorage.getItem('remoed_student_auth') ||
     localStorage.getItem('remoed_user_token') ||
     sessionStorage.getItem('remoed_user_token') ||
     localStorage.getItem('token') ||
@@ -92,13 +100,29 @@ document.getElementById('unified-login-form').addEventListener('submit', async f
     }
 
     if (data && data.success && data.token && data.userRole && data.redirectTo) {
-      // New canonical token key (used by unified login + remember-me)
+      // Role-specific keys + legacy remoed_user_token (used by unified login + remember-me)
       try {
         localStorage.removeItem('remoed_user_token');
+        localStorage.removeItem('remoed_teacher_token');
+        localStorage.removeItem('remoed_teacher_auth');
+        localStorage.removeItem('remoed_student_token');
+        localStorage.removeItem('remoed_student_auth');
         sessionStorage.removeItem('remoed_user_token');
+        sessionStorage.removeItem('remoed_teacher_token');
+        sessionStorage.removeItem('remoed_teacher_auth');
+        sessionStorage.removeItem('remoed_student_token');
+        sessionStorage.removeItem('remoed_student_auth');
+        var roleKey =
+          data.userRole === 'teacher'
+            ? 'remoed_teacher_token'
+            : data.userRole === 'student'
+              ? 'remoed_student_token'
+              : 'remoed_user_token';
         if (rememberMe) {
+          localStorage.setItem(roleKey, data.token);
           localStorage.setItem('remoed_user_token', data.token);
         } else {
+          sessionStorage.setItem(roleKey, data.token);
           sessionStorage.setItem('remoed_user_token', data.token);
         }
       } catch (_e) {}
@@ -107,6 +131,7 @@ document.getElementById('unified-login-form').addEventListener('submit', async f
       try {
         localStorage.setItem('token', data.token);
         localStorage.setItem('userType', data.userRole);
+        localStorage.setItem('userRole', data.userRole);
         localStorage.setItem('remoedUsername', email);
         const payload = parseJwtPayload(data.token);
         if (payload && payload.userRole === 'student' && payload.studentId) {
@@ -125,14 +150,14 @@ document.getElementById('unified-login-form').addEventListener('submit', async f
 
       // Use redirectTo field from API
       if (data.redirectTo === '/teacher/dashboard') {
-        window.location.href = '/teacher-dashboard.html';
+        window.location.replace('/teacher-dashboard.html');
         return;
       }
       if (data.redirectTo === '/student/dashboard') {
-        window.location.href = '/student-dashboard.html';
+        window.location.replace('/student-dashboard.html');
         return;
       }
-      window.location.href = '/index.html';
+      window.location.replace('/index.html');
       return;
     }
 

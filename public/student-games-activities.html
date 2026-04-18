@@ -19,20 +19,6 @@
             display: flex; 
             min-height: 100vh; 
         }
-        .remoed-sidebar { 
-            width: 260px; 
-            min-width: 260px;
-            background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%); 
-            box-shadow: 4px 0 20px rgba(102, 126, 234, 0.1); 
-            padding: 0; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: stretch;
-            position: fixed;
-            height: 100vh;
-            z-index: 100;
-            border-right: 1px solid rgba(102, 126, 234, 0.1);
-        }
         .remoed-content {
             flex: 1;
             padding: 20px;
@@ -43,84 +29,6 @@
             margin-left: 260px;
             max-width: calc(100vw - 260px);
             overflow-x: auto;
-        }
-        .remoed-logo { 
-            height: 100px; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: center; 
-            gap: 8px; 
-            padding-top: 5px; 
-        }
-        .remoed-logo img { 
-            height: 40px; 
-            width: auto; 
-            display: inline-block; 
-            vertical-align: middle; 
-        }
-        .remoed-title { 
-            font-size: 1.3rem; 
-            font-weight: 700; 
-            color: #667eea; 
-            letter-spacing: 1px; 
-        }
-        .remoed-user { 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            margin-bottom: 24px; 
-        }
-        .remoed-avatar { 
-            width: 60px; 
-            height: 60px; 
-            border-radius: 50%; 
-            background: linear-gradient(135deg, #667eea, #5a67d8); 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            color: white; 
-            font-weight: bold; 
-            font-size: 1.5rem; 
-            margin-bottom: 8px; 
-            cursor: pointer;
-            transition: transform 0.2s;
-        }
-        .remoed-username { 
-            font-size: 0.9rem; 
-            color: #333; 
-            font-weight: 500; 
-        }
-        .remoed-menu { 
-            list-style: none; 
-            padding: 0; 
-            margin: 0; 
-            flex: 1; 
-            display: flex; 
-            flex-direction: column; 
-        }
-        .remoed-menu li { 
-            padding: 14px 32px; 
-            color: #667eea; 
-            font-weight: 500; 
-            cursor: pointer; 
-            display: flex; 
-            align-items: center; 
-            gap: 12px; 
-            border-left: 4px solid transparent; 
-            transition: background 0.2s, border-color 0.2s; 
-        }
-        .remoed-menu li.active, .remoed-menu li:hover { 
-            background: linear-gradient(90deg, #667eea 0%, #5a67d8 100%) !important; 
-            border-left: 4px solid #667eea !important; 
-            color: white !important; 
-            transform: translateX(4px) !important; 
-            transition: all 0.3s ease !important; 
-        }
-        .remoed-menu svg { 
-            width: 20px; 
-            height: 20px; 
-            stroke: currentColor; 
         }
 
         /* Games and Activities Styles */
@@ -487,11 +395,6 @@
         }
 
         @media (max-width: 768px) {
-            .remoed-sidebar {
-                position: relative;
-                width: 100%;
-                height: auto;
-            }
             .remoed-content {
                 margin-left: 0;
                 max-width: 100%;
@@ -503,6 +406,7 @@
         }
     </style>
     <link rel="stylesheet" href="css/teacher-sidebar.css">
+    <link rel="stylesheet" href="css/student-portal-layout.css">
 </head>
 <body class="student-portal">
     <div class="remoed-main">

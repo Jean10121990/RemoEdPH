@@ -33,6 +33,14 @@ const { verifyToken, requireTeacher, requireStudent, requireOwnTeacherData, requ
 const { JWT_EXPIRES_IN } = require('./config/authTokens');
 const { isTokenBlacklisted } = require('./services/jwtBlacklist');
 const { generateReferralCode } = require('./utils/referralCode');
+const slotsRedisCache = require('./services/slotsRedisCache');
+const studentController = require('./studentController');
+const {
+  isProbableHexObjectIdForTeacher,
+  escapeRegexForTeacherLookup,
+  resolveToCanonicalTeacherId,
+  getCandidateTeachersForSlotUtc,
+} = require('./services/teacherSlotResolve');
 const {
   consumeReservedCreditForBooking,
   releaseReservedCreditForBooking,
@@ -43,12 +51,6 @@ const {
   finalizeBookingAfterTeacherFeedbackWrap,
 } = require('./services/teacherClassFinalize');
 const { getClassroomEntryGate, EARLY_ENTRY_MINUTES } = require('./services/classroomEntryWindow');
-const {
-  getAvailableBookingCredits,
-  getCreditPoolTotal,
-  getReservedCredits,
-  reconcileStudentCreditBalanceIfDrifted,
-} = require('./services/studentCreditSummary');
 const realtime = require('./realtime');
 const { teacherPeerSearchLimiter } = require('./middleware/apiRateLimits');
 const { encryptPiiString, decryptPiiString } = require('./utils/piiCrypto');
@@ -1023,6 +1025,7 @@ async function handleTeacherOpenSlots(req, res) {
     }
 
     console.log('Successfully saved slots:', newSlots.length);
+    await slotsRedisCache.invalidateSlotsCache(actualTeacherId);
     res.json({ success: true });
     try {
       realtime.emitAll('slotsUpdated', { teacherId: actualTeacherId, ts: Date.now() });
@@ -1093,6 +1096,7 @@ async function handleTeacherCloseSlots(req, res) {
     console.log(`Deleted ${deleteResult.deletedCount} slots`);
 
     console.log('Successfully closed slots:', slots.length);
+    await slotsRedisCache.invalidateSlotsCache(actualTeacherId);
     res.json({ success: true, closedCount: deleteResult.deletedCount });
 
     try {
@@ -1109,15 +1113,6 @@ async function handleTeacherCloseSlots(req, res) {
 
 router.post('/close-slot', verifyToken, requireTeacher, handleTeacherCloseSlots);
 
-/** 24-char hex MongoDB ObjectId — use with Teacher.findById, not mongoose.isValidObjectId alone. */
-function isProbableHexObjectIdForTeacher(s) {
-  return typeof s === 'string' && /^[a-f0-9]{24}$/i.test(String(s).trim());
-}
-
-function escapeRegexForTeacherLookup(str) {
-  return String(str || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
 // Fetch teacher's open slots and bookings for a week
 router.get('/slots', async (req, res) => {
   try {
@@ -1130,7 +1125,7 @@ router.get('/slots', async (req, res) => {
     if (!teacherId) {
       console.log('🔍 Student request: Getting all available slots for week:', week);
       const clientTz = req.query.tz && DateTime.now().setZone(req.query.tz).isValid ? req.query.tz : null;
-      
+
       // Week range in UTC
       const startUtc = DateTime.fromISO(week, { zone: 'utc' }).startOf('day');
       const endUtc = startUtc.plus({ days: 7 });
@@ -1189,8 +1184,9 @@ router.get('/slots', async (req, res) => {
       
       console.log('🔍 Student request: Found', validSlots.length, 'available slots and', bookings.length, 'bookings');
       console.log('🔍 Student request: Sample slot data:', validSlots.length > 0 ? validSlots[0] : 'No slots');
-      
-      return res.json({ slots: validSlots, bookings });
+
+      const studentPayload = { slots: validSlots, bookings };
+      return res.json(studentPayload);
     }
 
     console.log('Fetching slots for teacherId:', teacherId, 'week:', week); // Debug log
@@ -1252,6 +1248,26 @@ router.get('/slots', async (req, res) => {
     
     // Determine client timezone for convenience conversion (optional)
     const clientTz = req.query.tz && DateTime.now().setZone(req.query.tz).isValid ? req.query.tz : null;
+    const allSlotsFlag =
+      String(allSlots || '') === '1' ||
+      String(allSlots || '').toLowerCase() === 'true' ||
+      allSlots === true;
+    const tCached = await slotsRedisCache.readTeacherSlotsCache(
+      actualTeacherId,
+      week,
+      allSlotsFlag,
+      clientTz
+    );
+    if (tCached) {
+      res.set({
+        'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+        Pragma: 'no-cache',
+        Expires: '0',
+        'Last-Modified': new Date().toUTCString(),
+        ETag: `"${Date.now()}-${crypto.randomBytes(8).toString('hex')}"`,
+      });
+      return res.json(tCached);
+    }
 
     // Get all slots for this teacher for the week - use local timezone instead of hardcoded +08:00
     const start = new Date(week + 'T00:00:00');
@@ -1278,7 +1294,7 @@ router.get('/slots', async (req, res) => {
     };
 
     // If allSlots is not specified, only return available slots (for student booking)
-    if (!allSlots) {
+    if (!allSlotsFlag) {
       queryFilter.available = true;
     }
 
@@ -1401,76 +1417,19 @@ router.get('/slots', async (req, res) => {
       return obj;
     });
 
-    res.json({ slots, bookings: bookingsWithTimezone });
+    const teacherPayload = { slots, bookings: bookingsWithTimezone };
+    await slotsRedisCache.writeTeacherSlotsCache(
+      actualTeacherId,
+      week,
+      allSlotsFlag,
+      clientTz,
+      teacherPayload
+    );
+    res.json(teacherPayload);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
-
-/** Normalize slot storage (ObjectId or string) to Teacher.teacherId string */
-async function resolveToCanonicalTeacherId(rawTeacherId) {
-  if (rawTeacherId == null || rawTeacherId === '') return null;
-  if (typeof rawTeacherId === 'string') {
-    const s = rawTeacherId.trim();
-    const byField = await Teacher.findOne({ teacherId: s });
-    if (byField) return byField.teacherId;
-    const emailMatch = { email: { $regex: new RegExp('^' + escapeRegexForTeacherLookup(s) + '$', 'i') } };
-    const byUsername = await Teacher.findOne({ $or: [{ username: s }, emailMatch] });
-    if (byUsername) return byUsername.teacherId;
-  }
-  if (isProbableHexObjectIdForTeacher(String(rawTeacherId))) {
-    const byOid = await Teacher.findById(rawTeacherId);
-    if (byOid) return byOid.teacherId;
-  }
-  return null;
-}
-
-/** Find open slots for a booking instant (handles Date vs ISO string in DB). */
-async function findOpenSlotsByUtcInstant(canonicalUtcIso) {
-  const utcInstant = new Date(canonicalUtcIso);
-  if (isNaN(utcInstant.getTime())) return [];
-  let slots = await TeacherSlot.find({
-    dateTimeUtc: utcInstant,
-    available: true
-  }).lean();
-  if (slots.length > 0) return slots;
-  const t0 = utcInstant.getTime();
-  return TeacherSlot.find({
-    available: true,
-    dateTimeUtc: { $gte: new Date(t0 - 2000), $lte: new Date(t0 + 2000) }
-  }).lean();
-}
-
-/** All teachers with an open slot at this UTC instant and no conflicting booking */
-async function getCandidateTeachersForSlotUtc(canonicalUtcIso) {
-  const slots = await findOpenSlotsByUtcInstant(canonicalUtcIso);
-  const candidates = [];
-  const utcD = new Date(canonicalUtcIso);
-  for (const slot of slots) {
-    const tid = await resolveToCanonicalTeacherId(slot.teacherId);
-    if (!tid) continue;
-    let existing = await Booking.findOne({
-      teacherId: tid,
-      dateTimeUtc: utcD,
-      status: { $ne: 'cancelled' }
-    });
-    if (!existing) {
-      existing = await Booking.findOne({
-        teacherId: tid,
-        dateTimeUtc: canonicalUtcIso,
-        status: { $ne: 'cancelled' }
-      });
-    }
-    if (!existing) candidates.push(tid);
-  }
-  return [...new Set(candidates)].sort((a, b) => a.localeCompare(b));
-}
-
-async function pickRoundRobinTeacher(candidates) {
-  if (!candidates.length) return null;
-  const total = await Booking.countDocuments({});
-  return candidates[total % candidates.length];
-}
 
 // Get available teachers for a specific date and time (optional dateTimeUtc for precision)
 router.get('/available-teachers', async (req, res) => {
@@ -1547,378 +1506,8 @@ router.get('/available-teachers', async (req, res) => {
   }
 });
 
-// Book a class — optional preferred teacher; otherwise first-available or round-robin among open slots
-router.post('/book-class', verifyToken, requireStudent, async (req, res) => {
-  try {
-    console.log('🔍 ========== BOOKING REQUEST RECEIVED ==========');
-    const {
-      teacherId,
-      preferredTeacherId,
-      date,
-      time,
-      dateTimeUtc,
-      lesson,
-      lessonId,
-      studentLevel,
-      timezone,
-      assignmentMode = 'firstAvailable'
-    } = req.body;
-    const preferredRaw = preferredTeacherId != null && preferredTeacherId !== '' ? preferredTeacherId : teacherId;
-
-    let student = await Student.findById(req.user.studentId);
-    if (!student) {
-      return res.status(400).json({ error: 'Student not found' });
-    }
-    if (await reconcileStudentCreditBalanceIfDrifted(req.user.studentId, student.toObject())) {
-      student = await Student.findById(req.user.studentId);
-    }
-    const effectiveSubscribed =
-      student.isSubscribed === true ||
-      (student.paymentStatus === 'paid' && student.subscriptionStatus === 'active');
-    const studentId = student.username;
-    const availableCredits = getAvailableBookingCredits(student);
-    if (!effectiveSubscribed && availableCredits <= 0) {
-      return res.status(403).json({
-        error: 'Subscription required to book your next lesson.',
-        code: 'SUBSCRIPTION_REQUIRED_LESSON_2',
-      });
-    }
-    if (availableCredits <= 0) {
-      return res.status(400).json({ error: 'Insufficient credits. Please top up your plan.' });
-    }
-
-    const missingFields = [];
-    if (!studentId) missingFields.push('studentId');
-    if (!dateTimeUtc && (!date || !time)) missingFields.push('dateTimeUtc');
-    if (!lesson) missingFields.push('lesson');
-    if (!studentLevel) missingFields.push('studentLevel');
-
-    if (missingFields.length > 0) {
-      return res.status(400).json({
-        error: 'Missing required fields: ' + missingFields.join(', '),
-        details: {
-          studentId: !!studentId,
-          date: !!date,
-          time: !!time,
-          lesson: !!lesson,
-          studentLevel: !!studentLevel
-        },
-        missingFields
-      });
-    }
-
-    let canonicalUtc = dateTimeUtc;
-    let zoneUsed = timezone;
-    if (!canonicalUtc) {
-      const { utcIso, zoneUsed: zu } = toUtcFromLocal(date, time, timezone || 'Asia/Manila');
-      canonicalUtc = utcIso;
-      zoneUsed = zu;
-    }
-    const dt = DateTime.fromISO(canonicalUtc, { zone: 'utc' });
-    const dateUtc = dt.toISODate();
-    const timeUtc = dt.toFormat('HH:mm');
-
-    const candidates = await getCandidateTeachersForSlotUtc(canonicalUtc);
-    console.log('🔍 Candidate teachers for slot:', candidates);
-
-    if (candidates.length === 0) {
-      return res.status(400).json({
-        error: 'No teacher has an open slot for this time, or all are already booked.'
-      });
-    }
-
-    let chosenTeacherId = null;
-    if (preferredRaw != null && String(preferredRaw).trim() !== '') {
-      const resolvedPref = await resolveToCanonicalTeacherId(preferredRaw);
-      if (!resolvedPref) {
-        return res.status(400).json({ error: 'Preferred teacher not found.' });
-      }
-      if (!candidates.includes(resolvedPref)) {
-        return res.status(400).json({
-          error: 'That teacher is not available for this time slot. Choose another teacher or use auto-assign.',
-          candidates
-        });
-      }
-      chosenTeacherId = resolvedPref;
-    } else {
-      chosenTeacherId =
-        assignmentMode === 'roundRobin'
-          ? await pickRoundRobinTeacher(candidates)
-          : candidates[0];
-    }
-
-    const teacher = await Teacher.findOne({ teacherId: chosenTeacherId });
-    if (!teacher) {
-      return res.status(400).json({ error: 'Assigned teacher record not found' });
-    }
-
-    let existingSlot = null;
-    const slotRows = await findOpenSlotsByUtcInstant(canonicalUtc);
-    for (const s of slotRows) {
-      const tid = await resolveToCanonicalTeacherId(s.teacherId);
-      if (tid === chosenTeacherId) {
-        existingSlot = s;
-        break;
-      }
-    }
-
-    if (!existingSlot) {
-      return res.status(400).json({ error: 'Selected slot is no longer available or not open for booking' });
-    }
-
-    const slotOwnerId = await resolveToCanonicalTeacherId(existingSlot.teacherId);
-    if (slotOwnerId !== chosenTeacherId) {
-      return res.status(400).json({ error: 'Slot does not match assigned teacher' });
-    }
-
-    const utcInstant = new Date(canonicalUtc);
-
-    /** Local / standalone MongoDB: off. Replica set (e.g. Atlas): set USE_TRANSACTIONS=true if you want multi-doc transactions. */
-    const useTransactions =
-      String(process.env.USE_TRANSACTIONS || '').toLowerCase() === 'true';
-
-    /**
-     * Lock slot (atomic findOneAndUpdate) + create booking.
-     * When session is null, no Mongo session/transactions — works on standalone mongod.
-     */
-    async function createBookingAtomic(session) {
-      const findOpts = { new: true };
-      if (session) findOpts.session = session;
-
-      let dupQ = Booking.findOne({
-        teacherId: chosenTeacherId,
-        $or: [{ dateTimeUtc: utcInstant }, { dateTimeUtc: canonicalUtc }],
-        status: { $nin: ['cancelled'] }
-      });
-      if (session) dupQ = dupQ.session(session);
-      const dup = await dupQ;
-      if (dup) {
-        const err = new Error('Selected slot is already booked');
-        err.statusCode = 400;
-        err.code = 'ALREADY_BOOKED';
-        throw err;
-      }
-
-      // Atomically reserve one credit without consuming total purchased credits yet.
-      const reservedStudent = await Student.findOneAndUpdate(
-        {
-          _id: req.user.studentId,
-          $expr: {
-            $gt: [
-              {
-                $subtract: [
-                  { $ifNull: ['$totalCredits', { $ifNull: ['$creditBalance', 0] }] },
-                  { $ifNull: ['$reservedCredits', 0] },
-                ],
-              },
-              0,
-            ],
-          },
-        },
-        {
-          $inc: {
-            reservedCredits: 1,
-            creditBalance: -1
-          }
-        },
-        findOpts
-      );
-      if (!reservedStudent) {
-        const err = new Error('Insufficient credits. Please top up your plan.');
-        err.statusCode = 400;
-        err.code = 'INSUFFICIENT_CREDITS';
-        throw err;
-      }
-
-      const lockedSlot = await TeacherSlot.findOneAndUpdate(
-        {
-          _id: existingSlot._id,
-          teacherId: existingSlot.teacherId,
-          available: true
-        },
-        { $set: { available: false } },
-        findOpts
-      );
-
-      if (!lockedSlot) {
-        if (!session) {
-          await Student.updateOne(
-            { _id: req.user.studentId },
-            {
-              $inc: { creditBalance: 1, reservedCredits: -1 }
-            }
-          ).catch(() => {});
-        }
-        const err = new Error(
-          'This time slot was just booked by another student. Please choose a different time.'
-        );
-        err.statusCode = 409;
-        err.code = 'SLOT_NOT_AVAILABLE';
-        throw err;
-      }
-
-      let countQ = Booking.countDocuments({ studentId });
-      if (session) countQ = countQ.session(session);
-      const studentBookingCount = await countQ;
-      const usernamePart = studentId.includes('@') ? studentId.split('@')[0] : studentId;
-      const dateStr = dateUtc.replace(/-/g, '');
-      const timeStr = timeUtc.replace(':', '');
-      const classroomId = `${dateStr}${timeStr}${usernamePart}${studentBookingCount + 1}`;
-
-      const b = new Booking({
-        studentId,
-        teacherId: chosenTeacherId,
-        date: dateUtc,
-        time: timeUtc,
-        dateTimeUtc: utcInstant,
-        studentLocalZone: timezone || null,
-        teacherLocalZone: teacher?.teacherLocalZone || lockedSlot?.teacherLocalZone || null,
-        lesson,
-        lessonId: lessonId || null,
-        studentLevel,
-        classroomId,
-        status: 'Booked',
-        isAssessmentFreeTrialBooking: !!student.assessmentTrialCreditActive,
-      });
-      try {
-        if (session) {
-          await b.save({ session });
-        } else {
-          await b.save();
-        }
-      } catch (saveErr) {
-        if (!session) {
-          await TeacherSlot.updateOne(
-            { _id: existingSlot._id, teacherId: existingSlot.teacherId },
-            { $set: { available: true } }
-          );
-          await Student.updateOne(
-            { _id: req.user.studentId },
-            {
-              $inc: { creditBalance: 1, reservedCredits: -1 }
-            }
-          ).catch(() => {});
-        }
-        throw saveErr;
-      }
-      return b;
-    }
-
-    function isTransactionUnsupportedError(err) {
-      const msg = (err && err.message) || String(err);
-      return (
-        msg.includes('Transaction numbers are only allowed') ||
-        msg.includes('transactions are not supported') ||
-        msg.includes('replica set') ||
-        msg.includes('ReplicaSet') ||
-        /transaction.*not.*support/i.test(msg)
-      );
-    }
-
-    let booking;
-    try {
-      if (!useTransactions) {
-        booking = await createBookingAtomic(null);
-      } else {
-        const session = await mongoose.startSession();
-        let sessionHandled = false;
-        try {
-          await session.withTransaction(async () => {
-            booking = await createBookingAtomic(session);
-          });
-        } catch (txnErr) {
-          const e =
-            txnErr && txnErr.statusCode
-              ? txnErr
-              : txnErr && txnErr.cause && txnErr.cause.statusCode
-                ? txnErr.cause
-                : txnErr;
-          if (e && e.statusCode && e.message) {
-            await session.endSession().catch(() => {});
-            sessionHandled = true;
-            return res.status(e.statusCode).json({
-              error: e.message,
-              code: e.code || undefined
-            });
-          }
-          if (isTransactionUnsupportedError(txnErr)) {
-            await session.endSession().catch(() => {});
-            sessionHandled = true;
-            console.warn(
-              '⚠️ USE_TRANSACTIONS=true but MongoDB rejected the transaction; using atomic slot-lock fallback'
-            );
-            booking = await createBookingAtomic(null);
-          } else {
-            await session.endSession().catch(() => {});
-            sessionHandled = true;
-            throw txnErr;
-          }
-        } finally {
-          if (!sessionHandled) await session.endSession().catch(() => {});
-        }
-      }
-    } catch (bookErr) {
-      const e =
-        bookErr && bookErr.statusCode
-          ? bookErr
-          : bookErr && bookErr.cause && bookErr.cause.statusCode
-            ? bookErr.cause
-            : bookErr;
-      if (e && e.statusCode && e.message) {
-        return res.status(e.statusCode).json({
-          error: e.message,
-          code: e.code || undefined
-        });
-      }
-      throw bookErr;
-    }
-
-    console.log('✅ Booking created:', booking._id, 'teacher:', chosenTeacherId, 'mode:', preferredRaw ? 'preferred' : assignmentMode);
-
-    const studentName = student ? `${student.firstName} ${student.lastName}` : studentId;
-    await createNotification(
-      chosenTeacherId,
-      'booking',
-      `New class booked for ${dateUtc} at ${timeUtc} with ${studentName}.`
-    );
-
-    try {
-      const payload = {
-        teacherId: chosenTeacherId,
-        date: dateUtc,
-        time: timeUtc,
-        dateTimeUtc: canonicalUtc,
-        bookingId: booking._id.toString(),
-        ts: Date.now()
-      };
-      realtime.emitAll('bookingsUpdated', payload);
-      realtime.emitAll('slotsUpdated', payload);
-    } catch (socketError) {
-      console.error('⚠️ bookingsUpdated/slotsUpdated emit:', socketError);
-    }
-
-    const refreshedStudent = await Student.findById(req.user.studentId).lean();
-    res.json({
-      success: true,
-      bookingId: booking._id,
-      teacherId: chosenTeacherId,
-      assignmentMode: preferredRaw ? 'preferred' : assignmentMode,
-      message: 'Class booked successfully',
-      bookingMode: useTransactions ? 'transaction' : 'atomic-slot-lock',
-      useTransactions,
-      credits: {
-        balance: getCreditPoolTotal(refreshedStudent),
-        totalCredits: getCreditPoolTotal(refreshedStudent),
-        reservedCredits: getReservedCredits(refreshedStudent),
-        availableCredits: getAvailableBookingCredits(refreshedStudent),
-        usedCredits: refreshedStudent?.usedCredits ?? ((refreshedStudent?.totalCreditsEarned || 0) - (refreshedStudent?.creditBalance || 0))
-      }
-    });
-  } catch (err) {
-    console.error('❌ Error booking class:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
+// Book a class — isolated in studentController → services/studentBookSlotService
+router.post('/book-class', verifyToken, requireStudent, studentController.bookSlot);
 
 // Cancel a slot - Protected: Only authenticated teachers can cancel their own slots
 router.post('/cancel-slot', verifyToken, requireTeacher, requireOwnTeacherData, logAccess, async (req, res) => {

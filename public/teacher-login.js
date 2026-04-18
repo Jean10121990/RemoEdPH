@@ -53,6 +53,8 @@ document.getElementById('login-form').addEventListener('submit', function(e) {
         console.log('Login response:', data);
         if (data.success && data.token) {
             localStorage.setItem('token', data.token);
+            localStorage.setItem('remoed_teacher_token', data.token);
+            localStorage.setItem('remoed_teacher_auth', data.token);
             localStorage.setItem('remoed_user_token', data.token);
             localStorage.setItem('remoedUsername', username);
             localStorage.setItem('teacherId', data.teacherId != null ? String(data.teacherId) : '');
@@ -67,10 +69,10 @@ document.getElementById('login-form').addEventListener('submit', function(e) {
             // Check if user needs to change their generated password
             if (data.needsPasswordChange) {
                 console.log('User has generated password, redirecting to change password page...');
-                window.location.href = 'change-password.html';
+                window.location.replace('change-password.html');
             } else {
                 console.log('Redirecting to dashboard...');
-                window.location.href = 'teacher-dashboard.html';
+                window.location.replace('teacher-dashboard.html');
             }
         } else {
             errorDiv.textContent = data.message || 'Invalid username or password.';
@@ -117,6 +119,8 @@ function attemptLoginWithXHR(username, password) {
                     const data = JSON.parse(xhr.responseText);
                     if (data.success && data.token) {
                         localStorage.setItem('token', data.token);
+                        localStorage.setItem('remoed_teacher_token', data.token);
+                        localStorage.setItem('remoed_teacher_auth', data.token);
                         localStorage.setItem('remoed_user_token', data.token);
                         localStorage.setItem('remoedUsername', username);
                         localStorage.setItem('teacherId', data.teacherId != null ? String(data.teacherId) : '');
@@ -125,7 +129,7 @@ function attemptLoginWithXHR(username, password) {
                         }
                         localStorage.setItem('userType', 'teacher');
                         localStorage.setItem('userRole', 'teacher');
-                        window.location.href = 'teacher-dashboard.html';
+                        window.location.replace('teacher-dashboard.html');
                     } else {
                         document.getElementById('error-message').textContent = data.message || 'Invalid credentials';
                         document.getElementById('error-message').style.display = 'block';

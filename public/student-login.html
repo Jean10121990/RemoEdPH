@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="modern-styles.css">
   <link rel="stylesheet" href="child-friendly-styles.css">
   <script src="js/user-session.js"></script>
+  <script src="js/security-guard.js?v=4"></script>
   <style>
     :root {
       --primary: #1d9bf0;
@@ -592,8 +593,12 @@
           localStorage.setItem('studentUsername', uname);
           localStorage.setItem('username', uname);
           localStorage.setItem('token', data.token);
+          localStorage.setItem('remoed_student_token', data.token);
+          localStorage.setItem('remoed_student_auth', data.token);
+          localStorage.setItem('remoed_user_token', data.token);
           localStorage.setItem('studentId', data.studentId);
           localStorage.setItem('userType', 'student');
+          localStorage.setItem('userRole', 'student');
           localStorage.setItem('studentAccountStatus', data.accountStatus || 'standard');
           localStorage.setItem('studentHasFreeTrial', data.hasFreeTrial ? '1' : '0');
           localStorage.setItem('studentIsSubscribed', data.isSubscribed ? '1' : '0');
@@ -608,11 +613,11 @@
           // Check if user needs to change their generated password
           if (data.needsPasswordChange) {
             setTimeout(() => {
-              window.location.href = 'change-password.html';
+              window.location.replace('change-password.html');
             }, 1000);
           } else {
             setTimeout(() => {
-              window.location.href = 'student-dashboard.html';
+              window.location.replace('student-dashboard.html');
             }, 1000);
           }
         } else {

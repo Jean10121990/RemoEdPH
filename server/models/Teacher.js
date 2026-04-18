@@ -315,4 +315,8 @@ const teacherSchema = new mongoose.Schema({
   toObject: { getters: true },
 });
 
+teacherSchema.index({ email: 1, teacherId: 1 });
+teacherSchema.index({ email: 1, status: 1 });
+teacherSchema.index({ teacherId: 1, status: 1 });
+
 module.exports = mongoose.model('Teacher', teacherSchema); 

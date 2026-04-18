@@ -73,12 +73,17 @@
             return;
           }
           sessionStorage.removeItem('admin2faTempToken');
-          localStorage.setItem('adminToken', j.token);
+          if (window.RemoedAdminSession && RemoedAdminSession.setAuthToken) {
+            RemoedAdminSession.setAuthToken(j.token);
+          } else {
+            localStorage.setItem('remoed_admin_token', j.token);
+            localStorage.setItem('adminToken', j.token);
+          }
           localStorage.setItem('adminUsername', j.username);
           localStorage.setItem('userType', 'admin');
           if (j.adminRole) localStorage.setItem('adminRole', j.adminRole);
           else localStorage.removeItem('adminRole');
-          window.location.href = '/admin/admin-dashboard.html';
+          window.location.replace('/admin/admin-dashboard.html');
         } catch (e) {
           showErr('Network error.');
           btn.disabled = false;

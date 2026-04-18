@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script src="js/security-guard.js?v=2"></script>
     <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
     <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
     <meta charset="UTF-8">
@@ -983,7 +984,7 @@
             saveBtn.textContent = 'Saving...';
 
             try {
-                const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
+                const token = (window.RemoedAdminSession && RemoedAdminSession.getAuthToken ? RemoedAdminSession.getAuthToken() : (localStorage.getItem('remoed_admin_token')||localStorage.getItem('remoed_admin_auth')||localStorage.getItem('adminToken')||'')) || localStorage.getItem('token');
                 if (!token) {
                     showAlert('error', 'Authentication required. Please log in again.');
                     return;
@@ -1043,7 +1044,7 @@
 
         async function loadCurricula() {
             try {
-                const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
+                const token = (window.RemoedAdminSession && RemoedAdminSession.getAuthToken ? RemoedAdminSession.getAuthToken() : (localStorage.getItem('remoed_admin_token')||localStorage.getItem('remoed_admin_auth')||localStorage.getItem('adminToken')||'')) || localStorage.getItem('token');
                 if (!token) {
                     showAlert('error', 'Authentication required. Please log in again.');
                     setTimeout(() => {
@@ -1109,7 +1110,7 @@
             addLessonSection.style.display = 'block';
 
             try {
-                const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
+                const token = (window.RemoedAdminSession && RemoedAdminSession.getAuthToken ? RemoedAdminSession.getAuthToken() : (localStorage.getItem('remoed_admin_token')||localStorage.getItem('remoed_admin_auth')||localStorage.getItem('adminToken')||'')) || localStorage.getItem('token');
                 if (!token) {
                     showAlert('error', 'Authentication required. Please log in again.');
                     return;
@@ -1163,7 +1164,7 @@
 
         async function fetchLessonFiles(lessonId) {
             try {
-                const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
+                const token = (window.RemoedAdminSession && RemoedAdminSession.getAuthToken ? RemoedAdminSession.getAuthToken() : (localStorage.getItem('remoed_admin_token')||localStorage.getItem('remoed_admin_auth')||localStorage.getItem('adminToken')||'')) || localStorage.getItem('token');
                 if (!token) {
                     showAlert('error', 'Authentication required. Please log in again.');
                     return;
@@ -1282,7 +1283,7 @@
                 return;
             }
 
-            const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
+            const token = (window.RemoedAdminSession && RemoedAdminSession.getAuthToken ? RemoedAdminSession.getAuthToken() : (localStorage.getItem('remoed_admin_token')||localStorage.getItem('remoed_admin_auth')||localStorage.getItem('adminToken')||'')) || localStorage.getItem('token');
             if (!token) {
                 showAlert('error', 'Authentication required. Please log in again.');
                 return;
@@ -1353,7 +1354,7 @@
 
         async function viewFile(fileId) {
             try {
-                const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
+                const token = (window.RemoedAdminSession && RemoedAdminSession.getAuthToken ? RemoedAdminSession.getAuthToken() : (localStorage.getItem('remoed_admin_token')||localStorage.getItem('remoed_admin_auth')||localStorage.getItem('adminToken')||'')) || localStorage.getItem('token');
                 if (!token) {
                     showAlert('error', 'Authentication required. Please log in again.');
                     return;
@@ -1630,7 +1631,7 @@
 
         async function downloadFile(fileId, fileName) {
             try {
-                const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
+                const token = (window.RemoedAdminSession && RemoedAdminSession.getAuthToken ? RemoedAdminSession.getAuthToken() : (localStorage.getItem('remoed_admin_token')||localStorage.getItem('remoed_admin_auth')||localStorage.getItem('adminToken')||'')) || localStorage.getItem('token');
                 if (!token) return;
 
                 const response = await fetch(`/api/lessons/lesson-file/${fileId}`, {
@@ -1665,7 +1666,7 @@
             }
 
             try {
-                const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
+                const token = (window.RemoedAdminSession && RemoedAdminSession.getAuthToken ? RemoedAdminSession.getAuthToken() : (localStorage.getItem('remoed_admin_token')||localStorage.getItem('remoed_admin_auth')||localStorage.getItem('adminToken')||'')) || localStorage.getItem('token');
                 if (!token) {
                     showAlert('error', 'Authentication required. Please log in again.');
                     return;
@@ -1763,7 +1764,7 @@
             saveBtn.textContent = 'Saving...';
 
             try {
-                const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
+                const token = (window.RemoedAdminSession && RemoedAdminSession.getAuthToken ? RemoedAdminSession.getAuthToken() : (localStorage.getItem('remoed_admin_token')||localStorage.getItem('remoed_admin_auth')||localStorage.getItem('adminToken')||'')) || localStorage.getItem('token');
                 if (!token) {
                     showAlert('error', 'Authentication required. Please log in again.');
                     return;
@@ -1853,7 +1854,7 @@
             createBtn.textContent = 'Creating...';
 
             try {
-                const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
+                const token = (window.RemoedAdminSession && RemoedAdminSession.getAuthToken ? RemoedAdminSession.getAuthToken() : (localStorage.getItem('remoed_admin_token')||localStorage.getItem('remoed_admin_auth')||localStorage.getItem('adminToken')||'')) || localStorage.getItem('token');
                 if (!token) {
                     showAlert('error', 'Authentication required. Please log in again.');
                     return;
@@ -1998,7 +1999,7 @@
             createBtn.textContent = 'Creating...';
 
             try {
-                const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
+                const token = (window.RemoedAdminSession && RemoedAdminSession.getAuthToken ? RemoedAdminSession.getAuthToken() : (localStorage.getItem('remoed_admin_token')||localStorage.getItem('remoed_admin_auth')||localStorage.getItem('adminToken')||'')) || localStorage.getItem('token');
                 if (!token) {
                     showAlert('error', 'Authentication required. Please log in again.');
                     return;

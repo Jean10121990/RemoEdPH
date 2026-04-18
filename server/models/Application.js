@@ -110,4 +110,8 @@ applicationSchema.methods.comparePassword = function comparePassword(candidatePa
   return bcrypt.compare(candidatePassword, this.password);
 };
 
+applicationSchema.index({ email: 1, currentStage: 1 });
+applicationSchema.index({ email: 1, teacherActivationStatus: 1 });
+applicationSchema.index({ email: 1, status: 1 });
+
 module.exports = mongoose.model('Application', applicationSchema);

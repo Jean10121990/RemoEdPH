@@ -20,83 +20,6 @@
             display: flex; 
             min-height: 100vh; 
         }
-        .remoed-sidebar { 
-            width: 260px; 
-            min-width: 260px;
-            background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%); 
-            box-shadow: 4px 0 20px rgba(102, 126, 234, 0.1); 
-            padding: 0; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: stretch;
-            position: fixed;
-            height: 100vh;
-            z-index: 100;
-            border-right: 1px solid rgba(102, 126, 234, 0.1);
-        }
-        .remoed-logo { 
-            display: flex; 
-            align-items: center; 
-            gap: 14px; 
-        }
-        .remoed-logo img { 
-            height: 48px; 
-        }
-        .remoed-title { 
-            font-size: 1.7rem; 
-            font-weight: 700; 
-            color: #667eea; 
-            letter-spacing: 1px; 
-        }
-        .remoed-user { 
-            display: flex; 
-            align-items: center; 
-            gap: 10px; 
-        }
-        .remoed-avatar { 
-            width: 72px; 
-            height: 72px; 
-            border-radius: 50%; 
-            background: #667eea; 
-            color: #fff; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            font-weight: bold; 
-            font-size: 2.2rem; 
-        }
-        .remoed-username { 
-            color: #667eea; 
-            font-weight: 600; 
-        }
-        .remoed-menu { 
-            list-style: none; 
-            padding: 0; 
-            margin: 0; 
-        }
-        .remoed-menu li { 
-            padding: 14px 32px; 
-            color: #667eea; 
-            font-weight: 500; 
-            cursor: pointer; 
-            display: flex; 
-            align-items: center; 
-            gap: 12px; 
-            border-left: 4px solid transparent; 
-            transition: background 0.2s, border-color 0.2s; 
-        }
-            .remoed-menu li.active, .remoed-menu li:hover { 
-      background: linear-gradient(90deg, #667eea 0%, #5a67d8 100%); 
-      border-left: 4px solid #667eea; 
-      color: white; 
-      transform: translateX(4px);
-      transition: all 0.3s ease;
-    }
-        .remoed-menu svg { 
-            width: 20px; 
-            height: 20px; 
-            stroke: currentColor;
-        }
         .remoed-content { 
             flex: 1; 
             padding: 24px 32px; 
@@ -654,8 +577,9 @@
         }
     </style>
     <link rel="stylesheet" href="css/teacher-sidebar.css">
+    <link rel="stylesheet" href="css/student-portal-layout.css">
 </head>
-<body class="student-portal">
+<body class="student-portal page-student-profile">
     <div class="remoed-main">
         <div id="student-sidebar-root"></div>
         <script src="js/student-sidebar.js"></script>

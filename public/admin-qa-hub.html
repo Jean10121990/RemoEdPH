@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script src="js/security-guard.js?v=2"></script>
     <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
     <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
     <meta charset="UTF-8">
@@ -225,7 +226,7 @@
 
     <script>
         function checkAuth() {
-            const token = localStorage.getItem('adminToken');
+            const token = (window.RemoedAdminSession && RemoedAdminSession.getAuthToken ? RemoedAdminSession.getAuthToken() : (localStorage.getItem('remoed_admin_token')||localStorage.getItem('remoed_admin_auth')||localStorage.getItem('adminToken')||''));
             if (!token) {
                 window.location.href = (function () {
                     try {
@@ -308,7 +309,7 @@
         async function loadList() {
             const tbody = document.getElementById('rec-tbody');
             const msg = document.getElementById('rec-msg');
-            const token = localStorage.getItem('adminToken');
+            const token = (window.RemoedAdminSession && RemoedAdminSession.getAuthToken ? RemoedAdminSession.getAuthToken() : (localStorage.getItem('remoed_admin_token')||localStorage.getItem('remoed_admin_auth')||localStorage.getItem('adminToken')||''));
             const dateEl = document.getElementById('rec-date');
             var d = dateEl && dateEl.value ? dateEl.value : '';
 
@@ -375,7 +376,7 @@
         }
 
         async function downloadRec(id) {
-            const token = localStorage.getItem('adminToken');
+            const token = (window.RemoedAdminSession && RemoedAdminSession.getAuthToken ? RemoedAdminSession.getAuthToken() : (localStorage.getItem('remoed_admin_token')||localStorage.getItem('remoed_admin_auth')||localStorage.getItem('adminToken')||''));
             try {
                 const dlHdr = {};
                 if (token) dlHdr['Authorization'] = 'Bearer ' + token;
@@ -403,7 +404,7 @@
 
         async function deleteRec(id) {
             if (!confirm('Delete this recording file and database row?')) return;
-            const token = localStorage.getItem('adminToken');
+            const token = (window.RemoedAdminSession && RemoedAdminSession.getAuthToken ? RemoedAdminSession.getAuthToken() : (localStorage.getItem('remoed_admin_token')||localStorage.getItem('remoed_admin_auth')||localStorage.getItem('adminToken')||''));
             try {
                 const delHdr = {};
                 if (token) delHdr['Authorization'] = 'Bearer ' + token;
@@ -425,7 +426,7 @@
 
         async function purgeExpired() {
             if (!confirm('Remove all recordings past their expiry date?')) return;
-            const token = localStorage.getItem('adminToken');
+            const token = (window.RemoedAdminSession && RemoedAdminSession.getAuthToken ? RemoedAdminSession.getAuthToken() : (localStorage.getItem('remoed_admin_token')||localStorage.getItem('remoed_admin_auth')||localStorage.getItem('adminToken')||''));
             const msg = document.getElementById('rec-msg');
             try {
                 const r = await fetch('/api/admin/classroom-recordings/purge-expired', {
@@ -536,7 +537,7 @@
         }
 
         async function loadIssues() {
-            const token = localStorage.getItem('adminToken');
+            const token = (window.RemoedAdminSession && RemoedAdminSession.getAuthToken ? RemoedAdminSession.getAuthToken() : (localStorage.getItem('remoed_admin_token')||localStorage.getItem('remoed_admin_auth')||localStorage.getItem('adminToken')||''));
             const statusEl = document.getElementById('status-filter');
             const validityEl = document.getElementById('validity-filter');
             const issueTypeEl = document.getElementById('issue-type-filter');
@@ -589,7 +590,7 @@
         }
 
         async function reviewCancellationFromHub(requestId, status) {
-            const token = localStorage.getItem('adminToken');
+            const token = (window.RemoedAdminSession && RemoedAdminSession.getAuthToken ? RemoedAdminSession.getAuthToken() : (localStorage.getItem('remoed_admin_token')||localStorage.getItem('remoed_admin_auth')||localStorage.getItem('adminToken')||''));
             try {
                 const r = await fetch('/api/admin/review-cancellation', {
                     method: 'POST',
@@ -713,7 +714,7 @@
 
         function dismissIssue(issueId) {
             if (!confirm('Are you sure you want to dismiss this issue?')) return;
-            const token = localStorage.getItem('adminToken');
+            const token = (window.RemoedAdminSession && RemoedAdminSession.getAuthToken ? RemoedAdminSession.getAuthToken() : (localStorage.getItem('remoed_admin_token')||localStorage.getItem('remoed_admin_auth')||localStorage.getItem('adminToken')||''));
             fetch('/api/admin/issues/dismiss', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
@@ -822,7 +823,7 @@
                 const validityStatus = document.getElementById('validity-status').value;
                 const adminNotes = document.getElementById('admin-notes').value;
                 const allowReschedule = document.getElementById('allow-reschedule').checked;
-                const token = localStorage.getItem('adminToken');
+                const token = (window.RemoedAdminSession && RemoedAdminSession.getAuthToken ? RemoedAdminSession.getAuthToken() : (localStorage.getItem('remoed_admin_token')||localStorage.getItem('remoed_admin_auth')||localStorage.getItem('adminToken')||''));
                 fetch('/api/admin/issues/review', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
@@ -863,7 +864,7 @@
                     showNotification('Please specify the reason for teacher fault', 'error');
                     return;
                 }
-                const token = localStorage.getItem('adminToken');
+                const token = (window.RemoedAdminSession && RemoedAdminSession.getAuthToken ? RemoedAdminSession.getAuthToken() : (localStorage.getItem('remoed_admin_token')||localStorage.getItem('remoed_admin_auth')||localStorage.getItem('adminToken')||''));
                 fetch('/api/admin/issues/resolve', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },

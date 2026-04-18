@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script src="js/security-guard.js?v=2"></script>
     <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
     <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
   <meta charset="UTF-8" />
@@ -91,7 +92,7 @@
   <script src="js/admin-session.js"></script>
   <script src="js/admin-sidebar.js"></script>
   <script>
-    const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
+    const token = (window.RemoedAdminSession && RemoedAdminSession.getAuthToken ? RemoedAdminSession.getAuthToken() : (localStorage.getItem('remoed_admin_token')||localStorage.getItem('remoed_admin_auth')||localStorage.getItem('adminToken')||'')) || localStorage.getItem('token');
     const userType = localStorage.getItem('userType');
     if (!token || (userType && userType !== 'admin')) {
       window.location.href = (function(){ try { var p = localStorage.getItem('remoedAdminEntryPath'); if (p && p.charAt(0) === '/') return p; } catch(e){} return 'index.html'; })();

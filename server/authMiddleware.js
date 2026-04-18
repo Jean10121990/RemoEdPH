@@ -131,6 +131,47 @@ const verifyToken = (req, res, next) => {
     const decoded = jwt.verify(token, JWT_SECRET);
     console.log('Token decoded successfully:', decoded);
     req.user = decoded;
+    // Path-scoped portal tokens on the client: remoed_admin_token / remoed_teacher_token (see public/js/user-session.js).
+
+    const pathOnly = String(req.originalUrl || req.url || '').split('?')[0];
+    const adminClaims = decoded.isAdmin === true || decoded.role === 'admin';
+    const teacherish =
+      decoded.userType === 'teacher' ||
+      decoded.userRole === 'teacher' ||
+      decoded.role === 'teacher' ||
+      !!decoded.teacherId;
+    const studentish =
+      decoded.userRole === 'student' ||
+      decoded.userType === 'student' ||
+      (decoded.studentId && !decoded.teacherId);
+
+    if (pathOnly.startsWith('/api/admin')) {
+      if (!adminClaims && (teacherish || studentish)) {
+        return res.status(403).json({
+          error: 'Admin token required for admin routes.',
+          code: 'WRONG_PORTAL_TOKEN',
+        });
+      }
+    }
+    if (pathOnly.startsWith('/api/student')) {
+      if (teacherish && !studentish && !adminClaims) {
+        return res.status(403).json({
+          error: 'Student token required for student routes.',
+          code: 'WRONG_PORTAL_TOKEN',
+        });
+      }
+    }
+    const normPath = pathOnly.replace(/\/+$/, '') || pathOnly;
+    const isPublicTeacherSlotsGet = req.method === 'GET' && normPath === '/api/teacher/slots';
+    if (pathOnly.startsWith('/api/teacher') && !isPublicTeacherSlotsGet) {
+      if (studentish && !teacherish && !adminClaims) {
+        return res.status(403).json({
+          error: 'Teacher token required for teacher routes.',
+          code: 'WRONG_PORTAL_TOKEN',
+        });
+      }
+    }
+
     next();
   } catch (error) {
     console.log('Token verification failed:', error.message);
@@ -257,6 +298,28 @@ const requireSuperAdminDb = async (req, res, next) => {
   }
 };
 
+function jwtLooksLikeAdmin(u) {
+  return !!(u && (u.isAdmin === true || u.role === 'admin'));
+}
+
+function jwtLooksLikeStudent(u) {
+  if (!u) return false;
+  if (u.userRole === 'student' || u.userType === 'student') return true;
+  if (u.studentId && !u.teacherId) return true;
+  return false;
+}
+
+function jwtLooksLikeTeacher(u) {
+  if (!u) return false;
+  if (jwtLooksLikeAdmin(u) || jwtLooksLikeStudent(u)) return false;
+  return (
+    u.userType === 'teacher' ||
+    u.userRole === 'teacher' ||
+    u.role === 'teacher' ||
+    !!u.teacherId
+  );
+}
+
 // Middleware to ensure user is a teacher
 const requireTeacher = async (req, res, next) => {
   try {
@@ -264,6 +327,25 @@ const requireTeacher = async (req, res, next) => {
     if (!req.user) {
       console.log('No req.user found in requireTeacher middleware');
       return res.status(401).json({ error: 'Authentication required.' });
+    }
+
+    if (jwtLooksLikeAdmin(req.user)) {
+      return res.status(403).json({
+        error: 'Access denied. Teacher session required.',
+        code: 'WRONG_ROLE_SESSION',
+      });
+    }
+    if (jwtLooksLikeStudent(req.user)) {
+      return res.status(403).json({
+        error: 'Access denied. Teacher session required.',
+        code: 'WRONG_ROLE_SESSION',
+      });
+    }
+    if (!jwtLooksLikeTeacher(req.user)) {
+      return res.status(403).json({
+        error: 'Access denied. Teacher session required.',
+        code: 'WRONG_ROLE_SESSION',
+      });
     }
 
     // Try to resolve the teacher by multiple identifiers for robustness
@@ -306,6 +388,25 @@ const requireStudent = async (req, res, next) => {
     if (!req.user) {
       console.log('No req.user found in requireStudent middleware');
       return res.status(401).json({ error: 'Authentication required.' });
+    }
+
+    if (jwtLooksLikeAdmin(req.user)) {
+      return res.status(403).json({
+        error: 'Access denied. Student session required.',
+        code: 'WRONG_ROLE_SESSION',
+      });
+    }
+    if (jwtLooksLikeTeacher(req.user)) {
+      return res.status(403).json({
+        error: 'Access denied. Student session required.',
+        code: 'WRONG_ROLE_SESSION',
+      });
+    }
+    if (!jwtLooksLikeStudent(req.user)) {
+      return res.status(403).json({
+        error: 'Access denied. Student session required.',
+        code: 'WRONG_ROLE_SESSION',
+      });
     }
 
     // Try to resolve the student by multiple identifiers for robustness

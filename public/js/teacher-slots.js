@@ -11,6 +11,10 @@
   function decodeTeacherJwtPayload() {
     try {
       var t =
+        global.localStorage.getItem('remoed_teacher_token') ||
+        global.sessionStorage.getItem('remoed_teacher_token') ||
+        global.localStorage.getItem('remoed_teacher_auth') ||
+        global.sessionStorage.getItem('remoed_teacher_auth') ||
         global.localStorage.getItem('remoed_user_token') ||
         global.localStorage.getItem('token') ||
         global.sessionStorage.getItem('remoed_user_token') ||

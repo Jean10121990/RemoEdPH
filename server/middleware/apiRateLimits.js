@@ -55,6 +55,14 @@ const authRegisterLimiter = rateLimit({
   message: { success: false, error: 'Too many registration attempts. Try again later.' },
 });
 
+/** Teacher pipeline: lookup invite by application id (register.html?appId=) */
+const teacherInviteByApplicationLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: Number(process.env.RATE_LIMIT_TEACHER_INVITE_BY_APP_MAX_PER_15M || 40),
+  ...std,
+  message: { success: false, error: 'Too many requests. Try again later.' },
+});
+
 module.exports = {
   authLoginLimiter,
   adminLoginLimiterExtra,
@@ -62,4 +70,5 @@ module.exports = {
   fileUploadLimiter,
   teacherPeerSearchLimiter,
   authRegisterLimiter,
+  teacherInviteByApplicationLimiter,
 };

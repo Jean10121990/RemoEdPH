@@ -145,4 +145,8 @@ const studentSchema = new mongoose.Schema({
   toObject: { getters: true },
 });
 
+studentSchema.index({ email: 1, accountStatus: 1 });
+studentSchema.index({ email: 1, status: 1 });
+studentSchema.index({ email: 1, referredByTeacherId: 1 });
+
 module.exports = mongoose.model('Student', studentSchema); 

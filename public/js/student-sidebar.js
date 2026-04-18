@@ -125,6 +125,11 @@
 
     function loadProfileIntoSidebar(container) {
         var token =
+            (typeof RemoedUserSession !== 'undefined' && RemoedUserSession.getUserToken && RemoedUserSession.getUserToken()) ||
+            localStorage.getItem('remoed_student_token') ||
+            sessionStorage.getItem('remoed_student_token') ||
+            localStorage.getItem('remoed_student_auth') ||
+            sessionStorage.getItem('remoed_student_auth') ||
             localStorage.getItem('remoed_user_token') ||
             sessionStorage.getItem('remoed_user_token') ||
             localStorage.getItem('studentToken') ||
@@ -224,6 +229,11 @@
         if (logoutLi) {
             logoutLi.addEventListener('click', function () {
                 var token =
+                    (typeof RemoedUserSession !== 'undefined' && RemoedUserSession.getUserToken && RemoedUserSession.getUserToken()) ||
+                    localStorage.getItem('remoed_student_token') ||
+                    sessionStorage.getItem('remoed_student_token') ||
+                    localStorage.getItem('remoed_student_auth') ||
+                    sessionStorage.getItem('remoed_student_auth') ||
                     localStorage.getItem('remoed_user_token') ||
                     sessionStorage.getItem('remoed_user_token') ||
                     localStorage.getItem('studentToken') ||
@@ -235,19 +245,8 @@
                 }
                 fetch('/api/logout', opts).catch(function () {}).finally(function () {
                     try {
-                        localStorage.removeItem('remoed_user_token');
-                        sessionStorage.removeItem('remoed_user_token');
-                        localStorage.removeItem('studentToken');
-                        localStorage.removeItem('studentId');
-                        localStorage.removeItem('studentUsername');
-                        localStorage.removeItem('token');
-                        localStorage.removeItem('username');
-                        localStorage.removeItem('userType');
-                        localStorage.removeItem('studentAccountStatus');
-                        localStorage.removeItem('studentHasFreeTrial');
-                        localStorage.removeItem('studentIsSubscribed');
-                        localStorage.removeItem('studentPaymentStatus');
-                        localStorage.removeItem('studentSubscriptionStatus');
+                        localStorage.clear();
+                        sessionStorage.clear();
                     } catch (e) {}
                     window.location.replace('/login/');
                 });

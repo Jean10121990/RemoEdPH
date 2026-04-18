@@ -5,10 +5,13 @@ const {
   adminLoginLimiterExtra,
   passwordResetLimiter,
   authRegisterLimiter,
+  teacherInviteByApplicationLimiter,
 } = require('./middleware/apiRateLimits');
 const Teacher = require('./models/Teacher');
 const Student = require('./models/Student');
 const Admin = require('./models/Admin');
+const Application = require('./models/Application');
+const InvitationToken = require('./models/InvitationToken');
 const AssessmentTrial = require('./models/AssessmentTrial');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
@@ -79,6 +82,50 @@ const authenticateToken = (req, res, next) => {
     next();
   });
 };
+
+function isProbableMongoObjectIdString(s) {
+  return typeof s === 'string' && /^[a-f0-9]{24}$/i.test(String(s).trim());
+}
+
+/**
+ * Stateless helper for public register.html when only appId is present.
+ * Returns an active invitation token only if the application is in `passed` stage.
+ */
+router.get(
+  '/teacher-signup/invitation-by-application',
+  teacherInviteByApplicationLimiter,
+  async (req, res) => {
+    try {
+      const appId = String(req.query.appId || '').trim();
+      if (!isProbableMongoObjectIdString(appId)) {
+        return res.status(400).json({ success: false, message: 'Invalid application id' });
+      }
+      const application = await Application.findById(appId).lean();
+      if (!application || application.currentStage !== 'passed') {
+        return res.status(404).json({ success: false, message: 'Application not found or not approved' });
+      }
+      const now = new Date();
+      const inv = await InvitationToken.findOne({
+        applicationId: application._id,
+        isUsed: false,
+        expiresAt: { $gt: now },
+      })
+        .sort({ createdAt: -1 })
+        .lean();
+      if (!inv || !inv.token) {
+        return res.status(404).json({ success: false, message: 'No active invitation for this application' });
+      }
+      return res.json({
+        success: true,
+        invitation: inv.token,
+        applicant: { email: application.email || '', fullName: application.fullName || '' },
+      });
+    } catch (e) {
+      console.error('GET /api/auth/teacher-signup/invitation-by-application:', e);
+      return res.status(500).json({ success: false, message: 'Server error' });
+    }
+  }
+);
 
 // Function to generate strong password (10 characters) - NO SPECIAL CHARACTERS
 function generateStrongPassword() {
@@ -465,7 +512,12 @@ router.post('/login', authLoginLimiter, async (req, res) => {
   }
   
   try {
-    const teacher = await Teacher.findOne({ username });
+    const uid = String(username).trim();
+    const uidEsc = uid.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const identRe = new RegExp(`^${uidEsc}$`, 'i');
+    const teacher = await Teacher.findOne({
+      $or: [{ username: uid }, { username: identRe }, { email: identRe }],
+    });
     console.log('Login attempt for username:', username);
     console.log('Teacher found:', !!teacher);
     
@@ -750,17 +802,26 @@ router.post('/unified-login', authLoginLimiter, async (req, res) => {
       Teacher.findOne({ $or: [{ email: identRe }, { username: identRe }] }),
     ]);
 
-    // Prevent ambiguous matches (should not happen; keep response generic).
+    let useTeacher = !!teacher;
+    let useStudent = !!student;
+    // Same identifier on both collections: only one password should match in normal setups.
     if (student && teacher) {
+      const teacherOk = await bcrypt.compare(String(password), teacher.password).catch(() => false);
+      const studentOk = await bcrypt.compare(String(password), student.password).catch(() => false);
+      if (teacherOk && !studentOk) {
+        useStudent = false;
+      } else if (studentOk && !teacherOk) {
+        useTeacher = false;
+      } else {
+        return res.status(401).json({ success: false, message: 'Invalid email or password' });
+      }
+    }
+
+    if (!useTeacher && !useStudent) {
       return res.status(401).json({ success: false, message: 'Invalid email or password' });
     }
 
-    // Not found
-    if (!student && !teacher) {
-      return res.status(401).json({ success: false, message: 'Invalid email or password' });
-    }
-
-    if (teacher) {
+    if (useTeacher) {
       // Pending / under review teachers: allow flexible status values seen in legacy docs.
       const st = String(teacher.status || '').toLowerCase();
       if (teacher.isApproved === false) {
@@ -814,6 +875,9 @@ router.post('/unified-login', authLoginLimiter, async (req, res) => {
     }
 
     // Student
+    if (!useStudent) {
+      return res.status(401).json({ success: false, message: 'Invalid email or password' });
+    }
     if (student.status === 'suspended') {
       return res.status(403).json({
         success: false,
