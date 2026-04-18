@@ -12,12 +12,13 @@
     <link rel="stylesheet" href="modern-styles.css?v=4">
     <link rel="stylesheet" href="css/teacher-sidebar.css">
     <link rel="stylesheet" href="style.css">
-    <script src="js/user-session.js"></script>
+    <script src="js/user-session.js?v=1.1"></script>
+    <script src="js/teacher-slots.js?v=1.1"></script>
 </head>
 <body class="page-teacher-open-class">
   <div class="remoed-main">
     <div id="teacher-sidebar-root"></div>
-    <script src="js/teacher-sidebar.js"></script>
+    <script src="js/teacher-sidebar.js?v=1.1"></script>
     <script>TeacherSidebar.render('teacher-sidebar-root', 'class-configuration');</script>
   <div class="remoed-content">
     <div class="header">
@@ -155,51 +156,23 @@
     // Get user info from localStorage; teacherId must match JWT (fixes undefined/null in URLs after login)
     const username = localStorage.getItem('remoedUsername') || 'Teacher';
 
-    function decodeTeacherJwtPayload() {
-      try {
-        const t =
-          localStorage.getItem('remoed_user_token') ||
-          localStorage.getItem('token') ||
-          sessionStorage.getItem('remoed_user_token') ||
-          sessionStorage.getItem('token') ||
-          '';
-        if (!t) return null;
-        const part = t.split('.')[1];
-        if (!part) return null;
-        const b64 = part.replace(/-/g, '+').replace(/_/g, '/');
-        const pad = b64.length % 4 ? '='.repeat(4 - (b64.length % 4)) : '';
-        return JSON.parse(atob(b64 + pad));
-      } catch (_e) {
-        return null;
+    function handleMissingAuth() {
+      if (window.RemoedTeacherSlots && typeof window.RemoedTeacherSlots.handleMissingAuth === 'function') {
+        window.RemoedTeacherSlots.handleMissingAuth();
+      } else {
+        try {
+          localStorage.clear();
+          sessionStorage.clear();
+        } catch (_e) {}
+        window.location.replace('index.html');
       }
     }
 
-    function getEffectiveTeacherId() {
-      let tid = localStorage.getItem('teacherId');
-      if (tid && tid !== 'undefined' && tid !== 'null') return tid;
-      const pl = decodeTeacherJwtPayload();
-      if (pl && pl.teacherId != null && String(pl.teacherId) !== 'undefined') {
-        tid = String(pl.teacherId);
-        localStorage.setItem('teacherId', tid);
-        if (pl.userType) localStorage.setItem('userType', pl.userType);
-        if (pl.role) localStorage.setItem('userRole', pl.role);
-        return tid;
-      }
-      return '';
+    let teacherId = window.RemoedTeacherSlots.getTeacherIdRobust();
+    if (window.RemoedTeacherSlots.isInvalidTeacherId(teacherId)) {
+      handleMissingAuth();
+      throw new Error('MISSING_TEACHER_SESSION');
     }
-
-    let teacherId = getEffectiveTeacherId();
-    if (!teacherId) {
-      if (!sessionStorage.getItem('remoed_teacherid_reload_once')) {
-        sessionStorage.setItem('remoed_teacherid_reload_once', '1');
-        window.location.reload();
-        throw new Error('RELOAD_TEACHER_SESSION');
-      }
-      sessionStorage.removeItem('remoed_teacherid_reload_once');
-      window.location.replace('teacher-login.html');
-      throw new Error('REDIRECT_TEACHER_LOGIN');
-    }
-    sessionStorage.removeItem('remoed_teacherid_reload_once');
 
     console.log('=== TEACHER INFO ===');
     console.log('Username:', username);
@@ -651,10 +624,9 @@
 
     // Load existing slots and booked slots from backend - ALWAYS FRESH FROM DATABASE
     async function loadExistingSlots() {
-      teacherId = getEffectiveTeacherId();
-      if (!teacherId) {
-        console.error('No teacherId available');
-        return;
+      teacherId = window.RemoedTeacherSlots.getTeacherIdRobust();
+      if (!teacherId || teacherId === 'undefined' || teacherId === 'null') {
+        return handleMissingAuth();
       }
       
       try {
@@ -665,21 +637,26 @@
         console.log('🔄 Current week object:', currentWeek.toISOString());
         console.log('🔄 Week start date:', weekStart.toISOString());
         
-        // Force fresh data with ULTRA AGGRESSIVE cache-busting parameters
         const timestamp = Date.now();
         const random = Math.random();
-        const cacheBuster = `t=${timestamp}&v=${random}&fresh=true&nocache=${timestamp}&force=${timestamp}&clear=${random}&update=${Date.now()}&refresh=${Math.random()}&buster=${Math.random()}&time=${Date.now()}`;
+        const cacheExtra = {
+          t: String(timestamp),
+          v: String(random),
+          fresh: 'true',
+          nocache: String(timestamp),
+          force: String(timestamp),
+          clear: String(random),
+          update: String(Date.now()),
+          refresh: String(Math.random()),
+          buster: String(Math.random()),
+          time: String(Date.now())
+        };
         
         console.log('🔄 Loading slots for week:', weekString);
         console.log('🔄 Teacher ID:', teacherId);
-        console.log('🔄 Cache buster:', cacheBuster);
         
-        // Load all slots (both available and unavailable) for teacher management
-        const slotsQueryPath = `/api/teacher/slots?teacherId=${encodeURIComponent(teacherId)}&week=${weekString}&allSlots=true&${cacheBuster}`;
+        const slotsQueryPath = window.RemoedTeacherSlots.buildSlotsUrl(teacherId, weekString, cacheExtra);
         const slotsFullUrl = new URL(slotsQueryPath, window.location.origin).href;
-        if (slotsFullUrl.indexOf('teacherId=undefined') !== -1 || slotsFullUrl.indexOf('teacherId=null') !== -1) {
-          teacherId = getEffectiveTeacherId();
-        }
         console.log('[Teacher booking] Full URL (GET slots):', slotsFullUrl);
         const response = await fetch(slotsQueryPath, {
           method: 'GET',
@@ -696,9 +673,17 @@
         
         if (!response.ok) {
           console.error('❌ Fetch request failed with status:', response.status);
-          const errorText = await response.text();
-          console.error('❌ Error response:', errorText);
-          alert('Error loading slots: Server returned status ' + response.status);
+          let errMsg = 'Server returned status ' + response.status;
+          const errBody = await response.text();
+          try {
+            const errJson = JSON.parse(errBody);
+            if (errJson && (errJson.message || errJson.error)) {
+              errMsg = errJson.message || errJson.error;
+            }
+          } catch (_j) {
+            console.error('❌ Error response:', errBody);
+          }
+          alert('Error loading slots: ' + errMsg);
           return;
         }
         
@@ -733,7 +718,11 @@
           console.log('🔄 No slots data found in database');
         }
         
+        if (!teacherId || teacherId === 'undefined' || teacherId === 'null') {
+          return handleMissingAuth();
+        }
         // Load booked slots with ULTRA AGGRESSIVE cache-busting
+        const cacheBuster = `t=${timestamp}&v=${random}&fresh=true&nocache=${timestamp}&force=${timestamp}&clear=${random}&update=${Date.now()}&refresh=${Math.random()}&buster=${Math.random()}&time=${Date.now()}`;
         const classesQueryPath = `/api/teacher/classes?teacherId=${encodeURIComponent(teacherId)}&week=${weekString}&${cacheBuster}`;
         const classesFullUrl = new URL(classesQueryPath, window.location.origin).href;
         console.log('[Teacher booking] Full URL (GET classes):', classesFullUrl);
@@ -1085,10 +1074,9 @@
 
     // Open selected slots to backend
     async function openSelectedSlots() {
-      teacherId = getEffectiveTeacherId();
-      if (!teacherId) {
-        window.location.reload();
-        return;
+      teacherId = window.RemoedTeacherSlots.getTeacherIdRobust();
+      if (!teacherId || teacherId === 'undefined' || teacherId === 'null') {
+        return handleMissingAuth();
       }
       
       console.log('=== OPEN SELECTED SLOTS DEBUG ===');
@@ -1125,8 +1113,18 @@
         // Get existing slots to combine with new ones - ULTRA AGGRESSIVE CACHE BUSTING
         const timestamp = Date.now();
         const random = Math.random();
-        const cacheBuster = `t=${timestamp}&v=${random}&fresh=true&nocache=${timestamp}&update=${Date.now()}&refresh=${Math.random()}&clear=${Math.random()}&force=${Date.now()}`;
-        const existingSlotsPath = `/api/teacher/slots?teacherId=${encodeURIComponent(teacherId)}&week=${weekString}&allSlots=true&tz=${encodeURIComponent(teacherTimezone)}&${cacheBuster}`;
+        const cacheExtraOpen = {
+          t: String(timestamp),
+          v: String(random),
+          fresh: 'true',
+          nocache: String(timestamp),
+          update: String(Date.now()),
+          refresh: String(Math.random()),
+          clear: String(Math.random()),
+          force: String(Date.now()),
+          tz: teacherTimezone
+        };
+        const existingSlotsPath = window.RemoedTeacherSlots.buildSlotsUrl(teacherId, weekString, cacheExtraOpen);
         console.log('[Teacher booking] Full URL (prefetch slots before save):', new URL(existingSlotsPath, window.location.origin).href);
         const existingResponse = await fetch(existingSlotsPath, {
           method: 'GET',
@@ -1194,10 +1192,9 @@
 
     // Close selected slots from backend
     async function closeSelectedSlots() {
-      teacherId = getEffectiveTeacherId();
-      if (!teacherId) {
-        window.location.reload();
-        return;
+      teacherId = window.RemoedTeacherSlots.getTeacherIdRobust();
+      if (!teacherId || teacherId === 'undefined' || teacherId === 'null') {
+        return handleMissingAuth();
       }
       
       console.log('=== CLOSE SELECTED SLOTS DEBUG ===');
@@ -1216,8 +1213,18 @@
         // Get existing slots - ULTRA AGGRESSIVE CACHE BUSTING
         const timestamp = Date.now();
         const random = Math.random();
-        const cacheBuster = `t=${timestamp}&v=${random}&fresh=true&nocache=${timestamp}&update=${Date.now()}&refresh=${Math.random()}&clear=${Math.random()}&force=${Date.now()}`;
-        const closePrefetchPath = `/api/teacher/slots?teacherId=${encodeURIComponent(teacherId)}&week=${weekString}&allSlots=true&tz=${encodeURIComponent(teacherTimezone)}&${cacheBuster}`;
+        const cacheExtraClose = {
+          t: String(timestamp),
+          v: String(random),
+          fresh: 'true',
+          nocache: String(timestamp),
+          update: String(Date.now()),
+          refresh: String(Math.random()),
+          clear: String(Math.random()),
+          force: String(Date.now()),
+          tz: teacherTimezone
+        };
+        const closePrefetchPath = window.RemoedTeacherSlots.buildSlotsUrl(teacherId, weekString, cacheExtraClose);
         console.log('[Teacher booking] Full URL (prefetch slots before close):', new URL(closePrefetchPath, window.location.origin).href);
         const existingResponse = await fetch(closePrefetchPath, {
           method: 'GET',

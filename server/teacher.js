@@ -1213,7 +1213,12 @@ router.get('/slots', async (req, res) => {
         ]
       });
       if (!teacher) {
-        return res.status(404).json({ error: 'Teacher not found' });
+        return res.status(404).json({
+          success: false,
+          error: 'Teacher not found',
+          message: 'No teacher matches this email or username.',
+          code: 'TEACHER_NOT_FOUND',
+        });
       }
       actualTeacherId = teacher.teacherId;
       console.log('🔍 Converted to teacherId:', actualTeacherId);
@@ -1222,7 +1227,12 @@ router.get('/slots', async (req, res) => {
       console.log('🔍 Converting ObjectId to teacherId:', teacherId);
       const teacher = await Teacher.findById(teacherId);
       if (!teacher) {
-        return res.status(404).json({ error: 'Teacher not found' });
+        return res.status(404).json({
+          success: false,
+          error: 'Teacher not found',
+          message: 'No teacher matches this account id.',
+          code: 'TEACHER_NOT_FOUND',
+        });
       }
       actualTeacherId = teacher.teacherId;
       console.log('🔍 Converted ObjectId to teacherId:', actualTeacherId);
