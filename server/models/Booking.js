@@ -49,4 +49,9 @@ const bookingSchema = new mongoose.Schema({
   creditReservationReleasedAt: { type: Date, default: null },
   createdAt: { type: Date, default: Date.now }
 });
+
+// History and student calendar queries: filter/sort by student + date; status filters for analytics.
+bookingSchema.index({ studentId: 1, date: -1 });
+bookingSchema.index({ studentId: 1, status: 1, date: -1 });
+
 module.exports = mongoose.model('Booking', bookingSchema); 

@@ -541,47 +541,38 @@ function collectStudentIdentifiers(req) {
   return [...new Set(ids.filter(Boolean))];
 }
 
-function formatLocalYMD(d) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
-/** Accepts clean integers; ignores junk like "26:1" or repeated query params. */
-function parseHistoryWeeksParam(raw, fallback = 26) {
-  const first = Array.isArray(raw) ? raw[0] : raw;
-  if (first == null || first === '') return fallback;
-  const m = String(first).trim().match(/^\s*(\d+)/);
-  if (!m) return fallback;
-  const n = parseInt(m[1], 10);
-  if (!Number.isFinite(n)) return fallback;
-  return Math.min(104, Math.max(1, n));
-}
-
 /**
  * Batch-load Teacher + teacher→student Feedback for a booking list (avoids N+1 queries per row).
+ * @param {object} [options]
+ * @param {boolean} [options.lightTeacher] — Only names/ids (no photo/intro) for small payloads.
+ * @param {boolean} [options.skipFeedback] — Skip Feedback query when the client does not need it.
  */
-async function enrichStudentBookingsWithTeachersAndFeedback(bookings, uniqueIdentifiers) {
+async function enrichStudentBookingsWithTeachersAndFeedback(bookings, uniqueIdentifiers, options = {}) {
   if (!bookings || bookings.length === 0) return [];
+
+  const { lightTeacher = false, skipFeedback = false } = options;
 
   const bookingObjs = bookings.map((b) => (b && typeof b.toObject === 'function' ? b.toObject() : { ...b }));
   const logicalTeacherIds = [...new Set(bookingObjs.map((b) => b.teacherId).filter(Boolean))];
 
+  let teacherQuery = Teacher.find({ teacherId: { $in: logicalTeacherIds } });
+  if (lightTeacher) {
+    teacherQuery = teacherQuery.select('teacherId username firstName lastName');
+  }
   const teachers =
-    logicalTeacherIds.length > 0
-      ? await Teacher.find({ teacherId: { $in: logicalTeacherIds } }).lean()
-      : [];
+    logicalTeacherIds.length > 0 ? await teacherQuery.lean() : [];
   const teacherByTid = new Map(teachers.map((t) => [t.teacherId, t]));
 
   const bookingIdStrs = bookingObjs.map((b) => String(b._id));
   const feedbackDocs =
-    bookingIdStrs.length > 0
+    !skipFeedback && bookingIdStrs.length > 0
       ? await Feedback.find({
           bookingId: { $in: bookingIdStrs },
           studentId: { $in: uniqueIdentifiers },
           $or: [{ feedbackRole: 'teacher_to_student' }, { feedbackRole: { $exists: false } }],
-        }).lean()
+        })
+          .select('bookingId teacherId rating comment submittedAt')
+          .lean()
       : [];
 
   const feedbackKey = (bid, tid) => `${String(bid)}|${String(tid)}`;
@@ -605,12 +596,16 @@ async function enrichStudentBookingsWithTeachersAndFeedback(bookings, uniqueIden
       };
     }
 
-    return {
-      ...bookingObj,
-      teacherLogicalId: logicalTeacherId,
-      teacherFeedback,
-      teacherId: teacher
+    const teacherPayload = teacher
+      ? lightTeacher
         ? {
+            _id: teacher._id,
+            teacherId: teacher.teacherId,
+            username: teacher.username,
+            firstName: teacher.firstName,
+            lastName: teacher.lastName,
+          }
+        : {
             _id: teacher._id,
             teacherId: teacher.teacherId,
             username: teacher.username,
@@ -619,10 +614,32 @@ async function enrichStudentBookingsWithTeachersAndFeedback(bookings, uniqueIden
             photo: teacher.photo,
             intro: teacher.intro,
           }
-        : null,
+      : null;
+
+    return {
+      ...bookingObj,
+      teacherLogicalId: logicalTeacherId,
+      teacherFeedback,
+      teacherId: teacherPayload,
     };
   });
 }
+
+/** Default page size for booking history (keeps payloads small vs 26 weeks of rows). */
+const BOOKING_HISTORY_DEFAULT_LIMIT = 20;
+const BOOKING_HISTORY_MAX_LIMIT = 50;
+
+function parseHistoryLimitParam(raw) {
+  const first = Array.isArray(raw) ? raw[0] : raw;
+  if (first == null || first === '') return BOOKING_HISTORY_DEFAULT_LIMIT;
+  const n = parseInt(String(first).trim(), 10);
+  if (!Number.isFinite(n)) return BOOKING_HISTORY_DEFAULT_LIMIT;
+  return Math.min(BOOKING_HISTORY_MAX_LIMIT, Math.max(1, n));
+}
+
+/** Fields needed by student-booking-history.html (sort keys + table + join link). */
+const BOOKING_HISTORY_LEAN_SELECT =
+  'studentId teacherId date time dateTimeUtc lesson status classroomId finishedAt absentType';
 
 // One query + batch enrichment for booking history page (replaces many /bookings?week= calls).
 router.get('/bookings/history', verifyToken, requireStudent, async (req, res) => {
@@ -632,27 +649,22 @@ router.get('/bookings/history', verifyToken, requireStudent, async (req, res) =>
       return res.status(400).json({ error: 'Student identifier missing' });
     }
 
-    const weeks = parseHistoryWeeksParam(req.query.weeks, 26);
-    const today = new Date();
-    const start = new Date(today);
-    start.setDate(today.getDate() - weeks * 7);
-    const dateFrom = formatLocalYMD(start);
-    const end = new Date(today);
-    end.setDate(today.getDate() + 14);
-    const dateTo = formatLocalYMD(end);
+    const limit = parseHistoryLimitParam(req.query.limit);
 
     const bookings = await Booking.find({
       studentId: { $in: uniqueIdentifiers },
-      date: { $gte: dateFrom, $lte: dateTo },
     })
+      .select(BOOKING_HISTORY_LEAN_SELECT)
       .sort({ date: -1, time: -1 })
+      .limit(limit)
       .lean();
 
     const bookingsWithTeacherInfo = await enrichStudentBookingsWithTeachersAndFeedback(
       bookings,
-      uniqueIdentifiers
+      uniqueIdentifiers,
+      { lightTeacher: true, skipFeedback: true }
     );
-    res.json({ bookings: bookingsWithTeacherInfo });
+    res.json({ bookings: bookingsWithTeacherInfo, limit });
   } catch (err) {
     console.error('❌ Error fetching student bookings history:', err);
     res.status(500).json({ error: err.message });

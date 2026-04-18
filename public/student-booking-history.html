@@ -108,6 +108,31 @@
          let allBookings = [];
          let currentFilter = 'all';
 
+         var BOOKING_HISTORY_FETCH_MS = 10000;
+         var BOOKING_HISTORY_LIMIT = 20;
+
+         function escapeHtml(str) {
+             return String(str)
+                 .replace(/&/g, '&amp;')
+                 .replace(/</g, '&lt;')
+                 .replace(/>/g, '&gt;')
+                 .replace(/"/g, '&quot;');
+         }
+
+         function renderBookingHistoryLoadError(message) {
+             var container = document.getElementById('bookings-container');
+             container.innerHTML =
+                 '<div class="empty-state" style="text-align:center;max-width:420px;margin:2rem auto;">' +
+                 '<div class="empty-state-title" style="margin-bottom:0.75rem;">Could not load classes</div>' +
+                 '<div class="empty-state-text" style="margin-bottom:1.25rem;">' + escapeHtml(message) + '</div>' +
+                 '<button type="button" class="book-first-class-btn" id="booking-history-retry-btn">Retry</button>' +
+                 '</div>';
+             var btn = document.getElementById('booking-history-retry-btn');
+             if (btn) {
+                 btn.onclick = function() { loadBookingHistory(); };
+             }
+         }
+
          // Load booking history on page load
          document.addEventListener('DOMContentLoaded', function() {
              const username = safeStorageGet('remoedUsername');
@@ -132,25 +157,34 @@
              setupFilterTabs();
          });
 
-        // Load booking history from API (single round-trip; server batch-loads teachers + feedback)
+        // Load booking history from API (paginated recent rows; 10s client timeout + Retry UI)
         async function loadBookingHistory() {
+            var container = document.getElementById('bookings-container');
+            container.innerHTML =
+                '<div class="loading"><div class="loading-spinner"></div><p>Loading your booking history...</p></div>';
+
+            const token = getStudentAuthToken();
+            if (!token) {
+                console.error('No authentication token found');
+                renderBookingHistoryLoadError('Please log in to view your booking history.');
+                return;
+            }
+
+            var qs = new URLSearchParams();
+            qs.set('limit', String(BOOKING_HISTORY_LIMIT));
+            var historyUrl = '/api/student/bookings/history?' + qs.toString();
+
+            const ac = new AbortController();
+            var tid = setTimeout(function() {
+                ac.abort();
+            }, BOOKING_HISTORY_FETCH_MS);
+
             try {
-                const token = getStudentAuthToken();
-                if (!token) {
-                    console.error('No authentication token found');
-                    showError('Please log in to view your booking history');
-                    return;
-                }
-
-                var BOOKING_HISTORY_WEEKS = 26;
-                var qs = new URLSearchParams();
-                qs.set('weeks', String(BOOKING_HISTORY_WEEKS));
-                var historyUrl = '/api/student/bookings/history?' + qs.toString();
-
                 const response = await fetch(historyUrl, {
                     method: 'GET',
+                    signal: ac.signal,
                     headers: {
-                        'Authorization': `Bearer ${token}`,
+                        'Authorization': 'Bearer ' + token,
                         'Content-Type': 'application/json',
                         'Cache-Control': 'no-cache',
                         'Pragma': 'no-cache'
@@ -159,9 +193,13 @@
 
                 if (!response.ok) {
                     if (response.status === 404) {
-                        showError('Booking history service not found (404). Ensure the server is updated and you open this site from the same origin as the API.');
+                        renderBookingHistoryLoadError(
+                            'Booking history was not found (404). Ensure the server is updated and you use the same site origin as the API.'
+                        );
                     } else {
-                        showError('Could not load booking history (HTTP ' + response.status + '). Please try again.');
+                        renderBookingHistoryLoadError(
+                            'Could not load booking history (HTTP ' + response.status + ').'
+                        );
                     }
                     return;
                 }
@@ -175,10 +213,14 @@
             } catch (error) {
                 console.error('Error loading booking history:', error);
                 if (error.name === 'AbortError') {
-                    showError('Request timed out. Please check your connection and try again.');
+                    renderBookingHistoryLoadError(
+                        'Request timed out after ' + (BOOKING_HISTORY_FETCH_MS / 1000) + ' seconds. Check your connection and tap Retry.'
+                    );
                 } else {
-                    showError('Network error. Please check your connection and try again.');
+                    renderBookingHistoryLoadError('Network error. Check your connection and tap Retry.');
                 }
+            } finally {
+                clearTimeout(tid);
             }
         }
 
