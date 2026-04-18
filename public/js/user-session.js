@@ -16,6 +16,7 @@
 
   function portalKindFromLocation() {
     try {
+      if (global.__REMOED_ADMIN_LOGIN_HTML__ === true) return '';
       var loc = global.location;
       if (!loc || !loc.pathname) return '';
       var p = String(loc.pathname).toLowerCase();
@@ -56,10 +57,10 @@
       var kind = portalKindFromLocation();
       if (kind === 'admin') {
         return (
-          global.localStorage.getItem(LS_ADMIN) ||
-          global.sessionStorage.getItem(LS_ADMIN) ||
           global.localStorage.getItem('remoed_admin_auth') ||
           global.sessionStorage.getItem('remoed_admin_auth') ||
+          global.localStorage.getItem(LS_ADMIN) ||
+          global.sessionStorage.getItem(LS_ADMIN) ||
           global.localStorage.getItem('adminToken') ||
           global.sessionStorage.getItem('adminToken') ||
           ''
@@ -118,6 +119,7 @@
         global.localStorage.removeItem('adminUsername');
         global.localStorage.removeItem('adminRole');
         global.localStorage.removeItem('userType');
+        global.localStorage.removeItem('userRole');
         return;
       }
       if (kind === 'teacher') {
