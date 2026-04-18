@@ -1,5 +1,4 @@
 const express = require('express');
-const mongoose = require('mongoose');
 const Teacher = require('../models/Teacher');
 
 const router = express.Router();
@@ -9,13 +8,17 @@ function isProbableHexObjectId(s) {
   return typeof s === 'string' && /^[a-f0-9]{24}$/i.test(String(s).trim());
 }
 
+function escapeRegex(str) {
+  return String(str || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 /**
  * Resolve stable `teacher.teacherId` string from URL param.
  * Uses **Teachers** collection (`Teacher` model) only — not Users/Admins.
  * 1) `findById` when param is a 24-char hex MongoDB _id (preferred for slot loader).
  * 2) Stable `teacherId` field (e.g. kjb… / legacy ids).
  * 3) Username exact, then username case-insensitive.
- * 4) Email case-insensitive (input and DB compared lowercased).
+ * 4) Email case-insensitive anchored regex match.
  */
 async function resolveCanonicalTeacherIdFromParam(raw) {
   const s = String(raw || '').trim();
@@ -41,9 +44,7 @@ async function resolveCanonicalTeacherIdFromParam(raw) {
   if (row) return row.teacherId;
 
   row = await Teacher.findOne({
-    $expr: {
-      $eq: [{ $toLower: { $ifNull: ['$email', ''] } }, sLower],
-    },
+    email: { $regex: new RegExp('^' + escapeRegex(s) + '$', 'i') },
   }).lean();
   if (row) return row.teacherId;
 

@@ -1109,6 +1109,15 @@ async function handleTeacherCloseSlots(req, res) {
 
 router.post('/close-slot', verifyToken, requireTeacher, handleTeacherCloseSlots);
 
+/** 24-char hex MongoDB ObjectId — use with Teacher.findById, not mongoose.isValidObjectId alone. */
+function isProbableHexObjectIdForTeacher(s) {
+  return typeof s === 'string' && /^[a-f0-9]{24}$/i.test(String(s).trim());
+}
+
+function escapeRegexForTeacherLookup(str) {
+  return String(str || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 // Fetch teacher's open slots and bookings for a week
 router.get('/slots', async (req, res) => {
   try {
@@ -1204,13 +1213,11 @@ router.get('/slots', async (req, res) => {
       console.log('🔍 TeacherId already in correct format:', teacherId);
       actualTeacherId = teacherId;
     } else if (teacherId && (teacherId.includes('@') || teacherId.includes('.'))) {
-      // Email/username -> lookup and use teacher.teacherId
+      // Email/username -> lookup and use teacher.teacherId (email match is case-insensitive)
       console.log('🔍 Converting email/username to teacherId:', teacherId);
-      const teacher = await Teacher.findOne({ 
-        $or: [
-          { email: teacherId },
-          { username: teacherId }
-        ]
+      const emailRegex = { email: { $regex: new RegExp('^' + escapeRegexForTeacherLookup(teacherId) + '$', 'i') } };
+      const teacher = await Teacher.findOne({
+        $or: [emailRegex, { username: teacherId }],
       });
       if (!teacher) {
         return res.status(404).json({
@@ -1223,8 +1230,8 @@ router.get('/slots', async (req, res) => {
       }
       actualTeacherId = teacher.teacherId;
       console.log('🔍 Converted to teacherId:', actualTeacherId);
-    } else if (teacherId && mongoose.Types.ObjectId.isValid(teacherId)) {
-      // ObjectId -> lookup and use teacher.teacherId
+    } else if (teacherId && isProbableHexObjectIdForTeacher(teacherId)) {
+      // MongoDB _id (24 hex) -> Teacher.findById(req.query.teacherId after redirect)
       console.log('🔍 Converting ObjectId to teacherId:', teacherId);
       const teacher = await Teacher.findById(teacherId);
       if (!teacher) {
@@ -1407,10 +1414,11 @@ async function resolveToCanonicalTeacherId(rawTeacherId) {
     const s = rawTeacherId.trim();
     const byField = await Teacher.findOne({ teacherId: s });
     if (byField) return byField.teacherId;
-    const byUsername = await Teacher.findOne({ $or: [{ username: s }, { email: s }] });
+    const emailMatch = { email: { $regex: new RegExp('^' + escapeRegexForTeacherLookup(s) + '$', 'i') } };
+    const byUsername = await Teacher.findOne({ $or: [{ username: s }, emailMatch] });
     if (byUsername) return byUsername.teacherId;
   }
-  if (mongoose.Types.ObjectId.isValid(rawTeacherId)) {
+  if (isProbableHexObjectIdForTeacher(String(rawTeacherId))) {
     const byOid = await Teacher.findById(rawTeacherId);
     if (byOid) return byOid.teacherId;
   }

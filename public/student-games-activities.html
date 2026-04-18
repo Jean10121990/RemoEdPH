@@ -1,19 +1,510 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
-    <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Play & Learn - RemoEdPH</title>
+    <script src="js/security-guard.js?v=1"></script>
+    <title>🎮 Play & Learn - RemoEdPH</title>
     <link rel="stylesheet" href="modern-styles.css">
     <link rel="stylesheet" href="child-friendly-styles.css">
-<link rel="stylesheet" href="css/teacher-sidebar.css">
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="css/student-portal-layout.css">
-    <script src="js/user-session.js"></script>
+    <style>
+        body { 
+            font-family: 'Comic Sans MS', 'Chalkboard SE', 'Trebuchet MS', 'Segoe UI', sans-serif; 
+            background: linear-gradient(135deg, #FFF0F5 0%, #E8F8F5 50%, #FFF9E6 100%);
+            background-attachment: fixed;
+            margin: 0;
+            padding: 0;
+        }
+        .remoed-main { 
+            display: flex; 
+            min-height: 100vh; 
+        }
+        .remoed-sidebar { 
+            width: 260px; 
+            min-width: 260px;
+            background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%); 
+            box-shadow: 4px 0 20px rgba(102, 126, 234, 0.1); 
+            padding: 0; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: stretch;
+            position: fixed;
+            height: 100vh;
+            z-index: 100;
+            border-right: 1px solid rgba(102, 126, 234, 0.1);
+        }
+        .remoed-content {
+            flex: 1;
+            padding: 20px;
+            min-width: 0;
+            background: transparent;
+            min-height: 100vh;
+            box-sizing: border-box;
+            margin-left: 260px;
+            max-width: calc(100vw - 260px);
+            overflow-x: auto;
+        }
+        .remoed-logo { 
+            height: 100px; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            gap: 8px; 
+            padding-top: 5px; 
+        }
+        .remoed-logo img { 
+            height: 40px; 
+            width: auto; 
+            display: inline-block; 
+            vertical-align: middle; 
+        }
+        .remoed-title { 
+            font-size: 1.3rem; 
+            font-weight: 700; 
+            color: #667eea; 
+            letter-spacing: 1px; 
+        }
+        .remoed-user { 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            margin-bottom: 24px; 
+        }
+        .remoed-avatar { 
+            width: 60px; 
+            height: 60px; 
+            border-radius: 50%; 
+            background: linear-gradient(135deg, #667eea, #5a67d8); 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            color: white; 
+            font-weight: bold; 
+            font-size: 1.5rem; 
+            margin-bottom: 8px; 
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .remoed-username { 
+            font-size: 0.9rem; 
+            color: #333; 
+            font-weight: 500; 
+        }
+        .remoed-menu { 
+            list-style: none; 
+            padding: 0; 
+            margin: 0; 
+            flex: 1; 
+            display: flex; 
+            flex-direction: column; 
+        }
+        .remoed-menu li { 
+            padding: 14px 32px; 
+            color: #667eea; 
+            font-weight: 500; 
+            cursor: pointer; 
+            display: flex; 
+            align-items: center; 
+            gap: 12px; 
+            border-left: 4px solid transparent; 
+            transition: background 0.2s, border-color 0.2s; 
+        }
+        .remoed-menu li.active, .remoed-menu li:hover { 
+            background: linear-gradient(90deg, #667eea 0%, #5a67d8 100%) !important; 
+            border-left: 4px solid #667eea !important; 
+            color: white !important; 
+            transform: translateX(4px) !important; 
+            transition: all 0.3s ease !important; 
+        }
+        .remoed-menu svg { 
+            width: 20px; 
+            height: 20px; 
+            stroke: currentColor; 
+        }
+
+        /* Games and Activities Styles */
+        .games-container {
+            max-width: 1020px;
+            margin: 0 auto;
+        }
+
+        .page-header {
+            margin-bottom: 16px;
+        }
+
+        .page-header h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #667eea;
+            margin: 0 0 8px 0;
+        }
+
+        .page-header p {
+            color: #666;
+            font-size: 1rem;
+            margin: 0;
+        }
+
+        .selection-section {
+            background: white;
+            border-radius: 16px;
+            padding: 18px;
+            box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08);
+            margin-bottom: 14px;
+        }
+
+        .selection-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .selection-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .selection-card {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border: 2px solid transparent;
+            border-radius: 12px;
+            padding: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .selection-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.2);
+            border-color: #667eea;
+        }
+
+        .selection-card.active {
+            background: linear-gradient(135deg, #667eea 0%, #5a67d8 100%);
+            color: white;
+            border-color: #667eea;
+        }
+
+        .selection-card .icon {
+            font-size: 1.8rem;
+            margin-bottom: 6px;
+        }
+
+        .selection-card .label {
+            font-size: 0.92rem;
+            font-weight: 600;
+        }
+
+        .game-display {
+            background: white;
+            border-radius: 16px;
+            padding: 18px;
+            box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08);
+            min-height: 360px;
+        }
+
+        .game-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .game-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .game-content {
+            display: none;
+        }
+
+        .game-content.active {
+            display: block;
+        }
+
+        /* Reading Game Styles */
+        .word-card {
+            background: linear-gradient(135deg, #667eea 0%, #5a67d8 100%);
+            color: white;
+            border-radius: 16px;
+            padding: 40px;
+            text-align: center;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
+        }
+
+        .word-card .word {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        .word-card .phonetic {
+            font-size: 1.25rem;
+            opacity: 0.9;
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
+            margin: 24px 0;
+        }
+
+        .option-btn {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 20px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .option-btn:hover {
+            background: #e9ecef;
+            transform: scale(1.05);
+        }
+
+        .option-btn.correct {
+            background: #d4edda;
+            border-color: #28a745;
+            color: #155724;
+        }
+
+        .option-btn.incorrect {
+            background: #f8d7da;
+            border-color: #dc3545;
+            color: #721c24;
+        }
+
+        /* Speaking Game Styles */
+        .speaking-card {
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 16px;
+            padding: 32px;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .speaking-card .phrase {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 24px;
+        }
+
+        .record-btn {
+            background: linear-gradient(135deg, #667eea 0%, #5a67d8 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            min-width: 190px;
+            min-height: 44px;
+            padding: 8px 14px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .record-btn:hover {
+            transform: none;
+        }
+
+        .record-btn.recording {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            animation: none;
+        }
+
+        /* Writing Game Styles */
+        .writing-prompt {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            border-radius: 8px;
+            padding: 24px;
+            margin: 20px 0;
+        }
+
+        .writing-prompt h3 {
+            margin: 0 0 12px 0;
+            color: #667eea;
+            font-size: 1.25rem;
+        }
+
+        .writing-area {
+            width: 100%;
+            min-height: 200px;
+            padding: 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-family: inherit;
+            resize: vertical;
+            margin: 16px 0;
+        }
+
+        .writing-area:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        /* Listening Game Styles */
+        .audio-player {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .audio-btn {
+            background: linear-gradient(135deg, #667eea 0%, #5a67d8 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 12px 24px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .audio-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        /* Good Moral Activity Styles */
+        .moral-card {
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+            border: 2px solid #ffc107;
+            border-radius: 16px;
+            padding: 32px;
+            margin: 20px 0;
+        }
+
+        .moral-card .title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #856404;
+            margin-bottom: 16px;
+        }
+
+        .moral-card .story {
+            font-size: 1.1rem;
+            color: #856404;
+            line-height: 1.8;
+            margin-bottom: 24px;
+        }
+
+        .moral-question {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 16px 0;
+        }
+
+        .feedback-message {
+            padding: 16px;
+            border-radius: 8px;
+            margin: 16px 0;
+            font-weight: 600;
+            display: none;
+        }
+
+        .feedback-message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+
+        .feedback-message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+
+        .score-display {
+            background: linear-gradient(135deg, #667eea 0%, #5a67d8 100%);
+            color: white;
+            border-radius: 12px;
+            padding: 16px 24px;
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin: 16px 0;
+        }
+
+        .next-btn {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 12px 32px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 16px;
+        }
+
+        .next-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
+        }
+
+        @keyframes celebrate {
+            0% { transform: scale(0.9); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes fadeOut {
+            from { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            to { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+        }
+
+        @media (max-width: 768px) {
+            .remoed-sidebar {
+                position: relative;
+                width: 100%;
+                height: auto;
+            }
+            .remoed-content {
+                margin-left: 0;
+                max-width: 100%;
+                padding: 20px;
+            }
+            .selection-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+    <link rel="stylesheet" href="css/teacher-sidebar.css">
 </head>
-<body  class="student-portal page-student-games-activities">
+<body class="student-portal">
     <div class="remoed-main">
         <div id="student-sidebar-root"></div>
         <script src="js/student-sidebar.js"></script>
@@ -21,7 +512,10 @@
         <div class="remoed-content">
             <div class="games-container">
                 <div class="page-header">
-                    <h1 style="font-size: 2rem; font-weight: 800; color: #5a67d8; text-shadow: none; margin-bottom: 6px; text-align: center;">Play &amp; Learn</h1>
+                    <h1 style="font-size: 2rem; font-weight: 800; color: #1CA7E7; text-shadow: none; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; justify-content: center;">
+                        <span>📚📶</span>
+                        <span>🎮 Play & Learn! 🎨</span>
+                    </h1>
                     <p style="font-size: 1rem; color: #636E72; font-weight: 600;">Have fun while learning new things!</p>
                 </div>
 
@@ -389,9 +883,9 @@
                 document.querySelector('.game-content').innerHTML = `
                     <div style="text-align: center; padding: 40px;">
                         <div style="font-size: 2.6rem; margin-bottom: 12px;">Great work</div>
-                        <h2 style="color: #5a67d8; font-size: 2rem; font-weight: 800; margin-bottom: 16px; text-shadow: 2px 2px 4px rgba(90, 103, 216, 0.15);">Amazing Job!</h2>
+                        <h2 style="color: #1CA7E7; font-size: 2rem; font-weight: 800; margin-bottom: 16px; text-shadow: 2px 2px 4px rgba(28, 167, 231, 0.2);">Amazing Job!</h2>
                         <p style="font-size: 1.5rem; color: #1E3A5F; margin: 20px 0; font-weight: 600;">
-                            You got <strong style="color: #5a67d8;">${readingScore}/${data.length}</strong> correct!
+                            You got <strong style="color: #1CA7E7;">${readingScore}/${data.length}</strong> correct!
                         </p>
                         <div style="font-size: 2rem; margin: 20px 0; color: #FFD700; filter: drop-shadow(0 2px 4px rgba(255, 215, 0, 0.4));">
                             ${'⭐'.repeat(starsEarned)}
@@ -577,6 +1071,11 @@
                     ${prompts.map((prompt, idx) => 
                         `<button class="option-btn" onclick="changeWritingPrompt(${idx})">Prompt ${idx + 1}</button>`
                     ).join('')}
+                    <button class="next-btn" onclick="saveWriting()">💾 Save My Writing</button>
+                </div>
+                <div class="feedback-message" id="writing-feedback" style="display: none;"></div>
+                <div style="margin-top: 16px; padding: 12px; background: #f8f9fa; border-radius: 8px; font-size: 0.85rem; color: #666;">
+                    <strong>💡 Tip:</strong> Take your time to write a thoughtful response. You can save multiple writings and review them later.
                 </div>
             `;
         }
@@ -598,6 +1097,79 @@
             if (writingArea) {
                 writingArea.value = '';
                 writingArea.focus();
+            }
+            
+            // Hide any previous feedback
+            const feedback = document.getElementById('writing-feedback');
+            if (feedback) {
+                feedback.style.display = 'none';
+            }
+        }
+
+        async function saveWriting() {
+            const writing = document.getElementById('writing-area').value;
+            const feedback = document.getElementById('writing-feedback');
+            
+            if (!writing.trim()) {
+                if (feedback) {
+                    feedback.innerHTML = '<p style="color: #d32f2f;">⚠️ Please write something before saving!</p>';
+                    feedback.className = 'feedback-message error';
+                    feedback.style.display = 'block';
+                }
+                return;
+            }
+            
+            try {
+                // Save to localStorage
+                const savedWritings = JSON.parse(localStorage.getItem('studentWritings') || '[]');
+                const writingEntry = {
+                    level: selectedLevel,
+                    skill: 'writing',
+                    prompt: document.getElementById('writing-prompt-text').textContent,
+                    content: writing,
+                    timestamp: new Date().toISOString(),
+                    date: new Date().toLocaleDateString()
+                };
+                
+                savedWritings.push(writingEntry);
+                localStorage.setItem('studentWritings', JSON.stringify(savedWritings));
+                
+                // Show success feedback
+                if (feedback) {
+                    feedback.innerHTML = `
+                        <div style="padding: 12px; background: #e8f5e9; border-radius: 8px; border: 1px solid #c3e6cb;">
+                            <p style="margin: 0 0 8px 0; color: #2e7d32; font-weight: 600;">✅ Writing saved successfully!</p>
+                            <p style="margin: 0; color: #2e7d32; font-size: 0.9rem;">Your writing has been saved. You can view it in your profile.</p>
+                        </div>
+                    `;
+                    feedback.className = 'feedback-message success';
+                    feedback.style.display = 'block';
+                }
+                
+                // Optionally save to server
+                const token = localStorage.getItem('token');
+                if (token) {
+                    try {
+                        await fetch('/api/student/save-writing', {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${token}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(writingEntry)
+                        });
+                    } catch (err) {
+                        console.log('Server save failed, but local save succeeded:', err);
+                    }
+                }
+                
+            } catch (error) {
+                console.error('Error saving writing:', error);
+                if (feedback) {
+                    feedback.innerHTML = '<p style="color: #d32f2f;">❌ Error saving writing. Please try again.</p>';
+                    feedback.className = 'feedback-message error';
+                    feedback.style.display = 'block';
+                }
             }
         }
 
@@ -737,9 +1309,9 @@
                 document.querySelector('.game-content').innerHTML = `
                     <div style="text-align: center; padding: 40px;">
                         <div style="font-size: 2.6rem; margin-bottom: 12px;">Great work</div>
-                        <h2 style="color: #5a67d8; font-size: 2rem; font-weight: 800; margin-bottom: 16px; text-shadow: 2px 2px 4px rgba(90, 103, 216, 0.15);">Wonderful!</h2>
+                        <h2 style="color: #1CA7E7; font-size: 2rem; font-weight: 800; margin-bottom: 16px; text-shadow: 2px 2px 4px rgba(28, 167, 231, 0.2);">Wonderful!</h2>
                         <p style="font-size: 1.5rem; color: #1E3A5F; margin: 20px 0; font-weight: 600;">
-                            You got <strong style="color: #5a67d8;">${listeningScore}/${data.length}</strong> correct!
+                            You got <strong style="color: #1CA7E7;">${listeningScore}/${data.length}</strong> correct!
                         </p>
                         <div style="font-size: 2rem; margin: 20px 0; color: #FFD700; filter: drop-shadow(0 2px 4px rgba(255, 215, 0, 0.4));">
                             ${'⭐'.repeat(starsEarned)}
@@ -893,4 +1465,3 @@
     
 </body>
 </html>
-

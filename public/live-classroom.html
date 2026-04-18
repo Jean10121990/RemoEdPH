@@ -5,6 +5,7 @@
     <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="js/security-guard.js?v=1"></script>
   <title>Live Classroom</title>
   <!-- PDF.js library for embedded free PDF viewer -->
   <script type="module">
@@ -283,8 +284,13 @@
     (function(){
       // Use the current origin (includes protocol, host, and port)
       const SIGNALING_SERVER_URL = window.location.origin || '';
+      const __lcAuthToken =
+        (window.RemoedSecurityGuard && typeof window.RemoedSecurityGuard.getToken === 'function')
+          ? window.RemoedSecurityGuard.getToken()
+          : (localStorage.getItem('remoed_user_token') || localStorage.getItem('token') || '');
       console.log('🔌 Connecting to Socket.IO server at:', SIGNALING_SERVER_URL);
       const socket = io(SIGNALING_SERVER_URL, {
+        auth: { token: __lcAuthToken },
         transports: ['websocket', 'polling'],
         reconnection: true,
         reconnectionAttempts: 10, // Increase reconnection attempts
@@ -340,6 +346,15 @@
       socket.on('connect_error', (error) => {
         console.error('❌ Socket.IO connection error:', error);
         console.error('❌ Attempted URL:', SIGNALING_SERVER_URL);
+      });
+
+      socket.on('auth-error', (payload) => {
+        console.error('❌ Socket auth rejected:', payload);
+        try {
+          localStorage.clear();
+          sessionStorage.clear();
+        } catch (_e) {}
+        window.location.replace('/index.html?error=socket_unauthorized');
       });
       
       // Handle disconnects gracefully

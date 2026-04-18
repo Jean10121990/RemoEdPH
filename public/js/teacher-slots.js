@@ -92,13 +92,39 @@
   }
 
   /**
-   * Relative URL: /api/slots/<param>?week=...&allSlots=true&...
+   * Before any slot GET: if stable teacherId is missing or the literal "undefined", recover from JWT.
+   * If the slots API param is still invalid, clear storage and send the user to index.html.
+   */
+  function ensureSlotLoadIdentityOrRedirect() {
+    var tid = global.localStorage.getItem('teacherId');
+    if (isInvalidTeacherId(tid)) {
+      try {
+        global.localStorage.removeItem('teacherId');
+      } catch (_e) {}
+    }
+    getTeacherIdRobust();
+    var pl = decodeTeacherJwtPayload();
+    if (pl && pl.teacherMongoId && isProbableHexObjectId(pl.teacherMongoId)) {
+      global.localStorage.setItem('teacherMongoId', String(pl.teacherMongoId).trim());
+    }
+    var param = getSlotsApiTeacherParam();
+    if (isInvalidTeacherId(param)) {
+      handleMissingAuth();
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * Relative URL: /api/slots/<param>?t=...&week=...&allSlots=true&...
+   * `t` is first so CDNs/Hostinger are less likely to serve a stale cached 404 for the path.
    * Uses MongoDB _id in the path when `teacherMongoId` is stored (from login / JWT).
    */
   function buildSlotsUrl(weekString, extraQuery) {
     var param = getSlotsApiTeacherParam();
     var path = '/api/slots/' + encodeURIComponent(String(param).trim());
     var sp = new URLSearchParams();
+    sp.set('t', String(Date.now()));
     sp.set('week', weekString);
     sp.set('allSlots', 'true');
     if (extraQuery && typeof extraQuery === 'object') {
@@ -115,6 +141,7 @@
     getSlotsApiTeacherParam: getSlotsApiTeacherParam,
     handleMissingAuth: handleMissingAuth,
     isInvalidTeacherId: isInvalidTeacherId,
+    ensureSlotLoadIdentityOrRedirect: ensureSlotLoadIdentityOrRedirect,
     buildSlotsUrl: buildSlotsUrl,
   };
 })(typeof window !== 'undefined' ? window : this);

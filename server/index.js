@@ -35,6 +35,9 @@ const { DateTime } = require('luxon');
 const fs = require('fs');
 // AdmZip removed - no longer needed for file conversion
 const { verifyToken, requireTeacher } = require('./authMiddleware');
+const jwt = require('jsonwebtoken');
+const { isTokenBlacklisted } = require('./services/jwtBlacklist');
+const SOCKET_AUTH_JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
 const { getClassroomEntryGate, EARLY_ENTRY_MINUTES } = require('./services/classroomEntryWindow');
 
 const app = express();
@@ -1534,6 +1537,48 @@ app.use((req, res) => {
   return res.status(404).json({ error: 'Route not found' });
 });
 
+function getSocketBearerToken(socket) {
+  try {
+    const a = socket.handshake.auth;
+    if (a && a.token) return String(a.token).trim();
+    const q = socket.handshake.query;
+    if (q && q.token) return String(q.token).trim();
+    const auth = socket.handshake.headers && socket.handshake.headers.authorization;
+    if (auth && String(auth).startsWith('Bearer ')) return String(auth).slice(7).trim();
+  } catch (_e) {}
+  return '';
+}
+
+/** Real classroom rooms require a valid JWT on the socket handshake. */
+function disconnectIfClassroomUnauthenticated(socket, room) {
+  if (!room || room === 'default-room') return true;
+  const token = getSocketBearerToken(socket);
+  if (!token) {
+    try {
+      socket.emit('auth-error', { code: 'NO_TOKEN', message: 'Classroom connection requires a valid session.' });
+    } catch (_e) {}
+    socket.disconnect(true);
+    return false;
+  }
+  if (isTokenBlacklisted(token)) {
+    try {
+      socket.emit('auth-error', { code: 'TOKEN_REVOKED', message: 'Session was revoked. Please sign in again.' });
+    } catch (_e2) {}
+    socket.disconnect(true);
+    return false;
+  }
+  try {
+    socket.userJwt = jwt.verify(token, SOCKET_AUTH_JWT_SECRET);
+  } catch (_e3) {
+    try {
+      socket.emit('auth-error', { code: 'INVALID_TOKEN', message: 'Invalid or expired session.' });
+    } catch (_e4) {}
+    socket.disconnect(true);
+    return false;
+  }
+  return true;
+}
+
 // Socket.IO signaling server functionality
 io.on('connection', socket => {
     console.log('🔌 New client connected:', socket.id);
@@ -1554,6 +1599,10 @@ io.on('connection', socket => {
     socket.on('join', async (data) => {
         const { room, userType, userId, username } = data;
         console.log('🚪 Client', socket.id, 'joining room:', room, 'as', userType, username);
+
+        if (!disconnectIfClassroomUnauthenticated(socket, room)) {
+            return;
+        }
 
         if (room && room !== 'default-room') {
             try {
@@ -1733,6 +1782,10 @@ io.on('connection', socket => {
         const userId = socket.id;
         
         console.log('🚪 Client', socket.id, 'joining room:', room, 'as', userType, username);
+
+        if (!disconnectIfClassroomUnauthenticated(socket, room)) {
+            return;
+        }
 
         if (room && room !== 'default-room') {
             try {
