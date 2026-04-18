@@ -17888,60 +17888,12 @@ body.page-teacher-view-profile{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana
 
 /* --- Source: public/teachers.html --- */
 .page-teachers *{ margin: 0; padding: 0; box-sizing: border-box; }body.page-teachers{
-            font-family: 'Comic Sans MS', 'Chalkboard SE', 'Trebuchet MS', 'Segoe UI', sans-serif;
+            font-family: 'Quicksand', 'Fredoka', 'Segoe UI', sans-serif !important;
             background: linear-gradient(135deg, #FFF0F5 0%, #E8F8F5 50%, #FFF9E6 100%);
             background-attachment: fixed;
             color: #1E3A5F;
             line-height: 1.6;
             min-height: 100vh;
-        }.page-teachers .navbar{
-            background: white;
-            padding: 20px 40px;
-            box-shadow: 0 4px 20px rgba(28, 167, 231, 0.1);
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 12px;
-        }.page-teachers .logo-section{
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            text-decoration: none;
-            color: inherit;
-        }.page-teachers .logo-section img{ height: 50px; }.page-teachers .logo-section span{
-            font-size: 1.8rem;
-            font-weight: 800;
-            color: #1CA7E7;
-            text-shadow: 2px 2px 4px rgba(28, 167, 231, 0.2);
-        }.page-teachers .nav-buttons{ display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }.page-teachers .nav-btn{
-            padding: 12px 22px;
-            border-radius: 50px;
-            border: 2px solid #1CA7E7;
-            background: white;
-            color: #1CA7E7;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            font-size: 0.95rem;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-        }.page-teachers .nav-btn:hover{
-            background: #1CA7E7;
-            color: white;
-            transform: translateY(-2px);
-        }.page-teachers .nav-btn.primary{
-            background: linear-gradient(135deg, #1CA7E7, #5CB3FF);
-            color: white;
-            border: 2px solid #FFD700;
-        }.page-teachers .nav-btn.active-nav{
-            background: rgba(28, 167, 231, 0.12);
-            border-color: #1CA7E7;
         }.page-teachers .page-hero{
             text-align: center;
             padding: 48px 24px 32px;
@@ -17965,7 +17917,7 @@ body.page-teacher-view-profile{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana
             grid-template-columns: repeat(4, 1fr);
             gap: 28px;
         }@media (max-width: 1100px){.page-teachers .teachers-grid{ grid-template-columns: repeat(3, 1fr); }
-        }@media (max-width: 768px){.page-teachers .teachers-grid{ grid-template-columns: 1fr; gap: 24px; }.page-teachers .navbar{ padding: 16px 20px; }
+        }@media (max-width: 768px){.page-teachers .teachers-grid{ grid-template-columns: 1fr; gap: 24px; }
         }.page-teachers .teacher-card{
             background: rgba(255, 255, 255, 0.62);
             backdrop-filter: blur(10px);

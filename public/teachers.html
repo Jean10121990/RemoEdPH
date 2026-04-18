@@ -8,19 +8,39 @@
     <title>Our Teachers — RemoEdPH</title>
     <link rel="stylesheet" href="modern-styles.css">
     <link rel="stylesheet" href="child-friendly-styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Quicksand:wght@500;600;700&display=swap"
+        rel="stylesheet"
+    />
+    <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+        crossorigin="anonymous"
+        referrerpolicy="no-referrer"
+    />
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="landing-brand.css">
+    <link rel="stylesheet" href="css/site-i18n.css">
 </head>
 <body class="page-teachers">
     <nav class="navbar">
         <a href="/" class="logo-section">
-            <img src="remoed-logo.png" alt="RemoEdPH Logo">
+            <img src="/images/remoed-logo-new.png" alt="RemoEdPH Logo" />
             <span>RemoEdPH</span>
         </a>
         <div class="nav-buttons">
-            <a href="/teachers" class="nav-btn active-nav">Our Teachers</a>
+            <a href="/teachers" class="nav-btn">Our Teachers</a>
             <a href="/#assessment" class="nav-btn">Free Assessment</a>
             <a href="/#plans" class="nav-btn">Plans</a>
+            <a href="/application-form" class="nav-btn">Apply Now</a>
             <a href="/login/" class="nav-btn primary">Login</a>
+            <select
+                class="site-lang-switcher"
+                id="nav-lang-switcher"
+                aria-label="Language"
+            ></select>
         </div>
     </nav>
 
@@ -228,6 +248,10 @@
         });
 
         loadTeachers();
+    </script>
+    <script src="js/site-i18n.js"></script>
+    <script>
+        if (window.SiteI18n) SiteI18n.init();
     </script>
 </body>
 </html>
