@@ -321,7 +321,9 @@
             if (d) url += '&date=' + encodeURIComponent(d);
 
             try {
-                const r = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
+                const hdr = {};
+                if (token) hdr['Authorization'] = 'Bearer ' + token;
+                const r = await fetch(url, { credentials: 'include', headers: hdr });
                 const j = await r.json().catch(function () { return {}; });
                 if (!r.ok) {
                     msg.textContent = j.message || j.error || 'Failed to load';
@@ -375,8 +377,11 @@
         async function downloadRec(id) {
             const token = localStorage.getItem('adminToken');
             try {
+                const dlHdr = {};
+                if (token) dlHdr['Authorization'] = 'Bearer ' + token;
                 const r = await fetch('/api/admin/classroom-recordings/' + encodeURIComponent(id) + '/download', {
-                    headers: { Authorization: 'Bearer ' + token }
+                    credentials: 'include',
+                    headers: dlHdr
                 });
                 if (!r.ok) {
                     const t = await r.text();
@@ -400,9 +405,12 @@
             if (!confirm('Delete this recording file and database row?')) return;
             const token = localStorage.getItem('adminToken');
             try {
+                const delHdr = {};
+                if (token) delHdr['Authorization'] = 'Bearer ' + token;
                 const r = await fetch('/api/admin/classroom-recordings/' + encodeURIComponent(id), {
                     method: 'DELETE',
-                    headers: { Authorization: 'Bearer ' + token }
+                    credentials: 'include',
+                    headers: delHdr
                 });
                 const j = await r.json().catch(function () { return {}; });
                 if (!r.ok) {
@@ -422,7 +430,11 @@
             try {
                 const r = await fetch('/api/admin/classroom-recordings/purge-expired', {
                     method: 'POST',
-                    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(token ? { Authorization: 'Bearer ' + token } : {})
+                    }
                 });
                 const j = await r.json().catch(function () { return {}; });
                 if (!r.ok) {

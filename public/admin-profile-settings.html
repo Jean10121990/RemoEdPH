@@ -33,7 +33,7 @@
                         <p class="profile-email-large" id="hdr-role" style="font-size:0.95rem; color:#64748b;">—</p>
                         <div class="profile-actions">
                             <button type="button" class="back-btn" onclick="document.getElementById('pic-file').click()">Change photo</button>
-                            <a href="admin-settings.html" class="back-btn" style="text-decoration:none;display:inline-block;">System settings</a>
+                            <a href="admin-settings.html" id="admin-system-settings-link" class="back-btn" style="text-decoration:none;display:inline-block;">System settings</a>
                         </div>
                     </div>
                 </div>
@@ -474,6 +474,10 @@
 
         document.addEventListener('DOMContentLoaded', function () {
             if (window.AdminSidebar && AdminSidebar.applyGreetingFromStorage) AdminSidebar.applyGreetingFromStorage();
+            if (localStorage.getItem('adminRole') !== 'super_admin') {
+                var sl = document.getElementById('admin-system-settings-link');
+                if (sl) sl.style.display = 'none';
+            }
             loadProfile();
         });
     </script>

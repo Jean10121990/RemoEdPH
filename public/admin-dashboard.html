@@ -1135,6 +1135,16 @@
             alert('Access denied. This page is for administrators only.');
             window.location.href = 'index.html';
         }
+        try {
+            const _qs = new URLSearchParams(window.location.search || '');
+            if (_qs.get('permissionDenied') === 'super_monitor') {
+                alert('Permission denied. Only Super-Admins can access the System Monitor.');
+                if (window.history && window.history.replaceState) {
+                    const p = (window.location.pathname || '').split('?')[0] || 'admin-dashboard.html';
+                    window.history.replaceState({}, '', p);
+                }
+            }
+        } catch (_e) { /* ignore */ }
 
         function getAdminToken() {
             return localStorage.getItem('adminToken') || sessionStorage.getItem('adminToken') || '';

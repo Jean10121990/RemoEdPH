@@ -29,10 +29,28 @@ const {
   ADMIN_2FA_ENROLLMENT_PURPOSE,
   requiresForced2faEnrollment,
 } = require('./utils/adminForce2fa');
-const { decryptTotpSecret } = require('./utils/twoFactorSecretCrypto');
+const { decryptTotpSecret, encryptTotpSecret } = require('./utils/twoFactorSecretCrypto');
 const { authenticator } = require('otplib');
+const QRCode = require('qrcode');
 
 authenticator.options = { window: 1 };
+
+/**
+ * Ensure encrypted TOTP secret exists and return a data-URL QR for the admin login / setup UI.
+ */
+async function prepareAdminTotpEnrollmentMaterials(admin) {
+  let secretPlain = admin.twoFactorSecret ? decryptTotpSecret(admin.twoFactorSecret) : null;
+  if (!secretPlain) {
+    secretPlain = authenticator.generateSecret();
+    admin.twoFactorSecret = encryptTotpSecret(secretPlain);
+    admin.isTwoFactorEnabled = false;
+    admin.twoFactorEnabledAt = null;
+    await admin.save();
+  }
+  const otpauth = authenticator.keyuri(admin.username, 'RemoEdPH Admin', secretPlain);
+  const qrCodeData = await QRCode.toDataURL(otpauth);
+  return { qrCodeData };
+}
 
 const ADMIN_2FA_PENDING_PURPOSE = 'admin_2fa_pending';
 
@@ -166,57 +184,70 @@ router.post('/admin-login', adminLoginLimiterExtra, async (req, res) => {
 
     const adminRole = admin.adminRole || 'super_admin';
 
-  if (requiresForced2faEnrollment(admin)) {
-    const enrollmentToken = jwt.sign(
-      {
-        purpose: ADMIN_2FA_ENROLLMENT_PURPOSE,
-        adminId: String(admin._id),
-      },
-      JWT_SECRET,
-      { expiresIn: '30m' }
-    );
-    // Create a short-lived enrollment session so the setup page can POST only {code}.
-    return req.session.regenerate((regenErr) => {
-      if (regenErr) {
-        console.error('Session regenerate error (2fa enrollment):', regenErr);
-        return res.status(500).json({ success: false, message: 'Could not create enrollment session' });
+    if (requiresForced2faEnrollment(admin)) {
+      let qrCodeData = null;
+      try {
+        const out = await prepareAdminTotpEnrollmentMaterials(admin);
+        qrCodeData = out.qrCodeData;
+      } catch (prepErr) {
+        console.error('prepareAdminTotpEnrollmentMaterials:', prepErr);
+        return res.status(500).json({
+          success: false,
+          message: 'Could not prepare two-factor authentication. Please try again.',
+        });
       }
-      req.session.admin2faEnroll = true;
-      req.session.admin2faEnrollAdminId = String(admin._id);
-      req.session.admin2faEnrollToken = enrollmentToken;
-      req.session.save((saveErr) => {
-        if (saveErr) {
-          console.error('Session save error (2fa enrollment):', saveErr);
-          return res.status(500).json({ success: false, message: 'Could not save enrollment session' });
+      const enrollmentToken = jwt.sign(
+        {
+          purpose: ADMIN_2FA_ENROLLMENT_PURPOSE,
+          adminId: String(admin._id),
+        },
+        JWT_SECRET,
+        { expiresIn: '30m' }
+      );
+      // Create a short-lived enrollment session so the setup page (or login modal) can POST verify with { code }.
+      return req.session.regenerate((regenErr) => {
+        if (regenErr) {
+          console.error('Session regenerate error (2fa enrollment):', regenErr);
+          return res.status(500).json({ success: false, message: 'Could not create enrollment session' });
         }
-        return res.json({
-          success: true,
-          require2FASetup: true,
-          enrollmentToken,
-          setupPath: '/admin/2fa-setup',
-          username: admin.username,
-          message: 'Complete two-factor setup before accessing the admin portal.',
+        req.session.admin2faEnroll = true;
+        req.session.admin2faEnrollAdminId = String(admin._id);
+        req.session.admin2faEnrollToken = enrollmentToken;
+        req.session.save((saveErr) => {
+          if (saveErr) {
+            console.error('Session save error (2fa enrollment):', saveErr);
+            return res.status(500).json({ success: false, message: 'Could not save enrollment session' });
+          }
+          return res.json({
+            success: true,
+            require2FASetup: true,
+            enrollmentToken,
+            qrCodeData,
+            setupPath: '/admin/2fa-setup',
+            username: admin.username,
+            adminRole,
+            message: 'Complete two-factor setup before accessing the admin portal.',
+          });
         });
       });
-    });
-  }
+    }
 
     if (admin.isTwoFactorEnabled === true) {
-    const tempToken = jwt.sign(
-      {
-        purpose: ADMIN_2FA_PENDING_PURPOSE,
-        adminId: String(admin._id),
-      },
-      JWT_SECRET,
-      { expiresIn: '10m' }
-    );
-    return res.json({
-      success: true,
-      require2FA: true,
-      tempToken,
-      username: admin.username,
-    });
-  }
+      const tempToken = jwt.sign(
+        {
+          purpose: ADMIN_2FA_PENDING_PURPOSE,
+          adminId: String(admin._id),
+        },
+        JWT_SECRET,
+        { expiresIn: '10m' }
+      );
+      return res.json({
+        success: true,
+        require2FA: true,
+        tempToken,
+        username: admin.username,
+      });
+    }
 
     const sessionVersion = await getAdminSessionVersion(admin._id);
     const token = jwt.sign(

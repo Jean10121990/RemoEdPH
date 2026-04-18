@@ -17,7 +17,21 @@ try {
 }
 const ClassroomRecording = require('./models/ClassroomRecording');
 const Booking = require('./models/Booking');
-const { verifyToken, requireAdmin } = require('./authMiddleware');
+const {
+  verifyToken,
+  requireAdmin,
+  verifyAdminApiAuth,
+  requireAdminTwoFactorSatisfied,
+  requireAdminSessionValid,
+} = require('./authMiddleware');
+
+/** Admin list/download/delete for recordings — same auth as /api/admin (session cookie or Bearer JWT). */
+const adminRecordingAuthChain = [
+  verifyAdminApiAuth,
+  requireAdminTwoFactorSatisfied,
+  requireAdminSessionValid,
+  requireAdmin,
+];
 
 const UPLOAD_DIR = path.join(__dirname, '../uploads/classroom-recordings');
 const RETENTION_DAYS = Number(process.env.CLASSROOM_RECORDING_RETENTION_DAYS || 7);
@@ -413,7 +427,7 @@ router.get('/classroom-recording/config', (req, res) => {
 
 // ——— Admin-only: list / download / delete / purge ———
 
-router.get('/admin/classroom-recordings', verifyToken, requireAdmin, async (req, res) => {
+router.get('/admin/classroom-recordings', ...adminRecordingAuthChain, async (req, res) => {
   try {
     const { date, limit } = req.query || {};
     const q = {};
@@ -452,28 +466,41 @@ router.get('/admin/classroom-recordings', verifyToken, requireAdmin, async (req,
   }
 });
 
-router.get('/admin/classroom-recordings/:id/download', verifyToken, requireAdmin, async (req, res) => {
+router.get('/admin/classroom-recordings/:id/download', ...adminRecordingAuthChain, async (req, res) => {
   try {
     const doc = await ClassroomRecording.findById(req.params.id);
     if (!doc) return res.status(404).json({ success: false, message: 'Not found' });
-    const abs = path.join(__dirname, '../uploads', doc.relativePath);
+    const rel = String(doc.relativePath || '').replace(/\\/g, '/').replace(/^\//, '');
+    const abs = path.join(__dirname, '../uploads', rel);
     if (!fs.existsSync(abs)) return res.status(404).json({ success: false, message: 'File missing' });
     const ext = /mp4/i.test(String(doc.mimeType || '')) || /\.mp4$/i.test(doc.relativePath || '') ? 'mp4' : 'webm';
     const safeName = `classroom-${doc.roomId}-${doc._id}.${ext}`.replace(/[^a-zA-Z0-9._-]/g, '_');
     res.setHeader('Content-Type', doc.mimeType || (ext === 'mp4' ? 'video/mp4' : 'video/webm'));
     res.setHeader('Content-Disposition', `attachment; filename="${safeName}"`);
-    fs.createReadStream(abs).pipe(res);
+    const stream = fs.createReadStream(abs);
+    stream.on('error', (streamErr) => {
+      console.error('admin download classroom-recording stream:', streamErr);
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, message: 'Could not read recording file.' });
+      } else {
+        res.destroy(streamErr);
+      }
+    });
+    stream.pipe(res);
   } catch (err) {
     console.error('admin download classroom-recording:', err);
-    res.status(500).json({ success: false, message: err.message || 'Download failed' });
+    if (!res.headersSent) {
+      res.status(500).json({ success: false, message: err.message || 'Download failed' });
+    }
   }
 });
 
-router.delete('/admin/classroom-recordings/:id', verifyToken, requireAdmin, async (req, res) => {
+router.delete('/admin/classroom-recordings/:id', ...adminRecordingAuthChain, async (req, res) => {
   try {
     const doc = await ClassroomRecording.findById(req.params.id);
     if (!doc) return res.status(404).json({ success: false, message: 'Not found' });
-    const abs = path.join(__dirname, '../uploads', doc.relativePath);
+    const relDel = String(doc.relativePath || '').replace(/\\/g, '/').replace(/^\//, '');
+    const abs = path.join(__dirname, '../uploads', relDel);
     try {
       await fsp.unlink(abs);
     } catch (e) {
@@ -487,7 +514,7 @@ router.delete('/admin/classroom-recordings/:id', verifyToken, requireAdmin, asyn
   }
 });
 
-router.post('/admin/classroom-recordings/purge-expired', verifyToken, requireAdmin, async (req, res) => {
+router.post('/admin/classroom-recordings/purge-expired', ...adminRecordingAuthChain, async (req, res) => {
   try {
     const n = await purgeExpiredClassroomRecordings();
     res.json({ success: true, removed: n });

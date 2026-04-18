@@ -162,6 +162,9 @@ app.use(express.urlencoded({ extended: true, limit: jsonBodyLimit }));
 app.use(bodyParser.json({ limit: jsonBodyLimit }));
 app.use(bodyParser.urlencoded({ extended: true, limit: jsonBodyLimit }));
 
+const { apiLatencyMiddleware } = require('./middleware/apiLatencyTracker');
+app.use(apiLatencyMiddleware);
+
 const session = require('express-session');
 const rateLimit = require('express-rate-limit');
 const { getAdminLoginPathSegment } = require('./utils/adminRouteConfig');
@@ -211,6 +214,8 @@ const admin2faVerifyHtmlPath = path.join(__dirname, '../public/admin-2fa-verify.
 app.get('/admin/2fa-verify', (req, res) => {
   res.sendFile(admin2faVerifyHtmlPath);
 });
+// super-monitor.html is served from static /admin like other admin pages (no session-only gate).
+// Client checks super_admin; GET /api/admin/system-stats enforces requireSuperAdminDb so JWT-only sessions still work.
 console.log(`🔐 Admin login page path: /${adminLoginPathSeg} (set ADMIN_LOGIN_PATH in .env for production)`);
 
 const adminRouterLimiter = rateLimit({

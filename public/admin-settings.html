@@ -96,6 +96,11 @@
             alert('Access denied. This page is for administrators only.');
             window.location.href = 'index.html';
         }
+        const adminRole = localStorage.getItem('adminRole') || '';
+        if (adminRole !== 'super_admin') {
+            alert('Only Super-Admin can open System Settings.');
+            window.location.replace('admin-dashboard.html');
+        }
         
         function adminAuthHeaders(includeJson) {
             const t = localStorage.getItem('adminToken');
