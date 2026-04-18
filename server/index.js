@@ -57,64 +57,67 @@ if (trustProxyOn) {
   app.set('trust proxy', 1);
 }
 
-/** Comma-separated origins or bare hostnames (e.g. https://app.example.com,www.example.com). */
-function parseCorsOriginList(raw) {
+/** Comma-separated full origins (https://...) from env — merged into allowedOrigins. */
+function parseCorsOriginUrls(raw) {
   if (!raw || typeof raw !== 'string') return [];
   return raw
     .split(',')
     .map((s) => s.trim())
-    .filter(Boolean);
+    .filter((s) => s.includes('://'));
 }
 
-function originHostMatchesEntry(originUrl, entry) {
-  if (!entry) return false;
-  try {
-    const o = new URL(originUrl);
-    const host = String(o.hostname || '').toLowerCase();
-    if (entry.includes('://')) {
-      const e = new URL(entry);
-      return host === String(e.hostname || '').toLowerCase();
-    }
-    const e = String(entry).toLowerCase().replace(/^\*\./, '');
-    return host === e || host.endsWith(`.${e}`);
-  } catch {
-    return false;
-  }
+/**
+ * Exact browser Origin strings allowed for credentialed CORS (production + local dev).
+ * Add full URLs only; optional FRONTEND_URL / CORS_ORIGINS (comma-separated URLs) extend the list.
+ */
+function buildAllowedOrigins() {
+  const list = [
+    'https://remoedph.com',
+    'https://www.remoedph.com',
+    'http://localhost:3000',
+    'http://localhost:5173',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:5173',
+    process.env.FRONTEND_URL,
+    ...parseCorsOriginUrls(process.env.CORS_ORIGINS || process.env.ALLOWED_ORIGINS || ''),
+  ];
+  const normalized = list
+    .filter(Boolean)
+    .map((s) => String(s).trim().replace(/\/$/, ''));
+  return [...new Set(normalized)];
 }
 
+const allowedOrigins = buildAllowedOrigins();
+
+/** Same-origin / curl (no Origin header), exact list match, localhost any port, or dev tunnels. */
 function isAllowedOrigin(origin) {
-  if (!origin) return true; // curl / same-origin / server-to-server
+  if (!origin) return true;
+  if (allowedOrigins.indexOf(origin) !== -1) return true;
   try {
-    const u = new URL(origin);
-    const host = String(u.hostname || '').toLowerCase();
-
-    // 1. Allow localhost for development (any port)
+    const host = new URL(origin).hostname.toLowerCase();
     if (host === 'localhost' || host === '127.0.0.1') return true;
-
-    // 2. Production / Hostinger: primary site URL
     if (process.env.FRONTEND_URL) {
-      const allowedUrl = new URL(process.env.FRONTEND_URL);
-      if (host === allowedUrl.hostname.toLowerCase()) return true;
+      const allowedHost = new URL(process.env.FRONTEND_URL).hostname.toLowerCase();
+      if (host === allowedHost) return true;
     }
-
-    // 3. Extra origins (local Vite + Hostinger www apex, staging, etc.)
-    const extras = parseCorsOriginList(
-      process.env.CORS_ORIGINS || process.env.ALLOWED_ORIGINS || ''
-    );
-    for (const entry of extras) {
-      if (originHostMatchesEntry(origin, entry)) return true;
-    }
-
-    // 4. Tunnels for testing
     if (host.endsWith('.devtunnels.ms')) return true;
     if (host.endsWith('.ngrok.io')) return true;
     if (host.endsWith('.ngrok-free.dev')) return true;
-
-    return false;
   } catch {
     return false;
   }
+  return false;
 }
+
+const corsOptions = {
+  origin(origin, cb) {
+    if (isAllowedOrigin(origin)) return cb(null, true);
+    return cb(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+};
 
 // Secure HTTP headers. CSP disabled so existing static HTML + inline handlers keep working during migration.
 app.use(
@@ -132,8 +135,9 @@ const io = new Server(http, {
       if (isAllowedOrigin(origin)) return cb(null, true);
       return cb(new Error('Not allowed by Socket.IO CORS'));
     },
-    methods: ["GET", "POST"],
-    credentials: true
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    credentials: true,
   },
   transports: ['polling', 'websocket'],
   maxHttpBufferSize: 15 * 1024 * 1024, // 15 MB limit (accounts for base64 encoding overhead: 10MB raw ≈ 13.3MB base64)
@@ -178,18 +182,9 @@ app.get('/startup', (req, res) => {
   });
 });
 
-// Middleware
-app.use(
-  cors({
-    origin(origin, cb) {
-      if (isAllowedOrigin(origin)) return cb(null, true);
-      return cb(new Error('Not allowed by CORS'));
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-  })
-);
+// Middleware — CORS + OPTIONS preflight (browsers send OPTIONS before credentialed POST /api/auth/*).
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 // Keep raw body for PayMongo webhook signature verification.
 app.use('/api/webhooks/paymongo', express.raw({ type: 'application/json' }));
