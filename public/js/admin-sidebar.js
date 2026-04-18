@@ -170,6 +170,36 @@
         }
 
         applyGreetingFromStorage();
+        queuePortalLayoutMount();
+    }
+
+    function queuePortalLayoutMount() {
+        if (typeof global.RemoedPortalLayout !== 'undefined' && global.RemoedPortalLayout.mount) {
+            global.RemoedPortalLayout.mount();
+            return;
+        }
+        if (document.querySelector('script[data-remoed-portal-layout]')) {
+            document.addEventListener('remoed-portal-layout-ready', function once() {
+                document.removeEventListener('remoed-portal-layout-ready', once);
+                if (global.RemoedPortalLayout && global.RemoedPortalLayout.mount) {
+                    global.RemoedPortalLayout.mount();
+                }
+            });
+            return;
+        }
+        var s = document.createElement('script');
+        s.src = 'js/portal-layout.js';
+        s.async = true;
+        s.setAttribute('data-remoed-portal-layout', '1');
+        s.onload = function () {
+            if (global.RemoedPortalLayout && global.RemoedPortalLayout.mount) {
+                global.RemoedPortalLayout.mount();
+            }
+            try {
+                document.dispatchEvent(new Event('remoed-portal-layout-ready'));
+            } catch (e1) { /* ignore */ }
+        };
+        document.head.appendChild(s);
     }
 
     global.AdminSidebar = {

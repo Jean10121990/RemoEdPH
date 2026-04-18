@@ -61,7 +61,7 @@
     <script src="js/admin-session.js"></script>
     <script src="js/admin-sidebar.js"></script>
     <script>AdminSidebar.render('admin-sidebar-root', 'super-monitor');</script>
-    <div class="remoed-content monitor-wrap">
+    <div class="remoed-content monitor-wrap remoed-content--readable">
       <div class="remoed-section">
         <div class="remoed-section-title">System monitor &amp; emergency controls</div>
         <p class="muted" style="margin-bottom:12px;">Super-Admin only. Data refreshes every 5 seconds. Use during load tests to watch RAM, latency, and live sockets.</p>
@@ -86,6 +86,15 @@
         <div class="monitor-grid">
           <div class="monitor-card"><h3>Avg response time</h3><div class="val" id="m-lat">—</div><div class="sub" id="m-lat-sub">Last 0 / 100 API requests</div></div>
           <div class="monitor-card"><h3>Process uptime</h3><div class="val" id="m-up">—</div><div class="sub" id="m-meta">—</div></div>
+        </div>
+
+        <h2 style="font-size:1rem;margin:20px 0 10px;color:#334155;">This device (latency context)</h2>
+        <div class="monitor-grid monitor-grid--client">
+          <div class="monitor-card">
+            <h3>Your link</h3>
+            <div class="val" id="m-client-net" style="font-size:1.15rem;">—</div>
+            <div class="sub" id="m-client-net-sub">Uses the Network Information API in Chromium-based browsers. Treat as a hint: Wi‑Fi vs cellular affects how users experience the numbers above.</div>
+          </div>
         </div>
 
         <h2 style="font-size:1rem;margin:20px 0 10px;color:#b91c1c;">Emergency</h2>
@@ -145,6 +154,42 @@
         if (d > 0) return d + 'd ' + h + 'h';
         if (h > 0) return h + 'h ' + m + 'm';
         return m + 'm';
+      }
+
+      function refreshClientNetwork() {
+        var typeEl = document.getElementById('m-client-net');
+        var subEl = document.getElementById('m-client-net-sub');
+        if (!typeEl) return;
+        var c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+        if (!c) {
+          typeEl.textContent = 'Unavailable';
+          if (subEl) {
+            subEl.textContent =
+              'This browser does not expose connection type. On phones, cellular paths are often higher-latency than Wi‑Fi.';
+          }
+          return;
+        }
+        var t = c.type || '';
+        var eff = c.effectiveType || '';
+        var down = c.downlink != null ? c.downlink + ' Mbps downlink' : '';
+        var rtt = c.rtt != null ? c.rtt + ' ms RTT (approx.)' : '';
+        var save = c.saveData ? ' · Save-Data' : '';
+        var label = t || eff || 'connected';
+        if (t === 'cellular') {
+          typeEl.textContent = 'Cellular';
+          typeEl.style.color = '#b45309';
+        } else if (t === 'wifi' || t === 'ethernet') {
+          typeEl.textContent = t === 'wifi' ? 'Wi‑Fi' : 'Ethernet';
+          typeEl.style.color = '';
+        } else {
+          typeEl.textContent = label;
+          typeEl.style.color = eff === '4g' ? '' : '#b45309';
+        }
+        if (subEl) {
+          subEl.textContent =
+            [eff && 'effectiveType: ' + eff, down, rtt, save].filter(Boolean).join(' · ') ||
+            'No extra metrics. If users are on cellular, expect more jitter than server-side API averages suggest.';
+        }
       }
 
       async function refreshStats() {
@@ -249,8 +294,16 @@
         btn.disabled = false;
       };
 
+      refreshClientNetwork();
+      if (navigator.connection && typeof navigator.connection.addEventListener === 'function') {
+        try {
+          navigator.connection.addEventListener('change', refreshClientNetwork);
+        } catch (e0) { /* ignore */ }
+      }
+
       refreshStats();
       setInterval(refreshStats, 5000);
+      setInterval(refreshClientNetwork, 8000);
     })();
   </script>
 </body>

@@ -1,5 +1,7 @@
 /* Modern Minimalist Design System for RemoEdPH */
 
+@import url('css/mobile-first.css');
+
 /* Reset and Base Styles */
 * {
     margin: 0;
@@ -664,4 +666,4 @@ p {
 
 ::-webkit-scrollbar-thumb:hover {
     background: #94a3b8;
-} 
+}

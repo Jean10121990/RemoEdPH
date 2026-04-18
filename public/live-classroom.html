@@ -53,6 +53,7 @@
     <link rel="stylesheet" href="style.css">
   <!-- After global styles so chat / layout rules are not overridden -->
   <link rel="stylesheet" href="live-classroom.css" />
+  <link rel="stylesheet" href="css/mobile-first.css" />
 </head>
 <body class="page-live-classroom">
   <div class="top-bar">
@@ -179,6 +180,41 @@
       </div>
     </div>
   </div>
+
+  <nav class="lc-mobile-dock" id="lc-mobile-dock" aria-label="Lesson or chat" hidden>
+    <button type="button" class="lc-mobile-dock__btn is-active" data-lc-tab="lesson">Lesson</button>
+    <button type="button" class="lc-mobile-dock__btn" data-lc-tab="chat">Chat</button>
+  </nav>
+  <script>
+    (function () {
+      var dock = document.getElementById('lc-mobile-dock');
+      if (!dock) return;
+      function mq() {
+        return window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
+      }
+      function syncDock() {
+        var on = mq();
+        dock.hidden = !on;
+        if (!on) document.body.classList.remove('lc-mobile-view-chat');
+      }
+      function applyTab(tab) {
+        var chat = tab === 'chat';
+        document.body.classList.toggle('lc-mobile-view-chat', chat);
+        dock.querySelectorAll('[data-lc-tab]').forEach(function (btn) {
+          btn.classList.toggle('is-active', btn.getAttribute('data-lc-tab') === tab);
+        });
+      }
+      dock.addEventListener('click', function (e) {
+        var b = e.target.closest('[data-lc-tab]');
+        if (!b) return;
+        applyTab(b.getAttribute('data-lc-tab') || 'lesson');
+      });
+      syncDock();
+      if (window.matchMedia) {
+        window.matchMedia('(max-width: 768px)').addEventListener('change', syncDock);
+      }
+    })();
+  </script>
             
   <!-- Annotation overlay (shared canvas for presentation annotations) -->
   <div id="annotation-overlay" style="position:fixed;left:calc(60px + 40%);top:50px;right:0;bottom:0;pointer-events:none;z-index:50;">
