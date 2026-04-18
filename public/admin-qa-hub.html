@@ -70,7 +70,6 @@
                                     <th>Created (UTC)</th>
                                     <th>Room</th>
                                     <th>Booking</th>
-                                    <th>Teacher</th>
                                     <th>By</th>
                                     <th>Status</th>
                                     <th>Size</th>
@@ -79,7 +78,7 @@
                                 </tr>
                             </thead>
                             <tbody id="rec-tbody">
-                                <tr><td colspan="9" class="muted">Loading…</td></tr>
+                                <tr><td colspan="8" class="muted">Loading…</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -315,7 +314,7 @@
             if (!tbody || !msg) return;
 
             msg.textContent = 'Loading…';
-            tbody.innerHTML = '<tr><td colspan="9" class="muted">Loading…</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" class="muted">Loading…</td></tr>';
 
             var url = '/api/admin/classroom-recordings?limit=300';
             if (d) url += '&date=' + encodeURIComponent(d);
@@ -333,7 +332,7 @@
                 const rows = j.recordings || [];
                 msg.textContent = rows.length ? rows.length + ' recording(s)' : 'No recordings for this filter.';
                 if (!rows.length) {
-                    tbody.innerHTML = '<tr><td colspan="9" class="muted">No rows</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="8" class="muted">No rows</td></tr>';
                     return;
                 }
                 tbody.innerHTML = rows.map(function (rec) {
@@ -345,7 +344,6 @@
                         '<td>' + esc(created) + '</td>' +
                         '<td style="max-width:120px;word-break:break-all;">' + esc(rec.roomId) + '</td>' +
                         '<td style="max-width:90px;word-break:break-all;">' + esc(rec.bookingId || '—') + '</td>' +
-                        '<td style="max-width:90px;word-break:break-all;">' + esc(rec.teacherId || '—') + '</td>' +
                         '<td>' + esc(rec.recordedByRole || '—') + '</td>' +
                         '<td><span class="' + st + '">' + esc(rec.status) + '</span></td>' +
                         '<td>' + esc(bytesLabel(rec.sizeBytes)) + '</td>' +
