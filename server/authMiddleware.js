@@ -268,6 +268,9 @@ const requireTeacher = async (req, res, next) => {
 
     // Try to resolve the teacher by multiple identifiers for robustness
     const orConditions = [];
+    if (req.user.teacherMongoId && mongoose.isValidObjectId(String(req.user.teacherMongoId))) {
+      orConditions.push({ _id: String(req.user.teacherMongoId) });
+    }
     if (req.user.teacherId) {
       orConditions.push({ teacherId: req.user.teacherId });
       if (mongoose.isValidObjectId(req.user.teacherId)) {

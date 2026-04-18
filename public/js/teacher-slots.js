@@ -1,8 +1,12 @@
 /**
- * Teacher slot grid: robust teacherId + safe /api/slots/:teacherId URLs.
+ * Teacher slot grid: MongoDB _id for /api/slots/:id, stable teacherId for legacy APIs.
  */
 (function (global) {
   'use strict';
+
+  function isProbableHexObjectId(s) {
+    return typeof s === 'string' && /^[a-f0-9]{24}$/i.test(String(s).trim());
+  }
 
   function decodeTeacherJwtPayload() {
     try {
@@ -24,8 +28,7 @@
   }
 
   /**
-   * 1) localStorage teacherId
-   * 2) JWT payload teacherId (then persist to localStorage)
+   * Stable portal teacherId (string) — for /api/teacher/classes etc.
    */
   function getTeacherIdRobust() {
     var tid = global.localStorage.getItem('teacherId');
@@ -40,10 +43,29 @@
         global.localStorage.setItem('teacherId', fromJwt);
         if (pl.userType) global.localStorage.setItem('userType', pl.userType);
         if (pl.role) global.localStorage.setItem('userRole', pl.role);
+        if (pl.teacherMongoId && isProbableHexObjectId(pl.teacherMongoId)) {
+          global.localStorage.setItem('teacherMongoId', String(pl.teacherMongoId).trim());
+        }
         return fromJwt;
       }
     }
     return '';
+  }
+
+  /**
+   * MongoDB _id (24 hex) for GET /api/slots/:teacherId — preferred so the server uses findById.
+   * Falls back to stable teacherId string for older sessions without teacherMongoId.
+   */
+  function getSlotsApiTeacherParam() {
+    var mid = global.localStorage.getItem('teacherMongoId');
+    if (mid && isProbableHexObjectId(mid)) return String(mid).trim();
+    var pl = decodeTeacherJwtPayload();
+    if (pl && pl.teacherMongoId && isProbableHexObjectId(pl.teacherMongoId)) {
+      mid = String(pl.teacherMongoId).trim();
+      global.localStorage.setItem('teacherMongoId', mid);
+      return mid;
+    }
+    return getTeacherIdRobust();
   }
 
   function handleMissingAuth() {
@@ -70,11 +92,12 @@
   }
 
   /**
-   * Relative URL: /api/slots/:teacherId?week=...&allSlots=true&...
-   * @param {Record<string,string|number>} [extraQuery] merged into query string
+   * Relative URL: /api/slots/<param>?week=...&allSlots=true&...
+   * Uses MongoDB _id in the path when `teacherMongoId` is stored (from login / JWT).
    */
-  function buildSlotsUrl(teacherId, weekString, extraQuery) {
-    var path = '/api/slots/' + encodeURIComponent(String(teacherId).trim());
+  function buildSlotsUrl(weekString, extraQuery) {
+    var param = getSlotsApiTeacherParam();
+    var path = '/api/slots/' + encodeURIComponent(String(param).trim());
     var sp = new URLSearchParams();
     sp.set('week', weekString);
     sp.set('allSlots', 'true');
@@ -89,6 +112,7 @@
 
   global.RemoedTeacherSlots = {
     getTeacherIdRobust: getTeacherIdRobust,
+    getSlotsApiTeacherParam: getSlotsApiTeacherParam,
     handleMissingAuth: handleMissingAuth,
     isInvalidTeacherId: isInvalidTeacherId,
     buildSlotsUrl: buildSlotsUrl,

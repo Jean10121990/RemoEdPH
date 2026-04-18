@@ -56,6 +56,9 @@ document.getElementById('login-form').addEventListener('submit', function(e) {
             localStorage.setItem('remoed_user_token', data.token);
             localStorage.setItem('remoedUsername', username);
             localStorage.setItem('teacherId', data.teacherId != null ? String(data.teacherId) : '');
+            if (data.teacherMongoId) {
+                localStorage.setItem('teacherMongoId', String(data.teacherMongoId));
+            }
             localStorage.setItem('userType', 'teacher');
             localStorage.setItem('userRole', 'teacher');
             
@@ -117,6 +120,9 @@ function attemptLoginWithXHR(username, password) {
                         localStorage.setItem('remoed_user_token', data.token);
                         localStorage.setItem('remoedUsername', username);
                         localStorage.setItem('teacherId', data.teacherId != null ? String(data.teacherId) : '');
+                        if (data.teacherMongoId) {
+                            localStorage.setItem('teacherMongoId', String(data.teacherMongoId));
+                        }
                         localStorage.setItem('userType', 'teacher');
                         localStorage.setItem('userRole', 'teacher');
                         window.location.href = 'teacher-dashboard.html';

@@ -115,6 +115,12 @@ document.getElementById('unified-login-form').addEventListener('submit', async f
         if (payload && payload.userRole === 'teacher' && payload.teacherId) {
           localStorage.setItem('teacherId', String(payload.teacherId));
         }
+        if (payload && payload.userRole === 'teacher' && payload.teacherMongoId) {
+          localStorage.setItem('teacherMongoId', String(payload.teacherMongoId));
+        }
+        if (data.teacherMongoId) {
+          localStorage.setItem('teacherMongoId', String(data.teacherMongoId));
+        }
       } catch (_e2) {}
 
       // Use redirectTo field from API

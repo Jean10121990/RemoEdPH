@@ -4,47 +4,78 @@ const Teacher = require('../models/Teacher');
 
 const router = express.Router();
 
-async function resolveCanonicalTeacherId(raw) {
-  if (raw == null || raw === '') return null;
-  const s = String(raw).trim();
+/** 24-char hex ObjectId string (MongoDB _id) — avoids treating arbitrary strings as ObjectId. */
+function isProbableHexObjectId(s) {
+  return typeof s === 'string' && /^[a-f0-9]{24}$/i.test(String(s).trim());
+}
+
+/**
+ * Resolve stable `teacher.teacherId` string from URL param.
+ * Uses **Teachers** collection (`Teacher` model) only — not Users/Admins.
+ * 1) `findById` when param is a 24-char hex MongoDB _id (preferred for slot loader).
+ * 2) Stable `teacherId` field (e.g. kjb… / legacy ids).
+ * 3) Username exact, then username case-insensitive.
+ * 4) Email case-insensitive (input and DB compared lowercased).
+ */
+async function resolveCanonicalTeacherIdFromParam(raw) {
+  const s = String(raw || '').trim();
   if (!s || s === 'undefined' || s === 'null') return null;
 
-  let row = await Teacher.findOne({ teacherId: s });
-  if (row) return row.teacherId;
-
-  row = await Teacher.findOne({ $or: [{ username: s }, { email: s }] });
-  if (row) return row.teacherId;
-
-  if (mongoose.Types.ObjectId.isValid(s)) {
-    row = await Teacher.findById(s);
-    if (row) return row.teacherId;
+  if (isProbableHexObjectId(s)) {
+    const byId = await Teacher.findById(s).lean();
+    if (byId) return byId.teacherId;
   }
+
+  let row = await Teacher.findOne({ teacherId: s }).lean();
+  if (row) return row.teacherId;
+
+  row = await Teacher.findOne({ username: s }).lean();
+  if (row) return row.teacherId;
+
+  const sLower = s.toLowerCase();
+  row = await Teacher.findOne({
+    $expr: {
+      $eq: [{ $toLower: { $ifNull: ['$username', ''] } }, sLower],
+    },
+  }).lean();
+  if (row) return row.teacherId;
+
+  row = await Teacher.findOne({
+    $expr: {
+      $eq: [{ $toLower: { $ifNull: ['$email', ''] } }, sLower],
+    },
+  }).lean();
+  if (row) return row.teacherId;
+
   return null;
 }
 
 /**
  * GET /api/slots/:teacherId?week=YYYY-MM-DD&allSlots=true&tz=...
- * Validates teacher exists (JSON body on errors), then serves the same payload as GET /api/teacher/slots.
+ * `:teacherId` should be the teacher document **MongoDB _id** (24 hex) when possible; legacy stable `teacherId` / username still supported.
  */
 router.get('/:teacherId', async (req, res) => {
+  const raw = String(req.params.teacherId || '').trim();
+
   try {
-    const raw = String(req.params.teacherId || '').trim();
     if (!raw || raw === 'undefined' || raw === 'null') {
       return res.status(400).json({
         success: false,
         error: 'Invalid teacher id',
         message: 'The teacher id in the URL is missing or invalid. Please sign in again.',
         code: 'INVALID_TEACHER_ID',
+        searchedId: raw,
       });
     }
 
-    const canonical = await resolveCanonicalTeacherId(raw);
+    const canonical = await resolveCanonicalTeacherIdFromParam(raw);
     if (!canonical) {
       return res.status(404).json({
         success: false,
-        error: 'Teacher not found',
-        message: 'No teacher record matches this id. Please sign out and sign in again.',
+        error: 'No teacher matches',
+        message: 'No teacher record matches this id in the Teachers collection. Please sign out and sign in again.',
         code: 'TEACHER_NOT_FOUND',
+        searchedId: raw,
       });
     }
 
@@ -55,6 +86,7 @@ router.get('/:teacherId', async (req, res) => {
         error: 'Missing week parameter',
         message: 'Add ?week=YYYY-MM-DD (Monday of the week you want to load).',
         code: 'MISSING_WEEK',
+        searchedId: raw,
       });
     }
 
@@ -74,6 +106,7 @@ router.get('/:teacherId', async (req, res) => {
       error: 'Server error',
       message: 'Could not load slots. Please try again.',
       code: 'SLOTS_ERROR',
+      searchedId: raw,
     });
   }
 });

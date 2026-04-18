@@ -493,6 +493,7 @@ router.post('/login', authLoginLimiter, async (req, res) => {
         {
           username: teacher.username,
           teacherId: teacher.teacherId,
+          teacherMongoId: String(teacher._id),
           userType: 'teacher',
           role: 'teacher',
         },
@@ -517,6 +518,7 @@ router.post('/login', authLoginLimiter, async (req, res) => {
         success: true, 
         token, 
         teacherId: teacher.teacherId,
+        teacherMongoId: String(teacher._id),
         needsPasswordChange: needsPasswordChange
       });
     } else {
@@ -790,7 +792,14 @@ router.post('/unified-login', authLoginLimiter, async (req, res) => {
 
       await resetLoginAttempts(teacher);
       const token = jwt.sign(
-        { userRole: 'teacher', username: teacher.username, teacherId: teacher.teacherId },
+        {
+          userRole: 'teacher',
+          username: teacher.username,
+          teacherId: teacher.teacherId,
+          teacherMongoId: String(teacher._id),
+          userType: 'teacher',
+          role: 'teacher',
+        },
         JWT_SECRET,
         { expiresIn }
       );
@@ -798,6 +807,8 @@ router.post('/unified-login', authLoginLimiter, async (req, res) => {
         success: true,
         token,
         userRole: 'teacher',
+        teacherId: teacher.teacherId,
+        teacherMongoId: String(teacher._id),
         redirectTo: '/teacher/dashboard',
       });
     }

@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="css/teacher-sidebar.css">
     <link rel="stylesheet" href="style.css">
     <script src="js/user-session.js?v=1.1"></script>
-    <script src="js/teacher-slots.js?v=1.1"></script>
+    <script src="js/teacher-slots.js?v=1.2"></script>
 </head>
 <body class="page-teacher-open-class">
   <div class="remoed-main">
@@ -168,11 +168,12 @@
       }
     }
 
-    let teacherId = window.RemoedTeacherSlots.getTeacherIdRobust();
-    if (window.RemoedTeacherSlots.isInvalidTeacherId(teacherId)) {
+    const slotsRouteId = window.RemoedTeacherSlots.getSlotsApiTeacherParam();
+    if (window.RemoedTeacherSlots.isInvalidTeacherId(slotsRouteId)) {
       handleMissingAuth();
       throw new Error('MISSING_TEACHER_SESSION');
     }
+    let teacherId = window.RemoedTeacherSlots.getTeacherIdRobust();
 
     console.log('=== TEACHER INFO ===');
     console.log('Username:', username);
@@ -625,7 +626,8 @@
     // Load existing slots and booked slots from backend - ALWAYS FRESH FROM DATABASE
     async function loadExistingSlots() {
       teacherId = window.RemoedTeacherSlots.getTeacherIdRobust();
-      if (!teacherId || teacherId === 'undefined' || teacherId === 'null') {
+      const slotsId = window.RemoedTeacherSlots.getSlotsApiTeacherParam();
+      if (!slotsId || slotsId === 'undefined' || slotsId === 'null') {
         return handleMissingAuth();
       }
       
@@ -655,7 +657,7 @@
         console.log('🔄 Loading slots for week:', weekString);
         console.log('🔄 Teacher ID:', teacherId);
         
-        const slotsQueryPath = window.RemoedTeacherSlots.buildSlotsUrl(teacherId, weekString, cacheExtra);
+        const slotsQueryPath = window.RemoedTeacherSlots.buildSlotsUrl(weekString, cacheExtra);
         const slotsFullUrl = new URL(slotsQueryPath, window.location.origin).href;
         console.log('[Teacher booking] Full URL (GET slots):', slotsFullUrl);
         const response = await fetch(slotsQueryPath, {
@@ -721,7 +723,7 @@
         if (!teacherId || teacherId === 'undefined' || teacherId === 'null') {
           return handleMissingAuth();
         }
-        // Load booked slots with ULTRA AGGRESSIVE cache-busting
+        // Load booked slots (stable teacherId in query) with ULTRA AGGRESSIVE cache-busting
         const cacheBuster = `t=${timestamp}&v=${random}&fresh=true&nocache=${timestamp}&force=${timestamp}&clear=${random}&update=${Date.now()}&refresh=${Math.random()}&buster=${Math.random()}&time=${Date.now()}`;
         const classesQueryPath = `/api/teacher/classes?teacherId=${encodeURIComponent(teacherId)}&week=${weekString}&${cacheBuster}`;
         const classesFullUrl = new URL(classesQueryPath, window.location.origin).href;
@@ -1075,7 +1077,8 @@
     // Open selected slots to backend
     async function openSelectedSlots() {
       teacherId = window.RemoedTeacherSlots.getTeacherIdRobust();
-      if (!teacherId || teacherId === 'undefined' || teacherId === 'null') {
+      const slotsOpenId = window.RemoedTeacherSlots.getSlotsApiTeacherParam();
+      if (!slotsOpenId || slotsOpenId === 'undefined' || slotsOpenId === 'null') {
         return handleMissingAuth();
       }
       
@@ -1124,7 +1127,7 @@
           force: String(Date.now()),
           tz: teacherTimezone
         };
-        const existingSlotsPath = window.RemoedTeacherSlots.buildSlotsUrl(teacherId, weekString, cacheExtraOpen);
+        const existingSlotsPath = window.RemoedTeacherSlots.buildSlotsUrl(weekString, cacheExtraOpen);
         console.log('[Teacher booking] Full URL (prefetch slots before save):', new URL(existingSlotsPath, window.location.origin).href);
         const existingResponse = await fetch(existingSlotsPath, {
           method: 'GET',
@@ -1193,7 +1196,8 @@
     // Close selected slots from backend
     async function closeSelectedSlots() {
       teacherId = window.RemoedTeacherSlots.getTeacherIdRobust();
-      if (!teacherId || teacherId === 'undefined' || teacherId === 'null') {
+      const slotsCloseId = window.RemoedTeacherSlots.getSlotsApiTeacherParam();
+      if (!slotsCloseId || slotsCloseId === 'undefined' || slotsCloseId === 'null') {
         return handleMissingAuth();
       }
       
@@ -1224,7 +1228,7 @@
           force: String(Date.now()),
           tz: teacherTimezone
         };
-        const closePrefetchPath = window.RemoedTeacherSlots.buildSlotsUrl(teacherId, weekString, cacheExtraClose);
+        const closePrefetchPath = window.RemoedTeacherSlots.buildSlotsUrl(weekString, cacheExtraClose);
         console.log('[Teacher booking] Full URL (prefetch slots before close):', new URL(closePrefetchPath, window.location.origin).href);
         const existingResponse = await fetch(closePrefetchPath, {
           method: 'GET',
