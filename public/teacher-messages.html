@@ -5,6 +5,7 @@
     <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="js/security-guard.js?v=1"></script>
     <title>Messages - RemoEdPH</title>
     <link rel="stylesheet" href="modern-styles.css">
     <link rel="stylesheet" href="css/teacher-sidebar.css">
@@ -79,8 +80,15 @@
             let chats = [];
             let activePeerId = null;
             const seenMessageIds = new Set();
+            const __skTok = (window.RemoedSecurityGuard && typeof window.RemoedSecurityGuard.getToken === 'function')
+                ? window.RemoedSecurityGuard.getToken()
+                : (localStorage.getItem('remoed_user_token') || localStorage.getItem('token') || '');
             const socket = (typeof io !== 'undefined')
-                ? io(window.location.origin, { transports: ['websocket', 'polling'], reconnection: true })
+                ? io(window.location.origin, {
+                    transports: ['websocket', 'polling'],
+                    reconnection: true,
+                    auth: { token: __skTok },
+                  })
                 : null;
 
             function esc(s) { return String(s || '').replace(/</g, '&lt;'); }

@@ -14,6 +14,7 @@
     .admin-2fa-enroll-modal__panel { position: relative; z-index: 1; max-height: 90vh; overflow-y: auto; }
   </style>
   <script src="js/admin-session.js"></script>
+  <script src="js/security-guard.js?v=4"></script>
 </head>
 <body class="page-admin-login">
   <script>if (window.RemoedAdminSession) RemoedAdminSession.rememberCurrentPathAsAdminEntry();</script>
@@ -102,7 +103,12 @@
 
     function applyAdminSession(data) {
       if (!data || !data.token) return;
-      localStorage.setItem('adminToken', data.token);
+      if (window.RemoedAdminSession && RemoedAdminSession.setAuthToken) {
+        RemoedAdminSession.setAuthToken(data.token);
+      } else {
+        localStorage.setItem('remoed_admin_token', data.token);
+        localStorage.setItem('adminToken', data.token);
+      }
       localStorage.setItem('adminUsername', data.username);
       localStorage.setItem('userType', 'admin');
       if (data.adminRole) {
@@ -110,7 +116,7 @@
       } else {
         localStorage.removeItem('adminRole');
       }
-      window.location.href = 'admin-dashboard.html';
+      window.location.replace('admin-dashboard.html');
     }
 
     document.getElementById('admin-login-form').onsubmit = async function(e) {
@@ -178,14 +184,14 @@
           return;
         }
         var setupUrl = (data.setupPath || '/admin/2fa-setup') + '?t=' + encodeURIComponent(data.enrollmentToken);
-        window.location.href = setupUrl;
+        window.location.replace(setupUrl);
         return;
       }
 
       if (data.success && data.require2FA && data.tempToken) {
         admin2faTempToken = data.tempToken;
         try { sessionStorage.setItem('admin2faTempToken', data.tempToken); } catch (e) {}
-        window.location.href = '/admin/2fa-verify?t=' + encodeURIComponent(data.tempToken);
+        window.location.replace('/admin/2fa-verify?t=' + encodeURIComponent(data.tempToken));
         return;
       }
 

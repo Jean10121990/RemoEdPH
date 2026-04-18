@@ -1,75 +1,1058 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
-    <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Book a Class - RemoEdPH</title>
+    <script src="js/security-guard.js?v=1"></script>
+    <title>➕ Book a Class - RemoEdPH</title>
     <link rel="stylesheet" href="modern-styles.css">
     <link rel="stylesheet" href="child-friendly-styles.css">
-<link rel="stylesheet" href="css/teacher-sidebar.css">
-    <link rel="stylesheet" href="style.css">
+    <style>
+        body { 
+            font-family: 'Comic Sans MS', 'Chalkboard SE', 'Trebuchet MS', 'Segoe UI', sans-serif; 
+            background: linear-gradient(135deg, #FFF0F5 0%, #E8F8F5 50%, #FFF9E6 100%);
+            background-attachment: fixed;
+            margin: 0;
+            padding: 0;
+        }
+        .remoed-main { 
+            display: flex; 
+            min-height: 100vh; 
+        }
+        .remoed-content { 
+            flex: 1; 
+            padding: 20px 32px 20px 32px;
+            min-width: 0;
+            background: #f6fbff;
+            min-height: 100vh;
+            box-sizing: border-box;
+            margin-left: 260px;
+            max-width: calc(100vw - 260px);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .content-scrollable {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+        
+        .main-layout {
+            margin-top: 0;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+        
+        .calendar-section {
+            width: 100%;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+        
+        /* Calendar Styles */
+        .header {
+            margin-bottom: 8px;
+        }
+        .header h1 {
+            color: #667eea;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0 0 8px 0;
+        }
+        .header-info {
+            margin-bottom: 8px;
+        }
+        .info-item {
+            margin-bottom: 4px;
+        }
+        .quota {
+            font-size: 0.85rem;
+            color: #495057;
+            font-weight: 500;
+        }
+        .week-navigation {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .nav-btn {
+            background: linear-gradient(135deg, #ffe85a, #f4d03f);
+            color: #333;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 6px rgba(255, 232, 90, 0.3);
+            height: 32px;
+            min-width: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .nav-btn:hover {
+            background: linear-gradient(135deg, #f4d03f, #f1c40f);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 232, 90, 0.4);
+        }
+        .nav-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .week-display {
+            font-weight: 600;
+            color: #333;
+            min-width: 100px;
+            text-align: center;
+            font-size: 0.85rem;
+        }
+        .current-week-btn, .current-week {
+            background: linear-gradient(135deg, #28a745, #1e7e34) !important;
+            color: white;
+            box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3) !important;
+        }
+        .current-week-btn:hover, .current-week:hover {
+            background: linear-gradient(135deg, #1e7e34, #155724) !important;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4) !important;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+        }
+        .submit-btn {
+            background: linear-gradient(135deg, #667eea, #5a67d8);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 24px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+            height: 40px;
+            min-width: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .submit-btn:hover {
+            background: linear-gradient(135deg, #5a67d8, #4c51bf);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        .back-btn {
+            background: linear-gradient(135deg, #6c757d, #5a6268);
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 6px rgba(108, 117, 125, 0.3);
+            height: 32px;
+            min-width: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .back-btn:hover {
+            background: linear-gradient(135deg, #5a6268, #495057);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(108, 117, 125, 0.4);
+        }
+        
+        /* Weekly Grid */
+        .weekly-grid {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(28, 167, 231, 0.1);
+            overflow: auto;
+            max-height: calc(100vh - 120px);
+            min-height: calc(100vh - 120px);
+            max-width: 100%;
+            box-sizing: border-box;
+            border: 1px solid rgba(28, 167, 231, 0.1);
+        }
+        .schedule-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .time-column {
+            width: 100px;
+            min-width: 100px;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea, #5a67d8);
+            color: white;
+            font-weight: 600;
+            text-align: center;
+            position: sticky;
+            left: 0;
+            z-index: 5;
+            border-right: 2px solid rgba(255,255,255,0.2);
+        }
+        .grid-header {
+            display: grid;
+            grid-template-columns: 100px repeat(7, 1fr);
+            background: linear-gradient(135deg, #667eea, #5a67d8);
+            color: white;
+            font-weight: 600;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            border-radius: 12px 12px 0 0;
+        }
+        .grid-header > div {
+            padding: 12px 6px;
+            text-align: center;
+            border-right: 1px solid rgba(255,255,255,0.2);
+            font-size: 0.9rem;
+        }
+        .grid-header > div:last-child {
+            border-right: none;
+        }
+        .time-slot {
+            display: grid;
+            grid-template-columns: 100px repeat(7, 1fr);
+            border-bottom: 1px solid #e0e6ed;
+        }
+        .time-slot:last-child {
+            border-bottom: none;
+        }
+        .time-label {
+            padding: 12px;
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-right: 1px solid #e0e6ed;
+            font-size: 0.85rem;
+        }
+        .slot-cell {
+            padding: 12px 6px;
+            border-right: 1px solid #e0e6ed;
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+        .slot-cell:last-child {
+            border-right: none;
+        }
+        .slot-cell.available {
+            background: #e8f5e8;
+            color: #28a745;
+            font-weight: bold;
+            font-size: 0.8rem;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .slot-cell.available:hover {
+            background: #d4edda;
+            transform: scale(1.02);
+            box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+        }
+        .slot-cell.selected {
+            background: #1ca7e7;
+            color: white;
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(28, 167, 231, 0.4);
+            font-weight: bold;
+        }
+        .slot-cell.unavailable {
+            background: #f8f9fa;
+            color: #6c757d;
+            cursor: not-allowed;
+        }
+        .slot-cell.past {
+            background: #f8f9fa;
+            color: #adb5bd;
+            cursor: not-allowed;
+            font-size: 0.7rem;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .slot-cell.booked {
+            background: #f8d7da;
+            color: #721c24;
+            cursor: not-allowed;
+            font-weight: bold;
+            font-size: 0.8rem;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        /* Booking Modal */
+        .booking-modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+        }
+        
+        .booking-modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .booking-modal-content {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 32px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            animation: modalSlideIn 0.3s ease-out;
+        }
+        
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px) scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid #f1f5f9;
+        }
+        
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1a202c;
+            margin: 0;
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #64748b;
+            padding: 8px;
+            border-radius: 50%;
+            transition: all 0.2s ease;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-close:hover {
+            background: #f1f5f9;
+            color: #1a202c;
+        }
+        
+        .booking-panel {
+            background: #fff;
+            border-radius: 12px;
+            padding: 0;
+            border: none;
+            position: static;
+        }
+        .booking-panel h3 {
+            color: #667eea;
+            margin-bottom: 12px;
+            font-size: 1.2rem;
+        }
+        .form-group {
+            margin-bottom: 12px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 4px;
+            font-weight: 600;
+            color: #333;
+            font-size: 0.9rem;
+        }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #e0e6ed;
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102,126,234,0.1);
+        }
+        .form-group input.error, .form-group select.error {
+            border-color: #dc3545;
+            background-color: #fff5f5;
+            box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1);
+        }
+        .form-group input.error:focus, .form-group select.error:focus {
+            border-color: #dc3545;
+            box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.2);
+        }
+        .form-group .error-message {
+            color: #dc3545;
+            font-size: 0.8rem;
+            margin-top: 4px;
+            display: none;
+        }
+        .form-group .error-message.show {
+            display: block;
+        }
+        .selected-slots {
+            margin-bottom: 16px;
+            max-height: 250px;
+            overflow-y: auto;
+            border: 2px solid #1ca7e7;
+            border-radius: 8px;
+            padding: 12px;
+            background: #f0f8ff;
+        }
+        .selected-slot {
+            background: #e3f2fd;
+            border: 1px solid #1ca7e7;
+            border-radius: 6px;
+            padding: 10px 15px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 4px rgba(28, 167, 231, 0.1);
+        }
+        .selected-slot:last-child {
+            margin-bottom: 0;
+        }
+        .selected-slot:hover {
+            background: #bbdefb;
+            transform: translateX(2px);
+        }
+        .selected-slot-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .selected-slot-time {
+            font-weight: bold;
+            color: #1976d2;
+        }
+        .selected-slot-date {
+            font-size: 0.75rem;
+            color: #666;
+        }
+        .selected-slots-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .selected-slots-count {
+            font-weight: bold;
+            color: #667eea;
+            font-size: 0.9rem;
+        }
+        .clear-all-slots {
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 4px 8px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            transition: background 0.2s;
+        }
+        .clear-all-slots:hover {
+            background: #c82333;
+        }
+        .remove-slot {
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 3px 6px;
+            cursor: pointer;
+            font-size: 0.75rem;
+        }
+        .remove-slot:hover {
+            background: #c82333;
+        }
+        .book-btn {
+            background: linear-gradient(135deg, #28a745, #1e7e34);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+        }
+        .book-btn:hover {
+            background: linear-gradient(135deg, #1e7e34, #155724);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+        }
+        .book-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        .booking-summary {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 16px;
+        }
+        .booking-summary h4 {
+            margin: 0 0 8px 0;
+            color: #667eea;
+            font-size: 0.9rem;
+        }
+        .booking-summary-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+            font-size: 0.85rem;
+        }
+        .booking-summary-item:last-child {
+            margin-bottom: 0;
+        }
+        .booking-summary-label {
+            color: #666;
+        }
+        .booking-summary-value {
+            font-weight: bold;
+            color: #333;
+        }
+        .message {
+            margin-top: 12px;
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .hidden {
+            display: none;
+        }
+        
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(100px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes slideInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-100px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .floating-slot-item {
+            background: #e3f2fd;
+            border: 1px solid #1ca7e7;
+            border-radius: 4px;
+            padding: 6px 10px;
+            margin-bottom: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8rem;
+            transition: all 0.2s ease;
+        }
+        
+        .floating-slot-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .floating-slot-item:hover {
+            background: #bbdefb;
+        }
+        
+        .floating-slot-time {
+            font-weight: bold;
+            color: #1976d2;
+        }
+        
+        .floating-slot-date {
+            font-size: 0.75rem;
+            color: #666;
+        }
+        
+        .floating-slot-remove {
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            padding: 2px 6px;
+            cursor: pointer;
+            font-size: 0.7rem;
+            transition: background 0.2s;
+        }
+        
+        .floating-slot-remove:hover {
+            background: #c82333;
+        }
+
+        /* Custom teacher selector (replaces native dropdown) */
+        .custom-teacher-select {
+            position: relative;
+            width: 100%;
+        }
+        .custom-teacher-select__trigger {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 10px 12px;
+            min-height: 44px;
+            border: 1px solid #ced4da;
+            border-radius: 8px;
+            background: #fff;
+            font: inherit;
+            cursor: pointer;
+            text-align: left;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .custom-teacher-select__trigger:hover {
+            border-color: #667eea;
+        }
+        .custom-teacher-select__trigger:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        }
+        .custom-teacher-select__value {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+            flex: 1;
+        }
+        .custom-teacher-select__avatar-wrap {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            overflow: hidden;
+            flex-shrink: 0;
+            background: linear-gradient(135deg, #e8ecf7, #f0f4ff);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+        }
+        .custom-teacher-select__avatar-wrap img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .cts-trigger-placeholder { line-height: 1; }
+        .custom-teacher-select__text {
+            font-size: 0.95rem;
+            color: #333;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .custom-teacher-select__chevron {
+            width: 0;
+            height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-top: 6px solid #6c757d;
+            flex-shrink: 0;
+            transition: transform 0.2s;
+        }
+        .custom-teacher-select__trigger[aria-expanded="true"] .custom-teacher-select__chevron {
+            transform: rotate(180deg);
+        }
+        .custom-teacher-select__list {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: calc(100% + 4px);
+            z-index: 50;
+            margin: 0;
+            padding: 6px;
+            list-style: none;
+            background: #fff;
+            border: 1px solid #dee2e6;
+            border-radius: 10px;
+            box-shadow: 0 12px 40px rgba(40, 50, 80, 0.15);
+            max-height: 280px;
+            overflow-y: auto;
+        }
+        .custom-teacher-select__list[hidden] {
+            display: none !important;
+        }
+        .cts-item {
+            display: flex;
+            align-items: stretch;
+            gap: 4px;
+            border-radius: 8px;
+            margin-bottom: 4px;
+        }
+        .cts-item:last-child { margin-bottom: 0; }
+        .cts-item__main {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 10px;
+            border: none;
+            background: #f8f9fc;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: left;
+            font: inherit;
+            min-width: 0;
+            transition: background 0.15s;
+        }
+        .cts-item__main:hover {
+            background: #eef1ff;
+        }
+        .cts-item__photo-wrap {
+            width: 40px;
+            height: 40px;
+            flex-shrink: 0;
+            border-radius: 50%;
+            overflow: hidden;
+            background: #e2e8f0;
+        }
+        .cts-item__photo {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .cts-item__photo--placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #e8ecf7, #dbe4ff);
+            font-size: 1.1rem;
+        }
+        .cts-item__center { min-width: 0; flex: 1; }
+        .cts-item__name {
+            font-weight: 600;
+            color: #2d3748;
+            font-size: 0.9rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .cts-item__rating {
+            font-size: 0.8rem;
+            color: #667eea;
+            margin-top: 2px;
+        }
+        .cts-item__rating--muted {
+            color: #718096;
+            font-weight: 500;
+        }
+        .cts-item__info {
+            width: 40px;
+            flex-shrink: 0;
+            border: none;
+            background: transparent;
+            color: #667eea;
+            font-size: 1.15rem;
+            cursor: pointer;
+            border-radius: 8px;
+            line-height: 1;
+            transition: background 0.15s;
+        }
+        .cts-item__info:hover {
+            background: rgba(102, 126, 234, 0.12);
+        }
+
+        /* Glassmorphism teacher profile modal */
+        .teacher-glass-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: rgba(30, 41, 59, 0.35);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.25s ease, visibility 0.25s;
+        }
+        .teacher-glass-overlay.is-open {
+            visibility: visible;
+            opacity: 1;
+        }
+        .teacher-glass-modal {
+            width: 100%;
+            max-width: 420px;
+            max-height: min(88vh, 640px);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.72);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.85);
+            box-shadow: 0 25px 50px -12px rgba(30, 41, 59, 0.35), 0 0 0 1px rgba(255,255,255,0.5) inset;
+        }
+        .teacher-glass-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 16px 16px 0;
+        }
+        .teacher-glass-close {
+            border: none;
+            background: rgba(255,255,255,0.6);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            font-size: 1.4rem;
+            line-height: 1;
+            cursor: pointer;
+            color: #64748b;
+            flex-shrink: 0;
+        }
+        .teacher-glass-close:hover { background: rgba(255,255,255,0.95); color: #334155; }
+        .teacher-glass-body {
+            padding: 12px 18px 18px;
+            overflow-y: auto;
+            flex: 1;
+            min-height: 0;
+        }
+        .teacher-glass-hero {
+            display: flex;
+            gap: 14px;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .teacher-glass-hero img {
+            width: 88px;
+            height: 88px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid rgba(255,255,255,0.9);
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.2);
+        }
+        .teacher-glass-hero-placeholder {
+            width: 88px;
+            height: 88px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #c7d2fe, #e9d5ff);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+        }
+        .teacher-glass-title {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #1e293b;
+            margin: 0 0 4px;
+        }
+        .teacher-glass-rating { color: #667eea; font-weight: 600; font-size: 0.95rem; }
+        .teacher-glass-section { margin-top: 14px; }
+        .teacher-glass-section h4 {
+            margin: 0 0 8px;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #64748b;
+        }
+        .teacher-glass-bio {
+            font-size: 0.9rem;
+            color: #475569;
+            line-height: 1.5;
+        }
+        .teacher-glass-video {
+            margin-top: 10px;
+            border-radius: 12px;
+            overflow: hidden;
+            background: rgba(0,0,0,0.06);
+            aspect-ratio: 16/9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .teacher-glass-video video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .teacher-glass-video-placeholder {
+            padding: 20px;
+            text-align: center;
+            color: #94a3b8;
+            font-size: 0.85rem;
+        }
+        .teacher-glass-certs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .teacher-glass-cert-pill {
+            font-size: 0.75rem;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: rgba(102, 126, 234, 0.15);
+            color: #4c51bf;
+            font-weight: 600;
+        }
+        .teacher-glass-footer {
+            padding: 12px 18px 18px;
+            border-top: 1px solid rgba(148, 163, 184, 0.25);
+        }
+        .teacher-glass-select-btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #667eea, #5a67d8);
+            color: #fff;
+            font-weight: 700;
+            font-size: 0.95rem;
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(102, 126, 234, 0.4);
+        }
+        .teacher-glass-select-btn:hover {
+            filter: brightness(1.05);
+        }
+    </style>
+    <link rel="stylesheet" href="css/teacher-sidebar.css">
     <link rel="stylesheet" href="css/student-portal-layout.css">
-    <script src="js/user-session.js"></script>
 </head>
-<body  class="student-portal page-student-book">
+<body class="student-portal page-student-book">
     <div class="remoed-main">
         <div id="student-sidebar-root"></div>
         <script src="js/student-sidebar.js"></script>
         <script>StudentSidebar.render('student-sidebar-root', 'book');</script>
-        <div class="remoed-content" style="position: relative;">
-            <div id="trial-subscription-paywall" style="display: none; position: absolute; inset: 0; z-index: 200; align-items: center; justify-content: center; padding: 24px; background: rgba(250,248,245,0.98); box-sizing: border-box;">
-                <div class="subscription-paywall-card" style="max-width: 440px; width: 100%; padding: 36px 32px; background: #fdfcfa; border: 1px solid rgba(120,113,108,0.2); border-radius: 20px; box-shadow: 0 12px 40px rgba(41,37,36,0.08); text-align: center;">
-                    <p style="margin: 0 0 8px; font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase; color: #78716c;">RemoEd</p>
-                    <h2 style="margin: 0 0 16px; font-size: 1.45rem; font-weight: 700; color: #292524; letter-spacing: -0.02em;">Continue your journey</h2>
-                    <p style="margin: 0 0 20px; line-height: 1.65; color: #57534e; font-size: 0.98rem;">You’ve completed your first lesson! Read your teacher’s feedback on your dashboard, then enroll in a plan to book Lesson&nbsp;2.</p>
-                    <div id="book-paywall-lesson2-teaser" style="margin: 0 0 24px; padding: 14px 16px; background: rgba(13,148,136,0.06); border-radius: 12px; border: 1px solid rgba(13,148,136,0.2); text-align: left; font-size: 0.9rem; color: #44403c; line-height: 1.55;"></div>
-                    <div style="display: flex; flex-direction: column; gap: 12px; align-items: center;">
-                        <a href="student-booking-history.html" style="display: inline-block; width: 100%; max-width: 280px; padding: 12px 24px; background: #fafaf9; color: #292524; font-weight: 700; border-radius: 999px; text-decoration: none; border: 1px solid #d6d3d1;">View feedback &amp; classes</a>
-                        <a href="index.html#plans" style="display: inline-block; width: 100%; max-width: 280px; padding: 14px 32px; background: linear-gradient(135deg, #0d9488, #115e59); color: #fff; font-weight: 700; border-radius: 999px; text-decoration: none; border: 2px solid rgba(250, 214, 72, 0.65);">Choose learning plan</a>
-                    </div>
-                </div>
-            </div>
+        <div class="remoed-content">
             <div style="flex-shrink: 0;">
-                <div class="student-book-toolbar">
-                    <h1 class="student-book-toolbar__title">Book a Fun Class!</h1>
-                    <p class="student-book-toolbar__hint quota" id="available-slots-info">Select a time slot to book a class</p>
-                    <div class="student-book-toolbar__controls">
-                        <div class="week-navigation book-week-navigation" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                            <button class="nav-btn" id="prev-week">← Prev</button>
-                            <span class="week-display" id="week-display">Loading...</span>
-                            <button class="nav-btn" id="next-week">Next →</button>
-                            <button class="nav-btn current-week-btn" id="current-week">Today</button>
-                            <button type="button" id="back-to-schedule-btn" class="back-btn" onclick="window.location.href='student-class-table.html'" style="padding: 6px 12px; font-size: 0.8rem; height: 32px;">View Schedule</button>
-                        </div>
+                <div class="header">
+                    <h1 style="font-size: 2rem; font-weight: 800; color: #1CA7E7; text-shadow: 2px 2px 4px rgba(28, 167, 231, 0.2); display: flex; align-items: center; gap: 12px;">
+                        <span>📚📶</span>
+                        <span>➕ Book a Fun Class! 📚</span>
+                    </h1>
+                </div>
+
+                <div class="header-info">
+                <div class="info-item">
+                    <span class="quota" id="available-slots-info">Select a time slot to book a class</span>
+                </div>
+                
+                <!-- Combined Navigation and Action Buttons Row -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 8px;">
+                    <!-- Week Navigation -->
+                    <div class="week-navigation" style="display: flex; align-items: center; gap: 8px;">
+                        <button class="nav-btn" id="prev-week">← Prev</button>
+                        <span class="week-display" id="week-display">Loading...</span>
+                        <button class="nav-btn" id="next-week">Next →</button>
+                        <button class="nav-btn current-week-btn" id="current-week">Today</button>
+                    </div>
+                    
+                    <!-- Action Buttons -->
+                    <div class="action-buttons" style="display: flex; gap: 8px;">
+                        <button id="back-to-schedule-btn" class="back-btn" onclick="window.location.href='student-class-table.html'" style="padding: 6px 12px; font-size: 0.8rem; height: 32px;">View Schedule</button>
                     </div>
                 </div>
             </div>
 
             <!-- Slot Legend -->
-            <div class="book-slot-legend-compact" style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); box-shadow: 0 1px 4px rgba(0,0,0,0.05); border: 1px solid rgba(0,0,0,0.08);">
+            <div style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 6px 10px; border-radius: 8px; margin-bottom: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); border: 1px solid rgba(0,0,0,0.08);">
                 <div style="display: flex; align-items: center; flex-wrap: nowrap; gap: 6px; font-size: 0.7rem; overflow-x: auto; padding-bottom: 2px;">
                     <div style="display: flex; align-items: center; gap: 3px; padding: 2px 5px; background: rgba(255,255,255,0.7); border-radius: 3px; border: 1px solid rgba(0,0,0,0.05); white-space: nowrap; min-width: fit-content;">
                         <div style="width: 12px; height: 12px; background: linear-gradient(135deg, #e8f5e8 0%, #d4edda 100%); border-radius: 2px; border: 1px solid #28a745; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #28a745; font-size: 7px;">✓</div>
                         <span style="font-weight: 500; color: #495057; font-size: 0.7rem;">Available</span>
                     </div>
                     <div style="display: flex; align-items: center; gap: 3px; padding: 2px 5px; background: rgba(255,255,255,0.7); border-radius: 3px; border: 1px solid rgba(0,0,0,0.05); white-space: nowrap; min-width: fit-content;">
-                        <div style="width: 12px; height: 12px; background: linear-gradient(135deg, #5a67d8 0%, #4c51bf 100%); border-radius: 2px; border: 1px solid #4c51bf; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; font-size: 7px;">✓</div>
+                        <div style="width: 12px; height: 12px; background: linear-gradient(135deg, #1ca7e7 0%, #0d8bd9 100%); border-radius: 2px; border: 1px solid #0d8bd9; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; font-size: 7px;">✓</div>
                         <span style="font-weight: 500; color: #495057; font-size: 0.7rem;">Selected</span>
                     </div>
                     <div style="display: flex; align-items: center; gap: 3px; padding: 2px 5px; background: rgba(255,255,255,0.7); border-radius: 3px; border: 1px solid rgba(0,0,0,0.05); white-space: nowrap; min-width: fit-content;">
-                        <div style="width: 12px; height: 12px; background: linear-gradient(135deg, #ff6b6b 0%, #dc3545 100%); border-radius: 2px; border: 1px solid #dc3545; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; font-size: 7px;">B</div>
+                        <div style="width: 12px; height: 12px; background: linear-gradient(135deg, #ff6b6b 0%, #dc3545 100%); border-radius: 2px; border: 1px solid #dc3545; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; font-size: 5px;">🔒</div>
                         <span style="font-weight: 500; color: #495057; font-size: 0.7rem;">Booked</span>
                     </div>
                     <div style="display: flex; align-items: center; gap: 3px; padding: 2px 5px; background: rgba(255,255,255,0.7); border-radius: 3px; border: 1px solid rgba(0,0,0,0.05); white-space: nowrap; min-width: fit-content;">
-                        <div style="width: 12px; height: 12px; background: linear-gradient(135deg, #6c757d 0%, #495057 100%); border-radius: 2px; border: 1px solid #495057; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; font-size: 7px;">P</div>
+                        <div style="width: 12px; height: 12px; background: linear-gradient(135deg, #6c757d 0%, #495057 100%); border-radius: 2px; border: 1px solid #495057; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; font-size: 5px;">⏰</div>
                         <span style="font-weight: 500; color: #495057; font-size: 0.7rem;">Past</span>
                     </div>
                     <div style="display: flex; align-items: center; gap: 3px; padding: 2px 5px; background: rgba(255,255,255,0.7); border-radius: 3px; border: 1px solid rgba(0,0,0,0.05); white-space: nowrap; min-width: fit-content;">
                         <div style="width: 12px; height: 12px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 2px; border: 1px solid #6c757d; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #6c757d; font-size: 7px;">—</div>
                         <span style="font-weight: 500; color: #495057; font-size: 0.7rem;">Unavailable</span>
                     </div>
+                </div>
                 </div>
             </div>
 
@@ -108,7 +1091,7 @@
                             
                             <!-- Booking Summary - Always Visible -->
                             <div class="booking-summary" id="booking-summary" style="display: none;">
-                                <h4>Selected class</h4>
+                                <h4>📋 Selected Class</h4>
                                 <div class="booking-summary-item">
                                     <span class="booking-summary-label">Date:</span>
                                     <span class="booking-summary-value" id="summary-date">-</span>
@@ -121,7 +1104,7 @@
                             
                             <!-- Visual Separator -->
                             <div style="border-top: 2px solid #e0e6ed; margin: 20px 0; padding-top: 20px;">
-                                <h3 style="color: #5a67d8; margin-bottom: 15px; font-size: 1.1rem;">Booking details</h3>
+                                <h3 style="color: #667eea; margin-bottom: 15px; font-size: 1.1rem;">📝 Booking Details</h3>
                             </div>
                             
                             <form id="booking-form">
@@ -184,6 +1167,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/luxon@3.5.0/build/global/luxon.min.js"></script>
     <script src="timezone-utils.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
     <script>
         // Role-based access control
         const userType = localStorage.getItem('userType');
@@ -199,10 +1183,8 @@
             window.location.href = 'student-login.html';
         }
         
-        const TU = window.TimezoneUtils || {};
-        const BOOKING_FIRST_HOUR = TU.REMOED_OPERATING_START_HOUR != null ? TU.REMOED_OPERATING_START_HOUR : 6;
-        const BOOKING_LAST_HOUR_EXCLUSIVE = TU.REMOED_OPERATING_END_HOUR_EXCLUSIVE != null ? TU.REMOED_OPERATING_END_HOUR_EXCLUSIVE : 24;
-        const userTimezone = TU.REMOED_ANCHOR_ZONE || TU.REMOED_DISPLAY_ZONE || 'Asia/Manila';
+        // Timezone alignment utility (uses detected/selected timezone)
+        let userTimezone = (window.TimezoneUtils && TimezoneUtils.getDetectedZone()) || 'UTC';
         
         function getLocalDateString(date) {
             // Format a JS Date as yyyy-MM-dd in the user's timezone
@@ -210,14 +1192,57 @@
             return DateTime.fromJSDate(date, { zone: userTimezone }).toFormat('yyyy-LL-dd');
         }
         
-        function initPhilippineTimeNote() {
-            if (document.getElementById('student-book-pht-note')) return;
-            const p = document.createElement('p');
-            p.id = 'student-book-pht-note';
-            p.style.cssText = 'margin:8px 0 0;font-size:0.78rem;color:#475569;font-weight:600;width:100%;';
-            p.textContent = 'All times are Philippine Time (PHT, Asia/Manila, UTC+8). Same clock as the Philippines; other regions on UTC+8 match. Hours: 6:00 AM – midnight.';
+        function initTimezoneControl() {
+            const container = document.createElement('div');
+            container.style.display = 'flex';
+            container.style.alignItems = 'center';
+            container.style.gap = '8px';
+            container.style.margin = '8px 0';
+            
+            const label = document.createElement('span');
+            label.textContent = 'Timezone:';
+            label.style.fontWeight = '600';
+            label.style.color = '#374151';
+            container.appendChild(label);
+            
+            const select = document.createElement('select');
+            select.id = 'timezone-select';
+            select.style.padding = '6px 10px';
+            select.style.borderRadius = '6px';
+            select.style.border = '1px solid #d1d5db';
+            select.style.minWidth = '200px';
+            
+            const zones = (window.TimezoneUtils && TimezoneUtils.listTimezones()) || ['UTC'];
+            zones.forEach(z => {
+                const opt = document.createElement('option');
+                opt.value = z;
+                opt.textContent = z;
+                select.appendChild(opt);
+            });
+            // Add detected zone if not in list
+            if (!zones.includes(userTimezone)) {
+                const opt = document.createElement('option');
+                opt.value = userTimezone;
+                opt.textContent = `${userTimezone} (detected)`;
+                select.appendChild(opt);
+            }
+            select.value = userTimezone;
+            select.onchange = () => {
+                userTimezone = select.value || 'UTC';
+                console.log('🌐 Timezone changed to:', userTimezone);
+                // Regenerate grid with new timezone
+                updateWeekDisplay();
+                generateWeeklyGrid();
+            };
+            
+            container.appendChild(select);
+            
             const host = document.getElementById('week-display');
-            if (host && host.parentElement) host.parentElement.appendChild(p);
+            if (host && host.parentElement) {
+                host.parentElement.appendChild(container);
+            } else {
+                document.body.prepend(container);
+            }
         }
         
         // Get "now" in Philippine time so users in other timezones (e.g., US) still see PH slots
@@ -268,67 +1293,41 @@
         let selectedSlots = new Map(); // Map to store selected slots: key = "date-time", value = {date, time, teacher}
         let availableSlots = new Map(); // Map to store available slots data
         let bookedSlots = new Map(); // Map to store booked slots data
-        
-        async function applyPostTrialBookingUi() {
-            const t = localStorage.getItem('token');
-            if (!t) return false;
+
+        function getStudentCalendarScopedTeacherId() {
             try {
-                const r = await fetch('/api/student/profile', { headers: { Authorization: 'Bearer ' + t } });
-                if (!r.ok) return false;
-                const data = await r.json();
-                const p = data.profile;
-                if (!p) return false;
-                const acct = p.accountStatus || 'standard';
-                try {
-                    localStorage.setItem('studentAccountStatus', acct);
-                    localStorage.setItem('studentHasFreeTrial', p.hasFreeTrial ? '1' : '0');
-                    var sub = p.isSubscribed === true || (p.paymentStatus === 'paid' && p.subscriptionStatus === 'active');
-                    localStorage.setItem('studentIsSubscribed', sub ? '1' : '0');
-                    localStorage.setItem('studentPaymentStatus', p.paymentStatus || 'unpaid');
-                    localStorage.setItem('studentSubscriptionStatus', p.subscriptionStatus || 'pending');
-                } catch (e) {}
-                var isSub = p.isSubscribed === true || (p.paymentStatus === 'paid' && p.subscriptionStatus === 'active');
-                if (acct === 'trial_completed' && !isSub) {
-                    var paywall = document.getElementById('trial-subscription-paywall');
-                    var teaser = document.getElementById('book-paywall-lesson2-teaser');
-                    if (teaser) {
-                        var lvl = (p.cefrLevel) ? String(p.cefrLevel).trim() : '';
-                        teaser.innerHTML = lvl
-                            ? '<strong>What\'s next</strong> — In Lesson 2, you’ll go deeper with guided practice at <strong>' + lvl + '</strong>: conversation, vocabulary, and confidence with your tutor.'
-                            : '<strong>What\'s next</strong> — In Lesson 2, you’ll build fluency with guided conversation, new vocabulary, and personalized feedback from your tutor.';
-                    }
-                    if (paywall) {
-                        paywall.style.display = 'flex';
-                        try {
-                            sessionStorage.setItem('remoedTrialPaywallGate', '1');
-                        } catch (e) {}
-                    }
-                    var rc = document.querySelector('.page-student-book .remoed-content');
-                    if (rc) {
-                        for (var i = 0; i < rc.children.length; i++) {
-                            var ch = rc.children[i];
-                            if (ch.id === 'trial-subscription-paywall') continue;
-                            ch.style.display = 'none';
-                        }
-                    }
-                    try {
-                        var sroot = document.getElementById('student-sidebar-root');
-                        if (window.StudentSidebar && sroot) window.StudentSidebar.refreshBookNavItem(sroot);
-                    } catch (e) {}
-                    return true;
-                }
+                const hid = document.getElementById('booked-teacher-id');
+                if (hid && hid.value && String(hid.value).trim()) return String(hid.value).trim();
+                const pt = sessionStorage.getItem('prefillPreferredTeacherId');
+                if (pt && String(pt).trim()) return String(pt).trim();
             } catch (e) {
-                console.warn('post-trial booking ui', e);
+                /* ignore */
             }
-            return false;
+            return '';
         }
 
+        (function setupStudentBookingRealtime() {
+            if (typeof io !== 'function') return;
+            const rt = localStorage.getItem('token');
+            if (!rt) return;
+            try {
+                const socket = io(window.location.origin, { auth: { token: rt } });
+                const onSlotsOrBookings = (payload) => {
+                    if (!payload || payload.teacherId == null || String(payload.teacherId).trim() === '') return;
+                    const scope = getStudentCalendarScopedTeacherId();
+                    if (scope && String(payload.teacherId).trim() !== scope) return;
+                    void loadAvailableSlots();
+                };
+                socket.on('slotsUpdated', onSlotsOrBookings);
+                socket.on('bookingsUpdated', onSlotsOrBookings);
+            } catch (e) {
+                console.warn('student booking realtime', e);
+            }
+        })();
+        
         // Initialize the page
         document.addEventListener('DOMContentLoaded', function() {
             console.log('🚀 DOM loaded, starting initialization...');
-
-            applyPostTrialBookingUi().then(function (blocked) {
-                if (blocked) return;
 
             try {
                 const pt = new URLSearchParams(window.location.search).get('preferredTeacher');
@@ -346,7 +1345,7 @@
                 // Validate token first
                 validateToken().then(() => {
                     console.log('✅ Token validated, initializing components...');
-                    initPhilippineTimeNote();
+                    initTimezoneControl();
                     updateWeekDisplay();
                     generateWeeklyGrid();
                     setupEventListeners();
@@ -364,7 +1363,7 @@
                     } else {
                         // Server issue - continue with basic functionality
                         console.warn('⚠️ Server issue detected, continuing with basic functionality');
-                        initPhilippineTimeNote();
+                        initTimezoneControl();
                         updateWeekDisplay();
                         generateWeeklyGrid();
                         setupEventListeners();
@@ -375,12 +1374,12 @@
                         if (grid) {
                             grid.innerHTML = `
                                 <div style="text-align: center; padding: 50px; color: #666;">
-                                    <h3>Limited functionality</h3>
+                                    <h3>⚠️ Limited Functionality</h3>
                                     <p>We're experiencing some connection issues with our servers.</p>
                                     <p>You can still view the calendar, but booking functionality may be limited.</p>
                                     <p>Please try refreshing the page or check back later.</p>
-                                    <button onclick="location.reload()" style="background: #5a67d8; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; margin-top: 10px;">
-                                        Refresh page
+                                    <button onclick="location.reload()" style="background: #1ca7e7; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; margin-top: 10px;">
+                                        🔄 Refresh Page
                                     </button>
                                 </div>
                             `;
@@ -394,16 +1393,15 @@
                 if (grid) {
                     grid.innerHTML = `
                         <div style="text-align: center; padding: 50px; color: #666;">
-                            <h3>Error loading calendar</h3>
+                            <h3>⚠️ Error Loading Calendar</h3>
                             <p>There was an error loading the booking calendar. Please refresh the page or try again later.</p>
-                            <button onclick="location.reload()" style="background: #5a67d8; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; margin-top: 10px;">
-                                Refresh page
+                            <button onclick="location.reload()" style="background: #1ca7e7; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; margin-top: 10px;">
+                                🔄 Refresh Page
                             </button>
                         </div>
                     `;
                 }
             }
-            });
         });
         
         // Validate token with backend
@@ -519,38 +1517,30 @@
                 plus: ({ days = 0 } = {}) => createDateTime(new Date(d.getTime() + days * 86400000), timeZone),
                 minus: ({ days = 0 } = {}) => createDateTime(new Date(d.getTime() - days * 86400000), timeZone),
                 toFormat: (fmt) => {
-                    const loc = { timeZone: timeZone };
-                    if (fmt === 'ccc') return d.toLocaleDateString('en-US', Object.assign({ weekday: 'short' }, loc));
-                    if (fmt === 'LLLL d') return d.toLocaleDateString('en-US', Object.assign({ month: 'long', day: 'numeric' }, loc));
+                    if (fmt === 'ccc') return d.toLocaleDateString(undefined, { weekday: 'short' });
+                    if (fmt === 'LLLL d') return d.toLocaleDateString(undefined, { month: 'long', day: 'numeric' });
                     if (fmt === 'ccc LLLL d') {
-                        return `${d.toLocaleDateString('en-US', Object.assign({ weekday: 'short' }, loc))} ${d.toLocaleDateString('en-US', Object.assign({ month: 'long' }, loc))} ${new Intl.DateTimeFormat('en-US', Object.assign({ day: 'numeric' }, loc)).format(d)}`;
+                        return `${d.toLocaleDateString(undefined, { weekday: 'short' })} ${d.toLocaleDateString(undefined, { month: 'long' })} ${d.getDate()}`;
                     }
-                    return d.toLocaleDateString('en-US', loc);
+                    return d.toLocaleDateString();
                 },
                 toISODate: () => d.toISOString().split('T')[0]
             };
         }
 
         function updateWeekDisplay() {
-            const display = document.getElementById('week-display');
-            const { DateTime } = luxon;
-            if (DateTime) {
-                const base = DateTime.fromJSDate(currentWeek, { zone: userTimezone });
-                const mon = base.minus({ days: base.weekday - 1 });
-                const sun = mon.plus({ days: 6 });
-                display.textContent = `${mon.toFormat('MMM d')} - ${sun.toFormat('MMM d, yyyy')} (Philippine Time, PHT)`;
-            } else {
-                const weekStart = getWeekStartDate(currentWeek);
-                const weekEnd = new Date(weekStart);
-                weekEnd.setDate(weekStart.getDate() + 6);
-                const pht = { timeZone: userTimezone };
-                display.textContent = `${weekStart.toLocaleDateString('en-US', Object.assign({ month: 'short', day: 'numeric' }, pht))} - ${weekEnd.toLocaleDateString('en-US', Object.assign({ month: 'short', day: 'numeric', year: 'numeric' }, pht))} (Philippine Time, PHT)`;
-            }
-            const prevBtn = document.getElementById('prev-week');
-            prevBtn.disabled = false;
             const weekStart = getWeekStartDate(currentWeek);
             const weekEnd = new Date(weekStart);
             weekEnd.setDate(weekStart.getDate() + 6);
+            
+            const display = document.getElementById('week-display');
+            display.textContent = `${weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+            
+            // Remove the previous week button restriction - allow navigation to past weeks
+            const prevBtn = document.getElementById('prev-week');
+            prevBtn.disabled = false;
+            
+            // Debug: Log the week being displayed
             console.log('🔍 Week display - Week start:', getLocalDateString(weekStart));
             console.log('🔍 Week display - Week end:', getLocalDateString(weekEnd));
         }
@@ -567,7 +1557,8 @@
             // Show loading state
             grid.innerHTML = `
                 <div style="text-align: center; padding: 50px; color: #666;">
-                    <h3>Loading calendar…</h3>
+                    <div style="font-size: 2rem; margin-bottom: 15px;">⏳</div>
+                    <h3>Loading Calendar...</h3>
                     <p>Please wait while we load the available time slots.</p>
                 </div>
             `;
@@ -579,7 +1570,8 @@
             html += '<div>Time</div>';
             
             const { DateTime } = luxon;
-            const baseWeek = DateTime.fromJSDate(currentWeek, { zone: userTimezone });
+            const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+            const baseWeek = DateTime.fromJSDate(currentWeek, { zone: timeZone });
             const monday = baseWeek.minus({ days: baseWeek.weekday - 1 }); // ISO weekday: 1=Mon
             const weekDates = [];
 
@@ -590,9 +1582,9 @@
             }
             html += '</div>';
             
-            // Philippine operating window only: 6:00 – 11:30 (30-minute steps)
+            // Generate time slots from 00:00 to 24:00 (30-minute intervals) - 24-hour format
             const times = [];
-            for (let hour = BOOKING_FIRST_HOUR; hour < BOOKING_LAST_HOUR_EXCLUSIVE; hour++) {
+            for (let hour = 0; hour < 24; hour++) {
                 for (let minute = 0; minute < 60; minute += 30) {
                     const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
                     times.push({ value: timeStr });
@@ -640,10 +1632,10 @@
                 console.error('❌ Error generating weekly grid:', error);
                 grid.innerHTML = `
                     <div style="text-align: center; padding: 50px; color: #666;">
-                        <h3>Error loading calendar</h3>
+                        <h3>⚠️ Error Loading Calendar</h3>
                         <p>There was an error generating the booking calendar. Please refresh the page.</p>
-                        <button onclick="location.reload()" style="background: #5a67d8; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; margin-top: 10px;">
-                            Refresh page
+                        <button onclick="location.reload()" style="background: #1ca7e7; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; margin-top: 10px;">
+                            🔄 Refresh Page
                         </button>
                     </div>
                 `;
@@ -660,9 +1652,18 @@
                 const token = localStorage.getItem('token');
                 console.log('🔍 Student booking - Token exists:', !!token);
                 console.log('🔍 Loading available slots for week:', weekString);
-                
-                // Get all available slots for this week (no specific teacher filter for students)
-                const response = await fetch(`/api/teacher/slots?week=${weekString}&tz=${encodeURIComponent(userTimezone)}`, {
+
+                let scopedTeacherParam = '';
+                try {
+                    const pt = sessionStorage.getItem('prefillPreferredTeacherId');
+                    if (pt && String(pt).trim()) {
+                        scopedTeacherParam = `&teacherId=${encodeURIComponent(String(pt).trim())}`;
+                    }
+                } catch (e) {
+                    console.warn('prefillPreferredTeacherId for slots', e);
+                }
+
+                const response = await fetch(`/api/teacher/slots?week=${weekString}&tz=${encodeURIComponent(userTimezone)}${scopedTeacherParam}`, {
                     headers: {
                         'Authorization': `Bearer ${token}`,
                         'Cache-Control': 'no-cache',
@@ -686,7 +1687,7 @@
                     if (grid) {
                         grid.innerHTML = `
                             <div style="text-align: center; padding: 50px; color: #666;">
-                                <h3>Unable to load available slots</h3>
+                                <h3>⚠️ Unable to Load Available Slots</h3>
                                 <p>We couldn't load the available time slots. This might be due to:</p>
                                 <ul style="text-align: left; display: inline-block; margin: 15px 0;">
                                     <li>No teachers have opened their schedules yet</li>
@@ -694,8 +1695,8 @@
                                     <li>Server temporarily unavailable</li>
                                 </ul>
                                 <p>Please try refreshing the page or check back later.</p>
-                                <button onclick="location.reload()" style="background: #5a67d8; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; margin-top: 10px;">
-                                    Refresh page
+                                <button onclick="location.reload()" style="background: #1ca7e7; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; margin-top: 10px;">
+                                    🔄 Refresh Page
                                 </button>
                             </div>
                         `;
@@ -739,11 +1740,14 @@
                         const tid = slot.teacherId;
                         const tname = slot.teacherName || tid;
                         const existing = availableSlots.get(key);
+                        const sid = slot._id != null ? String(slot._id) : '';
                         if (existing) {
                             const ids = new Set(existing.candidateTeacherIds || (existing.teacherId ? [existing.teacherId] : []));
                             if (tid) ids.add(tid);
                             const names = { ...(existing.teacherNames || {}) };
                             if (tid) names[tid] = tname;
+                            const slotIdsByTeacherId = { ...(existing.slotIdsByTeacherId || {}) };
+                            if (tid && sid) slotIdsByTeacherId[tid] = sid;
                             availableSlots.set(key, {
                                 ...existing,
                                 ...slot,
@@ -751,12 +1755,15 @@
                                 teacherId: tid || existing.teacherId,
                                 candidateTeacherIds: [...ids],
                                 teacherNames: names,
+                                slotIdsByTeacherId,
                                 localDate: local.date,
                                 localTime: local.time,
                                 localLabel: local.label,
                                 clientTz: tz
                             });
                         } else {
+                            const slotIdsByTeacherId = {};
+                            if (tid && sid) slotIdsByTeacherId[tid] = sid;
                             availableSlots.set(key, {
                                 ...slot,
                                 utc,
@@ -765,7 +1772,8 @@
                                 localLabel: local.label,
                                 clientTz: tz,
                                 candidateTeacherIds: tid ? [tid] : [],
-                                teacherNames: tid ? { [tid]: tname } : {}
+                                teacherNames: tid ? { [tid]: tname } : {},
+                                slotIdsByTeacherId
                             });
                         }
                     });
@@ -797,7 +1805,8 @@
                     if (grid) {
                         grid.innerHTML = `
                             <div style="text-align: center; padding: 50px; color: #666;">
-                                <h3>No available classes</h3>
+                                <div style="font-size: 2rem; margin-bottom: 15px;">📅</div>
+                                <h3>No Available Classes</h3>
                                 <p>There are currently no available time slots for booking.</p>
                                 <p>This might be because:</p>
                                 <ul style="text-align: left; display: inline-block; margin: 15px 0;">
@@ -806,8 +1815,8 @@
                                     <li>It's outside of booking hours</li>
                                 </ul>
                                 <p>Please check back later or try a different week.</p>
-                                <button onclick="location.reload()" style="background: #5a67d8; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; margin-top: 10px;">
-                                    Refresh page
+                                <button onclick="location.reload()" style="background: #1ca7e7; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; margin-top: 10px;">
+                                    🔄 Refresh Page
                                 </button>
                             </div>
                         `;
@@ -825,11 +1834,11 @@
                 if (grid) {
                     grid.innerHTML = `
                         <div style="text-align: center; padding: 50px; color: #666;">
-                            <h3>Error loading available slots</h3>
+                            <h3>⚠️ Error Loading Available Slots</h3>
                             <p>There was an error loading available time slots. Please refresh the page or try again later.</p>
                             <p style="font-size: 0.9rem; color: #999;">Error: ${error.message}</p>
-                            <button onclick="location.reload()" style="background: #5a67d8; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; margin-top: 10px;">
-                                Refresh page
+                            <button onclick="location.reload()" style="background: #1ca7e7; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; margin-top: 10px;">
+                                🔄 Refresh Page
                             </button>
                         </div>
                     `;
@@ -875,20 +1884,8 @@
                     // Remove click handler for past slots
                     cell.onclick = null;
 
-                } else if (bookedSlots.has(slotKey)) {
-                    // Slot is booked (red) - show as booked
-                    cell.classList.remove('available', 'unavailable', 'past');
-                    cell.classList.add('booked');
-                    cell.textContent = 'Booked';
-                    cell.style.cursor = 'not-allowed';
-                    cell.style.fontWeight = 'bold';
-                    cell.style.fontSize = '0.8rem';
-                    cell.style.color = '#dc3545';
-                    // Remove click handler for booked slots
-                    cell.onclick = null;
-
                 } else if (availableSlotsArray.includes(slotKey)) {
-                    // Slot is available (green) - only if it actually exists in database
+                    // Open slot for at least one teacher — show before global "booked" so another teacher's booking does not ghost-block this cell
                     cell.classList.remove('unavailable', 'past', 'booked');
                     cell.classList.add('available');
                     cell.textContent = 'Book Now';
@@ -896,9 +1893,18 @@
                     cell.style.fontWeight = 'bold';
                     cell.style.fontSize = '0.8rem';
                     cell.style.color = '#28a745';
-                    // Ensure click handler is set for available slots
                     cell.onclick = () => toggleSlot(date, time);
                     availableCount++;
+                } else if (bookedSlots.has(slotKey)) {
+                    cell.classList.remove('available', 'unavailable', 'past');
+                    cell.classList.add('booked');
+                    cell.textContent = 'Booked';
+                    cell.style.cursor = 'not-allowed';
+                    cell.style.fontWeight = 'bold';
+                    cell.style.fontSize = '0.8rem';
+                    cell.style.color = '#dc3545';
+                    cell.onclick = null;
+
                 } else {
                     // Slot is not available (grey) - this includes slots that don't exist
                     cell.classList.remove('available', 'unavailable', 'past');
@@ -936,7 +1942,7 @@
             const isTimePassed = isSameDay && (Lux ? slotLocal <= now : slotLocal.getTime() <= now.getTime());
             
             const isAvailable = availableSlots.has(slotKey);
-            const isBooked = bookedSlots.has(slotKey);
+            const isBooked = !isAvailable && bookedSlots.has(slotKey);
             
             console.log(`Toggling slot: ${date} ${time}`);
             console.log(`  - Slot key: ${slotKey}`);
@@ -1473,16 +2479,14 @@
             const slotDiv = document.createElement('div');
             slotDiv.className = 'selected-slot';
             
-            const dateLine = TU.formatDateShortPhilippines
-                ? TU.formatDateShortPhilippines(new Date(slot.date + 'T12:00:00+08:00'))
-                : new Date(slot.date + 'T12:00:00+08:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', timeZone: userTimezone });
+            const date = new Date(slot.date);
             const [hour, minute] = slot.time.split(':');
             const timeDisplay = `${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`;
             
             slotDiv.innerHTML = `
                 <div class="selected-slot-info">
                     <div class="selected-slot-time">${timeDisplay}</div>
-                    <div class="selected-slot-date">${dateLine}</div>
+                    <div class="selected-slot-date">${date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</div>
                 </div>
                 <button type="button" class="remove-slot" onclick="removeSlot('${key}')" title="Remove this class">×</button>
             `;
@@ -1531,18 +2535,16 @@
             
             // SINGLE BOOKING: Show single slot info
             const slot = Array.from(selectedSlots.values())[0];
+            const date = new Date(slot.date);
             const cands = slot.candidateTeacherIds || (slot.teacherId ? [slot.teacherId] : []);
             const nTeachers = new Set(cands.filter(Boolean).map((x) => String(x))).size;
             
             summaryContainer.style.display = 'block';
-            dateElement.textContent = TU.formatDateShortPhilippines
-                ? TU.formatDateShortPhilippines(new Date(slot.date + 'T12:00:00+08:00'))
-                : new Date(slot.date + 'T12:00:00+08:00').toLocaleDateString('en-US', { 
+            dateElement.textContent = date.toLocaleDateString('en-US', { 
                 weekday: 'short', 
                 month: 'short', 
                 day: 'numeric',
-                year: 'numeric',
-                timeZone: userTimezone
+                year: 'numeric'
             });
             let timeLine = slot.time;
             if (nTeachers > 1) {
@@ -1753,6 +2755,29 @@
                     bookedHid && bookedHid.value ? String(bookedHid.value).trim() : '';
                 const assignmentMode = modeEl && modeEl.value ? modeEl.value : 'firstAvailable';
 
+                const slotIdsByT = slot.slotIdsByTeacherId || {};
+                const candIds = slot.candidateTeacherIds || (slot.teacherId ? [slot.teacherId] : []);
+                const sortedTids = [...new Set(candIds.map((x) => String(x).trim()).filter(Boolean))].sort((a, b) =>
+                    a.localeCompare(b, undefined, { sensitivity: 'base' })
+                );
+                let slotMongoId = '';
+                if (preferredTeacherId && slotIdsByT[preferredTeacherId]) {
+                    slotMongoId = String(slotIdsByT[preferredTeacherId]);
+                } else if (sortedTids.length && slotIdsByT[sortedTids[0]]) {
+                    slotMongoId = String(slotIdsByT[sortedTids[0]]);
+                } else if (slot._id != null) {
+                    slotMongoId = String(slot._id);
+                }
+                if (!slotMongoId) {
+                    showMessage(
+                        'Error: Missing slot reference for this teacher. Please refresh the calendar and try again.',
+                        'error'
+                    );
+                    bookBtn.disabled = false;
+                    bookBtnText.textContent = 'Book Class';
+                    return;
+                }
+
                 const requestBody = {
                     date: slot.date,
                     time: slot.time,
@@ -1760,7 +2785,8 @@
                     timezone: userTimezone,
                     lesson: finalLessonTitle,
                     lessonId: lessonId,
-                    studentLevel: studentLevel
+                    studentLevel: studentLevel,
+                    slotId: slotMongoId
                 };
                 if (preferredTeacherId) {
                     requestBody.teacherId = preferredTeacherId;
@@ -1796,17 +2822,6 @@
                 if (!response.ok) {
                     const errorMsg = result.error || result.message || 'Booking failed';
                     const errorDetails = result.details || {};
-
-                    if (result.code === 'TRIAL_COMPLETED_NEED_SUBSCRIPTION' || result.code === 'SUBSCRIPTION_REQUIRED_LESSON_2') {
-                        showMessage(
-                            (result.error || 'Add lesson credits or subscribe to book your next class.') + ' Opening My Credits…',
-                            'error'
-                        );
-                        setTimeout(function () {
-                            window.location.href = 'student-credits.html?refill=1';
-                        }, 1400);
-                        return;
-                    }
                     
                     // Highlight missing fields based on server response
                     if (errorMsg.includes('Missing required fields') || result.missingFields) {
@@ -1833,13 +2848,15 @@
                     throw new Error(errorMsg + errorDetailsStr);
                 }
                 
-                showMessage(`✅ Booking successful! You have booked 1 class. You will receive a confirmation email shortly.`, 'success');
-                try {
-                  sessionStorage.setItem('remoedCreditsRefresh', '1');
-                  if (typeof window.refreshStudentCredits === 'function') {
-                    window.refreshStudentCredits();
-                  }
-                } catch (e) { /* ignore */ }
+                const remainingCredits = result?.credits?.balance;
+                if (typeof remainingCredits === 'number') {
+                    localStorage.setItem('studentCreditsBalance', String(remainingCredits));
+                }
+                localStorage.setItem('creditsLastUpdatedAt', String(Date.now()));
+                showMessage(
+                    `✅ Booking successful! You have booked 1 class.${typeof remainingCredits === 'number' ? ` Remaining credits: ${remainingCredits}.` : ''} You will receive a confirmation email shortly.`,
+                    'success'
+                );
                 
                 // Close modal and clear selections after successful booking
                 closeBookingModal();
@@ -2168,5 +3185,3 @@
     <script src="avatar-helper.js"></script>
 </body>
 </html>
-
-

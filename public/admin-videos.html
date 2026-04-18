@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script src="js/security-guard.js?v=2"></script>
     <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
     <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
     <meta charset="UTF-8">
@@ -492,7 +493,7 @@
             }
 
             function authHeaders() {
-                var token = localStorage.getItem('adminToken') || localStorage.getItem('token');
+                var token = (window.RemoedAdminSession && RemoedAdminSession.getAuthToken ? RemoedAdminSession.getAuthToken() : (localStorage.getItem('remoed_admin_token')||localStorage.getItem('remoed_admin_auth')||localStorage.getItem('adminToken')||'')) || localStorage.getItem('token');
                 var h = {};
                 if (token) h['Authorization'] = 'Bearer ' + token;
                 return h;

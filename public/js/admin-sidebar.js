@@ -135,24 +135,32 @@
         var logoutLi = container.querySelector('#logout-nav');
         if (logoutLi) {
             logoutLi.addEventListener('click', function () {
-                var token = localStorage.getItem('adminToken') || localStorage.getItem('token') || '';
+                var W = typeof window !== 'undefined' ? window : null;
+                var adminLoginTarget = '';
+                try {
+                    if (W && W.RemoedAdminSession && typeof W.RemoedAdminSession.getLoginPath === 'function') {
+                        adminLoginTarget = W.RemoedAdminSession.getLoginPath() || '';
+                    }
+                } catch (e0) {}
+                var token =
+                    (typeof RemoedAdminSession !== 'undefined' && RemoedAdminSession.getAuthToken && RemoedAdminSession.getAuthToken()) ||
+                    localStorage.getItem('remoed_admin_token') ||
+                    localStorage.getItem('remoed_admin_auth') ||
+                    localStorage.getItem('adminToken') ||
+                    localStorage.getItem('token') ||
+                    '';
                 var opts = { method: 'POST', credentials: 'include' };
                 if (token) {
                     opts.headers = { Authorization: 'Bearer ' + token };
                 }
                 fetch('/api/logout', opts).catch(function () {}).finally(function () {
                     try {
-                        localStorage.removeItem('adminToken');
-                        localStorage.removeItem('adminUsername');
-                        localStorage.removeItem('userType');
-                        localStorage.removeItem('adminRole');
-                        localStorage.removeItem('token');
+                        localStorage.clear();
+                        sessionStorage.clear();
                     } catch (e) {}
-                    var W = typeof window !== 'undefined' ? window : null;
                     if (W) {
-                        // Backward-compatible: send admins to the real admin login entry (obfuscated path if remembered).
-                        if (W.RemoedAdminSession && typeof W.RemoedAdminSession.redirectToAdminLogin === 'function') {
-                            W.RemoedAdminSession.redirectToAdminLogin();
+                        if (adminLoginTarget) {
+                            W.location.replace(adminLoginTarget);
                         } else {
                             W.location.replace('admin-login.html?r=a');
                         }

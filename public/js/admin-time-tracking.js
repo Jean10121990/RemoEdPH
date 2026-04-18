@@ -1,11 +1,19 @@
 /**
- * Admin dashboard time tracking (mirrors teacher flow; uses adminToken + /api/admin/time-tracking/*).
+ * Admin dashboard time tracking (mirrors teacher flow; uses remoed_admin_token / adminToken + /api/admin/time-tracking/*).
  */
 (function () {
     'use strict';
 
     function getToken() {
-        return localStorage.getItem('adminToken');
+        if (typeof RemoedAdminSession !== 'undefined' && RemoedAdminSession.getAuthToken) {
+            return RemoedAdminSession.getAuthToken();
+        }
+        return (
+            localStorage.getItem('remoed_admin_token') ||
+            localStorage.getItem('remoed_admin_auth') ||
+            localStorage.getItem('adminToken') ||
+            ''
+        );
     }
 
     function showAdminTimeMessage(message, type) {

@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script src="js/security-guard.js?v=4"></script>
+    <script src="js/dashboard-history-lock.js?v=1"></script>
     <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
     <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
     <meta charset="UTF-8">
@@ -1147,12 +1149,29 @@
         } catch (_e) { /* ignore */ }
 
         function getAdminToken() {
-            return localStorage.getItem('adminToken') || sessionStorage.getItem('adminToken') || '';
+            if (window.RemoedAdminSession && RemoedAdminSession.getAuthToken) {
+                return RemoedAdminSession.getAuthToken();
+            }
+            return (
+                localStorage.getItem('remoed_admin_token') ||
+                localStorage.getItem('remoed_admin_auth') ||
+                localStorage.getItem('adminToken') ||
+                sessionStorage.getItem('remoed_admin_token') ||
+                sessionStorage.getItem('remoed_admin_auth') ||
+                sessionStorage.getItem('adminToken') ||
+                ''
+            );
         }
 
         function redirectToAdminLogin() {
             try {
-                localStorage.removeItem('adminToken');
+                if (window.RemoedAdminSession && RemoedAdminSession.clearAuthToken) {
+                    RemoedAdminSession.clearAuthToken();
+                } else {
+                    localStorage.removeItem('remoed_admin_token');
+                    localStorage.removeItem('remoed_admin_auth');
+                    localStorage.removeItem('adminToken');
+                }
                 localStorage.removeItem('adminRole');
                 localStorage.removeItem('adminUsername');
                 localStorage.removeItem('userType');
@@ -1190,7 +1209,7 @@
         
         document.addEventListener('DOMContentLoaded', async function() {
             try {
-                var t = localStorage.getItem('adminToken');
+                var t = getAdminToken();
                 var r = await fetch('/api/admin/me', {
                     credentials: 'include',
                     headers: t ? { Authorization: 'Bearer ' + t } : {}
@@ -1198,7 +1217,12 @@
                 if (r.status === 403) {
                     var j = await r.json().catch(function () { return {}; });
                     if (j.code === 'ADMIN_2FA_REQUIRED') {
-                        localStorage.removeItem('adminToken');
+                        if (window.RemoedAdminSession && RemoedAdminSession.clearAuthToken) RemoedAdminSession.clearAuthToken();
+                        else {
+                            localStorage.removeItem('remoed_admin_token');
+                            localStorage.removeItem('remoed_admin_auth');
+                            localStorage.removeItem('adminToken');
+                        }
                         localStorage.removeItem('adminRole');
                         localStorage.removeItem('adminUsername');
                         localStorage.removeItem('userType');
@@ -1210,7 +1234,12 @@
                 if (r.status === 401) {
                     var j2 = await r.json().catch(function () { return {}; });
                     if (j2.code === 'ADMIN_SESSION_REVOKED') {
-                        localStorage.removeItem('adminToken');
+                        if (window.RemoedAdminSession && RemoedAdminSession.clearAuthToken) RemoedAdminSession.clearAuthToken();
+                        else {
+                            localStorage.removeItem('remoed_admin_token');
+                            localStorage.removeItem('remoed_admin_auth');
+                            localStorage.removeItem('adminToken');
+                        }
                         localStorage.removeItem('adminRole');
                         localStorage.removeItem('adminUsername');
                         localStorage.removeItem('userType');
@@ -1245,7 +1274,7 @@
 
         async function loadAdminReferralLinks() {
             try {
-                const token = localStorage.getItem('adminToken');
+                const token = getAdminToken();
                 if (!token) return;
                 const res = await fetch('/api/admin/referral-link', { headers: { Authorization: 'Bearer ' + token } });
                 const data = await res.json();
@@ -1288,7 +1317,7 @@
             if (markAllBtn) {
                 markAllBtn.addEventListener('click', async function (e) {
                     e.stopPropagation();
-                    const token = localStorage.getItem('adminToken');
+                    const token = getAdminToken();
                     if (!token) return;
                     try {
                         const r = await fetch('/api/admin/notifications/mark-all-read', {
@@ -1315,7 +1344,7 @@
 
         async function loadAdminNotifications() {
             try {
-                const token = localStorage.getItem('adminToken');
+                const token = getAdminToken();
                 const badge = document.getElementById('admin-notifications-badge');
                 const container = document.getElementById('admin-notifications-dropdown-content');
                 if (!badge || !container) return;

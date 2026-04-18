@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script src="js/security-guard.js?v=2"></script>
     <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
     <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
     <meta charset="UTF-8">
@@ -410,7 +411,14 @@
         let currentFilter = 'all';
 
         function clearAdminSession(message) {
-            localStorage.removeItem('adminToken');
+            if (window.RemoedAdminSession && RemoedAdminSession.clearAuthToken) RemoedAdminSession.clearAuthToken();
+            else {
+                localStorage.removeItem('remoed_admin_token');
+                localStorage.removeItem('remoed_admin_auth');
+                sessionStorage.removeItem('remoed_admin_token');
+                sessionStorage.removeItem('remoed_admin_auth');
+                localStorage.removeItem('adminToken');
+            }
             localStorage.removeItem('token');
             localStorage.removeItem('userType');
             localStorage.removeItem('adminUsername');
@@ -422,7 +430,7 @@
 
         async function loadAssessments() {
             // Accept either standard token or adminToken for admin pages
-            const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
+            const token = (window.RemoedAdminSession && RemoedAdminSession.getAuthToken ? RemoedAdminSession.getAuthToken() : (localStorage.getItem('remoed_admin_token')||localStorage.getItem('remoed_admin_auth')||localStorage.getItem('adminToken')||'')) || localStorage.getItem('token');
             if (!token) {
                 document.getElementById('loading').textContent = 'Authentication required. Please login again.';
                 return;
@@ -534,7 +542,7 @@
             modalBody.innerHTML = '<div class="loading">Loading assessment details...</div>';
 
             // Accept either standard token or adminToken
-            const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
+            const token = (window.RemoedAdminSession && RemoedAdminSession.getAuthToken ? RemoedAdminSession.getAuthToken() : (localStorage.getItem('remoed_admin_token')||localStorage.getItem('remoed_admin_auth')||localStorage.getItem('adminToken')||'')) || localStorage.getItem('token');
             try {
                 const response = await fetch(`/api/admin/teacher-assessments/${teacherId}`, {
                     method: 'GET',
@@ -1078,7 +1086,7 @@
                     if (!confirmReset) return;
                     retakeStatus.style.color = '#475569';
                     retakeStatus.textContent = 'Resetting...';
-                    const tokenRetake = localStorage.getItem('adminToken') || localStorage.getItem('token');
+                    const tokenRetake = (window.RemoedAdminSession && RemoedAdminSession.getAuthToken ? RemoedAdminSession.getAuthToken() : (localStorage.getItem('remoed_admin_token')||localStorage.getItem('remoed_admin_auth')||localStorage.getItem('adminToken')||'')) || localStorage.getItem('token');
                     try {
                         const resp = await fetch(`/api/admin/teacher-assessments/${teacherId}/retake`, {
                             method: 'POST',
@@ -1115,7 +1123,7 @@
                 recomputeBtn.onclick = async () => {
                     retakeStatus.style.color = '#475569';
                     retakeStatus.textContent = 'Recomputing...';
-                    const tokenRecompute = localStorage.getItem('adminToken') || localStorage.getItem('token');
+                    const tokenRecompute = (window.RemoedAdminSession && RemoedAdminSession.getAuthToken ? RemoedAdminSession.getAuthToken() : (localStorage.getItem('remoed_admin_token')||localStorage.getItem('remoed_admin_auth')||localStorage.getItem('adminToken')||'')) || localStorage.getItem('token');
                     try {
                         const resp = await fetch(`/api/admin/teacher-assessments/${teacherId}/recompute-scores`, {
                             method: 'POST',
@@ -1151,7 +1159,7 @@
                 gradeBtn.onclick = async () => {
                     gradeStatus.style.color = '#64748b';
                     gradeStatus.textContent = 'Saving...';
-                    const tokenSave = localStorage.getItem('adminToken') || localStorage.getItem('token');
+                    const tokenSave = (window.RemoedAdminSession && RemoedAdminSession.getAuthToken ? RemoedAdminSession.getAuthToken() : (localStorage.getItem('remoed_admin_token')||localStorage.getItem('remoed_admin_auth')||localStorage.getItem('adminToken')||'')) || localStorage.getItem('token');
                     const totals = calculateGradeTotals();
                     const payload = {
                         skills: {

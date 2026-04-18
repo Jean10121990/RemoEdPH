@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script src="js/security-guard.js?v=2"></script>
     <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
     <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
     <meta charset="UTF-8">
@@ -103,7 +104,7 @@
         }
         
         function adminAuthHeaders(includeJson) {
-            const t = localStorage.getItem('adminToken');
+            const t = (window.RemoedAdminSession && RemoedAdminSession.getAuthToken ? RemoedAdminSession.getAuthToken() : (localStorage.getItem('remoed_admin_token')||localStorage.getItem('remoed_admin_auth')||localStorage.getItem('adminToken')||''));
             const h = {};
             if (includeJson) h['Content-Type'] = 'application/json';
             if (t) h['Authorization'] = 'Bearer ' + t;
@@ -174,7 +175,13 @@
                     statusEl.style.color = '#b91c1c';
                     return;
                 }
-                if (j.token) localStorage.setItem('adminToken', j.token);
+                if (j.token) {
+                    if (window.RemoedAdminSession && RemoedAdminSession.setAuthToken) RemoedAdminSession.setAuthToken(j.token);
+                    else {
+                        localStorage.setItem('remoed_admin_token', j.token);
+                        localStorage.setItem('adminToken', j.token);
+                    }
+                }
                 if (j.adminRole) localStorage.setItem('adminRole', j.adminRole);
                 statusEl.textContent = j.message || 'Other sessions were signed out.';
                 statusEl.style.color = '#15803d';

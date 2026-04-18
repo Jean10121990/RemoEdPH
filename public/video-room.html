@@ -5,6 +5,8 @@
     <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="js/user-session.js"></script>
+    <script src="js/security-guard.js?v=3"></script>
     <title>Online Classroom</title>
     <link rel="stylesheet" href="modern-styles.css">
     <!-- PDF.js library for custom PDF viewer -->
@@ -173,7 +175,7 @@
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script>
     // --- Setup ---
-    const SIGNALING_SERVER_URL = 'http://localhost:4000';
+    const SIGNALING_SERVER_URL = window.location.origin || '';
     const socket = io(SIGNALING_SERVER_URL);
     const localVideo = document.getElementById('local-video');
     const remoteVideo = document.getElementById('remote-video');

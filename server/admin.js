@@ -1128,11 +1128,15 @@ router.post('/teacher-pipeline/applicants/:id/fail', verifyAdminApiAuth, require
 
     await InvitationToken.deleteMany({ applicationId: applicant._id });
 
-    const emailResult = await sendTeacherPipelineFailEmail(
-      applicant.email,
-      applicant.fullName,
-      reapplyEligibleAt
-    );
+    const rawFailMail =
+      applicant.email ??
+      applicant.applicantEmail ??
+      applicant.contactEmail ??
+      '';
+    const failTargetEmail = String(rawFailMail).trim().toLowerCase();
+    const emailResult = failTargetEmail
+      ? await sendTeacherPipelineFailEmail(failTargetEmail, applicant.fullName, reapplyEligibleAt, applicant.firstName)
+      : { success: false, error: 'No recipient email on file' };
 
     res.json({
       success: true,
@@ -1153,6 +1157,32 @@ router.post('/teacher-pipeline/applicants/:id/pass', verifyAdminApiAuth, require
       return res.status(404).json({ success: false, error: 'Applicant not found' });
     }
 
+    const applicantData = applicant;
+    const applicantPlain =
+      typeof applicantData.toObject === 'function' ? applicantData.toObject() : { ...applicantData };
+    if (applicantPlain.password != null) applicantPlain.password = '[redacted]';
+    console.log('Full Applicant Data for Email:', JSON.stringify(applicantPlain, null, 2));
+
+    // Applicant is not a User yet — always use the email stored on the Application document (not req.user).
+    let recipientEmail = String(applicantData.email ?? '').trim().toLowerCase();
+    if (!recipientEmail && applicantData.applicantEmail) {
+      console.warn('⚠️ Application missing .email; using legacy applicantEmail for pipeline mail.');
+      recipientEmail = String(applicantData.applicantEmail).trim().toLowerCase();
+    }
+    if (!recipientEmail && applicantData.contactEmail) {
+      console.warn('⚠️ Application missing .email; using legacy contactEmail for pipeline mail.');
+      recipientEmail = String(applicantData.contactEmail).trim().toLowerCase();
+    }
+    if (!recipientEmail) {
+      console.error('❌ Pass applicant: recipientEmail is empty (Application schema field is `email`).');
+      return res.status(400).json({
+        success: false,
+        error: 'Applicant has no email address on file. Update the record before marking passed.',
+      });
+    }
+
+    console.log('Attempting to send registration link to Applicant:', recipientEmail);
+
     applicant.currentStage = 'passed';
     applicant.status = true;
     applicant.passedAt = new Date();
@@ -1171,17 +1201,23 @@ router.post('/teacher-pipeline/applicants/:id/pass', verifyAdminApiAuth, require
     if (!invitation) {
       invitation = await InvitationToken.create({
         applicationId: applicant._id,
-        email: applicant.email,
+        email: recipientEmail,
         token: crypto.randomBytes(24).toString('hex'),
         isUsed: false,
         expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7) // 7 days
       });
     }
 
-    const frontendBase = process.env.FRONTEND_URL || 'http://localhost:5000';
-    const signupLink = `${frontendBase}/teacher-signup?invitation=${encodeURIComponent(invitation.token)}`;
+    const frontendBase = (process.env.FRONTEND_URL || 'http://localhost:5000').replace(/\/$/, '');
+    const appIdStr = applicant._id.toString();
+    const signupLink = `${frontendBase}/register.html?appId=${encodeURIComponent(appIdStr)}&invitation=${encodeURIComponent(invitation.token)}`;
 
-    const emailResult = await sendTeacherPipelineWelcomeEmail(applicant.email, applicant.fullName, signupLink);
+    const emailResult = await sendTeacherPipelineWelcomeEmail(
+      recipientEmail,
+      applicant.fullName,
+      signupLink,
+      applicant.firstName
+    );
 
     res.json({
       success: true,

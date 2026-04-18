@@ -1,65 +1,973 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
-    <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="js/security-guard.js?v=1"></script>
   <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' 'unsafe-eval'; object-src 'none';">
   <title>Class Schedule - RemoEdPH</title>
       <link rel="stylesheet" href="modern-styles.css">
     <link rel="stylesheet" href="child-friendly-styles.css">
   <script src="vendor/luxon.min.js"></script>
-  <script src="timezone-utils.js"></script>
-  <script src="js/classroom-entry.js"></script>
-  <script src="js/user-session.js"></script>
-<link rel="stylesheet" href="css/teacher-sidebar.css">
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="css/student-portal-layout.css">
+  <style>
+    body { 
+      font-family: 'Comic Sans MS', 'Chalkboard SE', 'Trebuchet MS', 'Segoe UI', sans-serif; 
+      background: linear-gradient(135deg, #FFF0F5 0%, #E8F8F5 50%, #FFF9E6 100%);
+      background-attachment: fixed;
+      margin: 0;
+      padding: 0;
+    }
+    .remoed-main { 
+      display: flex; 
+      min-height: 100vh; 
+    }
+    .remoed-content {
+      flex: 1;
+      padding: 36px 20px 36px 20px;
+      min-width: 0;
+      background: #f6fbff;
+      min-height: 100vh;
+      box-sizing: border-box;
+      margin-left: 260px;
+      max-width: calc(100vw - 260px);
+      overflow-x: auto;
+    }
+    
+    .header {
+      margin-bottom: 24px;
+    }
+    
+    .header h1 {
+      color: #667eea;
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin: 0 0 24px 0;
+    }
+    
+    .header-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    
+    .week-navigation {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    
+    .nav-btn {
+      background: linear-gradient(135deg, #ffe85a, #f4d03f);
+      color: #333;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 8px rgba(255, 232, 90, 0.3);
+    }
+    
+    .nav-btn:hover {
+      background: linear-gradient(135deg, #f4d03f, #f1c40f);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(255, 232, 90, 0.4);
+    }
+    
+    .nav-btn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    
+    .week-display {
+      font-weight: 600;
+      color: #333;
+      min-width: 120px;
+      text-align: center;
+    }
+    
+    .current-week-btn {
+      background: linear-gradient(135deg, #28a745, #1e7e34) !important;
+      color: white;
+      box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3) !important;
+    }
+    
+    .current-week-btn:hover {
+      background: linear-gradient(135deg, #1e7e34, #155724) !important;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4) !important;
+    }
+    
+    .weekly-grid {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(28, 167, 231, 0.1);
+      overflow: auto;
+      max-height: calc(100vh - 180px);
+      min-height: calc(100vh - 180px);
+      border: 1px solid rgba(28, 167, 231, 0.1);
+    }
+    
+    .schedule-table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      margin: 0;
+    }
+    
+    .schedule-table th,
+    .schedule-table td {
+      border: 1px solid #e0e6ed;
+      padding: 12px 8px;
+      text-align: center;
+      vertical-align: middle;
+    }
+    
+    .schedule-table th {
+      background: linear-gradient(135deg, #667eea, #5a67d8);
+      font-weight: 600;
+      color: white;
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+    
+    .time-column {
+      width: 80px;
+      position: sticky;
+      left: 0;
+      background: #f8f9fa;
+      z-index: 3;
+    }
+    
+    .day-column {
+      width: calc((100% - 80px) / 7);
+      line-height: 1.2;
+      padding: 8px 4px;
+    }
+    
+    .day-column br {
+      margin: 2px 0;
+    }
+    
+    .time-slot {
+      font-size: 0.9rem;
+      color: #666;
+      min-height: 40px;
+    }
+    
+    .time-slot.booked {
+      background: #f8d7da;
+      color: #721c24;
+      font-weight: 600;
+    }
+    
+    .time-slot.unavailable {
+      background: #f5f5f5;
+      color: #999;
+      background-image: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 2px,
+        #e0e0e0 2px,
+        #e0e0e0 4px
+      );
+    }
+    
+    .time-slot.past {
+      background: #f8f9fa;
+      color: #6c757d;
+      cursor: pointer;
+      font-size: 0.8rem;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .time-slot.feedback-submitted {
+      background: #28a745;
+      color: white;
+      cursor: pointer;
+      font-size: 0.8rem;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+    }
+    
+    .time-slot.feedback-submitted:hover {
+      background: #218838;
+    }
+    
+    .time-slot.feedback-needed {
+      background: #ffc107;
+      color: #000;
+      cursor: pointer;
+      font-size: 0.8rem;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+    }
+    
+    .time-slot.feedback-needed:hover {
+      background: #ffb300;
+    }
+    
+
+    .sidebar {
+      position: fixed;
+      left: 0;
+      top: 0;
+      width: 260px;
+      background: #fff;
+      height: 100vh;
+      box-shadow: 2px 0 12px rgba(28,167,231,0.06);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 32px 0 0 0;
+      z-index: 1000;
+    }
+    .sidebar-logo {
+      width: 48px;
+      height: 48px;
+      object-fit: contain;
+      margin-bottom: 12px;
+    }
+    .sidebar-title {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #1ca7e7;
+      margin-bottom: 24px;
+      letter-spacing: 1px;
+      text-align: center;
+    }
+    .sidebar-avatar {
+      background: #1ca7e7;
+      color: #fff;
+      font-weight: 700;
+      border-radius: 50%;
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      margin-bottom: 8px;
+    }
+    .sidebar-email {
+      font-size: 0.95rem;
+      color: #1ca7e7;
+      font-weight: 500;
+      text-align: center;
+      margin-bottom: 32px;
+      word-break: break-all;
+      padding: 0 16px;
+    }
+    .sidebar-nav {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .sidebar-link {
+      width: 100%;
+      padding: 12px 0;
+      text-align: left;
+      color: #1ca7e7;
+      font-weight: 500;
+      text-decoration: none;
+      background: transparent;
+      transition: background 0.2s, color 0.2s;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      position: relative;
+    }
+    .sidebar-link.active {
+      background: #f8f9fa;
+      color: #1ca7e7;
+      font-weight: 600;
+    }
+    .sidebar-link.active::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 4px;
+      height: 100%;
+      background: #ffd700;
+    }
+    .sidebar-link:hover:not(.logout) {
+      background: #f0f8ff;
+    }
+    .sidebar-link.logout {
+      color: #e74c3c;
+      margin-top: 16px;
+    }
+    .sidebar-link.logout:hover {
+      background: #fdf2f2;
+    }
+    .sidebar-icon {
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .main-content {
+      margin-left: 260px;
+      padding: 24px 32px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background: #f6fbff;
+    }
+    
+    .main-content .header {
+      flex-shrink: 0;
+      margin-bottom: 16px;
+    }
+    
+    .main-content .weekly-grid {
+      flex: 1;
+      min-height: 0;
+    }
+    .class-table-container {
+      max-width: 1200px;
+      margin: 40px auto;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+      padding: 32px 24px;
+    }
+    .class-table-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+    .class-table-title { font-size: 1.5rem; font-weight: 600; color: #3a7afe; }
+    .class-table-nav { display: flex; gap: 12px; }
+    .class-table-nav button { background: #f4f6fb; border: none; border-radius: 5px; padding: 0.5rem 1.2rem; font-size: 1rem; cursor: pointer; color: #3a7afe; transition: background 0.2s; }
+    .class-table-nav button.active, .class-table-nav button:hover { background: #3a7afe; color: #fff; }
+    .view-btn { background: #f4f6fb; border: 1px solid #e0e6ed; border-radius: 5px; padding: 0.5rem 1rem; margin: 0 3px; cursor: pointer; transition: all 0.2s; }
+    .view-btn.active { background: #3a7afe; color: white; border-color: #3a7afe; }
+    .view-btn:hover { background: #e3f2fd; }
+    .view-btn.active:hover { background: #2d5bb8; }
+    .class-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      min-width: 900px;
+      border-radius: 8px;
+      overflow: hidden;
+      table-layout: fixed;
+    }
+    .class-table th, .class-table td {
+      padding: 5px 2px;
+      text-align: center;
+      border: 1px solid #e0e6ed;
+      font-size: 0.93rem;
+    }
+    .class-table th {
+      background: #f4f6fb;
+      font-weight: 600;
+      color: #3a7afe;
+      padding: 8px 2px;
+      border-bottom: 2px solid #e0e6ed;
+    }
+    .class-table td.booked {
+      background: #1ca7e7;
+      color: #fff;
+      font-weight: 600;
+      border: 2px solid #1ca7e7;
+    }
+    .class-table td.open {
+      background: #eaf7ff;
+      color: #1ca7e7;
+      cursor: pointer;
+    }
+    .class-table td.cancelled { background: #f8d7da; color: #721c24; }
+    .class-table td.time-label {
+      background: #f8f9fa;
+      font-weight: 500;
+      color: #333;
+      border-right: 2px solid #e0e6ed;
+    }
+    .class-table td.time-label:hover { background: #e0e6ed; }
+    .class-table-scroll {
+      overflow-x: auto;
+      max-height: 75vh;
+      min-height: 200px;
+      overflow-y: auto;
+      border: 1px solid #e0e6ed;
+      border-radius: 8px;
+      margin-bottom: 4px;
+    }
+    /* Simple 2-column layout for day view */
+    .class-table.day-view { width: 100%; table-layout: fixed; }
+    .class-table.day-view th:nth-child(1) { width: 80px; }
+    .class-table.day-view td:nth-child(1) { width: 80px; }
+    .class-table.day-view th:nth-child(2) { width: calc(100% - 80px); }
+    .class-table.day-view td:nth-child(2) { width: calc(100% - 80px); }
+    .message { margin: 18px 0; text-align: center; font-size: 1.1rem; padding: 12px; border-radius: 6px; }
+    .message.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .message.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    .message.info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+    @media (max-width: 1200px) { .class-table-container { width: 98%; padding: 6px 6px; } }
+    @media (max-width: 900px) { .class-table-container { width: 99%; padding: 4px 4px; } }
+    @media (max-height: 800px) { .class-table-container { margin: 2px auto; padding: 4px 4px; min-height: 85vh; } .class-table-scroll { max-height: 65vh; } }
+    .remoed-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #fff;
+      padding: 12px 32px 12px 32px;
+      border-radius: 14px 14px 0 0;
+      box-shadow: 0 2px 8px rgba(28,167,231,0.04);
+      margin-bottom: 18px;
+    }
+    .remoed-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .remoed-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #1ca7e7;
+      letter-spacing: 1px;
+    }
+    .remoed-user {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .remoed-avatar {
+      background: #1ca7e7;
+      color: #fff;
+      font-weight: 700;
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+    }
+    .remoed-username {
+      font-size: 1rem;
+      color: #1ca7e7;
+      font-weight: 500;
+    }
+    .remoed-card {
+      width: 320px;
+      margin: 24px auto 32px auto;
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(28,167,231,0.08);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 32px 16px 28px 16px;
+    }
+    .remoed-card-logo {
+      width: 64px;
+      height: 64px;
+      object-fit: contain;
+      margin-bottom: 10px;
+    }
+    .remoed-card-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #1ca7e7;
+      margin-bottom: 16px;
+      letter-spacing: 1px;
+      text-align: center;
+    }
+    .remoed-card-avatar {
+      background: #1ca7e7;
+      color: #fff;
+      font-weight: 700;
+      border-radius: 50%;
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      margin-bottom: 10px;
+    }
+    .remoed-card-email {
+      font-size: 1.08rem;
+      color: #1ca7e7;
+      font-weight: 500;
+      text-align: center;
+      margin-bottom: 0;
+    }
+    /* Modern Modal Styles */
+    .remoed-modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: rgba(0, 0, 0, 0.5);
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(4px);
+    }
+    
+    .remoed-modal.show {
+      display: flex;
+    }
+    
+    .remoed-modal-content {
+      background: #ffffff;
+      border-radius: 1rem;
+      width: 90%;
+      max-width: 600px;
+      max-height: 90vh;
+      overflow: hidden;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+      animation: remoedModalFadeIn 0.3s ease-out;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    @keyframes remoedModalFadeIn {
+      from { 
+        transform: scale(0.95) translateY(-10px); 
+        opacity: 0; 
+      }
+      to { 
+        transform: scale(1) translateY(0); 
+        opacity: 1; 
+      }
+    }
+    
+    .remoed-modal-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-radius: 1rem 1rem 0 0;
+    }
+    
+    .remoed-modal-title {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+    
+    .remoed-modal-close {
+      background: rgba(255, 255, 255, 0.2);
+      border: none;
+      color: white;
+      width: 2rem;
+      height: 2rem;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+    
+    .remoed-modal-close:hover {
+      background: rgba(255, 255, 255, 0.3);
+      transform: scale(1.05);
+    }
+    
+    .remoed-modal-body {
+      padding: 1.5rem;
+      overflow-y: auto;
+      flex: 1;
+    }
+    
+    .remoed-modal-footer {
+      padding: 1.5rem;
+      border-top: 1px solid #e2e8f0;
+      display: flex;
+      gap: 0.75rem;
+      justify-content: flex-end;
+      background: #f8fafc;
+    }
+
+    /* Generic modal styles for class info / cancellation */
+    .modal {
+      display: none; /* Shown via JS */
+      position: fixed;
+      z-index: 2000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0, 0, 0, 0.5);
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .modal.show {
+      display: flex;
+    }
+
+    .modal .modal-content {
+      background: #ffffff;
+      border-radius: 0.75rem;
+      width: 90%;
+      max-width: 420px;
+      max-height: 90vh;
+      overflow: hidden;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+      display: flex;
+      flex-direction: column;
+      margin: auto;
+      position: relative;
+    }
+
+    .modal .modal-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 1rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal .modal-body {
+      padding: 1.25rem 1.5rem;
+    }
+
+    .modal .modal-actions {
+      padding: 1rem 1.5rem;
+      border-top: 1px solid #e2e8f0;
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.75rem;
+      background: #f8fafc;
+    }
+
+    .modal .detail-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+      font-size: 0.9rem;
+    }
+
+    .modal .detail-row label {
+      font-weight: 600;
+      color: #374151;
+      margin-right: 0.5rem;
+    }
+    
+    /* Class Details Card */
+    .remoed-feedback-class-details {
+      background: #f8fafc;
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+      margin-bottom: 1.5rem;
+      border: 1px solid #e2e8f0;
+    }
+    
+    .remoed-feedback-detail-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    
+    .remoed-feedback-detail-item:last-child {
+      border-bottom: none;
+    }
+    
+    .remoed-feedback-detail-label {
+      font-weight: 600;
+      color: #374151;
+      font-size: 0.875rem;
+    }
+    
+    .remoed-feedback-detail-value {
+      color: #6b7280;
+      font-size: 0.875rem;
+      text-align: right;
+    }
+    
+    /* Feedback Sections */
+    .remoed-feedback-section {
+      margin-bottom: 2rem;
+    }
+    
+    .remoed-feedback-section-title {
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: #1a202c;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    /* Rating Container */
+    .remoed-rating-container {
+      text-align: center;
+      padding: 1.5rem;
+      background: #f8fafc;
+      border-radius: 0.75rem;
+      border: 1px solid #e2e8f0;
+    }
+    
+    .remoed-stars {
+      display: flex;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    
+    .remoed-star {
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-size: 2rem;
+      color: #d1d5db;
+      padding: 0.25rem;
+      border-radius: 0.5rem;
+    }
+    
+    .remoed-star:hover {
+      color: #fbbf24;
+      transform: scale(1.1);
+      text-shadow: 0 0 8px rgba(251, 191, 36, 0.4);
+    }
+    
+    .remoed-star.active {
+      color: #f59e0b !important;
+      transform: scale(1.05);
+      text-shadow: 0 0 10px rgba(245, 158, 11, 0.6);
+    }
+    
+    .remoed-rating-text {
+      font-size: 0.875rem;
+      color: #6b7280;
+      font-weight: 500;
+    }
+    
+    /* Character Count */
+    .remoed-char-count {
+      text-align: right;
+      font-size: 0.75rem;
+      color: #9ca3af;
+      margin-top: 0.5rem;
+    }
+    
+    /* Issue Grid */
+    .remoed-issue-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+    
+    .remoed-checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      cursor: pointer;
+      padding: 0.75rem;
+      border-radius: 0.5rem;
+      border: 1px solid #e2e8f0;
+      background: #ffffff;
+      transition: all 0.2s ease;
+    }
+    
+    .remoed-checkbox-item:hover {
+      background: #f8fafc;
+      border-color: #cbd5e1;
+    }
+    
+    .remoed-checkbox-item input[type="checkbox"] {
+      display: none;
+    }
+    
+    .remoed-checkbox-custom {
+      width: 1.25rem;
+      height: 1.25rem;
+      border: 2px solid #d1d5db;
+      border-radius: 0.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      background: #ffffff;
+    }
+    
+    .remoed-checkbox-item input[type="checkbox"]:checked + .remoed-checkbox-custom {
+      background: #667eea;
+      border-color: #667eea;
+    }
+    
+    .remoed-checkbox-icon {
+      color: #ffffff;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+    
+    .remoed-checkbox-item input[type="checkbox"]:checked + .remoed-checkbox-custom .remoed-checkbox-icon {
+      opacity: 1;
+    }
+    
+    .remoed-checkbox-label {
+      font-size: 0.875rem;
+      color: #374151;
+      font-weight: 500;
+    }
+    
+    /* Legacy button styles for compatibility */
+    .btn-secondary {
+      background: #6c757d;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    .btn-secondary:hover {
+      background: #5a6268;
+    }
+    .btn-join {
+      background: #28a745;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 14px;
+    }
+    .btn-join:hover {
+      background: #218838;
+    }
+    .btn-join:disabled {
+      background: #6c757d;
+      cursor: not-allowed;
+    }
+    .btn-cancel {
+      background: #dc3545;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 14px;
+    }
+    .btn-cancel:hover {
+      background: #c82333;
+    }
+    .btn-danger {
+      background: #dc3545;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 14px;
+    }
+    .btn-danger:hover {
+      background: #c82333;
+    }
+    .cancellation-details {
+      margin-top: 15px;
+      padding: 10px;
+      background: #f8f9fa;
+      border-radius: 6px;
+      border: 1px solid #e0e6ed;
+    }
+    .form-group {
+      margin-top: 10px;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 600;
+      color: #333;
+    }
+    .form-group textarea {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+      font-size: 0.9rem;
+      resize: vertical;
+    }
+         .char-count {
+       font-size: 0.8rem;
+       color: #666;
+       margin-top: 5px;
+       text-align: right;
+     }
+     
+     
+  </style>
+  <link rel="stylesheet" href="css/teacher-sidebar.css">
+  <link rel="stylesheet" href="css/student-portal-layout.css">
 </head>
-<body  class="student-portal page-student-class-table">
+<body class="student-portal page-student-class-table">
   <div class="remoed-main">
     <div id="student-sidebar-root"></div>
     <script src="js/student-sidebar.js"></script>
     <script>StudentSidebar.render('student-sidebar-root', 'schedule');</script>
   <div class="remoed-content">
-    <div class="student-schedule-toolbar">
-      <h1 class="student-schedule-toolbar__title">My Schedule</h1>
-      <div class="week-navigation">
-        <button id="prev-week" class="nav-btn">← Previous Week</button>
-        <span id="week-display" class="week-display">Current Week</span>
-        <button id="next-week" class="nav-btn">Next Week →</button>
-        <button id="current-week" class="nav-btn current-week-btn">Today</button>
-      </div>
-    </div>
-
-    <div id="feedback-reminder" class="feedback-reminder">
-      <span id="feedback-reminder-text">You have pending feedback.</span>
-      <div class="reminder-actions">
-        <button type="button" class="open-feedback-btn" id="open-feedback-reminder-btn">Give Feedback</button>
-        <button type="button" class="dismiss-feedback-btn" id="dismiss-feedback-reminder-btn">Dismiss</button>
+    <div class="header">
+      <h1 style="font-size: 2rem; font-weight: 800; color: #1CA7E7; text-shadow: 2px 2px 4px rgba(28, 167, 231, 0.2); display: flex; align-items: center; gap: 12px;">
+        <span>📚📶</span>
+        <span>📅 My Schedule</span>
+      </h1>
+      <div class="header-controls">
+        <div class="week-navigation">
+          <button id="prev-week" class="nav-btn">← Previous Week</button>
+          <span id="week-display" class="week-display">Current Week</span>
+          <button id="next-week" class="nav-btn">Next Week →</button>
+          <button id="current-week" class="nav-btn current-week-btn">Today</button>
+        </div>
       </div>
     </div>
 
     <!-- Booking Indicators Legend -->
-    <p class="student-schedule-pht-note" id="student-schedule-hours-note" style="margin: 0 0 8px; font-size: 0.82rem; color: #475569; font-weight: 600;">All times are <strong>Philippine Time (PHT, Asia/Manila, UTC+8)</strong>—the same clock used across the Philippines; other places that share this offset will match. Daily window: 6:00 AM – midnight (24:00).</p>
-    <div class="booking-legend student-schedule-legend" style="background: linear-gradient(135deg, #f8f9fa 0%, #f1f3fd 100%); border: 1px solid rgba(90, 103, 216, 0.15); box-shadow: 0 2px 10px rgba(90, 103, 216, 0.06);">
-      <div style="display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; overflow-x: auto;">
-        <h3 style="color: #5a67d8; font-weight: 600;">Schedule indicators</h3>
+    <div class="booking-legend" style="margin-bottom: 20px; padding: 15px; background: linear-gradient(135deg, #f8f9fa 0%, #e8f4fd 100%); border-radius: 12px; border: 1px solid rgba(28, 167, 231, 0.1); box-shadow: 0 4px 16px rgba(28, 167, 231, 0.05);">
+      <div style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; flex-wrap: nowrap; overflow-x: auto;">
+        <h3 style="margin: 0; color: #667eea; font-size: 1.1rem; font-weight: 600;">📊 Schedule Indicators:</h3>
         <div style="display: flex; align-items: center; gap: 4px; white-space: nowrap; flex-shrink: 0;">
           <span style="display: inline-block; width: 18px; height: 18px; background: #f8d7da; color: #721c24; text-align: center; font-weight: bold; border-radius: 3px; font-size: 0.75rem; line-height: 18px;">B</span>
           <span style="white-space: nowrap;">Booked</span>
         </div>
         <div style="display: flex; align-items: center; gap: 4px; white-space: nowrap; flex-shrink: 0;">
           <span style="display: inline-block; width: 18px; height: 18px; background: #28a745; color: white; text-align: center; font-weight: bold; border-radius: 3px; font-size: 0.75rem; line-height: 18px;">✓</span>
-          <span style="white-space: nowrap;">Teacher feedback (stars shown)</span>
+          <span style="white-space: nowrap;">Feedback Submitted</span>
         </div>
         <div style="display: flex; align-items: center; gap: 4px; white-space: nowrap; flex-shrink: 0;">
           <span style="display: inline-block; width: 18px; height: 18px; background: #ffc107; color: #000; text-align: center; font-weight: bold; border-radius: 3px; font-size: 0.75rem; line-height: 18px;">!</span>
-          <span style="white-space: nowrap;">Teacher feedback pending</span>
+          <span style="white-space: nowrap;">Feedback Pending</span>
         </div>
         <div style="display: flex; align-items: center; gap: 4px; white-space: nowrap; flex-shrink: 0;">
-          <span style="display: inline-block; width: 18px; height: 18px; background: #6c757d; color: white; text-align: center; font-weight: bold; border-radius: 3px; font-size: 0.75rem; line-height: 18px;">P</span>
+          <span style="display: inline-block; width: 18px; height: 18px; background: #6c757d; color: white; text-align: center; font-weight: bold; border-radius: 3px; font-size: 0.75rem; line-height: 18px;">⏰</span>
           <span style="white-space: nowrap;">Past</span>
         </div>
       </div>
@@ -80,14 +988,14 @@
   </div>
   <!-- Booking Details Modal -->
   <div id="booking-modal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.25); z-index:2000; align-items:center; justify-content:center;">
-    <div style="background:#fff; border-radius:12px; max-width:350px; width:90vw; margin:auto; box-shadow:0 4px 24px rgba(90,103,216,0.15); padding:28px 22px 18px 22px; position:relative;">
+    <div style="background:#fff; border-radius:12px; max-width:350px; width:90vw; margin:auto; box-shadow:0 4px 24px rgba(28,167,231,0.13); padding:28px 22px 18px 22px; position:relative;">
       <button id="close-booking-modal" style="position:absolute; top:10px; right:14px; background:none; border:none; font-size:1.3rem; color:#888; cursor:pointer;">&times;</button>
-      <div style="font-size:1.2rem; font-weight:700; color:#5a67d8; margin-bottom:10px;">Class Details</div>
-      <div style="margin-bottom:8px;"><span style="font-weight:600; color:#5a67d8;">Teacher:</span> <span id="modal-teacher"></span></div>
-      <div style="margin-bottom:8px;"><span style="font-weight:600; color:#5a67d8;">Lesson:</span> <span id="modal-lesson"></span></div>
-      <div style="margin-bottom:8px;"><span style="font-weight:600; color:#5a67d8;">Level:</span> <span id="modal-level"></span></div>
-      <div style="margin-bottom:8px;"><span style="font-weight:600; color:#5a67d8;">Date:</span> <span id="modal-date"></span></div>
-      <div style="margin-bottom:8px;"><span style="font-weight:600; color:#5a67d8;">Time:</span> <span id="modal-time"></span></div>
+      <div style="font-size:1.2rem; font-weight:700; color:#667eea; margin-bottom:10px;">Class Details</div>
+      <div style="margin-bottom:8px;"><span style="font-weight:600; color:#667eea;">Teacher:</span> <span id="modal-teacher"></span></div>
+      <div style="margin-bottom:8px;"><span style="font-weight:600; color:#667eea;">Lesson:</span> <span id="modal-lesson"></span></div>
+      <div style="margin-bottom:8px;"><span style="font-weight:600; color:#667eea;">Level:</span> <span id="modal-level"></span></div>
+      <div style="margin-bottom:8px;"><span style="font-weight:600; color:#667eea;">Date:</span> <span id="modal-date"></span></div>
+      <div style="margin-bottom:8px;"><span style="font-weight:600; color:#667eea;">Time:</span> <span id="modal-time"></span></div>
     </div>
   </div>
   <!-- Class Info Modal -->
@@ -121,20 +1029,11 @@
           </div>
           <div class="detail-row">
             <label>Classroom ID:</label>
-            <span id="info-classroom-id" style="font-weight: bold; color: #5a67d8;"></span>
+            <span id="info-classroom-id" style="font-weight: bold; color: #667eea;"></span>
           </div>
           <div class="detail-row">
             <label>Join Classroom:</label>
             <button class="btn-join" id="join-classroom-btn">Enter Live Classroom</button>
-          </div>
-          <div id="info-teacher-feedback-section" style="display: none; margin-top: 16px; padding-top: 16px; border-top: 1px solid #e7e5e4;">
-            <label style="display:block; font-weight:600; color:#44403c; margin-bottom:8px;">Teacher feedback</label>
-            <div id="info-teacher-stars" style="font-size: 1.35rem; letter-spacing: 2px; color: #b45309;"></div>
-            <p id="info-teacher-comment" style="margin: 10px 0 0; color: #57534e; font-size: 0.95rem; line-height: 1.5;"></p>
-            <p id="info-teacher-feedback-pending" style="display: none; margin: 8px 0 0; color: #92400e; font-size: 0.92rem;">Your teacher hasn’t submitted feedback for this class yet. Check back soon.</p>
-          </div>
-          <div class="detail-row" id="rate-teacher-row" style="display: none; margin-top: 12px;">
-            <button type="button" class="btn-secondary" id="open-rate-teacher-btn" style="background: linear-gradient(135deg, #f5f2eb, #ecfeff); border: 1px solid rgba(13,148,136,0.35); color: #134e4a; font-weight: 600;">Rate your teacher</button>
           </div>
           <div class="detail-row" id="cancel-booking-row" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #e0e6ed;">
             <label>Actions:</label>
@@ -339,37 +1238,15 @@
     // Feedback Modal Functions - Define these first so they're available when called
     let currentFeedbackBooking = null;
     let selectedRating = 0;
-
-    function getTeacherLogicalIdFromBooking(booking) {
-        if (!booking) return '';
-        if (typeof booking.teacherLogicalId === 'string' && booking.teacherLogicalId.trim()) {
-            return booking.teacherLogicalId.trim();
-        }
-        if (typeof booking.teacherId === 'string' && booking.teacherId.trim()) {
-            return booking.teacherId.trim();
-        }
-        if (booking.teacherId && typeof booking.teacherId === 'object' && booking.teacherId.teacherId) {
-            return String(booking.teacherId.teacherId).trim();
-        }
-        return '';
-    }
-
-    function getBookingIdString(booking) {
-        if (!booking) return '';
-        const raw = booking._id != null ? booking._id : booking.id;
-        if (raw == null) return '';
-        if (typeof raw === 'object' && typeof raw.toString === 'function') return raw.toString();
-        return String(raw);
-    }
     
     function showPastBookingFeedback(booking) {
         currentFeedbackBooking = booking;
         
-        const tiFb = bookingDisplayDateTime(booking);
-        document.getElementById('feedback-class-date').textContent = TU.formatYmdAsPhilippinesLongDate
-          ? TU.formatYmdAsPhilippinesLongDate(tiFb.date || booking.date)
-          : String(tiFb.date || booking.date || '');
-        document.getElementById('feedback-class-time').textContent = formatTime24Hour(tiFb.slot || booking.time);
+        // Format date
+        const date = new Date(booking.date);
+        const formattedDate = date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        document.getElementById('feedback-class-date').textContent = formattedDate;
+        document.getElementById('feedback-class-time').textContent = formatTime24Hour(booking.time);
         
         // Handle teacher name
         let teacherName = 'Unknown Teacher';
@@ -400,7 +1277,7 @@
         }, 100);
         
         // Check if feedback already exists for this booking
-        checkExistingFeedback(getBookingIdString(booking));
+        checkExistingFeedback(booking._id);
     }
     
     function closeFeedbackModal() {
@@ -466,20 +1343,10 @@
         console.log('📝 Comments:', comments);
         console.log('📝 Technical issues:', technicalIssues);
         
-        const bookingIdStr = getBookingIdString(currentFeedbackBooking);
-        const teacherIdStr = getTeacherLogicalIdFromBooking(currentFeedbackBooking);
-
-        if (!bookingIdStr || !teacherIdStr) {
-            alert(
-              'This class could not be identified (missing booking or teacher). Please refresh your schedule page and try again.'
-            );
-            return;
-        }
-
-        // Validate rating (1–5 only; 0 means no selection)
-        if (!Number.isFinite(selectedRating) || selectedRating < 1 || selectedRating > 5) {
+        // Validate rating
+        if (selectedRating === 0) {
             console.log('❌ No rating selected');
-            alert('Please tap the stars to choose a rating from 1 to 5 before submitting.');
+            alert('Please provide a rating before submitting feedback.');
             return;
         }
         
@@ -494,10 +1361,10 @@
         
         // Submit feedback to server
         submitFeedbackToServer({
-            bookingId: bookingIdStr,
+            bookingId: currentFeedbackBooking._id,
             rating: selectedRating,
             comment: comments,
-            teacherId: teacherIdStr
+            teacherId: currentFeedbackBooking.teacherId
         });
     }
     
@@ -784,7 +1651,7 @@
     async function checkExistingFeedback(bookingId) {
         try {
             // Use the global feedback history instead of making a new API call
-            const existingFeedback = feedbackHistory.find(f => String(f.bookingId) === String(bookingId));
+            const existingFeedback = feedbackHistory.find(f => f.bookingId === bookingId);
             
             if (existingFeedback) {
                 console.log('⚠️ Feedback already exists for this booking:', existingFeedback.rating, 'stars');
@@ -831,31 +1698,13 @@
             
             console.log('📤 Submitting feedback data:', feedbackData);
             
-            const payload = {
-                bookingId: feedbackData.bookingId != null ? String(feedbackData.bookingId) : '',
-                teacherId: feedbackData.teacherId != null ? String(feedbackData.teacherId).trim() : '',
-                rating: Number(feedbackData.rating),
-                comment: feedbackData.comment != null ? String(feedbackData.comment) : '',
-            };
-            if (
-                !payload.bookingId ||
-                !payload.teacherId ||
-                !Number.isFinite(payload.rating) ||
-                payload.rating < 1 ||
-                payload.rating > 5
-            ) {
-                throw new Error(
-                    'Missing booking, teacher, or star rating. Choose 1–5 stars, then submit. If this keeps happening, refresh your schedule and try again.'
-                );
-            }
-
             const response = await fetch('/api/student/feedback/submit', {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify(payload)
+                body: JSON.stringify(feedbackData)
             });
             
             console.log('📥 Response status:', response.status);
@@ -916,16 +1765,10 @@
       window.location.href = 'student-login.html';
     };
 
-    const TU = window.TimezoneUtils || {};
-    const SCHEDULE_FIRST_HOUR = TU.REMOED_OPERATING_START_HOUR != null ? TU.REMOED_OPERATING_START_HOUR : 6;
-    const SCHEDULE_LAST_HOUR_EXCLUSIVE = TU.REMOED_OPERATING_END_HOUR_EXCLUSIVE != null ? TU.REMOED_OPERATING_END_HOUR_EXCLUSIVE : 24;
-
-    const PH_ZONE = TU.REMOED_ANCHOR_ZONE || TU.REMOED_DISPLAY_ZONE || 'Asia/Manila';
-
+    // Weekly grid variables
     let currentWeek = new Date();
     let bookingsData = [];
     let feedbackHistory = []; // Store feedback history
-    let dismissedFeedbackReminder = false;
 
     // Initialize the weekly grid
     function initializeWeeklyGrid() {
@@ -945,13 +1788,12 @@
         plus: ({ days = 0 } = {}) => createDateTime(new Date(d.getTime() + days * 86400000), timeZone),
         minus: ({ days = 0 } = {}) => createDateTime(new Date(d.getTime() - days * 86400000), timeZone),
         toFormat: (fmt) => {
-          const loc = { timeZone: timeZone };
-          if (fmt === 'ccc') return d.toLocaleDateString('en-US', Object.assign({ weekday: 'short' }, loc));
-          if (fmt === 'LLLL d') return d.toLocaleDateString('en-US', Object.assign({ month: 'long', day: 'numeric' }, loc));
+          if (fmt === 'ccc') return d.toLocaleDateString(undefined, { weekday: 'short' });
+          if (fmt === 'LLLL d') return d.toLocaleDateString(undefined, { month: 'long', day: 'numeric' });
           if (fmt === 'ccc LLLL d') {
-            return `${d.toLocaleDateString('en-US', Object.assign({ weekday: 'short' }, loc))} ${d.toLocaleDateString('en-US', Object.assign({ month: 'long' }, loc))} ${new Intl.DateTimeFormat('en-US', Object.assign({ day: 'numeric' }, loc)).format(d)}`;
+            return `${d.toLocaleDateString(undefined, { weekday: 'short' })} ${d.toLocaleDateString(undefined, { month: 'long' })} ${d.getDate()}`;
           }
-          return d.toLocaleDateString('en-US', loc);
+          return d.toLocaleDateString();
         },
         toISODate: () => d.toISOString().split('T')[0]
       };
@@ -982,76 +1824,66 @@
       }
     }
 
-    // Generate time slots: 30-minute steps from 6:00 through 23:30 in selected aligned zone
+    // Generate time slots (30-minute intervals from 01:00 to 24:00) - 24-hour format
     function generateTimeSlots() {
       const gridBody = document.getElementById('time-slots-grid');
       gridBody.innerHTML = '';
-
-      const Lux = window.luxon && window.luxon.DateTime;
-      const zone = getDisplayZone();
-      let weekDates = [];
-      if (Lux) {
-        const base = Lux.fromJSDate(currentWeek, { zone });
-        const monday = base.minus({ days: base.weekday - 1 });
-        for (let i = 0; i < 7; i++) {
-          weekDates.push(monday.plus({ days: i }).toISODate());
-        }
-      } else {
-        const date = new Date(currentWeek);
-        const dayOfWeek = currentWeek.getDay();
-        const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-        for (let day = 0; day < 7; day++) {
-          const d = new Date(date);
-          d.setDate(currentWeek.getDate() - daysToMonday + day);
-          weekDates.push(d.toISOString().split('T')[0]);
-        }
-      }
-
-      const nowZ = Lux ? Lux.now().setZone(zone) : null;
-
-      for (let hour = SCHEDULE_FIRST_HOUR; hour < SCHEDULE_LAST_HOUR_EXCLUSIVE; hour++) {
+      
+      const startHour = 1;
+      const endHour = 24;
+      
+      for (let hour = startHour; hour < endHour; hour++) {
         for (let minute = 0; minute < 60; minute += 30) {
           const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-
+          
           const timeRow = document.createElement('tr');
-
+          
+          // Time column
           const timeColumn = document.createElement('td');
           timeColumn.className = 'time-slot';
           timeColumn.textContent = formatTime24Hour(timeString);
           timeRow.appendChild(timeColumn);
-
-          for (let day = 0; day < 7; day++) {
-            const dateString = weekDates[day];
-
+          
+          // Day columns
+                  for (let day = 0; day < 7; day++) {
+          const date = new Date(currentWeek);
+          // Calculate Monday as the start of the week
+          const dayOfWeek = currentWeek.getDay();
+          const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+          date.setDate(currentWeek.getDate() - daysToMonday + day);
+            const dateString = date.toISOString().split('T')[0];
+            
             const slot = document.createElement('td');
             slot.className = 'time-slot';
             slot.dataset.date = dateString;
             slot.dataset.time = timeString;
-
-            let isPastSlot = false;
-            if (Lux && nowZ) {
-              const slotStart = Lux.fromISO(`${dateString}T${timeString}`, { zone });
-              const slotEnd = slotStart.plus({ minutes: 25 });
-              isPastSlot = nowZ > slotEnd;
-            } else {
-              const slotDateTime = new Date(`${dateString}T${timeString}`);
-              const now = new Date();
-              const currentDate = now.toISOString().split('T')[0];
-              let isClassDurationPassed = false;
-              if (dateString === currentDate) {
-                const [h, m] = timeString.split(':').map(Number);
+            
+            // Check if slot is in the past
+            const slotDateTime = new Date(`${dateString}T${timeString}`);
+            const now = new Date();
+            
+            // Check if the class duration has passed (25 minutes after start time)
+            const currentDate = now.toISOString().split('T')[0];
+            const currentTime = now.toTimeString().split(' ')[0].substring(0, 5); // HH:MM format
+            
+            let isClassDurationPassed = false;
+            if (dateString === currentDate) {
+                // If it's today, check if the class duration has passed (25 minutes after start)
+                const [startHour, startMinute] = timeString.split(':').map(Number);
                 const endTime = new Date();
-                endTime.setHours(h, m + 25, 0, 0);
-                isClassDurationPassed = new Date() > endTime;
-              }
-              if (slotDateTime <= now && isClassDurationPassed) isPastSlot = true;
+                endTime.setHours(startHour, startMinute + 25, 0, 0); // 25 minutes after start
+                
+                const currentDateTime = new Date();
+                isClassDurationPassed = currentDateTime > endTime;
             }
-
-            if (isPastSlot) slot.classList.add('unavailable');
-
+            
+            if (slotDateTime <= now && isClassDurationPassed) {
+              slot.classList.add('unavailable');
+            }
+            
             timeRow.appendChild(slot);
           }
-
+          
           gridBody.appendChild(timeRow);
         }
       }
@@ -1060,18 +1892,12 @@
     // Load schedule data from backend
     async function loadScheduleData() {
       try {
-      const Lux = window.luxon && window.luxon.DateTime;
-      let weekString;
-      if (Lux) {
-        const base = Lux.fromJSDate(currentWeek, { zone: getDisplayZone() });
-        weekString = base.minus({ days: base.weekday - 1 }).toISODate();
-      } else {
-        const weekStart = new Date(currentWeek);
-        const dayOfWeek = currentWeek.getDay();
-        const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-        weekStart.setDate(currentWeek.getDate() - daysToMonday);
-        weekString = weekStart.toISOString().split('T')[0];
-      }
+              const weekStart = new Date(currentWeek);
+      // Calculate Monday as the start of the week
+      const dayOfWeek = currentWeek.getDay();
+      const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+      weekStart.setDate(currentWeek.getDate() - daysToMonday);
+      const weekString = weekStart.toISOString().split('T')[0];
         
         console.log('🔍 Loading student bookings for week:', weekString);
         console.log('🔍 Username from localStorage:', username);
@@ -1147,32 +1973,26 @@
       }
     }
 
-    function getDisplayZone() {
-      return PH_ZONE;
-    }
+    const VIEWER_ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; // viewer's local timezone
 
-    /** Ensure ISO strings without offset are read as UTC (matches Mongo / server dateTimeUtc). */
-    function normalizeUtcIsoString(raw) {
-      if (raw == null || raw === '') return null;
-      if (typeof raw === 'object' && raw instanceof Date && !Number.isNaN(raw.getTime())) {
-        return raw.toISOString();
-      }
-      let str = String(raw).trim();
-      if (!str) return null;
-      if (/[zZ]$/.test(str)) return str;
-      if (/[+\-]\d{2}:\d{2}$/.test(str) || /[+\-]\d{4}$/.test(str)) return str;
-      if (str.includes('T')) return str + 'Z';
-      return str;
+    function getDisplayZone() {
+      const first = bookingsData[0] || {};
+      return (
+        first.studentLocalZone ||
+        first.studentTimezone ||
+        first.clientTz ||
+        first.timezone ||
+        VIEWER_ZONE
+      );
     }
 
     // Fallback converter when Luxon is unavailable; only supports UTC -> target zone
     function utcToZoneParts(utcString, targetZone) {
       try {
-        const normalized = normalizeUtcIsoString(utcString);
-        const d = new Date(normalized || utcString);
+        const d = new Date(utcString);
         if (Number.isNaN(d.getTime())) return null;
         const formatter = new Intl.DateTimeFormat('en-CA', {
-          timeZone: targetZone || PH_ZONE,
+          timeZone: targetZone || VIEWER_ZONE,
           year: 'numeric',
           month: '2-digit',
           day: '2-digit',
@@ -1195,72 +2015,84 @@
     function bookingDisplayDateTime(booking) {
       const Lux = window.luxon && window.luxon.DateTime;
       const normalized = normalizeTimeToHHMM(booking.time);
-      const zone = PH_ZONE;
+      const zone =
+        booking.studentLocalZone ||
+        booking.studentTimezone ||
+        booking.clientTz ||
+        booking.timezone ||
+        getDisplayZone();
 
-      if (!booking) {
-        return { date: '', slot: normalized, label: normalized, zone };
+      if (!Lux || !normalized) {
+        return { date: booking.date, slot: normalized, label: normalized, zone };
       }
 
-      // Authoritative instants from API (UTC) → always convert to Philippines for display
-      const utcSources = [
-        booking.dateTimeUtc,
-        booking.dateTimeUTC,
-        booking.datetimeUtc,
-        booking.utc,
-        booking.dateTime,
-        booking.scheduledStartTime
-      ];
+      // If we have an authoritative UTC, convert directly to the student's zone.
+      const utcString =
+        booking.dateTimeUtc ||
+        booking.dateTimeUTC ||
+        booking.datetimeUtc ||
+        booking.utc ||
+        booking.dateTime;
 
-      for (const src of utcSources) {
-        const iso = normalizeUtcIsoString(src);
-        if (!iso) continue;
+      if (utcString) {
+        // Try Luxon first
         if (Lux) {
-          const utcDt = Lux.fromISO(iso, { zone: 'utc' });
+          const utcDt = Lux.fromISO(utcString, { zone: 'utc' });
           if (utcDt.isValid) {
-            const local = utcDt.setZone(zone);
+            const local = utcDt.setZone(zone || VIEWER_ZONE);
             return {
               date: local.toISODate(),
               slot: local.toFormat('HH:mm'),
               label: local.toFormat('hh:mm a'),
-              zone
+              zone: zone || VIEWER_ZONE
             };
           }
         }
-        const parts = utcToZoneParts(iso, zone);
+        // Fallback using Intl if Luxon missing/invalid
+        const parts = utcToZoneParts(utcString, zone || VIEWER_ZONE);
         if (parts) {
           return {
             date: parts.date,
             slot: parts.time,
             label: parts.time,
-            zone
+            zone: zone || VIEWER_ZONE
           };
         }
       }
 
-      // booking.date + booking.time are stored as UTC wall clock from the booking pipeline — not PH local.
-      if (booking.date && normalized) {
-        const utcWall = `${booking.date}T${normalized}:00.000Z`;
-        if (Lux) {
-          const utcDt = Lux.fromISO(utcWall, { zone: 'utc' });
-          if (utcDt.isValid) {
-            const local = utcDt.setZone(zone);
-            return {
-              date: local.toISODate(),
-              slot: local.toFormat('HH:mm'),
-              label: local.toFormat('hh:mm a'),
-              zone
-            };
-          }
+      // Fallback: parse booking.date + booking.time using the student's zone (or offset if provided)
+      const isoCandidate = booking.time && booking.time.includes('T')
+        ? booking.time
+        : `${booking.date || ''}T${normalized}`;
+      const hasOffset = /[zZ]|[+\-]\d{2}:?\d{2}$/.test(isoCandidate);
+
+      if (Lux) {
+        const dt = hasOffset
+          ? Lux.fromISO(isoCandidate)
+          : Lux.fromISO(isoCandidate, { zone: zone || VIEWER_ZONE });
+
+        if (!dt.isValid) {
+          return { date: booking.date, slot: normalized, label: normalized, zone };
         }
-        const parts = utcToZoneParts(utcWall, zone);
-        if (parts) {
-          return {
-            date: parts.date,
-            slot: parts.time,
-            label: parts.time,
-            zone
-          };
-        }
+
+        const local = dt.setZone(zone || VIEWER_ZONE);
+        return {
+          date: local.toISODate(),
+          slot: local.toFormat('HH:mm'),
+          label: local.toFormat('hh:mm a'),
+          zone: zone || VIEWER_ZONE
+        };
+      }
+
+      // Intl fallback (no offset parsing beyond UTC strings)
+      const parts = utcToZoneParts(isoCandidate, zone || VIEWER_ZONE);
+      if (parts) {
+        return {
+          date: parts.date,
+          slot: parts.time,
+          label: parts.time,
+          zone: zone || VIEWER_ZONE
+        };
       }
 
       return { date: booking.date, slot: normalized, label: normalized, zone };
@@ -1315,9 +2147,9 @@
           const Lux = window.luxon && window.luxon.DateTime;
           let isClassDurationPassed = false;
           if (Lux) {
-            const bookingDt = Lux.fromISO(`${timeInfo.date}T${timeInfo.slot || booking.time}`, { zone: timeInfo.zone || PH_ZONE });
+            const bookingDt = Lux.fromISO(`${timeInfo.date}T${timeInfo.slot || booking.time}`, { zone: timeInfo.zone || VIEWER_ZONE });
             const endDt = bookingDt.plus({ minutes: 25 });
-            const now = Lux.now().setZone(timeInfo.zone || PH_ZONE);
+            const now = Lux.now().setZone(timeInfo.zone || VIEWER_ZONE);
             isClassDurationPassed = endDt <= now;
             console.log(`⏰ Class end time: ${endDt.toISO()} (${timeInfo.zone}), Is past: ${isClassDurationPassed}`);
           } else {
@@ -1329,40 +2161,27 @@
             console.log(`⏰ Class end time: ${endTime.toLocaleString()}, Is past: ${isClassDurationPassed}`);
           }
           
-          const tf = booking.teacherFeedback;
-          const st = (booking.status && String(booking.status).toLowerCase()) || '';
-          const classFinished =
-            st === 'completed' ||
-            st === 'absent' ||
-            !!booking.finishedAt;
-
-          if (isClassDurationPassed || classFinished) {
-            const studentRatedTeacher = feedbackHistory.some(
-              (f) => String(f.bookingId) === getBookingIdString(booking)
-            );
-
-            if (tf && tf.rating) {
+          if (isClassDurationPassed) {
+            // Check if feedback already exists for this booking
+            const existingFeedback = feedbackHistory.find(f => f.bookingId === booking._id);
+            console.log(`📝 Checking feedback for booking ${booking._id}:`, existingFeedback ? `Found ${existingFeedback.rating}-star feedback` : 'No feedback found');
+            
+            if (existingFeedback) {
+              // If feedback already submitted, show feedback status
               slotElement.classList.add('past', 'feedback-submitted');
-              slotElement.textContent = `${tf.rating}★`;
-              slotElement.title = `Teacher gave you ${tf.rating} star(s) — open for details`;
-              if (!studentRatedTeacher) {
-                slotElement.title += '. Tap “Rate your teacher” in the class window if you haven’t yet.';
-              }
+              slotElement.textContent = `${existingFeedback.rating}★`;
+              slotElement.title = `Feedback submitted: ${existingFeedback.rating} stars`;
               slotElement.style.cursor = 'pointer';
-              slotElement.onclick = () => showBookingInfo(booking);
-            } else if (classFinished) {
-              slotElement.classList.add('past', 'feedback-needed');
-              slotElement.textContent = '!';
-              slotElement.title =
-                'Teacher feedback isn’t ready yet — open for class details';
-              slotElement.style.cursor = 'pointer';
-              slotElement.onclick = () => showBookingInfo(booking);
+              slotElement.onclick = () => showPastBookingFeedback(booking);
+              console.log(`✅ Slot marked as feedback submitted: ${existingFeedback.rating}★`);
             } else {
+              // If no feedback submitted, show as "Past" and allow feedback
               slotElement.classList.add('past', 'feedback-needed');
               slotElement.textContent = 'Past';
-              slotElement.title = 'Class time has passed — open for details';
+              slotElement.title = 'Click to submit feedback';
               slotElement.style.cursor = 'pointer';
-              slotElement.onclick = () => showBookingInfo(booking);
+              slotElement.onclick = () => showPastBookingFeedback(booking);
+              console.log(`⚠️ Slot marked as feedback needed: Past`);
             }
           } else {
             // If class duration hasn't passed, show as "Booked"
@@ -1401,69 +2220,17 @@
           existingMessage.remove();
         }
       }
-      renderFeedbackReminder();
-    }
-
-    function getPendingFeedbackBookings() {
-      const Lux = window.luxon && window.luxon.DateTime;
-      return bookingsData.filter(booking => {
-        const timeInfo = bookingDisplayDateTime(booking);
-        let isClassDurationPassed = false;
-        if (Lux) {
-          const bookingDt = Lux.fromISO(`${timeInfo.date}T${timeInfo.slot || booking.time}`, { zone: timeInfo.zone || PH_ZONE });
-          const endDt = bookingDt.plus({ minutes: 25 });
-          const now = Lux.now().setZone(timeInfo.zone || PH_ZONE);
-          isClassDurationPassed = endDt <= now;
-        } else {
-          const now = new Date();
-          const bookingDateTime = new Date(`${timeInfo.date}T${timeInfo.slot || booking.time}`);
-          const endTime = new Date(bookingDateTime);
-          endTime.setMinutes(endTime.getMinutes() + 25);
-          isClassDurationPassed = now > endTime;
-        }
-        if (!isClassDurationPassed) return false;
-        const studentRatedTeacher = feedbackHistory.some(
-          (f) => String(f.bookingId) === getBookingIdString(booking)
-        );
-        return !studentRatedTeacher;
-      });
-    }
-
-    function renderFeedbackReminder() {
-      const reminder = document.getElementById('feedback-reminder');
-      const textEl = document.getElementById('feedback-reminder-text');
-      const openBtn = document.getElementById('open-feedback-reminder-btn');
-      const dismissBtn = document.getElementById('dismiss-feedback-reminder-btn');
-      if (!reminder || !textEl || !openBtn || !dismissBtn) return;
-
-      const pending = getPendingFeedbackBookings();
-      if (!pending.length || dismissedFeedbackReminder) {
-        reminder.style.display = 'none';
-        return;
-      }
-
-      textEl.textContent = `You still have ${pending.length} class feedback ${pending.length === 1 ? 'request' : 'requests'} pending.`;
-      reminder.style.display = 'flex';
-
-      openBtn.onclick = () => {
-        const target = pending[0];
-        if (target) showPastBookingFeedback(target);
-      };
-      dismissBtn.onclick = () => {
-        dismissedFeedbackReminder = true;
-        reminder.style.display = 'none';
-      };
     }
 
     // Modal logic for class info
     let currentBookingInfo = null;
     function showBookingInfo(booking) {
       currentBookingInfo = booking;
-      const timeInfoModal = bookingDisplayDateTime(booking);
-      document.getElementById('info-class-date').textContent = TU.formatYmdAsPhilippinesLongDate
-        ? TU.formatYmdAsPhilippinesLongDate(timeInfoModal.date || booking.date)
-        : String(timeInfoModal.date || booking.date || '');
-      document.getElementById('info-class-time').textContent = formatTime24Hour(timeInfoModal.slot || booking.time);
+      // Format date
+      const date = new Date(booking.date);
+      const formattedDate = date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      document.getElementById('info-class-date').textContent = formattedDate;
+      document.getElementById('info-class-time').textContent = formatTime24Hour(booking.time);
       // Handle both old and new teacher data structures
       let teacherName = 'Unknown Teacher';
       if (booking.teacherId) {
@@ -1483,111 +2250,12 @@
       // Show/hide cancel button based on booking status and time
       const cancelRow = document.getElementById('cancel-booking-row');
       const cancelBtn = document.getElementById('cancel-booking-btn');
-      const LuxModal = window.luxon && window.luxon.DateTime;
-      let isPastOrStarted = false;
-      if (LuxModal) {
-        const u = booking.dateTimeUtc || booking.dateTimeUTC || booking.datetimeUtc;
-        if (u) {
-          const isoU = normalizeUtcIsoString(u);
-          const startU = isoU ? LuxModal.fromISO(isoU, { zone: 'utc' }) : null;
-          if (startU && startU.isValid) isPastOrStarted = startU <= LuxModal.now();
-        }
-        if (!isPastOrStarted && timeInfoModal.date && timeInfoModal.slot) {
-          const startL = LuxModal.fromISO(`${timeInfoModal.date}T${timeInfoModal.slot}`, { zone: PH_ZONE });
-          if (startL.isValid) isPastOrStarted = startL <= LuxModal.now();
-        }
-      } else {
-        const classDateTime = new Date(`${booking.date}T${booking.time}:00`);
-        isPastOrStarted = classDateTime <= new Date();
-      }
+      const classDateTime = new Date(`${booking.date}T${booking.time}:00`);
+      const now = new Date();
+      const isPastOrStarted = classDateTime <= now;
       const isCancelled = booking.status === 'cancelled';
       const joinBtn = document.getElementById('join-classroom-btn');
-      const feedbackSection = document.getElementById('info-teacher-feedback-section');
-      const starsEl = document.getElementById('info-teacher-stars');
-      const commentEl = document.getElementById('info-teacher-comment');
-      const pendingEl = document.getElementById('info-teacher-feedback-pending');
-      const rateRow = document.getElementById('rate-teacher-row');
-      const rateBtn = document.getElementById('open-rate-teacher-btn');
-
-      const stLower = (booking.status && String(booking.status).toLowerCase()) || '';
-      const classFinished =
-        stLower === 'completed' || stLower === 'absent' || !!booking.finishedAt;
-      const tf = booking.teacherFeedback;
-      const studentRatedTeacher = feedbackHistory.some(
-        (f) => String(f.bookingId) === getBookingIdString(booking)
-      );
-
-      if (feedbackSection && starsEl && commentEl && pendingEl) {
-        if (isPastOrStarted || classFinished) {
-          feedbackSection.style.display = 'block';
-          if (tf && tf.rating) {
-            starsEl.textContent = '★'.repeat(Math.min(5, Math.max(1, Number(tf.rating)))) + ' (' + tf.rating + '/5)';
-            starsEl.style.display = 'block';
-            commentEl.style.display = 'block';
-            commentEl.textContent = tf.comment
-              ? tf.comment
-              : 'Your teacher left a rating for this lesson.';
-            pendingEl.style.display = 'none';
-          } else {
-            starsEl.style.display = 'none';
-            commentEl.style.display = 'none';
-            pendingEl.style.display = 'block';
-            pendingEl.textContent = classFinished
-              ? 'Your teacher hasn’t submitted feedback for this class yet. Check back soon.'
-              : 'Feedback from your teacher will appear after the class is marked complete.';
-          }
-        } else {
-          feedbackSection.style.display = 'none';
-        }
-      }
-
-      if (rateRow && rateBtn) {
-        if ((isPastOrStarted || classFinished) && !studentRatedTeacher) {
-          rateRow.style.display = 'flex';
-          rateBtn.onclick = function () {
-            closeBookingInfo();
-            showPastBookingFeedback(booking);
-          };
-        } else {
-          rateRow.style.display = 'none';
-          rateBtn.onclick = null;
-        }
-      }
-
-      if (joinBtn) {
-        if (classFinished || isCancelled) {
-          joinBtn.style.display = 'none';
-          if (window.__studentJoinCountdownTimer) {
-            clearInterval(window.__studentJoinCountdownTimer);
-            window.__studentJoinCountdownTimer = null;
-          }
-        } else {
-          joinBtn.style.display = 'inline-block';
-          const patchJoin = () => {
-            if (!window.RemoedClassroomEntry) return;
-            const gate = window.RemoedClassroomEntry.getEntryGate(booking);
-            if (!gate.allowed && gate.code === 'TOO_EARLY') {
-              joinBtn.disabled = true;
-              joinBtn.style.opacity = '0.65';
-              joinBtn.title = 'You can enter starting 10 minutes before the scheduled start time.';
-              const left = gate.opensAtMs != null ? gate.opensAtMs - Date.now() : 0;
-              joinBtn.textContent = left > 0
-                ? `Opens in ${window.RemoedClassroomEntry.formatOpensIn(left)}`
-                : 'Enter Live Classroom';
-              return;
-            }
-            joinBtn.disabled = false;
-            joinBtn.style.opacity = '1';
-            joinBtn.title = '';
-            joinBtn.textContent = 'Enter Live Classroom';
-          };
-          patchJoin();
-          if (window.__studentJoinCountdownTimer) {
-            clearInterval(window.__studentJoinCountdownTimer);
-          }
-          window.__studentJoinCountdownTimer = setInterval(patchJoin, 1000);
-        }
-      }
+      if (joinBtn) joinBtn.style.display = 'inline-block';
       
       if (isCancelled || isPastOrStarted) {
         cancelRow.style.display = 'none';
@@ -1607,10 +2275,6 @@
       if (modal) {
         modal.classList.remove('show');
       }
-      if (window.__studentJoinCountdownTimer) {
-        clearInterval(window.__studentJoinCountdownTimer);
-        window.__studentJoinCountdownTimer = null;
-      }
       currentBookingInfo = null;
     }
     document.getElementById('close-booking-info-modal').onclick = closeBookingInfo;
@@ -1625,18 +2289,7 @@
         alert('No classroom ID set for this booking.');
         return;
       }
-      if (window.RemoedClassroomEntry) {
-        const gate = window.RemoedClassroomEntry.getEntryGate(currentBookingInfo);
-        if (!gate.allowed && gate.code === 'TOO_EARLY') {
-          const when = gate.opensAtMs != null
-            ? (TU.formatDateTimePhilippines ? TU.formatDateTimePhilippines(new Date(gate.opensAtMs)) : new Date(gate.opensAtMs).toLocaleString('en-PH', { timeZone: PH_ZONE }))
-            : 'the allowed time';
-          alert(`Class hasn’t opened yet. You can enter starting 10 minutes before the scheduled start (from ${when}).`);
-          return;
-        }
-      }
-      const tiJoin = bookingDisplayDateTime(currentBookingInfo);
-      const slotTime = tiJoin.slot || currentBookingInfo.time || '';
+      const slotTime = currentBookingInfo.time || '';
       const roomUrl = `live-classroom.html?room=${classroomId}&type=student&bookingId=${currentBookingInfo._id}&slot=${encodeURIComponent(slotTime)}`;
       window.open(roomUrl, '_blank');
     };
@@ -1645,36 +2298,20 @@
     document.getElementById('cancel-booking-btn').onclick = async function() {
       if (!currentBookingInfo) return;
       
-      const tiCancel = bookingDisplayDateTime(currentBookingInfo);
-      const LuxC = window.luxon && window.luxon.DateTime;
-      let cancelStarted = false;
-      if (LuxC) {
-        const u = currentBookingInfo.dateTimeUtc || currentBookingInfo.dateTimeUTC || currentBookingInfo.datetimeUtc;
-        if (u) {
-          const isoU = normalizeUtcIsoString(u);
-          const startU = isoU ? LuxC.fromISO(isoU, { zone: 'utc' }) : null;
-          if (startU && startU.isValid) cancelStarted = startU <= LuxC.now();
-        }
-        if (!cancelStarted && tiCancel.date && tiCancel.slot) {
-          const startL = LuxC.fromISO(`${tiCancel.date}T${tiCancel.slot}`, { zone: PH_ZONE });
-          if (startL.isValid) cancelStarted = startL <= LuxC.now();
-        }
-      } else {
-        cancelStarted = new Date(`${currentBookingInfo.date}T${currentBookingInfo.time}:00`) <= new Date();
-      }
-
-      if (cancelStarted) {
+      // Check if class has already started
+      const classDateTime = new Date(`${currentBookingInfo.date}T${currentBookingInfo.time}:00`);
+      const now = new Date();
+      
+      if (classDateTime <= now) {
         alert('Cannot cancel a class that has already started.');
         return;
       }
-
-      const dateLine = TU.formatYmdAsPhilippinesLongDate
-        ? TU.formatYmdAsPhilippinesLongDate(tiCancel.date || currentBookingInfo.date)
-        : String(tiCancel.date || currentBookingInfo.date);
+      
+      // Confirmation dialog
       const confirmed = confirm(
         `Are you sure you want to cancel this booking?\n\n` +
-        `Date: ${dateLine}\n` +
-        `Time: ${formatTime24Hour(tiCancel.slot || currentBookingInfo.time)}\n\n` +
+        `Date: ${new Date(currentBookingInfo.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}\n` +
+        `Time: ${formatTime24Hour(currentBookingInfo.time)}\n\n` +
         `This action cannot be undone.`
       );
       
@@ -1750,25 +2387,18 @@
       initializeWeeklyGrid();
     });
 
-    // Update week display (week boundaries in Philippine time)
+    // Update week display
     function updateWeekDisplay() {
+      const weekStart = new Date(currentWeek);
+      // Calculate Monday as the start of the week (Monday = 1, Sunday = 0)
+      const dayOfWeek = currentWeek.getDay();
+      const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // If Sunday, go back 6 days; if Monday, go back 0 days, etc.
+      weekStart.setDate(currentWeek.getDate() - daysToMonday);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6);
+      
       const display = document.getElementById('week-display');
-      const Lux = window.luxon && window.luxon.DateTime;
-      if (Lux) {
-        const base = Lux.fromJSDate(currentWeek, { zone: getDisplayZone() });
-        const mon = base.minus({ days: base.weekday - 1 });
-        const sun = mon.plus({ days: 6 });
-        display.textContent = `${mon.toFormat('MMM d')} - ${sun.toFormat('MMM d, yyyy')} (Philippine Time, PHT)`;
-      } else {
-        const weekStart = new Date(currentWeek);
-        const dayOfWeek = currentWeek.getDay();
-        const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-        weekStart.setDate(currentWeek.getDate() - daysToMonday);
-        const weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekStart.getDate() + 6);
-        const pht = { timeZone: PH_ZONE };
-        display.textContent = `${weekStart.toLocaleDateString('en-US', Object.assign({ month: 'short', day: 'numeric' }, pht))} - ${weekEnd.toLocaleDateString('en-US', Object.assign({ month: 'short', day: 'numeric', year: 'numeric' }, pht))} (Philippine Time, PHT)`;
-      }
+      display.textContent = `${weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
       
       // Allow navigation to previous weeks (remove the restriction)
       const prevBtn = document.getElementById('prev-week');
@@ -1834,28 +2464,17 @@
     // Cancellation Modal Logic
     function showCancellationModal() {
       if (!currentBookingInfo) return;
-
-      const tiCan = bookingDisplayDateTime(currentBookingInfo);
-      const LuxM = window.luxon && window.luxon.DateTime;
-      let alreadyStarted = false;
-      if (LuxM && tiCan.date && tiCan.slot) {
-        const startL = LuxM.fromISO(`${tiCan.date}T${tiCan.slot}`, { zone: PH_ZONE });
-        if (startL.isValid) alreadyStarted = startL <= LuxM.now().setZone(PH_ZONE);
-      } else {
-        const classDateTime = new Date(`${currentBookingInfo.date}T${currentBookingInfo.time}:00Z`);
-        alreadyStarted = classDateTime <= new Date();
-      }
-
-      if (alreadyStarted) {
+      
+      // Check if class has already started
+      const classDateTime = new Date(`${currentBookingInfo.date}T${currentBookingInfo.time}:00`);
+      const now = new Date();
+      
+      if (classDateTime <= now) {
         alert('Cannot cancel a class that has already started.');
         return;
       }
-
-      const dateLineCan = TU.formatYmdAsPhilippinesLongDate
-        ? TU.formatYmdAsPhilippinesLongDate(tiCan.date || currentBookingInfo.date)
-        : String(tiCan.date || currentBookingInfo.date || '');
-      document.getElementById('cancel-class-info').textContent =
-        `${dateLineCan} at ${formatTime24Hour(tiCan.slot || currentBookingInfo.time)}`;
+      
+              document.getElementById('cancel-class-info').textContent = `${currentBookingInfo.date} at ${formatTime24Hour(currentBookingInfo.time)}`;
       // Handle both old and new teacher data structures for cancellation modal
       let cancelTeacherName = 'Unknown Teacher';
       if (currentBookingInfo.teacherId) {
@@ -2110,5 +2729,3 @@
   <script src="avatar-helper.js"></script>
 </body>
 </html> 
-
-

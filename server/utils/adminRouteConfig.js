@@ -18,6 +18,7 @@ const RESERVED_PATHS = new Set(
     'teachers',
     'application-form',
     'teacher-signup',
+    'register.html',
     'index.html',
   ].map((s) => s.toLowerCase())
 );

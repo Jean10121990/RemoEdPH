@@ -28,8 +28,54 @@ const crypto = require('crypto');
 const { body, validationResult } = require('express-validator');
 const { encryptPiiString } = require('./utils/piiCrypto');
 const { getBookingStartAsDate } = require('./utils/bookingScheduledStart');
+const studentController = require('./studentController');
 
 const router = express.Router();
+
+/** Trial reminder email — run after profile response (cache hit or miss). */
+function scheduleTrialBookingReminderSideEffect(studentDocOrMongoId) {
+  setImmediate(async () => {
+    try {
+      const student =
+        studentDocOrMongoId && typeof studentDocOrMongoId === 'object' && studentDocOrMongoId._id
+          ? studentDocOrMongoId
+          : await Student.findById(studentDocOrMongoId);
+      if (!student) return;
+      const { sendTrialBookingReminderEmail } = require('./emailService');
+      if (
+        student.hasFreeTrial !== true ||
+        student.accountStatus !== 'trial_active' ||
+        !student.assessmentTrialGrantedAt ||
+        student.trialBookingReminderSentAt
+      ) {
+        return;
+      }
+      const hours =
+        (Date.now() - new Date(student.assessmentTrialGrantedAt).getTime()) / 3600000;
+      if (hours < 24) return;
+      const upd = await Student.findOneAndUpdate(
+        {
+          _id: student._id,
+          trialBookingReminderSentAt: null,
+          accountStatus: 'trial_active',
+          hasFreeTrial: true,
+        },
+        { $set: { trialBookingReminderSentAt: new Date() } },
+        { new: true }
+      );
+      if (!upd || !upd.email) return;
+      const greet =
+        [upd.firstName, upd.lastName].filter(Boolean).join(' ').trim() ||
+        (upd.email ? String(upd.email).split('@')[0] : '') ||
+        'there';
+      await sendTrialBookingReminderEmail(upd.email, greet).catch((err) =>
+        console.error('[trial booking reminder] email failed:', err.message || err)
+      );
+    } catch (e) {
+      console.error('[trial booking reminder]', e.message || e);
+    }
+  });
+}
 
 // Helper function to create student notifications
 async function createStudentNotification(studentId, type, message) {
@@ -105,7 +151,13 @@ router.get('/profile', verifyToken, requireStudent, async (req, res) => {
   try {
     console.log('🔍 Profile fetch request for student ID:', req.user.studentId);
     console.log('🔍 User from token:', req.user);
-    
+
+    const cached = await studentController.getStudentProfileFromCache(req.user.studentId);
+    if (cached) {
+      scheduleTrialBookingReminderSideEffect(req.user.studentId);
+      return res.json(cached);
+    }
+
     const student = await Student.findById(req.user.studentId);
     
     if (!student) {
@@ -121,7 +173,7 @@ router.get('/profile', verifyToken, requireStudent, async (req, res) => {
       lastName: student.lastName
     });
 
-    res.json({
+    const body = {
       profile: {
         username: student.username,
         firstName: student.firstName,
@@ -156,44 +208,10 @@ router.get('/profile', verifyToken, requireStudent, async (req, res) => {
           student.isSubscribed === true ||
           (student.paymentStatus === 'paid' && student.subscriptionStatus === 'active'),
       }
-    });
-
-    setImmediate(async () => {
-      try {
-        const { sendTrialBookingReminderEmail } = require('./emailService');
-        if (
-          student.hasFreeTrial !== true ||
-          student.accountStatus !== 'trial_active' ||
-          !student.assessmentTrialGrantedAt ||
-          student.trialBookingReminderSentAt
-        ) {
-          return;
-        }
-        const hours =
-          (Date.now() - new Date(student.assessmentTrialGrantedAt).getTime()) / 3600000;
-        if (hours < 24) return;
-        const upd = await Student.findOneAndUpdate(
-          {
-            _id: student._id,
-            trialBookingReminderSentAt: null,
-            accountStatus: 'trial_active',
-            hasFreeTrial: true,
-          },
-          { $set: { trialBookingReminderSentAt: new Date() } },
-          { new: true }
-        );
-        if (!upd || !upd.email) return;
-        const greet =
-          [upd.firstName, upd.lastName].filter(Boolean).join(' ').trim() ||
-          (upd.email ? String(upd.email).split('@')[0] : '') ||
-          'there';
-        await sendTrialBookingReminderEmail(upd.email, greet).catch((err) =>
-          console.error('[trial booking reminder] email failed:', err.message || err)
-        );
-      } catch (e) {
-        console.error('[trial booking reminder]', e.message || e);
-      }
-    });
+    };
+    await studentController.setStudentProfileCache(req.user.studentId, body);
+    res.json(body);
+    scheduleTrialBookingReminderSideEffect(student);
   } catch (error) {
     console.error('❌ Error fetching student profile:', error);
     res.status(500).json({
@@ -209,6 +227,7 @@ router.get('/profile', verifyToken, requireStudent, async (req, res) => {
 router.post('/welcome-tour/dismiss', verifyToken, requireStudent, async (req, res) => {
   try {
     await Student.updateOne({ _id: req.user.studentId }, { $set: { hasSeenWelcomeTour: true } });
+    await studentController.invalidateStudentProfileCache(req.user.studentId);
     res.json({ success: true });
   } catch (error) {
     console.error('welcome-tour/dismiss:', error);
@@ -275,6 +294,7 @@ router.post('/profile', verifyToken, requireStudent, async (req, res) => {
     }
 
     console.log('Profile updated successfully:', student);
+    await studentController.invalidateStudentProfileCache(req.user.studentId);
     res.json({ message: 'Profile updated successfully', student });
   } catch (error) {
     console.error('Error updating student profile:', error);
@@ -316,6 +336,7 @@ router.post('/upload-document', verifyToken, requireStudent, async (req, res) =>
       return res.status(404).json({ error: 'Student not found' });
     }
 
+    await studentController.invalidateStudentProfileCache(req.user.studentId);
     res.json({ message: 'Document uploaded successfully' });
   } catch (error) {
     console.error('Error uploading student document:', error);

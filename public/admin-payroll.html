@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script src="js/security-guard.js?v=2"></script>
     <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
     <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
     <meta charset="UTF-8">
@@ -115,7 +116,7 @@
         function adminApiFetch(url, init) {
             init = init || {};
             var headers = new Headers(init.headers || {});
-            var token = localStorage.getItem('adminToken');
+            var token = (window.RemoedAdminSession && RemoedAdminSession.getAuthToken ? RemoedAdminSession.getAuthToken() : (localStorage.getItem('remoed_admin_token')||localStorage.getItem('remoed_admin_auth')||localStorage.getItem('adminToken')||''));
             if (token) headers.set('Authorization', 'Bearer ' + token);
             return fetch(url, Object.assign({}, init, { credentials: 'include', headers: headers }));
         }

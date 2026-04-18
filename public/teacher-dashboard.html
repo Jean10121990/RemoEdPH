@@ -5,6 +5,8 @@
     <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="js/security-guard.js?v=4"></script>
+    <script src="js/dashboard-history-lock.js?v=1"></script>
     <title>RemoEdPH Dashboard</title>
     <link rel="stylesheet" href="modern-styles.css">
     <link rel="stylesheet" href="css/teacher-sidebar.css">
@@ -1160,7 +1162,7 @@
     const userType = localStorage.getItem('userType');
     if (userType !== 'teacher') {
       alert('Access denied. This page is for teachers only.');
-      window.location.href = 'index.html';
+      window.location.replace('index.html');
     }
     
     // Define all functions first before using them
@@ -1173,7 +1175,7 @@
       if (!token) {
         console.log('No token found, redirecting to login');
         localStorage.clear();
-        window.location.href = 'teacher-login.html';
+        window.location.replace('teacher-login.html');
         return false;
       }
 
@@ -1196,7 +1198,7 @@
         if (response.status === 401) {
           console.log('Token is invalid, redirecting to login');
           localStorage.clear();
-          window.location.href = 'teacher-login.html';
+          window.location.replace('teacher-login.html');
           return false;
         }
 
@@ -1389,10 +1391,8 @@
       }
     }
   
-  document.getElementById('logout-nav').onclick = function() {
-  localStorage.clear();
-  window.location.href = 'teacher-login.html';
-};
+  // Logout: handled by js/teacher-sidebar.js (localStorage.clear + sessionStorage.clear + replace)
+
   function loadAnnouncement() {
     fetch('/api/announcement')
       .then(r => r.json())
@@ -1404,7 +1404,9 @@
         announcementContent.textContent = currentContent;
         updatedDiv.textContent = currentUpdated ? 'Last updated: ' + currentUpdated : '';
         // Only show edit button if admin is logged in
-        const isAdmin = localStorage.getItem('adminToken') && localStorage.getItem('adminUsername');
+        const isAdmin =
+            (localStorage.getItem('remoed_admin_token') || localStorage.getItem('remoed_admin_auth') || localStorage.getItem('adminToken')) &&
+            localStorage.getItem('adminUsername');
         if (isAdmin) {
           editBtn.style.display = '';
         } else {
@@ -1810,7 +1812,7 @@
         // Only redirect on actual auth failure
         console.error('Token expired, redirecting to login');
         localStorage.clear();
-        window.location.href = 'teacher-login.html';
+        window.location.replace('teacher-login.html');
       } else {
         console.error('Failed to load time tracking status:', response.status);
       }
@@ -1909,7 +1911,7 @@
         showTimeMessage('Session expired. Please log in again.', 'error');
         setTimeout(() => {
           localStorage.clear();
-          window.location.href = 'teacher-login.html';
+          window.location.replace('teacher-login.html');
         }, 2000);
       } else {
         showTimeMessage(data.error || 'Failed to clock in', 'error');
@@ -1967,7 +1969,7 @@
         showTimeMessage('Session expired. Please log in again.', 'error');
         setTimeout(() => {
           localStorage.clear();
-          window.location.href = 'teacher-login.html';
+          window.location.replace('teacher-login.html');
         }, 2000);
       } else {
         showTimeMessage(data.error || 'Failed to clock out', 'error');

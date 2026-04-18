@@ -25,6 +25,8 @@ const announcementRoutes = require('./announcement');
 const lessonRoutes = require('./lessons');
 const classroomRecordingRouter = require('./classroomRecordingApi');
 const applicationRoutes = require('./applications');
+const bookingsSlotRoutes = require('./routes/bookings');
+const slotsRoutes = require('./routes/slots');
 const Booking = require('./models/Booking');
 const { consumeReservedCreditForBooking } = require('./services/bookingCreditLedger');
 const LessonMaterial = require('./models/LessonMaterial');
@@ -33,6 +35,9 @@ const { DateTime } = require('luxon');
 const fs = require('fs');
 // AdmZip removed - no longer needed for file conversion
 const { verifyToken, requireTeacher } = require('./authMiddleware');
+const jwt = require('jsonwebtoken');
+const { isTokenBlacklisted } = require('./services/jwtBlacklist');
+const SOCKET_AUTH_JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
 const { getClassroomEntryGate, EARLY_ENTRY_MINUTES } = require('./services/classroomEntryWindow');
 
 const app = express();
@@ -284,6 +289,8 @@ app.use('/admin', express.static(path.join(__dirname, '../public'), { index: fal
 // API Routes (no-store on role-protected APIs)
 app.use('/api/auth', noStoreProtectedResponse, authRoutes);
 app.use('/api/teacher', noStoreProtectedResponse, teacherRoutes);
+app.use('/api/bookings', noStoreProtectedResponse, bookingsSlotRoutes);
+app.use('/api/slots', noStoreProtectedResponse, slotsRoutes);
 app.use('/api/student', noStoreProtectedResponse, studentRoutes);
 // Public teacher application form: POST /api/applications
 app.use('/api', applicationRoutes);
@@ -328,6 +335,9 @@ app.get('/api/rtc-config', (req, res) => {
   res.json({ iceServers });
 });
 
+const Application = require('./models/Application');
+const InvitationToken = require('./models/InvitationToken');
+
 // Protected teacher signup route: requires a valid invitation token in URL.
 app.get('/teacher-signup', async (req, res) => {
   try {
@@ -359,6 +369,41 @@ app.get('/teacher-signup', async (req, res) => {
 
 // Prevent bypassing invitation checks via direct file URL.
 app.get('/teacher-signup.html', (req, res) => res.redirect('/'));
+
+/**
+ * Entry page for passed applicants (email links with ?appId= + invitation).
+ * If `invitation` is present, it must match a valid unused invite for a passed application (same as /teacher-signup).
+ * If only `appId` is present, the static page resolves an invite via /api/auth/teacher-signup/invitation-by-application.
+ */
+app.get('/register.html', async (req, res) => {
+  try {
+    const token = String(req.query.invitation || '').trim();
+    const appIdFromQuery = String(req.query.appId || '').trim();
+    if (!token && !appIdFromQuery) {
+      return res.redirect('/');
+    }
+    if (token) {
+      const invitation = await InvitationToken.findOne({ token, isUsed: false }).lean();
+      if (!invitation) {
+        return res.redirect('/');
+      }
+      if (!invitation.expiresAt || new Date(invitation.expiresAt) <= new Date()) {
+        return res.redirect('/');
+      }
+      const application = await Application.findById(invitation.applicationId).lean();
+      if (!application || application.currentStage !== 'passed') {
+        return res.redirect('/');
+      }
+      if (appIdFromQuery && String(application._id) !== appIdFromQuery) {
+        return res.redirect('/');
+      }
+    }
+    return res.sendFile(path.join(__dirname, '../public/register.html'));
+  } catch (error) {
+    console.error('GET /register.html failed:', error);
+    return res.redirect('/');
+  }
+});
 
 // Public teacher application form (React build output).
 const applicationFormDist = path.join(__dirname, '../application-form/dist');
@@ -448,10 +493,9 @@ app.get('/api/email/status', (req, res) => {
     success: true,
     email: status,
     environment: {
-      hasSendGridKey: !!process.env.SENDGRID_API_KEY,
-      sendGridKeyLength: process.env.SENDGRID_API_KEY ? process.env.SENDGRID_API_KEY.length : 0,
       emailServiceType: process.env.EMAIL_SERVICE_TYPE || '(not set)',
-      sendGridFromEmail: process.env.SENDGRID_FROM_EMAIL || '(not set)'
+      smtpHost: process.env.SMTP_HOST || '(default smtp.hostinger.com)',
+      emailUserSet: !!(process.env.EMAIL_USER || process.env.SMTP_USER),
     }
   });
 });
@@ -1530,6 +1574,48 @@ app.use((req, res) => {
   return res.status(404).json({ error: 'Route not found' });
 });
 
+function getSocketBearerToken(socket) {
+  try {
+    const a = socket.handshake.auth;
+    if (a && a.token) return String(a.token).trim();
+    const q = socket.handshake.query;
+    if (q && q.token) return String(q.token).trim();
+    const auth = socket.handshake.headers && socket.handshake.headers.authorization;
+    if (auth && String(auth).startsWith('Bearer ')) return String(auth).slice(7).trim();
+  } catch (_e) {}
+  return '';
+}
+
+/** Real classroom rooms require a valid JWT on the socket handshake. */
+function disconnectIfClassroomUnauthenticated(socket, room) {
+  if (!room || room === 'default-room') return true;
+  const token = getSocketBearerToken(socket);
+  if (!token) {
+    try {
+      socket.emit('auth-error', { code: 'NO_TOKEN', message: 'Classroom connection requires a valid session.' });
+    } catch (_e) {}
+    socket.disconnect(true);
+    return false;
+  }
+  if (isTokenBlacklisted(token)) {
+    try {
+      socket.emit('auth-error', { code: 'TOKEN_REVOKED', message: 'Session was revoked. Please sign in again.' });
+    } catch (_e2) {}
+    socket.disconnect(true);
+    return false;
+  }
+  try {
+    socket.userJwt = jwt.verify(token, SOCKET_AUTH_JWT_SECRET);
+  } catch (_e3) {
+    try {
+      socket.emit('auth-error', { code: 'INVALID_TOKEN', message: 'Invalid or expired session.' });
+    } catch (_e4) {}
+    socket.disconnect(true);
+    return false;
+  }
+  return true;
+}
+
 // Socket.IO signaling server functionality
 io.on('connection', socket => {
     console.log('🔌 New client connected:', socket.id);
@@ -1550,6 +1636,10 @@ io.on('connection', socket => {
     socket.on('join', async (data) => {
         const { room, userType, userId, username } = data;
         console.log('🚪 Client', socket.id, 'joining room:', room, 'as', userType, username);
+
+        if (!disconnectIfClassroomUnauthenticated(socket, room)) {
+            return;
+        }
 
         if (room && room !== 'default-room') {
             try {
@@ -1729,6 +1819,10 @@ io.on('connection', socket => {
         const userId = socket.id;
         
         console.log('🚪 Client', socket.id, 'joining room:', room, 'as', userType, username);
+
+        if (!disconnectIfClassroomUnauthenticated(socket, room)) {
+            return;
+        }
 
         if (room && room !== 'default-room') {
             try {

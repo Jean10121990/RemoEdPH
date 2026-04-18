@@ -71,7 +71,7 @@ SMTP_PASS=your-password
 
 ### 6. Production Deployment:
 
-- Use a dedicated email service (SendGrid, Mailgun, etc.)
+- Production mail uses **Hostinger SMTP** by default (`EMAIL_USER` / `EMAIL_PASS`); optional **Mailgun** if `EMAIL_SERVICE_TYPE=mailgun`.
 - Set up proper DNS records (SPF, DKIM, DMARC)
 - Monitor email deliverability
 - Implement rate limiting for password reset requests

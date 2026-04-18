@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script src="js/security-guard.js?v=2"></script>
     <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -201,7 +202,7 @@
         }
 
         function authHeaders(json) {
-            var t = localStorage.getItem('adminToken');
+            var t = (window.RemoedAdminSession && RemoedAdminSession.getAuthToken ? RemoedAdminSession.getAuthToken() : (localStorage.getItem('remoed_admin_token')||localStorage.getItem('remoed_admin_auth')||localStorage.getItem('adminToken')||''));
             var h = {};
             if (json) h['Content-Type'] = 'application/json';
             if (t) h['Authorization'] = 'Bearer ' + t;
@@ -418,7 +419,11 @@
                 if (!r.ok) throw new Error(j.message || j.error || 'Verification failed');
                 document.getElementById('twofa-code').value = '';
                 if (j.token) {
-                    localStorage.setItem('adminToken', j.token);
+                    if (window.RemoedAdminSession && RemoedAdminSession.setAuthToken) RemoedAdminSession.setAuthToken(j.token);
+                    else {
+                        localStorage.setItem('remoed_admin_token', j.token);
+                        localStorage.setItem('adminToken', j.token);
+                    }
                 }
                 if (j.adminRole) {
                     localStorage.setItem('adminRole', j.adminRole);

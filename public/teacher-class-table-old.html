@@ -5,6 +5,7 @@
     <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
       <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="js/security-guard.js?v=1"></script>
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -1298,7 +1299,10 @@
     // Realtime updates via Socket.IO
     (function initRealtime(){
       try {
-        const socket = io();
+        const __skTok = (window.RemoedSecurityGuard && typeof window.RemoedSecurityGuard.getToken === 'function')
+          ? window.RemoedSecurityGuard.getToken()
+          : (localStorage.getItem('remoed_user_token') || localStorage.getItem('token') || '');
+        const socket = io(window.location.origin, { auth: { token: __skTok } });
         socket.on('slotsUpdated', (payload) => {
           if (!payload || !payload.teacherId) return;
           const myId = localStorage.getItem('teacherId');

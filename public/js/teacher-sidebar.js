@@ -87,6 +87,11 @@
         if (logoutLi) {
             logoutLi.addEventListener('click', function () {
                 var token =
+                    (typeof RemoedUserSession !== 'undefined' && RemoedUserSession.getUserToken && RemoedUserSession.getUserToken()) ||
+                    localStorage.getItem('remoed_teacher_token') ||
+                    sessionStorage.getItem('remoed_teacher_token') ||
+                    localStorage.getItem('remoed_teacher_auth') ||
+                    sessionStorage.getItem('remoed_teacher_auth') ||
                     localStorage.getItem('remoed_user_token') ||
                     sessionStorage.getItem('remoed_user_token') ||
                     localStorage.getItem('token') ||
@@ -97,12 +102,8 @@
                 }
                 fetch('/api/logout', opts).catch(function () {}).finally(function () {
                     try {
-                        localStorage.removeItem('remoed_user_token');
-                        sessionStorage.removeItem('remoed_user_token');
-                        localStorage.removeItem('token');
-                        localStorage.removeItem('teacherId');
-                        localStorage.removeItem('remoedUsername');
-                        localStorage.removeItem('userType');
+                        localStorage.clear();
+                        sessionStorage.clear();
                     } catch (e) {}
                     window.location.replace('/login/');
                 });
@@ -121,6 +122,11 @@
 
     function loadProfileIntoSidebar(container) {
         var token =
+            (typeof RemoedUserSession !== 'undefined' && RemoedUserSession.getUserToken && RemoedUserSession.getUserToken()) ||
+            localStorage.getItem('remoed_teacher_token') ||
+            sessionStorage.getItem('remoed_teacher_token') ||
+            localStorage.getItem('remoed_teacher_auth') ||
+            sessionStorage.getItem('remoed_teacher_auth') ||
             localStorage.getItem('remoed_user_token') ||
             sessionStorage.getItem('remoed_user_token') ||
             localStorage.getItem('token');
