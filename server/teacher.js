@@ -951,42 +951,35 @@ function toUtcFromLocal(dateStr, timeStr, zone) {
   return { utcIso: dt.toUTC().toISO(), zoneUsed: z };
 }
 
-// Save open slots - Protected: Only authenticated teachers can access their own data
-router.post('/open-slot', async (req, res) => {
+// Save open slots — identity from JWT + DB (req.teacher), not from URL/body.
+async function handleTeacherOpenSlots(req, res) {
   try {
-    console.log('Received request body:', req.body); // Debug log
-    const { teacherId, slots, timezone } = req.body; // slots: [{ date, time }]
-    
-    console.log('Teacher ID from request:', teacherId); // Debug log
-    console.log('Slots data:', slots); // Debug log
-    
-    if (!Array.isArray(slots)) {
-      console.log('Slots is not an array:', typeof slots, slots); // Debug log
-      return res.status(400).json({ error: 'Missing slots data' });
+    const { slots, timezone } = req.body;
+    const bodyTeacherId = req.body && req.body.teacherId;
+
+    console.log('Received request body:', req.body);
+    console.log('Slots data:', slots);
+
+    if (!req.teacher || !req.teacher.teacherId) {
+      return res.status(401).json({ error: 'Teacher session required.' });
     }
 
-    if (!teacherId) {
-      return res.status(400).json({ error: 'Missing teacher ID' });
+    const actualTeacherId = req.teacher.teacherId;
+    if (
+      bodyTeacherId != null &&
+      String(bodyTeacherId).trim() !== '' &&
+      String(bodyTeacherId) !== String(actualTeacherId)
+    ) {
+      return res.status(403).json({ error: 'Teacher ID does not match signed-in user.' });
+    }
+
+    if (!Array.isArray(slots)) {
+      console.log('Slots is not an array:', typeof slots, slots);
+      return res.status(400).json({ error: 'Missing slots data' });
     }
 
     if (slots.length === 0) {
       return res.status(400).json({ error: 'No slots selected' });
-    }
-
-    // Convert email to teacher ObjectId
-    let actualTeacherId = teacherId;
-    if (teacherId.includes('@')) {
-      const teacher = await Teacher.findOne({ 
-        $or: [
-          { email: teacherId },
-          { username: teacherId }
-        ]
-      });
-      if (!teacher) {
-        return res.status(404).json({ error: 'Teacher not found' });
-      }
-      actualTeacherId = teacher._id;
-      console.log('Converted email to teacher ObjectId:', actualTeacherId);
     }
 
     // Remove existing OPEN slots for this teacher on these dates/times
@@ -1029,59 +1022,51 @@ router.post('/open-slot', async (req, res) => {
       await createNotification(actualTeacherId, 'salary', `${newSlots.length} slots opened for week of ${weekStart.toLocaleDateString()} - ${weekEnd.toLocaleDateString()}.`);
     }
 
-    console.log('Successfully saved slots:', newSlots.length); // Debug log
+    console.log('Successfully saved slots:', newSlots.length);
     res.json({ success: true });
     try {
-      // Get the teacher's teacherId string for the socket emission
-      const teacher = await Teacher.findOne({ teacherId: actualTeacherId });
-      const teacherIdString = teacher ? teacher.teacherId : actualTeacherId;
-      realtime.emitAll('slotsUpdated', { teacherId: teacherIdString, ts: Date.now() });
-      console.log('Emitted slotsUpdated for teacherId:', teacherIdString);
+      realtime.emitAll('slotsUpdated', { teacherId: actualTeacherId, ts: Date.now() });
+      console.log('Emitted slotsUpdated for teacherId:', actualTeacherId);
     } catch (error) {
       console.error('Error emitting slotsUpdated:', error);
     }
   } catch (err) {
-    console.error('Error saving slots:', err); // Debug log
+    console.error('Error saving slots:', err);
     res.status(500).json({ error: err.message });
   }
-});
+}
 
-// Close specific slots - Protected: Only authenticated teachers can access their own data
-router.post('/close-slot', async (req, res) => {
+router.post('/open-slot', verifyToken, requireTeacher, handleTeacherOpenSlots);
+
+// Close specific slots — identity from JWT + req.teacher
+async function handleTeacherCloseSlots(req, res) {
   try {
     console.log('Received close slot request body:', req.body);
-    const { teacherId, slots, timezone } = req.body; // slots: [{ date, time }]
-    
-    console.log('Teacher ID from request:', teacherId);
+    const { slots, timezone } = req.body;
+    const bodyTeacherId = req.body && req.body.teacherId;
+
     console.log('Slots to close:', slots);
-    
+
+    if (!req.teacher || !req.teacher.teacherId) {
+      return res.status(401).json({ error: 'Teacher session required.' });
+    }
+
+    const actualTeacherId = req.teacher.teacherId;
+    if (
+      bodyTeacherId != null &&
+      String(bodyTeacherId).trim() !== '' &&
+      String(bodyTeacherId) !== String(actualTeacherId)
+    ) {
+      return res.status(403).json({ error: 'Teacher ID does not match signed-in user.' });
+    }
+
     if (!Array.isArray(slots)) {
       console.log('Slots is not an array:', typeof slots, slots);
       return res.status(400).json({ error: 'Missing slots data' });
     }
 
-    if (!teacherId) {
-      return res.status(400).json({ error: 'Missing teacher ID' });
-    }
-
     if (slots.length === 0) {
       return res.status(400).json({ error: 'No slots selected to close' });
-    }
-
-    // Convert email to teacher ObjectId
-    let actualTeacherId = teacherId;
-    if (teacherId.includes('@')) {
-      const teacher = await Teacher.findOne({ 
-        $or: [
-          { email: teacherId },
-          { username: teacherId }
-        ]
-      });
-      if (!teacher) {
-        return res.status(404).json({ error: 'Teacher not found' });
-      }
-      actualTeacherId = teacher._id;
-      console.log('Converted email to teacher ObjectId:', actualTeacherId);
     }
 
     // Remove specific slots that are selected for closing
@@ -1109,13 +1094,10 @@ router.post('/close-slot', async (req, res) => {
 
     console.log('Successfully closed slots:', slots.length);
     res.json({ success: true, closedCount: deleteResult.deletedCount });
-    
+
     try {
-      // Get the teacher's teacherId string for the socket emission
-      const teacher = await Teacher.findOne({ teacherId: actualTeacherId });
-      const teacherIdString = teacher ? teacher.teacherId : actualTeacherId;
-      realtime.emitAll('slotsUpdated', { teacherId: teacherIdString, ts: Date.now() });
-      console.log('Emitted slotsUpdated for teacherId:', teacherIdString);
+      realtime.emitAll('slotsUpdated', { teacherId: actualTeacherId, ts: Date.now() });
+      console.log('Emitted slotsUpdated for teacherId:', actualTeacherId);
     } catch (error) {
       console.error('Error emitting slotsUpdated:', error);
     }
@@ -1123,7 +1105,9 @@ router.post('/close-slot', async (req, res) => {
     console.error('Error closing slots:', err);
     res.status(500).json({ error: err.message });
   }
-});
+}
+
+router.post('/close-slot', verifyToken, requireTeacher, handleTeacherCloseSlots);
 
 // Fetch teacher's open slots and bookings for a week
 router.get('/slots', async (req, res) => {
@@ -6535,4 +6519,8 @@ router.get('/portal-videos', verifyToken, requireTeacher, async (req, res) => {
   }
 });
 
-module.exports = router; 
+/** Mounted also at POST /api/bookings/save-slot (see routes/bookings.js). */
+router.handleTeacherOpenSlots = handleTeacherOpenSlots;
+router.handleTeacherCloseSlots = handleTeacherCloseSlots;
+
+module.exports = router;

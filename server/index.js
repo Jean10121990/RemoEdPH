@@ -25,6 +25,7 @@ const announcementRoutes = require('./announcement');
 const lessonRoutes = require('./lessons');
 const classroomRecordingRouter = require('./classroomRecordingApi');
 const applicationRoutes = require('./applications');
+const bookingsSlotRoutes = require('./routes/bookings');
 const Booking = require('./models/Booking');
 const { consumeReservedCreditForBooking } = require('./services/bookingCreditLedger');
 const LessonMaterial = require('./models/LessonMaterial');
@@ -284,6 +285,7 @@ app.use('/admin', express.static(path.join(__dirname, '../public'), { index: fal
 // API Routes (no-store on role-protected APIs)
 app.use('/api/auth', noStoreProtectedResponse, authRoutes);
 app.use('/api/teacher', noStoreProtectedResponse, teacherRoutes);
+app.use('/api/bookings', noStoreProtectedResponse, bookingsSlotRoutes);
 app.use('/api/student', noStoreProtectedResponse, studentRoutes);
 // Public teacher application form: POST /api/applications
 app.use('/api', applicationRoutes);

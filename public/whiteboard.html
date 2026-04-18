@@ -37,7 +37,7 @@
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script>
         // --- Setup ---
-        const SIGNALING_SERVER_URL = 'http://localhost:4000';
+        const SIGNALING_SERVER_URL = window.location.origin || '';
         const socket = io(SIGNALING_SERVER_URL);
         
         const canvas = document.getElementById('whiteboard');

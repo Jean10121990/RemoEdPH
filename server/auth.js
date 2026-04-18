@@ -490,7 +490,12 @@ router.post('/login', authLoginLimiter, async (req, res) => {
     if (passwordMatch) {
       await resetLoginAttempts(teacher);
       const token = jwt.sign(
-        { username: teacher.username, teacherId: teacher.teacherId },
+        {
+          username: teacher.username,
+          teacherId: teacher.teacherId,
+          userType: 'teacher',
+          role: 'teacher',
+        },
         JWT_SECRET,
         { expiresIn: JWT_EXPIRES_IN }
       );

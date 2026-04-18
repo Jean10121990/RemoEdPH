@@ -282,7 +282,7 @@
     // Collaborative annotation client
     (function(){
       // Use the current origin (includes protocol, host, and port)
-      const SIGNALING_SERVER_URL = window.location.origin || 'http://localhost:5000';
+      const SIGNALING_SERVER_URL = window.location.origin || '';
       console.log('🔌 Connecting to Socket.IO server at:', SIGNALING_SERVER_URL);
       const socket = io(SIGNALING_SERVER_URL, {
         transports: ['websocket', 'polling'],

@@ -53,9 +53,11 @@ document.getElementById('login-form').addEventListener('submit', function(e) {
         console.log('Login response:', data);
         if (data.success && data.token) {
             localStorage.setItem('token', data.token);
+            localStorage.setItem('remoed_user_token', data.token);
             localStorage.setItem('remoedUsername', username);
-            localStorage.setItem('teacherId', data.teacherId);
+            localStorage.setItem('teacherId', data.teacherId != null ? String(data.teacherId) : '');
             localStorage.setItem('userType', 'teacher');
+            localStorage.setItem('userRole', 'teacher');
             
             console.log('Login successful, checking if password change is needed...');
             
@@ -112,9 +114,11 @@ function attemptLoginWithXHR(username, password) {
                     const data = JSON.parse(xhr.responseText);
                     if (data.success && data.token) {
                         localStorage.setItem('token', data.token);
+                        localStorage.setItem('remoed_user_token', data.token);
                         localStorage.setItem('remoedUsername', username);
-                        localStorage.setItem('teacherId', data.teacherId);
+                        localStorage.setItem('teacherId', data.teacherId != null ? String(data.teacherId) : '');
                         localStorage.setItem('userType', 'teacher');
+                        localStorage.setItem('userRole', 'teacher');
                         window.location.href = 'teacher-dashboard.html';
                     } else {
                         document.getElementById('error-message').textContent = data.message || 'Invalid credentials';

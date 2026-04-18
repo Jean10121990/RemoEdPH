@@ -152,10 +152,55 @@
       window.location.href = 'index.html';
     }
     
-    // Get user info from localStorage
+    // Get user info from localStorage; teacherId must match JWT (fixes undefined/null in URLs after login)
     const username = localStorage.getItem('remoedUsername') || 'Teacher';
-    const teacherId = localStorage.getItem('teacherId');
-    
+
+    function decodeTeacherJwtPayload() {
+      try {
+        const t =
+          localStorage.getItem('remoed_user_token') ||
+          localStorage.getItem('token') ||
+          sessionStorage.getItem('remoed_user_token') ||
+          sessionStorage.getItem('token') ||
+          '';
+        if (!t) return null;
+        const part = t.split('.')[1];
+        if (!part) return null;
+        const b64 = part.replace(/-/g, '+').replace(/_/g, '/');
+        const pad = b64.length % 4 ? '='.repeat(4 - (b64.length % 4)) : '';
+        return JSON.parse(atob(b64 + pad));
+      } catch (_e) {
+        return null;
+      }
+    }
+
+    function getEffectiveTeacherId() {
+      let tid = localStorage.getItem('teacherId');
+      if (tid && tid !== 'undefined' && tid !== 'null') return tid;
+      const pl = decodeTeacherJwtPayload();
+      if (pl && pl.teacherId != null && String(pl.teacherId) !== 'undefined') {
+        tid = String(pl.teacherId);
+        localStorage.setItem('teacherId', tid);
+        if (pl.userType) localStorage.setItem('userType', pl.userType);
+        if (pl.role) localStorage.setItem('userRole', pl.role);
+        return tid;
+      }
+      return '';
+    }
+
+    let teacherId = getEffectiveTeacherId();
+    if (!teacherId) {
+      if (!sessionStorage.getItem('remoed_teacherid_reload_once')) {
+        sessionStorage.setItem('remoed_teacherid_reload_once', '1');
+        window.location.reload();
+        throw new Error('RELOAD_TEACHER_SESSION');
+      }
+      sessionStorage.removeItem('remoed_teacherid_reload_once');
+      window.location.replace('teacher-login.html');
+      throw new Error('REDIRECT_TEACHER_LOGIN');
+    }
+    sessionStorage.removeItem('remoed_teacherid_reload_once');
+
     console.log('=== TEACHER INFO ===');
     console.log('Username:', username);
     console.log('Teacher ID:', teacherId);
@@ -606,6 +651,7 @@
 
     // Load existing slots and booked slots from backend - ALWAYS FRESH FROM DATABASE
     async function loadExistingSlots() {
+      teacherId = getEffectiveTeacherId();
       if (!teacherId) {
         console.error('No teacherId available');
         return;
@@ -629,7 +675,13 @@
         console.log('🔄 Cache buster:', cacheBuster);
         
         // Load all slots (both available and unavailable) for teacher management
-        const response = await fetch(`/api/teacher/slots?teacherId=${teacherId}&week=${weekString}&allSlots=true&${cacheBuster}`, {
+        const slotsQueryPath = `/api/teacher/slots?teacherId=${encodeURIComponent(teacherId)}&week=${weekString}&allSlots=true&${cacheBuster}`;
+        const slotsFullUrl = new URL(slotsQueryPath, window.location.origin).href;
+        if (slotsFullUrl.indexOf('teacherId=undefined') !== -1 || slotsFullUrl.indexOf('teacherId=null') !== -1) {
+          teacherId = getEffectiveTeacherId();
+        }
+        console.log('[Teacher booking] Full URL (GET slots):', slotsFullUrl);
+        const response = await fetch(slotsQueryPath, {
           method: 'GET',
           headers: {
             'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
@@ -682,7 +734,10 @@
         }
         
         // Load booked slots with ULTRA AGGRESSIVE cache-busting
-        const bookingsResponse = await fetch(`/api/teacher/classes?teacherId=${teacherId}&week=${weekString}&${cacheBuster}`, {
+        const classesQueryPath = `/api/teacher/classes?teacherId=${encodeURIComponent(teacherId)}&week=${weekString}&${cacheBuster}`;
+        const classesFullUrl = new URL(classesQueryPath, window.location.origin).href;
+        console.log('[Teacher booking] Full URL (GET classes):', classesFullUrl);
+        const bookingsResponse = await fetch(classesQueryPath, {
           method: 'GET',
           headers: {
             'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
@@ -1030,7 +1085,11 @@
 
     // Open selected slots to backend
     async function openSelectedSlots() {
-      if (!teacherId) return;
+      teacherId = getEffectiveTeacherId();
+      if (!teacherId) {
+        window.location.reload();
+        return;
+      }
       
       console.log('=== OPEN SELECTED SLOTS DEBUG ===');
       console.log('Selected slots count:', selectedSlots.size);
@@ -1067,7 +1126,9 @@
         const timestamp = Date.now();
         const random = Math.random();
         const cacheBuster = `t=${timestamp}&v=${random}&fresh=true&nocache=${timestamp}&update=${Date.now()}&refresh=${Math.random()}&clear=${Math.random()}&force=${Date.now()}`;
-        const existingResponse = await fetch(`/api/teacher/slots?teacherId=${teacherId}&week=${weekString}&allSlots=true&tz=${encodeURIComponent(teacherTimezone)}&${cacheBuster}`, {
+        const existingSlotsPath = `/api/teacher/slots?teacherId=${encodeURIComponent(teacherId)}&week=${weekString}&allSlots=true&tz=${encodeURIComponent(teacherTimezone)}&${cacheBuster}`;
+        console.log('[Teacher booking] Full URL (prefetch slots before save):', new URL(existingSlotsPath, window.location.origin).href);
+        const existingResponse = await fetch(existingSlotsPath, {
           method: 'GET',
           headers: {
             'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
@@ -1091,8 +1152,10 @@
         
         console.log('All slots to keep (existing + new):', uniqueSlots);
         
-        // Send to backend with cache-busting headers
-        const response = await fetch('/api/teacher/open-slot', {
+        const saveSlotPath = '/api/bookings/save-slot';
+        const saveSlotFullUrl = new URL(saveSlotPath, window.location.origin).href;
+        console.log('[Teacher booking] Full URL (save slots POST):', saveSlotFullUrl);
+        const response = await fetch(saveSlotPath, {
             method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
@@ -1102,7 +1165,7 @@
             'X-Requested-With': 'XMLHttpRequest',
             'X-Cache-Buster': Date.now().toString()
           },
-          body: JSON.stringify({ teacherId, slots: uniqueSlots, timezone: teacherTimezone })
+          body: JSON.stringify({ slots: uniqueSlots, timezone: teacherTimezone })
         });
         const data = await response.json();
         
@@ -1131,7 +1194,11 @@
 
     // Close selected slots from backend
     async function closeSelectedSlots() {
-      if (!teacherId) return;
+      teacherId = getEffectiveTeacherId();
+      if (!teacherId) {
+        window.location.reload();
+        return;
+      }
       
       console.log('=== CLOSE SELECTED SLOTS DEBUG ===');
       console.log('Selected slots count:', selectedSlots.size);
@@ -1150,7 +1217,9 @@
         const timestamp = Date.now();
         const random = Math.random();
         const cacheBuster = `t=${timestamp}&v=${random}&fresh=true&nocache=${timestamp}&update=${Date.now()}&refresh=${Math.random()}&clear=${Math.random()}&force=${Date.now()}`;
-        const existingResponse = await fetch(`/api/teacher/slots?teacherId=${teacherId}&week=${weekString}&allSlots=true&tz=${encodeURIComponent(teacherTimezone)}&${cacheBuster}`, {
+        const closePrefetchPath = `/api/teacher/slots?teacherId=${encodeURIComponent(teacherId)}&week=${weekString}&allSlots=true&tz=${encodeURIComponent(teacherTimezone)}&${cacheBuster}`;
+        console.log('[Teacher booking] Full URL (prefetch slots before close):', new URL(closePrefetchPath, window.location.origin).href);
+        const existingResponse = await fetch(closePrefetchPath, {
           method: 'GET',
           headers: {
             'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
@@ -1192,8 +1261,9 @@
         
         console.log('Slots to keep:', slotsToKeep);
         
-        // Send slots to close to the dedicated close endpoint
-        const response = await fetch('/api/teacher/close-slot', {
+        const closeSlotPath = '/api/teacher/close-slot';
+        console.log('[Teacher booking] Full URL (close slots POST):', new URL(closeSlotPath, window.location.origin).href);
+        const response = await fetch(closeSlotPath, {
             method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
@@ -1203,7 +1273,7 @@
             'X-Requested-With': 'XMLHttpRequest',
             'X-Cache-Buster': Date.now().toString()
           },
-          body: JSON.stringify({ teacherId, slots: slotsToClose, timezone: teacherTimezone })
+          body: JSON.stringify({ slots: slotsToClose, timezone: teacherTimezone })
         });
         const data = await response.json();
         
