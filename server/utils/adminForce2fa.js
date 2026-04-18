@@ -1,9 +1,10 @@
 /**
- * Primary admin (or env override) must complete TOTP enrollment before receiving a portal JWT.
- * Set FORCE_2FA_ADMIN_IDENTIFIER=username-or-email (default admin@remoedph.com).
+ * All staff admins must complete TOTP enrollment before receiving a portal JWT.
+ * True when 2FA is not fully enabled yet (no successful first verification / flag off).
  */
 const ADMIN_2FA_ENROLLMENT_PURPOSE = 'admin_2fa_enrollment';
 
+/** @deprecated Legacy single-account gate; unified login still uses identifier to avoid leaking admin emails. */
 const FORCED_IDENTIFIER = String(process.env.FORCE_2FA_ADMIN_IDENTIFIER || 'admin@remoedph.com')
   .toLowerCase()
   .trim();
@@ -19,9 +20,10 @@ function adminMatchesForcedIdentifier(admin) {
   return u === FORCED_IDENTIFIER || e === FORCED_IDENTIFIER;
 }
 
-/** True when this account must finish 2FA setup (no full JWT until isTwoFactorEnabled is true). */
+/** True when this admin must finish QR setup + first 6-digit code before full sign-in. */
 function requiresForced2faEnrollment(admin) {
-  return adminMatchesForcedIdentifier(admin) && admin.isTwoFactorEnabled !== true;
+  if (!admin) return false;
+  return admin.isTwoFactorEnabled !== true;
 }
 
 module.exports = {

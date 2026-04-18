@@ -8,6 +8,11 @@
   <title>Admin Login - RemoEdPH</title>
   <link rel="stylesheet" href="modern-styles.css">
     <link rel="stylesheet" href="style.css">
+  <style>
+    .admin-2fa-enroll-modal { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 1rem; box-sizing: border-box; }
+    .admin-2fa-enroll-modal__backdrop { position: absolute; inset: 0; background: rgba(15, 23, 42, 0.55); }
+    .admin-2fa-enroll-modal__panel { position: relative; z-index: 1; max-height: 90vh; overflow-y: auto; }
+  </style>
   <script src="js/admin-session.js"></script>
 </head>
 <body class="page-admin-login">
@@ -45,6 +50,23 @@
       <button type="button" id="admin-2fa-submit" class="remoed-btn remoed-btn-primary" style="width: 100%;">Verify &amp; continue</button>
       <button type="button" id="admin-2fa-back" class="remoed-btn" style="width: 100%; margin-top: 0.5rem; background: #e2e8f0; color: #334155;">Back</button>
     </div>
+    <div id="admin-2fa-enroll-modal" class="admin-2fa-enroll-modal" style="display: none;" aria-hidden="true">
+      <div class="admin-2fa-enroll-modal__backdrop"></div>
+      <div class="admin-2fa-enroll-modal__panel remoed-form" role="dialog" aria-labelledby="admin-2fa-enroll-title" style="max-width: 420px; margin: 0; width: 92%;">
+        <h2 id="admin-2fa-enroll-title" class="remoed-form-title" style="font-size: 1.25rem;">Set up two-factor authentication</h2>
+        <div id="admin-enroll-error" class="remoed-status error" style="display: none; margin-bottom: 0.75rem;"></div>
+        <p style="font-size: 0.875rem; color: #64748b; margin-bottom: 1rem;">All staff accounts must enable 2FA. Scan the QR code with your authenticator app, then enter the first 6-digit code to finish signing in.</p>
+        <div style="text-align: center; margin-bottom: 1rem;">
+          <img id="admin-enroll-qr-img" alt="Authenticator QR code" style="max-width: 220px; height: auto; border-radius: 8px; border: 1px solid #e2e8f0;">
+        </div>
+        <div class="remoed-form-group">
+          <label for="admin-enroll-code" class="remoed-form-label">Authentication code</label>
+          <input type="text" id="admin-enroll-code" class="remoed-form-input" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="000000" autocomplete="one-time-code">
+        </div>
+        <button type="button" id="admin-enroll-submit" class="remoed-btn remoed-btn-primary" style="width: 100%;">Verify &amp; continue</button>
+        <button type="button" id="admin-enroll-cancel" class="remoed-btn" style="width: 100%; margin-top: 0.5rem; background: #e2e8f0; color: #334155;">Cancel</button>
+      </div>
+    </div>
     <div style="text-align: center; margin-top: 1.5rem;">
       <a href="admin-first-setup.html" style="color: #2563eb; text-decoration: none; font-size: 0.875rem; display: block; margin-bottom: 0.5rem;">First-time password setup</a>
       <a href="index.html" style="color: #2563eb; text-decoration: none; font-size: 0.875rem;">&larr; Back to Home</a>
@@ -52,6 +74,31 @@
   </div>
   <script>
     let admin2faTempToken = '';
+
+    function showAdmin2faEnrollModal(qrCodeData) {
+      var modal = document.getElementById('admin-2fa-enroll-modal');
+      var img = document.getElementById('admin-enroll-qr-img');
+      var codeInput = document.getElementById('admin-enroll-code');
+      if (img && qrCodeData) img.src = qrCodeData;
+      if (codeInput) codeInput.value = '';
+      if (modal) {
+        modal.style.display = 'flex';
+        modal.setAttribute('aria-hidden', 'false');
+      }
+      var enrollErr = document.getElementById('admin-enroll-error');
+      if (enrollErr) enrollErr.style.display = 'none';
+      document.getElementById('admin-login-form').style.display = 'none';
+      document.getElementById('admin-login-error').style.display = 'none';
+    }
+
+    function hideAdmin2faEnrollModal() {
+      var modal = document.getElementById('admin-2fa-enroll-modal');
+      if (modal) {
+        modal.style.display = 'none';
+        modal.setAttribute('aria-hidden', 'true');
+      }
+      document.getElementById('admin-login-form').style.display = 'block';
+    }
 
     function applyAdminSession(data) {
       if (!data || !data.token) return;
@@ -124,6 +171,12 @@
         try {
           sessionStorage.setItem('admin2faEnrollmentToken', data.enrollmentToken);
         } catch (e) {}
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Login';
+        if (data.qrCodeData) {
+          showAdmin2faEnrollModal(data.qrCodeData);
+          return;
+        }
         var setupUrl = (data.setupPath || '/admin/2fa-setup') + '?t=' + encodeURIComponent(data.enrollmentToken);
         window.location.href = setupUrl;
         return;
@@ -144,6 +197,81 @@
         submitBtn.disabled = false;
         submitBtn.textContent = 'Login';
       }
+    };
+
+    document.getElementById('admin-enroll-cancel').onclick = async function() {
+      try {
+        await fetch('/api/auth/admin-logout', { method: 'POST', credentials: 'include' });
+      } catch (e) {}
+      hideAdmin2faEnrollModal();
+    };
+
+    document.getElementById('admin-enroll-submit').onclick = async function() {
+      var errorDiv = document.getElementById('admin-enroll-error');
+      var btn = document.getElementById('admin-enroll-submit');
+      var code = (document.getElementById('admin-enroll-code').value || '').replace(/\s/g, '');
+      if (errorDiv) errorDiv.style.display = 'none';
+      if (!/^\d{6}$/.test(code)) {
+        if (errorDiv) {
+          errorDiv.textContent = 'Enter the 6-digit code from your authenticator app.';
+          errorDiv.style.display = 'block';
+        }
+        return;
+      }
+      var enrollTok = '';
+      try {
+        enrollTok = sessionStorage.getItem('admin2faEnrollmentToken') || '';
+      } catch (e) {}
+      if (!enrollTok) {
+        if (errorDiv) {
+          errorDiv.textContent = 'Setup session expired. Please sign in again.';
+          errorDiv.style.display = 'block';
+        }
+        return;
+      }
+      btn.disabled = true;
+      btn.textContent = 'Verifying...';
+      var response;
+      try {
+        response = await fetch('/api/admin/verify-2fa', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer ' + enrollTok,
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            code: code,
+            enrollmentToken: enrollTok,
+            token: enrollTok,
+          }),
+        });
+      } catch (err) {
+        if (errorDiv) {
+          errorDiv.textContent = 'Unable to reach the server.';
+          errorDiv.style.display = 'block';
+        }
+        btn.disabled = false;
+        btn.textContent = 'Verify & continue';
+        return;
+      }
+      var vdata = {};
+      try {
+        vdata = await response.json();
+      } catch (err2) {
+        vdata = { success: false, message: 'Invalid server response.' };
+      }
+      if (vdata.success && vdata.token) {
+        try { sessionStorage.removeItem('admin2faEnrollmentToken'); } catch (e) {}
+        applyAdminSession(vdata);
+        return;
+      }
+      if (errorDiv) {
+        errorDiv.textContent = vdata.message || 'Verification failed.';
+        errorDiv.style.display = 'block';
+      }
+      btn.disabled = false;
+      btn.textContent = 'Verify & continue';
     };
 
     document.getElementById('admin-2fa-back').onclick = function() {

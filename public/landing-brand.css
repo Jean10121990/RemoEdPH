@@ -3,7 +3,8 @@
  * Loaded after style.css so these rules win without editing the consolidated bundle.
  */
 
-body.page-index {
+body.page-index,
+body.page-teachers {
   --remo-logo-blue: #1ca7e7;
   --remo-logo-blue-deep: #0f7bb0;
   --remo-logo-yellow: #ffd700;
@@ -24,13 +25,53 @@ body.page-index .hero.japandi-hero {
   ) !important;
 }
 
-/* Nav: brand stripe (gradient underline) */
-body.page-index .navbar {
-  position: relative;
+/* Nav: brand stripe (gradient underline) — index + teachers directory.
+   Must stay position: sticky (not relative) so the bar pins while scrolling; ::after still anchors to this box. */
+body.page-index .navbar,
+body.page-teachers .navbar {
+  position: -webkit-sticky;
+  position: sticky;
+  top: 0;
+  z-index: 1100;
+  width: 100%;
+  box-sizing: border-box;
   box-shadow: 0 8px 24px rgba(28, 167, 231, 0.12);
+  border-bottom: 1px solid rgba(30, 58, 95, 0.08);
+  background: rgba(255, 255, 255, 0.88) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
-body.page-index .navbar::after {
+/* Teachers: same top bar as landing (index). Universal .page-teachers * reset zeros padding — restore here. */
+body.page-teachers .navbar {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 40px;
+}
+
+/* Logo block — match index (.page-index .logo-section img / span) */
+body.page-teachers .logo-section img {
+  height: 50px;
+  width: auto;
+  max-height: 50px;
+  display: block;
+  flex: 0 0 auto;
+  object-fit: contain;
+}
+
+body.page-teachers .logo-section span {
+  font-size: 1.8rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+body.page-index .navbar::after,
+body.page-teachers .navbar::after {
   content: "";
   position: absolute;
   left: 0;
@@ -47,12 +88,14 @@ body.page-index .navbar::after {
 }
 
 /* Fallback if gradient text is unsupported */
-body.page-index .logo-section span {
+body.page-index .logo-section span,
+body.page-teachers .logo-section span {
   color: var(--remo-logo-blue-deep) !important;
 }
 
 @supports (background-clip: text) {
-  body.page-index .logo-section span {
+  body.page-index .logo-section span,
+  body.page-teachers .logo-section span {
     background: linear-gradient(
       90deg,
       var(--remo-logo-green-deep),
@@ -68,20 +111,77 @@ body.page-index .logo-section span {
 
 /* Nav + hero CTAs: full pill corners (match .site-lang-switcher), overrides flatter japandi radius */
 body.page-index .nav-btn,
+body.page-teachers .nav-btn,
 body.page-index .cta-btn,
 body.page-index a.cta-btn {
   border-radius: 999px !important;
 }
 
-/* Outline nav — readable + brand hover */
-body.page-index .nav-btn:not(.primary) {
-  border-color: var(--remo-logo-blue) !important;
+body.page-teachers .logo-section {
+  display: inline-flex;
+  align-items: center;
+  align-self: center;
+  gap: 12px;
+  line-height: 0;
+  text-decoration: none;
+  color: inherit;
+  flex-shrink: 0;
+}
+
+body.page-teachers a.logo-section:hover {
+  opacity: 0.92;
+}
+
+body.page-teachers .nav-buttons {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  align-content: center;
+  align-self: center;
+  justify-content: flex-end;
+  gap: 16px;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+body.page-teachers .nav-btn {
+  padding: 14px 28px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  font-size: 1rem;
+  line-height: 1.2;
+  min-height: 44px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transform-origin: center;
+}
+
+body.page-teachers .navbar .site-lang-switcher {
+  margin: 0;
+  align-self: center;
+  box-sizing: border-box;
+}
+
+/* Outline nav — readable + brand hover (same on index + teachers) */
+body.page-index .nav-btn:not(.primary),
+body.page-teachers .nav-btn:not(.primary) {
+  border: 2px solid var(--remo-logo-blue) !important;
   color: var(--remo-ink) !important;
   background: rgba(255, 255, 255, 0.95) !important;
   box-shadow: inset 0 -3px 0 rgba(47, 178, 122, 0.35);
 }
 
-body.page-index .nav-btn:not(.primary):hover {
+body.page-index .nav-btn:not(.primary):hover,
+body.page-teachers .nav-btn:not(.primary):hover {
   background: linear-gradient(
     135deg,
     var(--remo-logo-blue),
@@ -93,7 +193,8 @@ body.page-index .nav-btn:not(.primary):hover {
 }
 
 /* Primary nav CTA: blue + green gradient, gold rim */
-body.page-index .nav-btn.primary {
+body.page-index .nav-btn.primary,
+body.page-teachers .nav-btn.primary {
   background: linear-gradient(
     135deg,
     var(--remo-logo-green-deep),
@@ -104,7 +205,8 @@ body.page-index .nav-btn.primary {
   box-shadow: 0 6px 20px rgba(31, 143, 98, 0.35);
 }
 
-body.page-index .nav-btn.primary:hover {
+body.page-index .nav-btn.primary:hover,
+body.page-teachers .nav-btn.primary:hover {
   filter: brightness(1.05);
   color: #fff !important;
 }
@@ -525,5 +627,31 @@ body.page-index #plans .plan-card.plan-scholar.plan-recommended:hover {
 
   body.page-index #plans .plan-card.plan-scholar.plan-recommended:hover {
     transform: translateY(-10px);
+  }
+}
+
+/* Never stack the header into a “bottom nav” — keep one row; scroll pills if needed. */
+@media (max-width: 900px) {
+  body.page-teachers .navbar {
+    padding: 16px 20px;
+    gap: 12px;
+  }
+
+  body.page-teachers .nav-buttons {
+    gap: 12px;
+  }
+
+  body.page-teachers .nav-btn {
+    flex: 0 0 auto;
+    padding: 10px 16px;
+    font-size: 0.88rem;
+  }
+
+  body.page-teachers .site-lang-switcher {
+    flex: 0 0 auto;
+    min-width: 7.25rem;
+    min-height: 42px;
+    padding: 8px 12px;
+    font-size: 0.88rem;
   }
 }

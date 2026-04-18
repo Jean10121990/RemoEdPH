@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="css/teacher-sidebar.css">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="css/student-portal-layout.css">
+    <script src="js/user-session.js"></script>
 </head>
 <body class="student-portal page-student-learning-journey">
     <div class="remoed-main">
@@ -49,12 +50,86 @@
             };
 
             var completedSet = null;
+            var unlockCache = {};
 
-            function renderLevel(levelKey) {
+            function getPortalToken() {
+                if (window.RemoedUserSession && typeof window.RemoedUserSession.getUserToken === 'function') {
+                    return window.RemoedUserSession.getUserToken() || '';
+                }
+                try {
+                    return (
+                        localStorage.getItem('remoed_user_token') ||
+                        sessionStorage.getItem('remoed_user_token') ||
+                        localStorage.getItem('token') ||
+                        sessionStorage.getItem('token') ||
+                        ''
+                    );
+                } catch (e) {
+                    return '';
+                }
+            }
+
+            function fetchUnlockBatches(levelKey) {
+                if (unlockCache[levelKey]) {
+                    return Promise.resolve(unlockCache[levelKey]);
+                }
+                var token = getPortalToken();
+                if (!token) {
+                    return Promise.resolve(null);
+                }
+                return fetch(
+                    '/api/student/unlocked-batches?level=' + encodeURIComponent(levelKey),
+                    { headers: { Authorization: 'Bearer ' + token }, credentials: 'include' }
+                )
+                    .then(function (res) {
+                        return res.json().then(function (data) {
+                            if (!res.ok || !data.success || !Array.isArray(data.batches)) {
+                                return null;
+                            }
+                            unlockCache[levelKey] = data.batches;
+                            return data.batches;
+                        });
+                    })
+                    .catch(function () {
+                        return null;
+                    });
+            }
+
+            function isBatchLocked(batches, batchNum) {
+                if (!batches || !batches.length) return false;
+                var row = batches[batchNum - 1];
+                return !!(row && row.locked);
+            }
+
+            var LOCK_SVG =
+                '<svg class="lj-lock-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+                '<path d="M12 17a2 2 0 100-4 2 2 0 000 4z" fill="currentColor"/>' +
+                '<path d="M18 9h-1V7a5 5 0 00-10 0v2H6a2 2 0 00-2 2v9a2 2 0 002 2h12a2 2 0 002-2v-9a2 2 0 00-2-2zm-8-2a3 3 0 016 0v2H10V7z" fill="currentColor"/>' +
+                '</svg>';
+
+            var REGION_LOCK_OVERLAY =
+                '<div class="lj-region-lock-overlay" role="region" aria-label="These lessons are locked">' +
+                '<div class="lj-region-lock-inner">' +
+                LOCK_SVG +
+                '<p>Purchase a plan to unlock more lessons</p>' +
+                '<a class="lj-batch-buy-btn" href="student-credits.html">Buy Now</a>' +
+                '</div></div>';
+
+            function renderLevel(levelKey, batches) {
                 var root = document.getElementById('lj-trail-root');
                 if (!root || !completedSet) return;
                 var label = LEVEL_META[levelKey] || levelKey;
                 var html = '';
+                var lockedRunOpen = false;
+
+                function closeLockedRun() {
+                    if (!lockedRunOpen) return;
+                    html += '</div>';
+                    html += REGION_LOCK_OVERLAY;
+                    html += '</div>';
+                    lockedRunOpen = false;
+                }
+
                 for (var b = 1; b <= 10; b++) {
                     var doneInBatch = 0;
                     var nodes = '';
@@ -67,7 +142,25 @@
                         nodes += '<div class="lj-node' + (ok ? ' lj-node--done' : '') + '" role="img" aria-label="' + safe + '" title="' + safe + '"></div>';
                     }
                     var batchComplete = doneInBatch === 22;
-                    html += '<section class="lj-batch" aria-labelledby="lj-batch-' + levelKey + '-' + b + '">';
+                    var locked = isBatchLocked(batches, b);
+
+                    if (!locked) {
+                        closeLockedRun();
+                    } else if (!lockedRunOpen) {
+                        html += '<div class="lj-locked-region"><div class="lj-locked-region-stack">';
+                        lockedRunOpen = true;
+                    }
+
+                    html += '<div class="lj-batch-wrap">';
+                    html +=
+                        '<section class="lj-batch' +
+                        (locked ? ' lj-batch--locked' : '') +
+                        '" aria-labelledby="lj-batch-' +
+                        levelKey +
+                        '-' +
+                        b +
+                        '">';
+                    html += '<div class="lj-batch-body">';
                     html += '<h2 class="lj-batch-head" id="lj-batch-' + levelKey + '-' + b + '">';
                     if (batchComplete) {
                         html += '<span class="lj-trophy" aria-hidden="true" title="Batch complete">🏆</span> ';
@@ -79,19 +172,30 @@
                     }
                     html += '</h2>';
                     html += '<div class="lj-trail" aria-hidden="false">' + nodes + '</div>';
+                    html += '</div>';
                     html += '</section>';
+                    html += '</div>';
                 }
+                closeLockedRun();
                 root.innerHTML = html;
                 root.setAttribute('aria-busy', 'false');
             }
 
-            function setActiveTab(levelKey) {
+            function activateTabUi(levelKey) {
                 document.querySelectorAll('.lj-tab').forEach(function (btn) {
                     var on = btn.getAttribute('data-level') === levelKey;
                     btn.classList.toggle('active', on);
                     btn.setAttribute('aria-selected', on ? 'true' : 'false');
                 });
-                renderLevel(levelKey);
+            }
+
+            function loadAndRender(levelKey) {
+                var root = document.getElementById('lj-trail-root');
+                if (!root || !completedSet) return;
+                root.setAttribute('aria-busy', 'true');
+                fetchUnlockBatches(levelKey).then(function (batches) {
+                    renderLevel(levelKey, batches);
+                });
             }
 
             document.addEventListener('DOMContentLoaded', function () {
@@ -103,7 +207,8 @@
                 RemoEdLessonProgress.loadCompletedKeys()
                     .then(function (set) {
                         completedSet = set;
-                        setActiveTab('nursery');
+                        activateTabUi('nursery');
+                        loadAndRender('nursery');
                     })
                     .catch(function (e) {
                         if (root) {
@@ -114,7 +219,9 @@
 
                 document.querySelectorAll('.lj-tab').forEach(function (btn) {
                     btn.addEventListener('click', function () {
-                        setActiveTab(btn.getAttribute('data-level'));
+                        var lk = btn.getAttribute('data-level');
+                        activateTabUi(lk);
+                        loadAndRender(lk);
                     });
                 });
             });

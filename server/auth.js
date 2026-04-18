@@ -29,10 +29,28 @@ const {
   ADMIN_2FA_ENROLLMENT_PURPOSE,
   requiresForced2faEnrollment,
 } = require('./utils/adminForce2fa');
-const { decryptTotpSecret } = require('./utils/twoFactorSecretCrypto');
+const { decryptTotpSecret, encryptTotpSecret } = require('./utils/twoFactorSecretCrypto');
 const { authenticator } = require('otplib');
+const QRCode = require('qrcode');
 
 authenticator.options = { window: 1 };
+
+/**
+ * Ensure encrypted TOTP secret exists and return a data-URL QR for the admin login / setup UI.
+ */
+async function prepareAdminTotpEnrollmentMaterials(admin) {
+  let secretPlain = admin.twoFactorSecret ? decryptTotpSecret(admin.twoFactorSecret) : null;
+  if (!secretPlain) {
+    secretPlain = authenticator.generateSecret();
+    admin.twoFactorSecret = encryptTotpSecret(secretPlain);
+    admin.isTwoFactorEnabled = false;
+    admin.twoFactorEnabledAt = null;
+    await admin.save();
+  }
+  const otpauth = authenticator.keyuri(admin.username, 'RemoEdPH Admin', secretPlain);
+  const qrCodeData = await QRCode.toDataURL(otpauth);
+  return { qrCodeData };
+}
 
 const ADMIN_2FA_PENDING_PURPOSE = 'admin_2fa_pending';
 
@@ -166,57 +184,70 @@ router.post('/admin-login', adminLoginLimiterExtra, async (req, res) => {
 
     const adminRole = admin.adminRole || 'super_admin';
 
-  if (requiresForced2faEnrollment(admin)) {
-    const enrollmentToken = jwt.sign(
-      {
-        purpose: ADMIN_2FA_ENROLLMENT_PURPOSE,
-        adminId: String(admin._id),
-      },
-      JWT_SECRET,
-      { expiresIn: '30m' }
-    );
-    // Create a short-lived enrollment session so the setup page can POST only {code}.
-    return req.session.regenerate((regenErr) => {
-      if (regenErr) {
-        console.error('Session regenerate error (2fa enrollment):', regenErr);
-        return res.status(500).json({ success: false, message: 'Could not create enrollment session' });
+    if (requiresForced2faEnrollment(admin)) {
+      let qrCodeData = null;
+      try {
+        const out = await prepareAdminTotpEnrollmentMaterials(admin);
+        qrCodeData = out.qrCodeData;
+      } catch (prepErr) {
+        console.error('prepareAdminTotpEnrollmentMaterials:', prepErr);
+        return res.status(500).json({
+          success: false,
+          message: 'Could not prepare two-factor authentication. Please try again.',
+        });
       }
-      req.session.admin2faEnroll = true;
-      req.session.admin2faEnrollAdminId = String(admin._id);
-      req.session.admin2faEnrollToken = enrollmentToken;
-      req.session.save((saveErr) => {
-        if (saveErr) {
-          console.error('Session save error (2fa enrollment):', saveErr);
-          return res.status(500).json({ success: false, message: 'Could not save enrollment session' });
+      const enrollmentToken = jwt.sign(
+        {
+          purpose: ADMIN_2FA_ENROLLMENT_PURPOSE,
+          adminId: String(admin._id),
+        },
+        JWT_SECRET,
+        { expiresIn: '30m' }
+      );
+      // Create a short-lived enrollment session so the setup page (or login modal) can POST verify with { code }.
+      return req.session.regenerate((regenErr) => {
+        if (regenErr) {
+          console.error('Session regenerate error (2fa enrollment):', regenErr);
+          return res.status(500).json({ success: false, message: 'Could not create enrollment session' });
         }
-        return res.json({
-          success: true,
-          require2FASetup: true,
-          enrollmentToken,
-          setupPath: '/admin/2fa-setup',
-          username: admin.username,
-          message: 'Complete two-factor setup before accessing the admin portal.',
+        req.session.admin2faEnroll = true;
+        req.session.admin2faEnrollAdminId = String(admin._id);
+        req.session.admin2faEnrollToken = enrollmentToken;
+        req.session.save((saveErr) => {
+          if (saveErr) {
+            console.error('Session save error (2fa enrollment):', saveErr);
+            return res.status(500).json({ success: false, message: 'Could not save enrollment session' });
+          }
+          return res.json({
+            success: true,
+            require2FASetup: true,
+            enrollmentToken,
+            qrCodeData,
+            setupPath: '/admin/2fa-setup',
+            username: admin.username,
+            adminRole,
+            message: 'Complete two-factor setup before accessing the admin portal.',
+          });
         });
       });
-    });
-  }
+    }
 
     if (admin.isTwoFactorEnabled === true) {
-    const tempToken = jwt.sign(
-      {
-        purpose: ADMIN_2FA_PENDING_PURPOSE,
-        adminId: String(admin._id),
-      },
-      JWT_SECRET,
-      { expiresIn: '10m' }
-    );
-    return res.json({
-      success: true,
-      require2FA: true,
-      tempToken,
-      username: admin.username,
-    });
-  }
+      const tempToken = jwt.sign(
+        {
+          purpose: ADMIN_2FA_PENDING_PURPOSE,
+          adminId: String(admin._id),
+        },
+        JWT_SECRET,
+        { expiresIn: '10m' }
+      );
+      return res.json({
+        success: true,
+        require2FA: true,
+        tempToken,
+        username: admin.username,
+      });
+    }
 
     const sessionVersion = await getAdminSessionVersion(admin._id);
     const token = jwt.sign(
@@ -676,6 +707,131 @@ router.post('/student-login', authLoginLimiter, async (req, res) => {
   }
 });
 
+/**
+ * Unified login for Student + Teacher.
+ * Strict isolation: does NOT search Admin collection.
+ *
+ * Request: { email, password }
+ * Response (success): { success:true, token, userRole, redirectTo }
+ */
+router.post('/unified-login', authLoginLimiter, async (req, res) => {
+  const { email, password, rememberMe } = req.body || {};
+  const identifierRaw = String(email || '').trim();
+  const identifierLower = identifierRaw.toLowerCase();
+
+  if (!identifierRaw || !password) {
+    return res.status(400).json({ success: false, message: 'Email/username and password are required' });
+  }
+
+  // If an admin email is submitted here, do not reveal anything (admins use separate route).
+  const forcedAdminIdentifier = String(process.env.FORCE_2FA_ADMIN_IDENTIFIER || 'admin@remoedph.com')
+    .trim()
+    .toLowerCase();
+  if (identifierLower === forcedAdminIdentifier) {
+    return res.status(401).json({ success: false, message: 'Invalid email or password' });
+  }
+
+  const esc = identifierRaw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const identRe = new RegExp(`^${esc}$`, 'i');
+
+  try {
+    const expiresIn = rememberMe ? '30d' : '2h';
+
+    // Fast dual-search across separate collections (do not query Admin).
+    const [student, teacher] = await Promise.all([
+      Student.findOne({ $or: [{ email: identRe }, { username: identRe }] }),
+      Teacher.findOne({ $or: [{ email: identRe }, { username: identRe }] }),
+    ]);
+
+    // Prevent ambiguous matches (should not happen; keep response generic).
+    if (student && teacher) {
+      return res.status(401).json({ success: false, message: 'Invalid email or password' });
+    }
+
+    // Not found
+    if (!student && !teacher) {
+      return res.status(401).json({ success: false, message: 'Invalid email or password' });
+    }
+
+    if (teacher) {
+      // Pending / under review teachers: allow flexible status values seen in legacy docs.
+      const st = String(teacher.status || '').toLowerCase();
+      if (teacher.isApproved === false) {
+        return res
+          .status(403)
+          .json({ success: false, message: 'Your teacher account is pending approval' });
+      }
+      if (st && st !== 'active' && st !== 'suspended') {
+        return res
+          .status(403)
+          .json({ success: false, message: 'Your teacher account is currently under review.' });
+      }
+      if (st === 'suspended') {
+        return res.status(403).json({
+          success: false,
+          message: 'Your account has been suspended. Please contact the administrator.',
+        });
+      }
+
+      if (isAccountLocked(teacher)) {
+        return res.status(423).json({ success: false, message: lockoutMessage() });
+      }
+
+      const ok = await bcrypt.compare(String(password), teacher.password);
+      if (!ok) {
+        await applyFailedLogin(teacher);
+        return res.status(401).json({ success: false, message: 'Invalid email or password' });
+      }
+
+      await resetLoginAttempts(teacher);
+      const token = jwt.sign(
+        { userRole: 'teacher', username: teacher.username, teacherId: teacher.teacherId },
+        JWT_SECRET,
+        { expiresIn }
+      );
+      return res.json({
+        success: true,
+        token,
+        userRole: 'teacher',
+        redirectTo: '/teacher/dashboard',
+      });
+    }
+
+    // Student
+    if (student.status === 'suspended') {
+      return res.status(403).json({
+        success: false,
+        message: 'Your account has been suspended. Please contact the administrator.',
+      });
+    }
+    if (isAccountLocked(student)) {
+      return res.status(423).json({ success: false, message: lockoutMessage() });
+    }
+
+    const ok = await bcrypt.compare(String(password), student.password);
+    if (!ok) {
+      await applyFailedLogin(student);
+      return res.status(401).json({ success: false, message: 'Invalid email or password' });
+    }
+
+    await resetLoginAttempts(student);
+    const token = jwt.sign(
+      { userRole: 'student', username: student.username, studentId: student._id },
+      JWT_SECRET,
+      { expiresIn }
+    );
+    return res.json({
+      success: true,
+      token,
+      userRole: 'student',
+      redirectTo: '/student/dashboard',
+    });
+  } catch (err) {
+    console.error('Unified login error:', err);
+    return res.status(500).json({ success: false, message: 'Login failed. Please try again.' });
+  }
+});
+
 // Student registration endpoint
 router.post('/student-register', authRegisterLimiter, async (req, res) => {
   const { username, email, password, referralCode, assessmentTrialToken } = req.body;
@@ -801,7 +957,14 @@ router.post('/student-register', authRegisterLimiter, async (req, res) => {
       await Student.updateOne(
         { _id: student._id },
         {
-          $inc: { creditBalance: 1, totalCreditsEarned: 1 },
+          $inc: {
+            creditBalance: 1,
+            totalCreditsEarned: 1,
+            totalLessonsPurchased: 1,
+            'learningJourneyPurchasedByLevel.nursery': 1,
+            'learningJourneyPurchasedByLevel.kinder': 1,
+            'learningJourneyPurchasedByLevel.prep': 1,
+          },
           $set: trialProfileSet,
           $push: {
             creditTransactions: {

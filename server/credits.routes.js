@@ -20,6 +20,8 @@ const DISALLOWED_CREDIT_BODY_KEYS = [
   'creditsToAdd',
   'totalCredits',
   'totalCreditsEarned',
+  'totalLessonsPurchased',
+  'learningJourneyPurchasedByLevel',
   'usedCredits',
 ];
 
@@ -99,9 +101,54 @@ router.post(
         });
       }
 
-      await consumeReservedCreditForBooking(booking, 'Class finished');
-      booking.creditsFinalized = true;
-      await booking.save();
+      const useTransactions =
+        String(process.env.USE_TRANSACTIONS || '').toLowerCase() !== 'false';
+
+      function isTransactionUnsupportedError(error) {
+        const msg = String(error && (error.message || error)).toLowerCase();
+        return (
+          msg.includes('transaction numbers are only allowed') ||
+          msg.includes('replica set') ||
+          msg.includes('mongos') ||
+          msg.includes('does not support transactions')
+        );
+      }
+
+      if (useTransactions) {
+        const session = await mongoose.startSession();
+        try {
+          await session.withTransaction(async () => {
+            booking.$session(session);
+            await consumeReservedCreditForBooking(booking, 'Class finished', {
+              session,
+              actorType: 'student',
+              actorId: String(student?._id || ''),
+            });
+            booking.creditsFinalized = true;
+            await booking.save({ session });
+          });
+        } catch (txnErr) {
+          if (isTransactionUnsupportedError(txnErr)) {
+            await consumeReservedCreditForBooking(booking, 'Class finished', {
+              actorType: 'student',
+              actorId: String(student?._id || ''),
+            });
+            booking.creditsFinalized = true;
+            await booking.save();
+          } else {
+            throw txnErr;
+          }
+        } finally {
+          session.endSession();
+        }
+      } else {
+        await consumeReservedCreditForBooking(booking, 'Class finished', {
+          actorType: 'student',
+          actorId: String(student?._id || ''),
+        });
+        booking.creditsFinalized = true;
+        await booking.save();
+      }
 
       const fresh = await Student.findById(student._id);
       const summary = buildStudentCreditApiResponse(fresh);
@@ -196,6 +243,10 @@ router.post(
         $inc: {
           creditBalance: creditsToAdd,
           totalCreditsEarned: creditsToAdd,
+          totalLessonsPurchased: creditsToAdd,
+          'learningJourneyPurchasedByLevel.nursery': creditsToAdd,
+          'learningJourneyPurchasedByLevel.kinder': creditsToAdd,
+          'learningJourneyPurchasedByLevel.prep': creditsToAdd,
         },
         $push: {
           creditHistory: {

@@ -206,7 +206,7 @@ const adminRoleGate = (req, res, next) => {
 
   if (role === 'admin_qa') {
     if (
-      /\/payment|\/dispense|\/teachers-weekly-salaries|teacher-pipeline|teachers-list|students-list|admins-list|\/referral-link|unique-link|global-rate|save-global-rate|update-global-rate/.test(
+      /\/payment|\/dispense|\/teachers-weekly-salaries|teacher-pipeline|teachers-list|teachers-filter-list|students-list|admins-list|\/referral-link|unique-link|global-rate|save-global-rate|update-global-rate/.test(
         p
       ) ||
       userMgmtRe.test(p)

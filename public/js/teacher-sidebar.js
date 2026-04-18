@@ -86,19 +86,25 @@
         var logoutLi = container.querySelector('#logout-nav');
         if (logoutLi) {
             logoutLi.addEventListener('click', function () {
-                var token = localStorage.getItem('token') || '';
+                var token =
+                    localStorage.getItem('remoed_user_token') ||
+                    sessionStorage.getItem('remoed_user_token') ||
+                    localStorage.getItem('token') ||
+                    '';
                 var opts = { method: 'POST', credentials: 'include' };
                 if (token) {
                     opts.headers = { Authorization: 'Bearer ' + token };
                 }
                 fetch('/api/logout', opts).catch(function () {}).finally(function () {
                     try {
+                        localStorage.removeItem('remoed_user_token');
+                        sessionStorage.removeItem('remoed_user_token');
                         localStorage.removeItem('token');
                         localStorage.removeItem('teacherId');
                         localStorage.removeItem('remoedUsername');
                         localStorage.removeItem('userType');
                     } catch (e) {}
-                    window.location.replace('login.html?r=t');
+                    window.location.replace('/login/');
                 });
             });
         }
@@ -114,7 +120,10 @@
     }
 
     function loadProfileIntoSidebar(container) {
-        var token = localStorage.getItem('token');
+        var token =
+            localStorage.getItem('remoed_user_token') ||
+            sessionStorage.getItem('remoed_user_token') ||
+            localStorage.getItem('token');
         var teacherId = localStorage.getItem('teacherId');
         if (!token || !teacherId) return;
 

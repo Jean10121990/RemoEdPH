@@ -16,6 +16,10 @@ const TimeLog = require('./models/TimeLog');
 const Referral = require('./models/Referral');
 const AdminAuditLog = require('./models/AdminAuditLog');
 const { decryptPiiString } = require('./utils/piiCrypto');
+const { execFile } = require('child_process');
+const util = require('util');
+const os = require('os');
+const execFileAsync = util.promisify(execFile);
 const {
   verifyAdminApiAuth,
   requireAdmin,
@@ -24,7 +28,11 @@ const {
   adminRoleGate,
   requireAdminTwoFactorSatisfied,
   requireAdminSessionValid,
+  requireSuperAdminDb,
 } = require('./authMiddleware');
+const { getIo } = require('./realtime');
+const { getAverageApiLatencyMs, getSampleCount } = require('./middleware/apiLatencyTracker');
+const { getCpuLoadPercent, getMemoryMetrics, getDiskForCwd } = require('./utils/hostMetrics');
 const QRCode = require('qrcode');
 const { authenticator } = require('otplib');
 const { encryptTotpSecret, decryptTotpSecret } = require('./utils/twoFactorSecretCrypto');
@@ -221,6 +229,142 @@ router.post('/verify-2fa', async (req, res) => {
   } catch (err) {
     console.error('POST /verify-2fa (enrollment):', err);
     res.status(500).json({ success: false, message: 'Verification failed' });
+  }
+});
+
+/** Same chain as adminRouterRbac for routes registered before that middleware. */
+function requireAdminApiChain(req, res, next) {
+  return verifyAdminApiAuth(req, res, () => {
+    requireAdminTwoFactorSatisfied(req, res, () => {
+      requireAdminSessionValid(req, res, () => {
+        requireAdmin(req, res, next);
+      });
+    });
+  });
+}
+
+/**
+ * Live lessons right now: Socket.IO rooms with ≥2 clients where at least one socket is teacher and one student.
+ * (Mongo "both entered + sessionEndedAt null" over-counts stale bookings that never got sessionEndedAt.)
+ */
+function countLiveClassroomRooms(io) {
+  if (!io || !io.sockets || !io.sockets.adapter || !io.sockets.adapter.rooms) return 0;
+  const rooms = io.sockets.adapter.rooms;
+  const byId = io.sockets.sockets;
+  let n = 0;
+  for (const [roomName, clientSet] of rooms) {
+    if (!clientSet || clientSet.size < 2) continue;
+    const r = String(roomName || '');
+    if (!r || r === 'default-room') continue;
+    if (r.startsWith('teacher-msg:')) continue;
+    let hasTeacher = false;
+    let hasStudent = false;
+    for (const sid of clientSet) {
+      const sock = byId.get(sid);
+      if (!sock) continue;
+      if (sock.userType === 'teacher') hasTeacher = true;
+      if (sock.userType === 'student') hasStudent = true;
+    }
+    if (hasTeacher && hasStudent) n += 1;
+  }
+  return n;
+}
+
+/**
+ * Super-Admin system monitor (registered before global adminRouterRbac so the path always resolves).
+ */
+router.get('/system-stats', requireAdminApiChain, requireSuperAdminDb, async (req, res) => {
+  try {
+    const io = getIo();
+    let activeSocketConnections = 0;
+    let studentsOnline = 0;
+    if (io && io.sockets && io.sockets.sockets) {
+      activeSocketConnections = io.sockets.sockets.size;
+      for (const s of io.sockets.sockets.values()) {
+        if (s && s.userType === 'student') studentsOnline += 1;
+      }
+    }
+
+    const ongoingClasses = countLiveClassroomRooms(io);
+
+    const memory = getMemoryMetrics();
+    const cpuPercent = getCpuLoadPercent();
+    const disk = await getDiskForCwd();
+
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      hardware: {
+        cpuPercent,
+        memory,
+        disk,
+        hostname: os.hostname(),
+        platform: process.platform,
+        nodeVersion: process.version,
+        processUptimeSec: Math.floor(process.uptime()),
+      },
+      live: {
+        activeSocketConnections,
+        ongoingClasses,
+        studentsOnline,
+      },
+      api: {
+        averageLatencyMs: getAverageApiLatencyMs(),
+        latencySampleCount: getSampleCount(),
+        latencyWindowMax: 100,
+      },
+    });
+  } catch (err) {
+    console.error('GET /system-stats:', err);
+    res.status(500).json({ success: false, message: 'Failed to read system stats.' });
+  }
+});
+
+const PM2_PROCESS_NAME_RAW = String(process.env.SUPER_MONITOR_PM2_PROCESS || 'remoed-1').trim() || 'remoed-1';
+const PM2_PROCESS_NAME = /^[a-zA-Z0-9_.-]+$/.test(PM2_PROCESS_NAME_RAW) ? PM2_PROCESS_NAME_RAW : 'remoed-1';
+const PM2_RESTART_DISABLED =
+  process.env.SUPER_MONITOR_PM2_RESTART_ENABLED === '0' ||
+  String(process.env.SUPER_MONITOR_PM2_RESTART_ENABLED || '').toLowerCase() === 'false';
+
+router.post('/system-emergency-pm2-restart', requireAdminApiChain, requireSuperAdminDb, async (req, res) => {
+  if (PM2_RESTART_DISABLED) {
+    return res.status(503).json({
+      success: false,
+      message: 'Emergency PM2 restart is disabled. Set SUPER_MONITOR_PM2_RESTART_ENABLED=1 (or unset) to allow.',
+    });
+  }
+  const username = req.user && req.user.username ? String(req.user.username) : '';
+  try {
+    const { stdout, stderr } = await execFileAsync('pm2', ['restart', PM2_PROCESS_NAME], {
+      timeout: 120000,
+      windowsHide: true,
+      maxBuffer: 4 * 1024 * 1024,
+    });
+    await AdminAuditLog.create({
+      action: 'emergency_pm2_restart',
+      actorUsername: username,
+      actorAdminId: String((req.user && req.user.adminId) || ''),
+      ip: String(req.ip || ''),
+      userAgent: String(req.get('user-agent') || ''),
+      subjectType: 'student',
+      details: {
+        process: PM2_PROCESS_NAME,
+        stdout: String(stdout || '').slice(0, 2000),
+        stderr: String(stderr || '').slice(0, 500),
+      },
+    }).catch(() => {});
+    return res.json({
+      success: true,
+      message: `PM2 restart completed for "${PM2_PROCESS_NAME}".`,
+      output: String(stdout || '').slice(0, 8000),
+      stderr: String(stderr || '').slice(0, 2000),
+    });
+  } catch (err) {
+    console.error('POST /system-emergency-pm2-restart:', err);
+    return res.status(500).json({
+      success: false,
+      message: err.message || 'PM2 restart failed. Ensure PM2 is installed and on PATH.',
+    });
   }
 });
 
@@ -3546,10 +3690,10 @@ router.post('/review-time-log-request', async (req, res) => {
 
 // Payment History Management Endpoints
 
-// GET teachers list for filter dropdown
-router.get('/teachers-list', async (req, res) => {
+// GET teachers for payment-history filter dropdown (object shape — do not reuse /teachers-list; that route is the flat array for User Management).
+router.get('/teachers-filter-list', async (req, res) => {
   try {
-    console.log('🔍 Teachers list request received');
+    console.log('🔍 Teachers filter list request received');
     
     const teachers = await Teacher.find({}).select('email username firstName lastName');
     console.log(`📊 Found ${teachers.length} teachers`);
@@ -3567,7 +3711,7 @@ router.get('/teachers-list', async (req, res) => {
       teachers: teachersList
     });
   } catch (error) {
-    console.error('❌ Error getting teachers list:', error);
+    console.error('❌ Error getting teachers filter list:', error);
     res.status(500).json({
       success: false,
       message:
@@ -4208,8 +4352,51 @@ router.post('/issues/resolve', verifyAdminApiAuth, requireAdmin, async (req, res
           booking.attendance = {};
         }
         booking.attendance.classCompleted = true;
-        await consumeReservedCreditForBooking(booking, 'Class finished');
-        await booking.save();
+        const useTransactions =
+          String(process.env.USE_TRANSACTIONS || '').toLowerCase() !== 'false';
+
+        function isTransactionUnsupportedError(error) {
+          const msg = String(error && (error.message || error)).toLowerCase();
+          return (
+            msg.includes('transaction numbers are only allowed') ||
+            msg.includes('replica set') ||
+            msg.includes('mongos') ||
+            msg.includes('does not support transactions')
+          );
+        }
+
+        if (useTransactions) {
+          const session = await mongoose.startSession();
+          try {
+            await session.withTransaction(async () => {
+              booking.$session(session);
+              await consumeReservedCreditForBooking(booking, 'Class finished', {
+                session,
+                actorType: 'admin',
+                actorId: String(req.user?.adminId || req.user?.username || ''),
+              });
+              await booking.save({ session });
+            });
+          } catch (txnErr) {
+            if (isTransactionUnsupportedError(txnErr)) {
+              await consumeReservedCreditForBooking(booking, 'Class finished', {
+                actorType: 'admin',
+                actorId: String(req.user?.adminId || req.user?.username || ''),
+              });
+              await booking.save();
+            } else {
+              throw txnErr;
+            }
+          } finally {
+            session.endSession();
+          }
+        } else {
+          await consumeReservedCreditForBooking(booking, 'Class finished', {
+            actorType: 'admin',
+            actorId: String(req.user?.adminId || req.user?.username || ''),
+          });
+          await booking.save();
+        }
         console.log(`✅ Marked booking ${issue.bookingId} as completed due to resolved issue`);
       }
     } catch (bookingError) {

@@ -3,7 +3,7 @@
  * All arithmetic stays on the server; UIs must not recompute balances from raw fields.
  *
  * Field meanings (see Student model):
- * - creditBalance: pool field decremented when a credit is reserved for a booking (see teacher book-class)
+ * - creditBalance: unreserved slice of the lesson pool (reserve moves 1 from here into reservedCredits)
  * - totalCredits: optional override for pool size (same precedence as Mongo $expr in book-class)
  * - reservedCredits: held for upcoming bookings
  * - usedCredits: lifetime consumed count
@@ -12,6 +12,84 @@
 
 const mongoose = require('mongoose');
 const Student = require('../models/Student');
+const {
+  dedupeMergedCreditRows,
+  filterLegacyPaymongoTransactionRows,
+} = require('../creditLedgerRepair');
+
+/**
+ * Merge creditTransactions + creditHistory, dedupe (same lesson was written to both arrays),
+ * and return rows still carrying `source` for internal ranking (strip before JSON).
+ */
+function buildUnifiedDedupedLedger(student) {
+  if (!student) return [];
+
+  const txs = Array.isArray(student.creditTransactions) ? student.creditTransactions : [];
+  const hist = Array.isArray(student.creditHistory) ? student.creditHistory : [];
+
+  const txRows = txs.map((tx) => ({
+    date: tx.date,
+    type: tx.type || (Number(tx.credits) < 0 ? 'use' : 'purchase'),
+    plan: tx.plan,
+    description: tx.description || tx.plan || '',
+    credits: Number(tx.credits),
+    balanceAfter: tx.balanceAfter != null ? tx.balanceAfter : null,
+    amountPaid: tx.amountPaid != null ? Number(tx.amountPaid) : 0,
+    paymentId: String(tx.paymentId || '').trim(),
+    source: 'transaction',
+  }));
+
+  const filteredTx = filterLegacyPaymongoTransactionRows(txRows);
+
+  const histRows = hist.map((h) => {
+    const c = Number(h.credits);
+    const isUsage = String(h.entryType || '') === 'usage' || c < 0;
+    return {
+      date: h.date,
+      type: isUsage ? 'use' : 'purchase',
+      plan: h.plan,
+      description:
+        c >= 0
+          ? `Plan purchase (${h.plan || 'Subscription'})`
+          : `Lesson completed (${h.plan || 'Lesson'})`,
+      credits: c,
+      balanceAfter: h.balanceAfter != null ? h.balanceAfter : null,
+      amountPaid: h.amountPaid != null ? Number(h.amountPaid) : 0,
+      paymentId: String(h.paymentId || '').trim(),
+      source: 'creditHistory',
+    };
+  });
+
+  return dedupeMergedCreditRows([...filteredTx, ...histRows]);
+}
+
+/**
+ * Set _displayBalanceAfter on each row = total lesson **pool** after that event
+ * (same as getCreditPoolTotal: credits on hand including those held for bookings).
+ * Walks newest→oldest from **current pool** so purchase rows show 22, 44, 66…
+ * Using availableBalance (pool − reserved) wrongly made every purchase row look
+ * like it was short by the current “held for bookings” amount.
+ */
+function assignDisplayBalancesForLedger(rows, endPoolTotal) {
+  if (!Array.isArray(rows) || rows.length === 0) return;
+  const asc = [...rows].sort((a, b) => {
+    const ta = new Date(a.date || 0).getTime();
+    const tb = new Date(b.date || 0).getTime();
+    if (ta !== tb) return ta - tb;
+    const sa = a.source === 'transaction' ? 0 : 1;
+    const sb = b.source === 'transaction' ? 0 : 1;
+    if (sa !== sb) return sa - sb;
+    return 0;
+  });
+  let running = Math.max(0, Number(endPoolTotal) || 0);
+  for (let i = asc.length - 1; i >= 0; i -= 1) {
+    const r = asc[i];
+    const c = Number(r.credits);
+    const d = Number.isFinite(c) ? c : 0;
+    r._displayBalanceAfter = running;
+    running -= d;
+  }
+}
 
 /**
  * Invariant (when totalCredits is not set): creditBalance + reservedCredits === totalCreditsEarned - usedCredits.
@@ -42,14 +120,20 @@ async function reconcileStudentCreditBalanceIfDrifted(studentId, studentLean) {
   return true;
 }
 
-/** Same pool base as book-class atomic reserve: totalCredits if set, else creditBalance */
+/**
+ * Same pool base as bookingCreditLedger.coalesceLessonPool + book-class $expr:
+ * - If totalCredits is set, it is the canonical pool size.
+ * - Otherwise the implicit pool is creditBalance + reservedCredits (reserve moves 1 from cb into reserved without shrinking the pool).
+ */
 function getCreditPoolTotal(student) {
   if (!student) return 0;
   const tc = student.totalCredits;
   if (tc != null && tc !== '' && Number.isFinite(Number(tc))) {
     return Math.max(0, Number(tc));
   }
-  return Math.max(0, Number(student.creditBalance) || 0);
+  const cb = Math.max(0, Number(student.creditBalance) || 0);
+  const res = Math.max(0, Number(student.reservedCredits) || 0);
+  return cb + res;
 }
 
 function getReservedCredits(student) {
@@ -69,23 +153,44 @@ function buildStudentCreditApiResponse(student) {
 
   const pool = getCreditPoolTotal(student);
   const reserved = getReservedCredits(student);
-  const used = Math.max(0, Number(student.usedCredits) || 0);
+  const storedUsed = Math.max(0, Number(student.usedCredits) || 0);
   const totalEarned = Math.max(0, Number(student.totalCreditsEarned) || 0);
 
   const availableBalance = Math.max(pool - reserved, 0);
 
+  const unified = buildUnifiedDedupedLedger(student);
+  assignDisplayBalancesForLedger(unified, pool);
+
+  const ledgerUsedSum = unified.reduce((acc, r) => {
+    const c = Number(r.credits);
+    return acc + (c < 0 ? -c : 0);
+  }, 0);
+  const used = Math.max(ledgerUsedSum, storedUsed);
+
   const totalPurchased =
     totalEarned > 0 ? totalEarned : Math.max(used + pool, pool);
 
-  const credits = Array.isArray(student.creditTransactions)
-    ? [...student.creditTransactions]
-    : [];
-  credits.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+  const usages = unified.filter((r) => Number(r.credits) < 0);
+  const purchases = unified.filter((r) => Number(r.credits) > 0);
 
-  const creditHistory = Array.isArray(student.creditHistory)
-    ? [...student.creditHistory]
-    : [];
-  creditHistory.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+  const credits = usages.map((r) => ({
+    date: r.date,
+    type: r.type,
+    plan: r.plan,
+    description: r.description,
+    credits: r.credits,
+    balanceAfter: r._displayBalanceAfter != null ? r._displayBalanceAfter : r.balanceAfter,
+    amountPaid: r.amountPaid,
+  }));
+
+  const creditHistory = purchases.map((c) => ({
+    date: c.date,
+    plan: c.plan,
+    credits: c.credits,
+    amountPaid: c.amountPaid,
+    paymentId: c.paymentId || '',
+    balanceAfter: c._displayBalanceAfter != null ? c._displayBalanceAfter : c.balanceAfter,
+  }));
 
   return {
     success: true,
@@ -100,22 +205,8 @@ function buildStudentCreditApiResponse(student) {
     subscriptionPlan: student.subscriptionPlan || null,
     subscriptionStatus: student.subscriptionStatus || null,
     paymentStatus: student.paymentStatus || null,
-    creditHistory: creditHistory.map((c) => ({
-      date: c.date,
-      plan: c.plan,
-      credits: c.credits,
-      amountPaid: c.amountPaid,
-      paymentId: c.paymentId || '',
-    })),
-    credits: credits.map((c) => ({
-      date: c.date,
-      type: c.type,
-      plan: c.plan,
-      description: c.description,
-      credits: c.credits,
-      balanceAfter: c.balanceAfter,
-      amountPaid: c.amountPaid,
-    })),
+    creditHistory,
+    credits,
   };
 }
 

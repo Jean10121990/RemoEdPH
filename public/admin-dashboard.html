@@ -1135,6 +1135,58 @@
             alert('Access denied. This page is for administrators only.');
             window.location.href = 'index.html';
         }
+        try {
+            const _qs = new URLSearchParams(window.location.search || '');
+            if (_qs.get('permissionDenied') === 'super_monitor') {
+                alert('Permission denied. Only Super-Admins can access the System Monitor.');
+                if (window.history && window.history.replaceState) {
+                    const p = (window.location.pathname || '').split('?')[0] || 'admin-dashboard.html';
+                    window.history.replaceState({}, '', p);
+                }
+            }
+        } catch (_e) { /* ignore */ }
+
+        function getAdminToken() {
+            return localStorage.getItem('adminToken') || sessionStorage.getItem('adminToken') || '';
+        }
+
+        function redirectToAdminLogin() {
+            try {
+                localStorage.removeItem('adminToken');
+                localStorage.removeItem('adminRole');
+                localStorage.removeItem('adminUsername');
+                localStorage.removeItem('userType');
+            } catch (_e) { /* ignore */ }
+            if (window.RemoedAdminSession && typeof window.RemoedAdminSession.redirectToAdminLogin === 'function') {
+                window.RemoedAdminSession.redirectToAdminLogin();
+                return;
+            }
+            // Same folder as dashboard: /admin/admin-login.html
+            window.location.href = 'admin-login.html';
+        }
+
+        async function adminApiFetch(url, init) {
+            const token = getAdminToken();
+            const cfg = init && typeof init === 'object' ? { ...init } : {};
+            const headers = { ...(cfg.headers || {}) };
+            if (token && !headers.Authorization && !headers.authorization) {
+                headers.Authorization = 'Bearer ' + token;
+            }
+            cfg.headers = headers;
+            cfg.credentials = 'include';
+            const res = await fetch(url, cfg);
+            if (res.status === 401 || res.status === 403) {
+                redirectToAdminLogin();
+            }
+            return res;
+        }
+
+        function safeSetText(id, text) {
+            const el = document.getElementById(id);
+            if (!el) return false;
+            el.textContent = text;
+            return true;
+        }
         
         document.addEventListener('DOMContentLoaded', async function() {
             try {
@@ -1335,10 +1387,10 @@
             try {
                 // Load system statistics
                 const [teachersResponse, studentsResponse, bookingsResponse, financialResponse] = await Promise.all([
-                    fetch('/api/admin/teachers-count'),
-                    fetch('/api/admin/students-count'),
-                    fetch('/api/admin/bookings-count'),
-                    fetch('/api/admin/reports/financial')
+                    adminApiFetch('/api/admin/teachers-count'),
+                    adminApiFetch('/api/admin/students-count'),
+                    adminApiFetch('/api/admin/bookings-count'),
+                    adminApiFetch('/api/admin/reports/financial')
                 ]);
 
                 const teachersCount = teachersResponse.ok ? await teachersResponse.json() : { count: 0 };
@@ -1353,24 +1405,24 @@
                 const globalRate = financialData.data?.globalRate || 100;
                 
                 // Update registered users
-                document.getElementById('total-users').textContent = totalUsers.toLocaleString();
-                document.getElementById('teachers-count').textContent = (teachersCount.count || 0).toLocaleString();
-                document.getElementById('students-count').textContent = (studentsCount.count || 0).toLocaleString();
+                safeSetText('total-users', totalUsers.toLocaleString());
+                safeSetText('teachers-count', (teachersCount.count || 0).toLocaleString());
+                safeSetText('students-count', (studentsCount.count || 0).toLocaleString());
                 
                 // Update class bookings
-                document.getElementById('total-bookings').textContent = totalBookings.toLocaleString();
-                document.getElementById('booked-classes').textContent = (bookingsData.active || 0).toLocaleString();
-                document.getElementById('finished-classes').textContent = (bookingsData.completed || 0).toLocaleString();
+                safeSetText('total-bookings', totalBookings.toLocaleString());
+                safeSetText('booked-classes', (bookingsData.active || 0).toLocaleString());
+                safeSetText('finished-classes', (bookingsData.completed || 0).toLocaleString());
                 
                 // Update income earned
-                document.getElementById('total-income').textContent = '₱' + totalIncome.toLocaleString();
+                safeSetText('total-income', '₱' + totalIncome.toLocaleString());
                 const monthKey = new Date().toISOString().slice(0, 7);
                 const teachersThisMonth = (financialData.data && financialData.data.monthlyEarnings && financialData.data.monthlyEarnings[monthKey]) || 0;
-                document.getElementById('monthly-income').textContent = '₱' + Number(teachersThisMonth).toLocaleString();
+                safeSetText('monthly-income', '₱' + Number(teachersThisMonth).toLocaleString());
                 
                 // Update platform stats
-                document.getElementById('total-teachers-stat').textContent = (teachersCount.count || 0).toLocaleString();
-                document.getElementById('total-students-stat').textContent = (studentsCount.count || 0).toLocaleString();
+                safeSetText('total-teachers-stat', (teachersCount.count || 0).toLocaleString());
+                safeSetText('total-students-stat', (studentsCount.count || 0).toLocaleString());
                 const dashTotalClasses = document.getElementById('dashboard-total-classes');
                 if (dashTotalClasses) dashTotalClasses.textContent = totalBookings.toLocaleString();
                 
@@ -1400,8 +1452,8 @@
                 
                 // Fetch real data from multiple sources
                 const [teachersResponse, bookingsResponse] = await Promise.all([
-                    fetch('/api/admin/teachers-count'),
-                    fetch('/api/admin/bookings-count')
+                    adminApiFetch('/api/admin/teachers-count'),
+                    adminApiFetch('/api/admin/bookings-count')
                 ]);
 
                 const teachersData = teachersResponse.ok ? await teachersResponse.json() : { teachers: [] };
@@ -1483,9 +1535,9 @@
                 
                 // Fetch real data from multiple sources
                 const [teachersResponse, bookingsResponse, financialResponse] = await Promise.all([
-                    fetch('/api/admin/teachers-count'),
-                    fetch('/api/admin/bookings-count'),
-                    fetch('/api/admin/reports/financial')
+                    adminApiFetch('/api/admin/teachers-count'),
+                    adminApiFetch('/api/admin/bookings-count'),
+                    adminApiFetch('/api/admin/reports/financial')
                 ]);
 
                 const teachersData = teachersResponse.ok ? await teachersResponse.json() : { teachers: [] };
@@ -1552,9 +1604,9 @@
             try {
                 // Calculate quick stats based on available data
                 const [teachersResponse, studentsResponse, bookingsResponse] = await Promise.all([
-                    fetch('/api/admin/teachers-count'),
-                    fetch('/api/admin/students-count'),
-                    fetch('/api/admin/bookings-count')
+                    adminApiFetch('/api/admin/teachers-count'),
+                    adminApiFetch('/api/admin/students-count'),
+                    adminApiFetch('/api/admin/bookings-count')
                 ]);
 
                 const teachersCount = teachersResponse.ok ? await teachersResponse.json() : { count: 0 };
@@ -1571,10 +1623,10 @@
                 const thisWeek = Math.floor(totalBookings * 0.3); // 30% of total bookings
 
                 // Update quick stats
-                document.getElementById('avg-class-duration').textContent = avgClassDuration + ' min';
-                document.getElementById('avg-rating').textContent = avgRating;
-                document.getElementById('repeat-rate').textContent = repeatRate + '%';
-                document.getElementById('this-week').textContent = thisWeek;
+                safeSetText('avg-class-duration', avgClassDuration + ' min');
+                safeSetText('avg-rating', avgRating);
+                safeSetText('repeat-rate', repeatRate + '%');
+                safeSetText('this-week', String(thisWeek));
 
             } catch (error) {
                 console.error('Error loading quick stats:', error);
@@ -1587,9 +1639,9 @@
                 
                 // Fetch real data from multiple sources to create comprehensive activity feed
                 const [teachersResponse, studentsResponse, bookingsResponse] = await Promise.all([
-                    fetch('/api/admin/teachers-count'),
-                    fetch('/api/admin/students-count'),
-                    fetch('/api/admin/bookings-count')
+                    adminApiFetch('/api/admin/teachers-count'),
+                    adminApiFetch('/api/admin/students-count'),
+                    adminApiFetch('/api/admin/bookings-count')
                 ]);
 
                 const activities = [];
@@ -1748,10 +1800,10 @@
             try {
                 // Get actual data for charts
                 const [teachersResponse, studentsResponse, bookingsResponse, financialResponse] = await Promise.all([
-                    fetch('/api/admin/teachers-count'),
-                    fetch('/api/admin/students-count'),
-                    fetch('/api/admin/bookings-count'),
-                    fetch('/api/admin/reports/financial')
+                    adminApiFetch('/api/admin/teachers-count'),
+                    adminApiFetch('/api/admin/students-count'),
+                    adminApiFetch('/api/admin/bookings-count'),
+                    adminApiFetch('/api/admin/reports/financial')
                 ]);
 
                 const teachersCount = teachersResponse.ok ? await teachersResponse.json() : { count: 0 };

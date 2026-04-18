@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
+  <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>System Monitor — RemoEdPH</title>
+  <link rel="stylesheet" href="modern-styles.css">
+  <link rel="stylesheet" href="css/teacher-sidebar.css">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .monitor-wrap { max-width: 1100px; }
+    .health-banner {
+      border-radius: 10px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      font-weight: 600;
+      border: 1px solid transparent;
+    }
+    .health-healthy { background: #ecfdf5; color: #065f46; border-color: #6ee7b7; }
+    .health-warning { background: #fffbeb; color: #92400e; border-color: #fcd34d; }
+    .health-critical { background: #fef2f2; color: #991b1b; border-color: #fca5a5; }
+    .monitor-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .monitor-card {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 14px 16px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    }
+    .monitor-card h3 { margin: 0 0 6px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: #64748b; font-weight: 600; }
+    .monitor-card .val { font-size: 1.5rem; font-weight: 700; color: #0f172a; }
+    .monitor-card .sub { font-size: 0.8125rem; color: #64748b; margin-top: 4px; }
+    .btn-emergency {
+      background: #b91c1c;
+      color: #fff;
+      border: none;
+      padding: 14px 22px;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 1rem;
+      cursor: pointer;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 4px 14px rgba(185, 28, 28, 0.35);
+    }
+    .btn-emergency:hover { background: #991b1b; }
+    .btn-emergency:disabled { opacity: 0.6; cursor: not-allowed; }
+    .hint-box { font-size: 0.875rem; color: #475569; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 14px; margin-top: 16px; }
+  </style>
+</head>
+<body class="page-admin-settings">
+  <div class="remoed-main">
+    <div id="admin-sidebar-root"></div>
+    <script src="js/admin-session.js"></script>
+    <script src="js/admin-sidebar.js"></script>
+    <script>AdminSidebar.render('admin-sidebar-root', 'super-monitor');</script>
+    <div class="remoed-content monitor-wrap">
+      <div class="remoed-section">
+        <div class="remoed-section-title">System monitor &amp; emergency controls</div>
+        <p class="muted" style="margin-bottom:12px;">Super-Admin only. Data refreshes every 5 seconds. Use during load tests to watch RAM, latency, and live sockets.</p>
+
+        <div id="health-banner" class="health-banner health-healthy" role="status">Loading…</div>
+
+        <h2 style="font-size:1rem;margin:20px 0 10px;color:#334155;">Hardware</h2>
+        <div class="monitor-grid">
+          <div class="monitor-card"><h3>CPU usage</h3><div class="val" id="m-cpu">—</div><div class="sub" id="m-cpu-sub">Host aggregate</div></div>
+          <div class="monitor-card"><h3>RAM used</h3><div class="val" id="m-ram">—</div><div class="sub" id="m-ram-sub">—</div></div>
+          <div class="monitor-card"><h3>Disk (cwd volume)</h3><div class="val" id="m-disk">—</div><div class="sub" id="m-disk-sub">—</div></div>
+        </div>
+
+        <h2 style="font-size:1rem;margin:20px 0 10px;color:#334155;">Live platform</h2>
+        <div class="monitor-grid">
+          <div class="monitor-card"><h3>Socket connections</h3><div class="val" id="m-sockets">—</div><div class="sub">Socket.IO (default namespace)</div></div>
+          <div class="monitor-card"><h3>Ongoing classes</h3><div class="val" id="m-classes">—</div><div class="sub">Socket.IO rooms with a teacher and a student connected now</div></div>
+          <div class="monitor-card"><h3>Students online</h3><div class="val" id="m-students">—</div><div class="sub">Connected sockets tagged student</div></div>
+        </div>
+
+        <h2 style="font-size:1rem;margin:20px 0 10px;color:#334155;">API latency</h2>
+        <div class="monitor-grid">
+          <div class="monitor-card"><h3>Avg response time</h3><div class="val" id="m-lat">—</div><div class="sub" id="m-lat-sub">Last 0 / 100 API requests</div></div>
+          <div class="monitor-card"><h3>Process uptime</h3><div class="val" id="m-up">—</div><div class="sub" id="m-meta">—</div></div>
+        </div>
+
+        <h2 style="font-size:1rem;margin:20px 0 10px;color:#b91c1c;">Emergency</h2>
+        <p style="font-size:0.875rem;color:#64748b;max-width:520px;margin-bottom:10px;">
+          Restarts the Node process via PM2. Expect all live classes to drop for roughly 5–10 seconds.
+        </p>
+        <button type="button" class="btn-emergency" id="btn-pm2-restart">Emergency PM2 Restart</button>
+        <p id="pm2-status" class="muted" style="margin-top:10px;font-size:0.875rem;display:none;"></p>
+
+        <div class="hint-box">
+          <strong>During concurrent-session tests:</strong> watch <strong>RAM (MB)</strong> — if it keeps climbing after classes end, investigate leaks (e.g. unclosed DB handles).
+          If <strong>avg latency</strong> stays above ~500ms, teachers may notice lag; check server load and upstream network (e.g. Hostinger).
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var userType = localStorage.getItem('userType');
+      var adminRole = localStorage.getItem('adminRole') || '';
+      if (userType !== 'admin') {
+        window.location.replace('index.html');
+        return;
+      }
+      if (adminRole !== 'super_admin') {
+        window.location.replace('admin-dashboard.html?permissionDenied=super_monitor');
+        return;
+      }
+
+      function authHeaders(json) {
+        var t = localStorage.getItem('adminToken');
+        var h = {};
+        if (json) h['Content-Type'] = 'application/json';
+        if (t) h['Authorization'] = 'Bearer ' + t;
+        return h;
+      }
+
+      function cpuHealthClass(pct) {
+        if (pct == null || isNaN(pct)) return 'health-healthy';
+        if (pct > 85) return 'health-critical';
+        if (pct >= 60) return 'health-warning';
+        return 'health-healthy';
+      }
+
+      function cpuHealthText(pct) {
+        if (pct == null || isNaN(pct)) return 'Collecting CPU sample… wait a few seconds for a reading.';
+        if (pct > 85) return 'Critical: CPU above 85% — scale or investigate hot paths.';
+        if (pct >= 60) return 'Warning: CPU ' + pct + '% (60–85%).';
+        return 'Healthy: CPU ' + pct + '% (under 60%).';
+      }
+
+      function formatUptime(sec) {
+        if (sec == null) return '—';
+        var m = Math.floor(sec / 60), h = Math.floor(m / 60), d = Math.floor(h / 24);
+        h %= 24; m %= 60;
+        if (d > 0) return d + 'd ' + h + 'h';
+        if (h > 0) return h + 'h ' + m + 'm';
+        return m + 'm';
+      }
+
+      async function refreshStats() {
+        var banner = document.getElementById('health-banner');
+        try {
+          var r = await fetch('/api/admin/system-stats', { credentials: 'include', headers: authHeaders(false) });
+          var j = await r.json().catch(function () { return {}; });
+          if (r.status === 403 || r.status === 401) {
+            banner.className = 'health-banner health-critical';
+            banner.textContent = (j && j.error) ? j.error : 'Access denied. Sign in again as Super-Admin.';
+            return;
+          }
+          if (!j.success) {
+            banner.className = 'health-banner health-critical';
+            banner.textContent = j.message || 'Could not load stats.';
+            return;
+          }
+          var hw = j.hardware || {};
+          var cpu = hw.cpuPercent;
+          banner.className = 'health-banner ' + cpuHealthClass(cpu);
+          banner.textContent = cpuHealthText(cpu);
+
+          document.getElementById('m-cpu').textContent = cpu != null ? cpu + '%' : '—';
+          document.getElementById('m-cpu-sub').textContent = (hw.hostname || '') + ' · ' + (hw.platform || '');
+
+          var mem = hw.memory || {};
+          document.getElementById('m-ram').textContent = mem.usedMb != null ? mem.usedMb + ' MB' : '—';
+          document.getElementById('m-ram-sub').textContent =
+            mem.totalMb != null
+              ? 'of ' + mem.totalMb + ' MB (' + (mem.usedPercent != null ? mem.usedPercent : '—') + '%)'
+              : '—';
+
+          var d = hw.disk || {};
+          if (d.supported && d.usedGb != null) {
+            document.getElementById('m-disk').textContent = d.usedGb + ' / ' + d.totalGb + ' GB';
+            document.getElementById('m-disk-sub').textContent =
+              (d.freeGb != null ? d.freeGb + ' GB free' : '') +
+              (d.usedPercent != null ? ' · ' + d.usedPercent + '% used' : '');
+          } else {
+            document.getElementById('m-disk').textContent = '—';
+            document.getElementById('m-disk-sub').textContent =
+              d.supported === false ? 'Disk stats need Node statfs on this host' : 'Unavailable';
+          }
+
+          var live = j.live || {};
+          document.getElementById('m-sockets').textContent = live.activeSocketConnections != null ? live.activeSocketConnections : '—';
+          document.getElementById('m-classes').textContent = live.ongoingClasses != null ? live.ongoingClasses : '—';
+          document.getElementById('m-students').textContent = live.studentsOnline != null ? live.studentsOnline : '—';
+
+          var api = j.api || {};
+          var lat = api.averageLatencyMs;
+          document.getElementById('m-lat').textContent = lat != null ? lat + ' ms' : '—';
+          document.getElementById('m-lat-sub').textContent =
+            'Last ' + (api.latencySampleCount != null ? api.latencySampleCount : 0) + ' / ' + (api.latencyWindowMax || 100) + ' API requests';
+          var warnLat = lat != null && lat > 500;
+          if (warnLat) {
+            document.getElementById('m-lat').style.color = '#b45309';
+          } else {
+            document.getElementById('m-lat').style.color = '';
+          }
+
+          document.getElementById('m-up').textContent = formatUptime(hw.processUptimeSec);
+          document.getElementById('m-meta').textContent = (hw.nodeVersion || '') + ' · UTC ' + (j.timestamp || '').replace('T', ' ').slice(0, 19);
+        } catch (e) {
+          if (banner) {
+            banner.className = 'health-banner health-critical';
+            banner.textContent = 'Network error loading stats.';
+          }
+        }
+      }
+
+      document.getElementById('btn-pm2-restart').onclick = async function () {
+        if (
+          !confirm(
+            'This will temporarily disconnect all live classes for 5–10 seconds. Are you sure?'
+          )
+        ) {
+          return;
+        }
+        var btn = this;
+        var st = document.getElementById('pm2-status');
+        btn.disabled = true;
+        st.style.display = 'block';
+        st.textContent = 'Running PM2 restart…';
+        try {
+          var r = await fetch('/api/admin/system-emergency-pm2-restart', {
+            method: 'POST',
+            credentials: 'include',
+            headers: authHeaders(true),
+            body: '{}',
+          });
+          var j = await r.json().catch(function () { return {}; });
+          if (j.success) {
+            st.textContent = j.message || 'Done.';
+            if (j.output) st.textContent += ' ' + String(j.output).slice(0, 400);
+          } else {
+            st.textContent = j.message || 'Restart failed.';
+          }
+        } catch (e) {
+          st.textContent = 'Request failed (connection may have dropped if the server restarted).';
+        }
+        btn.disabled = false;
+      };
+
+      refreshStats();
+      setInterval(refreshStats, 5000);
+    })();
+  </script>
+</body>
+</html>

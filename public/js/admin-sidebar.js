@@ -18,6 +18,7 @@
         { id: 'messages', label: 'Messages', href: 'admin-messages.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>' },
         { id: 'profile-settings', label: 'Profile settings', href: 'admin-profile-settings.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>' },
         { id: 'settings', label: 'Settings', href: 'admin-settings.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>' },
+        { id: 'super-monitor', label: 'System monitor', href: 'super-monitor.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>' },
         { id: 'logout', label: 'Logout', href: null, icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7"/><path d="M3 12a9 9 0 0118 0 9 9 0 01-18 0z"/></svg>', isLogout: true }
     ];
 
@@ -41,6 +42,7 @@
         if (path.indexOf('admin-messages') !== -1) return 'messages';
         if (path.indexOf('admin-profile-settings') !== -1) return 'profile-settings';
         if (path.indexOf('admin-settings') !== -1) return 'settings';
+        if (path.indexOf('super-monitor') !== -1) return 'super-monitor';
         return null;
     }
 
@@ -67,11 +69,21 @@
         try {
             role = String(localStorage.getItem('adminRole') || '').trim();
         } catch (e) {}
+        if (itemId === 'settings') return role === 'super_admin';
+        if (itemId === 'super-monitor') return role === 'super_admin';
         if (!role || role === 'super_admin') return true;
         if (itemId === 'hr-hub') return role === 'admin_hr';
         if (itemId === 'qa-hub') return role === 'admin_qa';
         if (itemId === 'accounting-hub') return role === 'admin_accounting';
         return true;
+    }
+
+    function systemSettingsHref() {
+        var role = '';
+        try {
+            role = String(localStorage.getItem('adminRole') || '').trim();
+        } catch (e) {}
+        return role === 'super_admin' ? 'admin-settings.html' : 'admin-profile-settings.html';
     }
 
     function render(containerIdOrElement, activePageId) {
@@ -94,6 +106,8 @@
             return '<li' + activeClass + dataNav + ' onclick="window.location.href=\'' + item.href + '\'">' + item.icon + item.label + '</li>';
         }).join('');
 
+        var avatarHref = systemSettingsHref().replace(/'/g, "\\'");
+
         var html =
             '<nav class="remoed-sidebar admin-sidebar">' +
             '  <div class="sidebar-header">' +
@@ -107,7 +121,7 @@
             '  </div>' +
             '  <div class="sidebar-user">' +
             '    <div class="sidebar-user-inner">' +
-            '      <div id="remoed-avatar" onclick="window.location.href=\'admin-settings.html\'" style="cursor:pointer;">' +
+            '      <div id="remoed-avatar" onclick="window.location.href=\'' + avatarHref + '\'" style="cursor:pointer;" title="Profile">' +
             '        <span id="avatar-text">A</span>' +
             '      </div>' +
             '      <span class="remoed-username" id="remoed-username">Hi, Admin</span>' +
@@ -136,7 +150,12 @@
                     } catch (e) {}
                     var W = typeof window !== 'undefined' ? window : null;
                     if (W) {
-                        W.location.replace('login.html?r=a');
+                        // Backward-compatible: send admins to the real admin login entry (obfuscated path if remembered).
+                        if (W.RemoedAdminSession && typeof W.RemoedAdminSession.redirectToAdminLogin === 'function') {
+                            W.RemoedAdminSession.redirectToAdminLogin();
+                        } else {
+                            W.location.replace('admin-login.html?r=a');
+                        }
                     }
                 });
             });
@@ -149,6 +168,7 @@
         render: render,
         MENU_ITEMS: MENU_ITEMS,
         applyGreetingFromStorage: applyGreetingFromStorage,
-        shouldShowNavItem: shouldShowNavItem
+        shouldShowNavItem: shouldShowNavItem,
+        systemSettingsHref: systemSettingsHref
     };
 })(typeof window !== 'undefined' ? window : this);
