@@ -2,8 +2,16 @@ const mongoose = require('mongoose');
 
 // Use environment variable for MongoDB URI, fallback to localhost for local development only
 // Cloud Run detection: K_SERVICE is automatically set by Google Cloud Run
-const isCloudRun = !!process.env.K_SERVICE;// this is a comment
-const MONGO_URI = process.env.MONGODB_URI || (!isCloudRun ? 'mongodb://localhost:27017/online-distance-learning' : undefined);
+const isCloudRun = !!process.env.K_SERVICE;
+const isProduction = process.env.NODE_ENV === 'production';
+
+// STRICT LOGIC: In production, we NEVER fallback to localhost.
+const MONGO_URI = process.env.MONGODB_URI || 
+                  (isProduction ? undefined : 'mongodb://localhost:27017/online-distance-learning');
+
+if (isProduction && !MONGO_URI) {
+    console.error('❌ CRITICAL: MONGODB_URI is missing in production environment!');
+}
 
 // Connection options for modern Mongoose versions
 const connectionOptions = {
