@@ -456,9 +456,18 @@ async function handlePublicLanding(req, res) {
     const rawOff = parseInt(String(req.query.offset ?? '0'), 10);
     const offset = Number.isFinite(rawOff) && rawOff >= 0 ? rawOff : 0;
 
+    const filter = { ...PUBLIC_TEACHER_FILTER };
+    const queryDate = req.query.activeAfter;
+    if (queryDate != null && String(queryDate).trim() !== '') {
+      if (isNaN(Date.parse(queryDate))) {
+        return res.status(400).json({ error: 'Invalid activeAfter date' });
+      }
+      filter.updatedAt = { $gte: new Date(String(queryDate)) };
+    }
+
     // One query only: fetch limit+1 rows to derive hasMore (avoids countDocuments scan on large collections).
     const fetchLimit = Math.min(limit + 1, 501);
-    const rows = await Teacher.find(PUBLIC_TEACHER_FILTER)
+    const rows = await Teacher.find(filter)
       .select('teacherId firstName middleName lastName fullname username profilePicture language')
       .sort({ fullname: 1, teacherId: 1 })
       .skip(offset)
@@ -468,16 +477,22 @@ async function handlePublicLanding(req, res) {
     const hasMore = rows.length > limit;
     const slice = hasMore ? rows.slice(0, limit) : rows;
 
-    const teachers = slice.map((t) => {
-      const lang = t.language ? String(t.language) : 'English';
-      return {
-        teacherId: t.teacherId,
-        name: displayNameFromTeacherRow(t),
-        profilePic: t.profilePicture || null,
-        specialization: lang === 'English' ? 'English for Kids' : `English & ${lang}`,
-        rating: 4.9,
-      };
-    });
+    const teachers = slice
+      .map((t) => {
+        try {
+          const lang = t.language ? String(t.language) : 'English';
+          return {
+            teacherId: t.teacherId,
+            name: displayNameFromTeacherRow(t),
+            profilePic: t.profilePicture || null,
+            specialization: lang === 'English' ? 'English for Kids' : `English & ${lang}`,
+            rating: 4.9,
+          };
+        } catch (_e) {
+          return null;
+        }
+      })
+      .filter(Boolean);
 
     const nextOffset = offset + teachers.length;
     res.set('Cache-Control', 'public, max-age=45, stale-while-revalidate=180');
