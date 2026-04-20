@@ -1364,8 +1364,18 @@ router.get('/referrals', verifyAdminApiAuth, requireAdmin, async (req, res) => {
     if (teacherId) filter.teacherId = String(teacherId);
     if (from || to) {
       filter.createdAt = {};
-      if (from) filter.createdAt.$gte = new Date(from);
-      if (to) filter.createdAt.$lte = new Date(to);
+      if (from != null && String(from).trim() !== '') {
+        if (isNaN(Date.parse(from))) {
+          return res.status(400).json({ error: 'Invalid from date' });
+        }
+        filter.createdAt.$gte = new Date(String(from));
+      }
+      if (to != null && String(to).trim() !== '') {
+        if (isNaN(Date.parse(to))) {
+          return res.status(400).json({ error: 'Invalid to date' });
+        }
+        filter.createdAt.$lte = new Date(String(to));
+      }
     }
 
     const referrals = await Referral.find(filter).sort({ createdAt: -1 }).limit(500).lean();

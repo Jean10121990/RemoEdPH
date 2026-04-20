@@ -280,9 +280,17 @@ router.get('/referrals', verifyToken, requireTeacher, async (req, res) => {
     };
     if (from || to) {
       filter.createdAt = {};
-      if (from) filter.createdAt.$gte = new Date(from);
-      if (to) {
-        const end = new Date(to);
+      if (from != null && String(from).trim() !== '') {
+        if (isNaN(Date.parse(from))) {
+          return res.status(400).json({ error: 'Invalid from date' });
+        }
+        filter.createdAt.$gte = new Date(String(from));
+      }
+      if (to != null && String(to).trim() !== '') {
+        if (isNaN(Date.parse(to))) {
+          return res.status(400).json({ error: 'Invalid to date' });
+        }
+        const end = new Date(String(to));
         end.setHours(23, 59, 59, 999);
         filter.createdAt.$lte = end;
       }
