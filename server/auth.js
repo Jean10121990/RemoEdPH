@@ -36,7 +36,15 @@ const { decryptTotpSecret, encryptTotpSecret } = require('./utils/twoFactorSecre
 const { authenticator } = require('otplib');
 const QRCode = require('qrcode');
 
-authenticator.options = { window: 1 };
+// TOTP tolerance window (number of 30s steps allowed before/after).
+// VPS/phone time drift is common; keep modest tolerance to reduce false "Invalid authentication code".
+const adminTotpWindow = (() => {
+  const raw = process.env.ADMIN_TOTP_WINDOW;
+  const n = raw == null ? NaN : Number(raw);
+  if (Number.isFinite(n) && n >= 0 && n <= 10) return Math.floor(n);
+  return 2;
+})();
+authenticator.options = { window: adminTotpWindow };
 
 /**
  * Ensure encrypted TOTP secret exists and return a data-URL QR for the admin login / setup UI.

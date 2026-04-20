@@ -70,6 +70,9 @@ app.use(
       if (req.headers['x-no-compression']) return false;
       const p = String(req.path || req.url || '').split('?')[0];
       if (p.startsWith('/socket.io')) return false;
+      // Auth / 2FA: avoid any proxy/client decompression edge-cases
+      // (some Brotli setups + intermediaries can break login flows and cause 401s).
+      if (p.startsWith('/api/auth') || p.includes('/api/auth/')) return false;
       return compression.filter(req, res);
     },
   })
