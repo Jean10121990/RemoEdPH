@@ -8,6 +8,17 @@
     'use strict';
 
     var SVG_STROKE = 'stroke-width="2"'; // consistent 2px line weight
+    var LS_KEY = 'remoed_teacher_sidebar_collapsed';
+
+    function svgBars() {
+        return (
+            '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+            SVG_STROKE +
+            ' aria-hidden="true">' +
+            '<path d="M4 6h16M4 12h16M4 18h16"/>' +
+            '</svg>'
+        );
+    }
 
     var MENU_ITEMS = [
         { id: 'dashboard', label: 'Dashboard', href: 'teacher-dashboard.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/></svg>' },
@@ -40,11 +51,40 @@
         return null;
     }
 
+    function readCollapsedPref() {
+        try {
+            return localStorage.getItem(LS_KEY) === '1';
+        } catch (_e) {
+            return false;
+        }
+    }
+
+    function writeCollapsedPref(collapsed) {
+        try {
+            localStorage.setItem(LS_KEY, collapsed ? '1' : '0');
+        } catch (_e) {}
+    }
+
+    function applyCollapsedState(nav, collapsed) {
+        if (!nav) return;
+        nav.classList.toggle('sidebar-collapsed', !!collapsed);
+        document.body.classList.toggle('teacher-sidebar-collapsed', !!collapsed);
+    }
+
     function render(containerIdOrElement, activePageId) {
         var container = typeof containerIdOrElement === 'string'
             ? document.getElementById(containerIdOrElement)
             : containerIdOrElement;
         if (!container) return;
+
+        // Hard cleanup: remove any legacy floating toggles/overlays injected by older scripts or cached JS.
+        try {
+            var legacy = document.getElementById('sidebarToggle');
+            if (legacy) legacy.remove();
+            document.querySelectorAll('.mobile-hamburger, .mobile-sidebar-overlay, .remoed-mobile-topbar').forEach(function (el) {
+                try { el.remove(); } catch (_e) {}
+            });
+        } catch (_e) {}
 
         var active = activePageId || getActiveFromPath();
 
@@ -53,9 +93,9 @@
             var idAttr = item.id === 'logout' ? ' id="logout-nav"' : '';
             var dataNav = ' data-nav="' + item.id + '"';
             if (item.isLogout) {
-                return '<li' + idAttr + activeClass + dataNav + ' data-logout="1">' + item.icon + item.label + '</li>';
+                return '<li title="' + item.label + '"' + idAttr + activeClass + dataNav + ' data-logout="1">' + item.icon + '<span class="menu-label">' + item.label + '</span></li>';
             }
-            return '<li' + activeClass + dataNav + ' onclick="window.location.href=\'' + item.href + '\'">' + item.icon + item.label + '</li>';
+            return '<li title="' + item.label + '"' + activeClass + dataNav + ' onclick="window.location.href=\'' + item.href + '\'">' + item.icon + '<span class="menu-label">' + item.label + '</span></li>';
         }).join('');
 
         var html =
@@ -63,10 +103,13 @@
             '  <div class="sidebar-header">' +
             '    <div class="sidebar-header-inner">' +
             '      <img class="sidebar-logo-img" src="images/remoed-logo.png" alt="RemoEdPH">' +
-            '      <div>' +
+            '      <div class="sidebar-brand">' +
             '        <div class="sidebar-title">RemoEdPH</div>' +
             '        <div class="sidebar-subtitle">Teacher Portal</div>' +
             '      </div>' +
+            '      <button type="button" class="sidebar-collapse-toggle" aria-label="Toggle sidebar" title="Toggle sidebar">' +
+            svgBars() +
+            '      </button>' +
             '    </div>' +
             '  </div>' +
             '  <div class="sidebar-user">' +
@@ -82,6 +125,23 @@
             '</nav>';
 
         container.innerHTML = html;
+
+        var nav = container.querySelector('nav.remoed-sidebar');
+        applyCollapsedState(nav, readCollapsedPref());
+
+        var toggleBtn = container.querySelector('.sidebar-collapse-toggle');
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var next = !(nav && nav.classList.contains('sidebar-collapsed'));
+                applyCollapsedState(nav, next);
+                writeCollapsedPref(next);
+                try {
+                    global.dispatchEvent(new Event('resize'));
+                } catch (_e) {}
+            });
+        }
 
         var logoutLi = container.querySelector('#logout-nav');
         if (logoutLi) {
@@ -118,81 +178,7 @@
         if (avatarTextEl) avatarTextEl.textContent = (raw.replace(/^Hi,\s*/i, '') || 'T')[0].toUpperCase();
 
         loadProfileIntoSidebar(container);
-        ensurePortalSidebarChromeThen(queuePortalLayoutMount);
-    }
-
-    function ensurePortalSidebarChromeThen(callback) {
-        if (global.RemoedPortalSidebarChrome) {
-            callback();
-            return;
-        }
-        var existing = document.querySelector('script[data-remoed-portal-sidebar-chrome]');
-        if (existing) {
-            if (global.RemoedPortalSidebarChrome) {
-                callback();
-            } else {
-                existing.addEventListener('load', function once() {
-                    existing.removeEventListener('load', once);
-                    callback();
-                });
-            }
-            return;
-        }
-        var ch = document.createElement('script');
-        ch.src = '/js/portal-sidebar-chrome.js';
-        ch.async = false;
-        ch.setAttribute('data-remoed-portal-sidebar-chrome', '1');
-        var fired = false;
-        function runOnce() {
-            if (fired) return;
-            fired = true;
-            callback();
-        }
-        ch.onload = function () {
-            runOnce();
-        };
-        document.head.appendChild(ch);
-        if (global.RemoedPortalSidebarChrome) {
-            runOnce();
-        }
-    }
-
-    function afterPortalSidebarChromeMount() {
-        if (global.RemoedPortalSidebarChrome && typeof global.RemoedPortalSidebarChrome.mount === 'function') {
-            global.RemoedPortalSidebarChrome.mount();
-        }
-    }
-
-    function queuePortalLayoutMount() {
-        if (typeof global.RemoedPortalLayout !== 'undefined' && global.RemoedPortalLayout.mount) {
-            global.RemoedPortalLayout.mount();
-            afterPortalSidebarChromeMount();
-            return;
-        }
-        if (document.querySelector('script[data-remoed-portal-layout]')) {
-            document.addEventListener('remoed-portal-layout-ready', function once() {
-                document.removeEventListener('remoed-portal-layout-ready', once);
-                if (global.RemoedPortalLayout && global.RemoedPortalLayout.mount) {
-                    global.RemoedPortalLayout.mount();
-                }
-                afterPortalSidebarChromeMount();
-            });
-            return;
-        }
-        var s = document.createElement('script');
-        s.src = '/js/portal-layout.js';
-        s.async = true;
-        s.setAttribute('data-remoed-portal-layout', '1');
-        s.onload = function () {
-            if (global.RemoedPortalLayout && global.RemoedPortalLayout.mount) {
-                global.RemoedPortalLayout.mount();
-            }
-            afterPortalSidebarChromeMount();
-            try {
-                document.dispatchEvent(new Event('remoed-portal-layout-ready'));
-            } catch (e1) { /* ignore */ }
-        };
-        document.head.appendChild(s);
+        // Mini-sidebar collapse is handled locally; no floating toggle buttons.
     }
 
     function loadProfileIntoSidebar(container) {

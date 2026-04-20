@@ -33,25 +33,57 @@
     position: fixed;
     height: 100vh;
     overflow: hidden;
-    z-index: 100;
+    z-index: 500;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Collapsible mini-sidebar (teacher pages) */
+.remoed-sidebar.sidebar-collapsed {
+    width: 70px;
+    min-width: 70px;
 }
 
 /* Header: logo + Teacher Portal */
 .remoed-sidebar .sidebar-header {
-    padding: 24px;
+    padding: 10px 15px;
     border-bottom: 2px solid #e8f4fd;
 }
 .remoed-sidebar .sidebar-header-inner {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 12px;
+    padding: 10px 15px;
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.remoed-sidebar .sidebar-collapse-toggle {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    border: 2px solid #198754;
+    background: #fff;
+    color: #198754;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.remoed-sidebar .sidebar-collapse-toggle:hover,
+.remoed-sidebar .sidebar-collapse-toggle:focus-visible {
+    background: #198754;
+    color: #fff;
+    border-color: #146c43;
+    outline: none;
 }
 .remoed-sidebar .sidebar-logo-img {
     width: 48px;
     height: 48px;
     object-fit: contain;
     flex-shrink: 0;
+    max-width: 80%;
 }
 .remoed-sidebar .sidebar-title {
     font-weight: 700;
@@ -140,6 +172,41 @@
     text-overflow: ellipsis;
 }
 
+.remoed-menu .menu-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.remoed-sidebar.sidebar-collapsed .sidebar-brand,
+.remoed-sidebar.sidebar-collapsed .sidebar-subtitle,
+.remoed-sidebar.sidebar-collapsed .remoed-username {
+    display: none !important;
+}
+
+.remoed-sidebar.sidebar-collapsed .sidebar-header-inner {
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 8px;
+}
+
+.remoed-sidebar.sidebar-collapsed .sidebar-logo-img {
+    width: 38px;
+    height: 38px;
+}
+
+.remoed-sidebar.sidebar-collapsed .remoed-menu li {
+    justify-content: center;
+    padding: 12px 8px;
+    gap: 0;
+    border-left-width: 0;
+}
+.remoed-sidebar.sidebar-collapsed .remoed-menu .menu-label {
+    display: none;
+}
+
 /* Inactive */
 .remoed-menu li:not(.active) {
     color: var(--remoed-sidebar-inactive);
@@ -191,6 +258,190 @@
     margin-left: 260px;
     max-width: calc(100vw - 260px);
     box-sizing: border-box;
+}
+
+body.teacher-sidebar-collapsed .remoed-content {
+    margin-left: 70px;
+    max-width: calc(100vw - 70px);
+}
+
+/* Ensure teacher portal never shows legacy floating hamburger buttons */
+body[class*="page-teacher-"] .portal-sidebar-toggle,
+body[class*="page-teacher-"] .remoed-mobile-topbar,
+body[class*="page-teacher-"] .mobile-hamburger,
+body[class*="page-teacher-"] .mobile-sidebar-overlay {
+    display: none !important;
+}
+
+/* --- Responsive: keep mini-sidebar behavior on tablet + mobile --- */
+
+/* Tablet (769–1024px): mobile-first.css forces 76px rail; override so user can toggle 260px ↔ 70px */
+@media (min-width: 769px) and (max-width: 1024px) {
+    html body .remoed-main > [id$="-sidebar-root"] > nav.remoed-sidebar {
+        width: 260px !important;
+        min-width: 260px !important;
+        max-width: 260px !important;
+        overflow-x: hidden;
+    }
+
+    body.teacher-sidebar-collapsed .remoed-main > [id$="-sidebar-root"] > nav.remoed-sidebar {
+        width: 70px !important;
+        min-width: 70px !important;
+        max-width: 70px !important;
+    }
+
+    body.teacher-sidebar-collapsed .remoed-content {
+        margin-left: 70px !important;
+        max-width: calc(100vw - 70px) !important;
+    }
+
+    body:not(.teacher-sidebar-collapsed) .remoed-content {
+        margin-left: 260px !important;
+        max-width: calc(100vw - 260px) !important;
+    }
+}
+
+/* Mobile drawer (≤768px): allow collapsed drawer width if user toggles inside drawer */
+@media (max-width: 768px) {
+    body.teacher-sidebar-collapsed .remoed-main > [id$="-sidebar-root"] > nav.remoed-sidebar {
+        width: 70px !important;
+    }
+}
+
+/* Teacher portal: sidebar is ALWAYS visible on mobile/tablet (no off-canvas drawer) */
+@media (max-width: 768px) {
+    body[class*="page-teacher-"] .remoed-main {
+        flex-direction: row !important;
+        align-items: stretch;
+    }
+
+    body[class*="page-teacher-"] .remoed-main > [id$="-sidebar-root"] {
+        flex: 0 0 auto !important;
+        width: auto !important;
+        height: auto !important;
+        min-height: 0 !important;
+        overflow: visible !important;
+        z-index: 0 !important;
+    }
+
+    body[class*="page-teacher-"] .remoed-main > [id$="-sidebar-root"] > nav.remoed-sidebar {
+        position: fixed !important;
+        left: 0 !important;
+        top: 0 !important;
+        transform: translate3d(0, 0, 0) !important;
+        width: 260px !important;
+        min-width: 260px !important;
+        max-width: 260px !important;
+        z-index: 500 !important;
+    }
+
+    body.page-teacher-dashboard.teacher-sidebar-collapsed .remoed-main > [id$="-sidebar-root"] > nav.remoed-sidebar,
+    body[class*="page-teacher-"].teacher-sidebar-collapsed .remoed-main > [id$="-sidebar-root"] > nav.remoed-sidebar {
+        width: 70px !important;
+        min-width: 70px !important;
+        max-width: 70px !important;
+    }
+
+    body[class*="page-teacher-"] .remoed-content {
+        margin-left: 260px !important;
+        max-width: calc(100vw - 260px) !important;
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    body[class*="page-teacher-"].teacher-sidebar-collapsed .remoed-content {
+        margin-left: 70px !important;
+        max-width: calc(100vw - 70px) !important;
+    }
+}
+
+/* --- Career Growth: mobile-friendly tab ribbon (no overlap) --- */
+/* Teacher pages: default tab ribbons should never overlap */
+body[class*="page-teacher-"] .tab-buttons {
+    display: flex;
+    align-items: stretch;
+    gap: 12px;
+}
+
+body[class*="page-teacher-"] .tab-btn {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    min-width: 110px;
+    white-space: normal;
+    line-height: 1.15;
+}
+
+@media (max-width: 768px) {
+    body[class*="page-teacher-"] .tab-buttons {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 10px;
+        margin-bottom: 6px;
+        scroll-snap-type: x proximity;
+    }
+
+    body[class*="page-teacher-"] .tab-btn {
+        flex: 0 0 auto;
+        scroll-snap-align: start;
+        min-width: 92px;
+        font-size: 0.82rem;
+        padding: 10px 12px;
+    }
+}
+
+@media (min-width: 769px) {
+    body[class*="page-teacher-"] .tab-buttons {
+        flex-wrap: wrap;
+        overflow: visible;
+        gap: 15px;
+    }
+}
+
+body.page-teacher-professional-development .tab-buttons {
+    display: flex;
+    align-items: stretch;
+    gap: 12px;
+}
+
+body.page-teacher-professional-development .tab-btn {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    min-width: 110px;
+    white-space: normal;
+    line-height: 1.15;
+}
+
+@media (max-width: 768px) {
+    body.page-teacher-professional-development .tab-buttons {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 10px;
+        margin-bottom: 6px;
+        scroll-snap-type: x proximity;
+    }
+    body.page-teacher-professional-development .tab-btn {
+        flex: 0 0 auto;
+        scroll-snap-align: start;
+        min-width: 92px;
+        font-size: 0.82rem;
+        padding: 10px 12px;
+    }
+}
+
+@media (min-width: 769px) {
+    body.page-teacher-professional-development .tab-buttons {
+        flex-wrap: wrap;
+        overflow: visible;
+        gap: 15px;
+    }
 }
 
 @media (max-width: 768px) {
@@ -276,7 +527,7 @@ body.remoed-portal-sidebar-mounted {
     position: fixed;
     top: max(12px, env(safe-area-inset-top, 0px));
     left: max(12px, env(safe-area-inset-left, 0px));
-    z-index: 10050;
+    z-index: 300;
     width: 44px;
     height: 44px;
     padding: 0;
@@ -290,6 +541,18 @@ body.remoed-portal-sidebar-mounted {
     justify-content: center;
     box-shadow: 0 2px 10px rgba(25, 135, 84, 0.18);
     transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+
+/* Step 2: keep the toggle out of the sidebar header when sidebar is open */
+@media (min-width: 769px) {
+    body.remoed-portal-sidebar-mounted:not(.remoed-desktop-sidebar-collapsed) .portal-sidebar-toggle {
+        left: calc(var(--portal-sidebar-w, 280px) + 12px);
+    }
+}
+
+/* Mobile drawer uses the in-sidebar close button; avoid double controls + overlap */
+body.remoed-drawer-open .portal-sidebar-toggle {
+    display: none;
 }
 
 .portal-sidebar-toggle:hover,

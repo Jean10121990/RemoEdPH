@@ -126,6 +126,17 @@ class MobileSidebar {
     
     init() {
         if (!isMobile()) return;
+
+        // Teacher portal now uses an in-sidebar mini/collapse toggle (no floating hamburger + overlay).
+        // If that toggle exists, do not attach the legacy mobile sidebar drawer system.
+        try {
+            if (document.querySelector('.remoed-sidebar .sidebar-collapse-toggle')) {
+                document.querySelectorAll('.mobile-sidebar-overlay, .mobile-hamburger').forEach((el) => {
+                    try { el.remove(); } catch (_e) {}
+                });
+                return;
+            }
+        } catch (_e) {}
         
         // Create overlay
         this.overlay = document.createElement('div');
