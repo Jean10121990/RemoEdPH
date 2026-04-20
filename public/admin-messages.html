@@ -21,10 +21,10 @@
             <div class="messenger" id="messenger">
                 <aside class="chat-list">
                     <div class="chat-list-header"><h1>Messages</h1></div>
-                    <div class="chat-search"><input id="msg-search" placeholder="Search by user ID or name..." /></div>
-                    <div id="msg-status" style="padding:8px 16px;color:#64748b;font-size:0.82rem;">Loading users...</div>
+                    <div class="chat-search"><input id="msg-search" type="search" placeholder="Search by name, username, or email…" autocomplete="off" /></div>
+                    <div id="msg-status" style="padding:8px 16px;color:#64748b;font-size:0.82rem;">Type at least 2 characters to find a user.</div>
                     <div class="chat-items" id="chat-items">
-                        <div style="padding:16px;color:#64748b;">Loading users...</div>
+                        <div style="padding:16px;color:#64748b;">No search yet. Enter a name or email above.</div>
                     </div>
                 </aside>
                 <section class="chat-pane">
@@ -104,7 +104,7 @@
                         '  <div class="avatar">' + esc(initial) + '</div>' +
                         '  <div class="chat-item-main">' +
                         '    <div class="chat-item-top"><div class="chat-name">' + esc(u.name || u.userId) + '</div><div class="chat-time">' + esc(fmtShort(u.lastMessageAt)) + '</div></div>' +
-                        '    <div class="chat-type">' + esc((u.userType || '').toUpperCase()) + ' • ' + esc(u.userId || '') + '</div>' +
+                        '    <div class="chat-type">' + esc((u.userType || '').toUpperCase()) + ' • ' + esc(u.displayHandle || u.email || u.username || '') + '</div>' +
                         '    <div class="chat-snippet">' + esc(u.lastMessage || 'No messages yet') + '</div>' +
                         '  </div>' +
                         '</div>'
@@ -121,6 +121,12 @@
 
             async function loadUsers() {
                 var q = (searchInput.value || '').trim();
+                if (q.length < 2) {
+                    users = [];
+                    statusEl.textContent = 'Type at least 2 characters to search.';
+                    chatItemsEl.innerHTML = '<div style="padding:16px;color:#64748b;">Enter a name, username, or email to see matches.</div>';
+                    return;
+                }
                 statusEl.textContent = 'Loading...';
                 try {
                     var url = '/api/admin/messages/users';
@@ -138,7 +144,7 @@
                     if (!res.ok) throw new Error(data.message || data.error || 'Failed to load users');
                     var rows = Array.isArray(data.users) ? data.users : [];
                     users = rows;
-                    statusEl.textContent = rows.length + ' user(s)';
+                    statusEl.textContent = rows.length + ' match(es)';
                     renderUserList(rows);
                 } catch (e) {
                     statusEl.textContent = e.message || String(e);
@@ -159,13 +165,14 @@
 
                 var rows = [];
                 (Array.isArray(teachers) ? teachers : []).forEach(function (t) {
-                    var name = ((t.firstName || '') + ' ' + (t.lastName || '')).trim() || t.fullname || t.username || t.teacherId || 'Teacher';
+                    var name = ((t.firstName || '') + ' ' + (t.lastName || '')).trim() || t.fullname || t.username || 'Teacher';
                     rows.push({
                         userType: 'teacher',
                         userId: t.teacherId || t.username || '',
                         username: t.username || '',
                         name: name,
                         email: t.email || '',
+                        displayHandle: [t.username, t.email].filter(Boolean).join(' • '),
                         lastMessage: '',
                         lastMessageAt: null
                     });
@@ -178,13 +185,14 @@
                         username: s.username || '',
                         name: name,
                         email: s.email || '',
+                        displayHandle: [s.username, s.email].filter(Boolean).join(' • '),
                         lastMessage: '',
                         lastMessageAt: null
                     });
                 });
 
                 var needle = String(q || '').trim().toLowerCase();
-                if (!needle) return rows;
+                if (needle.length < 2) return [];
                 return rows.filter(function (u) {
                     var hay = (u.userId + ' ' + u.username + ' ' + u.name + ' ' + u.email + ' ' + u.userType).toLowerCase();
                     return hay.indexOf(needle) !== -1;
@@ -216,7 +224,7 @@
             async function openConversation(user) {
                 activeUser = user;
                 paneNameEl.textContent = user.name || user.userId;
-                paneSubEl.textContent = (user.userType || 'user') + ' • ' + (user.userId || '');
+                paneSubEl.textContent = (user.userType || 'user') + ' • ' + (user.displayHandle || user.email || user.username || user.userId || '');
                 paneAvatarEl.textContent = (user.name || user.userId || 'U')[0].toUpperCase();
                 composerEl.style.display = '';
                 renderUserList(users);
@@ -264,7 +272,7 @@
                 }
             });
 
-            loadUsers();
+            /* Do not load the full user list; search drives results (API requires min. 2 chars). */
         })();
     </script>
 </body>

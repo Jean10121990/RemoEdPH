@@ -229,8 +229,13 @@ const teacherSchema = new mongoose.Schema({
     completedAt: { type: Date, default: null }
   }],
   
-  // Rate Information
+  // Rate Information (hourlyRate = per 25-min class PHP; synced from payout tier + creds)
   hourlyRate: { type: Number, default: 100 },
+  /** Base pay tier (180/230/280/330). Set by admin; null = derive from hourlyRate for legacy rows. */
+  payoutTierBase: { type: Number, default: null },
+  payoutCred1: { type: Boolean, default: false },
+  payoutCred2: { type: Boolean, default: false },
+  payoutCred3: { type: Boolean, default: false },
 
   // Referral link code (used for teacher commission tracking)
   referralCode: { type: String, default: null, unique: true, sparse: true },
@@ -323,6 +328,8 @@ const teacherSchema = new mongoose.Schema({
 teacherSchema.index({ email: 1, teacherId: 1 });
 teacherSchema.index({ email: 1, status: 1 });
 teacherSchema.index({ teacherId: 1, status: 1 });
+/** Public teacher directory / landing: filter by status + stable sort (avoids in-memory sorts on large sets). */
+teacherSchema.index({ status: 1, fullname: 1, teacherId: 1 });
 // Service-fee / payout: teacher + line status (multikey on paymentHistory)
 teacherSchema.index({ teacherId: 1, 'paymentHistory.status': 1 });
 teacherSchema.index({ teacherId: 1, 'paymentHistory.paymentStatus': 1 });

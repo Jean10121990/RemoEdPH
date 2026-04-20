@@ -59,6 +59,8 @@
     document.body.classList.remove('remoed-drawer-open');
     var btn = document.getElementById('remoed-nav-toggle');
     if (btn) btn.setAttribute('aria-expanded', 'false');
+    var branded = document.getElementById('sidebarToggle');
+    if (branded) branded.setAttribute('aria-expanded', 'false');
     document.body.style.overflow = '';
   }
 
@@ -66,6 +68,8 @@
     document.body.classList.add('remoed-drawer-open');
     var btn = document.getElementById('remoed-nav-toggle');
     if (btn) btn.setAttribute('aria-expanded', 'true');
+    var branded = document.getElementById('sidebarToggle');
+    if (branded) branded.setAttribute('aria-expanded', 'true');
     document.body.style.overflow = 'hidden';
   }
 
@@ -283,6 +287,8 @@
 
   global.RemoedPortalLayout = {
     mount: mount,
-    closeDrawer: closeDrawer
+    closeDrawer: closeDrawer,
+    openDrawer: openDrawer,
+    toggleDrawer: toggleDrawer
   };
 })(typeof window !== 'undefined' ? window : this);

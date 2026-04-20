@@ -21,18 +21,6 @@
         <script>if (!window.__ADMIN_EMBED__) { AdminSidebar.render('admin-sidebar-root', 'payroll'); }</script>
         <div class="remoed-content">
             <div class="remoed-section">
-                <div class="remoed-section-title">Global Rate Settings</div>
-                
-                <div class="form-group">
-                    <label for="global-rate">25 Minutes Rate (PHP)</label>
-                    <input type="number" id="global-rate" placeholder="100" min="0" step="0.01">
-                </div>
-                
-                <button class="btn btn-success" onclick="saveGlobalRate()">💾 Save Rate</button>
-                <div id="rate-status" style="margin-top: 10px; font-weight: 600;"></div>
-            </div>
-            
-            <div class="remoed-section">
                 <div class="remoed-section-title">Bi-weekly Salary Disbursement</div>
                 <div style="margin: 6px 0 14px 0; color: #64748b; font-size: 0.85rem;">
                     Pay periods start on the <strong>1st</strong> and <strong>16th</strong> of each month.
@@ -57,7 +45,7 @@
                     </button>
                 </div>
                 
-                <button class="btn btn-success" onclick="loadTeachersSalaries()">Load Teachers</button>
+                <button type="button" class="btn btn-success" id="btn-load-teachers" onclick="loadTeachersSalaries()">Load Teachers</button>
                 <button class="btn btn-danger" id="dispense-btn" onclick="dispenseAllSalaries()" style="display: none;">Dispense All Salaries</button>
                 
                 <div id="disbursement-status" style="margin-top: 10px; font-weight: 600;"></div>
@@ -87,7 +75,7 @@
                             <option value="Pending">Pending</option>
                         </select>
                         
-                        <button class="btn btn-primary" onclick="loadPaymentHistory()">🔍 Load Records</button>
+                        <button type="button" class="btn btn-primary" id="btn-load-payment-history" onclick="loadPaymentHistory()">🔍 Load Records</button>
                         <button class="btn btn-success" onclick="exportPaymentHistory()">📊 Export CSV</button>
                     </div>
                 </div>
@@ -131,9 +119,6 @@
                 AdminSidebar.applyGreetingFromStorage();
             }
 
-            // Load current global rate
-            loadGlobalRate();
-            
             // Display current pay period
             displayCurrentPeriod();
             
@@ -235,74 +220,19 @@
             }
         }
 
-        async function loadGlobalRate() {
-            try {
-                const response = await adminApiFetch('/api/admin/global-rate');
-                const data = await response.json();
-                if (data.success) {
-                    document.getElementById('global-rate').value = data.rate || 100;
-                }
-            } catch (error) {
-                console.error('Error loading global rate:', error);
-            }
-        }
-
-
-
-        async function saveGlobalRate() {
-            const newRate = parseFloat(document.getElementById('global-rate').value);
-            
-            if (isNaN(newRate) || newRate < 0) {
-                alert('Please enter a valid rate (positive number)');
-                return;
-            }
-            
-            try {
-                // First update the global rate and all teachers
-                const updateResponse = await adminApiFetch('/api/admin/update-global-rate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ rate: newRate })
-                });
-                
-                const updateData = await updateResponse.json();
-                
-                if (!updateResponse.ok || !updateData.success) {
-                    alert(apiErrorMessage(updateData, 'Failed to update rate'));
-                    return;
-                }
-                
-                // Persist via API
-                const saveResponse = await adminApiFetch('/api/admin/save-global-rate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ rate: newRate })
-                });
-                
-                const saveData = await saveResponse.json();
-                
-                if (saveData.success) {
-                    document.getElementById('rate-status').textContent = `Rate updated and saved successfully! ${updateData.updatedTeachers} teachers affected. Rate: ₱${newRate}`;
-                    document.getElementById('rate-status').style.color = '#27ae60';
-                    
-                    setTimeout(() => {
-                        document.getElementById('rate-status').textContent = '';
-                    }, 3000);
-                } else {
-                    alert(saveData.message || 'Failed to save rate');
-                }
-            } catch (error) {
-                console.error('Error saving rate:', error);
-                alert('Error saving rate. Please try again.');
-            }
-        }
-
         async function loadTeachersSalaries() {
+            var loadBtn = document.getElementById('btn-load-teachers');
             try {
                 if (!selectedPeriodKey) {
                     selectedPeriodKey = getPeriodKeyForDate(new Date());
                 }
-                
+                if (loadBtn) {
+                    loadBtn.disabled = true;
+                    loadBtn.textContent = 'Loading…';
+                }
+                document.getElementById('disbursement-status').textContent = 'Loading teacher payroll…';
+                document.getElementById('disbursement-status').style.color = '#64748b';
+
                 const response = await adminApiFetch(`/api/admin/teachers-weekly-salaries?period=${encodeURIComponent(selectedPeriodKey)}`);
                 const data = await response.json();
                 
@@ -335,6 +265,11 @@
             } catch (error) {
                 console.error('Error loading teachers:', error);
                 alert('Error loading teachers. Please try again.');
+            } finally {
+                if (loadBtn) {
+                    loadBtn.disabled = false;
+                    loadBtn.textContent = 'Load Teachers';
+                }
             }
         }
 
@@ -468,9 +403,15 @@
         }
 
         async function loadPaymentHistory() {
+            var recBtn = document.getElementById('btn-load-payment-history');
             try {
-                console.log('🔍 Loading payment history...');
-                
+                if (recBtn) {
+                    recBtn.disabled = true;
+                    recBtn.textContent = 'Loading…';
+                }
+                document.getElementById('payment-history-status').textContent = 'Loading payment records…';
+                document.getElementById('payment-history-status').style.color = '#64748b';
+
                 const teacherFilter = document.getElementById('teacher-filter').value;
                 const statusFilter = document.getElementById('status-filter').value;
                 
@@ -513,6 +454,11 @@
             } catch (error) {
                 console.error('❌ Error loading payment history:', error);
                 alert('Error loading payment history: ' + error.message);
+            } finally {
+                if (recBtn) {
+                    recBtn.disabled = false;
+                    recBtn.textContent = '🔍 Load Records';
+                }
             }
         }
 

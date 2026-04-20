@@ -39,13 +39,77 @@
         } catch (_e) {}
       })();
     </script>
+    <script>
+      /* Beta: drop any controlling SW + RemoEd caches on landing so stale CSS/images never block the homepage.
+         Remove this block once CDN/Brotli + sw.js behavior is stable in production. */
+      (function () {
+        if (!('serviceWorker' in navigator)) return;
+        navigator.serviceWorker.getRegistrations().then(function (regs) {
+          regs.forEach(function (reg) {
+            reg.unregister();
+          });
+        });
+        if ('caches' in window) {
+          caches.keys().then(function (keys) {
+            return Promise.all(
+              keys
+                .filter(function (k) {
+                  return /^remoed-/i.test(k);
+                })
+                .map(function (k) {
+                  return caches.delete(k);
+                })
+            );
+          });
+        }
+      })();
+    </script>
     <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
     <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="RemoEdPH" />
+    <meta property="og:title" content="RemoEdPH - English Lessons for Kids 3-6" />
+    <meta
+      property="og:description"
+      content="Calm, engaging, and professional English tutors for your child. Start your journey today!"
+    />
+    <meta property="og:url" content="https://remoedph.com/" />
+    <meta property="og:image" content="https://remoedph.com/images/og-remoedph-1200x630.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="RemoEdPH - English Lessons for Kids 3-6" />
+    <meta
+      name="twitter:description"
+      content="Calm, engaging, and professional English tutors for your child. Start your journey today!"
+    />
+    <meta name="twitter:image" content="https://remoedph.com/images/og-remoedph-1200x630.jpg" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": ["LocalBusiness", "EducationalOrganization"],
+        "name": "RemoEdPH",
+        "description": "Calm, engaging, and professional English tutors for your child. Start your journey today! C1-level educators available.",
+        "url": "https://remoedph.com/",
+        "image": "https://remoedph.com/images/og-remoedph-1200x630.jpg",
+        "priceRange": "₱₱ (PHP)",
+        "currenciesAccepted": "PHP",
+        "areaServed": "PH",
+        "address": {
+          "@type": "PostalAddress",
+          "addressLocality": "Cabanatuan City",
+          "addressRegion": "Nueva Ecija",
+          "addressCountry": "PH"
+        },
+        "knowsAbout": ["English tutoring for kids", "Early childhood English (ages 3–6)", "Phonics", "Reading", "Speaking"],
+        "serviceType": "Tutoring service"
+      }
+    </script>
     <title>RemoEdPH - Learn English at Home for Kids</title>
-<link rel="stylesheet" href="modern-styles.css" />
-    <link rel="stylesheet" href="child-friendly-styles.css" />
+<link rel="stylesheet" href="/modern-styles.css" />
+    <link rel="stylesheet" href="/child-friendly-styles.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -58,9 +122,9 @@
       crossorigin="anonymous"
       referrerpolicy="no-referrer"
     />
-    <link rel="stylesheet" href="style.css" />
-    <link rel="stylesheet" href="landing-brand.css" />
-    <link rel="stylesheet" href="css/site-i18n.css" />
+    <link rel="stylesheet" href="/style.css" />
+    <link rel="stylesheet" href="/landing-brand.css" />
+    <link rel="stylesheet" href="/css/site-i18n.css" />
   </head>
   <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-DQ5FTL7LH1"></script>
@@ -76,7 +140,7 @@
     <!-- Navigation -->
     <nav class="navbar">
       <div class="logo-section">
-        <img src="images/remoed-logo-new.png" alt="RemoEdPH Logo" />
+        <img src="/images/remoed-logo-new.png" alt="RemoEdPH Logo" />
         <span>RemoEdPH</span>
       </div>
       <div class="nav-buttons">
@@ -103,30 +167,47 @@
           </p>
           <div class="cta-buttons">
             <div class="assessment-cta-wrap">
-              <img
-                src="images/ed-boy.png"
-                alt="Ed introducing free assessment"
-                class="intro-kid"
-              />
-              <a href="#assessment" class="cta-btn primary"
-                >Take Free Assessment</a
-              >
-              <img
-                src="images/sophia-girl.png"
-                alt="Sophia introducing free assessment"
-                class="intro-kid"
-              />
+              <div class="assessment-cta-cluster">
+                <picture class="hero-mascot-picture hero-mascot-picture--ed">
+                  <source srcset="/images/ed-boy.webp" type="image/webp">
+                  <img
+                    src="/images/ed-boy.png"
+                    alt="Ed Mascot"
+                    class="mascot-img"
+                    width="120"
+                    height="120"
+                    decoding="async"
+                    onerror="this.onerror=null;this.src='/images/placeholder-avatar.png'"
+                  />
+                </picture>
+                <a href="#assessment" class="cta-btn primary"
+                  >Take Free Assessment</a
+                >
+                <picture class="hero-mascot-picture hero-mascot-picture--sophia">
+                  <source srcset="/images/sophia-girl.webp" type="image/webp">
+                  <img
+                    src="/images/sophia-girl.png"
+                    alt="Sophia Mascot"
+                    class="mascot-img"
+                    width="120"
+                    height="120"
+                    decoding="async"
+                    onerror="this.onerror=null;this.src='/images/placeholder-avatar.png'"
+                  />
+                </picture>
+              </div>
             </div>
           </div>
         </div>
         <div class="hero-media">
           <img
-            src="images/hero-remoed-illustration.png"
+            src="/images/hero-remoed-illustration.png"
             alt="Educator using RemoEd on laptop, tablet, and online lessons"
             class="hero-illustration"
             width="640"
             height="480"
             decoding="async"
+            onerror="this.onerror=null;this.src='/images/forbidden-image.png'"
           />
         </div>
       </div>
@@ -255,12 +336,13 @@
             Hi! I'm Remo. Let's find the perfect level for you!
           </div>
           <img
-            src="images/remo-jumping.png"
+            src="/images/remo-jumping.png"
             alt="Remo robot guide"
             class="robot-float"
             width="300"
             height="300"
             decoding="async"
+            onerror="this.onerror=null;this.src='/images/forbidden-image.png'"
           />
         </div>
         <div class="assessment-form">
@@ -307,11 +389,12 @@
         <div class="plan-card plan-spark">
           <div class="plan-icon plan-icon--character">
             <img
-              src="images/plan-characters/plan-spark-robot.png"
+              src="/images/plan-characters/plan-spark-robot.png"
               alt="Remo robot mascot"
               width="112"
               height="110"
               decoding="async"
+              onerror="this.onerror=null;this.src='/images/forbidden-image.png'"
             />
           </div>
           <div class="plan-name">RemoSpark (1 Month)</div>
@@ -332,11 +415,12 @@
           <div class="plan-badge">Save 2%</div>
           <div class="plan-icon plan-icon--character">
             <img
-              src="images/plan-characters/plan-steady-boy.png"
+              src="/images/plan-characters/plan-steady-boy.png"
               alt="RemoEd student mascot"
               width="112"
               height="110"
               decoding="async"
+              onerror="this.onerror=null;this.src='/images/forbidden-image.png'"
             />
           </div>
           <div class="plan-name">RemoSteady (3 Months)</div>
@@ -361,11 +445,12 @@
           </div>
           <div class="plan-icon plan-icon--character">
             <img
-              src="images/plan-characters/plan-scholar-sophia.png"
+              src="/images/plan-characters/plan-scholar-sophia.png"
               alt="Sophia, RemoEd scholar mascot"
               width="112"
               height="110"
               decoding="async"
+              onerror="this.onerror=null;this.src='/images/forbidden-image.png'"
             />
           </div>
           <div class="plan-name">RemoScholar (6 Months)</div>
@@ -388,11 +473,12 @@
           <div class="plan-badge">Save 6%</div>
           <div class="plan-icon plan-icon--character">
             <img
-              src="images/plan-characters/plan-summit-sophia.png"
+              src="/images/plan-characters/plan-summit-sophia.png"
               alt="Sophia celebrating, RemoEd mascot"
               width="112"
               height="110"
               decoding="async"
+              onerror="this.onerror=null;this.src='/images/forbidden-image.png'"
             />
           </div>
           <div class="plan-name">RemoSummit (12 Months)</div>
@@ -476,7 +562,7 @@
       </div>
     </div>
 
-    <script src="js/referral-tracking.js"></script>
+    <script src="/js/referral-tracking.js"></script>
     <script>
       let selectedPlan = "";
       const EXCHANGE_RATE_USED = 60.03;
@@ -557,7 +643,7 @@
             localStorage.setItem("remoedAssessmentInProgress", "1");
           } catch (e) {}
 
-          const assessmentUrl = `student-assessment.html?childName=${encodeURIComponent(childName)}&parentEmail=${encodeURIComponent(parentEmail)}&contactNumber=${encodeURIComponent(contactNumber)}`;
+          const assessmentUrl = `/student-assessment.html?childName=${encodeURIComponent(childName)}&parentEmail=${encodeURIComponent(parentEmail)}&contactNumber=${encodeURIComponent(contactNumber)}`;
           window.location.href = assessmentUrl;
         });
 
@@ -762,7 +848,7 @@
           }
         });
     </script>
-    <script src="js/site-i18n.js"></script>
+    <script src="/js/site-i18n.js"></script>
     <script>
       SiteI18n.init();
     </script>

@@ -540,7 +540,7 @@
         let validIdCounter = 0;
         let isEditingProfile = false;
 
-        const REMOED_FOUNDER_TEACHER_EMAILS = ['jean10121990@gmail.com', 'plflores3301@gmail.com'];
+        const REMOED_FOUNDER_TEACHER_EMAILS = [];
         function getTeacherProfileEmailForFounderCheck() {
             const emailEl = document.getElementById('email');
             const currentEl = document.getElementById('current-email');
@@ -553,7 +553,7 @@
             return String(v).toLowerCase().trim();
         }
         function isFounderTeacherProfile() {
-            return REMOED_FOUNDER_TEACHER_EMAILS.includes(getTeacherProfileEmailForFounderCheck());
+            return REMOED_FOUNDER_TEACHER_EMAILS.length > 0 && REMOED_FOUNDER_TEACHER_EMAILS.includes(getTeacherProfileEmailForFounderCheck());
         }
 
         // Global variables for bulk upload

@@ -12,6 +12,7 @@
 <!-- Remo AI Chatbot Styles -->
     <link rel="stylesheet" href="style.css">
     <script src="js/user-session.js"></script>
+    <script src="js/teacher-payout-settings.js"></script>
 </head>
 <body class="page-teacher-professional-development">
     <div class="remoed-main">
@@ -234,7 +235,7 @@
                             <div>
                                 <div style="font-size:0.85rem; color:#64748b;">Current Career Growth Title</div>
                                 <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-                                    <div id="growth-tier" style="font-size:1.2rem; font-weight:700; color:#1d4ed8;">Not Qualified</div>
+                                    <div id="growth-tier" style="font-size:1.2rem; font-weight:700; color:#1d4ed8;">Seedling Educator</div>
                                     <span id="stewardship-badge" title="Values Aligned Steward Badge" style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; font-size:0.75rem; font-weight:700; border:1px solid #cbd5e1; background:#f1f5f9; color:#64748b; filter:grayscale(100%);">🍃 Locked</span>
                                     <span id="shield-badge" title="Shield of Truth Badge" style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; font-size:0.75rem; font-weight:700; border:1px solid #cbd5e1; background:#f1f5f9; color:#64748b; filter:grayscale(100%);">🛡️ Locked</span>
                                     <span id="legacy-leaf-badge" title="Legacy Leaf Badge (10+ years loyalty)" style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; font-size:0.75rem; font-weight:700; border:1px solid #cbd5e1; background:#f1f5f9; color:#64748b; filter:grayscale(100%);">🍀 Locked</span>
@@ -249,7 +250,7 @@
                         <div style="margin-top:12px;">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; font-size:0.8rem; color:#64748b;">
                                 <span>Growth Meter</span>
-                                <span id="growth-meter-label">0 / 245</span>
+                                <span id="growth-meter-label">0 / 105</span>
                             </div>
                             <div style="height:12px; border-radius:999px; background:#e2e8f0; overflow:hidden;">
                                 <div id="growth-meter-fill" style="height:100%; width:0%; background:linear-gradient(90deg, #A8E6CF 0%, #FFD700 100%); box-shadow:0 0 12px rgba(255, 215, 0, 0.45); transition:width 220ms ease;"></div>
@@ -257,66 +258,82 @@
                         </div>
                     </div>
 
-                    <div class="form-grid" id="growth-fields" style="display:grid; grid-template-columns:repeat(2, minmax(260px, 1fr)); gap:8px 14px; align-items:end;">
-                        <div class="form-group" style="margin-bottom:0;">
-                            <label style="display:flex; align-items:center; gap:8px; font-weight:600;">
-                                <input type="checkbox" id="growth-degree4y">
-                                College Degree (4-year) (+20)
-                            </label>
+                    <div style="background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:16px; margin-bottom:16px; box-shadow:0 1px 3px rgba(15,23,42,0.06);">
+                        <div style="font-weight:700; color:#0f172a; font-size:1.05rem; margin-bottom:6px;">💰 Payout rate</div>
+                        <p style="color:#64748b; font-size:0.88rem; margin:0 0 14px 0;">Your <strong>professional tier</strong> and <strong>credential add-ons</strong> are set by <strong>RemoEd HR / admin</strong> and apply to your <strong>Teaching Fee</strong> (per 25-minute class = half of your total hourly rate). This section is for reference only—you cannot change your rate here. <strong>Growth Points</strong> use this tier (25 / 30 / 40 / 40 by tier), <strong>+10</strong> per credential below, plus <strong>loyalty</strong> from your hire date (see meter above).</p>
+
+                        <div style="overflow-x:auto; margin-bottom:14px; border:1px solid #e2e8f0; border-radius:8px;">
+                            <table style="width:100%; border-collapse:collapse; font-size:0.84rem; color:#334155;">
+                                <thead>
+                                    <tr style="background:#f8fafc; border-bottom:1px solid #e2e8f0;">
+                                        <th style="text-align:left; padding:10px 12px; font-weight:700; color:#0f172a;">Professional Tier</th>
+                                        <th style="text-align:right; padding:10px 12px; font-weight:700; color:#0f172a; white-space:nowrap;">Tutor Pay (per Hour)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 12px;"><strong>Tier 1:</strong> 4-yr Grad OR 2-yrs BPO/ESL Exp</td><td style="text-align:right; padding:10px 12px; font-weight:600;">₱180</td></tr>
+                                    <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 12px;"><strong>Tier 2:</strong> 4-yr Grad (English Major)</td><td style="text-align:right; padding:10px 12px; font-weight:600;">₱230</td></tr>
+                                    <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 12px;"><strong>Tier 3:</strong> Grad + 1–3 yrs Exp/BPO</td><td style="text-align:right; padding:10px 12px; font-weight:600;">₱280</td></tr>
+                                    <tr><td style="padding:10px 12px;"><strong>Tier 4:</strong> Licensed Prof. Teacher (LET)</td><td style="text-align:right; padding:10px 12px; font-weight:600;">₱330</td></tr>
+                                </tbody>
+                            </table>
                         </div>
-                        <div class="form-group" style="margin-bottom:0;">
-                            <label style="display:flex; align-items:center; gap:8px; font-weight:600;">
-                                <input type="checkbox" id="growth-tesol">
-                                TESOL / TEYL / TEFL (+15)
-                            </label>
-                        </div>
-                        <div class="form-group" style="margin-bottom:0;">
-                            <label style="display:flex; align-items:center; gap:8px; font-weight:600;">
-                                <input type="checkbox" id="growth-ielts">
-                                IELTS Certificate (+15)
-                            </label>
-                        </div>
-                        <div class="form-group" style="margin-bottom:0;">
-                            <label style="font-weight:600;">ESL / Voice BPO Experience</label>
-                            <select id="growth-esl" class="form-input">
-                                <option value="none">None</option>
-                                <option value="2years">2 years (+15)</option>
-                                <option value="3to5">3 to 5 years (+20)</option>
-                                <option value="5plus">5+ years (+25)</option>
+
+                        <div style="margin-bottom:14px;">
+                            <label for="career-payout-tier-base" style="display:block; font-weight:600; color:#334155; font-size:0.88rem; margin-bottom:6px;">Your tier (base pay)</label>
+                            <select id="career-payout-tier-base" class="form-input" style="max-width:100%; opacity:0.92;" disabled aria-label="Professional tier base hourly pay (set by admin)">
+                                <option value="180">Tier 1 — ₱180/hr — 4-yr Grad OR 2-yrs BPO/ESL Exp</option>
+                                <option value="230">Tier 2 — ₱230/hr — 4-yr Grad (English Major)</option>
+                                <option value="280">Tier 3 — ₱280/hr — Grad + 1–3 yrs Exp/BPO</option>
+                                <option value="330">Tier 4 — ₱330/hr — Licensed Prof. Teacher (LET)</option>
                             </select>
                         </div>
-                        <div class="form-group" style="margin-bottom:0;">
-                            <label style="font-weight:600;">Hire Date (Loyalty)</label>
-                            <input type="date" id="growth-hire-date" class="form-input">
+
+                        <div style="overflow-x:auto; margin-bottom:12px; border:1px solid #e2e8f0; border-radius:8px;">
+                            <table style="width:100%; border-collapse:collapse; font-size:0.84rem; color:#334155;">
+                                <thead>
+                                    <tr style="background:#f8fafc; border-bottom:1px solid #e2e8f0;">
+                                        <th style="text-align:left; padding:10px 12px; font-weight:700; color:#0f172a;">Credential Type</th>
+                                        <th style="text-align:right; padding:10px 12px; font-weight:700; color:#0f172a; white-space:nowrap;">Payout (Add-on per Hour)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr style="border-bottom:1px solid #f1f5f9;">
+                                        <td style="padding:10px 12px; vertical-align:middle;">
+                                            <label style="display:flex; align-items:flex-start; gap:10px; font-weight:500; cursor:default;">
+                                                <input type="checkbox" id="career-payout-cred-1" disabled style="margin-top:3px; flex-shrink:0;">
+                                                <span>TESOL / TEFL / TEYL</span>
+                                            </label>
+                                        </td>
+                                        <td style="text-align:right; padding:10px 12px; vertical-align:middle; font-weight:600; color:#0f172a;">+ ₱10</td>
+                                    </tr>
+                                    <tr style="border-bottom:1px solid #f1f5f9;">
+                                        <td style="padding:10px 12px; vertical-align:middle;">
+                                            <label style="display:flex; align-items:flex-start; gap:10px; font-weight:500; cursor:default;">
+                                                <input type="checkbox" id="career-payout-cred-2" disabled style="margin-top:3px; flex-shrink:0;">
+                                                <span>C1 / C2 Proficiency Badge</span>
+                                            </label>
+                                        </td>
+                                        <td style="text-align:right; padding:10px 12px; vertical-align:middle; font-weight:600; color:#0f172a;">+ ₱10</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:10px 12px; vertical-align:middle;">
+                                            <label style="display:flex; align-items:flex-start; gap:10px; font-weight:500; cursor:default;">
+                                                <input type="checkbox" id="career-payout-cred-3" disabled style="margin-top:3px; flex-shrink:0;">
+                                                <span>IELTS / Business English Specialist</span>
+                                            </label>
+                                        </td>
+                                        <td style="text-align:right; padding:10px 12px; vertical-align:middle; font-weight:600; color:#0f172a;">+ ₱10</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
-                        <div class="form-group" style="margin-bottom:0;">
-                            <label style="font-weight:600;">Teaching Experience (total years)</label>
-                            <select id="growth-teaching-exp" class="form-input" title="Classroom / formal teaching experience">
-                                <option value="none">None (+0)</option>
-                                <option value="y3">3 years (+20)</option>
-                                <option value="y5">5 years (+30)</option>
-                                <option value="y10">10 years (+40)</option>
-                                <option value="y15">15 years (+50)</option>
-                                <option value="y20plus">20+ years (+50)</option>
-                            </select>
-                        </div>
-                        <div class="form-group" style="margin-bottom:0;">
-                            <label style="display:flex; align-items:center; gap:8px; font-weight:600;">
-                                <input type="checkbox" id="growth-let">
-                                Professional LET License (+25)
-                            </label>
-                        </div>
-                        <div class="form-group" style="margin-bottom:0;">
-                            <label style="display:flex; align-items:center; gap:8px; font-weight:600;">
-                                <input type="checkbox" id="growth-masters">
-                                Master’s Degree (+30)
-                            </label>
-                        </div>
-                        <div class="form-group" style="margin-bottom:0;">
-                            <label style="display:flex; align-items:center; gap:8px; font-weight:600;">
-                                <input type="checkbox" id="growth-doctorate">
-                                Doctorate Degree (+30)
-                            </label>
+
+                        <div style="background:#f1f5f9; border-radius:8px; padding:12px; border:1px solid #e2e8f0;">
+                            <div style="font-size:0.75rem; font-weight:600; color:#64748b; margin-bottom:2px;">Total hourly rate</div>
+                            <div style="font-size:0.95rem; font-weight:700; color:#334155; margin-bottom:8px;"><span id="career-payout-display-hourly">₱180</span></div>
+                            <div style="font-size:0.78rem; font-weight:700; color:#0f172a; margin-bottom:2px;">Rate per 25-min class</div>
+                            <div style="font-size:1.12rem; font-weight:800; color:#0f172a; line-height:1.2;"><span id="career-payout-display-25">₱90</span></div>
                         </div>
                     </div>
 
@@ -441,20 +458,118 @@
             window.location.href = 'teacher-login.html';
         }
 
-        /** Matches server REMOED_FOUNDER_TEACHER_EMAIL (comma-separated); defaults include CEO + co-founder. */
-        const REMOED_FOUNDER_TEACHER_EMAILS = ['jean10121990@gmail.com', 'plflores3301@gmail.com'];
+        /** Optional founder override (empty = use real calculated growth for everyone). */
+        const REMOED_FOUNDER_TEACHER_EMAILS = [];
         let cachedTeacherEmailForLadder = '';
 
         function isFounderTeacherAccount() {
             const e = String(cachedTeacherEmailForLadder || '').toLowerCase().trim();
-            return REMOED_FOUNDER_TEACHER_EMAILS.includes(e);
+            return REMOED_FOUNDER_TEACHER_EMAILS.length > 0 && REMOED_FOUNDER_TEACHER_EMAILS.includes(e);
         }
 
-        function teachingExperiencePointsFromBand(band) {
-            const b = String(band || 'none');
-            const map = { none: 0, y3: 20, y5: 30, y10: 40, y15: 50, y20plus: 55 };
-            return map[b] !== undefined ? map[b] : 0;
+        /** Legacy qualification fields (removed from UI; payout tier replaces editing). Loaded from profile for growth points & save. */
+        const DEFAULT_GROWTH_QUALIFICATIONS = {
+            hasEnglishDegree4Year: false,
+            hasTesolTeylTefl: false,
+            hasIeltsCertificate: false,
+            hasProfessionalLetLicense: false,
+            hasMastersDegree: false,
+            hasDoctorateDegree: false,
+            eslExperienceLevel: 'none',
+            hireDate: '',
+            teachingExperienceBand: 'none'
+        };
+        let cachedGrowthQualifications = null;
+        function getGrowthQualifications() {
+            return cachedGrowthQualifications || DEFAULT_GROWTH_QUALIFICATIONS;
         }
+
+        /** Growth meter max: tier (40) + 3× credentials (30) + loyalty (35) */
+        const CAREER_GROWTH_MAX_POINTS = 105;
+
+        function growthPointsFromPayoutTierBase(tierBase) {
+            const t = parseInt(tierBase, 10);
+            if (t === 180) return 25;
+            if (t === 230) return 30;
+            if (t === 280) return 40;
+            if (t === 330) return 40;
+            return 25;
+        }
+
+        /** Matches #growth-path-view [data-tier] — driven by professional payout tier (same as pay rate). */
+        function friendlyGrowthPathTitleFromPayoutTierBase(tierBase) {
+            const t = parseInt(tierBase, 10);
+            if (t === 230) return 'Cultivator';
+            if (t === 280) return 'Steward Mentor';
+            if (t === 330) return 'Legacy Guide';
+            if (t === 180) return 'Seedling Educator';
+            return 'Seedling Educator';
+        }
+
+        /** Tier + creds mirror server profile (via RemoedTeacherPayout after ensureInitialized). */
+        function getPayoutSettingsForGrowth() {
+            if (typeof RemoedTeacherPayout === 'undefined') {
+                return { tierBase: 180, c1: false, c2: false, c3: false };
+            }
+            var saved = RemoedTeacherPayout.load();
+            if (saved) return RemoedTeacherPayout.normalize(saved);
+            if (typeof careerPayoutReadForm === 'function') {
+                return RemoedTeacherPayout.normalize(careerPayoutReadForm());
+            }
+            return RemoedTeacherPayout.defaultSettings();
+        }
+
+        function growthPointsFromPayoutCredentialSettings(s) {
+            if (!s) return 0;
+            return ((s.c1 ? 1 : 0) + (s.c2 ? 1 : 0) + (s.c3 ? 1 : 0)) * 10;
+        }
+
+        async function careerPayoutEnsureAndLoadUi() {
+            if (typeof RemoedTeacherPayout === 'undefined') return;
+            await RemoedTeacherPayout.ensureInitialized();
+            const s = RemoedTeacherPayout.load() || RemoedTeacherPayout.defaultSettings();
+            const sel = document.getElementById('career-payout-tier-base');
+            if (sel) sel.value = String(s.tierBase);
+            const c1 = document.getElementById('career-payout-cred-1');
+            const c2 = document.getElementById('career-payout-cred-2');
+            const c3 = document.getElementById('career-payout-cred-3');
+            if (c1) c1.checked = !!s.c1;
+            if (c2) c2.checked = !!s.c2;
+            if (c3) c3.checked = !!s.c3;
+            careerPayoutUpdateDisplays();
+        }
+
+        function careerPayoutReadForm() {
+            const sel = document.getElementById('career-payout-tier-base');
+            let tierBase = sel ? parseInt(sel.value, 10) : 180;
+            if (typeof RemoedTeacherPayout !== 'undefined' && RemoedTeacherPayout.TIER_VALUES.indexOf(tierBase) < 0) tierBase = 180;
+            return {
+                tierBase: tierBase,
+                c1: !!(document.getElementById('career-payout-cred-1') && document.getElementById('career-payout-cred-1').checked),
+                c2: !!(document.getElementById('career-payout-cred-2') && document.getElementById('career-payout-cred-2').checked),
+                c3: !!(document.getElementById('career-payout-cred-3') && document.getElementById('career-payout-cred-3').checked)
+            };
+        }
+
+        function careerPayoutUpdateDisplays() {
+            if (typeof RemoedTeacherPayout === 'undefined') return;
+            const s = RemoedTeacherPayout.normalize(careerPayoutReadForm());
+            const o = RemoedTeacherPayout.compute(s);
+            const per25 = o.ratePer25;
+            const elH = document.getElementById('career-payout-display-hourly');
+            const el25 = document.getElementById('career-payout-display-25');
+            if (elH) elH.textContent = '₱' + o.totalHourly;
+            if (el25) {
+                el25.textContent = '₱' + (Math.abs(per25 - Math.round(per25)) < 1e-9 ? String(Math.round(per25)) : per25.toFixed(2));
+            }
+        }
+
+        function careerPayoutOnChange() {
+            if (typeof RemoedTeacherPayout === 'undefined') return;
+            careerPayoutUpdateDisplays();
+            if (typeof renderCareerGrowth === 'function') renderCareerGrowth();
+        }
+        window.careerPayoutOnChange = careerPayoutOnChange;
         
         // Update sidebar profile
         async function updateSidebarProfile() {
@@ -560,7 +675,7 @@
         function calculateCareerGrowthClient() {
             if (isFounderTeacherAccount()) {
                 return {
-                    points: 245,
+                    points: CAREER_GROWTH_MAX_POINTS,
                     tier: 'Legacy Guide',
                     founderLadder: true,
                     allHeartCommitments: true,
@@ -570,12 +685,7 @@
                     loyaltyPoints: 35
                 };
             }
-            const hasEnglishDegree4Year = !!document.getElementById('growth-degree4y')?.checked;
-            const hasTesolTeylTefl = !!document.getElementById('growth-tesol')?.checked;
-            const hasIeltsCertificate = !!document.getElementById('growth-ielts')?.checked;
-            const hasProfessionalLetLicense = !!document.getElementById('growth-let')?.checked;
-            const hasMastersDegree = !!document.getElementById('growth-masters')?.checked;
-            const hasDoctorateDegree = !!document.getElementById('growth-doctorate')?.checked;
+            const q = getGrowthQualifications();
             const heartHospitality = !!document.getElementById('heart-hospitality')?.checked;
             const heartExcellence = !!document.getElementById('heart-excellence')?.checked;
             const heartAffection = !!document.getElementById('heart-affection')?.checked;
@@ -586,42 +696,19 @@
             const honorIntegritySpeech = !!document.getElementById('honor-integrity-speech')?.checked;
             const honorGoodAttitudeAntiGreed = !!document.getElementById('honor-good-attitude')?.checked;
             const honorFinancialStewardship = !!document.getElementById('honor-financial')?.checked;
-            const eslExperienceLevel = document.getElementById('growth-esl')?.value || 'none';
-            const hireDate = document.getElementById('growth-hire-date')?.value || '';
+            const hireDate = q.hireDate || '';
             const { loyaltyYears, loyaltyPoints } = calculateLoyaltyPointsFromHireDate(hireDate);
 
-            let points = 0;
-            if (hasEnglishDegree4Year) points += 20;
-            if (hasTesolTeylTefl) points += 15;
-            if (hasIeltsCertificate) points += 15;
-            if (eslExperienceLevel === '2years') points += 15;
-            if (eslExperienceLevel === '3to5') points += 20;
-            if (eslExperienceLevel === '5plus') points += 25;
-            if (hasProfessionalLetLicense) points += 25;
-            if (hasMastersDegree) points += 30;
-            if (hasDoctorateDegree) points += 30;
+            var payoutSettings = getPayoutSettingsForGrowth();
+            let points = growthPointsFromPayoutTierBase(payoutSettings.tierBase);
+            points += growthPointsFromPayoutCredentialSettings(payoutSettings);
             points += loyaltyPoints;
-            const teachingBand = document.getElementById('growth-teaching-exp')?.value || 'none';
-            points += teachingExperiencePointsFromBand(teachingBand);
 
-            const hasAtLeast2Years = ['2years', '3to5', '5plus'].includes(eslExperienceLevel);
-            const hasAtLeast3Years = ['3to5', '5plus'].includes(eslExperienceLevel);
-            const hasAtLeast5Years = eslExperienceLevel === '5plus';
             const allHeartCommitments = heartHospitality && heartExcellence && heartAffection && heartRespect && heartTogetherness;
             const allHonorCommitments = honorAvoidFalseWitness && honorNoGossipPolitics && honorIntegritySpeech && honorGoodAttitudeAntiGreed && honorFinancialStewardship;
             const allCommitmentsComplete = allHeartCommitments && allHonorCommitments;
-            const hasCoreCertification = hasEnglishDegree4Year && hasTesolTeylTefl && hasIeltsCertificate && hasProfessionalLetLicense;
 
-            let tier = 'Not Qualified';
-            if (hasAtLeast5Years && hasCoreCertification && allCommitmentsComplete) {
-                tier = 'Legacy Guide';
-            } else if (hasAtLeast3Years && hasEnglishDegree4Year && hasTesolTeylTefl && allCommitmentsComplete) {
-                tier = 'Steward Mentor';
-            } else if (hasAtLeast2Years) {
-                tier = 'Cultivator';
-            } else if (hasEnglishDegree4Year || hasTesolTeylTefl) {
-                tier = 'Seedling Educator';
-            }
+            const tier = friendlyGrowthPathTitleFromPayoutTierBase(payoutSettings.tierBase);
             return { points, tier, allHeartCommitments, allHonorCommitments, allCommitmentsComplete, loyaltyYears, loyaltyPoints };
         }
 
@@ -636,7 +723,7 @@
             const shieldBadgeEl = document.getElementById('shield-badge');
             const legacyLeafBadgeEl = document.getElementById('legacy-leaf-badge');
             const loyaltyInfoEl = document.getElementById('growth-loyalty-info');
-            const maxPoints = 245;
+            const maxPoints = CAREER_GROWTH_MAX_POINTS;
             const fillPercent = Math.max(0, Math.min(100, (points / maxPoints) * 100));
             if (pointsEl) pointsEl.textContent = String(points);
             if (tierEl) tierEl.textContent = founderLadder ? 'Legacy Guide · Founder' : tier;
@@ -711,6 +798,7 @@
 
         async function loadCareerGrowth() {
             try {
+                await careerPayoutEnsureAndLoadUi();
                 const response = await fetch('/api/teacher/profile', {
                     method: 'GET',
                     headers: {
@@ -718,56 +806,56 @@
                         'Content-Type': 'application/json'
                     }
                 });
-                if (!response.ok) return;
-                const data = await response.json();
-                const profile = data.profile || {};
-                cachedTeacherEmailForLadder = String(profile.email || '').toLowerCase().trim();
-                const setChecked = (id, value) => {
-                    const el = document.getElementById(id);
-                    if (el) el.checked = !!value;
-                };
-                setChecked('growth-degree4y', profile.hasEnglishDegree4Year);
-                setChecked('growth-tesol', profile.hasTesolTeylTefl);
-                setChecked('growth-ielts', profile.hasIeltsCertificate);
-                setChecked('growth-let', profile.hasProfessionalLetLicense);
-                setChecked('growth-masters', profile.hasMastersDegree);
-                setChecked('growth-doctorate', profile.hasDoctorateDegree);
-                setChecked('heart-hospitality', profile.heartHospitality);
-                setChecked('heart-excellence', profile.heartExcellence);
-                setChecked('heart-affection', profile.heartAffection);
-                setChecked('heart-respect', profile.heartRespect);
-                setChecked('heart-togetherness', profile.heartTogetherness);
-                setChecked('honor-false-witness', profile.honorAvoidFalseWitness);
-                setChecked('honor-no-gossip', profile.honorNoGossipPolitics);
-                setChecked('honor-integrity-speech', profile.honorIntegritySpeech);
-                setChecked('honor-good-attitude', profile.honorGoodAttitudeAntiGreed);
-                setChecked('honor-financial', profile.honorFinancialStewardship);
-                const hireDateInput = document.getElementById('growth-hire-date');
-                if (hireDateInput) hireDateInput.value = profile.hireDate ? String(profile.hireDate).split('T')[0] : '';
-                const commitmentIds = [
-                    'heart-hospitality',
-                    'heart-excellence',
-                    'heart-affection',
-                    'heart-respect',
-                    'heart-togetherness',
-                    'honor-false-witness',
-                    'honor-no-gossip',
-                    'honor-integrity-speech',
-                    'honor-good-attitude',
-                    'honor-financial'
-                ];
-                const hasAnyCommitment = commitmentIds.some((id) => !!document.getElementById(id)?.checked);
-                // Backward compatibility: older profiles may only have hasValuesAlignment=true.
-                if (profile.hasValuesAlignment && !hasAnyCommitment) {
-                    commitmentIds.forEach((id) => setChecked(id, true));
+                if (response.ok) {
+                    const data = await response.json();
+                    const profile = data.profile || {};
+                    cachedTeacherEmailForLadder = String(profile.email || '').toLowerCase().trim();
+                    cachedGrowthQualifications = {
+                        hasEnglishDegree4Year: !!profile.hasEnglishDegree4Year,
+                        hasTesolTeylTefl: !!profile.hasTesolTeylTefl,
+                        hasIeltsCertificate: !!profile.hasIeltsCertificate,
+                        hasProfessionalLetLicense: !!profile.hasProfessionalLetLicense,
+                        hasMastersDegree: !!profile.hasMastersDegree,
+                        hasDoctorateDegree: !!profile.hasDoctorateDegree,
+                        eslExperienceLevel: profile.eslExperienceLevel || 'none',
+                        hireDate: profile.hireDate ? String(profile.hireDate).split('T')[0] : '',
+                        teachingExperienceBand: profile.teachingExperienceBand || 'none'
+                    };
+                    const setChecked = (id, value) => {
+                        const el = document.getElementById(id);
+                        if (el) el.checked = !!value;
+                    };
+                    setChecked('heart-hospitality', profile.heartHospitality);
+                    setChecked('heart-excellence', profile.heartExcellence);
+                    setChecked('heart-affection', profile.heartAffection);
+                    setChecked('heart-respect', profile.heartRespect);
+                    setChecked('heart-togetherness', profile.heartTogetherness);
+                    setChecked('honor-false-witness', profile.honorAvoidFalseWitness);
+                    setChecked('honor-no-gossip', profile.honorNoGossipPolitics);
+                    setChecked('honor-integrity-speech', profile.honorIntegritySpeech);
+                    setChecked('honor-good-attitude', profile.honorGoodAttitudeAntiGreed);
+                    setChecked('honor-financial', profile.honorFinancialStewardship);
+                    const commitmentIds = [
+                        'heart-hospitality',
+                        'heart-excellence',
+                        'heart-affection',
+                        'heart-respect',
+                        'heart-togetherness',
+                        'honor-false-witness',
+                        'honor-no-gossip',
+                        'honor-integrity-speech',
+                        'honor-good-attitude',
+                        'honor-financial'
+                    ];
+                    const hasAnyCommitment = commitmentIds.some((id) => !!document.getElementById(id)?.checked);
+                    if (profile.hasValuesAlignment && !hasAnyCommitment) {
+                        commitmentIds.forEach((id) => setChecked(id, true));
+                    }
                 }
-                const esl = document.getElementById('growth-esl');
-                if (esl) esl.value = profile.eslExperienceLevel || 'none';
-                const tex = document.getElementById('growth-teaching-exp');
-                if (tex) tex.value = profile.teachingExperienceBand || 'none';
-                renderCareerGrowth();
             } catch (error) {
                 console.error('Error loading career growth data:', error);
+            } finally {
+                renderCareerGrowth();
             }
         }
 
@@ -787,6 +875,7 @@
                 const base = await profileResponse.json();
                 const profile = base.profile || {};
                 const growthState = calculateCareerGrowthClient();
+                const gq = getGrowthQualifications();
                 const payload = {
                     firstName: profile.firstName || '',
                     middleName: profile.middleName || '',
@@ -801,7 +890,7 @@
                     email: profile.email || '',
                     username: profile.username || '',
                     emergencyContact: profile.emergencyContact || '',
-                    hireDate: document.getElementById('growth-hire-date')?.value || null,
+                    hireDate: gq.hireDate || null,
                     introduction: profile.introduction || '',
                     experience: profile.experience || '',
                     profilePicture: profile.profilePicture || null,
@@ -815,13 +904,13 @@
                         certifications: profile.documents?.certifications || [],
                         diploma: profile.documents?.diploma || null
                     },
-                    hasEnglishDegree4Year: !!document.getElementById('growth-degree4y')?.checked,
-                    hasTesolTeylTefl: !!document.getElementById('growth-tesol')?.checked,
-                    hasIeltsCertificate: !!document.getElementById('growth-ielts')?.checked,
-                    eslExperienceLevel: document.getElementById('growth-esl')?.value || 'none',
-                    hasProfessionalLetLicense: !!document.getElementById('growth-let')?.checked,
-                    hasMastersDegree: !!document.getElementById('growth-masters')?.checked,
-                    hasDoctorateDegree: !!document.getElementById('growth-doctorate')?.checked,
+                    hasEnglishDegree4Year: !!gq.hasEnglishDegree4Year,
+                    hasTesolTeylTefl: !!gq.hasTesolTeylTefl,
+                    hasIeltsCertificate: !!gq.hasIeltsCertificate,
+                    eslExperienceLevel: gq.eslExperienceLevel || 'none',
+                    hasProfessionalLetLicense: !!gq.hasProfessionalLetLicense,
+                    hasMastersDegree: !!gq.hasMastersDegree,
+                    hasDoctorateDegree: !!gq.hasDoctorateDegree,
                     heartHospitality: !!document.getElementById('heart-hospitality')?.checked,
                     heartExcellence: !!document.getElementById('heart-excellence')?.checked,
                     heartAffection: !!document.getElementById('heart-affection')?.checked,
@@ -833,7 +922,7 @@
                     honorGoodAttitudeAntiGreed: !!document.getElementById('honor-good-attitude')?.checked,
                     honorFinancialStewardship: !!document.getElementById('honor-financial')?.checked,
                     hasValuesAlignment: !!growthState.allCommitmentsComplete,
-                    teachingExperienceBand: document.getElementById('growth-teaching-exp')?.value || 'none'
+                    teachingExperienceBand: gq.teachingExperienceBand || 'none'
                 };
 
                 const saveResponse = await fetch('/api/teacher/profile', {
@@ -1978,11 +2067,10 @@
             loadPersonalityAssessment();
             loadPeerTeachers();
             loadCareerGrowth();
-            ['growth-degree4y','growth-tesol','growth-ielts','growth-esl','growth-hire-date','growth-teaching-exp','growth-let','growth-masters','growth-doctorate','heart-hospitality','heart-excellence','heart-affection','heart-respect','heart-togetherness','honor-false-witness','honor-no-gossip','honor-integrity-speech','honor-good-attitude','honor-financial'].forEach((id) => {
+            ['heart-hospitality','heart-excellence','heart-affection','heart-respect','heart-togetherness','honor-false-witness','honor-no-gossip','honor-integrity-speech','honor-good-attitude','honor-financial'].forEach((id) => {
                 const el = document.getElementById(id);
                 if (el) el.addEventListener('change', renderCareerGrowth);
             });
-            renderCareerGrowth();
             
             // Handle hash navigation after a short delay to ensure DOM is ready
             setTimeout(handleHashNavigation, 200);

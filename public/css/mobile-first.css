@@ -184,7 +184,7 @@ canvas {
     top: 0;
     height: 100vh !important;
     height: 100dvh !important;
-    width: min(88vw, 280px) !important;
+    width: min(88vw, 260px) !important;
     min-width: 0 !important;
     max-width: none !important;
     transform: translate3d(-105%, 0, 0);

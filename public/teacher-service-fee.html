@@ -11,6 +11,30 @@
   <link rel="stylesheet" href="css/teacher-sidebar.css">
   <link rel="stylesheet" href="style.css">
   <script src="js/user-session.js"></script>
+  <script src="js/teacher-payout-settings.js"></script>
+  <style>
+    .fee-cancel-tooltip-wrap { position: relative; display: inline-flex; align-items: center; align-self: flex-end; margin-bottom: 2px; }
+    .fee-cancel-q-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 18px; height: 18px; padding: 0; border: 1px solid #cbd5e1; border-radius: 999px;
+      background: #fff; color: #64748b; font-size: 0.68rem; font-weight: 800; cursor: help; line-height: 1;
+      flex-shrink: 0;
+    }
+    .fee-cancel-q-btn:hover, .fee-cancel-q-btn:focus { outline: none; border-color: #94a3b8; color: #334155; background: #f8fafc; }
+    .fee-cancel-tooltip-panel {
+      visibility: hidden; opacity: 0; pointer-events: none;
+      position: absolute; z-index: 100; right: 0; bottom: calc(100% + 8px);
+      width: min(300px, 85vw); max-width: 300px;
+      padding: 8px 10px; font-size: 0.72rem; color: #334155; line-height: 1.4;
+      background: #fff; border: 1px solid #e2e8f0; border-radius: 8px;
+      box-shadow: 0 4px 16px rgba(15,23,42,0.12);
+      transition: opacity 0.12s ease;
+    }
+    .fee-cancel-tooltip-wrap:hover .fee-cancel-tooltip-panel,
+    .fee-cancel-tooltip-wrap:focus-within .fee-cancel-tooltip-panel {
+      visibility: visible; opacity: 1; pointer-events: auto;
+    }
+  </style>
 </head>
 <body class="page-teacher-service-fee">
   <div class="remoed-main">
@@ -25,10 +49,10 @@
             <span class="account-label">Account:</span> <span id="account-email">user@remoedph.com</span>
           </div>
           <div class="account-info-row">
-            <span class="account-label">Payment Method:</span> <span>PayPal</span>
+            <span class="account-label">Payment Method:</span> <span>Maribank</span>
           </div>
           <div class="account-info-row">
-            <span class="account-label">Weekly Period:</span> <span id="pay-period">Monday - Friday</span>
+            <span class="account-label">Pay period:</span> <span id="pay-period">Bi-monthly (PH)</span>
             </div>
           </div>
           <!-- Debug gear icon hidden -->
@@ -41,13 +65,13 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
             <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
           </svg>
-          Current Week
+          Current cut-off
         </button>
         <button id="previous-week-tab" class="week-tab" onclick="switchWeekTab('previous')" style="background: #f8f9fa; border: 2px solid #e9ecef; color: #495057; padding: 6px 12px; border-radius: 20px; font-weight: 600; font-size: 0.85rem; transition: all 0.3s ease; display: flex; align-items: center; gap: 6px;">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
             <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
           </svg>
-          Previous Week
+          Previous cut-off
         </button>
         <button id="daily-breakdown-tab" class="week-tab" onclick="switchWeekTab('daily-breakdown')" style="background: #f8f9fa; border: 2px solid #e9ecef; color: #495057; padding: 6px 12px; border-radius: 20px; font-weight: 600; font-size: 0.85rem; transition: all 0.3s ease; display: flex; align-items: center; gap: 6px;">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
@@ -109,39 +133,62 @@
         <!-- Main Content Grid -->
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; max-width: 1200px; margin: 0 auto;">
           
-          <!-- Weekly Fee Card -->
-          <div class="service-section" style="background: #fff; border: 1px solid #e0e6ed; border-radius: 8px; padding: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.05);">
-            <div class="service-section-title" style="color: #333; font-size: 1rem; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="color: #667eea;">
+          <!-- Pay period fee (bi-monthly PH cut-offs) -->
+          <div class="service-section" style="background: #fff; border: 1px solid #e0e6ed; border-radius: 8px; padding: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.05);">
+            <div class="service-section-title" style="color: #333; font-size: 0.92rem; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="color: #667eea;">
                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
               </svg>
-              Weekly Fee
+              Teaching fee (pay period)
             </div>
             
-            <div class="service-row" style="background: #f8f9fa; padding: 8px; border-radius: 6px; margin-bottom: 8px; border: 1px solid #e9ecef;">
-              <div class="service-label" style="color: #495057; font-size: 0.85rem;">25 minutes rate <span style="font-size: 0.75rem; color: #6c757d;">(Admin Only)</span></div>
-              <input type="number" id="hourly-rate" class="service-input" value="100" min="0" readonly disabled style="background: #fff; border: 1px solid #ced4da; color: #495057; border-radius: 4px; padding: 4px 8px; width: 100px; min-width: 100px; font-size: 0.9rem;">
+            <!-- Per 25-min rate from HR/admin (GET /api/teacher/profile → RemoedTeacherPayout) -->
+            <input type="hidden" id="hourly-rate" value="90">
+
+            <div class="service-row" style="background: #f1f5f9; padding: 8px 10px; border-radius: 6px; margin-bottom: 6px; border: 1px solid #e2e8f0; overflow: visible;">
+              <div style="display: flex; flex-wrap: wrap; gap: 10px 16px; justify-content: flex-end; align-items: flex-end;">
+                <div style="text-align: right;">
+                  <div style="font-size: 0.65rem; color: #64748b; font-weight: 600; margin-bottom: 1px;">Total hourly</div>
+                  <div style="font-size: 0.88rem; font-weight: 700; color: #334155;"><span id="fee-payout-summary-hourly">₱180</span></div>
+                </div>
+                <div style="display: flex; flex-wrap: nowrap; align-items: flex-end; gap: 8px; text-align: right; padding-left: 12px; border-left: 1px solid #e2e8f0;">
+                  <div>
+                    <div style="font-size: 0.68rem; color: #0f172a; font-weight: 700; margin-bottom: 1px;">Per 25-min class</div>
+                    <div style="font-size: 1.05rem; font-weight: 800; color: #0f172a; line-height: 1.2;"><span id="fee-payout-summary-25">₱90</span></div>
+                  </div>
+                  <span class="fee-cancel-tooltip-wrap">
+                    <button type="button" class="fee-cancel-q-btn" id="fee-cancel-schedule-info" aria-label="Cancellation deduction schedule" title="Cancellation deduction schedule (hover or focus for details)">?</button>
+                    <span id="fee-cancel-schedule-tooltip" class="fee-cancel-tooltip-panel" role="tooltip">
+                      <span style="font-weight: 700; display: block; margin-bottom: 4px; color: #0f172a;">Cancellation deduction schedule</span>
+                      <span style="display: block; margin-bottom: 6px;">Penalties apply to your <strong>25-minute class rate</strong> (total hourly ÷ 2) when you cancel a booked session:</span>
+                      <span style="display: block; padding-left: 0.85rem; text-indent: -0.65rem;">• More than <strong>72 hours</strong> before class: <strong>0%</strong></span>
+                      <span style="display: block; padding-left: 0.85rem; text-indent: -0.65rem;">• <strong>24–72 hours</strong> before: <strong>50%</strong> of the 25-min rate</span>
+                      <span style="display: block; padding-left: 0.85rem; text-indent: -0.65rem;">• <strong>&lt;24 hours</strong> but <strong>≥1 hour</strong> before: <strong>75%</strong></span>
+                      <span style="display: block; padding-left: 0.85rem; text-indent: -0.65rem;">• <strong>&lt;1 hour</strong> before: <strong>100%</strong></span>
+                    </span>
+                  </span>
+                </div>
+              </div>
             </div>
             
-            <div class="service-row" style="background: #f8f9fa; padding: 8px; border-radius: 6px; margin-bottom: 8px; border: 1px solid #e9ecef;">
-              <div class="service-label" style="color: #495057; font-size: 0.85rem;">Completed classes</div>
-              <div class="service-value" id="completed-classes" style="color: #333; font-weight: 600; font-size: 0.95rem;">Loading...</div>
+            <div class="service-row" style="background: #f8f9fa; padding: 6px 8px; border-radius: 6px; margin-bottom: 6px; border: 1px solid #e9ecef;">
+              <div class="service-label" style="color: #495057; font-size: 0.78rem;">Completed classes</div>
+              <div class="service-value" id="completed-classes" style="color: #333; font-weight: 600; font-size: 0.86rem;">Loading...</div>
             </div>
             
             <!-- Helpful message when no completed classes -->
             <div id="no-classes-message" style="display: none; background: #e3f2fd; padding: 8px; border-radius: 6px; margin-bottom: 8px; border: 1px solid #bbdefb;">
-              <div style="color: #1976d2; font-weight: 600; margin-bottom: 4px; font-size: 0.85rem;">📚 No completed classes this week</div>
+              <div style="color: #1976d2; font-weight: 600; margin-bottom: 4px; font-size: 0.85rem;">📚 No completed classes this pay period</div>
               <div style="color: #424242; font-size: 0.75rem;">
-                Teaching fees are calculated based on completed classes (15-25 minutes duration) within the current week.<br>
+                Teaching fees use completed classes (15–25 minutes) within the current bi-monthly cut-off (1st–15th or 16th–end, Philippine calendar).<br>
                 • Check your <a href="teacher-class-table.html" style="color: #1976d2; text-decoration: underline;">Class Schedule</a> for upcoming classes<br>
-                • Classes must be marked as "completed" to count for payment<br>
-                • Only classes from Monday to Sunday are included
+                • Classes must be marked as completed to count for payment
               </div>
             </div>
             
-            <div class="service-row" style="background: #e3f2fd; padding: 8px; border-radius: 6px; margin-bottom: 8px; border: 2px solid #bbdefb;">
-              <div class="service-label" style="color: #1976d2; font-weight: 600; font-size: 0.85rem;">Weekly fee (Rate × Completed class)</div>
-              <div class="service-sum" id="base-sum" style="color: #1976d2; font-size: 1.1rem; font-weight: 700;">₱0.00</div>
+            <div class="service-row" style="background: #e3f2fd; padding: 6px 8px; border-radius: 6px; margin-bottom: 6px; border: 2px solid #bbdefb;">
+              <div class="service-label" style="color: #1976d2; font-weight: 600; font-size: 0.78rem;">Period fee (rate × completed classes)</div>
+              <div class="service-sum" id="base-sum" style="color: #1976d2; font-size: 0.98rem; font-weight: 700;">₱0.00</div>
             </div>
             
             <div class="service-row" style="background: #f8f9fa; padding: 8px; border-radius: 6px; margin-bottom: 8px; border: 1px solid #e9ecef; display:none;">
@@ -178,10 +225,10 @@
               <div class="service-label" style="color: #495057; font-size: 0.85rem;">
                 Cancelled classes 
                 <div style="font-size: 0.7rem; color: #6c757d; margin-top: 2px;">
-                  >72h: 0% | 24-72h: 100% | <24h: 200%
+                  &gt;72h: 0% · 24–72h: 50% · &lt;24h (≥1h): 75% · &lt;1h: 100% <span style="white-space: nowrap;">(of 25-min rate)</span>
                 </div>
               </div>
-              <input type="number" id="cancelled-deductions" class="service-input" value="0.00" step="0.01" min="0" readonly disabled style="background: #fff; border: 1px solid #ced4da; color: #495057; border-radius: 4px; padding: 4px 8px; width: 100px; font-size: 0.9rem;" title="Cancellation deductions are calculated automatically based on timing">
+              <input type="number" id="cancelled-deductions" class="service-input" value="0.00" step="0.01" min="0" readonly disabled style="background: #fff; border: 1px solid #ced4da; color: #495057; border-radius: 4px; padding: 4px 8px; width: 100px; font-size: 0.9rem;" title="Based on Total Hourly ÷ 2 (25-min class rate) and time before class when cancelled">
             </div>
             
             <div class="service-row" style="background: #ffebee; padding: 8px; border-radius: 6px; border: 2px solid #ffcdd2; font-weight: 600;">
@@ -401,12 +448,83 @@
       if (logoutNav) {
         logoutNav.onclick = function() { localStorage.clear(); window.location.href = 'teacher-login.html'; };
       }
+
     });
 
     // Global variables for week management
     let currentWeekData = null;
     let previousWeekData = null;
     let weekHistoryData = [];
+
+    /** Philippine calendar date parts (YYYY-MM-DD) for bi-monthly cut-offs. */
+    function getManilaYmdParts(d) {
+      const s = d.toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
+      const p = s.split('-');
+      return { y: parseInt(p[0], 10), m: parseInt(p[1], 10), day: parseInt(p[2], 10) };
+    }
+    function ymdFromParts(y, m, day) {
+      return y + '-' + String(m).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+    }
+    function lastDayOfMonthManila(y, m1to12) {
+      return new Date(y, m1to12, 0).getDate();
+    }
+    /**
+     * Bi-monthly: 1–15 and 16–last. `periodType` 'current' | 'previous' in PH time.
+     */
+    function getBiMonthlyBounds(periodType) {
+      const { y, m, day } = getManilaYmdParts(new Date());
+      if (periodType === 'current') {
+        if (day <= 15) {
+          return {
+            startDate: ymdFromParts(y, m, 1),
+            endDate: ymdFromParts(y, m, 15),
+            periodLabel: '1st–15th (current cut-off)',
+          };
+        }
+        const lastD = lastDayOfMonthManila(y, m);
+        return {
+          startDate: ymdFromParts(y, m, 16),
+          endDate: ymdFromParts(y, m, lastD),
+          periodLabel: '16th–end (current cut-off)',
+        };
+      }
+      if (periodType === 'previous') {
+        if (day <= 15) {
+          let pm = m - 1;
+          let py = y;
+          if (pm < 1) {
+            pm = 12;
+            py = y - 1;
+          }
+          const lastD = lastDayOfMonthManila(py, pm);
+          return {
+            startDate: ymdFromParts(py, pm, 16),
+            endDate: ymdFromParts(py, pm, lastD),
+            periodLabel: '16th–end (previous cut-off)',
+          };
+        }
+        return {
+          startDate: ymdFromParts(y, m, 1),
+          endDate: ymdFromParts(y, m, 15),
+          periodLabel: '1st–15th (previous cut-off)',
+        };
+      }
+      return { startDate: ymdFromParts(y, m, 1), endDate: ymdFromParts(y, m, 15), periodLabel: '' };
+    }
+
+    function updateTeachingFeePayoutSummary() {
+      if (typeof RemoedTeacherPayout === 'undefined') return;
+      var s = RemoedTeacherPayout.load() || RemoedTeacherPayout.defaultSettings();
+      var o = RemoedTeacherPayout.compute(s);
+      var per25 = o.ratePer25;
+      var elH = document.getElementById('fee-payout-summary-hourly');
+      var el25 = document.getElementById('fee-payout-summary-25');
+      if (elH) elH.textContent = '₱' + o.totalHourly;
+      if (el25) {
+        el25.textContent = '₱' + (Math.abs(per25 - Math.round(per25)) < 1e-9 ? String(Math.round(per25)) : per25.toFixed(2));
+      }
+      RemoedTeacherPayout.applyToHiddenHourly();
+    }
     
     // Load teacher's completed classes and calculate fee
     async function loadTeacherFeeData(weekType = 'current') {
@@ -417,86 +535,26 @@
 
       try {
         let startDate, endDate, weekLabel;
+        const periodKey = weekType === 'previous' ? 'previous' : 'current';
+        const b0 = getBiMonthlyBounds(periodKey);
+        startDate = b0.startDate;
+        endDate = b0.endDate;
+        weekLabel = b0.periodLabel;
+        console.log('🔍 Bi-monthly pay period (PH):', { weekType, periodKey, startDate, endDate, weekLabel });
         
-        // Helper function to get Monday of a given week (Global format)
-        function getMondayOfWeek(date) {
-          const dayOfWeek = date.getDay(); // 0 = Sunday, 1 = Monday, etc.
-          const monday = new Date(date);
-          monday.setDate(date.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1)); // Monday
-          return monday;
-        }
-        
-        if (weekType === 'current') {
-          // Get current week (Monday to Sunday) - Global format
-          const now = new Date();
-          const monday = getMondayOfWeek(now);
-          const sunday = new Date(monday);
-          sunday.setDate(monday.getDate() + 6); // Sunday (7-day week)
-          
-          startDate = monday.toISOString().split('T')[0];
-          endDate = sunday.toISOString().split('T')[0];
-          weekLabel = `Week of ${TU.formatDateShortPhilippines ? TU.formatDateShortPhilippines(new Date(startDate + 'T12:00:00+08:00')) : monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
-          
-          console.log('🔍 Current week calculation (Global format):', {
-            now: now.toISOString().split('T')[0],
-            monday: monday.toISOString().split('T')[0],
-            sunday: sunday.toISOString().split('T')[0],
-            startDate: startDate,
-            endDate: endDate
-          });
-        } else if (weekType === 'previous') {
-          // Get previous week (Monday to Sunday) - Global format
-          const now = new Date();
-          const currentMonday = getMondayOfWeek(now);
-          const lastMonday = new Date(currentMonday);
-          lastMonday.setDate(currentMonday.getDate() - 7); // Previous Monday (7 days before current Monday)
-          const lastSunday = new Date(lastMonday);
-          lastSunday.setDate(lastMonday.getDate() + 6); // Previous Sunday (7-day week)
-          
-          startDate = lastMonday.toISOString().split('T')[0];
-          endDate = lastSunday.toISOString().split('T')[0];
-          weekLabel = `Week of ${TU.formatDateShortPhilippines ? TU.formatDateShortPhilippines(new Date(startDate + 'T12:00:00+08:00')) : lastMonday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
-          
-          console.log('🔍 Previous week calculation (Global format):', {
-            now: now.toISOString().split('T')[0],
-            currentMonday: currentMonday.toISOString().split('T')[0],
-            lastMonday: lastMonday.toISOString().split('T')[0],
-            lastSunday: lastSunday.toISOString().split('T')[0],
-            startDate: startDate,
-            endDate: endDate
-          });
-        }
-        
-        // Update pay period display with dynamic dates
         const periodText = TU.formatDateShortPhilippines
-          ? `${TU.formatDateShortPhilippines(new Date(startDate + 'T12:00:00+08:00'))} - ${TU.formatDateShortPhilippines(new Date(endDate + 'T12:00:00+08:00'))}`
-          : `${new Date(startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${new Date(endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
-        document.getElementById('pay-period').textContent = periodText;
+          ? `${TU.formatDateShortPhilippines(new Date(startDate + 'T12:00:00+08:00'))} – ${TU.formatDateShortPhilippines(new Date(endDate + 'T12:00:00+08:00'))}`
+          : `${new Date(startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${new Date(endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+        const payPeriodEl = document.getElementById('pay-period');
+        if (payPeriodEl) payPeriodEl.textContent = periodText + ' · ' + (weekLabel || '');
         
-        // Fetch global rate (GET /api/admin/teacher-rate is public; Bearer optional)
         const token = localStorage.getItem('token');
-        const rateHeaders = {};
-        if (token) rateHeaders['Authorization'] = `Bearer ${token}`;
-        const rateResponse = await fetch(`/api/admin/teacher-rate`, {
-          credentials: 'include',
-          headers: rateHeaders
-        });
-        
-        let teacherRate = 0; // Start with 0, will be updated from API
-        if (rateResponse.ok) {
-          const rateData = await rateResponse.json();
-          if (rateData.success) {
-            teacherRate = rateData.rate;
-            document.getElementById('hourly-rate').value = teacherRate;
-            console.log('✅ Teacher rate loaded from admin API:', teacherRate);
-          } else {
-            console.error('❌ Failed to get teacher rate from API:', rateData.message);
-            throw new Error('Failed to load teacher rate from admin system');
-          }
-        } else {
-          console.error('❌ Failed to fetch teacher rate from admin API:', rateResponse.status);
-          throw new Error('Failed to connect to admin rate system');
+        if (typeof RemoedTeacherPayout !== 'undefined') {
+          await RemoedTeacherPayout.ensureInitialized();
+          updateTeachingFeePayoutSummary();
         }
+        const teacherRate = typeof RemoedTeacherPayout !== 'undefined' ? RemoedTeacherPayout.getRatePer25() : parseFloat(document.getElementById('hourly-rate').value) || 0;
+        console.log('✅ Payout rate (per 25 min) from server profile:', teacherRate);
         
         // Fetch completed classes for the current month using new API
         console.log('🔍 Fetching completed classes for date range:', startDate, 'to', endDate);
@@ -550,9 +608,9 @@
           
           // Show notification if completed classes > 0
           if (completedClasses > 0) {
-            console.log(`🎉 Found ${completedClasses} completed classes for this week!`);
+            console.log(`🎉 Found ${completedClasses} completed classes for this pay period!`);
           } else {
-            console.log(`ℹ️ No completed classes found for this week (${startDate} to ${endDate})`);
+            console.log(`ℹ️ No completed classes found for this pay period (${startDate} to ${endDate})`);
             console.log(`💡 This is why the teaching fee shows ₱0.00`);
             console.log(`💡 To see teaching fees, you need classes with status 'completed' and duration 15-25 minutes`);
           }
@@ -564,7 +622,10 @@
       } catch (error) {
         console.error('Error loading teacher fee data:', error);
         document.getElementById('completed-classes').textContent = '0';
-        document.getElementById('hourly-rate').value = '0';
+        if (typeof RemoedTeacherPayout !== 'undefined') {
+          RemoedTeacherPayout.applyToHiddenHourly();
+          updateTeachingFeePayoutSummary();
+        }
         document.getElementById('base-sum').textContent = '0.00';
         document.getElementById('net-amount').textContent = '0.00';
         
@@ -632,7 +693,7 @@
       // Use student absent count from API response if provided, otherwise from deductions calculation
       const actualStudentAbsentClasses = studentAbsentClasses !== null ? studentAbsentClasses : (deductions.studentAbsentCount || 0);
       
-      // Calculate base amount based on 25-minute lessons (weekly only)
+      // Calculate base amount based on 25-minute lessons (current pay period)
       // Each completed class counts as 1 lesson (25 minutes)
       const baseSum = ratePer25Minutes * actualCompletedClasses;
       
@@ -665,24 +726,11 @@
         const token = localStorage.getItem('token');
         const teacherId = localStorage.getItem('teacherId');
         
-        // Use provided dates or fall back to current week (Global format)
+        // Use provided dates or fall back to current bi-monthly cut-off (PH)
         if (!startDate || !endDate) {
-          const now = new Date();
-          
-          // Helper function to get Monday of a given week (Global format)
-          function getMondayOfWeek(date) {
-            const dayOfWeek = date.getDay(); // 0 = Sunday, 1 = Monday, etc.
-            const monday = new Date(date);
-            monday.setDate(date.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1)); // Monday
-            return monday;
-          }
-          
-          const monday = getMondayOfWeek(now);
-          const sunday = new Date(monday);
-          sunday.setDate(monday.getDate() + 6); // Sunday (7-day week)
-          
-          startDate = monday.toISOString().split('T')[0];
-          endDate = sunday.toISOString().split('T')[0];
+          const b = getBiMonthlyBounds('current');
+          startDate = b.startDate;
+          endDate = b.endDate;
         }
         
         console.log('🔍 Calculating deductions for date range:', startDate, 'to', endDate);
@@ -802,26 +850,16 @@
             lateDeductions += classItem.lateMinutes * 2;
           }
           
-          // Cancelled deduction calculation based on time difference
+          // Cancelled deduction: % of 25-min rate (same as Total Hourly ÷ 2) by hours before class
           if (classItem.status === 'cancelled' && classItem.cancellationTime && classItem.date && classItem.time) {
             const classDateTime = new Date(`${classItem.date}T${classItem.time}:00`);
             const cancellationTime = new Date(classItem.cancellationTime);
             const timeDifferenceHours = (classDateTime - cancellationTime) / (1000 * 60 * 60);
-            
-            console.log(`Cancelled class: ${classItem.date} ${classItem.time}, cancelled at: ${cancellationTime}, hours difference: ${timeDifferenceHours}`);
-            
-            if (timeDifferenceHours > 72) {
-              // Cancel > 72 hours: zero deduction
-              console.log(`Cancellation > 72 hours: no deduction`);
-            } else if (timeDifferenceHours > 24) {
-              // Within 72 hours: 100% rate deduction
-              cancelledDeductions += ratePer25Minutes;
-              console.log(`Cancellation within 72 hours: 100% deduction (${ratePer25Minutes})`);
-            } else {
-              // Within 24 hours: 200% rate deduction
-            cancelledDeductions += ratePer25Minutes * 2;
-              console.log(`Cancellation within 24 hours: 200% deduction (${ratePer25Minutes * 2})`);
-            }
+            const d = (typeof RemoedTeacherPayout !== 'undefined' && RemoedTeacherPayout.tutorCancellationDeductionPeso)
+              ? RemoedTeacherPayout.tutorCancellationDeductionPeso(timeDifferenceHours, ratePer25Minutes)
+              : 0;
+            cancelledDeductions += d;
+            console.log(`Cancelled class: ${classItem.date} ${classItem.time}, cancelled at: ${cancellationTime}, hours before class: ${timeDifferenceHours.toFixed(2)} → deduction ₱${d.toFixed(2)}`);
           }
         });
         
@@ -1534,43 +1572,17 @@
       }
     }
     
-    // Ensure teacher rate is properly loaded from admin system
+    // Ensure payout settings from Career Growth are applied to the hidden per–25-min rate field.
     async function ensureTeacherRateLoaded() {
       if (!teacherId) {
         console.error('❌ No teacher ID found for rate loading');
         return false;
       }
-      
       try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          console.error('❌ No authentication token found for rate loading');
-          return false;
+        if (typeof RemoedTeacherPayout !== 'undefined') {
+          await RemoedTeacherPayout.ensureInitialized();
+          updateTeachingFeePayoutSummary();
         }
-        
-        const rateHeaders = { 'Authorization': `Bearer ${token}` };
-        const response = await fetch(`/api/admin/teacher-rate`, {
-          credentials: 'include',
-          headers: rateHeaders
-        });
-        
-        if (!response.ok) {
-          console.error('❌ Failed to fetch teacher rate from admin API:', response.status);
-          return false;
-        }
-        
-        const data = await response.json();
-        if (!data.success || !data.rate || data.rate <= 0) {
-          console.error('❌ Invalid teacher rate received from admin API:', data);
-          return false;
-        }
-        
-        const currentRate = parseFloat(document.getElementById('hourly-rate').value) || 0;
-        if (currentRate !== data.rate) {
-          console.log(`✅ Loading teacher rate from admin system: ${data.rate}`);
-          document.getElementById('hourly-rate').value = data.rate;
-        }
-        
         return true;
       } catch (error) {
         console.error('❌ Error ensuring teacher rate is loaded:', error);
@@ -1578,39 +1590,18 @@
       }
     }
     
-    // Check for rate updates from admin
+    // Recalculate fee from current Career Growth payout settings (tier/credentials in localStorage).
     async function checkForRateUpdates() {
       if (!teacherId) return;
-      
       try {
-        const token = localStorage.getItem('token');
-        const rateHeaders = token ? { 'Authorization': `Bearer ${token}` } : {};
-        const response = await fetch(`/api/admin/teacher-rate`, {
-          credentials: 'include',
-          headers: rateHeaders
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success && data.rate > 0) {
-            const currentRate = parseFloat(document.getElementById('hourly-rate').value) || 0;
-            const newRate = data.rate;
-            
-            if (currentRate !== newRate) {
-              console.log(`✅ Rate updated from ${currentRate} to ${newRate}`);
-              document.getElementById('hourly-rate').value = newRate;
-              // Recalculate fee with new rate
-              const completedClasses = parseFloat(document.getElementById('completed-classes').textContent) || 0;
-              calculateFee(completedClasses);
-            }
-          } else {
-            console.error('❌ Invalid rate received from admin API:', data);
-          }
-        } else {
-          console.error('❌ Failed to fetch rate update from admin API:', response.status);
+        if (typeof RemoedTeacherPayout !== 'undefined') {
+          RemoedTeacherPayout.applyToHiddenHourly();
+          updateTeachingFeePayoutSummary();
+          const completedClasses = parseFloat(document.getElementById('completed-classes').textContent) || 0;
+          await calculateFee(completedClasses);
         }
       } catch (error) {
-        console.error('Error checking for rate updates:', error);
+        console.error('Error refreshing payout rate:', error);
       }
     }
     
@@ -1738,20 +1729,16 @@
             
             console.log(`   Class DateTime: ${classDateTime}`);
             console.log(`   Cancellation DateTime: ${cancellationTime}`);
-            console.log(`   Hours Difference: ${timeDifferenceHours.toFixed(2)}`);
+            console.log(`   Hours before class: ${timeDifferenceHours.toFixed(2)}`);
             
-            let deduction = 0;
+            const deduction = (typeof RemoedTeacherPayout !== 'undefined' && RemoedTeacherPayout.tutorCancellationDeductionPeso)
+              ? RemoedTeacherPayout.tutorCancellationDeductionPeso(timeDifferenceHours, ratePer25Minutes)
+              : 0;
             let deductionType = '';
-            
-            if (timeDifferenceHours > 72) {
-              deductionType = 'No deduction (>72h)';
-            } else if (timeDifferenceHours > 24) {
-              deduction = ratePer25Minutes;
-              deductionType = '100% deduction (24-72h)';
-            } else {
-              deduction = ratePer25Minutes * 2;
-              deductionType = '200% deduction (<24h)';
-            }
+            if (timeDifferenceHours > 72) deductionType = '0% (>72h)';
+            else if (timeDifferenceHours >= 24) deductionType = '50% (24–72h)';
+            else if (timeDifferenceHours >= 1) deductionType = '75% (<24h, ≥1h)';
+            else deductionType = '100% (<1h)';
             
             console.log(`   Deduction: ₱${deduction.toFixed(2)} (${deductionType})`);
           } else {
@@ -1765,14 +1752,10 @@
             const classDateTime = new Date(`${classItem.date}T${classItem.time}:00`);
             const cancellationTime = new Date(classItem.cancellationTime);
             const timeDifferenceHours = (classDateTime - cancellationTime) / (1000 * 60 * 60);
-            
-            if (timeDifferenceHours > 72) {
-              return total;
-            } else if (timeDifferenceHours > 24) {
-              return total + ratePer25Minutes;
-            } else {
-              return total + (ratePer25Minutes * 2);
-            }
+            const d = (typeof RemoedTeacherPayout !== 'undefined' && RemoedTeacherPayout.tutorCancellationDeductionPeso)
+              ? RemoedTeacherPayout.tutorCancellationDeductionPeso(timeDifferenceHours, ratePer25Minutes)
+              : 0;
+            return total + d;
           }
           return total;
         }, 0);
@@ -2393,8 +2376,18 @@
             }
           } else if (classItem.status === 'cancelled') {
             cancelledClasses++;
-            console.log(`   🚫 Cancelled`);
-            // Cancellation deduction calculation would go here
+            if (classItem.cancellationTime && classItem.date && classItem.time) {
+              const classDateTime = new Date(`${classItem.date}T${classItem.time}:00`);
+              const cancellationTime = new Date(classItem.cancellationTime);
+              const timeDifferenceHours = (classDateTime - cancellationTime) / (1000 * 60 * 60);
+              const d = (typeof RemoedTeacherPayout !== 'undefined' && RemoedTeacherPayout.tutorCancellationDeductionPeso)
+                ? RemoedTeacherPayout.tutorCancellationDeductionPeso(timeDifferenceHours, ratePer25Minutes)
+                : 0;
+              totalCancelledDeduction += d;
+              console.log(`   🚫 Cancelled — ₱${d.toFixed(2)} deduction (${timeDifferenceHours.toFixed(2)}h before class)`);
+            } else {
+              console.log(`   🚫 Cancelled (no cancellation timestamp — deduction not applied in debug)`);
+            }
           }
         });
         
@@ -2412,16 +2405,18 @@
         console.log(`   NET PAYABLE: ₱${netAmount.toFixed(2)}`);
         
         // Compare with UI values
-        const uiWeeklyFee = parseFloat(document.getElementById('base-sum').textContent) || 0;
+        const uiWeeklyFee = parseFloat(document.getElementById('base-sum').textContent.replace(/[^\d.-]/g, '')) || 0;
         const uiLateDeductions = parseFloat(document.getElementById('late-deductions').value) || 0;
         const uiAbsentDeductions = parseFloat(document.getElementById('absent-deductions').value) || 0;
-        const uiNetAmount = parseFloat(document.getElementById('net-amount').textContent) || 0;
+        const uiCancelledDeductions = parseFloat(document.getElementById('cancelled-deductions').value) || 0;
+        const uiNetAmount = parseFloat(document.getElementById('net-amount').textContent.replace(/[^\d.-]/g, '')) || 0;
         
         console.log('\n🔍 COMPARISON WITH UI:');
         console.log(`   UI Weekly Fee: ₱${uiWeeklyFee.toFixed(2)} | Calculated: ₱${weeklyFee.toFixed(2)} | Match: ${uiWeeklyFee === weeklyFee ? '✅' : '❌'}`);
         console.log(`   UI Late Deductions: ₱${uiLateDeductions.toFixed(2)} | Calculated: ₱${totalLateDeduction.toFixed(2)} | Match: ${uiLateDeductions === totalLateDeduction ? '✅' : '❌'}`);
         console.log(`   UI Absent Deductions: ₱${uiAbsentDeductions.toFixed(2)} | Calculated: ₱${totalAbsentDeduction.toFixed(2)} | Match: ${uiAbsentDeductions === totalAbsentDeduction ? '✅' : '❌'}`);
-        console.log(`   UI Net Amount: ₱${uiNetAmount.toFixed(2)} | Calculated: ₱${netAmount.toFixed(2)} | Match: ${uiNetAmount === netAmount ? '✅' : '❌'}`);
+        console.log(`   UI Cancelled Deductions: ₱${uiCancelledDeductions.toFixed(2)} | Calculated: ₱${totalCancelledDeduction.toFixed(2)} | Match: ${Math.abs(uiCancelledDeductions - totalCancelledDeduction) < 0.01 ? '✅' : '❌'}`);
+        console.log(`   UI Net Amount: ₱${uiNetAmount.toFixed(2)} | Calculated: ₱${netAmount.toFixed(2)} | Match: ${Math.abs(uiNetAmount - netAmount) < 0.01 ? '✅' : '❌'}`);
         
         // Show alert with summary
         alert(`Salary Debug Summary:\n\n` +
@@ -2429,6 +2424,7 @@
               `Weekly Fee: ₱${weeklyFee.toFixed(2)}\n` +
               `Late Deductions: ₱${totalLateDeduction.toFixed(2)}\n` +
               `Teacher Absent Deductions (including incomplete classes): ₱${totalAbsentDeduction.toFixed(2)}\n` +
+              `Cancelled Deductions: ₱${totalCancelledDeduction.toFixed(2)}\n` +
               `Total Deductions: ₱${totalDeductions.toFixed(2)}\n` +
               `NET PAYABLE: ₱${netAmount.toFixed(2)}\n\n` +
               `Check console for detailed breakdown.`);

@@ -2,6 +2,7 @@ require('dotenv').config();
 // Patch Express to forward async handler rejections to error middleware (Sonar Reliability).
 require('express-async-errors');
 const express = require('express');
+const compression = require('compression');
 const helmet = require('helmet');
 const cors = require('cors');
 const bodyParser = require('body-parser');
@@ -56,6 +57,23 @@ const trustProxyOn =
 if (trustProxyOn) {
   app.set('trust proxy', 1);
 }
+
+/**
+ * Gzip/deflate for JSON and text responses. Registered before other middleware and routes so
+ * the compressor wraps outbound bodies. threshold=1024 skips tiny payloads. /socket.io is
+ * excluded so long-polling / upgrades are not altered here (Nginx can still gzip static assets).
+ */
+app.use(
+  compression({
+    threshold: 1024,
+    filter: (req, res) => {
+      if (req.headers['x-no-compression']) return false;
+      const p = String(req.path || req.url || '').split('?')[0];
+      if (p.startsWith('/socket.io')) return false;
+      return compression.filter(req, res);
+    },
+  })
+);
 
 /** Comma-separated full origins (https://...) from env — merged into allowedOrigins. */
 function parseCorsOriginUrls(raw) {
@@ -185,6 +203,22 @@ app.get('/startup', (req, res) => {
 // Middleware — CORS + OPTIONS preflight (browsers send OPTIONS before credentialed POST /api/auth/*).
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
+
+/**
+ * Large JSON to verify Content-Encoding: gzip in DevTools (Network tab).
+ * Always registered so it works when NODE_ENV=production (common local .env / hosting).
+ * Set DISABLE_COMPRESSION_DEBUG=1 to remove this endpoint.
+ */
+if (process.env.DISABLE_COMPRESSION_DEBUG !== '1') {
+  app.get('/api/debug/compression-check', (req, res) => {
+    const row = (i) => ({ i, pad: 'x'.repeat(128) });
+    res.json({
+      ok: true,
+      hint: 'Response should exceed 1KB and show gzip when client sends Accept-Encoding: gzip',
+      rows: Array.from({ length: 64 }, (_, i) => row(i)),
+    });
+  });
+}
 
 // Keep raw body for PayMongo webhook signature verification.
 app.use('/api/webhooks/paymongo', express.raw({ type: 'application/json' }));
@@ -318,6 +352,21 @@ app.use('/admin', express.static(path.join(__dirname, '../public'), { index: fal
 // API Routes (no-store on role-protected APIs)
 app.use('/api/auth', noStoreProtectedResponse, authRoutes);
 app.use('/api/teacher', noStoreProtectedResponse, teacherRoutes);
+{
+  const landingHandler =
+    typeof teacherRoutes.publicLandingHandler === 'function'
+      ? teacherRoutes.publicLandingHandler
+      : (req, res) => {
+          console.error(
+            '[api/teachers/landing] teacherRoutes.publicLandingHandler missing — use current server/teacher.js and restart Node'
+          );
+          res.status(503).json({
+            error: 'Teachers landing API unavailable',
+            hint: 'Restart the API server after updating server/teacher.js (needs publicLandingHandler).',
+          });
+        };
+  app.get('/api/teachers/landing', landingHandler);
+}
 app.use('/api/bookings', noStoreProtectedResponse, bookingsSlotRoutes);
 app.use('/api/slots', noStoreProtectedResponse, slotsRoutes);
 app.use('/api/student', noStoreProtectedResponse, studentRoutes);
@@ -464,7 +513,8 @@ if (fs.existsSync(clientIndex)) {
   });
 }
 
-const publicDir = path.join(__dirname, '../public');
+/** Repo-root `public/` folder (not `server/public` — that path would be wrong for this layout). */
+const publicDir = path.join(__dirname, '..', 'public');
 const protectedHtmlFiles = new Set([
   'student-dashboard.html',
   'student-booking-history.html',
@@ -513,7 +563,15 @@ app.get('/favicon.ico', (req, res) => {
 });
 
 // Static files after core /api mounts so API paths are never shadowed by public files
-app.use(express.static(publicDir));
+app.use(
+  express.static(publicDir, {
+    setHeaders(res, filePath) {
+      if (String(filePath).toLowerCase().endsWith('.css')) {
+        res.setHeader('Content-Type', 'text/css; charset=utf-8');
+      }
+    },
+  })
+);
 
 // Email diagnostic endpoint (for debugging)
 app.get('/api/email/status', (req, res) => {

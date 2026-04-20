@@ -7,38 +7,28 @@
 :root {
   --remoed-brand-blue: #5a67d8;
   --remoed-brand-blue-soft: #818cf8;
-  --remoed-student-font: "Comic Sans MS", "Comic Neue", "Chalkboard SE", "Trebuchet MS", "Segoe UI", cursive, sans-serif;
 }
 
-/*
- * Consistent kid-friendly type across student-facing screens (portal + credits shell).
- * !important wins over body.page-student-* rules in style.css that set other fonts.
- */
+/* Match teacher portal: Segoe stack, slate page background (replaces child-friendly styles on portal pages). */
 html body.student-portal,
 html body.page-student-credits {
-  font-family: var(--remoed-student-font) !important;
-}
-
-body.student-portal .remoed-sidebar {
-  font-family: var(--remoed-student-font) !important;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #f8fafc;
+  color: #1a202c;
 }
 
 body.student-portal input,
 body.student-portal select,
 body.student-portal textarea,
-body.student-portal button {
-  font-family: inherit !important;
-}
-
-body.page-student-credits,
+body.student-portal button,
 body.page-student-credits input,
 body.page-student-credits select,
 body.page-student-credits textarea,
 body.page-student-credits button {
-  font-family: var(--remoed-student-font) !important;
+  font-family: inherit;
 }
 
-/* --- Sidebar: same chrome as student-dashboard.html (teacher-sidebar + dashboard menu treatment) --- */
+/* --- Sidebar: full-height flex chrome; menu colors/active states from teacher-sidebar.css --- */
 body.student-portal nav.remoed-sidebar.remoed-sidebar {
   height: 100vh;
   max-height: 100vh;
@@ -73,110 +63,41 @@ body.student-portal .remoed-sidebar .remoed-menu li#logout-nav {
   }
 }
 
-/* Sidebar width + menu typography (280px fits header + “My Learning Journey” on one line). */
+/* Same rail width as teacher (260px). */
 body.student-portal nav.remoed-sidebar.remoed-sidebar {
-  width: 280px;
-  min-width: 280px;
+  width: 260px;
+  min-width: 260px;
 }
 
 body.student-portal .remoed-content {
-  margin-left: 280px;
-  max-width: calc(100vw - 280px);
+  margin-left: 260px;
+  max-width: calc(100vw - 260px);
 }
 
-/* Menu items: match student-dashboard.html inline sidebar (purple + gradient active/hover) */
+/* Long labels (e.g. My Learning Journey): allow wrap; teacher defaults use single-line ellipsis. */
 body.student-portal .remoed-sidebar .remoed-menu li {
-  padding: 12px 20px 12px 16px !important;
-  color: #667eea !important;
-  font-size: 0.9rem !important;
-  font-weight: 500 !important;
-  cursor: pointer;
-  display: flex !important;
-  align-items: center !important;
-  gap: 10px !important;
-  border-left: 4px solid transparent !important;
-  transition: background 0.2s, border-color 0.2s, color 0.2s, transform 0.2s !important;
-  margin: 0 !important;
-  border-radius: 0 !important;
-  flex: 0 0 auto !important;
-  min-width: 0 !important;
-}
-
-body.student-portal .remoed-sidebar .remoed-menu .remoed-menu-icon {
-  flex: 0 0 24px;
-  width: 24px;
-  height: 24px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-body.student-portal .remoed-sidebar .remoed-menu .remoed-menu-label {
-  flex: 1 1 auto;
-  min-width: 0;
   white-space: normal;
   overflow: visible;
   text-overflow: unset;
+}
+
+body.student-portal .remoed-sidebar .remoed-menu .remoed-menu-label {
   word-break: break-word;
-  font-size: inherit;
-  font-weight: inherit;
 }
 
-body.student-portal .remoed-sidebar .remoed-menu li.active,
-body.student-portal .remoed-sidebar .remoed-menu li:not(#logout-nav):hover {
-  background: linear-gradient(90deg, #667eea 0%, #5a67d8 100%) !important;
-  border-left-color: #667eea !important;
-  color: #fff !important;
-  transform: translateX(4px) !important;
-}
-
-body.student-portal .remoed-sidebar .remoed-menu li.active .remoed-menu-icon svg,
-body.student-portal .remoed-sidebar .remoed-menu li:not(#logout-nav):hover .remoed-menu-icon svg {
-  stroke: #fff !important;
-}
-
-body.student-portal .remoed-sidebar .remoed-menu .remoed-menu-icon svg {
-  width: 22px !important;
-  height: 22px !important;
-  max-width: 24px;
-  max-height: 24px;
-  stroke: currentColor !important;
-  flex-shrink: 0;
-}
-
-body.student-portal .remoed-sidebar .remoed-menu li#logout-nav {
-  color: #e74c3c !important;
-  transform: none !important;
-}
-
-body.student-portal .remoed-sidebar .remoed-menu li#logout-nav .remoed-menu-icon svg {
-  stroke: #e74c3c !important;
-}
-
-body.student-portal .remoed-sidebar .remoed-menu li#logout-nav:hover {
-  background: rgba(231, 76, 60, 0.1) !important;
-  color: #c0392b !important;
-  border-left-color: transparent !important;
-  transform: none !important;
-}
-
-body.student-portal .remoed-sidebar .remoed-menu li#logout-nav:hover .remoed-menu-icon svg {
-  stroke: #c0392b !important;
-}
-
-/* Tablet (769–1024): keep full 280px student sidebar + labels (override mobile-first 76px icon rail). */
+/* Tablet (769–1024): full 260px sidebar + labels (override mobile-first icon rail). */
 @media (min-width: 769px) and (max-width: 1024px) {
   body.student-portal nav.remoed-sidebar.remoed-sidebar,
   html body.student-portal .remoed-main > [id$="-sidebar-root"] > nav.remoed-sidebar {
-    width: 280px !important;
-    min-width: 280px !important;
-    max-width: 280px !important;
+    width: 260px !important;
+    min-width: 260px !important;
+    max-width: 260px !important;
     overflow-x: hidden;
   }
 
   body.student-portal .remoed-content {
-    margin-left: 280px !important;
-    max-width: calc(100vw - 280px) !important;
+    margin-left: 260px !important;
+    max-width: calc(100vw - 260px) !important;
   }
 
   body.student-portal .remoed-sidebar .sidebar-header-inner {
@@ -189,45 +110,6 @@ body.student-portal .remoed-sidebar .remoed-menu li#logout-nav:hover .remoed-men
 
   body.student-portal .remoed-sidebar .remoed-username {
     display: block !important;
-  }
-
-  body.student-portal .remoed-sidebar .remoed-menu li {
-    justify-content: flex-start !important;
-    padding: 12px 20px 12px 16px !important;
-    font-size: 0.9rem !important;
-    line-height: normal !important;
-    font-weight: 500 !important;
-    overflow: visible !important;
-  }
-
-  body.student-portal .remoed-sidebar .remoed-menu li:not(#logout-nav):not(.active):not(:hover) {
-    color: #667eea !important;
-  }
-
-  body.student-portal .remoed-sidebar .remoed-menu li svg {
-    width: 22px !important;
-    height: 22px !important;
-  }
-
-  body.student-portal .remoed-sidebar .remoed-menu li#logout-nav {
-    color: #e74c3c !important;
-  }
-
-  body.student-portal .remoed-sidebar .remoed-menu li#logout-nav svg {
-    stroke: #e74c3c !important;
-  }
-
-  body.student-portal .remoed-sidebar .remoed-menu li.active,
-  body.student-portal .remoed-sidebar .remoed-menu li:not(#logout-nav):hover {
-    color: #fff !important;
-  }
-}
-
-/* Keep nav link size on small phones (mobile-first uses 0.875rem for .remoed-menu li). */
-@media (max-width: 768px) {
-  body.student-portal .remoed-sidebar .remoed-menu li {
-    font-size: 0.9rem !important;
-    font-weight: 500 !important;
   }
 }
 
@@ -243,15 +125,14 @@ body.page-student-class-table .remoed-content {
   gap: 8px;
   margin-bottom: 6px;
   padding-bottom: 8px;
-  border-bottom: 1px solid rgba(90, 103, 216, 0.2);
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .student-schedule-toolbar__title {
   margin: 0;
-  font-size: 1.35rem;
-  font-weight: 800;
-  color: var(--remoed-brand-blue);
-  text-shadow: 1px 1px 3px rgba(90, 103, 216, 0.12);
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1a202c;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -299,15 +180,14 @@ body.page-student-book .remoed-content {
   gap: 8px;
   margin-bottom: 6px;
   padding-bottom: 8px;
-  border-bottom: 1px solid rgba(90, 103, 216, 0.2);
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .student-book-toolbar__title {
   margin: 0;
-  font-size: 1.35rem;
-  font-weight: 800;
-  color: var(--remoed-brand-blue);
-  text-shadow: 1px 1px 3px rgba(90, 103, 216, 0.12);
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1a202c;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -382,7 +262,8 @@ body.page-student-dashboard .remoed-content {
 
 body.page-student-dashboard .nav-left h1 {
   font-size: 1.12rem !important;
-  color: var(--remoed-brand-blue) !important;
+  font-weight: 600 !important;
+  color: #1a202c !important;
 }
 
 body.page-student-dashboard .nav-icon {
@@ -712,22 +593,22 @@ body.student-portal.page-student-assessment #score-display .assessment-score-pct
   margin-bottom: 1rem;
   padding: 1.25rem 1.35rem;
   border-radius: 16px;
-  background: linear-gradient(145deg, #fef3c7 0%, #fde68a 35%, #fcd34d 100%);
-  border: 1px solid rgba(180, 83, 9, 0.25);
-  box-shadow: 0 10px 30px rgba(245, 158, 11, 0.15);
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.06);
 }
 
 .page-student-learning-journey .lj-hero h1 {
   margin: 0 0 0.35rem;
   font-size: 1.75rem;
-  font-weight: 900;
-  color: #78350f;
+  font-weight: 600;
+  color: #1a202c;
   letter-spacing: -0.02em;
 }
 
 .page-student-learning-journey .lj-hero p {
   margin: 0 0 12px;
-  color: #92400e;
+  color: #64748b;
   line-height: 1.55;
   font-size: 0.95rem;
   max-width: 52rem;
@@ -736,10 +617,10 @@ body.student-portal.page-student-assessment #score-display .assessment-score-pct
 .page-student-learning-journey .lj-back {
   padding: 8px 16px;
   border-radius: 10px;
-  border: 1px solid rgba(120, 53, 15, 0.35);
+  border: 1px solid #e2e8f0;
   background: #fff;
-  color: #78350f;
-  font-weight: 700;
+  color: #1a202c;
+  font-weight: 600;
   cursor: pointer;
   font-size: 0.9rem;
 }
@@ -763,10 +644,10 @@ body.student-portal.page-student-assessment #score-display .assessment-score-pct
 }
 
 .page-student-learning-journey .lj-tab.active {
-  border-color: #5a67d8;
-  background: linear-gradient(135deg, #5a67d8, #7c3aed);
+  border-color: var(--remoed-brand-blue);
+  background: linear-gradient(90deg, var(--remoed-sidebar-active-start) 0%, var(--remoed-sidebar-active-end) 100%);
   color: #fff;
-  box-shadow: 0 6px 16px rgba(90, 103, 216, 0.35);
+  box-shadow: 0 4px 14px rgba(90, 103, 216, 0.25);
 }
 
 .page-student-learning-journey .lj-trail-root {
@@ -814,7 +695,7 @@ body.student-portal.page-student-assessment #score-display .assessment-score-pct
 
 .page-student-learning-journey .lj-region-lock-inner {
   text-align: center;
-  max-width: min(280px, 100%);
+  max-width: min(260px, 100%);
   flex: 0 1 auto;
 }
 

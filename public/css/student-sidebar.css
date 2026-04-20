@@ -35,7 +35,7 @@ body.student-portal .remoed-sidebar .sidebar-header-inner.logo-container.logo-se
   padding: 50px 15px 20px 20px;
 }
 
-/* Brand text: full width of row, one line, no ellipsis (sidebar width 280px in portal layout). */
+/* Brand text: full width of row, one line, no ellipsis (sidebar width 260px in portal layout). */
 body.student-portal .remoed-sidebar .sidebar-brand {
   flex: 1 1 auto;
   min-width: 0;
@@ -102,8 +102,8 @@ body.student-portal .remoed-sidebar .remoed-username {
 
 @media (max-width: 768px) {
   html body.student-portal .remoed-main > [id$="-sidebar-root"] > nav.remoed-sidebar {
-    width: min(88vw, 280px) !important;
-    max-width: 280px !important;
+    width: min(88vw, 260px) !important;
+    max-width: 260px !important;
   }
 
   body.student-portal .remoed-sidebar .logo-section,
@@ -127,7 +127,7 @@ body.student-portal .remoed-sidebar .remoed-username {
   }
 }
 
-/* Tablet: full 280px rail (student-portal-layout) — same horizontal header as desktop */
+/* Tablet: full 260px rail (student-portal-layout) — same horizontal header as desktop */
 @media (min-width: 769px) and (max-width: 1024px) {
   body.student-portal .remoed-sidebar .logo-section,
   body.student-portal .remoed-sidebar .sidebar-header-inner.logo-container.logo-section {

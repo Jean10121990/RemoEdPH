@@ -170,12 +170,55 @@
         }
 
         applyGreetingFromStorage();
-        queuePortalLayoutMount();
+        ensurePortalSidebarChromeThen(queuePortalLayoutMount);
+    }
+
+    function ensurePortalSidebarChromeThen(callback) {
+        if (global.RemoedPortalSidebarChrome) {
+            callback();
+            return;
+        }
+        var existing = document.querySelector('script[data-remoed-portal-sidebar-chrome]');
+        if (existing) {
+            if (global.RemoedPortalSidebarChrome) {
+                callback();
+            } else {
+                existing.addEventListener('load', function once() {
+                    existing.removeEventListener('load', once);
+                    callback();
+                });
+            }
+            return;
+        }
+        var ch = document.createElement('script');
+        ch.src = '/js/portal-sidebar-chrome.js';
+        ch.async = false;
+        ch.setAttribute('data-remoed-portal-sidebar-chrome', '1');
+        var fired = false;
+        function runOnce() {
+            if (fired) return;
+            fired = true;
+            callback();
+        }
+        ch.onload = function () {
+            runOnce();
+        };
+        document.head.appendChild(ch);
+        if (global.RemoedPortalSidebarChrome) {
+            runOnce();
+        }
+    }
+
+    function afterPortalSidebarChromeMount() {
+        if (global.RemoedPortalSidebarChrome && typeof global.RemoedPortalSidebarChrome.mount === 'function') {
+            global.RemoedPortalSidebarChrome.mount();
+        }
     }
 
     function queuePortalLayoutMount() {
         if (typeof global.RemoedPortalLayout !== 'undefined' && global.RemoedPortalLayout.mount) {
             global.RemoedPortalLayout.mount();
+            afterPortalSidebarChromeMount();
             return;
         }
         if (document.querySelector('script[data-remoed-portal-layout]')) {
@@ -184,17 +227,19 @@
                 if (global.RemoedPortalLayout && global.RemoedPortalLayout.mount) {
                     global.RemoedPortalLayout.mount();
                 }
+                afterPortalSidebarChromeMount();
             });
             return;
         }
         var s = document.createElement('script');
-        s.src = 'js/portal-layout.js';
+        s.src = '/js/portal-layout.js';
         s.async = true;
         s.setAttribute('data-remoed-portal-layout', '1');
         s.onload = function () {
             if (global.RemoedPortalLayout && global.RemoedPortalLayout.mount) {
                 global.RemoedPortalLayout.mount();
             }
+            afterPortalSidebarChromeMount();
             try {
                 document.dispatchEvent(new Event('remoed-portal-layout-ready'));
             } catch (e1) { /* ignore */ }

@@ -6,6 +6,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Our Teachers — RemoEdPH</title>
+    <script>
+        window.__teachersLandingPrefetch = fetch('/api/teachers/landing?limit=6&offset=0').then(function (r) {
+            if (!r.ok) return Promise.reject(r);
+            return r.json();
+        });
+    </script>
     <link rel="stylesheet" href="modern-styles.css">
     <link rel="stylesheet" href="child-friendly-styles.css">
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -52,6 +58,9 @@
     <section class="teachers-section">
         <div id="teachers-status" class="loading-state">Loading teachers…</div>
         <div id="teachers-grid" class="teachers-grid" style="display: none;"></div>
+        <div id="teachers-more-wrap" class="teachers-more-wrap" style="display: none; text-align: center; margin: 1.75rem 0 0;">
+            <button type="button" id="teachers-view-all" class="nav-btn primary">View All Teachers</button>
+        </div>
     </section>
 
     <div id="teacher-modal-overlay" class="t-modal-overlay" aria-hidden="true">
@@ -68,6 +77,7 @@
 
     <script>
         let directoryTeachers = [];
+        let landingState = { hasMore: false, nextOffset: 0 };
         let modalTeacher = null;
 
         function photoUrl(photo) {
@@ -84,6 +94,100 @@
             return d.innerHTML;
         }
 
+        /** Same-origin .webp URLs: picture + source(webp) + img(png); WebP may be missing on disk. */
+        function shouldUseWebpWithPngFallback(absUrl) {
+            if (!absUrl || /^data:/i.test(absUrl)) return false;
+            try {
+                const u = new URL(absUrl, window.location.origin);
+                if (u.origin !== window.location.origin) return false;
+                return /\.webp($|[?#])/i.test(u.pathname);
+            } catch (_e) {
+                return /\.webp($|\?|#)/i.test(String(absUrl));
+            }
+        }
+
+        function webpUrlToPngFallback(absUrl) {
+            return String(absUrl).replace(/\.webp(?=$|[?#])/i, '.png');
+        }
+
+        function teacherPhotoHtml(absUrl, alt, imgClass) {
+            if (!absUrl) return '';
+            const a = esc(alt || '');
+            const c = esc(imgClass || '');
+            const onerr =
+                ' onerror="this.onerror=null;this.src=\'/images/placeholder-avatar.png\'"';
+            if (shouldUseWebpWithPngFallback(absUrl)) {
+                const webp = esc(absUrl);
+                const png = esc(webpUrlToPngFallback(absUrl));
+                return (
+                    '<picture>' +
+                    '<source srcset="' +
+                    webp +
+                    '" type="image/webp" loading="lazy">' +
+                    '<img class="' +
+                    c +
+                    '" src="' +
+                    png +
+                    '" alt="' +
+                    a +
+                    '" loading="lazy"' +
+                    onerr +
+                    '>' +
+                    '</picture>'
+                );
+            }
+            return (
+                '<img class="' +
+                c +
+                '" src="' +
+                esc(absUrl) +
+                '" alt="' +
+                a +
+                '" loading="lazy"' +
+                onerr +
+                '>'
+            );
+        }
+
+        function appendTeacherPhoto(wrap, absUrl, alt, imgClass) {
+            if (!absUrl) return false;
+            if (shouldUseWebpWithPngFallback(absUrl)) {
+                const picture = document.createElement('picture');
+                const source = document.createElement('source');
+                source.srcset = absUrl;
+                source.type = 'image/webp';
+                source.setAttribute('loading', 'lazy');
+                const img = document.createElement('img');
+                img.src = webpUrlToPngFallback(absUrl);
+                img.alt = alt || '';
+                img.loading = 'lazy';
+                img.className = imgClass || '';
+                img.addEventListener('error', function () {
+                    this.onerror = null;
+                    if (!/\/placeholder-avatar\.png$/i.test(this.src)) {
+                        this.src = '/images/placeholder-avatar.png';
+                    }
+                });
+                picture.appendChild(source);
+                picture.appendChild(img);
+                wrap.appendChild(picture);
+                return true;
+            }
+            const img = document.createElement('img');
+            img.src = absUrl;
+            img.alt = alt || '';
+            img.loading = 'lazy';
+            img.className = imgClass || '';
+            img.addEventListener('error', function () {
+                this.onerror = null;
+                if (!/\/placeholder-avatar\.png$/i.test(this.src)) {
+                    this.src = '/images/placeholder-avatar.png';
+                }
+            });
+            wrap.appendChild(img);
+            return true;
+        }
+
         function openModal(t) {
             modalTeacher = t;
             const overlay = document.getElementById('teacher-modal-overlay');
@@ -97,7 +201,7 @@
 
             const p = photoUrl(t.photo);
             const leftPhoto = p
-                ? `<img class="t-modal__photo-lg" src="${esc(p)}" alt="">`
+                ? teacherPhotoHtml(p, display, 't-modal__photo-lg')
                 : `<div class="t-modal__photo-lg-ph" aria-hidden="true">👤</div>`;
 
             let videoHtml = '';
@@ -164,26 +268,54 @@
             window.location.href = 'student-book.html?preferredTeacher=' + encodeURIComponent(t.teacherId);
         }
 
+        function updateViewAllVisibility() {
+            const wrap = document.getElementById('teachers-more-wrap');
+            if (!wrap) return;
+            wrap.style.display = landingState.hasMore ? 'block' : 'none';
+        }
+
+        function isSlimLandingTeacher(t) {
+            return t && t.bioSnippet === undefined && t.intro === undefined;
+        }
+
+        async function openModalFromCard(t) {
+            let tForModal = t;
+            if (isSlimLandingTeacher(t)) {
+                const id = t.teacherId;
+                if (!id) return;
+                try {
+                    const r = await fetch('/api/teacher/public/profile/' + encodeURIComponent(id));
+                    if (!r.ok) throw new Error('profile');
+                    const d = await r.json();
+                    tForModal = d.teacher;
+                } catch (e) {
+                    console.error(e);
+                    return;
+                }
+            }
+            openModal(tForModal);
+        }
+
         function renderGrid(teachers) {
             const grid = document.getElementById('teachers-grid');
             const status = document.getElementById('teachers-status');
-            grid.innerHTML = '';
+            const frag = document.createDocumentFragment();
             teachers.forEach((t) => {
                 const display = t.displayName || t.name || t.teacherId;
                 const rating = t.rating != null ? Number(t.rating).toFixed(1) : '4.9';
-                const bio = t.bioSnippet || t.intro || 'Phonics expert who makes learning fun!';
-                const p = photoUrl(t.photo);
+                const bio =
+                    t.specialization ||
+                    t.bioSnippet ||
+                    t.intro ||
+                    'Phonics expert who makes learning fun!';
+                const p = photoUrl(t.profilePic || t.photo);
 
                 const card = document.createElement('article');
                 card.className = 'teacher-card';
                 const imgWrap = document.createElement('div');
                 imgWrap.className = 'teacher-card__photo-wrap';
                 if (p) {
-                    const img = document.createElement('img');
-                    img.src = p;
-                    img.alt = display;
-                    img.loading = 'lazy';
-                    imgWrap.appendChild(img);
+                    appendTeacherPhoto(imgWrap, p, display, '');
                 } else {
                     const ph = document.createElement('div');
                     ph.className = 'teacher-card__placeholder';
@@ -203,38 +335,94 @@
                 btn.type = 'button';
                 btn.className = 'teacher-card__btn';
                 btn.textContent = 'View Full Profile';
-                btn.addEventListener('click', () => openModal(t));
+                btn.addEventListener('click', () => openModalFromCard(t));
 
                 card.appendChild(imgWrap);
                 card.appendChild(name);
                 card.appendChild(rat);
                 card.appendChild(bioEl);
                 card.appendChild(btn);
-                grid.appendChild(card);
+                frag.appendChild(card);
             });
+            grid.replaceChildren();
+            grid.appendChild(frag);
             status.style.display = 'none';
             grid.style.display = 'grid';
+        }
+
+        async function fetchTeachersLanding(limit, offset) {
+            const qs = `limit=${encodeURIComponent(String(limit))}&offset=${encodeURIComponent(String(offset))}`;
+            const urls = [`/api/teachers/landing?${qs}`, `/api/teacher/public/landing?${qs}`];
+            let lastStatus = 0;
+            for (const url of urls) {
+                const res = await fetch(url);
+                lastStatus = res.status;
+                if (res.ok) return res.json();
+            }
+            const err = new Error('Failed to load teachers');
+            err.status = lastStatus;
+            throw err;
         }
 
         async function loadTeachers() {
             const status = document.getElementById('teachers-status');
             try {
-                const res = await fetch('/api/teacher/public/directory');
-                if (!res.ok) throw new Error('Failed to load');
-                const data = await res.json();
+                let data;
+                const pref = window.__teachersLandingPrefetch;
+                if (pref) {
+                    try {
+                        data = await pref;
+                    } catch (_e) {
+                        data = await fetchTeachersLanding(6, 0);
+                    }
+                    window.__teachersLandingPrefetch = null;
+                } else {
+                    data = await fetchTeachersLanding(6, 0);
+                }
                 directoryTeachers = data.teachers || [];
+                landingState = {
+                    hasMore: !!data.hasMore,
+                    nextOffset: typeof data.nextOffset === 'number' ? data.nextOffset : directoryTeachers.length,
+                };
                 if (directoryTeachers.length === 0) {
                     status.className = 'error-state';
                     status.textContent = 'No teachers to show yet. Please check back soon!';
                     return;
                 }
                 renderGrid(directoryTeachers);
+                updateViewAllVisibility();
             } catch (e) {
                 console.error(e);
                 status.className = 'error-state';
                 status.textContent = 'We couldn’t load teachers. Please refresh or try again later.';
             }
         }
+
+        async function loadRemainingTeachers() {
+            const btn = document.getElementById('teachers-view-all');
+            if (!btn || !landingState.hasMore) return;
+            btn.disabled = true;
+            const prev = btn.textContent;
+            btn.textContent = 'Loading…';
+            try {
+                const data = await fetchTeachersLanding(500, landingState.nextOffset);
+                const more = data.teachers || [];
+                directoryTeachers = directoryTeachers.concat(more);
+                landingState = {
+                    hasMore: !!data.hasMore,
+                    nextOffset: typeof data.nextOffset === 'number' ? data.nextOffset : directoryTeachers.length,
+                };
+                renderGrid(directoryTeachers);
+                updateViewAllVisibility();
+            } catch (e) {
+                console.error(e);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = prev;
+            }
+        }
+
+        document.getElementById('teachers-view-all').addEventListener('click', loadRemainingTeachers);
 
         document.getElementById('t-modal-close').addEventListener('click', closeModal);
         document.getElementById('teacher-modal-overlay').addEventListener('click', (e) => {

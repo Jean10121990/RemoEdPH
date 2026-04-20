@@ -63,6 +63,8 @@
         .btn-suspend:hover { background: #e67e22; }
         .btn-role { background: #9b59b6; color: white; }
         .btn-role:hover { background: #8e44ad; }
+        .btn-view-profile { background: #e8f4fd; color: #1ca7e7; border: 1px solid #b8d9f5; }
+        .btn-view-profile:hover { background: #d4ecfc; color: #0d8bc7; }
         .action-btn svg { width: 16px; height: 16px; }
         @media (max-width: 900px) {
             .remoed-main { flex-direction: column; }
@@ -100,6 +102,7 @@
                     <table class="user-table" id="teachers-table">
                         <thead>
                             <tr>
+                                <th style="width:52px;">Profile</th>
                                 <th>Username</th>
                                 <th>Email</th>
                                 <th>Status</th>
@@ -125,6 +128,7 @@
                     <table class="user-table" id="students-table">
                         <thead>
                             <tr>
+                                <th style="width:52px;">Profile</th>
                                 <th>Username</th>
                                 <th>Email</th>
                                 <th>Name</th>
@@ -151,6 +155,7 @@
                     <table class="user-table" id="admins-table">
                         <thead>
                             <tr>
+                                <th style="width:52px;">Profile</th>
                                 <th>Username</th>
                                 <th>Role</th>
                                 <th>Status</th>
@@ -214,6 +219,57 @@
                     <div style="margin-bottom: 15px;">
                         <label for="lastName" style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">Last Name</label>
                         <input type="text" id="lastName" name="lastName" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
+                    </div>
+                    <div id="teacher-payout-fields" style="margin-bottom: 15px; padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;">
+                        <div style="font-weight: 600; color: #334155; margin-bottom: 8px; font-size: 0.95rem;">Payout tier (base pay)</div>
+                        <label for="admin-payout-tier-base" style="display: block; margin-bottom: 5px; font-weight: 600; color: #333; font-size: 0.88rem;">Professional tier</label>
+                        <select id="admin-payout-tier-base" name="payoutTierBase" onchange="adminTeacherRatePreviewUpdate()" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; margin-bottom: 10px;">
+                            <option value="180">Tier 1 — ₱180/hr — 4-yr Grad OR 2-yrs BPO/ESL Exp</option>
+                            <option value="230">Tier 2 — ₱230/hr — 4-yr Grad (English Major)</option>
+                            <option value="280">Tier 3 — ₱280/hr — Grad + 1–3 yrs Exp/BPO</option>
+                            <option value="330">Tier 4 — ₱330/hr — Licensed Prof. Teacher (LET)</option>
+                        </select>
+                        <div style="font-size: 0.85rem; color: #64748b; margin-bottom: 6px;">Specialized credentials (+₱10/hr each, +₱5 per 25-min class)</div>
+                        <div style="border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; margin-bottom: 10px; background: #fff;">
+                            <table style="width:100%; border-collapse:collapse; font-size:0.88rem;">
+                                <thead>
+                                    <tr style="background:#f8fafc;">
+                                        <th style="text-align:left; padding:8px 10px; font-weight:600; color:#334155;">Credential</th>
+                                        <th style="text-align:right; padding:8px 10px; font-weight:600; color:#334155; white-space:nowrap;">Add-on</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr style="border-top:1px solid #e2e8f0;">
+                                        <td style="padding:8px 10px;">
+                                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; margin:0;">
+                                                <input type="checkbox" id="admin-payout-cred-1" name="payoutCred1" value="true" onchange="adminTeacherRatePreviewUpdate()"> TESOL / TEFL / TEYL Certification
+                                            </label>
+                                        </td>
+                                        <td style="padding:8px 10px; text-align:right; font-weight:600; color:#0f172a;">+ ₱10/hr</td>
+                                    </tr>
+                                    <tr style="border-top:1px solid #f1f5f9;">
+                                        <td style="padding:8px 10px;">
+                                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; margin:0;">
+                                                <input type="checkbox" id="admin-payout-cred-2" name="payoutCred2" value="true" onchange="adminTeacherRatePreviewUpdate()"> C1 / C2 English Proficiency Badge
+                                            </label>
+                                        </td>
+                                        <td style="padding:8px 10px; text-align:right; font-weight:600; color:#0f172a;">+ ₱10/hr</td>
+                                    </tr>
+                                    <tr style="border-top:1px solid #f1f5f9;">
+                                        <td style="padding:8px 10px;">
+                                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; margin:0;">
+                                                <input type="checkbox" id="admin-payout-cred-3" name="payoutCred3" value="true" onchange="adminTeacherRatePreviewUpdate()"> IELTS / Business English Specialist
+                                            </label>
+                                        </td>
+                                        <td style="padding:8px 10px; text-align:right; font-weight:600; color:#0f172a;">+ ₱10/hr</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div id="admin-teacher-rate-preview" style="font-size:0.75rem; color:#64748b; line-height:1.45; padding:8px 10px; background:#f1f5f9; border-radius:6px; border:1px solid #e2e8f0;">
+                            <span style="display:block; font-weight:600; color:#475569; margin-bottom:4px;">Calculated rate (preview)</span>
+                            <span id="admin-teacher-rate-preview-line">Total hourly: ₱— · Per 25-min class: ₱—</span>
+                        </div>
                     </div>
                 </div>
                 
@@ -279,6 +335,49 @@
             return o;
         }
 
+        /** Live preview of total hourly and per 25-min class from tier + credential checkboxes (matches server computeRatePer25Min). */
+        function adminTeacherRatePreviewUpdate() {
+            var tierEl = document.getElementById('admin-payout-tier-base');
+            var tier = tierEl ? parseInt(tierEl.value, 10) : 180;
+            if (![180, 230, 280, 330].includes(tier)) tier = 180;
+            var n = 0;
+            var c1 = document.getElementById('admin-payout-cred-1');
+            var c2 = document.getElementById('admin-payout-cred-2');
+            var c3 = document.getElementById('admin-payout-cred-3');
+            if (c1 && c1.checked) n += 1;
+            if (c2 && c2.checked) n += 1;
+            if (c3 && c3.checked) n += 1;
+            var hourly = tier + n * 10;
+            var per25 = hourly / 2;
+            var line = document.getElementById('admin-teacher-rate-preview-line');
+            if (line) {
+                var p25s = Math.abs(per25 - Math.round(per25)) < 1e-9 ? String(Math.round(per25)) : per25.toFixed(2);
+                line.textContent = 'Total hourly: ₱' + hourly + ' · Per 25-min class: ₱' + p25s;
+            }
+        }
+        window.adminTeacherRatePreviewUpdate = adminTeacherRatePreviewUpdate;
+
+        function viewTeacherPublicProfile(teacherId) {
+            var id = String(teacherId || '').trim();
+            if (!id) {
+                alert('No teacher ID available for this row.');
+                return;
+            }
+            window.open('teacher-view-profile.html?teacherId=' + encodeURIComponent(id), '_blank', 'noopener,noreferrer');
+        }
+
+        function viewStudentProfile(userMongoId) {
+            var id = String(userMongoId || '').trim();
+            if (!id) return;
+            window.open('admin-view-user-profile.html?type=student&id=' + encodeURIComponent(id), '_blank', 'noopener,noreferrer');
+        }
+
+        function viewAdminProfile(userMongoId) {
+            var id = String(userMongoId || '').trim();
+            if (!id) return;
+            window.open('admin-view-user-profile.html?type=admin&id=' + encodeURIComponent(id), '_blank', 'noopener,noreferrer');
+        }
+
         // Role-based access control
         const lsPortalUserType = localStorage.getItem('userType');
         if (lsPortalUserType !== 'admin') {
@@ -335,20 +434,28 @@
                 const tbody = document.getElementById('teachers-tbody');
                 if (response.status === 401 || response.status === 403) {
                     const msg = (raw && raw.error) ? raw.error : 'Unauthorized. Please sign in again.';
-                    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #e74c3c;">' + msg + '</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #e74c3c;">' + msg + '</td></tr>';
                     return;
                 }
                 if (!response.ok) {
-                    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #e74c3c;">' + ((raw && raw.error) || 'Failed to load teachers') + '</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #e74c3c;">' + ((raw && raw.error) || 'Failed to load teachers') + '</td></tr>';
                     return;
                 }
                 if (!teachers.length) {
-                    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #888;">No teachers found</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #888;">No teachers found</td></tr>';
                     return;
                 }
                 
                 tbody.innerHTML = teachers.map(teacher => `
                     <tr>
+                        <td>
+                            <button type="button" class="action-btn btn-view-profile" onclick="viewTeacherPublicProfile(${JSON.stringify((teacher.teacherId && String(teacher.teacherId).trim()) || (teacher.username && String(teacher.username).trim()) || '')})" title="View Profile">
+                                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                </svg>
+                            </button>
+                        </td>
                         <td>${teacher.username || 'N/A'}</td>
                         <td>${teacher.email || 'N/A'}</td>
                         <td><span class="status-badge ${teacher.status === 'suspended' ? 'status-inactive' : 'status-active'}">${teacher.status === 'suspended' ? 'Suspended' : 'Active'}</span></td>
@@ -383,7 +490,7 @@
                 `).join('');
             } catch (error) {
                 console.error('Error loading teachers:', error);
-                document.getElementById('teachers-tbody').innerHTML = '<tr><td colspan="5" style="text-align: center; color: #e74c3c;">Error loading teachers</td></tr>';
+                document.getElementById('teachers-tbody').innerHTML = '<tr><td colspan="6" style="text-align: center; color: #e74c3c;">Error loading teachers</td></tr>';
             }
         }
 
@@ -396,15 +503,15 @@
                 const tbody = document.getElementById('students-tbody');
                 if (response.status === 401 || response.status === 403) {
                     const msg = (raw && raw.error) ? raw.error : 'Unauthorized. Please sign in again.';
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #e74c3c;">' + msg + '</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #e74c3c;">' + msg + '</td></tr>';
                     return;
                 }
                 if (!response.ok) {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #e74c3c;">' + ((raw && raw.error) || 'Failed to load students') + '</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #e74c3c;">' + ((raw && raw.error) || 'Failed to load students') + '</td></tr>';
                     return;
                 }
                 if (!students.length) {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #888;">No students found</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #888;">No students found</td></tr>';
                     return;
                 }
 
@@ -421,6 +528,14 @@
                 
                 tbody.innerHTML = students.map(student => `
                     <tr>
+                        <td>
+                            <button type="button" class="action-btn btn-view-profile" onclick="viewStudentProfile(${JSON.stringify(String(student._id))})" title="View Profile">
+                                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                </svg>
+                            </button>
+                        </td>
                         <td>${student.username}</td>
                         <td>${student.email || 'N/A'}</td>
                         <td>${getStudentDisplayName(student)}</td>
@@ -456,7 +571,7 @@
                 `).join('');
             } catch (error) {
                 console.error('Error loading students:', error);
-                document.getElementById('students-tbody').innerHTML = '<tr><td colspan="6" style="text-align: center; color: #e74c3c;">Error loading students</td></tr>';
+                document.getElementById('students-tbody').innerHTML = '<tr><td colspan="7" style="text-align: center; color: #e74c3c;">Error loading students</td></tr>';
             }
         }
 
@@ -469,15 +584,15 @@
                 const tbody = document.getElementById('admins-tbody');
                 if (response.status === 401 || response.status === 403) {
                     const msg = (raw && raw.error) ? raw.error : 'Unauthorized. Please sign in again.';
-                    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #e74c3c;">' + msg + '</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #e74c3c;">' + msg + '</td></tr>';
                     return;
                 }
                 if (!response.ok) {
-                    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #e74c3c;">' + ((raw && raw.error) || 'Failed to load admins') + '</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #e74c3c;">' + ((raw && raw.error) || 'Failed to load admins') + '</td></tr>';
                     return;
                 }
                 if (!admins.length) {
-                    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #888;">No admins found</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #888;">No admins found</td></tr>';
                     return;
                 }
 
@@ -488,6 +603,14 @@
                 
                 tbody.innerHTML = admins.map(admin => `
                     <tr>
+                        <td>
+                            <button type="button" class="action-btn btn-view-profile" onclick="viewAdminProfile(${JSON.stringify(String(admin._id))})" title="View Profile">
+                                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                </svg>
+                            </button>
+                        </td>
                         <td>${admin.username}</td>
                         <td>${roleLabel(admin.adminRole)}</td>
                         <td><span class="status-badge ${admin.status === 'suspended' ? 'status-inactive' : 'status-active'}">${admin.status === 'suspended' ? 'Suspended' : 'Active'}</span></td>
@@ -514,7 +637,7 @@
                 `).join('');
             } catch (error) {
                 console.error('Error loading admins:', error);
-                document.getElementById('admins-tbody').innerHTML = '<tr><td colspan="5" style="text-align: center; color: #e74c3c;">Error loading admins</td></tr>';
+                document.getElementById('admins-tbody').innerHTML = '<tr><td colspan="6" style="text-align: center; color: #e74c3c;">Error loading admins</td></tr>';
             }
         }
 
@@ -575,6 +698,18 @@
                 document.getElementById('password').parentElement.style.display = 'block';
             }
             
+            if (userType === 'teacher') {
+                var tierEl = document.getElementById('admin-payout-tier-base');
+                if (tierEl) tierEl.value = '180';
+                var a1 = document.getElementById('admin-payout-cred-1');
+                var a2 = document.getElementById('admin-payout-cred-2');
+                var a3 = document.getElementById('admin-payout-cred-3');
+                if (a1) a1.checked = false;
+                if (a2) a2.checked = false;
+                if (a3) a3.checked = false;
+                adminTeacherRatePreviewUpdate();
+            }
+
             document.getElementById('user-modal').style.display = 'block';
         }
 
@@ -616,6 +751,16 @@
                 if (userType === 'teacher') {
                     document.getElementById('firstName').value = user.firstName || '';
                     document.getElementById('lastName').value = user.lastName || '';
+                    var tb = user.payoutTierBase != null ? String(user.payoutTierBase) : '180';
+                    var tierSel = document.getElementById('admin-payout-tier-base');
+                    if (tierSel) tierSel.value = ['180', '230', '280', '330'].indexOf(tb) >= 0 ? tb : '180';
+                    var u1 = document.getElementById('admin-payout-cred-1');
+                    var u2 = document.getElementById('admin-payout-cred-2');
+                    var u3 = document.getElementById('admin-payout-cred-3');
+                    if (u1) u1.checked = !!user.payoutCred1;
+                    if (u2) u2.checked = !!user.payoutCred2;
+                    if (u3) u3.checked = !!user.payoutCred3;
+                    adminTeacherRatePreviewUpdate();
                 } else if (userType === 'student') {
                     document.getElementById('studentFirstName').value = user.firstName || '';
                     document.getElementById('studentLastName').value = user.lastName || '';
@@ -711,6 +856,13 @@
             }
             if (userData.userType !== 'admin') {
                 delete userData.adminRole;
+            }
+            if (userData.userType === 'teacher') {
+                var tierEl = document.getElementById('admin-payout-tier-base');
+                userData.payoutTierBase = tierEl ? tierEl.value : '180';
+                userData.payoutCred1 = !!(document.getElementById('admin-payout-cred-1') && document.getElementById('admin-payout-cred-1').checked);
+                userData.payoutCred2 = !!(document.getElementById('admin-payout-cred-2') && document.getElementById('admin-payout-cred-2').checked);
+                userData.payoutCred3 = !!(document.getElementById('admin-payout-cred-3') && document.getElementById('admin-payout-cred-3').checked);
             }
             
             try {

@@ -1,5 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
+const path = require('path');
+const fsp = require('fs').promises;
 const Student = require('./models/Student');
 const Booking = require('./models/Booking');
 const CancellationRequest = require('./models/CancellationRequest');
@@ -28,6 +30,12 @@ const crypto = require('crypto');
 const { body, validationResult } = require('express-validator');
 const { encryptPiiString } = require('./utils/piiCrypto');
 const { getBookingStartAsDate } = require('./utils/bookingScheduledStart');
+const {
+  processImage,
+  extractImageBufferFromDataUrl,
+  getUploadsRoot,
+  safeUnlinkPublicUpload,
+} = require('./utils/imageOptimizer');
 const studentController = require('./studentController');
 
 const router = express.Router();
@@ -317,10 +325,30 @@ router.post('/upload-document', verifyToken, requireStudent, async (req, res) =>
     }
 
     const updateField = {};
-    
+    let profilePicBuf = null;
+    let previousStudentProfilePic = null;
+
     // Handle different document types
     if (documentType === 'profilePicture') {
-      updateField.profilePicture = fileData;
+      const existing = await Student.findById(req.user.studentId).select('profilePicture').lean();
+      previousStudentProfilePic = existing?.profilePicture || null;
+      profilePicBuf = extractImageBufferFromDataUrl(String(fileData));
+      if (profilePicBuf) {
+        const optimized = await processImage(profilePicBuf, 'avatar');
+        const dir = path.join(getUploadsRoot(), 'student-profiles');
+        await fsp.mkdir(dir, { recursive: true });
+        const sid = String(req.user.studentId).replace(/[^a-zA-Z0-9_-]/g, '_');
+        const filename = `${sid}-${Date.now()}.webp`;
+        await fsp.writeFile(path.join(dir, filename), optimized);
+        updateField.profilePicture = `/uploads/student-profiles/${filename}`;
+      } else {
+        const t = String(fileData).trim();
+        if (t.startsWith('/uploads/') || /^https?:\/\//i.test(t)) {
+          updateField.profilePicture = t;
+        } else {
+          return res.status(400).json({ error: 'Invalid profile picture image' });
+        }
+      }
     } else {
       // For other documents, store in documents object
       updateField[`documents.${documentType}`] = fileData;
@@ -336,11 +364,36 @@ router.post('/upload-document', verifyToken, requireStudent, async (req, res) =>
       return res.status(404).json({ error: 'Student not found' });
     }
 
+    if (
+      documentType === 'profilePicture' &&
+      profilePicBuf &&
+      previousStudentProfilePic &&
+      previousStudentProfilePic !== student.profilePicture
+    ) {
+      await safeUnlinkPublicUpload(previousStudentProfilePic, ['student-profiles']);
+    }
+
     await studentController.invalidateStudentProfileCache(req.user.studentId);
-    res.json({ message: 'Document uploaded successfully' });
+    const body = { message: 'Document uploaded successfully' };
+    if (documentType === 'profilePicture' && student.profilePicture) {
+      body.profilePicture = student.profilePicture;
+    }
+    res.json(body);
   } catch (error) {
     console.error('Error uploading student document:', error);
-    res.status(500).json({ error: 'Server error' });
+    const errStr = String(error && error.message ? error.message : '');
+    const badImage =
+      errStr === 'Image too large' ||
+      /input buffer|unsupported image|unsupported file|metadata|vips|sharp/i.test(errStr);
+    if (badImage) {
+      return res.status(400).json({ error: 'Invalid or unsupported image' });
+    }
+    res.status(500).json({
+      error:
+        process.env.NODE_ENV === 'production'
+          ? 'Server error'
+          : errStr || 'Server error',
+    });
   }
 });
 

@@ -36,6 +36,8 @@ const { generateReferralCode } = require('./utils/referralCode');
 /** Slots cache-aside (Redis): ./services/slotsRedisCache.js → ../utils/redisClient.js */
 const slotsRedisCache = require('./services/slotsRedisCache');
 const studentController = require('./studentController');
+const { tutorCancellationDeductionPeso } = require('./utils/tutorCancellationDeduction');
+const { effectivePayoutFields } = require('./utils/teacherPayoutTier');
 const {
   isProbableHexObjectIdForTeacher,
   escapeRegexForTeacherLookup,
@@ -56,6 +58,12 @@ const realtime = require('./realtime');
 const { withRedis } = require('./utils/redisClient');
 const { teacherPeerSearchLimiter } = require('./middleware/apiRateLimits');
 const { encryptPiiString, decryptPiiString } = require('./utils/piiCrypto');
+const {
+  processImage,
+  extractImageBufferFromDataUrl,
+  getUploadsRoot,
+  safeUnlinkPublicUpload,
+} = require('./utils/imageOptimizer');
 
 async function ensureDir(dirPath) {
   await fsp.mkdir(dirPath, { recursive: true });
@@ -390,59 +398,135 @@ router.get('/test', (req, res) => {
   res.json({ message: 'Teacher routes are working!' });
 });
 
+const PUBLIC_TEACHER_FILTER = { status: { $ne: 'suspended' } };
+
+function displayNameFromTeacherRow(t) {
+  return (
+    (t.fullname && String(t.fullname).trim()) ||
+    [t.firstName, t.middleName, t.lastName].filter(Boolean).join(' ').trim() ||
+    t.username ||
+    t.teacherId
+  );
+}
+
+/** Full public card shape (directory + modal) from a lean Teacher doc */
+function buildPublicTeacherDetailFromRow(t) {
+  const displayName = displayNameFromTeacherRow(t);
+  const introFull = (t.introduction || t.intro || '').trim();
+  const certNames = [];
+  if (Array.isArray(t.professionalCertifications)) {
+    t.professionalCertifications.forEach((c) => {
+      if (c && c.name) certNames.push(c.name);
+    });
+  }
+  if (t.documents?.certifications?.length) {
+    t.documents.certifications.forEach((x) => {
+      if (x && !certNames.includes(x)) certNames.push(x);
+    });
+  }
+  if (certNames.length === 0) {
+    certNames.push('TESOL Certified', 'TEYL Specialist');
+  }
+  const lang = t.language ? String(t.language) : 'English';
+  const subjects = ['English for Kids', lang !== 'English' ? `${lang} support` : 'Phonics & Reading'].filter(Boolean);
+  const bioSnippet =
+    introFull.length > 0
+      ? introFull.replace(/\s+/g, ' ').slice(0, 140) + (introFull.length > 140 ? '…' : '')
+      : 'Friendly, patient educator who makes every class fun and engaging!';
+
+  return {
+    teacherId: t.teacherId,
+    displayName,
+    photo: t.profilePicture || null,
+    intro: introFull || bioSnippet,
+    bioSnippet,
+    rating: 4.9,
+    reviewCount: 0,
+    certifications: certNames.slice(0, 8),
+    subjects,
+    videoIntroduction: t.videoIntroduction || null,
+  };
+}
+
+/** Slim landing list: minimal JSON for fast first paint (no bio / heavy fields) */
+async function handlePublicLanding(req, res) {
+  try {
+    const rawLimit = parseInt(String(req.query.limit ?? '6'), 10);
+    const limit = Number.isFinite(rawLimit) ? Math.min(500, Math.max(1, rawLimit)) : 6;
+    const rawOff = parseInt(String(req.query.offset ?? '0'), 10);
+    const offset = Number.isFinite(rawOff) && rawOff >= 0 ? rawOff : 0;
+
+    // One query only: fetch limit+1 rows to derive hasMore (avoids countDocuments scan on large collections).
+    const fetchLimit = Math.min(limit + 1, 501);
+    const rows = await Teacher.find(PUBLIC_TEACHER_FILTER)
+      .select('teacherId firstName middleName lastName fullname username profilePicture language')
+      .sort({ fullname: 1, teacherId: 1 })
+      .skip(offset)
+      .limit(fetchLimit)
+      .lean();
+
+    const hasMore = rows.length > limit;
+    const slice = hasMore ? rows.slice(0, limit) : rows;
+
+    const teachers = slice.map((t) => {
+      const lang = t.language ? String(t.language) : 'English';
+      return {
+        teacherId: t.teacherId,
+        name: displayNameFromTeacherRow(t),
+        profilePic: t.profilePicture || null,
+        specialization: lang === 'English' ? 'English for Kids' : `English & ${lang}`,
+        rating: 4.9,
+      };
+    });
+
+    const nextOffset = offset + teachers.length;
+    res.set('Cache-Control', 'public, max-age=45, stale-while-revalidate=180');
+    res.json({
+      teachers,
+      hasMore,
+      nextOffset,
+    });
+  } catch (err) {
+    console.error('public/landing:', err);
+    res.status(500).json({ error: 'Failed to load teachers' });
+  }
+}
+
+router.get('/public/landing', handlePublicLanding);
+
+/** Single teacher for modal after slim list */
+router.get('/public/profile/:teacherId', async (req, res) => {
+  try {
+    const teacherId = String(req.params.teacherId || '').trim();
+    if (!teacherId) {
+      return res.status(400).json({ error: 'Invalid teacher id' });
+    }
+    const t = await Teacher.findOne({ teacherId, ...PUBLIC_TEACHER_FILTER })
+      .select(
+        'teacherId username firstName middleName lastName fullname profilePicture introduction intro videoIntroduction language professionalCertifications documents.certifications'
+      )
+      .lean();
+    if (!t) {
+      return res.status(404).json({ error: 'Teacher not found' });
+    }
+    res.json({ teacher: buildPublicTeacherDetailFromRow(t) });
+  } catch (err) {
+    console.error('public/profile:', err);
+    res.status(500).json({ error: 'Failed to load teacher' });
+  }
+});
+
 /** Public marketing directory (no auth) — active teachers only, safe fields */
 router.get('/public/directory', async (req, res) => {
   try {
-    const rows = await Teacher.find({ status: { $ne: 'suspended' } })
+    const rows = await Teacher.find(PUBLIC_TEACHER_FILTER)
       .select(
         'teacherId username firstName middleName lastName fullname profilePicture introduction intro videoIntroduction language professionalCertifications documents.certifications'
       )
       .lean()
       .limit(300);
 
-    const teachers = rows.map((t) => {
-      const displayName =
-        (t.fullname && String(t.fullname).trim()) ||
-        [t.firstName, t.middleName, t.lastName].filter(Boolean).join(' ').trim() ||
-        t.username ||
-        t.teacherId;
-      const introFull = (t.introduction || t.intro || '').trim();
-      const certNames = [];
-      if (Array.isArray(t.professionalCertifications)) {
-        t.professionalCertifications.forEach((c) => {
-          if (c && c.name) certNames.push(c.name);
-        });
-      }
-      if (t.documents?.certifications?.length) {
-        t.documents.certifications.forEach((x) => {
-          if (x && !certNames.includes(x)) certNames.push(x);
-        });
-      }
-      if (certNames.length === 0) {
-        certNames.push('TESOL Certified', 'TEYL Specialist');
-      }
-      const lang = t.language ? String(t.language) : 'English';
-      const subjects = ['English for Kids', lang !== 'English' ? `${lang} support` : 'Phonics & Reading'].filter(
-        Boolean
-      );
-      const bioSnippet =
-        introFull.length > 0
-          ? introFull.replace(/\s+/g, ' ').slice(0, 140) + (introFull.length > 140 ? '…' : '')
-          : 'Friendly, patient educator who makes every class fun and engaging!';
-
-      return {
-        teacherId: t.teacherId,
-        displayName,
-        photo: t.profilePicture || null,
-        intro: introFull || bioSnippet,
-        bioSnippet,
-        rating: 4.9,
-        reviewCount: 0,
-        certifications: certNames.slice(0, 8),
-        subjects,
-        videoIntroduction: t.videoIntroduction || null
-      };
-    });
+    const teachers = rows.map(buildPublicTeacherDetailFromRow);
 
     teachers.sort((a, b) =>
       a.displayName.localeCompare(b.displayName, undefined, { sensitivity: 'base' })
@@ -2022,9 +2106,9 @@ router.get('/profile', verifyToken, requireTeacher, async (req, res) => {
       return res.status(404).json({ error: 'Teacher not found' });
     }
     
-    res.json({ 
-      success: true, 
-      profile: teacher 
+    res.json({
+      success: true,
+      profile: effectivePayoutFields(teacher),
     });
   } catch (err) {
     console.error('Error fetching teacher profile:', err);
@@ -2107,6 +2191,23 @@ router.post('/profile', verifyToken, requireTeacher, async (req, res) => {
     if (certificatesArray.length > 0) {
       console.log('Certificate sample:', { fileData: certificatesArray[0].fileData?.substring(0, 50) + '...', fileName: certificatesArray[0].fileName });
     }
+
+    const existingForProfilePic = await Teacher.findOne({ teacherId })
+      .select('profilePicture')
+      .lean();
+    let resolvedProfilePicture = profileData.profilePicture;
+    const profilePicBuf = extractImageBufferFromDataUrl(
+      typeof resolvedProfilePicture === 'string' ? resolvedProfilePicture : ''
+    );
+    if (profilePicBuf) {
+      const optimized = await processImage(profilePicBuf, 'avatar');
+      const dir = path.join(getUploadsRoot(), 'teacher-profiles');
+      await ensureDir(dir);
+      const safeId = String(teacherId).replace(/[^a-zA-Z0-9_-]/g, '_');
+      const filename = `${safeId}-${Date.now()}.webp`;
+      await fsp.writeFile(path.join(dir, filename), optimized);
+      resolvedProfilePicture = `/uploads/teacher-profiles/${filename}`;
+    }
     
     // Update teacher profile - use $set with dot notation for nested arrays to ensure proper update
     const updateData = {
@@ -2126,7 +2227,7 @@ router.post('/profile', verifyToken, requireTeacher, async (req, res) => {
         emergencyContact: encryptPiiString(profileData.emergencyContact || ''),
         introduction: profileData.introduction,
         experience: profileData.experience,
-        profilePicture: profileData.profilePicture,
+        profilePicture: resolvedProfilePicture,
         education: profileData.education || [],
         workExperience: profileData.workExperience || [],
         // Use dot notation for nested document fields to ensure proper array replacement
@@ -2193,6 +2294,14 @@ router.post('/profile', verifyToken, requireTeacher, async (req, res) => {
     if (!updatedTeacher) {
       console.log('Teacher not found for ID:', teacherId);
       return res.status(404).json({ error: 'Teacher not found' });
+    }
+
+    if (
+      profilePicBuf &&
+      existingForProfilePic?.profilePicture &&
+      existingForProfilePic.profilePicture !== resolvedProfilePicture
+    ) {
+      await safeUnlinkPublicUpload(existingForProfilePic.profilePicture, ['teacher-profiles']);
     }
     
     console.log('=== BACKEND: Profile updated successfully ===');
@@ -3771,10 +3880,14 @@ router.get('/weekly-payment-summary', verifyToken, requireTeacher, async (req, r
       bookingId: { $in: bookingIds }
     });
 
-    // Get the global rate from admin settings
     const GlobalSettings = require('./models/GlobalSettings');
     const globalSettings = await GlobalSettings.findOne();
-    const ratePerClass = globalSettings ? globalSettings.globalRate : 100; // Default rate if not set
+    const globalRate = globalSettings ? globalSettings.globalRate : 100;
+    const teacherRow = await Teacher.findOne({ teacherId }).select('hourlyRate').lean();
+    const ratePerClass =
+      teacherRow && teacherRow.hourlyRate != null && teacherRow.hourlyRate >= 0
+        ? teacherRow.hourlyRate
+        : globalRate;
 
     let totalClasses = bookings.length;
     let completedClasses = 0;
@@ -3828,44 +3941,9 @@ router.get('/weekly-payment-summary', verifyToken, requireTeacher, async (req, r
 
           console.log(`Cancelled class: ${booking.date} ${booking.time}, cancelled at: ${cancellationTime}, hours difference: ${timeDiffHours}`);
 
-          let deduction = 0;
-          let penaltyType = '';
-          let penaltyColor = '';
-
-          if (timeDiffHours > 72) {
-            // Green: >72h: 0% (no penalty)
-            deduction = 0;
-            penaltyType = 'No penalty';
-            penaltyColor = 'Green';
-            console.log(`Cancellation > 72 hours: no deduction (Green)`);
-          } else if (timeDiffHours > 48) {
-            // Teal: 48-72h: 12.5%
-            deduction = ratePerClass * 0.125;
-            penaltyType = '12.5% penalty';
-            penaltyColor = 'Teal';
-            console.log(`Cancellation 48-72 hours: 12.5% deduction (${deduction.toFixed(2)}) - Teal`);
-          } else if (timeDiffHours > 24) {
-            // Yellow: 24-48h: 25%
-            deduction = ratePerClass * 0.25;
-            penaltyType = '25% penalty';
-            penaltyColor = 'Yellow';
-            console.log(`Cancellation 24-48 hours: 25% deduction (${deduction.toFixed(2)}) - Yellow`);
-          } else if (timeDiffHours > 3) {
-            // Orange: 3-24h: 100%
-            deduction = ratePerClass;
-            penaltyType = '100% penalty';
-            penaltyColor = 'Orange';
-            console.log(`Cancellation 3-24 hours: 100% deduction (${deduction.toFixed(2)}) - Orange`);
-          } else {
-            // Red: <3h: 300% (highest penalty)
-            deduction = ratePerClass * 3;
-            penaltyType = '300% penalty';
-            penaltyColor = 'Red';
-            console.log(`Cancellation < 3 hours: 300% deduction (${deduction.toFixed(2)}) - Red`);
-          }
-
+          const deduction = tutorCancellationDeductionPeso(timeDiffHours, ratePerClass);
           cancellationDeductions += deduction;
-          console.log(`Final cancellation deduction: ₱${deduction.toFixed(2)} (${penaltyColor} - ${penaltyType})`);
+          console.log(`Final cancellation deduction: ₱${deduction.toFixed(2)} (25-min rate × tier; ${timeDiffHours.toFixed(2)}h before class)`);
         }
       } else if (booking.status === 'absent') {
         // Only count as absent if the TEACHER was absent, not the student
@@ -6473,5 +6551,6 @@ router.get('/portal-videos', verifyToken, requireTeacher, async (req, res) => {
 /** Mounted also at POST /api/bookings/save-slot (see routes/bookings.js). */
 router.handleTeacherOpenSlots = handleTeacherOpenSlots;
 router.handleTeacherCloseSlots = handleTeacherCloseSlots;
+router.publicLandingHandler = handlePublicLanding;
 
 module.exports = router;

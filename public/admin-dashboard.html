@@ -917,6 +917,7 @@
                                 <h3>Class Bookings</h3>
                             </div>
                         </div>
+                        <div id="bookings-period-label" class="muted" style="font-size:0.78rem;margin:-4px 0 8px 0;">All teachers · this month</div>
                         <div class="metric-value" id="total-bookings">0</div>
                         <div class="metric-stats">
                             <div class="stat-item">
@@ -963,7 +964,7 @@
                             </div>
                             <div class="stat-content">
                                 <div class="stat-number" id="dashboard-total-classes">0</div>
-                                <div class="stat-label">Total Classes</div>
+                                <div class="stat-label">Total Classes <span id="total-classes-period-hint" style="font-weight:400;color:#94a3b8;">(this month)</span></div>
                             </div>
                         </div>
                     </div>
@@ -1430,9 +1431,15 @@
                 const bookingsData = bookingsResponse.ok ? await bookingsResponse.json() : { count: 0, active: 0, completed: 0 };
                 const financialData = financialResponse.ok ? await financialResponse.json() : { data: { totalEarnings: 0, globalRate: 100 } };
 
-                // Calculate metrics
+                // Calculate metrics (bookings API: current month, all teachers)
                 const totalUsers = (teachersCount.count || 0) + (studentsCount.count || 0);
-                const totalBookings = (bookingsData.active || 0) + (bookingsData.completed || 0);
+                const totalBookings = typeof bookingsData.count === 'number'
+                    ? bookingsData.count
+                    : (bookingsData.active || 0) + (bookingsData.completed || 0);
+                var periodEl = document.getElementById('bookings-period-label');
+                if (periodEl && bookingsData.year && bookingsData.month) {
+                    periodEl.textContent = 'All teachers · ' + bookingsData.year + '-' + String(bookingsData.month).padStart(2, '0');
+                }
                 const totalIncome = financialData.data?.totalEarnings || 0;
                 const globalRate = financialData.data?.globalRate || 100;
                 

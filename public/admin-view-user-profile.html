@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="js/security-guard.js?v=2"></script>
+    <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="js/admin-standalone-redirect.js"></script>
+    <script src="js/admin-embed-init.js"></script>
+    <title>User profile (admin) - RemoEdPH</title>
+    <link rel="stylesheet" href="modern-styles.css">
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f6fbff; margin: 0; min-height: 100vh; }
+        .wrap { max-width: 640px; margin: 0 auto; padding: 24px 16px 48px; }
+        .card { background: #fff; border-radius: 12px; box-shadow: 0 4px 24px rgba(28,167,231,0.08); padding: 20px 22px; border: 1px solid #e8f4fd; }
+        h1 { color: #1ca7e7; font-size: 1.25rem; margin: 0 0 16px; font-weight: 700; }
+        .row { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-size: 0.92rem; }
+        .row:last-child { border-bottom: none; }
+        .k { color: #64748b; font-weight: 600; flex: 0 0 42%; }
+        .v { color: #0f172a; text-align: right; word-break: break-word; }
+        .back { display: inline-flex; align-items: center; gap: 8px; color: #1ca7e7; text-decoration: none; font-weight: 600; margin-bottom: 16px; font-size: 0.95rem; }
+        .back:hover { text-decoration: underline; }
+        .err { color: #c0392b; padding: 16px; background: #fdecea; border-radius: 8px; }
+        .muted { font-size: 0.8rem; color: #94a3b8; margin-top: 12px; }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <a class="back" href="admin-users.html">← Back to User Management</a>
+        <div id="root" class="card">
+            <div style="color:#64748b;">Loading…</div>
+        </div>
+    </div>
+    <script src="js/admin-session.js"></script>
+    <script>
+        function adminApiFetchInit(init) {
+            var o = init && typeof init === 'object' ? Object.assign({}, init) : {};
+            var token = (window.RemoedAdminSession && RemoedAdminSession.getAuthToken ? RemoedAdminSession.getAuthToken() : (localStorage.getItem('remoed_admin_token')||localStorage.getItem('remoed_admin_auth')||localStorage.getItem('adminToken')||'')) || '';
+            var headers = Object.assign({}, o.headers || {});
+            if (token) headers['Authorization'] = 'Bearer ' + token;
+            o.headers = headers;
+            o.credentials = 'include';
+            return o;
+        }
+
+        function esc(s) {
+            return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
+        if (localStorage.getItem('userType') !== 'admin') {
+            document.getElementById('root').innerHTML = '<div class="err">Access denied.</div>';
+        } else {
+            (function () {
+                var params = new URLSearchParams(window.location.search);
+                var type = String(params.get('type') || '').toLowerCase();
+                var id = String(params.get('id') || '').trim();
+                var root = document.getElementById('root');
+
+                if ((type !== 'student' && type !== 'admin') || !id) {
+                    root.innerHTML = '<div class="err">Missing or invalid profile link. Use View Profile from User Management.</div>';
+                    return;
+                }
+
+                fetch('/api/admin/user/' + encodeURIComponent(id) + '?type=' + encodeURIComponent(type), adminApiFetchInit())
+                    .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, status: r.status, j: j }; }); })
+                    .then(function (res) {
+                        if (!res.ok || res.j.error) {
+                            root.innerHTML = '<div class="err">' + esc(res.j.error || 'Could not load user') + '</div>';
+                            return;
+                        }
+                        var u = res.j;
+                        var title = type === 'student' ? 'Student profile' : 'Admin profile';
+                        var rows = [];
+
+                        if (type === 'student') {
+                            var name = [u.firstName, u.middleName, u.lastName].filter(Boolean).join(' ').trim() || '—';
+                            rows.push(['Display name', name]);
+                            rows.push(['Username', u.username || '—']);
+                            rows.push(['Email', u.email || '—']);
+                            rows.push(['Student code', u.studentCode || '—']);
+                            rows.push(['Level', u.level || u.cefrLevel || '—']);
+                            rows.push(['Status', u.status || '—']);
+                            rows.push(['Account status', u.accountStatus || '—']);
+                            rows.push(['Joined', u.createdAt ? new Date(u.createdAt).toLocaleString() : '—']);
+                        } else {
+                            var roleMap = { super_admin: 'Super-Admin', admin_hr: 'HR', admin_accounting: 'Accounting', admin_qa: 'QA' };
+                            rows.push(['Username', u.username || '—']);
+                            rows.push(['Email', u.email || '—']);
+                            rows.push(['Role', roleMap[u.adminRole] || u.adminRole || '—']);
+                            rows.push(['Status', u.status || '—']);
+                            rows.push(['Joined', u.createdAt ? new Date(u.createdAt).toLocaleString() : '—']);
+                        }
+
+                        var html = '<h1>' + esc(title) + '</h1>';
+                        rows.forEach(function (pair) {
+                            html += '<div class="row"><span class="k">' + esc(pair[0]) + '</span><span class="v">' + esc(pair[1]) + '</span></div>';
+                        });
+                        html += '<p class="muted">Read-only summary for administrators. Sensitive fields may be omitted or encrypted at rest.</p>';
+                        root.innerHTML = html;
+                    })
+                    .catch(function () {
+                        root.innerHTML = '<div class="err">Network error loading profile.</div>';
+                    });
+            })();
+        }
+    </script>
+</body>
+</html>

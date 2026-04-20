@@ -121,11 +121,19 @@
 
                         <div id="adm-tab-docs" class="tab-content">
                             <p class="muted" style="font-size:0.9rem;margin-bottom:12px;">Government ID and NBI clearance tracking.</p>
-                            <p style="margin:8px 0;">
-                                <span class="muted">ID on file:</span>
-                                <a id="id-doc-link" href="#" style="display:none;" target="_blank" rel="noopener">Open</a>
-                                <span id="id-doc-none" class="muted">None</span>
-                            </p>
+                            <p style="margin:8px 0;"><span class="muted">ID on file:</span> <span id="id-doc-none" class="muted">None</span></p>
+                            <div id="id-doc-preview-block" style="display:none;margin:8px 0 12px;">
+                                <div id="id-doc-image-wrap" style="display:none;">
+                                    <img id="id-doc-thumb" alt="Government ID preview" width="240" height="160" loading="lazy" decoding="async" style="max-width:min(100%,260px);max-height:200px;border-radius:10px;border:1px solid #e2e8f0;object-fit:contain;background:#f8fafc;cursor:zoom-in;">
+                                    <div style="margin-top:8px;"><a id="id-doc-open" href="#" target="_blank" rel="noopener" style="font-size:0.88rem;">Open full size</a></div>
+                                </div>
+                                <div id="id-doc-pdf-wrap" style="display:none;">
+                                    <a id="id-doc-pdf-link" href="#" target="_blank" rel="noopener" class="back-btn" style="display:inline-block;background:#334155;color:#fff;text-decoration:none;">View PDF</a>
+                                </div>
+                                <div id="id-doc-other-wrap" style="display:none;">
+                                    <a id="id-doc-other-link" href="#" target="_blank" rel="noopener" style="font-size:0.9rem;">Download file</a>
+                                </div>
+                            </div>
                             <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:16px;">
                                 <input type="file" id="id-file" accept=".pdf,image/*">
                                 <button type="button" class="back-btn" id="id-upload" style="background:#475569;color:#fff;border:none;">Upload ID</button>
@@ -139,11 +147,19 @@
                                     <option value="verified">Verified</option>
                                 </select>
                             </div>
-                            <p style="margin:12px 0 4px;">
-                                <span class="muted">NBI document on file:</span>
-                                <a id="nbi-doc-link" href="#" style="display:none;" target="_blank" rel="noopener">Open</a>
-                                <span id="nbi-doc-none" class="muted">None</span>
-                            </p>
+                            <p style="margin:12px 0 4px;"><span class="muted">NBI document on file:</span> <span id="nbi-doc-none" class="muted">None</span></p>
+                            <div id="nbi-doc-preview-block" style="display:none;margin:8px 0 12px;">
+                                <div id="nbi-doc-image-wrap" style="display:none;">
+                                    <img id="nbi-doc-thumb" alt="NBI document preview" width="240" height="160" loading="lazy" decoding="async" style="max-width:min(100%,260px);max-height:200px;border-radius:10px;border:1px solid #e2e8f0;object-fit:contain;background:#f8fafc;cursor:zoom-in;">
+                                    <div style="margin-top:8px;"><a id="nbi-doc-open" href="#" target="_blank" rel="noopener" style="font-size:0.88rem;">Open full size</a></div>
+                                </div>
+                                <div id="nbi-doc-pdf-wrap" style="display:none;">
+                                    <a id="nbi-doc-pdf-link" href="#" target="_blank" rel="noopener" class="back-btn" style="display:inline-block;background:#0f766e;color:#fff;text-decoration:none;">View PDF</a>
+                                </div>
+                                <div id="nbi-doc-other-wrap" style="display:none;">
+                                    <a id="nbi-doc-other-link" href="#" target="_blank" rel="noopener" style="font-size:0.9rem;">Download file</a>
+                                </div>
+                            </div>
                             <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
                                 <input type="file" id="nbi-file" accept=".pdf,image/*">
                                 <button type="button" class="back-btn" id="nbi-upload" style="background:#0f766e;color:#fff;border:none;">Upload NBI</button>
@@ -239,6 +255,72 @@
             });
         }
 
+        function absoluteUploadUrl(u) {
+            if (!u) return '';
+            var s = String(u).trim();
+            if (/^https?:\/\//i.test(s)) return s;
+            if (s.charAt(0) === '/') return s;
+            return '/uploads/' + s.replace(/^\/+uploads\/?/i, '').replace(/^\//, '');
+        }
+
+        function docPreviewKind(url) {
+            var base = (url || '').split(/[?#]/)[0].toLowerCase();
+            if (/\.(jpe?g|png|gif|webp|bmp|svg)$/i.test(base)) return 'image';
+            if (/\.pdf$/i.test(base)) return 'pdf';
+            return 'other';
+        }
+
+        function setDocumentPreview(prefix, url) {
+            var abs = absoluteUploadUrl(url);
+            var block = document.getElementById(prefix + '-preview-block');
+            var none = document.getElementById(prefix === 'id-doc' ? 'id-doc-none' : 'nbi-doc-none');
+            var iw = document.getElementById(prefix + '-image-wrap');
+            var pw = document.getElementById(prefix + '-pdf-wrap');
+            var ow = document.getElementById(prefix + '-other-wrap');
+            if (!block) return;
+            [iw, pw, ow].forEach(function (el) { if (el) el.style.display = 'none'; });
+            if (!abs) {
+                block.style.display = 'none';
+                if (none) none.style.display = 'inline';
+                return;
+            }
+            if (none) none.style.display = 'none';
+            block.style.display = 'block';
+            var kind = docPreviewKind(abs);
+            if (kind === 'image') {
+                if (iw) {
+                    iw.style.display = 'block';
+                    var img = document.getElementById(prefix + '-thumb');
+                    var openA = document.getElementById(prefix === 'id-doc' ? 'id-doc-open' : 'nbi-doc-open');
+                    if (img) {
+                        img.onerror = function () {
+                            iw.style.display = 'none';
+                            if (ow) {
+                                ow.style.display = 'block';
+                                var ol = document.getElementById(prefix === 'id-doc' ? 'id-doc-other-link' : 'nbi-doc-other-link');
+                                if (ol) { ol.href = abs; ol.textContent = 'Open file (preview unavailable)'; }
+                            }
+                        };
+                        img.src = abs;
+                        img.onclick = function () { window.open(abs, '_blank', 'noopener,noreferrer'); };
+                    }
+                    if (openA) openA.href = abs;
+                }
+            } else if (kind === 'pdf') {
+                if (pw) {
+                    pw.style.display = 'block';
+                    var pl = document.getElementById(prefix === 'id-doc' ? 'id-doc-pdf-link' : 'nbi-doc-pdf-link');
+                    if (pl) pl.href = abs;
+                }
+            } else {
+                if (ow) {
+                    ow.style.display = 'block';
+                    var ol = document.getElementById(prefix === 'id-doc' ? 'id-doc-other-link' : 'nbi-doc-other-link');
+                    if (ol) ol.href = abs;
+                }
+            }
+        }
+
         function fillForm(p) {
             var fn = p.firstName || '';
             var ln = p.lastName || '';
@@ -276,27 +358,8 @@
                 tx.textContent = (dispName.charAt(0) || 'A').toUpperCase();
             }
 
-            var link = document.getElementById('id-doc-link');
-            var none = document.getElementById('id-doc-none');
-            if (p.idDocumentUrl) {
-                link.href = p.idDocumentUrl;
-                link.style.display = 'inline';
-                none.style.display = 'none';
-            } else {
-                link.style.display = 'none';
-                none.style.display = 'inline';
-            }
-
-            var nbiLink = document.getElementById('nbi-doc-link');
-            var nbiNone = document.getElementById('nbi-doc-none');
-            if (p.nbiClearanceDocumentUrl && nbiLink && nbiNone) {
-                nbiLink.href = p.nbiClearanceDocumentUrl;
-                nbiLink.style.display = 'inline';
-                nbiNone.style.display = 'none';
-            } else if (nbiLink && nbiNone) {
-                nbiLink.style.display = 'none';
-                nbiNone.style.display = 'inline';
-            }
+            setDocumentPreview('id-doc', p.idDocumentUrl);
+            setDocumentPreview('nbi-doc', p.nbiClearanceDocumentUrl);
 
             var tw = document.getElementById('twofa-status');
             if (tw) {

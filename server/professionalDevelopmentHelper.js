@@ -3,13 +3,11 @@ function toBool(value) {
 }
 
 /**
- * Comma-separated teacher emails treated as founders (top ladder / Legacy Guide exception).
- * Defaults: CEO + co-founder.
+ * Optional comma-separated teacher emails for founder ladder override (Legacy Guide snapshot).
+ * Empty by default so all tutors use calculated growth; set REMOED_FOUNDER_TEACHER_EMAIL if needed.
  */
 function getFounderTeacherEmails() {
-  const raw =
-    process.env.REMOED_FOUNDER_TEACHER_EMAIL ||
-    'jean10121990@gmail.com,plflores3301@gmail.com';
+  const raw = process.env.REMOED_FOUNDER_TEACHER_EMAIL || '';
   return raw
     .split(/[,;]+/)
     .map((e) => e.trim().toLowerCase())
