@@ -20,8 +20,49 @@ const {
 const {
   resolveToCanonicalTeacherId,
   findOpenSlotsByUtcInstant,
+  findOpenTeacherSlotByUtcAndNormalizedTeacher,
   getCandidateTeachersForSlotUtc,
 } = require('./teacherSlotResolve');
+const { normalizeId } = require('../utils/normalizeId');
+
+function preferredTeacherIdLooksLikeEmail(raw) {
+  const v = normalizeId(raw);
+  return v.includes('@') && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+}
+
+/** Teacher-facing notification text — many students have empty first/last until profile is completed. */
+function studentDisplayNameForNotification(studentDoc, usernameFallback) {
+  if (!studentDoc) return usernameFallback || 'A student';
+  const fromParts = [studentDoc.firstName, studentDoc.middleName, studentDoc.lastName]
+    .map((x) => (x != null ? String(x).trim() : ''))
+    .filter(Boolean)
+    .join(' ')
+    .trim();
+  if (fromParts) return fromParts;
+  const u = studentDoc.username != null ? String(studentDoc.username).trim() : '';
+  if (u) return u;
+  const e = studentDoc.email != null ? String(studentDoc.email).trim() : '';
+  if (e) return e;
+  return usernameFallback || 'A student';
+}
+
+function bookingWhenLabelForNotification(canonicalUtcIso, slotDoc, fallbackZone) {
+  const z =
+    slotDoc &&
+    slotDoc.teacherLocalZone &&
+    DateTime.now().setZone(String(slotDoc.teacherLocalZone)).isValid
+      ? String(slotDoc.teacherLocalZone)
+      : fallbackZone && DateTime.now().setZone(String(fallbackZone)).isValid
+        ? String(fallbackZone)
+        : 'Asia/Manila';
+  try {
+    const localDt = DateTime.fromISO(String(canonicalUtcIso), { zone: 'utc' }).setZone(z);
+    if (!localDt.isValid) return `${canonicalUtcIso} (UTC)`;
+    return `${localDt.toFormat('LLL d, yyyy')} at ${localDt.toFormat('HH:mm')} (${z})`;
+  } catch (_e) {
+    return `${canonicalUtcIso} (UTC)`;
+  }
+}
 
 function toUtcFromLocal(dateStr, timeStr, zone) {
   const z = zone && DateTime.now().setZone(zone).isValid ? zone : 'Asia/Manila';
@@ -133,25 +174,53 @@ async function runBookSlot(req, res) {
     }
 
     const slotRows = await findOpenSlotsByUtcInstant(canonicalUtc);
-    const existingSlot = slotRows.find((s) => String(s._id) === slotIdTrim) || null;
+    const wantsPreferred =
+      preferredRaw != null && String(preferredRaw).trim() !== '';
+    const resolvedPrefEarly = wantsPreferred ? await resolveToCanonicalTeacherId(preferredRaw) : null;
+
+    let existingSlot = null;
+    if (resolvedPrefEarly) {
+      const byPref = await findOpenTeacherSlotByUtcAndNormalizedTeacher(canonicalUtc, resolvedPrefEarly);
+      if (byPref) existingSlot = byPref;
+    }
+    if (!existingSlot) {
+      existingSlot = slotRows.find((s) => String(s._id) === slotIdTrim) || null;
+    }
     if (!existingSlot || existingSlot.available === false) {
       return res.status(400).json({ error: 'Selected slot is no longer available or not open for booking' });
     }
 
     let chosenTeacherId = await resolveToCanonicalTeacherId(existingSlot.teacherId);
-    if (!chosenTeacherId || !candidates.includes(chosenTeacherId)) {
+    const candNorm = new Set(candidates.map((c) => normalizeId(c)));
+    if (!chosenTeacherId || !candNorm.has(normalizeId(chosenTeacherId))) {
       return res.status(400).json({
         error: 'That slot is not open for booking or the teacher is no longer available for this time.',
         candidates
       });
     }
 
-    if (preferredRaw != null && String(preferredRaw).trim() !== '') {
-      const resolvedPref = await resolveToCanonicalTeacherId(preferredRaw);
-      if (!resolvedPref) {
+    if (wantsPreferred) {
+      if (!resolvedPrefEarly) {
         return res.status(400).json({ error: 'Preferred teacher not found.' });
       }
-      if (resolvedPref !== chosenTeacherId) {
+      if (!preferredTeacherIdLooksLikeEmail(preferredRaw)) {
+        return res.status(400).json({
+          error: 'Preferred teacher must be the teacher account email (e.g. name@domain.com).',
+          code: 'PREFERRED_MUST_BE_EMAIL',
+        });
+      }
+      const recheck = await findOpenTeacherSlotByUtcAndNormalizedTeacher(canonicalUtc, preferredRaw);
+      if (
+        !recheck ||
+        recheck.available !== true ||
+        String(recheck._id) !== String(existingSlot._id)
+      ) {
+        return res.status(400).json({
+          error: 'That time is no longer available for the selected teacher. Please refresh and try again.',
+          code: 'SLOT_NOT_AVAILABLE_FOR_TEACHER',
+        });
+      }
+      if (normalizeId(resolvedPrefEarly) !== normalizeId(chosenTeacherId)) {
         return res.status(400).json({
           error:
             'Preferred teacher does not match the selected slot. Choose the teacher who owns that time, or pick another slot.',
@@ -218,12 +287,9 @@ async function runBookSlot(req, res) {
         throw err;
       }
 
+      // Match by _id + available only — teacherId on the row can differ in casing/legacy form from chosenTeacherId.
       const lockedSlot = await TeacherSlot.findOneAndUpdate(
-        {
-          _id: existingSlot._id,
-          teacherId: existingSlot.teacherId,
-          available: true
-        },
+        { _id: existingSlot._id, available: true },
         { $set: { available: false } },
         findOpts
       );
@@ -376,11 +442,12 @@ async function runBookSlot(req, res) {
 
       console.log('✅ Booking created:', booking._id, 'teacher:', chosenTeacherId, 'mode:', preferredRaw ? 'preferred' : assignmentMode);
 
-      const studentName = student ? `${student.firstName} ${student.lastName}` : studentId;
+      const studentName = studentDisplayNameForNotification(student, studentId);
+      const whenLabel = bookingWhenLabelForNotification(canonicalUtc, existingSlot, timezone || 'Asia/Manila');
       await createBookingNotification(
         chosenTeacherId,
         'booking',
-        `New class booked for ${dateUtc} at ${timeUtc} with ${studentName}.`
+        `New class booked for ${whenLabel} with ${studentName}.`
       );
 
       try {

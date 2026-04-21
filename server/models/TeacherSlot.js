@@ -1,6 +1,8 @@
 const mongoose = require('mongoose');
+const { normalizeId } = require('../utils/normalizeId');
+
 const teacherSlotSchema = new mongoose.Schema({
-  teacherId: { type: String, required: true, index: true }, // e.g., "kjb00000001"
+  teacherId: { type: String, required: true, index: true }, // canonical string (emails stored lowercased)
   date: { type: String, required: true }, // e.g., '2025-07-26'
   time: { type: String, required: true }, // e.g., '09:00'
   dateTimeUtc: { type: Date, default: null }, // canonical UTC datetime
@@ -11,5 +13,17 @@ const teacherSlotSchema = new mongoose.Schema({
 
 teacherSlotSchema.index({ teacherId: 1, date: 1 });
 teacherSlotSchema.index({ teacherId: 1, available: 1, date: 1 });
+teacherSlotSchema.index({ teacherId: 1, dateTimeUtc: 1, available: 1 });
 
-module.exports = mongoose.model('TeacherSlot', teacherSlotSchema); 
+teacherSlotSchema.pre('save', function teacherSlotNormalizeTeacherId(next) {
+  try {
+    if (this.teacherId != null && this.teacherId !== '') {
+      this.teacherId = normalizeId(this.teacherId);
+    }
+  } catch (e) {
+    return next(e);
+  }
+  return next();
+});
+
+module.exports = mongoose.model('TeacherSlot', teacherSlotSchema);

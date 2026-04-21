@@ -1,9 +1,9 @@
 /**
  * Service Worker for RemoEdPH (teacher push + light offline shell)
- * v3: cache bust + network-first for static assets + safe cache storage (no double Brotli)
+ * v4: bump cache name (drop stale HTML) + network-first for static assets + safe cache storage (no double Brotli)
  */
 
-const CACHE_NAME = 'remoed-teacher-v3';
+const CACHE_NAME = 'remoed-teacher-v5';
 
 /** HTML shells only — avoid precaching CSS/JS (encoding + freshness handled at fetch time). */
 const urlsToCache = ['/teacher-dashboard.html', '/teacher-profile.html'];
@@ -84,6 +84,18 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Never cache admin hub/tool pages (prevents stale/truncated iframe HTML causing JS parse errors).
+  // Also bypass when explicitly embedded (?adminEmbed=1).
+  if (
+    url.searchParams.get('adminEmbed') === '1' ||
+    url.pathname.startsWith('/admin/') ||
+    /^\/admin-[^/]+\.html$/i.test(url.pathname) ||
+    url.pathname === '/admin-users.html'
+  ) {
+    event.respondWith(fetch(req));
+    return;
+  }
+
   if (!sameOrigin(url)) {
     event.respondWith(fetch(req));
     return;
@@ -94,7 +106,8 @@ self.addEventListener('fetch', (event) => {
       fetch(req)
         .then((response) => {
           if (response && response.ok) {
-            caches.open(CACHE_NAME).then((cache) => putSanitizedResponse(cache, req, response));
+            const forCache = response.clone();
+            caches.open(CACHE_NAME).then((cache) => putSanitizedResponse(cache, req, forCache));
           }
           return response;
         })

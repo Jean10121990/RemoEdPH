@@ -44,6 +44,37 @@ const {
   resolveToCanonicalTeacherId,
   getCandidateTeachersForSlotUtc,
 } = require('./services/teacherSlotResolve');
+const { normalizeId } = require('./utils/normalizeId');
+const { applyBookingFirstSlotOverlay } = require('./utils/bookingFirstSlotOverlay');
+const { decodeBearerUser } = require('./utils/jwtDecodeOptional');
+
+function normRoleClaim(v) {
+  return String(v == null ? '' : v).trim().toLowerCase();
+}
+
+/** Bearer is a teacher session (not admin/student) — used to scope GET /slots?teacherId=… */
+function bearerIsTeacherScope(bearer) {
+  if (!bearer || bearer.isAdmin === true) return false;
+  if (normRoleClaim(bearer.userType) === 'student' || normRoleClaim(bearer.userRole) === 'student') return false;
+  return (
+    normRoleClaim(bearer.userType) === 'teacher' ||
+    normRoleClaim(bearer.userRole) === 'teacher' ||
+    normRoleClaim(bearer.role) === 'teacher' ||
+    !!bearer.teacherId
+  );
+}
+
+/** Student booking maps + dropdown values use normalized email when the teacher record has one. */
+function teacherBookingKey(teacherDoc, canonicalTeacherId) {
+  const pick = (v) => (v != null && String(v).trim() !== '' ? String(v).trim() : '');
+  const em = pick(teacherDoc && teacherDoc.email);
+  if (em.includes('@')) return normalizeId(em);
+  const un = pick(teacherDoc && teacherDoc.username);
+  if (un.includes('@')) return normalizeId(un);
+  const canon = pick(canonicalTeacherId);
+  if (canon.includes('@')) return normalizeId(canon);
+  return normalizeId(canon);
+}
 const {
   consumeReservedCreditForBooking,
   releaseReservedCreditForBooking,
@@ -1075,11 +1106,11 @@ async function handleTeacherOpenSlots(req, res) {
       return res.status(401).json({ error: 'Teacher session required.' });
     }
 
-    const actualTeacherId = req.teacher.teacherId;
+    const actualTeacherId = normalizeId(req.teacher.teacherId);
     if (
       bodyTeacherId != null &&
       String(bodyTeacherId).trim() !== '' &&
-      String(bodyTeacherId) !== String(actualTeacherId)
+      normalizeId(bodyTeacherId) !== actualTeacherId
     ) {
       return res.status(403).json({ error: 'Teacher ID does not match signed-in user.' });
     }
@@ -1095,23 +1126,26 @@ async function handleTeacherOpenSlots(req, res) {
 
     // Remove existing OPEN slots for this teacher on these dates/times
     // Note: This only affects TeacherSlot (open slots), not Booking (finished/absent classes)
-    const slotConditions = slots.map(s => ({ teacherId: actualTeacherId, date: s.date, time: s.time }));
+    const slotConditions = slots.map((s) => ({ teacherId: actualTeacherId, date: s.date, time: s.time }));
     console.log('Slot conditions for deletion:', slotConditions);
-    
+
     // First, get all existing slots for this teacher in the date range to ensure we remove everything
     const weekStart = new Date(slots[0].date);
     const weekEnd = new Date(weekStart);
     weekEnd.setDate(weekStart.getDate() + 7);
-    
+
+    const weekStartStr = weekStart.toISOString().split('T')[0];
+    const weekEndStr = weekEnd.toISOString().split('T')[0];
+
     // Remove ALL existing slots for this teacher in this week, then add only the selected ones
     const deleteAllResult = await TeacherSlot.deleteMany({
-      teacherId: actualTeacherId,
-      date: { $gte: weekStart.toISOString().split('T')[0], $lt: weekEnd.toISOString().split('T')[0] }
+      $expr: { $eq: [{ $toLower: '$teacherId' }, actualTeacherId] },
+      date: { $gte: weekStartStr, $lt: weekEndStr },
     });
     console.log(`Deleted ${deleteAllResult.deletedCount} existing open slots for the week`);
 
     // Save new open slots with available: true (UTC canonical)
-    const newSlots = slots.map(s => { 
+    const newSlots = slots.map((s) => {
       const { utcIso, zoneUsed } = toUtcFromLocal(s.date, s.time, s.timezone || timezone);
       return {
         teacherId: actualTeacherId,
@@ -1163,11 +1197,11 @@ async function handleTeacherCloseSlots(req, res) {
       return res.status(401).json({ error: 'Teacher session required.' });
     }
 
-    const actualTeacherId = req.teacher.teacherId;
+    const actualTeacherId = normalizeId(req.teacher.teacherId);
     if (
       bodyTeacherId != null &&
       String(bodyTeacherId).trim() !== '' &&
-      String(bodyTeacherId) !== String(actualTeacherId)
+      normalizeId(bodyTeacherId) !== actualTeacherId
     ) {
       return res.status(403).json({ error: 'Teacher ID does not match signed-in user.' });
     }
@@ -1182,10 +1216,11 @@ async function handleTeacherCloseSlots(req, res) {
     }
 
     // Remove specific slots that are selected for closing
-    const slotConditions = slots.map(s => {
+    const slotConditions = slots.map((s) => {
+      const tidMatch = { $expr: { $eq: [{ $toLower: '$teacherId' }, actualTeacherId] } };
       // Try to match by UTC if available on existing data
       if (s.dateTimeUtc) {
-        return { teacherId: actualTeacherId, dateTimeUtc: s.dateTimeUtc };
+        return { ...tidMatch, dateTimeUtc: s.dateTimeUtc };
       }
       // Otherwise compute from provided timezone/body timezone
       let dateTimeUtc = null;
@@ -1195,7 +1230,7 @@ async function handleTeacherCloseSlots(req, res) {
       } catch (e) {
         // ignore
       }
-      return dateTimeUtc ? { teacherId: actualTeacherId, dateTimeUtc } : { teacherId: actualTeacherId, date: s.date, time: s.time };
+      return dateTimeUtc ? { ...tidMatch, dateTimeUtc } : { ...tidMatch, date: s.date, time: s.time };
     });
     console.log('Slot conditions for deletion:', slotConditions);
     
@@ -1272,9 +1307,11 @@ router.get('/slots', async (req, res) => {
           slotObj.clientTz = clientTz;
         }
         
+        const bookingKey = teacherBookingKey(teacher, canonicalTid);
         const slotData = {
           ...slotObj,
-          teacherId: canonicalTid,
+          teacherId: bookingKey,
+          teacherEmail: bookingKey,
           teacherName: teacher ? teacher.username : 'Unknown Teacher'
         };
         
@@ -1354,7 +1391,27 @@ router.get('/slots', async (req, res) => {
       console.log('🔍 Using teacherId as-is (fallback):', teacherId);
       actualTeacherId = teacherId;
     }
-    
+
+    const canonicalForSlots = await resolveToCanonicalTeacherId(actualTeacherId);
+    if (canonicalForSlots) {
+      actualTeacherId = normalizeId(canonicalForSlots);
+    } else {
+      actualTeacherId = normalizeId(actualTeacherId);
+    }
+
+    const bearer = decodeBearerUser(req);
+    if (bearer && bearerIsTeacherScope(bearer)) {
+      const tokenTid = await resolveToCanonicalTeacherId(
+        bearer.teacherId || bearer.username || bearer.email || ''
+      );
+      if (!tokenTid || normalizeId(tokenTid) !== actualTeacherId) {
+        return res.status(403).json({
+          error: 'You can only load your own schedule slots.',
+          code: 'SLOTS_TEACHER_SCOPE',
+        });
+      }
+    }
+
     // Determine client timezone for convenience conversion (optional)
     const clientTz = req.query.tz && DateTime.now().setZone(req.query.tz).isValid ? req.query.tz : null;
     const allSlotsFlag =
@@ -1375,6 +1432,19 @@ router.get('/slots', async (req, res) => {
         'Last-Modified': new Date().toUTCString(),
         ETag: `"${Date.now()}-${crypto.randomBytes(8).toString('hex')}"`,
       });
+      const endForBookings = new Date(week + 'T00:00:00');
+      endForBookings.setDate(endForBookings.getDate() + 7);
+      const freshBookingsForOverlay = await Booking.find({
+        $or: [
+          { teacherId: actualTeacherId },
+          { $expr: { $eq: [{ $toLower: { $ifNull: ['$teacherId', ''] } }, actualTeacherId] } },
+        ],
+        date: { $gte: week, $lte: endForBookings.toISOString().slice(0, 10) },
+        status: { $ne: 'cancelled' },
+      }).lean();
+      applyBookingFirstSlotOverlay(tCached.slots, freshBookingsForOverlay, actualTeacherId, {
+        debugTime: '19:00',
+      });
       return res.json(tCached);
     }
 
@@ -1390,8 +1460,13 @@ router.get('/slots', async (req, res) => {
 
     // Use inclusive end date to include the last day of the week
     // Return all slots or only available slots based on allSlots parameter
-    const teacherRow = await Teacher.findOne({ teacherId: actualTeacherId });
-    const teacherIdOr = [{ teacherId: actualTeacherId }];
+    const teacherRow = await Teacher.findOne({
+      $expr: { $eq: [{ $toLower: '$teacherId' }, actualTeacherId] },
+    });
+    const teacherIdOr = [
+      { teacherId: actualTeacherId },
+      { $expr: { $eq: [{ $toLower: '$teacherId' }, actualTeacherId] } },
+    ];
     if (teacherRow && teacherRow._id) {
       teacherIdOr.push({ teacherId: teacherRow._id });
       teacherIdOr.push({ teacherId: teacherRow._id.toString() });
@@ -1406,6 +1481,15 @@ router.get('/slots', async (req, res) => {
     if (!allSlotsFlag) {
       queryFilter.available = true;
     }
+
+    const bookings = await Booking.find({
+      $or: [
+        { teacherId: actualTeacherId },
+        { $expr: { $eq: [{ $toLower: { $ifNull: ['$teacherId', ''] } }, actualTeacherId] } },
+      ],
+      date: { $gte: week, $lte: end.toISOString().slice(0, 10) },
+      status: { $ne: 'cancelled' },
+    });
 
     const slotsQuery = await TeacherSlot.find(queryFilter);
 
@@ -1429,9 +1513,17 @@ router.get('/slots', async (req, res) => {
       return {
         ...obj,
         teacherId: actualTeacherId,
-        slotStatus: obj.available ? 'Open' : 'Booked'
+        slotStatus: obj.available ? 'Open' : 'Booked',
+        status: obj.available ? 'available' : 'unavailable',
       };
     });
+
+    applyBookingFirstSlotOverlay(
+      slots,
+      bookings.map((b) => b.toObject()),
+      actualTeacherId,
+      { debugTime: '19:00' }
+    );
     
     console.log('Found slots:', slots.length); // Debug log
     console.log('Slots data:', slots); // Debug log
@@ -1448,13 +1540,6 @@ router.get('/slots', async (req, res) => {
     });
     console.log('🔍 Slots for 2025-08-10:', specificDateSlots.length);
     console.log('🔍 Specific date slots data:', specificDateSlots);
-
-    // Also get bookings for these slots
-    const bookings = await Booking.find({
-      teacherId: actualTeacherId,
-      date: { $gte: week, $lte: end.toISOString().slice(0, 10) },
-      status: { $ne: 'cancelled' }
-    });
 
     // Get student information and resolved issues for each booking
     const IssueReport = require('./models/IssueReport');
@@ -1570,8 +1655,10 @@ router.get('/available-teachers', async (req, res) => {
               if (x && !certNames.includes(x)) certNames.push(x);
             });
           }
+          const bookingKey = teacherBookingKey(t, tid);
           return {
-            teacherId: tid,
+            teacherId: bookingKey,
+            teacherEmail: bookingKey,
             name: t ? t.username : tid,
             displayName,
             photo: t?.profilePicture || null,
@@ -1604,8 +1691,10 @@ router.get('/available-teachers', async (req, res) => {
         : await Booking.findOne({ teacherId: tid, date, time, status: { $ne: 'cancelled' } });
       if (existingBooking) continue;
       const t = await Teacher.findOne({ teacherId: tid });
+      const bookingKey = teacherBookingKey(t, tid);
       availableTeachers.push({
-        teacherId: tid,
+        teacherId: bookingKey,
+        teacherEmail: bookingKey,
         name: t ? t.username : tid,
         photo: t?.profilePicture || null,
         intro: t?.introduction || t?.intro || 'No introduction available'
@@ -3605,32 +3694,65 @@ router.get('/classes', async (req, res) => {
 
       res.json({ success: true, classes });
       
-    } else if (!isAuthenticated && teacherId && week) {
-      // For unauthenticated requests, use teacherId and week
-      console.log('Unauthenticated request - fetching classes for teacherId:', teacherId, 'week:', week);
-      
-      // Convert email to teacher ObjectId if needed
-      let actualTeacherId = teacherId;
-      if (teacherId.includes('@')) {
-        const teacher = await Teacher.findOne({ 
-          $or: [
-            { email: teacherId },
-            { username: teacherId }
-          ]
-        });
+    } else if (teacherId && week) {
+      // Week grid (teacher-open-class.html, etc.): teacherId + week. Works with or without Bearer;
+      // when Bearer is present it must match the resolved teacher (same portal id / email).
+      console.log(
+        'GET /classes by week — teacherId:',
+        teacherId,
+        'week:',
+        week,
+        'authenticated:',
+        isAuthenticated
+      );
+
+      const tidRaw = String(teacherId).trim();
+      let canonicalTeacherId = null;
+
+      if (isProbableHexObjectIdForTeacher(tidRaw)) {
+        const teacher = await Teacher.findById(tidRaw).select('teacherId').lean();
         if (!teacher) {
           return res.status(404).json({ error: 'Teacher not found' });
         }
-        actualTeacherId = teacher._id;
+        canonicalTeacherId = String(teacher.teacherId);
+      } else {
+        const resolved = await resolveToCanonicalTeacherId(tidRaw);
+        if (resolved) {
+          canonicalTeacherId = String(resolved);
+        } else {
+          const emailRegex = {
+            email: { $regex: new RegExp('^' + escapeRegexForTeacherLookup(tidRaw) + '$', 'i') },
+          };
+          const teacher = await Teacher.findOne({
+            $or: [{ teacherId: tidRaw }, emailRegex, { username: tidRaw }],
+          })
+            .select('teacherId')
+            .lean();
+          if (!teacher) {
+            return res.status(404).json({ error: 'Teacher not found' });
+          }
+          canonicalTeacherId = String(teacher.teacherId);
+        }
       }
-      
-      // Get bookings for the week
+
+      if (isAuthenticated && authenticatedTeacherId) {
+        const resolvedAuth = await resolveToCanonicalTeacherId(String(authenticatedTeacherId).trim());
+        const authCanon = resolvedAuth ? String(resolvedAuth) : String(authenticatedTeacherId).trim();
+        if (normalizeId(authCanon) !== normalizeId(canonicalTeacherId)) {
+          return res.status(403).json({
+            error: 'Forbidden: teacherId does not match your session.',
+            code: 'TEACHER_ID_SESSION_MISMATCH',
+          });
+        }
+      }
+
+      // Booking.teacherId is always the string portal id (e.g. normalized email), never Mongo _id.
       const start = new Date(week + 'T00:00:00');
       const end = new Date(start);
       end.setDate(start.getDate() + 7);
 
       const bookings = await Booking.find({
-        teacherId: actualTeacherId,
+        teacherId: canonicalTeacherId,
         date: { $gte: week, $lt: end.toISOString().slice(0, 10) },
         status: { $ne: 'cancelled' },
       }).lean();

@@ -254,7 +254,7 @@
         function ensureLessonLibraryIframe() {
             var f = document.getElementById('iframe-lesson-library');
             if (!f || f.getAttribute('data-loaded')) return;
-            f.src = 'admin-lessons-library.html?adminEmbed=1';
+            f.src = '/admin/admin-lessons-library.html?adminEmbed=1&embedVer=2';
             f.setAttribute('data-loaded', '1');
         }
 

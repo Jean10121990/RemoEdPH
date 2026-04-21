@@ -13,6 +13,90 @@
 <!-- Remo AI Chatbot Styles -->
     <link rel="stylesheet" href="style.css">
     <script src="js/user-session.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+    <script>
+        if (window.pdfjsLib) {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+        }
+    </script>
+    <style>
+        .page-teacher-lessons-library .preview-skeleton {
+            min-height: 280px;
+            border-radius: 8px;
+            background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 37%, #e2e8f0 63%);
+            background-size: 400% 100%;
+            animation: ll-preview-skel 1.2s ease-in-out infinite;
+        }
+        .page-teacher-lessons-library .preview-skeleton--sm {
+            min-height: 0;
+            width: 56px;
+            height: 72px;
+        }
+        @keyframes ll-preview-skel {
+            0% { background-position: 100% 50%; }
+            100% { background-position: 0 50%; }
+        }
+        .page-teacher-lessons-library .file-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex: 1;
+            min-width: 0;
+        }
+        .page-teacher-lessons-library .file-row-thumb {
+            flex-shrink: 0;
+            width: 56px;
+            height: 72px;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+            background: #f8fafc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .page-teacher-lessons-library .file-row-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .page-teacher-lessons-library .pdf-preview-first {
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            background: #fff;
+        }
+        .page-teacher-lessons-library .pdf-full-iframe {
+            width: 100%;
+            min-height: 600px;
+            height: 70vh;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background: white;
+            display: block;
+        }
+        .page-teacher-lessons-library .pdf-preview-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+        .page-teacher-lessons-library .pdf-preview-toolbar .btn-secondary {
+            padding: 0.45rem 0.9rem;
+            font-size: 0.875rem;
+            border-radius: 8px;
+            border: 1px solid #cbd5e1;
+            background: #fff;
+            color: #334155;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .page-teacher-lessons-library .pdf-preview-toolbar .btn-secondary:hover {
+            background: #f1f5f9;
+        }
+    </style>
 </head>
 <body class="page-teacher-lessons-library">
     <div id="teacher-sidebar-root"></div>
@@ -151,8 +235,137 @@
         let currentLessonId = null;
         let currentLessonsCache = [];
         let curriculaCache = [];
+        let previewClearTimer = null;
         const token = localStorage.getItem('token');
         const teacherId = localStorage.getItem('teacherId');
+
+        const LESSON_FILE_CACHE_MAX = 10;
+        const lessonFileBlobCache = new Map();
+        const lessonFileJsonInflight = new Map();
+
+        function isPdfFile(file) {
+            if (!file) return false;
+            if (file.fileType === 'pdf') return true;
+            return String(file.fileName || '').toLowerCase().endsWith('.pdf');
+        }
+
+        function isPdfMeta(meta) {
+            if (!meta) return false;
+            if (meta.fileType === 'pdf') return true;
+            return String(meta.fileName || '').toLowerCase().endsWith('.pdf');
+        }
+
+        function cacheMetaFromFile(file) {
+            return {
+                _id: file._id,
+                fileName: file.fileName,
+                fileType: file.fileType,
+                fileSize: file.fileSize,
+                uploadedBy: file.uploadedBy,
+                uploadedAt: file.uploadedAt,
+                isPermanent: file.isPermanent
+            };
+        }
+
+        function rememberLessonFileBlob(fileId, blobUrl, meta) {
+            const id = String(fileId);
+            if (lessonFileBlobCache.has(id)) {
+                const prev = lessonFileBlobCache.get(id);
+                if (prev.blobUrl && prev.blobUrl !== blobUrl) URL.revokeObjectURL(prev.blobUrl);
+                lessonFileBlobCache.delete(id);
+            }
+            lessonFileBlobCache.set(id, { blobUrl, meta });
+            while (lessonFileBlobCache.size > LESSON_FILE_CACHE_MAX) {
+                const oldest = lessonFileBlobCache.keys().next().value;
+                const ent = lessonFileBlobCache.get(oldest);
+                if (ent?.blobUrl) URL.revokeObjectURL(ent.blobUrl);
+                lessonFileBlobCache.delete(oldest);
+            }
+        }
+
+        function touchLessonFileBlob(fileId) {
+            const id = String(fileId);
+            if (!lessonFileBlobCache.has(id)) return null;
+            const ent = lessonFileBlobCache.get(id);
+            lessonFileBlobCache.delete(id);
+            lessonFileBlobCache.set(id, ent);
+            return ent;
+        }
+
+        function dataUrlToBlob(dataUrl) {
+            const base64Data = dataUrl.includes('base64,')
+                ? dataUrl.split('base64,')[1]
+                : dataUrl.replace(/^data:[^;]+;base64,/, '').replace(/^data:[^;]+;/, '');
+            const binaryString = atob(base64Data);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
+            const mimeMatch = dataUrl.match(/^data:([^;,]+)/);
+            const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+            return new Blob([bytes], { type: mime });
+        }
+
+        function normalizeFileDataToDataUrl(fileData, fileName, fileType) {
+            let fd = fileData || '';
+            if (!fd) return '';
+            if (!fd.startsWith('data:')) {
+                const mimeType = getMimeType(fileName, fileType);
+                if (mimeType) fd = `data:${mimeType};base64,${fd}`;
+            }
+            return fd;
+        }
+
+        async function fetchLessonFileJson(fileId) {
+            const id = String(fileId);
+            if (lessonFileJsonInflight.has(id)) return lessonFileJsonInflight.get(id);
+            const currentToken = localStorage.getItem('token') || token;
+            const p = (async () => {
+                const response = await fetch(`/api/lessons/lesson-file/${id}?token=${encodeURIComponent(currentToken)}`, {
+                    headers: {
+                        'Authorization': `Bearer ${currentToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Failed to load file: ${response.status} ${errorText}`);
+                }
+                return response.json();
+            })();
+            lessonFileJsonInflight.set(id, p);
+            try {
+                return await p;
+            } finally {
+                lessonFileJsonInflight.delete(id);
+            }
+        }
+
+        async function ensurePdfCachedEntry(fileId) {
+            const id = String(fileId);
+            let entry = touchLessonFileBlob(id);
+            if (entry) return entry;
+            const file = await fetchLessonFileJson(id);
+            if (!isPdfFile(file)) return null;
+            const dataUrl = normalizeFileDataToDataUrl(file.fileData, file.fileName, file.fileType);
+            if (!dataUrl) return null;
+            const blobUrl = URL.createObjectURL(dataUrlToBlob(dataUrl));
+            rememberLessonFileBlob(id, blobUrl, cacheMetaFromFile(file));
+            return touchLessonFileBlob(id);
+        }
+
+        function openPreviewLoadingShell(titleText) {
+            if (previewClearTimer) {
+                clearTimeout(previewClearTimer);
+                previewClearTimer = null;
+            }
+            const previewPanel = document.getElementById('preview-panel');
+            const previewOverlay = document.getElementById('preview-overlay');
+            const previewContent = document.getElementById('preview-content');
+            const previewTitle = document.getElementById('preview-title');
+            previewTitle.textContent = titleText || 'Preview';
+            previewOverlay.classList.add('show');
+            previewPanel.classList.add('open');
+            previewContent.innerHTML = '<div class="preview-skeleton" role="status" aria-live="polite" aria-label="Loading preview"></div>';
+        }
 
         // Check authentication
         if (!token || !teacherId) {
@@ -476,9 +689,15 @@
                 return;
             }
 
-            filesList.innerHTML = files.map(file => `
+            filesList.innerHTML = files.map(file => {
+                const pdfThumb = isPdfFile(file) ? `
+                    <div class="file-row-thumb file-row-thumb--pdf" data-thumb-for="${file._id}">
+                        <div class="preview-skeleton preview-skeleton--sm" aria-hidden="true"></div>
+                    </div>` : '';
+                return `
                 <div class="file-item">
                     <div class="file-info">
+                        ${pdfThumb}
                         <div class="file-icon">
                             <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
@@ -499,7 +718,59 @@
                         </button>
                     </div>
                 </div>
-            `).join('');
+            `;
+            }).join('');
+
+            initPdfRowThumbObserver();
+        }
+
+        function initPdfRowThumbObserver() {
+            const root = document.getElementById('files-list');
+            if (!root || typeof IntersectionObserver === 'undefined') return;
+            const io = new IntersectionObserver((entries) => {
+                entries.forEach((en) => {
+                    if (!en.isIntersecting) return;
+                    const el = en.target;
+                    if (el.dataset.thumbLoaded === '1') {
+                        io.unobserve(el);
+                        return;
+                    }
+                    el.dataset.thumbLoaded = '1';
+                    io.unobserve(el);
+                    loadPdfRowThumb(el);
+                });
+            }, { root: null, rootMargin: '100px', threshold: 0.01 });
+            root.querySelectorAll('[data-thumb-for]').forEach((el) => io.observe(el));
+        }
+
+        async function loadPdfRowThumb(wrap) {
+            const fileId = wrap.dataset.thumbFor;
+            if (!fileId) return;
+            try {
+                const entry = await ensurePdfCachedEntry(fileId);
+                if (!entry?.blobUrl || typeof pdfjsLib === 'undefined') {
+                    wrap.innerHTML = '<span style="font-size:0.65rem;color:#64748b">PDF</span>';
+                    return;
+                }
+                const doc = await pdfjsLib.getDocument({ url: entry.blobUrl }).promise;
+                const page = await doc.getPage(1);
+                const vp = page.getViewport({ scale: 0.32 });
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = vp.width;
+                canvas.height = vp.height;
+                await page.render({ canvasContext: ctx, viewport: vp }).promise;
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.72);
+                const img = document.createElement('img');
+                img.src = dataUrl;
+                img.alt = '';
+                img.loading = 'lazy';
+                wrap.innerHTML = '';
+                wrap.appendChild(img);
+            } catch (e) {
+                console.warn('PDF row thumb failed', e);
+                wrap.innerHTML = '<span style="font-size:0.65rem;color:#64748b">PDF</span>';
+            }
         }
 
         function formatFileSize(bytes) {
@@ -624,73 +895,73 @@
         }
 
         async function viewFile(fileId) {
+            const id = String(fileId);
             try {
-                const currentToken = localStorage.getItem('token') || token;
-                const response = await fetch(`/api/lessons/lesson-file/${fileId}?token=${encodeURIComponent(currentToken)}`, {
-                    headers: {
-                        'Authorization': `Bearer ${currentToken}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    throw new Error(`Failed to load file: ${response.status} ${errorText}`);
+                const cached = touchLessonFileBlob(id);
+                if (cached && isPdfMeta(cached.meta)) {
+                    openPreviewContent({
+                        ...cached.meta,
+                        _id: id,
+                        fileData: null,
+                        _lessonBlobUrl: cached.blobUrl
+                    });
+                    return;
                 }
-                const file = await response.json();
-                
-                // Debug: Log file data to check if it's loaded
-                console.log('File loaded:', {
-                    fileName: file.fileName,
-                    fileType: file.fileType,
-                    hasFileData: !!file.fileData,
-                    fileDataLength: file.fileData ? file.fileData.length : 0,
-                    fileDataPreview: file.fileData ? file.fileData.substring(0, 50) + '...' : 'none'
-                });
-                
-                // Show preview panel
-                openPreview(file);
+
+                openPreviewLoadingShell('Loading preview…');
+
+                const file = await fetchLessonFileJson(id);
+                const enriched = { ...file, _id: file._id || id };
+
+                if (isPdfFile(enriched)) {
+                    const dataUrl = normalizeFileDataToDataUrl(enriched.fileData, enriched.fileName, enriched.fileType);
+                    if (!dataUrl) {
+                        throw new Error('File data not available');
+                    }
+                    const blobUrl = URL.createObjectURL(dataUrlToBlob(dataUrl));
+                    rememberLessonFileBlob(id, blobUrl, cacheMetaFromFile(enriched));
+                    openPreviewContent({
+                        ...enriched,
+                        fileData: null,
+                        _lessonBlobUrl: blobUrl
+                    });
+                } else {
+                    openPreviewContent(enriched);
+                }
             } catch (error) {
                 console.error('Error loading file:', error);
                 showAlert('error', 'Failed to load file: ' + error.message);
+                closePreview();
             }
         }
-        
-        function openPreview(file) {
+
+        function openPreviewContent(file) {
+            if (previewClearTimer) {
+                clearTimeout(previewClearTimer);
+                previewClearTimer = null;
+            }
             const previewPanel = document.getElementById('preview-panel');
             const previewOverlay = document.getElementById('preview-overlay');
             const previewContent = document.getElementById('preview-content');
             const previewTitle = document.getElementById('preview-title');
-            
-            // Set title
+
             previewTitle.textContent = file.fileName || 'Preview';
-            
-            // Show overlay and panel
             previewOverlay.classList.add('show');
             previewPanel.classList.add('open');
-            
-            // Clear previous content and show loading
-            previewContent.innerHTML = `
-                <div class="preview-unsupported">
-                    <div class="preview-unsupported-icon">⏳</div>
-                    <h3>Loading preview...</h3>
-                </div>
-            `;
-            
-            // Determine file type and render accordingly
+
             const fileType = file.fileType || '';
             const fileName = file.fileName || '';
             let fileData = file.fileData || '';
-            
-            // Ensure fileData is a valid data URL
+
             if (fileData && !fileData.startsWith('data:')) {
-                // If it's not a data URL, try to construct it
                 const mimeType = getMimeType(fileName, fileType);
                 if (mimeType) {
                     fileData = `data:${mimeType};base64,${fileData}`;
                 }
             }
-            
-            if (!fileData) {
+
+            const hasPdfBlob = !!(file._lessonBlobUrl && isPdfFile(file));
+            if (!fileData && !hasPdfBlob) {
                 previewContent.innerHTML = `
                     <div class="preview-unsupported">
                         <div class="preview-unsupported-icon">⚠️</div>
@@ -701,9 +972,8 @@
                 `;
                 return;
             }
-            
-                // Render immediately
-                renderPreviewContent(file, fileType, fileName, fileData, previewContent);
+
+            renderPreviewContent(file, fileType, fileName, fileData, previewContent);
         }
         
         function getMimeType(fileName, fileType) {
@@ -731,131 +1001,125 @@
             if (fileType === 'video') return 'video/mp4';
             return 'application/octet-stream';
         }
+
+        function resolvePdfBlobUrl(file, fileData, fileName) {
+            if (file._lessonBlobUrl) return file._lessonBlobUrl;
+            let pdfDataUrl = fileData;
+            if (!pdfDataUrl.startsWith('data:')) {
+                pdfDataUrl = `data:application/pdf;base64,${fileData}`;
+            } else if (!pdfDataUrl.includes('base64,')) {
+                pdfDataUrl = pdfDataUrl.replace('data:application/pdf;', 'data:application/pdf;base64,');
+            }
+            const blob = dataUrlToBlob(pdfDataUrl);
+            const blobUrl = URL.createObjectURL(blob);
+            if (file._id) {
+                rememberLessonFileBlob(file._id, blobUrl, cacheMetaFromFile(file));
+            }
+            return blobUrl;
+        }
+
+        async function renderPdfFirstPageInto(previewContent, blobUrl, file, fileName) {
+            const skel = previewContent.querySelector('[data-pdf-skel]');
+            const holder = previewContent.querySelector('[data-pdf-first-holder]');
+            const fullHolder = previewContent.querySelector('[data-pdf-full-holder]');
+            const openBtn = previewContent.querySelector('[data-open-full-pdf]');
+            const fid = file._id || '';
+
+            try {
+                if (typeof pdfjsLib === 'undefined') throw new Error('pdfjs missing');
+                const doc = await pdfjsLib.getDocument({ url: blobUrl }).promise;
+                const page = await doc.getPage(1);
+                const maxW = Math.min(900, previewContent.clientWidth || 820);
+                const baseVp = page.getViewport({ scale: 1 });
+                const scale = Math.min(1.35, maxW / baseVp.width);
+                const viewport = page.getViewport({ scale });
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+                await page.render({ canvasContext: ctx, viewport }).promise;
+                const jpegUrl = canvas.toDataURL('image/jpeg', 0.88);
+                if (skel) skel.remove();
+                if (holder) {
+                    holder.innerHTML = '';
+                    const img = document.createElement('img');
+                    img.className = 'pdf-preview-first';
+                    img.src = jpegUrl;
+                    img.alt = fileName || 'PDF first page';
+                    img.loading = 'lazy';
+                    holder.appendChild(img);
+                }
+                if (openBtn) {
+                    openBtn.onclick = () => {
+                        if (holder) holder.innerHTML = '';
+                        if (openBtn) openBtn.style.display = 'none';
+                        if (fullHolder) {
+                            fullHolder.innerHTML = '';
+                            const iframe = document.createElement('iframe');
+                            iframe.className = 'pdf-full-iframe';
+                            iframe.title = 'Full PDF';
+                            iframe.loading = 'lazy';
+                            iframe.src = blobUrl;
+                            fullHolder.appendChild(iframe);
+                        }
+                    };
+                }
+            } catch (err) {
+                console.error('PDF.js first-page render failed, using iframe', err);
+                if (fullHolder) {
+                    fullHolder.innerHTML = `
+                        <p style="color:#64748b;font-size:0.9rem;margin:0 0 0.5rem 0">Could not render a quick preview. Showing the full PDF viewer.</p>
+                        <iframe class="pdf-full-iframe" title="PDF" loading="lazy" src="${blobUrl}"></iframe>
+                        <p style="margin-top:0.75rem"><button type="button" class="btn-secondary" id="pdf-fallback-dl" style="padding:0.5rem 1rem;border-radius:8px;border:1px solid #cbd5e1;background:#fff;cursor:pointer;font-weight:600">Download</button></p>
+                    `;
+                    const dl = fullHolder.querySelector('#pdf-fallback-dl');
+                    if (dl) dl.onclick = () => downloadFile(fid, fileName || 'document.pdf');
+                }
+                if (holder) holder.innerHTML = '';
+                if (skel) skel.remove();
+                if (openBtn) openBtn.style.display = 'none';
+            }
+        }
         
         function renderPreviewContent(file, fileType, fileName, fileData, previewContent) {
             
             // Handle different file types
             if (fileType === 'pdf' || fileName.toLowerCase().endsWith('.pdf')) {
-                // PDF preview - convert data URL to Blob URL for better compatibility and CSP compliance
-                let pdfDataUrl = fileData;
-                if (!pdfDataUrl.startsWith('data:')) {
-                    // If it's just base64, add the data URL prefix
-                    pdfDataUrl = `data:application/pdf;base64,${fileData}`;
-                } else if (!pdfDataUrl.includes('base64,')) {
-                    // If it's data:application/pdf but missing base64, fix it
-                    pdfDataUrl = pdfDataUrl.replace('data:application/pdf;', 'data:application/pdf;base64,');
-                }
-                
-                console.log('PDF preview - Data URL length:', pdfDataUrl.length);
-                
-                // Convert data URL to Blob URL for better browser compatibility
+                let blobUrl;
                 try {
-                    // Extract base64 data
-                    const base64Data = pdfDataUrl.includes('base64,') 
-                        ? pdfDataUrl.split('base64,')[1] 
-                        : pdfDataUrl.replace('data:application/pdf;', '');
-                    
-                    // Convert base64 to binary
-                    const binaryString = atob(base64Data);
-                    const bytes = new Uint8Array(binaryString.length);
-                    for (let i = 0; i < binaryString.length; i++) {
-                        bytes[i] = binaryString.charCodeAt(i);
-                    }
-                    
-                    // Create Blob and Blob URL
-                    const blob = new Blob([bytes], { type: 'application/pdf' });
-                    const blobUrl = URL.createObjectURL(blob);
-                    
-                    console.log('PDF preview - Created Blob URL:', blobUrl.substring(0, 50) + '...');
-                    
-                    // Create preview with Blob URL
-                    const pdfHtml = `
-                        <div style="width: 100%; height: 100%; position: relative; min-height: 600px;">
-                            <iframe 
-                                id="pdf-iframe"
-                                src="${blobUrl}" 
-                                type="application/pdf" 
-                                style="width: 100%; height: 100%; min-height: 600px; border: 1px solid #e5e7eb; border-radius: 8px; background: white; display: block;"
-                            ></iframe>
-                            <object 
-                                id="pdf-object"
-                                data="${blobUrl}" 
-                                type="application/pdf" 
-                                style="width: 100%; height: 100%; min-height: 600px; border: 1px solid #e5e7eb; border-radius: 8px; background: white; display: none; position: absolute; top: 0; left: 0;"
-                            >
-                                <embed 
-                                    id="pdf-embed"
-                                    src="${blobUrl}" 
-                                    type="application/pdf" 
-                                    style="width: 100%; height: 100%; min-height: 600px; border: 1px solid #e5e7eb; border-radius: 8px; background: white; display: none; position: absolute; top: 0; left: 0;"
-                                />
-                                <div style="padding: 2rem; text-align: center; color: #64748b;">
-                                    <p>Your browser does not support PDF preview.</p>
-                                    <button onclick="downloadFile('${file._id}', '${fileName}')" style="margin-top: 1rem; padding: 0.75rem 1.5rem; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
-                                        Download File
-                                    </button>
-                                </div>
-                            </object>
-                        </div>
-                    `;
-                    previewContent.innerHTML = pdfHtml;
-                    
-                    // Store blob URL for cleanup
-                    previewContent.dataset.blobUrl = blobUrl;
-                    
-                    // Add error handling and fallbacks
-                    const iframe = previewContent.querySelector('#pdf-iframe');
-                    const object = previewContent.querySelector('#pdf-object');
-                    const embed = previewContent.querySelector('#pdf-embed');
-                    
-                    if (iframe) {
-                        iframe.onload = function() {
-                            console.log('PDF loaded successfully in iframe');
-                        };
-                        iframe.onerror = function() {
-                            console.log('PDF iframe failed, trying object tag');
-                            if (object) {
-                                object.style.display = 'block';
-                                iframe.style.display = 'none';
-                            }
-                        };
-                        
-                        // Check if iframe actually loaded content after a delay
-                        setTimeout(() => {
-                            try {
-                                const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-                                if (!iframeDoc || iframeDoc.body.innerHTML.trim() === '') {
-                                    console.log('Iframe appears empty, trying object tag');
-                                    if (object) {
-                                        object.style.display = 'block';
-                                        iframe.style.display = 'none';
-                                    }
-                                }
-                            } catch (e) {
-                                // Cross-origin or other error - this is normal for blob URLs
-                                console.log('Cannot access iframe content (normal for blob URLs):', e.message);
-                            }
-                        }, 1000);
-                    }
+                    blobUrl = resolvePdfBlobUrl(file, fileData, fileName);
                 } catch (error) {
-                    console.error('Error creating Blob URL:', error);
-                    // Fallback to data URL if Blob creation fails
-                    const pdfHtml = `
-                        <div style="width: 100%; height: 100%; position: relative; min-height: 600px;">
-                            <iframe 
-                                src="${pdfDataUrl}" 
-                                type="application/pdf" 
-                                style="width: 100%; height: 100%; min-height: 600px; border: 1px solid #e5e7eb; border-radius: 8px; background: white;"
-                            ></iframe>
+                    console.error('Error creating PDF blob URL:', error);
+                    previewContent.innerHTML = `
+                        <div class="preview-unsupported">
+                            <div class="preview-unsupported-icon">⚠️</div>
+                            <h3>PDF preview error</h3>
+                            <p>Unable to prepare this PDF for preview.</p>
+                            <button type="button" id="pdf-err-dl" style="margin-top: 1rem; padding: 0.75rem 1.5rem; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">Download File</button>
                         </div>
                     `;
-                    previewContent.innerHTML = pdfHtml;
+                    const b = previewContent.querySelector('#pdf-err-dl');
+                    if (b) b.onclick = () => downloadFile(file._id, fileName || 'document.pdf');
+                    return;
                 }
+
+                previewContent.innerHTML = `
+                    <div class="pdf-preview-root" style="width:100%">
+                        <div class="pdf-preview-toolbar">
+                            <button type="button" class="btn-secondary" data-open-full-pdf>Open full PDF</button>
+                        </div>
+                        <div data-pdf-first-holder></div>
+                        <div class="preview-skeleton" data-pdf-skel style="min-height:360px;margin-top:0.25rem"></div>
+                        <div data-pdf-full-holder></div>
+                    </div>
+                `;
+                void renderPdfFirstPageInto(previewContent, blobUrl, file, fileName);
             } else if (fileType === 'image' || /\.(jpg|jpeg|png|gif|webp)$/i.test(fileName)) {
                 // Image preview
                 const img = document.createElement('img');
                 img.src = fileData;
                 img.alt = fileName;
+                img.loading = 'lazy';
                 img.style.maxWidth = '100%';
                 img.style.maxHeight = '100%';
                 img.style.objectFit = 'contain';
@@ -880,6 +1144,7 @@
                 const video = document.createElement('video');
                 video.controls = true;
                 video.src = fileData;
+                video.preload = 'metadata';
                 video.style.maxWidth = '100%';
                 video.style.maxHeight = '100%';
                 video.style.borderRadius = '8px';
@@ -944,24 +1209,31 @@
             const previewPanel = document.getElementById('preview-panel');
             const previewOverlay = document.getElementById('preview-overlay');
             const previewContent = document.getElementById('preview-content');
-            
-            // Clean up Blob URL to free memory
-            if (previewContent && previewContent.dataset.blobUrl) {
-                URL.revokeObjectURL(previewContent.dataset.blobUrl);
-                delete previewContent.dataset.blobUrl;
-            }
-            
+
             previewPanel.classList.remove('open');
             previewOverlay.classList.remove('show');
-            
-            // Clear content after animation
-            setTimeout(() => {
+
+            if (previewClearTimer) clearTimeout(previewClearTimer);
+            previewClearTimer = setTimeout(() => {
                 previewContent.innerHTML = '';
+                previewClearTimer = null;
             }, 300);
         }
         
         async function downloadFile(fileId, fileName) {
             try {
+                const id = String(fileId);
+                const hit = touchLessonFileBlob(id);
+                if (hit?.blobUrl && isPdfMeta(hit.meta)) {
+                    const link = document.createElement('a');
+                    link.href = hit.blobUrl;
+                    link.download = fileName || hit.meta.fileName || 'lesson.pdf';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    return;
+                }
+
                 const currentToken = localStorage.getItem('token') || token;
                 const response = await fetch(`/api/lessons/lesson-file/${fileId}?token=${encodeURIComponent(currentToken)}`, {
                     headers: {

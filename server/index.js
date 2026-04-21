@@ -350,7 +350,8 @@ app.get(['/login', '/login/'], noStoreProtectedResponse, (req, res) => {
 app.get(['/admin', '/admin/', '/admin/index.html'], noStoreProtectedResponse, (req, res) => {
   res.status(404).type('html').send('<!doctype html><html><head><meta charset="utf-8"><title>Not found</title></head><body><h1>Not found</h1></body></html>');
 });
-app.use('/admin', express.static(path.join(__dirname, '../public'), { index: false }));
+// Admin UI (including hub iframes) must not be HTTP-cached: stale HTML/JS causes iframe parse errors.
+app.use('/admin', noStoreProtectedResponse, express.static(path.join(__dirname, '../public'), { index: false }));
 
 // API Routes (no-store on role-protected APIs)
 app.use('/api/auth', noStoreProtectedResponse, authRoutes);

@@ -173,8 +173,13 @@ const verifyToken = (req, res, next) => {
       }
     }
     const normPath = pathOnly.replace(/\/+$/, '') || pathOnly;
-    const isPublicTeacherSlotsGet = req.method === 'GET' && normPath === '/api/teacher/slots';
-    if (pathOnly.startsWith('/api/teacher') && !isPublicTeacherSlotsGet) {
+    const method = String(req.method || 'GET').toUpperCase();
+    /** Teacher router also hosts a few student-only handlers (see teacher.js + requireStudent). */
+    const studentMayCallThisTeacherRoute =
+      (method === 'GET' && normPath === '/api/teacher/slots') ||
+      (method === 'POST' && normPath === '/api/teacher/book-class') ||
+      (method === 'GET' && normPath === '/api/teacher/student/bookings');
+    if (pathOnly.startsWith('/api/teacher') && !studentMayCallThisTeacherRoute) {
       if (studentish && !teacherish && !adminClaims) {
         return res.status(403).json({
           error: 'Teacher token required for teacher routes.',

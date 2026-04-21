@@ -363,7 +363,8 @@
                 alert('No teacher ID available for this row.');
                 return;
             }
-            window.open('teacher-view-profile.html?teacherId=' + encodeURIComponent(id), '_blank', 'noopener,noreferrer');
+            // Use absolute path so this works when admin-users is embedded under /admin/* (HR hub iframe).
+            window.open('/teacher-view-profile.html?teacherId=' + encodeURIComponent(id), '_blank', 'noopener,noreferrer');
         }
 
         function viewStudentProfile(userMongoId) {
@@ -449,7 +450,7 @@
                 tbody.innerHTML = teachers.map(teacher => `
                     <tr>
                         <td>
-                            <button type="button" class="action-btn btn-view-profile" onclick="viewTeacherPublicProfile(${JSON.stringify((teacher.teacherId && String(teacher.teacherId).trim()) || (teacher.username && String(teacher.username).trim()) || '')})" title="View Profile">
+                            <button type="button" class="action-btn btn-view-profile" onclick="viewTeacherPublicProfile(decodeURIComponent('${encodeURIComponent((teacher.teacherId && String(teacher.teacherId).trim()) || (teacher.username && String(teacher.username).trim()) || '')}'))" title="View Profile">
                                 <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
@@ -529,7 +530,7 @@
                 tbody.innerHTML = students.map(student => `
                     <tr>
                         <td>
-                            <button type="button" class="action-btn btn-view-profile" onclick="viewStudentProfile(${JSON.stringify(String(student._id))})" title="View Profile">
+                            <button type="button" class="action-btn btn-view-profile" onclick="viewStudentProfile(decodeURIComponent('${encodeURIComponent(String(student._id))}'))" title="View Profile">
                                 <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
@@ -604,7 +605,7 @@
                 tbody.innerHTML = admins.map(admin => `
                     <tr>
                         <td>
-                            <button type="button" class="action-btn btn-view-profile" onclick="viewAdminProfile(${JSON.stringify(String(admin._id))})" title="View Profile">
+                            <button type="button" class="action-btn btn-view-profile" onclick="viewAdminProfile(decodeURIComponent('${encodeURIComponent(String(admin._id))}'))" title="View Profile">
                                 <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>

@@ -548,6 +548,9 @@ router.get('/lesson-file/:fileId', authenticateToken, async (req, res) => {
       hasData: !!file.fileData,
       dataLength: file.fileData?.length || 0
     });
+
+    // Lesson files are permanent; allow the browser to reuse the response for a long time.
+    res.set('Cache-Control', 'private, max-age=31536000, stale-while-revalidate=86400');
     
     // Return in same format as before for compatibility
     res.json({

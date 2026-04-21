@@ -321,10 +321,10 @@
                 slot.style.cursor = 'not-allowed';
                 slot.onclick = null;
               } else {
-                // If time hasn't passed, show as "BOOKED"
-                slot.innerHTML = 'BOOKED';
-                slot.style.background = '#ff6b6b';
-                slot.style.color = 'white';
+                // If time hasn't passed, show as booked (light cell, red label)
+                slot.innerHTML = 'Booked';
+                slot.style.background = '#ffe5e5';
+                slot.style.color = '#c82333';
                 slot.style.fontWeight = 'bold';
                 slot.style.fontSize = '0.8rem';
                 slot.title = 'This slot is booked';
@@ -703,7 +703,8 @@
         window.existingSlots = new Set();
         window.availableSlots = new Set();
         window.unavailableSlots = new Set();
-        
+        window.bookedSlots = new Set();
+
         if (data.slots) {
           console.log('🔄 Found', data.slots.length, 'existing slots from database');
           data.slots.forEach(slot => {
@@ -712,8 +713,14 @@
             // keep normalized time for downstream usage
             slot.time = normalizedTime;
             window.existingSlots.add(slotKey);
-            
-            // Separate available and unavailable slots
+
+            const st = String(slot.status || '').toLowerCase();
+            const slotSt = String(slot.slotStatus || '').toLowerCase();
+            if (st === 'booked' || slotSt === 'booked') {
+              window.bookedSlots.add(slotKey);
+            }
+
+            // Separate available and unavailable slots (booking-first: server may set available false when booked)
             if (slot.available === true) {
               window.availableSlots.add(slotKey);
             } else {
@@ -759,9 +766,8 @@
         }
         
         const bookingsData = await bookingsResponse.json();
-        
-        // Store booked slots and past classes for display
-        window.bookedSlots = new Set();
+
+        // Store past classes; merge class list into booked keys from slots API
         window.pastClasses = new Map();
         
         // Handle both 'bookings' and 'classes' response formats
@@ -785,9 +791,11 @@
                 studentName: booking.studentName || booking.studentId?.firstName || booking.studentId?.username || 'Unknown',
                 hasResolvedIssue: booking.hasResolvedIssue || false
               });
-            } else if (booking.status === 'confirmed' || booking.status === 'pending' || booking.status === 'Booked') {
-              // Store as booked slot
-              window.bookedSlots.add(slotId);
+            } else {
+              const st = String(booking.status || '').toLowerCase();
+              if (st === 'confirmed' || st === 'pending' || st === 'booked') {
+                window.bookedSlots.add(slotId);
+              }
             }
           });
         }
@@ -825,6 +833,9 @@
               // Apply AVAILABLE slots (mark as "Open")
         if (window.availableSlots) {
           window.availableSlots.forEach(slotKey => {
+          if (window.bookedSlots && window.bookedSlots.has(slotKey)) {
+            return;
+          }
           const lastDashIndex = slotKey.lastIndexOf('-');
           const date = slotKey.substring(0, lastDashIndex);
           const time = normalizeTimeString(slotKey.substring(lastDashIndex + 1));
@@ -1012,10 +1023,9 @@
               slotElement.onclick = null;
               console.log('✅ Applied past slot (time passed):', date, time);
             } else {
-              // If time hasn't passed, show as "BOOKED"
-              slotElement.innerHTML = 'BOOKED';
-              slotElement.style.background = '#ff6b6b';
-              slotElement.style.color = 'white';
+              slotElement.innerHTML = 'Booked';
+              slotElement.style.background = '#ffe5e5';
+              slotElement.style.color = '#c82333';
               slotElement.style.fontWeight = 'bold';
               slotElement.style.fontSize = '0.8rem';
               slotElement.title = 'This slot is booked';

@@ -1129,7 +1129,9 @@
                                 </div>
 
                                 <div class="form-group" id="teacher-preference-group" style="display: none;">
-                                    <label id="teacher-preference-label" for="custom-teacher-trigger">Choose teacher</label>
+                                    <label id="teacher-preference-label" for="booked-teacher-select">Choose teacher</label>
+                                    <select id="booked-teacher-select" name="bookedTeacherSelect" aria-labelledby="teacher-preference-label" style="display: none; width: 100%; max-width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #ced4da; font-size: 0.95rem; margin-bottom: 8px;">
+                                    </select>
                                     <div class="custom-teacher-select" id="custom-teacher-select">
                                         <input type="hidden" id="booked-teacher-id" name="bookedTeacherId" value="" autocomplete="off">
                                         <button type="button" class="custom-teacher-select__trigger" id="custom-teacher-trigger" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="teacher-preference-label">
@@ -1141,7 +1143,7 @@
                                         </button>
                                         <ul class="custom-teacher-select__list" id="custom-teacher-list" role="listbox" hidden></ul>
                                     </div>
-                                    <small style="color: #666; font-size: 0.8rem; margin-top: 4px; display: block;">Tap the box to choose a teacher or “First available”. Use ⓘ to view full profile without selecting yet.</small>
+                                    <small style="color: #666; font-size: 0.8rem; margin-top: 4px; display: block;">Choose a teacher or “First available”; the value sent when you book is the teacher’s account email (not the display name).</small>
                                 </div>
 
                                 <div class="form-group" id="assignment-mode-group" style="display: none;">
@@ -1293,13 +1295,44 @@
         let selectedSlots = new Map(); // Map to store selected slots: key = "date-time", value = {date, time, teacher}
         let availableSlots = new Map(); // Map to store available slots data
         let bookedSlots = new Map(); // Map to store booked slots data
+        /** Local date-time keys where the logged-in student already has a booking (wins over "available" when another teacher is still open). */
+        let ownBookedSlotKeys = new Set();
+
+        /** Case-insensitive teacher id / email for slot maps and dropdown matching. */
+        function normalizeId(id) {
+            if (id == null || id === '') return '';
+            return String(id).trim().toLowerCase();
+        }
+
+        /** Resolve Mongo slot _id for booking when multiple teachers share one calendar cell. */
+        function resolveSlotMongoIdForBooking(slot, preferredTeacherIdRaw) {
+            if (!slot) return '';
+            const rawMap = slot.slotIdsByTeacherId && typeof slot.slotIdsByTeacherId === 'object' ? slot.slotIdsByTeacherId : {};
+            const byNorm = {};
+            Object.keys(rawMap).forEach((k) => {
+                const nk = normalizeId(k);
+                if (nk && rawMap[k] != null) byNorm[nk] = String(rawMap[k]);
+            });
+            const pref = normalizeId(preferredTeacherIdRaw);
+            if (pref && byNorm[pref]) return byNorm[pref];
+            const candIds = slot.candidateTeacherIds || (slot.teacherId ? [slot.teacherId] : []);
+            const sortedTids = [...new Set(candIds.map((x) => normalizeId(x)).filter(Boolean))].sort((a, b) =>
+                a.localeCompare(b, undefined, { sensitivity: 'base' })
+            );
+            for (let i = 0; i < sortedTids.length; i++) {
+                const id = sortedTids[i];
+                if (id && byNorm[id]) return byNorm[id];
+            }
+            if (slot._id != null && String(slot._id).trim() !== '') return String(slot._id);
+            return '';
+        }
 
         function getStudentCalendarScopedTeacherId() {
             try {
                 const hid = document.getElementById('booked-teacher-id');
-                if (hid && hid.value && String(hid.value).trim()) return String(hid.value).trim();
+                if (hid && hid.value && String(hid.value).trim()) return normalizeId(hid.value);
                 const pt = sessionStorage.getItem('prefillPreferredTeacherId');
-                if (pt && String(pt).trim()) return String(pt).trim();
+                if (pt && String(pt).trim()) return normalizeId(pt);
             } catch (e) {
                 /* ignore */
             }
@@ -1709,7 +1742,8 @@
                 
                 availableSlots.clear();
                 bookedSlots.clear();
-                
+                ownBookedSlotKeys.clear();
+
                 const tz = userTimezone || 'UTC';
                 const toKey = (utcIso, fallbackDate, fallbackTime, fallbackZone) => {
                     try {
@@ -1737,22 +1771,39 @@
                         }
                         if (!utc) return;
                         const { key, local } = toKey(utc, slot.date, slot.time, slot.teacherLocalZone);
-                        const tid = slot.teacherId;
+                        const tid = normalizeId(slot.teacherEmail || slot.teacherId);
                         const tname = slot.teacherName || tid;
                         const existing = availableSlots.get(key);
                         const sid = slot._id != null ? String(slot._id) : '';
                         if (existing) {
-                            const ids = new Set(existing.candidateTeacherIds || (existing.teacherId ? [existing.teacherId] : []));
+                            const ids = new Set(
+                                [...(existing.candidateTeacherIds || (existing.teacherId ? [existing.teacherId] : []))]
+                                    .map((x) => normalizeId(x))
+                                    .filter(Boolean)
+                            );
                             if (tid) ids.add(tid);
                             const names = { ...(existing.teacherNames || {}) };
+                            Object.keys(names).forEach((k) => {
+                                const nk = normalizeId(k);
+                                if (nk && nk !== k) {
+                                    names[nk] = names[k];
+                                    delete names[k];
+                                }
+                            });
                             if (tid) names[tid] = tname;
-                            const slotIdsByTeacherId = { ...(existing.slotIdsByTeacherId || {}) };
+                            const slotIdsByTeacherId = {};
+                            Object.keys(existing.slotIdsByTeacherId || {}).forEach((k) => {
+                                const nk = normalizeId(k);
+                                if (nk && existing.slotIdsByTeacherId[k] != null) {
+                                    slotIdsByTeacherId[nk] = String(existing.slotIdsByTeacherId[k]);
+                                }
+                            });
                             if (tid && sid) slotIdsByTeacherId[tid] = sid;
                             availableSlots.set(key, {
                                 ...existing,
                                 ...slot,
                                 utc: existing.utc || utc,
-                                teacherId: tid || existing.teacherId,
+                                teacherId: tid || normalizeId(existing.teacherId),
                                 candidateTeacherIds: [...ids],
                                 teacherNames: names,
                                 slotIdsByTeacherId,
@@ -1782,7 +1833,13 @@
                 }
                 
                 if (Array.isArray(data.bookings)) {
-                    data.bookings.forEach(booking => {
+                    const me = normalizeId(
+                        localStorage.getItem('remoedUsername') ||
+                            localStorage.getItem('studentUsername') ||
+                            localStorage.getItem('username') ||
+                            ''
+                    );
+                    data.bookings.forEach((booking) => {
                         let utc = booking.dateTimeUtc || null;
                         if (!utc && booking.date && booking.time) {
                             try {
@@ -1794,6 +1851,9 @@
                         if (!utc) return;
                         const { key } = toKey(utc, booking.date, booking.time, booking.teacherLocalZone);
                         bookedSlots.set(key, true);
+                        if (me && normalizeId(booking.studentId) === me) {
+                            ownBookedSlotKeys.add(key);
+                        }
                     });
                 }
 
@@ -1884,8 +1944,18 @@
                     // Remove click handler for past slots
                     cell.onclick = null;
 
+                } else if (ownBookedSlotKeys.has(slotKey)) {
+                    // Your booking at this time — show Booked even if another teacher still has an open slot in the same cell
+                    cell.classList.remove('available', 'unavailable', 'past');
+                    cell.classList.add('booked');
+                    cell.textContent = 'Booked';
+                    cell.style.cursor = 'not-allowed';
+                    cell.style.fontWeight = 'bold';
+                    cell.style.fontSize = '0.8rem';
+                    cell.style.color = '#dc3545';
+                    cell.onclick = null;
                 } else if (availableSlotsArray.includes(slotKey)) {
-                    // Open slot for at least one teacher — show before global "booked" so another teacher's booking does not ghost-block this cell
+                    // Open slot for at least one teacher
                     cell.classList.remove('unavailable', 'past', 'booked');
                     cell.classList.add('available');
                     cell.textContent = 'Book Now';
@@ -1941,8 +2011,9 @@
                 : slotLocal.toISOString().split('T')[0] === currentDate;
             const isTimePassed = isSameDay && (Lux ? slotLocal <= now : slotLocal.getTime() <= now.getTime());
             
-            const isAvailable = availableSlots.has(slotKey);
-            const isBooked = !isAvailable && bookedSlots.has(slotKey);
+            const isOwnBooked = ownBookedSlotKeys.has(slotKey);
+            const isAvailable = availableSlots.has(slotKey) && !isOwnBooked;
+            const isBooked = isOwnBooked || (!availableSlots.has(slotKey) && bookedSlots.has(slotKey));
             
             console.log(`Toggling slot: ${date} ${time}`);
             console.log(`  - Slot key: ${slotKey}`);
@@ -2010,13 +2081,17 @@
                     }
                     
                     console.log('🔍 Selecting slot:', { date, time, teacherId: availableSlot.teacherId, candidates: availableSlot.candidateTeacherIds });
-                    selectedSlots.set(slotKey, { 
-                        date: availableSlot.localDate || date, 
-                        time: availableSlot.localTime || time, 
+                    selectedSlots.set(slotKey, {
+                        date: availableSlot.localDate || date,
+                        time: availableSlot.localTime || time,
                         utc: availableSlot.utc,
                         teacherId: availableSlot.teacherId,
                         candidateTeacherIds: availableSlot.candidateTeacherIds || (availableSlot.teacherId ? [availableSlot.teacherId] : []),
-                        teacherNames: availableSlot.teacherNames || {}
+                        teacherNames: availableSlot.teacherNames || {},
+                        slotIdsByTeacherId: availableSlot.slotIdsByTeacherId && typeof availableSlot.slotIdsByTeacherId === 'object'
+                            ? { ...availableSlot.slotIdsByTeacherId }
+                            : {},
+                        _id: availableSlot._id != null ? availableSlot._id : undefined
                     });
                     cell.classList.add('selected');
                     cell.textContent = '✓';
@@ -2111,17 +2186,23 @@
             if (!modeGroup) return;
             const slot = selectedSlots.size ? Array.from(selectedSlots.values())[0] : null;
             const rawIds = slot ? (slot.candidateTeacherIds || (slot.teacherId ? [slot.teacherId] : [])) : [];
-            const ids = [...new Set(rawIds.map((id) => (id != null ? String(id).trim() : '')).filter(Boolean))];
+            const ids = [...new Set(rawIds.map((id) => normalizeId(id)).filter(Boolean))];
             const useAuto = !(hid && hid.value && String(hid.value).trim());
             modeGroup.style.display = useAuto && ids.length > 1 ? 'block' : 'none';
         }
 
         function setTeacherTriggerFromSelection(teacherId, label, photo) {
             const hid = document.getElementById('booked-teacher-id');
+            const sel = document.getElementById('booked-teacher-select');
             const textEl = document.getElementById('custom-teacher-trigger-text');
             const av = document.getElementById('custom-teacher-trigger-avatar');
-            const tid = teacherId != null ? String(teacherId).trim() : '';
+            const tid = teacherId != null && String(teacherId).trim() !== '' ? normalizeId(teacherId) : '';
             if (hid) hid.value = tid;
+            if (sel && sel.options && sel.options.length) {
+                const match = [...sel.options].findIndex((o) => normalizeId(o.value) === tid);
+                if (match >= 0) sel.selectedIndex = match;
+                else if (!tid) sel.selectedIndex = 0;
+            }
             if (textEl) textEl.textContent = label || 'First available (default)';
             if (av) {
                 if (photo && tid) {
@@ -2161,6 +2242,13 @@
             closeCustomTeacherDropdown();
             const listEl = document.getElementById('custom-teacher-list');
             if (listEl) listEl.innerHTML = '';
+            const sel = document.getElementById('booked-teacher-select');
+            if (sel) {
+                sel.innerHTML = '';
+                sel.style.display = 'none';
+            }
+            const customRoot = document.getElementById('custom-teacher-select');
+            if (customRoot) customRoot.style.display = '';
             customTeacherListTeachers = [];
         }
 
@@ -2220,6 +2308,16 @@
         }
 
         function setupCustomTeacherSelectorListeners() {
+            const teacherSel = document.getElementById('booked-teacher-select');
+            if (teacherSel && teacherSel.dataset.bound !== '1') {
+                teacherSel.dataset.bound = '1';
+                teacherSel.addEventListener('change', () => {
+                    const opt = teacherSel.options[teacherSel.selectedIndex];
+                    const v = normalizeId(teacherSel.value || '');
+                    const lab = opt ? opt.textContent : 'First available (default)';
+                    setTeacherTriggerFromSelection(v, v ? lab : 'First available (default)', null);
+                });
+            }
             const trigger = document.getElementById('custom-teacher-trigger');
             const root = document.getElementById('custom-teacher-select');
             if (!trigger || trigger.dataset.bound === '1') return;
@@ -2255,7 +2353,8 @@
                     if (!teacherGlassPending) return;
                     const t = teacherGlassPending;
                     const display = t.displayName || t.name || t.teacherId;
-                    setTeacherTriggerFromSelection(t.teacherId, display, t.photo);
+                    const bookingKey = normalizeId(t.teacherEmail || t.teacherId);
+                    setTeacherTriggerFromSelection(bookingKey, display, t.photo);
                     closeTeacherGlassModal();
                     closeCustomTeacherDropdown();
                 });
@@ -2263,15 +2362,17 @@
         }
 
         /**
-         * When several teachers share the same open slot, show custom teacher selector + hidden booked-teacher-id.
-         * Empty booked-teacher-id = first available (server uses assignmentMode).
+         * Multi-teacher cells: <select> with option value = normalized teacher email (booking key), label = display name.
+         * Single teacher: hidden field set to that email. Empty = first available (assignmentMode on server).
          */
         async function syncTeacherPreferenceControls() {
             setupCustomTeacherSelectorListeners();
             const prefGroup = document.getElementById('teacher-preference-group');
             const modeGroup = document.getElementById('assignment-mode-group');
             const listEl = document.getElementById('custom-teacher-list');
-            if (!prefGroup || !modeGroup || !listEl) return;
+            const sel = document.getElementById('booked-teacher-select');
+            const customRoot = document.getElementById('custom-teacher-select');
+            if (!prefGroup || !modeGroup) return;
 
             if (selectedSlots.size === 0) {
                 prefGroup.style.display = 'none';
@@ -2282,8 +2383,8 @@
 
             const slot = Array.from(selectedSlots.values())[0];
             const rawIds = slot.candidateTeacherIds || (slot.teacherId ? [slot.teacherId] : []);
-            const ids = [...new Set(rawIds.map((id) => (id != null ? String(id).trim() : '')).filter(Boolean))].sort(
-                (a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })
+            const ids = [...new Set(rawIds.map((id) => normalizeId(id)).filter(Boolean))].sort((a, b) =>
+                a.localeCompare(b, undefined, { sensitivity: 'base' })
             );
             const names = slot.teacherNames || {};
 
@@ -2293,7 +2394,10 @@
                     const res = await fetch('/api/teacher/available-teachers?dateTimeUtc=' + encodeURIComponent(slot.utc));
                     if (res.ok) {
                         const data = await res.json();
-                        teachers = (data.teachers || []).filter((x) => ids.includes(x.teacherId));
+                        const idSet = new Set(ids);
+                        teachers = (data.teachers || []).filter((x) =>
+                            idSet.has(normalizeId(x.teacherEmail || x.teacherId))
+                        );
                     }
                 } catch (e) {
                     console.warn('available-teachers', e);
@@ -2302,7 +2406,8 @@
             if (teachers.length === 0) {
                 teachers = ids.map((tid) => ({
                     teacherId: tid,
-                    displayName: names[tid] || names[String(tid)] || tid,
+                    teacherEmail: tid,
+                    displayName: names[tid] || tid,
                     name: tid,
                     photo: null,
                     intro: '',
@@ -2313,122 +2418,81 @@
                 }));
             }
             customTeacherListTeachers = teachers;
-            listEl.innerHTML = '';
+            if (listEl) listEl.innerHTML = '';
             closeCustomTeacherDropdown();
 
             if (ids.length > 1) {
                 prefGroup.style.display = 'block';
-                const liFirst = document.createElement('li');
-                liFirst.className = 'cts-item cts-item--first';
-                liFirst.setAttribute('role', 'option');
-                const btnFirst = document.createElement('button');
-                btnFirst.type = 'button';
-                btnFirst.className = 'cts-item__main';
-                btnFirst.innerHTML =
-                    '<div class="cts-item__photo cts-item__photo--placeholder" aria-hidden="true">⚡</div>' +
-                    '<div class="cts-item__center"><div class="cts-item__name">First available (default)</div>' +
-                    '<div class="cts-item__rating cts-item__rating--muted">Auto-assign from open teachers</div></div>';
-                btnFirst.addEventListener('click', () => {
-                    setTeacherTriggerFromSelection('', 'First available (default)', null);
-                    closeCustomTeacherDropdown();
-                });
-                liFirst.appendChild(btnFirst);
-                listEl.appendChild(liFirst);
-
-                teachers.forEach((t) => {
-                    const display = t.displayName || t.name || t.teacherId;
-                    const rating = t.rating != null ? Number(t.rating).toFixed(1) : '4.9';
-                    const li = document.createElement('li');
-                    li.className = 'cts-item';
-                    li.setAttribute('role', 'option');
-
-                    const btnMain = document.createElement('button');
-                    btnMain.type = 'button';
-                    btnMain.className = 'cts-item__main';
-                    const wrap = document.createElement('div');
-                    wrap.className = 'cts-item__photo-wrap';
-                    const purl = teacherPhotoUrl(t.photo);
-                    if (purl) {
-                        const img = document.createElement('img');
-                        img.className = 'cts-item__photo';
-                        img.src = purl;
-                        img.alt = '';
-                        wrap.appendChild(img);
-                    } else {
-                        const ph = document.createElement('div');
-                        ph.className = 'cts-item__photo cts-item__photo--placeholder';
-                        ph.textContent = '👤';
-                        wrap.appendChild(ph);
-                    }
-                    const center = document.createElement('div');
-                    center.className = 'cts-item__center';
-                    const nm = document.createElement('div');
-                    nm.className = 'cts-item__name';
-                    nm.textContent = display;
-                    const rt = document.createElement('div');
-                    rt.className = 'cts-item__rating';
-                    rt.textContent = '⭐️ ' + rating;
-                    center.appendChild(nm);
-                    center.appendChild(rt);
-                    btnMain.appendChild(wrap);
-                    btnMain.appendChild(center);
-                    btnMain.addEventListener('click', () => {
-                        setTeacherTriggerFromSelection(t.teacherId, display, t.photo);
-                        closeCustomTeacherDropdown();
+                if (customRoot) customRoot.style.display = 'none';
+                if (sel) {
+                    sel.style.display = 'block';
+                    sel.innerHTML = '';
+                    const o0 = document.createElement('option');
+                    o0.value = '';
+                    o0.textContent = 'First available (default)';
+                    sel.appendChild(o0);
+                    teachers.forEach((t) => {
+                        const bookingKey = normalizeId(t.teacherEmail || t.teacherId);
+                        const lab = t.displayName || t.name || bookingKey;
+                        const opt = document.createElement('option');
+                        opt.value = bookingKey;
+                        opt.textContent = lab;
+                        sel.appendChild(opt);
                     });
-
-                    const btnInfo = document.createElement('button');
-                    btnInfo.type = 'button';
-                    btnInfo.className = 'cts-item__info';
-                    btnInfo.setAttribute('aria-label', 'View profile for ' + display);
-                    btnInfo.textContent = 'ⓘ';
-                    btnInfo.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        openTeacherGlassModal(t);
-                    });
-
-                    li.appendChild(btnMain);
-                    li.appendChild(btnInfo);
-                    listEl.appendChild(li);
-                });
-
+                    sel.selectedIndex = 0;
+                }
                 setTeacherTriggerFromSelection('', 'First available (default)', null);
                 updateAssignmentModeFromTeacherInput();
             } else if (ids.length === 1) {
                 prefGroup.style.display = 'none';
                 modeGroup.style.display = 'none';
-                const only = teachers[0];
-                if (only) {
-                    setTeacherTriggerFromSelection(only.teacherId, only.displayName || only.name, only.photo);
-                } else {
-                    const tid = ids[0];
-                    setTeacherTriggerFromSelection(tid, names[tid] || names[String(tid)] || tid, null);
+                if (sel) {
+                    sel.innerHTML = '';
+                    sel.style.display = 'none';
                 }
+                if (customRoot) customRoot.style.display = '';
+                const only = teachers[0];
+                const bookingKey = only ? normalizeId(only.teacherEmail || only.teacherId) : ids[0];
+                const label = only ? only.displayName || only.name || bookingKey : names[bookingKey] || bookingKey;
+                const photo = only ? only.photo : null;
+                setTeacherTriggerFromSelection(bookingKey, label, photo);
             } else {
                 prefGroup.style.display = 'none';
                 modeGroup.style.display = 'none';
+                if (sel) {
+                    sel.innerHTML = '';
+                    sel.style.display = 'none';
+                }
+                if (customRoot) customRoot.style.display = '';
                 resetCustomTeacherSelector();
             }
 
             try {
                 const prefill = sessionStorage.getItem('prefillPreferredTeacherId');
-                if (prefill && ids.includes(prefill)) {
-                    if (ids.length > 1) {
-                        const t = teachers.find((x) => x.teacherId === prefill);
+                if (prefill && ids.some((id) => normalizeId(id) === normalizeId(prefill))) {
+                    if (ids.length > 1 && sel) {
+                        const preNorm = normalizeId(prefill);
+                        const t = teachers.find(
+                            (x) => normalizeId(x.teacherEmail || x.teacherId) === preNorm
+                        );
                         if (t) {
                             setTeacherTriggerFromSelection(
-                                t.teacherId,
-                                t.displayName || t.name || t.teacherId,
+                                normalizeId(t.teacherEmail || t.teacherId),
+                                t.displayName || t.name || preNorm,
                                 t.photo
                             );
                         } else {
-                            setTeacherTriggerFromSelection(
-                                prefill,
-                                names[prefill] || names[String(prefill)] || prefill,
-                                null
-                            );
+                            setTeacherTriggerFromSelection(preNorm, names[preNorm] || preNorm, null);
+                            const hasOpt = [...sel.options].some((o) => normalizeId(o.value) === preNorm);
+                            if (!hasOpt && preNorm) {
+                                const opt = document.createElement('option');
+                                opt.value = preNorm;
+                                opt.textContent = names[preNorm] || preNorm;
+                                sel.appendChild(opt);
+                            }
                         }
+                        const idx = [...sel.options].findIndex((o) => normalizeId(o.value) === preNorm);
+                        if (idx >= 0) sel.selectedIndex = idx;
                         updateAssignmentModeFromTeacherInput();
                     }
                     sessionStorage.removeItem('prefillPreferredTeacherId');
@@ -2750,24 +2814,21 @@
             try {
                 // Book single slot - use trimmed values
                 const bookedHid = document.getElementById('booked-teacher-id');
+                const teacherSel = document.getElementById('booked-teacher-select');
                 const modeEl = document.getElementById('assignment-mode');
-                const preferredTeacherId =
-                    bookedHid && bookedHid.value ? String(bookedHid.value).trim() : '';
+                let preferredTeacherId = '';
+                const selShown =
+                    teacherSel &&
+                    teacherSel.style.display !== 'none' &&
+                    window.getComputedStyle(teacherSel).display !== 'none';
+                if (selShown) {
+                    preferredTeacherId = normalizeId(teacherSel.value || '');
+                } else if (bookedHid && bookedHid.value) {
+                    preferredTeacherId = normalizeId(bookedHid.value);
+                }
                 const assignmentMode = modeEl && modeEl.value ? modeEl.value : 'firstAvailable';
 
-                const slotIdsByT = slot.slotIdsByTeacherId || {};
-                const candIds = slot.candidateTeacherIds || (slot.teacherId ? [slot.teacherId] : []);
-                const sortedTids = [...new Set(candIds.map((x) => String(x).trim()).filter(Boolean))].sort((a, b) =>
-                    a.localeCompare(b, undefined, { sensitivity: 'base' })
-                );
-                let slotMongoId = '';
-                if (preferredTeacherId && slotIdsByT[preferredTeacherId]) {
-                    slotMongoId = String(slotIdsByT[preferredTeacherId]);
-                } else if (sortedTids.length && slotIdsByT[sortedTids[0]]) {
-                    slotMongoId = String(slotIdsByT[sortedTids[0]]);
-                } else if (slot._id != null) {
-                    slotMongoId = String(slot._id);
-                }
+                let slotMongoId = resolveSlotMongoIdForBooking(slot, preferredTeacherId);
                 if (!slotMongoId) {
                     showMessage(
                         'Error: Missing slot reference for this teacher. Please refresh the calendar and try again.',
