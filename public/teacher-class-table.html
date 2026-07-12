@@ -1085,7 +1085,7 @@
                 btn.addEventListener('click', function (ev) {
                   ev.preventDefault();
                   ev.stopPropagation();
-                  openGiveFeedbackForBooking(booking);
+                  invokeOpenGiveFeedbackForBooking(booking);
                 });
               }
               slotElement.onclick = function (ev) {
@@ -2174,13 +2174,20 @@
       }
     }
 
+    function invokeOpenGiveFeedbackForBooking(booking) {
+      void openGiveFeedbackForBooking(booking).catch(function (err) {
+        console.warn('openGiveFeedbackForBooking failed:', err);
+        showNotification('Could not open feedback form', 'error');
+      });
+    }
+
     function openFeedbackModal(bookingId) {
       const id = bookingId && String(bookingId).trim();
       if (!id) {
         showNotification('Missing class reference', 'error');
         return;
       }
-      openGiveFeedbackForBooking({ _id: id });
+      invokeOpenGiveFeedbackForBooking({ _id: id });
     }
     window.openFeedbackModal = openFeedbackModal;
 
