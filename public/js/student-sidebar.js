@@ -14,6 +14,7 @@
         { id: 'classes', label: 'My Classes', href: 'student-booking-history.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>' },
         { id: 'games', label: 'Play & Learn', href: 'student-games-activities.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M6 12h4M8 10v4"/><path d="M15 11h.01M18 13h.01"/><rect x="2" y="7" width="20" height="10" rx="5"/></svg>' },
         { id: 'videos', label: 'Videos', href: 'student-videos.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><rect x="2" y="7" width="15" height="10" rx="2"/><path d="M17 10l5-3v10l-5-3z"/></svg>' },
+        { id: 'messages', label: 'Messages', href: 'student-messages.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>' },
         { id: 'journey', label: 'My Learning Journey', href: 'student-learning-journey.html', studentOnly: true, icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M4 19h16"/><path d="M6 17l4-14 4 10 4-6 2 10"/><circle cx="8" cy="17" r="2"/><circle cx="12" cy="13" r="2"/><circle cx="16" cy="11" r="2"/><circle cx="18" cy="17" r="2"/></svg>' },
         { id: 'profile', label: 'My Profile', href: 'student-profile.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>' },
         { id: 'level', label: 'My Level', href: 'student-assessment.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 12h10M7 8h6M7 16h4"/></svg>' },
@@ -46,6 +47,8 @@
                 return 'games';
             case 'student-videos.html':
                 return 'videos';
+            case 'student-messages.html':
+                return 'messages';
             case 'student-learning-journey.html':
                 return 'journey';
             case 'student-profile.html':
@@ -270,6 +273,7 @@
         applyGreetingFromStorage(container);
         loadProfileIntoSidebar(container);
         queuePortalLayoutMount();
+        queuePortalSidebarChromeMount();
     }
 
     function queuePortalLayoutMount() {
@@ -299,6 +303,35 @@
             } catch (e1) { /* ignore */ }
         };
         document.head.appendChild(s);
+    }
+
+    function queuePortalSidebarChromeMount() {
+        if (typeof global.RemoedPortalSidebarChrome !== 'undefined' && global.RemoedPortalSidebarChrome.mount) {
+            global.RemoedPortalSidebarChrome.mount();
+            return;
+        }
+        if (document.querySelector('script[data-remoed-portal-sidebar-chrome]')) {
+            document.addEventListener('remoed-portal-sidebar-chrome-ready', function onceCh() {
+                document.removeEventListener('remoed-portal-sidebar-chrome-ready', onceCh);
+                if (global.RemoedPortalSidebarChrome && global.RemoedPortalSidebarChrome.mount) {
+                    global.RemoedPortalSidebarChrome.mount();
+                }
+            });
+            return;
+        }
+        var ch = document.createElement('script');
+        ch.src = 'js/portal-sidebar-chrome.js';
+        ch.async = true;
+        ch.setAttribute('data-remoed-portal-sidebar-chrome', '1');
+        ch.onload = function () {
+            if (global.RemoedPortalSidebarChrome && global.RemoedPortalSidebarChrome.mount) {
+                global.RemoedPortalSidebarChrome.mount();
+            }
+            try {
+                document.dispatchEvent(new Event('remoed-portal-sidebar-chrome-ready'));
+            } catch (e2) { /* ignore */ }
+        };
+        document.head.appendChild(ch);
     }
 
     function injectStudentNoMotionStyles() {

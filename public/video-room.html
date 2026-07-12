@@ -980,17 +980,7 @@
                 color: #1ca7e7;
             `;
             
-            if (file.type.includes('pdf')) {
-                fileIcon.textContent = '📄';
-            } else if (file.type.includes('image')) {
-                fileIcon.textContent = '🖼️';
-            } else if (file.type.includes('document') || file.name.includes('.doc')) {
-                fileIcon.textContent = '📝';
-            } else if (file.type.includes('presentation') || file.name.includes('.ppt')) {
-                fileIcon.textContent = '📊';
-            } else {
-                fileIcon.textContent = '📁';
-            }
+            fileIcon.textContent = getLessonFileIcon(file);
             
             const fileDetails = document.createElement('div');
             fileDetails.innerHTML = `
@@ -1069,6 +1059,27 @@
         }
     }
 
+    function getFileCategory(file) {
+        const name = String(file.name || file.originalName || '').toLowerCase();
+        const type = String(file.type || file.mimeType || '').toLowerCase();
+        if (type.includes('pdf') || name.endsWith('.pdf')) return 'pdf';
+        if (type.includes('image') || /\.(png|jpe?g|gif|webp|bmp)$/i.test(name)) return 'image';
+        if (type.includes('video') || /\.(mp4|webm|ogg|mov|avi|mkv)$/i.test(name)) return 'video';
+        if (type.includes('presentation') || type.includes('powerpoint') || /\.(pptx?|key)$/i.test(name)) return 'presentation';
+        if (type.includes('document') || type.includes('text/plain') || /\.(docx?|odt|txt)$/i.test(name)) return 'document';
+        return 'file';
+    }
+
+    function getLessonFileIcon(file) {
+        const category = getFileCategory(file);
+        if (category === 'pdf') return '📄';
+        if (category === 'image') return '🖼️';
+        if (category === 'video') return '🎥';
+        if (category === 'presentation') return '📊';
+        if (category === 'document') return '📝';
+        return '📁';
+    }
+
     function updateLessonFilePicker() {
         const pickerContainer = document.getElementById('lesson-file-picker-container');
         const viewer = document.getElementById('lesson-file-viewer');
@@ -1112,7 +1123,9 @@
         viewer.innerHTML = '';
         const previewUrl = file.previewUrl || file.url;
         
-        if (file.type.includes('pdf')) {
+        const category = getFileCategory(file);
+
+        if (category === 'pdf') {
             const iframe = document.createElement('iframe');
             iframe.src = previewUrl;
             iframe.style.cssText = `
@@ -1122,7 +1135,7 @@
                 border-radius: 8px;
             `;
             viewer.appendChild(iframe);
-        } else if (file.type.includes('image')) {
+        } else if (category === 'image') {
             const img = document.createElement('img');
             img.src = previewUrl;
             img.style.cssText = `
@@ -1132,7 +1145,7 @@
             `;
             img.alt = file.name;
             viewer.appendChild(img);
-        } else if (file.type.includes('video')) {
+        } else if (category === 'video') {
             const video = document.createElement('video');
             video.src = previewUrl;
             video.controls = true;
@@ -1142,6 +1155,51 @@
                 border-radius: 8px;
             `;
             viewer.appendChild(video);
+        } else if (category === 'presentation') {
+            const wrapper = document.createElement('div');
+            wrapper.style.cssText = `
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+            `;
+            const hint = document.createElement('div');
+            hint.textContent = 'PowerPoint slides are opened in a browser preview when available.';
+            hint.style.cssText = `
+                color: #475569;
+                font-size: 0.95rem;
+                background: #f8fafc;
+                border: 1px solid #e2e8f0;
+                border-radius: 8px;
+                padding: 10px 12px;
+            `;
+            const iframe = document.createElement('iframe');
+            iframe.src = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent((previewUrl.startsWith('http') ? previewUrl : `${window.location.origin}${previewUrl}`))}`;
+            iframe.style.cssText = `
+                width: 100%;
+                height: 700px;
+                min-height: 70vh;
+                border: 1px solid #e2e8f0;
+                border-radius: 8px;
+                background: white;
+            `;
+            const downloadLink = document.createElement('a');
+            downloadLink.href = file.url || previewUrl;
+            downloadLink.target = '_blank';
+            downloadLink.rel = 'noopener noreferrer';
+            downloadLink.textContent = '⬇️ Download PowerPoint';
+            downloadLink.style.cssText = `
+                align-self: flex-start;
+                background: #1ca7e7;
+                color: white;
+                text-decoration: none;
+                padding: 10px 16px;
+                border-radius: 6px;
+                font-weight: 600;
+            `;
+            wrapper.appendChild(hint);
+            wrapper.appendChild(iframe);
+            wrapper.appendChild(downloadLink);
+            viewer.appendChild(wrapper);
         } else {
             const previewCard = document.createElement('div');
             previewCard.style.cssText = `
@@ -1163,13 +1221,7 @@
                 color: #1ca7e7;
             `;
             
-            if (file.type.includes('document') || file.name.includes('.doc')) {
-                fileIcon.textContent = '📝';
-            } else if (file.type.includes('presentation') || file.name.includes('.ppt')) {
-                fileIcon.textContent = '📊';
-            } else {
-                fileIcon.textContent = '📁';
-            }
+            fileIcon.textContent = getLessonFileIcon(file);
             
             const fileName = document.createElement('h3');
             fileName.textContent = file.name;
@@ -1327,17 +1379,7 @@
                     color: #1ca7e7;
                 `;
                 
-                if (file.type.includes('pdf')) {
-                    fileIcon.textContent = '📄';
-                } else if (file.type.includes('image')) {
-                    fileIcon.textContent = '🖼️';
-                } else if (file.type.includes('document') || file.name.includes('.doc')) {
-                    fileIcon.textContent = '📝';
-                } else if (file.type.includes('presentation') || file.name.includes('.ppt')) {
-                    fileIcon.textContent = '📊';
-                } else {
-                    fileIcon.textContent = '📁';
-                }
+                fileIcon.textContent = getLessonFileIcon(file);
                 
                 const fileDetails = document.createElement('div');
                 fileDetails.innerHTML = `

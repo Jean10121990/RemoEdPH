@@ -2354,12 +2354,19 @@ function getCurrentPayPeriodKey(date = new Date()) {
   return `${y}-${m}-${half}`;
 }
 
+function isPayableCompletedClass(booking) {
+  return (
+    String(booking.status || '').toLowerCase() === 'completed' &&
+    booking.attendance &&
+    booking.attendance.classCompleted === true
+  );
+}
+
 function computeSalaryRowFromBookings(weekClasses, teacher, globalRate, startDate, endDate) {
-  const completedClasses = weekClasses.filter((booking) => booking.status === 'completed').length;
+  const completedClasses = weekClasses.filter(isPayableCompletedClass).length;
   const studentAbsentClasses = weekClasses.filter(
     (booking) =>
-      booking.status === 'completed' &&
-      booking.attendance &&
+      isPayableCompletedClass(booking) &&
       booking.attendance.teacherEntered &&
       !booking.attendance.studentEntered
   ).length;
@@ -2368,8 +2375,7 @@ function computeSalaryRowFromBookings(weekClasses, teacher, globalRate, startDat
   ).length;
   const lateClasses = weekClasses.filter(
     (booking) =>
-      booking.status === 'completed' &&
-      booking.attendance &&
+      isPayableCompletedClass(booking) &&
       booking.attendance.teacherEntered &&
       booking.lateMinutes &&
       booking.lateMinutes > 0

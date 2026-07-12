@@ -27,6 +27,7 @@ const Reward = require('./models/Reward');
 const Feedback = require('./models/Feedback');
 const IssueReport = require('./models/IssueReport');
 const PeerMessage = require('./models/PeerMessage');
+const { aggregateActiveChats, fetchPeerMessagesPage } = require('./services/peerInboxQueries');
 const Referral = require('./models/Referral');
 const PortalVideo = require('./models/PortalVideo');
 const { verifyToken, requireTeacher, requireStudent, requireOwnTeacherData, requireOwnStudentData, logAccess } = require('./authMiddleware');
@@ -439,6 +440,24 @@ router.get('/test', (req, res) => {
 
 const PUBLIC_TEACHER_FILTER = { status: { $ne: 'suspended' } };
 
+/** Resolve a student booking key (often normalized email) to a Teacher doc for public profile APIs. */
+async function findLeanTeacherForPublicProfile(rawKey) {
+  const raw = String(rawKey || '').trim();
+  if (!raw) return null;
+  const norm = normalizeId(raw);
+  const or = [{ teacherId: raw }, { teacherId: norm }];
+  if (norm.includes('@')) {
+    const rx = new RegExp(`^${escapeRegexForTeacherLookup(norm)}$`, 'i');
+    or.push({ email: { $regex: rx } });
+    or.push({ username: { $regex: rx } });
+  }
+  return Teacher.findOne({ ...PUBLIC_TEACHER_FILTER, $or: or })
+    .select(
+      'teacherId username firstName middleName lastName fullname profilePicture introduction intro videoIntroduction language professionalCertifications documents.certifications'
+    )
+    .lean();
+}
+
 function displayNameFromTeacherRow(t) {
   return (
     (t.fullname && String(t.fullname).trim()) ||
@@ -555,11 +574,7 @@ router.get('/public/profile/:teacherId', async (req, res) => {
     if (!teacherId) {
       return res.status(400).json({ error: 'Invalid teacher id' });
     }
-    const t = await Teacher.findOne({ teacherId, ...PUBLIC_TEACHER_FILTER })
-      .select(
-        'teacherId username firstName middleName lastName fullname profilePicture introduction intro videoIntroduction language professionalCertifications documents.certifications'
-      )
-      .lean();
+    const t = await findLeanTeacherForPublicProfile(teacherId);
     if (!t) {
       return res.status(404).json({ error: 'Teacher not found' });
     }
@@ -630,6 +645,8 @@ router.post('/peer-message', verifyToken, requireTeacher, async (req, res) => {
     if (io) {
       io.to(`teacher-msg:${recipientId}`).emit('peer-message:new', payload);
       io.to(`teacher-msg:${senderId}`).emit('peer-message:new', payload);
+      io.to(`student-msg:${recipientId}`).emit('peer-message:new', payload);
+      io.to(`student-msg:${senderId}`).emit('peer-message:new', payload);
     }
     res.json({ success: true, message: 'Message sent successfully', peerMessage: payload });
   } catch (err) {
@@ -638,47 +655,31 @@ router.post('/peer-message', verifyToken, requireTeacher, async (req, res) => {
   }
 });
 
-// List recent peer chats (Messenger-style list)
+// List peer chats — only users with at least one message (aggregation)
 router.get('/peer-chats', verifyToken, requireTeacher, async (req, res) => {
   try {
     const me = req.user.teacherId;
-    const msgs = await PeerMessage.find({
-      $or: [{ senderId: me }, { recipientId: me }]
-    }).sort({ createdAt: -1 }).limit(200);
+    const rows = await aggregateActiveChats(me);
 
-    const byPeer = new Map();
-    for (const m of msgs) {
-      const peerId = m.senderId === me ? m.recipientId : m.senderId;
-      if (!byPeer.has(peerId)) {
-        byPeer.set(peerId, {
-          peerId,
-          lastMessage: m.message,
-          lastAt: m.createdAt,
-          unreadCount: 0
-        });
-      }
-      if (m.recipientId === me && !m.readAt) {
-        const row = byPeer.get(peerId);
-        row.unreadCount += 1;
-      }
-    }
+    const peerIds = rows.map((r) => r.peerId);
+    const peers = await Teacher.find({ teacherId: { $in: peerIds } })
+      .select('teacherId fullname firstName lastName profilePicture')
+      .lean();
+    const peerMap = new Map(peers.map((t) => [t.teacherId, t]));
 
-    const peers = await Teacher.find({ teacherId: { $in: Array.from(byPeer.keys()) } })
-      .select('teacherId fullname firstName lastName profilePicture');
-    const peerMap = new Map(peers.map(t => [t.teacherId, t]));
-
-    const chats = Array.from(byPeer.values()).map(c => {
+    const chats = rows.map((c) => {
       const t = peerMap.get(c.peerId);
-      const name = t?.fullname || `${t?.firstName || ''} ${t?.lastName || ''}`.trim() || c.peerId;
+      const name =
+        t?.fullname || `${t?.firstName || ''} ${t?.lastName || ''}`.trim() || c.peerId;
       return {
         peerId: c.peerId,
         name,
         profilePicture: t?.profilePicture || null,
         lastMessage: c.lastMessage,
         lastAt: c.lastAt,
-        unreadCount: c.unreadCount
+        unreadCount: c.unreadCount,
       };
-    }).sort((a, b) => new Date(b.lastAt) - new Date(a.lastAt));
+    });
 
     res.json({ success: true, chats });
   } catch (err) {
@@ -687,21 +688,61 @@ router.get('/peer-chats', verifyToken, requireTeacher, async (req, res) => {
   }
 });
 
-// Get conversation messages with a specific peer
+/** Search teachers by name — only when user types (not used for initial inbox). */
+router.get('/peer-chats/user-search', verifyToken, requireTeacher, async (req, res) => {
+  try {
+    const me = req.user.teacherId;
+    const q = String(req.query.q || '').trim();
+    if (q.length < 2) {
+      return res.json({ success: true, users: [] });
+    }
+    const esc = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const teachers = await Teacher.find({
+      teacherId: { $ne: me },
+      $or: [
+        { teacherId: { $regex: esc, $options: 'i' } },
+        { username: { $regex: esc, $options: 'i' } },
+        { fullname: { $regex: esc, $options: 'i' } },
+        { firstName: { $regex: esc, $options: 'i' } },
+        { lastName: { $regex: esc, $options: 'i' } },
+        { email: { $regex: esc, $options: 'i' } },
+      ],
+    })
+      .select('teacherId fullname firstName lastName profilePicture username')
+      .limit(25)
+      .lean();
+
+    const users = teachers.map((t) => ({
+      peerId: t.teacherId,
+      name:
+        t.fullname ||
+        `${t.firstName || ''} ${t.lastName || ''}`.trim() ||
+        t.username ||
+        t.teacherId,
+      profilePicture: t.profilePicture || null,
+    }));
+
+    res.json({ success: true, users });
+  } catch (err) {
+    console.error('peer-chats user-search:', err);
+    res.status(500).json({ error: 'Search failed' });
+  }
+});
+
+// Get conversation messages with a specific peer (paginated: newest batch first, scroll up for older)
 router.get('/peer-messages/:peerId', verifyToken, requireTeacher, async (req, res) => {
   try {
     const me = req.user.teacherId;
     const peerId = String(req.params.peerId || '');
     if (!peerId) return res.status(400).json({ error: 'Missing peerId' });
 
-    const messages = await PeerMessage.find({
-      $or: [
-        { senderId: me, recipientId: peerId },
-        { senderId: peerId, recipientId: me }
-      ]
-    }).sort({ createdAt: 1 }).limit(1000);
+    const { messages, hasMore, nextBefore } = await fetchPeerMessagesPage({
+      me,
+      peerId,
+      before: req.query.before || null,
+      limit: req.query.limit,
+    });
 
-    // Mark incoming as read
     await PeerMessage.updateMany(
       { senderId: peerId, recipientId: me, readAt: null },
       { $set: { readAt: new Date() } }
@@ -709,14 +750,9 @@ router.get('/peer-messages/:peerId', verifyToken, requireTeacher, async (req, re
 
     res.json({
       success: true,
-      messages: messages.map(m => ({
-        id: m._id.toString(),
-        senderId: m.senderId,
-        recipientId: m.recipientId,
-        message: m.message,
-        createdAt: m.createdAt,
-        readAt: m.readAt
-      }))
+      messages,
+      hasMore,
+      nextBefore,
     });
   } catch (err) {
     console.error('Error loading peer messages:', err);
@@ -2099,11 +2135,12 @@ router.get('/teacher/completed-classes', async (req, res) => {
       return res.status(400).json({ error: 'Missing teacherId, startDate, or endDate' });
     }
 
-    // Find completed classes within the date range
+    // Only sessions finalized after teacher wrap-up (classCompleted) count toward teaching fee.
     const completedClasses = await Booking.countDocuments({
       teacherId,
       date: { $gte: startDate, $lte: endDate },
-      status: 'completed'
+      status: 'completed',
+      'attendance.classCompleted': true,
     });
 
     res.json({ 
@@ -3320,6 +3357,77 @@ router.get('/completed-classes', verifyToken, requireTeacher, async (req, res) =
   } catch (err) {
     console.error('Error getting completed classes:', err);
     res.status(500).json({ success: false, error: 'Failed to get completed classes' });
+  }
+});
+
+/** Bookings waiting for teacher wrap-up feedback (salary / credit finalization blocked until submitted). */
+router.get('/pending-feedback-bookings', verifyToken, requireTeacher, async (req, res) => {
+  try {
+    const teacherId = req.user.teacherId;
+    const now = new Date();
+    const raw = await Booking.find({
+      teacherId,
+      status: 'pending_feedback',
+    })
+      .select(
+        'date time lesson studentId dateTimeUtc teacherLocalZone studentLocalZone finishedAt sessionEndedAt'
+      )
+      .sort({ date: -1, time: -1 })
+      .lean();
+
+    const startedOrUnknown = raw.filter((b) => {
+      const start = getBookingStartAsDate(b);
+      return start == null || start.getTime() < now.getTime();
+    });
+
+    const ids = startedOrUnknown.map((b) => String(b._id));
+    const withFb =
+      ids.length > 0
+        ? await Feedback.find({
+            bookingId: { $in: ids },
+            feedbackRole: FEEDBACK_ROLE_TEACHER_TO_STUDENT,
+          })
+            .select('bookingId')
+            .lean()
+        : [];
+    const hasFb = new Set(withFb.map((f) => String(f.bookingId)));
+
+    const pending = startedOrUnknown.filter((b) => !hasFb.has(String(b._id)));
+
+    const items = [];
+    for (const b of pending) {
+      let studentName = '';
+      try {
+        const st = await Student.findOne({
+          $or: [{ username: b.studentId }, { email: b.studentId }],
+        })
+          .select('firstName lastName username')
+          .lean();
+        if (st) {
+          studentName =
+            [st.firstName, st.lastName].filter(Boolean).join(' ').trim() || st.username || '';
+        }
+      } catch (_e) {
+        /* ignore */
+      }
+      items.push({
+        bookingId: String(b._id),
+        date: b.date,
+        time: b.time,
+        lesson: b.lesson || '',
+        studentId: b.studentId,
+        studentName: studentName || b.studentId || 'Student',
+      });
+    }
+
+    res.json({
+      success: true,
+      count: items.length,
+      items,
+    });
+  } catch (err) {
+    console.error('pending-feedback-bookings:', err);
+    res.status(500).json({ success: false, error: 'Failed to load pending feedback' });
   }
 });
 
@@ -6281,7 +6389,11 @@ const Connection = require('./models/Connection');
 router.get('/public-profile/:teacherId', async (req, res) => {
   try {
     const { teacherId } = req.params;
-    const teacher = await Teacher.findOne({ teacherId })
+    const row = await findLeanTeacherForPublicProfile(teacherId);
+    if (!row) {
+      return res.status(404).json({ error: 'Teacher not found' });
+    }
+    const teacher = await Teacher.findOne({ teacherId: row.teacherId })
       .select('teacherId fullname firstName lastName profilePicture introduction experience education workExperience teachingAbilities');
     if (!teacher) {
       return res.status(404).json({ error: 'Teacher not found' });

@@ -9,7 +9,7 @@ const bodyParser = require('body-parser');
 const path = require('path');
 const crypto = require('crypto');
 const mongoose = require('mongoose');
-const { db, connectDB } = require('./db');
+const { db, connectDB, getDbConnectionInfo } = require('./db');
 
 // Import route files
 const authRoutes = require('./auth');
@@ -1174,10 +1174,14 @@ app.get('/api', (req, res) => {
 // Health check endpoint - MUST respond quickly for Cloud Run
 app.get('/api/health', (req, res) => {
   try {
-    res.json({ 
-      status: 'OK', 
+    const dbInfo = getDbConnectionInfo();
+    res.json({
+      status: 'OK',
       message: 'Server is running',
       database: db.readyState === 1 ? 'Connected' : 'Disconnected',
+      databaseMode: dbInfo.mode,
+      databaseTarget: dbInfo.target,
+      databaseName: dbInfo.database,
       port: PORT,
       timestamp: new Date().toISOString()
     });
@@ -1722,6 +1726,18 @@ io.on('connection', socket => {
             console.log(`💬 Socket ${socket.id} joined teacher message room: ${roomName}`);
         } catch (e) {
             console.warn('join-teacher-messages error:', e.message);
+        }
+    });
+
+    socket.on('join-student-messages', (data = {}) => {
+        try {
+            const username = String(data.username || '').trim();
+            if (!username) return;
+            const roomName = `student-msg:${username}`;
+            socket.join(roomName);
+            console.log(`💬 Socket ${socket.id} joined student message room: ${roomName}`);
+        } catch (e) {
+            console.warn('join-student-messages error:', e.message);
         }
     });
     

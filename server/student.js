@@ -9,6 +9,10 @@ const Feedback = require('./models/Feedback');
 const StudentNotification = require('./models/StudentNotification');
 const AssessmentTrial = require('./models/AssessmentTrial');
 const Teacher = require('./models/Teacher');
+const PeerMessage = require('./models/PeerMessage');
+const Notification = require('./models/Notification');
+const { aggregateActiveChats, fetchPeerMessagesPage } = require('./services/peerInboxQueries');
+const realtime = require('./realtime');
 const Referral = require('./models/Referral');
 const PortalVideo = require('./models/PortalVideo');
 const Lesson = require('./models/Lesson');
@@ -2321,6 +2325,173 @@ router.post('/decline-reschedule', verifyToken, requireStudent, async (req, res)
       success: false,
       message: 'Error declining reschedule'
     });
+  }
+});
+
+function studentPeerCanonicalId(req) {
+  return String(req.user.username || '').trim() || String(req.user.studentId || '').trim();
+}
+
+/** Inbox: only peers with at least one message (same aggregation as teacher portal). */
+router.get('/peer-chats', verifyToken, requireStudent, async (req, res) => {
+  try {
+    const me = studentPeerCanonicalId(req);
+    if (!me) return res.status(400).json({ success: false, error: 'Missing user identity' });
+
+    const rows = await aggregateActiveChats(me);
+    const peerIds = rows.map((r) => r.peerId);
+
+    const teachers = await Teacher.find({ teacherId: { $in: peerIds } })
+      .select('teacherId fullname firstName lastName profilePicture')
+      .lean();
+    const teacherMap = new Map(teachers.map((t) => [t.teacherId, t]));
+
+    const chats = rows.map((c) => {
+      const t = teacherMap.get(c.peerId);
+      const name =
+        t?.fullname || `${t?.firstName || ''} ${t?.lastName || ''}`.trim() || c.peerId;
+      return {
+        peerId: c.peerId,
+        name,
+        profilePicture: t?.profilePicture || null,
+        lastMessage: c.lastMessage,
+        lastAt: c.lastAt,
+        unreadCount: c.unreadCount,
+      };
+    });
+
+    res.json({ success: true, chats });
+  } catch (err) {
+    console.error('student peer-chats:', err);
+    res.status(500).json({ success: false, error: 'Failed to load chats' });
+  }
+});
+
+/** Search teachers — runs only when the student types a query (min 2 chars). */
+router.get('/peer-chats/user-search', verifyToken, requireStudent, async (req, res) => {
+  try {
+    const q = String(req.query.q || '').trim();
+    if (q.length < 2) {
+      return res.json({ success: true, users: [] });
+    }
+    const esc = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const teachers = await Teacher.find({
+      $or: [
+        { teacherId: { $regex: esc, $options: 'i' } },
+        { username: { $regex: esc, $options: 'i' } },
+        { fullname: { $regex: esc, $options: 'i' } },
+        { firstName: { $regex: esc, $options: 'i' } },
+        { lastName: { $regex: esc, $options: 'i' } },
+        { email: { $regex: esc, $options: 'i' } },
+      ],
+    })
+      .select('teacherId fullname firstName lastName profilePicture username')
+      .limit(25)
+      .lean();
+
+    const users = teachers.map((t) => ({
+      peerId: t.teacherId,
+      name:
+        t.fullname ||
+        `${t.firstName || ''} ${t.lastName || ''}`.trim() ||
+        t.username ||
+        t.teacherId,
+      profilePicture: t.profilePicture || null,
+    }));
+
+    res.json({ success: true, users });
+  } catch (err) {
+    console.error('student peer-chats user-search:', err);
+    res.status(500).json({ success: false, error: 'Search failed' });
+  }
+});
+
+router.get('/peer-messages/:peerId', verifyToken, requireStudent, async (req, res) => {
+  try {
+    const me = studentPeerCanonicalId(req);
+    if (!me) return res.status(400).json({ success: false, error: 'Missing user identity' });
+    const peerId = String(req.params.peerId || '');
+    if (!peerId) return res.status(400).json({ success: false, error: 'Missing peerId' });
+
+    const { messages, hasMore, nextBefore } = await fetchPeerMessagesPage({
+      me,
+      peerId,
+      before: req.query.before || null,
+      limit: req.query.limit,
+    });
+
+    await PeerMessage.updateMany(
+      { senderId: peerId, recipientId: me, readAt: null },
+      { $set: { readAt: new Date() } }
+    );
+
+    res.json({ success: true, messages, hasMore, nextBefore });
+  } catch (err) {
+    console.error('student peer-messages:', err);
+    res.status(500).json({ success: false, error: 'Failed to load messages' });
+  }
+});
+
+router.post('/peer-message', verifyToken, requireStudent, async (req, res) => {
+  try {
+    const senderId = studentPeerCanonicalId(req);
+    if (!senderId) return res.status(400).json({ success: false, error: 'Missing user identity' });
+    const { recipientId, message } = req.body;
+    if (!recipientId || !message || !message.trim()) {
+      return res.status(400).json({ success: false, error: 'Recipient and message are required' });
+    }
+    const teacher = await Teacher.findOne({ teacherId: String(recipientId).trim() }).lean();
+    if (!teacher) {
+      return res.status(400).json({ success: false, error: 'Invalid teacher recipient' });
+    }
+
+    const stu = await Student.findOne({
+      $or: [
+        { username: req.user.username },
+        { username: senderId },
+        ...(req.user.studentId ? [{ studentId: req.user.studentId }] : []),
+      ],
+    })
+      .select('firstName lastName username')
+      .lean();
+    const senderName =
+      [stu?.firstName, stu?.lastName].filter(Boolean).join(' ').trim() ||
+      stu?.username ||
+      senderId;
+
+    const savedMessage = await PeerMessage.create({
+      senderId,
+      recipientId: String(recipientId).trim(),
+      message: message.trim(),
+    });
+
+    await Notification.create({
+      teacherId: String(recipientId).trim(),
+      type: 'peer-message',
+      message: `${senderName}: ${message.trim()}`,
+      senderId,
+      read: false,
+    });
+
+    const payload = {
+      id: savedMessage._id.toString(),
+      senderId,
+      recipientId: String(recipientId).trim(),
+      message: savedMessage.message,
+      createdAt: savedMessage.createdAt,
+      readAt: savedMessage.readAt || null,
+    };
+    const io = realtime.getIo();
+    if (io) {
+      io.to(`teacher-msg:${payload.recipientId}`).emit('peer-message:new', payload);
+      io.to(`teacher-msg:${senderId}`).emit('peer-message:new', payload);
+      io.to(`student-msg:${payload.recipientId}`).emit('peer-message:new', payload);
+      io.to(`student-msg:${senderId}`).emit('peer-message:new', payload);
+    }
+    res.json({ success: true, message: 'Message sent successfully', peerMessage: payload });
+  } catch (err) {
+    console.error('student peer-message:', err);
+    res.status(500).json({ success: false, error: 'Failed to send message' });
   }
 });
 

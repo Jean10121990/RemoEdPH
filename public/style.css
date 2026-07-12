@@ -3786,29 +3786,6 @@ body.page-student-assessment{
             justify-content: center; 
             font-weight: bold; 
             font-size: 2.2rem; 
-        }.page-student-assessment .remoed-username{ 
-            color: #667eea; 
-            font-weight: 600; 
-        }.page-student-assessment .remoed-menu{ 
-            list-style: none; 
-            padding: 0; 
-            margin: 0; 
-        }.page-student-assessment .remoed-menu li{ 
-            padding: 14px 32px; 
-            color: #667eea; 
-            font-weight: 500; 
-            cursor: pointer; 
-            display: flex; 
-            align-items: center; 
-            gap: 12px; 
-            border-left: 4px solid transparent; 
-            transition: background 0.2s, border-color 0.2s; 
-        }.page-student-assessment .remoed-menu li.active, .page-student-assessment .remoed-menu li:hover{ 
-            background: linear-gradient(90deg, #667eea 0%, #5a67d8 100%); 
-            border-left: 4px solid #667eea; 
-            color: white; 
-            transform: translateX(4px);
-            transition: all 0.3s ease;
         }.page-student-assessment .remoed-content{ 
             flex: 1; 
             padding: 24px 32px; 
@@ -7706,33 +7683,6 @@ body.page-student-profile{
             justify-content: center; 
             font-weight: bold; 
             font-size: 2.2rem; 
-        }.page-student-profile .remoed-username{ 
-            color: #667eea; 
-            font-weight: 600; 
-        }.page-student-profile .remoed-menu{ 
-            list-style: none; 
-            padding: 0; 
-            margin: 0; 
-        }.page-student-profile .remoed-menu li{ 
-            padding: 14px 32px; 
-            color: #667eea; 
-            font-weight: 500; 
-            cursor: pointer; 
-            display: flex; 
-            align-items: center; 
-            gap: 12px; 
-            border-left: 4px solid transparent; 
-            transition: background 0.2s, border-color 0.2s; 
-        }.page-student-profile .remoed-menu li.active, .page-student-profile .remoed-menu li:hover{ 
-      background: linear-gradient(90deg, #667eea 0%, #5a67d8 100%); 
-      border-left: 4px solid #667eea; 
-      color: white; 
-      transform: translateX(4px);
-      transition: all 0.3s ease;
-    }.page-student-profile .remoed-menu svg{ 
-            width: 20px; 
-            height: 20px; 
-            stroke: currentColor;
         }.page-student-profile .remoed-content{ 
             flex: 1; 
             padding: 24px 32px; 
@@ -9639,910 +9589,6 @@ body.page-teacher-attendance-analysis{
             }
         }
 
-
-/* --- Source: public/teacher-class-table-fixed.html --- */
-body.page-teacher-class-table-fixed{ 
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-      background: linear-gradient(135deg, #f6fbff 0%, #e8f4fd 100%); 
-      margin: 0;
-      padding: 0;
-    }.page-teacher-class-table-fixed .remoed-main{
-      display: flex;
-      min-height: 100vh;
-      flex-direction: row;
-      align-items: stretch;
-      justify-content: flex-start;
-      max-width: 100vw;
-      overflow-x: hidden;
-    }.page-teacher-class-table-fixed .remoed-sidebar{
-      width: 260px;
-      min-width: 220px;
-      max-width: 280px;
-      background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
-      box-shadow: 4px 0 20px rgba(102, 126, 234, 0.1);
-      padding: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: stretch;
-      height: 100vh;
-      position: fixed;
-      z-index: 100;
-      border-right: 1px solid rgba(102, 126, 234, 0.1);
-    }.page-teacher-class-table-fixed .remoed-logo{ 
-      display: flex; 
-      align-items: center; 
-      gap: 14px; 
-    }.page-teacher-class-table-fixed .remoed-logo img{ 
-      height: 48px; 
-    }.page-teacher-class-table-fixed .remoed-title{ 
-      font-size: 1.7rem; 
-      font-weight: 700; 
-      color: #667eea; 
-      letter-spacing: 1px; 
-    }.page-teacher-class-table-fixed .remoed-user{ 
-      display: flex; 
-      align-items: center; 
-      gap: 10px; 
-    }.page-teacher-class-table-fixed .remoed-avatar{ 
-      width: 72px; 
-        // Defer DOM operations until DOM is ready to avoid null element access
-        document.addEventListener('DOMContentLoaded', function () {
-          const userType = localStorage.getItem('userType');
-          if (userType !== 'teacher') {
-            alert('Access denied. This page is for teachers only.');
-            window.location.href = 'index.html';
-            return;
-          }
-
-          const username = localStorage.getItem('remoedUsername') || 'Teacher';
-          const teacherId = localStorage.getItem('teacherId');
-
-          const avatarTextEl = document.getElementById('avatar-text');
-          if (avatarTextEl) avatarTextEl.textContent = username[0].toUpperCase();
-
-          const usernameEl = document.getElementById('remoed-username');
-          if (usernameEl) usernameEl.textContent = 'Loading...';
-
-          if (teacherId && typeof loadProfilePicture === 'function') {
-            try { loadProfilePicture(teacherId); } catch (e) { /* ignore */ }
-          }
-
-          const openClassBtn = document.getElementById('open-class-btn');
-          if (openClassBtn) openClassBtn.onclick = () => { window.location.href = 'teacher-open-class.html'; };
-
-          const logoutNav = document.getElementById('logout-nav');
-          if (logoutNav) {
-            logoutNav.onclick = function() { localStorage.clear(); window.location.href = 'teacher-login.html'; };
-          }
-        });
-      color: white; 
-      transform: translateX(4px);
-      transition: all 0.3s ease;
-    }.page-teacher-class-table-fixed .remoed-menu svg{ 
-      width: 20px; 
-      height: 20px; 
-      stroke: currentColor; 
-    }.page-teacher-class-table-fixed .remoed-content{
-      flex: 1;
-      padding: 36px 20px 36px 20px;
-      min-width: 0;
-      background: #f6fbff;
-      min-height: 100vh;
-      box-sizing: border-box;
-      margin-left: 260px;
-      max-width: calc(100vw - 260px);
-      overflow-x: auto;
-    }.page-teacher-class-table-fixed .table-content{
-      padding: 24px;
-      max-width: 100%;
-      overflow-x: auto;
-      margin-right: 20px;
-    }.page-teacher-class-table-fixed .class-grid{
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 20px;
-      max-width: 100%;
-    }.page-teacher-class-table-fixed .header-controls{
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 24px;
-    }.page-teacher-class-table-fixed .week-navigation{
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }.page-teacher-class-table-fixed .nav-btn{
-      background: linear-gradient(135deg, #ffe85a, #f4d03f);
-      color: #333;
-      border: none;
-      padding: 10px 18px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 0.9rem;
-      font-weight: 600;
-      transition: all 0.3s ease;
-      box-shadow: 0 2px 8px rgba(255, 232, 90, 0.3);
-    }.page-teacher-class-table-fixed .nav-btn:hover{
-      background: linear-gradient(135deg, #f4d03f, #f1c40f);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(255, 232, 90, 0.4);
-    }.page-teacher-class-table-fixed .nav-btn:disabled{
-      background: #ccc;
-      cursor: not-allowed;
-    }.page-teacher-class-table-fixed .week-display{
-      font-weight: 600;
-      color: #333;
-      min-width: 120px;
-      text-align: center;
-    }.page-teacher-class-table-fixed .current-week-btn{
-      background: linear-gradient(135deg, #28a745, #1e7e34) !important;
-      color: white;
-      box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3) !important;
-    }.page-teacher-class-table-fixed .current-week-btn:hover{
-      background: linear-gradient(135deg, #1e7e34, #155724) !important;
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4) !important;
-    }.page-teacher-class-table-fixed .open-class-btn{
-      background: #667eea;
-      color: #fff;
-      border: none;
-      border-radius: 8px;
-      padding: 12px 24px;
-      font-size: 1rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background 0.2s;
-    }.page-teacher-class-table-fixed .open-class-btn:hover{
-      background: #5a67d8;
-    }.page-teacher-class-table-fixed .class-table{
-      background: #fff;
-      border-radius: 12px;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
-      overflow: hidden;
-      max-width: 100%;
-    }.page-teacher-class-table-fixed .table-header{
-      background: #f8f9fa;
-      padding: 16px 20px;
-      border-bottom: 1px solid #e0e6ed;
-    }.page-teacher-class-table-fixed .table-header h2{
-      color: #667eea;
-      font-size: 1.5rem;
-      font-weight: 600;
-      margin: 0;
-    }.page-teacher-class-table-fixed .table-content{
-      padding: 24px;
-      max-width: 100%;
-      overflow-x: auto;
-    }.page-teacher-class-table-fixed .class-grid{
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 20px;
-    }.page-teacher-class-table-fixed .class-card{
-      background: #fff;
-      border: 1px solid #e0e6ed;
-      border-radius: 8px;
-      padding: 20px;
-      transition: box-shadow 0.2s;
-    }.page-teacher-class-table-fixed .class-card:hover{
-      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-    }.page-teacher-class-table-fixed .class-time{
-      font-size: 1.1rem;
-      font-weight: 600;
-      color: #667eea;
-      margin-bottom: 8px;
-    }.page-teacher-class-table-fixed .class-date{
-      color: #666;
-      font-size: 0.9rem;
-      margin-bottom: 12px;
-    }.page-teacher-class-table-fixed .class-status{
-      display: inline-block;
-      padding: 4px 12px;
-      border-radius: 20px;
-      font-size: 0.8rem;
-      font-weight: 500;
-    }.page-teacher-class-table-fixed .status-open{
-      background: #d4edda;
-      color: #155724;
-    }.page-teacher-class-table-fixed .status-booked{
-      background: #f8d7da;
-      color: #721c24;
-    }.page-teacher-class-table-fixed .status-completed{
-      background: #d1ecf1;
-      color: #0c5460;
-    }.page-teacher-class-table-fixed .class-student{
-      font-size: 0.8rem;
-      color: #666;
-      margin-top: 4px;
-    }.page-teacher-class-table-fixed .weekly-grid{
-      background: #fff;
-      border-radius: 12px;
-      box-shadow: 0 8px 32px rgba(28, 167, 231, 0.1);
-      overflow: auto;
-      max-height: calc(100vh - 200px);
-      max-width: 100%;
-      box-sizing: border-box;
-      border: 1px solid rgba(28, 167, 231, 0.1);
-    }.page-teacher-class-table-fixed .schedule-table{
-      width: 100%;
-      border-collapse: collapse;
-      table-layout: fixed;
-      margin: 0;
-      min-width: 800px;
-    }.page-teacher-class-table-fixed .schedule-table th, .page-teacher-class-table-fixed .schedule-table td{
-      border: 1px solid #e0e6ed;
-      padding: 12px 8px;
-      text-align: center;
-      vertical-align: middle;
-    }.page-teacher-class-table-fixed .schedule-table th{
-      background: linear-gradient(135deg, #667eea, #5a67d8);
-      font-weight: 600;
-      color: white;
-      position: sticky;
-      top: 0;
-      z-index: 5;
-      text-shadow: 0 1px 2px rgba(0,0,0,0.1);
-    }.page-teacher-class-table-fixed .time-column{
-      width: 80px;
-      position: sticky;
-      left: 0;
-      background: #f8f9fa;
-      z-index: 3;
-    }.page-teacher-class-table-fixed .day-column{
-      width: calc((100% - 80px) / 7);
-      line-height: 1.2;
-      padding: 8px 4px;
-    }.page-teacher-class-table-fixed .day-column br{
-      margin: 2px 0;
-    }.page-teacher-class-table-fixed .time-slot{
-      font-size: 0.9rem;
-      color: #666;
-      min-height: 40px;
-    }.page-teacher-class-table-fixed .time-slot.open{
-      background: #90EE90;
-      color: #333;
-      font-weight: 600;
-    }.page-teacher-class-table-fixed .time-slot.booked{
-      background: #ffe85a !important;
-      color: #667eea !important;
-      font-weight: 600;
-    }.page-teacher-class-table-fixed .time-slot.finished{
-      background: #cce5ff !important;
-      color: #004085 !important;
-      font-weight: 600;
-    }.page-teacher-class-table-fixed .time-slot.absent{
-      background: #ff6b6b;
-      color: white;
-      font-weight: 600;
-    }.page-teacher-class-table-fixed .time-slot.student-absent{
-      background: #ff8c42;
-      color: white;
-      font-weight: 600;
-    }.page-teacher-class-table-fixed .time-slot.unavailable{
-      background: #f8f9fa;
-      color: #6c757d;
-    }.page-teacher-class-table-fixed .time-slot.unbooked{
-      background: #f8f9fa;
-      color: #6c757d;
-      font-weight: normal;
-      cursor: default;
-    }.page-teacher-class-table-fixed .time-slot.past{
-      background: #f8f9fa !important;
-      color: #6c757d !important;
-      font-weight: normal;
-      cursor: not-allowed;
-    }.page-teacher-class-table-fixed .legend{
-      display: flex;
-      gap: 16px;
-      margin-bottom: 16px;
-      flex-wrap: wrap;
-    }.page-teacher-class-table-fixed .legend-item{
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 0.9rem;
-    }.page-teacher-class-table-fixed .legend-color{
-      width: 20px;
-      height: 20px;
-      border-radius: 4px;
-      border: 1px solid #e0e6ed;
-    }@media (max-width: 1200px){.page-teacher-class-table-fixed .remoed-sidebar{
-        width: 260px;
-        min-width: 260px;
-      }.page-teacher-class-table-fixed .remoed-content{
-        margin-left: 260px;
-        max-width: calc(100vw - 260px);
-      }
-    }@media (max-width: 900px){.page-teacher-class-table-fixed .remoed-main{
-        flex-direction: column;
-      }.page-teacher-class-table-fixed .remoed-sidebar{
-        width: 100%;
-        position: relative;
-        height: auto;
-      }.page-teacher-class-table-fixed .remoed-content{
-        margin-left: 0;
-        max-width: 100vw;
-        padding: 20px 10px;
-      }.page-teacher-class-table-fixed .weekly-grid{
-        max-height: 60vh;
-      }.page-teacher-class-table-fixed .schedule-table{
-        min-width: 600px;
-      }
-    }.page-teacher-class-table-fixed /* Modal Styles */
-    .modal{
-      display: none;
-      position: fixed;
-      z-index: 2000;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(0,0,0,0.5);
-      backdrop-filter: blur(2px);
-    }.page-teacher-class-table-fixed .modal-content{
-      background-color: #fefefe;
-      margin: 5% auto;
-      padding: 0;
-      border-radius: 12px;
-      width: 90%;
-      max-width: 500px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-      animation: modalSlideIn 0.3s ease-out;
-      position: relative;
-      top: 50%;
-      transform: translateY(-50%);
-    }@keyframes modalSlideIn{
-      from {
-        opacity: 0;
-        transform: translateY(-50px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }.page-teacher-class-table-fixed .modal-header{
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 20px 24px 0 24px;
-      border-bottom: 1px solid #e0e6ed;
-    }.page-teacher-class-table-fixed .modal-header h2{
-      margin: 0;
-      color: #667eea;
-      font-size: 1.5rem;
-      font-weight: 600;
-    }.page-teacher-class-table-fixed .close{
-      color: #aaa;
-      font-size: 28px;
-      font-weight: bold;
-      cursor: pointer;
-      line-height: 1;
-      transition: color 0.2s;
-    }.page-teacher-class-table-fixed .close:hover{
-      color: #666;
-    }.page-teacher-class-table-fixed .modal-body{
-      padding: 24px;
-    }.page-teacher-class-table-fixed .class-details{
-      margin-bottom: 20px;
-    }.page-teacher-class-table-fixed .detail-row{
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 12px 0;
-      border-bottom: 1px solid #f0f0f0;
-    }.page-teacher-class-table-fixed .detail-row:last-child{
-      border-bottom: none;
-    }.page-teacher-class-table-fixed .detail-row label{
-      font-weight: 600;
-      color: #333;
-      min-width: 120px;
-    }.page-teacher-class-table-fixed .detail-row span{
-      color: #666;
-      text-align: right;
-      flex: 1;
-    }.page-teacher-class-table-fixed .btn-join{
-      background: #667eea;
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-weight: 500;
-      transition: background 0.2s;
-    }.page-teacher-class-table-fixed .btn-join:hover{
-      background: #5a67d8;
-    }.page-teacher-class-table-fixed .btn-cancel{
-      background: #dc3545;
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-weight: 500;
-      transition: background 0.2s;
-    }.page-teacher-class-table-fixed .btn-cancel:hover{
-      background: #c82333;
-    }.page-teacher-class-table-fixed .btn-secondary{
-      background: #6c757d;
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-weight: 500;
-      transition: background 0.2s;
-    }.page-teacher-class-table-fixed .btn-secondary:hover{
-      background: #5a6268;
-    }.page-teacher-class-table-fixed .btn-danger{
-      background: #dc3545;
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-weight: 500;
-      transition: background 0.2s;
-    }.page-teacher-class-table-fixed .btn-danger:hover{
-      background: #c82333;
-    }.page-teacher-class-table-fixed .modal-actions{
-      display: flex;
-      justify-content: flex-end;
-      gap: 10px;
-      padding-top: 20px;
-      border-top: 1px solid #e0e6ed;
-    }
-
-
-/* --- Source: public/teacher-class-table-old.html --- */
-body.page-teacher-class-table-old{ 
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-      background: linear-gradient(135deg, #f6fbff 0%, #e8f4fd 100%); 
-      margin: 0;
-      padding: 0;
-    }.page-teacher-class-table-old .remoed-main{
-      display: flex;
-      min-height: 100vh;
-      flex-direction: row;
-      align-items: stretch;
-      justify-content: flex-start;
-      max-width: 100vw;
-      overflow-x: hidden;
-    }.page-teacher-class-table-old .remoed-sidebar{
-      width: 260px;
-      min-width: 220px;
-      max-width: 280px;
-      background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
-      box-shadow: 4px 0 20px rgba(102, 126, 234, 0.1);
-      padding: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: stretch;
-      height: 100vh;
-      position: fixed;
-      z-index: 100;
-      border-right: 1px solid rgba(102, 126, 234, 0.1);
-    }.page-teacher-class-table-old .remoed-logo{ 
-      display: flex; 
-      align-items: center; 
-      gap: 14px; 
-    }.page-teacher-class-table-old .remoed-logo img{ 
-      height: 48px; 
-    }.page-teacher-class-table-old .remoed-title{ 
-      font-size: 1.7rem; 
-      font-weight: 700; 
-      color: #667eea; 
-      letter-spacing: 1px; 
-    }.page-teacher-class-table-old .remoed-user{ 
-      display: flex; 
-      align-items: center; 
-      gap: 10px; 
-    }.page-teacher-class-table-old .remoed-avatar{ 
-      width: 72px; 
-      height: 72px; 
-      border-radius: 50%; 
-      background: #667eea; 
-      color: #fff; 
-      display: flex; 
-      align-items: center; 
-      justify-content: center; 
-      font-weight: bold; 
-      font-size: 2.2rem; 
-    }.page-teacher-class-table-old .remoed-username{ 
-      color: #667eea; 
-      font-weight: 600; 
-    }.page-teacher-class-table-old .remoed-menu{ 
-      list-style: none; 
-      padding: 0; 
-      margin: 0; 
-    }.page-teacher-class-table-old .remoed-menu li{ 
-      padding: 14px 32px; 
-      color: #667eea; 
-      font-weight: 500; 
-      cursor: pointer; 
-      display: flex; 
-      align-items: center; 
-      gap: 12px; 
-      border-left: 4px solid transparent; 
-      transition: background 0.2s, border-color 0.2s; 
-    }.page-teacher-class-table-old .remoed-menu li.active, .page-teacher-class-table-old .remoed-menu li:hover{ 
-      background: linear-gradient(90deg, #667eea 0%, #5a67d8 100%); 
-      border-left: 4px solid #667eea; 
-      color: white; 
-      transform: translateX(4px);
-      transition: all 0.3s ease;
-    }.page-teacher-class-table-old .remoed-menu svg{ 
-      width: 20px; 
-      height: 20px; 
-      stroke: currentColor; 
-    }.page-teacher-class-table-old .remoed-content{
-      flex: 1;
-      padding: 36px 20px 36px 20px;
-      min-width: 0;
-      background: #f6fbff;
-      min-height: 100vh;
-      box-sizing: border-box;
-      margin-left: 260px;
-      max-width: calc(100vw - 260px);
-      overflow-x: auto;
-    }.page-teacher-class-table-old .table-content{
-      padding: 24px;
-      max-width: 100%;
-      overflow-x: auto;
-      margin-right: 20px;
-    }.page-teacher-class-table-old .class-grid{
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 20px;
-      max-width: 100%;
-    }.page-teacher-class-table-old .header-controls{
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 24px;
-    }.page-teacher-class-table-old .week-navigation{
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }.page-teacher-class-table-old .nav-btn{
-      background: linear-gradient(135deg, #ffe85a, #f4d03f);
-      color: #333;
-      border: none;
-      padding: 10px 18px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 0.9rem;
-      font-weight: 600;
-      transition: all 0.3s ease;
-      box-shadow: 0 2px 8px rgba(255, 232, 90, 0.3);
-    }.page-teacher-class-table-old .nav-btn:hover{
-      background: linear-gradient(135deg, #f4d03f, #f1c40f);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(255, 232, 90, 0.4);
-    }.page-teacher-class-table-old .nav-btn:disabled{
-      background: #ccc;
-      cursor: not-allowed;
-    }.page-teacher-class-table-old .week-display{
-      font-weight: 600;
-      color: #333;
-      min-width: 120px;
-      text-align: center;
-    }.page-teacher-class-table-old .current-week-btn{
-      background: linear-gradient(135deg, #28a745, #1e7e34) !important;
-      color: white;
-      box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3) !important;
-    }.page-teacher-class-table-old .current-week-btn:hover{
-      background: linear-gradient(135deg, #1e7e34, #155724) !important;
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4) !important;
-    }.page-teacher-class-table-old .open-class-btn{
-      background: #667eea;
-      color: #fff;
-      border: none;
-      border-radius: 8px;
-      padding: 12px 24px;
-      font-size: 1rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background 0.2s;
-    }.page-teacher-class-table-old .open-class-btn:hover{
-      background: #5a67d8;
-    }.page-teacher-class-table-old .class-table{
-      background: #fff;
-      border-radius: 12px;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
-      overflow: hidden;
-      max-width: 100%;
-    }.page-teacher-class-table-old .table-header{
-      background: #f8f9fa;
-      padding: 16px 20px;
-      border-bottom: 1px solid #e0e6ed;
-    }.page-teacher-class-table-old .table-header h2{
-      color: #667eea;
-      font-size: 1.5rem;
-      font-weight: 600;
-      margin: 0;
-    }.page-teacher-class-table-old .table-content{
-      padding: 24px;
-      max-width: 100%;
-      overflow-x: auto;
-    }.page-teacher-class-table-old .class-grid{
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 20px;
-    }.page-teacher-class-table-old .class-card{
-      background: #fff;
-      border: 1px solid #e0e6ed;
-      border-radius: 8px;
-      padding: 20px;
-      transition: box-shadow 0.2s;
-    }.page-teacher-class-table-old .class-card:hover{
-      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-    }.page-teacher-class-table-old .class-time{
-      font-size: 1.1rem;
-      font-weight: 600;
-      color: #667eea;
-      margin-bottom: 8px;
-    }.page-teacher-class-table-old .class-date{
-      color: #666;
-      font-size: 0.9rem;
-      margin-bottom: 12px;
-    }.page-teacher-class-table-old .class-status{
-      display: inline-block;
-      padding: 4px 12px;
-      border-radius: 20px;
-      font-size: 0.8rem;
-      font-weight: 500;
-    }.page-teacher-class-table-old .status-open{
-      background: #d4edda;
-      color: #155724;
-    }.page-teacher-class-table-old .status-booked{
-      background: #f8d7da;
-      color: #721c24;
-    }.page-teacher-class-table-old .status-completed{
-      background: #d1ecf1;
-      color: #0c5460;
-    }.page-teacher-class-table-old .class-student{
-      font-size: 0.8rem;
-      color: #666;
-      margin-top: 4px;
-    }.page-teacher-class-table-old .weekly-grid{
-      background: #fff;
-      border-radius: 12px;
-      box-shadow: 0 8px 32px rgba(28, 167, 231, 0.1);
-      overflow: auto;
-      max-height: calc(100vh - 200px);
-      max-width: 100%;
-      box-sizing: border-box;
-      border: 1px solid rgba(28, 167, 231, 0.1);
-    }.page-teacher-class-table-old .schedule-table{
-      width: 100%;
-      border-collapse: collapse;
-      table-layout: fixed;
-      margin: 0;
-      min-width: 800px;
-    }.page-teacher-class-table-old .schedule-table th, .page-teacher-class-table-old .schedule-table td{
-      border: 1px solid #e0e6ed;
-      padding: 12px 8px;
-      text-align: center;
-      vertical-align: middle;
-    }.page-teacher-class-table-old .schedule-table th{
-      background: linear-gradient(135deg, #667eea, #5a67d8);
-      font-weight: 600;
-      color: white;
-      position: sticky;
-      top: 0;
-      z-index: 5;
-      text-shadow: 0 1px 2px rgba(0,0,0,0.1);
-    }.page-teacher-class-table-old .time-column{
-      width: 80px;
-      position: sticky;
-      left: 0;
-      background: #f8f9fa;
-      z-index: 3;
-    }.page-teacher-class-table-old .day-column{
-      width: calc((100% - 80px) / 7);
-      line-height: 1.2;
-      padding: 8px 4px;
-    }.page-teacher-class-table-old .day-column br{
-      margin: 2px 0;
-    }.page-teacher-class-table-old .time-slot{
-      font-size: 0.9rem;
-      color: #666;
-      min-height: 40px;
-    }.page-teacher-class-table-old .time-slot.open{
-      background: #90EE90;
-      color: #333;
-      font-weight: 600;
-    }.page-teacher-class-table-old .time-slot.booked{
-      background: #ffe85a !important;
-      color: #667eea !important;
-      font-weight: 600;
-    }.page-teacher-class-table-old .time-slot.finished{
-      background: #cce5ff !important;
-      color: #004085 !important;
-      font-weight: 600;
-    }.page-teacher-class-table-old .time-slot.absent{
-      background: #ff6b6b;
-      color: white;
-      font-weight: 600;
-    }.page-teacher-class-table-old .time-slot.student-absent{
-      background: #ff8c42;
-      color: white;
-      font-weight: 600;
-    }.page-teacher-class-table-old .time-slot.unavailable{
-      background: #f8f9fa;
-      color: #6c757d;
-    }.page-teacher-class-table-old .time-slot.unbooked{
-      background: #f8f9fa;
-      color: #6c757d;
-      font-weight: normal;
-      cursor: default;
-    }.page-teacher-class-table-old .time-slot.past{
-      background: #f8f9fa !important;
-      color: #6c757d !important;
-      font-weight: normal;
-      cursor: not-allowed;
-    }.page-teacher-class-table-old .legend{
-      display: flex;
-      gap: 16px;
-      margin-bottom: 16px;
-      flex-wrap: wrap;
-    }.page-teacher-class-table-old .legend-item{
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 0.9rem;
-    }.page-teacher-class-table-old .legend-color{
-      width: 20px;
-      height: 20px;
-      border-radius: 4px;
-      border: 1px solid #e0e6ed;
-    }@media (max-width: 1200px){.page-teacher-class-table-old .remoed-sidebar{
-        width: 260px;
-        min-width: 260px;
-      }.page-teacher-class-table-old .remoed-content{
-        margin-left: 260px;
-        max-width: calc(100vw - 260px);
-      }
-    }@media (max-width: 900px){.page-teacher-class-table-old .remoed-main{
-        flex-direction: column;
-      }.page-teacher-class-table-old .remoed-sidebar{
-        width: 100%;
-        position: relative;
-        height: auto;
-      }.page-teacher-class-table-old .remoed-content{
-        margin-left: 0;
-        max-width: 100vw;
-        padding: 20px 10px;
-      }.page-teacher-class-table-old .weekly-grid{
-        max-height: 60vh;
-      }.page-teacher-class-table-old .schedule-table{
-        min-width: 600px;
-      }
-    }.page-teacher-class-table-old /* Modal Styles */
-    .modal{
-      display: none;
-      position: fixed;
-      z-index: 2000;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(0,0,0,0.5);
-      backdrop-filter: blur(2px);
-    }.page-teacher-class-table-old .modal-content{
-      background-color: #fefefe;
-      margin: 5% auto;
-      padding: 0;
-      border-radius: 12px;
-      width: 90%;
-      max-width: 500px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-      animation: modalSlideIn 0.3s ease-out;
-      position: relative;
-      top: 50%;
-      transform: translateY(-50%);
-    }@keyframes modalSlideIn{
-      from {
-        opacity: 0;
-        transform: translateY(-50px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }.page-teacher-class-table-old .modal-header{
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 20px 24px 0 24px;
-      border-bottom: 1px solid #e0e6ed;
-    }.page-teacher-class-table-old .modal-header h2{
-      margin: 0;
-      color: #667eea;
-      font-size: 1.5rem;
-      font-weight: 600;
-    }.page-teacher-class-table-old .close{
-      color: #aaa;
-      font-size: 28px;
-      font-weight: bold;
-      cursor: pointer;
-      line-height: 1;
-      transition: color 0.2s;
-    }.page-teacher-class-table-old .close:hover{
-      color: #666;
-    }.page-teacher-class-table-old .modal-body{
-      padding: 24px;
-    }.page-teacher-class-table-old .class-details{
-      margin-bottom: 20px;
-    }.page-teacher-class-table-old .detail-row{
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 12px 0;
-      border-bottom: 1px solid #f0f0f0;
-    }.page-teacher-class-table-old .detail-row:last-child{
-      border-bottom: none;
-    }.page-teacher-class-table-old .detail-row label{
-      font-weight: 600;
-      color: #333;
-      min-width: 120px;
-    }.page-teacher-class-table-old .detail-row span{
-      color: #666;
-      text-align: right;
-      flex: 1;
-    }.page-teacher-class-table-old .btn-join{
-      background: #667eea;
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-weight: 500;
-      transition: background 0.2s;
-    }.page-teacher-class-table-old .btn-join:hover{
-      background: #5a67d8;
-    }.page-teacher-class-table-old .btn-cancel{
-      background: #dc3545;
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-weight: 500;
-      transition: background 0.2s;
-    }.page-teacher-class-table-old .btn-cancel:hover{
-      background: #c82333;
-    }.page-teacher-class-table-old .btn-secondary{
-      background: #6c757d;
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-weight: 500;
-      transition: background 0.2s;
-    }.page-teacher-class-table-old .btn-secondary:hover{
-      background: #5a6268;
-    }.page-teacher-class-table-old .btn-danger{
-      background: #dc3545;
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-weight: 500;
-      transition: background 0.2s;
-    }.page-teacher-class-table-old .btn-danger:hover{
-      background: #c82333;
-    }.page-teacher-class-table-old .modal-actions{
-      display: flex;
-      justify-content: flex-end;
-      gap: 10px;
-      padding-top: 20px;
-      border-top: 1px solid #e0e6ed;
-    }
-
-
 /* --- Source: public/teacher-class-table.html --- */
 .page-teacher-class-table /* Base font for consistency */
     body{
@@ -10860,6 +9906,29 @@ body.page-teacher-class-table-old{
       display: flex;
       align-items: center;
       justify-content: center;
+    }
+    .page-teacher-class-table .status-pending-feedback.remoed-pending-feedback-actions::after{
+      display: none !important;
+    }
+    .page-teacher-class-table .remoed-pending-feedback-inner{
+      position: relative;
+      z-index: 1;
+    }
+    .page-teacher-class-table .remoed-give-feedback-btn{
+      font-size: 0.68rem;
+      padding: 4px 6px;
+      border-radius: 6px;
+      border: none;
+      background: #fff;
+      color: #9a3412;
+      font-weight: 700;
+      cursor: pointer;
+      line-height: 1.2;
+      width: 100%;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    }
+    .page-teacher-class-table .remoed-give-feedback-btn:hover{
+      background: #fff7ed;
     }.page-teacher-class-table .status-absent{
       background: linear-gradient(135deg, #ef4444, #dc2626) !important;
       color: white !important;
@@ -13017,7 +12086,7 @@ body.page-teacher-login{
 
 
 /* --- Source: public/teacher-messages.html --- */
-body.page-teacher-messages{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f8fafc; color: #1a202c; margin: 0; padding: 0; }.page-teacher-messages .remoed-main{ display: flex; min-height: 100vh; }.page-teacher-messages .remoed-content{ flex: 1; padding: 18px 20px; margin-left: 260px; max-width: calc(100vw - 260px); }.page-teacher-messages .messenger{
+body.page-teacher-messages, body.page-student-messages{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f8fafc; color: #1a202c; margin: 0; padding: 0; }.page-teacher-messages .remoed-main, .page-student-messages .remoed-main{ display: flex; min-height: 100vh; }.page-teacher-messages .remoed-content, .page-student-messages .remoed-content{ flex: 1; padding: 18px 20px; margin-left: 260px; max-width: calc(100vw - 260px); }.page-teacher-messages .messenger, .page-student-messages .messenger{
             background: white;
             border-radius: 16px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.08);
@@ -13027,44 +12096,52 @@ body.page-teacher-messages{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sa
             grid-template-columns: 30% 70%;
             min-height: calc(100vh - 36px);
         }.page-teacher-messages /* Left column */
+        .chat-list, .page-student-messages /* Left column */
         .chat-list{
             border-right: 1px solid #e8f4fd;
             display: flex;
             flex-direction: column;
             min-width: 280px;
-        }.page-teacher-messages .chat-list-header{
+        }.page-teacher-messages .chat-list-header, .page-student-messages .chat-list-header{
             padding: 16px;
             border-bottom: 1px solid #e8f4fd;
             display: flex;
             align-items: center;
             justify-content: space-between;
-        }.page-teacher-messages .chat-list-header h1{
+        }.page-teacher-messages .chat-list-header-text, .page-student-messages .chat-list-header-text{
+            min-width: 0;
+        }.page-teacher-messages .chat-list-header h1, .page-student-messages .chat-list-header h1{
             margin: 0;
             font-size: 1.1rem;
             color: #667eea;
             font-weight: 800;
-        }.page-teacher-messages .chat-search{
+        }.page-teacher-messages .chat-list-subtitle, .page-student-messages .chat-list-subtitle{
+            margin: 6px 0 0;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #64748b;
+        }.page-teacher-messages .chat-search, .page-student-messages .chat-search{
             padding: 12px 16px;
             border-bottom: 1px solid #e8f4fd;
-        }.page-teacher-messages .chat-search input{
+        }.page-teacher-messages .chat-search input, .page-student-messages .chat-search input{
             width: 100%;
             border: 2px solid #e8f4fd;
             border-radius: 999px;
             padding: 10px 14px;
             outline: none;
-        }.page-teacher-messages .chat-search input:focus{ border-color: #667eea; }.page-teacher-messages .chat-items{ overflow-y: auto; flex: 1; }.page-teacher-messages .chat-item{
+        }.page-teacher-messages .chat-search input:focus, .page-student-messages .chat-search input:focus{ border-color: #667eea; }.page-teacher-messages .chat-items, .page-student-messages .chat-items{ overflow-y: auto; flex: 1; }.page-teacher-messages .chat-item, .page-student-messages .chat-item{
             padding: 14px 16px;
             display: flex;
             gap: 12px;
             cursor: pointer;
             border-bottom: 1px solid #f1f5f9;
             transition: background 0.15s ease;
-        }.page-teacher-messages .chat-item:hover{ background: #f8faff; }.page-teacher-messages .chat-item.active{ background: #eef2ff; }.page-teacher-messages .avatar{
+        }.page-teacher-messages .chat-item:hover, .page-student-messages .chat-item:hover{ background: #f8faff; }.page-teacher-messages .chat-item.active, .page-student-messages .chat-item.active{ background: #eef2ff; }.page-teacher-messages .avatar, .page-student-messages .avatar{
             width: 44px; height: 44px; border-radius: 50%;
             background: linear-gradient(135deg, #667eea, #764ba2);
             color: white; display: flex; align-items: center; justify-content: center;
             font-weight: 800; flex-shrink: 0; overflow: hidden;
-        }.page-teacher-messages .avatar img{ width: 100%; height: 100%; object-fit: cover; }.page-teacher-messages .chat-item-main{ flex: 1; min-width: 0; }.page-teacher-messages .chat-item-top{ display: flex; align-items: center; justify-content: space-between; gap: 10px; }.page-teacher-messages .chat-name{ font-weight: 800; color: #1a202c; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }.page-teacher-messages .chat-time{ font-size: 0.8rem; color: #94a3b8; flex-shrink: 0; }.page-teacher-messages .chat-snippet{ font-size: 0.9rem; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 4px; }.page-teacher-messages .unread-pill{
+        }.page-teacher-messages .avatar img, .page-student-messages .avatar img{ width: 100%; height: 100%; object-fit: cover; }.page-teacher-messages .chat-item-main, .page-student-messages .chat-item-main{ flex: 1; min-width: 0; }.page-teacher-messages .chat-item-top, .page-student-messages .chat-item-top{ display: flex; align-items: center; justify-content: space-between; gap: 10px; }.page-teacher-messages .chat-name, .page-student-messages .chat-name{ font-weight: 800; color: #1a202c; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }.page-teacher-messages .chat-time, .page-student-messages .chat-time{ font-size: 0.8rem; color: #94a3b8; flex-shrink: 0; }.page-teacher-messages .chat-snippet, .page-student-messages .chat-snippet{ font-size: 0.9rem; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 4px; }.page-teacher-messages .unread-pill, .page-student-messages .unread-pill{
             margin-left: 8px;
             background: #667eea;
             color: white;
@@ -13073,13 +12150,14 @@ body.page-teacher-messages{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sa
             padding: 2px 8px;
             border-radius: 999px;
         }.page-teacher-messages /* Right column */
-        .chat-pane{ display: flex; flex-direction: column; min-width: 0; }.page-teacher-messages .chat-pane-header{
+        .chat-pane, .page-student-messages /* Right column */
+        .chat-pane{ display: flex; flex-direction: column; min-width: 0; }.page-teacher-messages .chat-pane-header, .page-student-messages .chat-pane-header{
             padding: 14px 16px;
             border-bottom: 1px solid #e8f4fd;
             display: flex;
             align-items: center;
             gap: 12px;
-        }.page-teacher-messages .back-btn{
+        }.page-teacher-messages .back-btn, .page-student-messages .back-btn{
             display: none;
             border: none;
             background: #e8f4fd;
@@ -13088,7 +12166,7 @@ body.page-teacher-messages{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sa
             border-radius: 999px;
             cursor: pointer;
             font-weight: 800;
-        }.page-teacher-messages .pane-title{ display: flex; flex-direction: column; min-width: 0; }.page-teacher-messages .pane-title .name{ font-weight: 900; color: #1a202c; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }.page-teacher-messages .pane-title .sub{ font-size: 0.85rem; color: #94a3b8; }.page-teacher-messages .chat-scroll{
+        }.page-teacher-messages .pane-title, .page-student-messages .pane-title{ display: flex; flex-direction: column; min-width: 0; }.page-teacher-messages .pane-title .name, .page-student-messages .pane-title .name{ font-weight: 900; color: #1a202c; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }.page-teacher-messages .pane-title .sub, .page-student-messages .pane-title .sub{ font-size: 0.85rem; color: #94a3b8; }.page-teacher-messages .chat-scroll, .page-student-messages .chat-scroll{
             flex: 1;
             overflow-y: auto;
             padding: 16px;
@@ -13097,11 +12175,12 @@ body.page-teacher-messages{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sa
             flex-direction: column;
             gap: 10px;
         }.page-teacher-messages /* Parent container fix: column flow for margin auto */
+        .message-wrap, .page-student-messages /* Parent container fix: column flow for margin auto */
         .message-wrap{
             display: flex;
             flex-direction: column;
             width: 100%;
-        }.page-teacher-messages .bubble{
+        }.page-teacher-messages .bubble, .page-student-messages .bubble{
             max-width: 75%;
             padding: 10px 16px;
             border-radius: 18px;
@@ -13113,6 +12192,7 @@ body.page-teacher-messages{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sa
             text-align: left;
             position: relative;
         }.page-teacher-messages /* OVERRIDES (requested): sent vs received */
+        .message-sent, .page-student-messages /* OVERRIDES (requested): sent vs received */
         .message-sent{
             margin-left: auto !important;
             margin-right: 0 !important;
@@ -13120,7 +12200,7 @@ body.page-teacher-messages{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sa
             color: #fff !important;
             border-radius: 18px 18px 2px 18px !important;
             text-align: left !important;
-        }.page-teacher-messages .message-received{
+        }.page-teacher-messages .message-received, .page-student-messages .message-received{
             margin-right: auto !important;
             margin-left: 0 !important;
             background-color: #F0F0F0 !important;
@@ -13128,6 +12208,7 @@ body.page-teacher-messages{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sa
             border-radius: 18px 18px 18px 2px !important;
             text-align: left !important;
         }.page-teacher-messages /* Bubble tails */
+        .message-sent::after, .page-student-messages /* Bubble tails */
         .message-sent::after{
             content: '';
             position: absolute;
@@ -13138,7 +12219,7 @@ body.page-teacher-messages{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sa
             border-left: 8px solid #4A90E2;
             border-top: 8px solid transparent;
             border-bottom: 8px solid transparent;
-        }.page-teacher-messages .message-received::after{
+        }.page-teacher-messages .message-received::after, .page-student-messages .message-received::after{
             content: '';
             position: absolute;
             left: -6px;
@@ -13148,11 +12229,11 @@ body.page-teacher-messages{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sa
             border-right: 8px solid #F0F0F0;
             border-top: 8px solid transparent;
             border-bottom: 8px solid transparent;
-        }.page-teacher-messages .bubble-meta.meta-sent{ text-align: right; }.page-teacher-messages .bubble-meta.meta-received{ text-align: left; }.page-teacher-messages .bubble-meta{
+        }.page-teacher-messages .bubble-meta.meta-sent, .page-student-messages .bubble-meta.meta-sent{ text-align: right; }.page-teacher-messages .bubble-meta.meta-received, .page-student-messages .bubble-meta.meta-received{ text-align: left; }.page-teacher-messages .bubble-meta, .page-student-messages .bubble-meta{
             font-size: 0.75rem;
             color: #94a3b8;
             margin-top: 4px;
-        }.page-teacher-messages .composer{
+        }.page-teacher-messages .composer, .page-student-messages .composer{
             position: sticky;
             bottom: 0;
             padding: 12px 14px;
@@ -13161,7 +12242,7 @@ body.page-teacher-messages{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sa
             display: flex;
             gap: 10px;
             align-items: flex-end;
-        }.page-teacher-messages .attach-btn{
+        }.page-teacher-messages .attach-btn, .page-student-messages .attach-btn{
             width: 42px; height: 42px;
             border-radius: 999px;
             border: 2px solid #e8f4fd;
@@ -13172,7 +12253,7 @@ body.page-teacher-messages{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sa
             justify-content: center;
             color: #667eea;
             flex-shrink: 0;
-        }.page-teacher-messages .attach-btn:hover{ border-color: #667eea; }.page-teacher-messages .composer textarea{
+        }.page-teacher-messages .attach-btn:hover, .page-student-messages .attach-btn:hover{ border-color: #667eea; }.page-teacher-messages .composer textarea, .page-student-messages .composer textarea{
             flex: 1;
             min-height: 42px;
             max-height: 120px;
@@ -13183,7 +12264,7 @@ body.page-teacher-messages{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sa
             outline: none;
             font-family: inherit;
             font-size: 0.95rem;
-        }.page-teacher-messages .composer textarea:focus{ border-color: #667eea; }.page-teacher-messages .send-btn{
+        }.page-teacher-messages .composer textarea:focus, .page-student-messages .composer textarea:focus{ border-color: #667eea; }.page-teacher-messages .send-btn, .page-student-messages .send-btn{
             padding: 11px 18px;
             border: none;
             border-radius: 14px;
@@ -13192,7 +12273,7 @@ body.page-teacher-messages{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sa
             font-weight: 900;
             cursor: pointer;
             flex-shrink: 0;
-        }.page-teacher-messages .send-btn:disabled{ opacity: 0.6; cursor: not-allowed; }.page-teacher-messages .empty-pane{
+        }.page-teacher-messages .send-btn:disabled, .page-student-messages .send-btn:disabled{ opacity: 0.6; cursor: not-allowed; }.page-teacher-messages .empty-pane, .page-student-messages .empty-pane{
             flex: 1;
             display: flex;
             align-items: center;
@@ -13202,13 +12283,13 @@ body.page-teacher-messages{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sa
             text-align: center;
         }.page-teacher-messages /* Mobile */
         @media (max-width: 900px){
-            .remoed-content { margin-left: 0; max-width: 100vw; padding: 12px; }
-            .messenger { grid-template-columns: 1fr; min-height: calc(100vh - 24px); }
-            .chat-list { border-right: none; }
-            .chat-pane { display: none; }
-            .messenger.show-chat .chat-list { display: none; }
-            .messenger.show-chat .chat-pane { display: flex; }
-            .back-btn { display: inline-flex; }
+            .page-teacher-messages .remoed-content, .page-student-messages .remoed-content { margin-left: 0; max-width: 100vw; padding: 12px; }
+            .page-teacher-messages .messenger, .page-student-messages .messenger { grid-template-columns: 1fr; min-height: calc(100vh - 24px); }
+            .page-teacher-messages .chat-list, .page-student-messages .chat-list { border-right: none; }
+            .page-teacher-messages .chat-pane, .page-student-messages .chat-pane { display: none; }
+            .page-teacher-messages .messenger.show-chat .chat-list, .page-student-messages .messenger.show-chat .chat-list { display: none; }
+            .page-teacher-messages .messenger.show-chat .chat-pane, .page-student-messages .messenger.show-chat .chat-pane { display: flex; }
+            .page-teacher-messages .back-btn, .page-student-messages .back-btn { display: inline-flex; }
         }
 
 
@@ -16403,8 +15484,6 @@ body.page-teacher-schedule{
 /* --- Typography unification: Booking Indicators + schedule grid --- */
 body.page-teacher-schedule,
 body.page-teacher-class-table,
-body.page-teacher-class-table-fixed,
-body.page-teacher-class-table-old,
 body.page-student-class-table{
   font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif !important;
 }
@@ -16419,16 +15498,6 @@ body.page-student-class-table{
 .page-teacher-class-table .remoed-schedule-table,
 .page-teacher-class-table .remoed-schedule-table th,
 .page-teacher-class-table .remoed-schedule-table td,
-.page-teacher-class-table-fixed .booking-legend,
-.page-teacher-class-table-fixed .weekly-grid,
-.page-teacher-class-table-fixed .schedule-table,
-.page-teacher-class-table-fixed .schedule-table th,
-.page-teacher-class-table-fixed .schedule-table td,
-.page-teacher-class-table-old .booking-legend,
-.page-teacher-class-table-old .weekly-grid,
-.page-teacher-class-table-old .schedule-table,
-.page-teacher-class-table-old .schedule-table th,
-.page-teacher-class-table-old .schedule-table td,
 .page-student-class-table .weekly-grid,
 .page-student-class-table .schedule-table,
 .page-student-class-table .schedule-table th,
@@ -16438,8 +15507,6 @@ body.page-student-class-table{
 
 /* Time column (00:00, etc.) */
 .page-teacher-schedule .time-column,
-.page-teacher-class-table-fixed .time-column,
-.page-teacher-class-table-old .time-column,
 .page-student-class-table .time-column,
 .page-teacher-class-table .remoed-time-column{
   font-weight: 600 !important;
@@ -16447,8 +15514,6 @@ body.page-student-class-table{
 
 /* Status text (Unbooked, Student, etc.) */
 .page-teacher-schedule .time-slot,
-.page-teacher-class-table-fixed .time-slot,
-.page-teacher-class-table-old .time-slot,
 .page-student-class-table .time-slot,
 .page-teacher-class-table .remoed-time-slot,
 .page-teacher-class-table .remoed-legend-text{

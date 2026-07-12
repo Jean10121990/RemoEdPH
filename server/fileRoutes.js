@@ -8,6 +8,43 @@ const { fileUploadLimiter } = require('./middleware/apiRateLimits');
 
 const router = express.Router();
 
+function getAllowedExtension(fileName) {
+  const name = String(fileName || '').toLowerCase();
+  return name.match(/\.(\w+)$/)?.[0] || '';
+}
+
+function resolveMimeType(fileName, providedMimeType) {
+  const ext = getAllowedExtension(fileName);
+  if (ext === '.pptx') {
+    return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+  }
+  if (ext === '.ppt') {
+    return 'application/vnd.ms-powerpoint';
+  }
+  if (ext === '.pdf') {
+    return 'application/pdf';
+  }
+  if (ext === '.docx') {
+    return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+  }
+  if (ext === '.doc') {
+    return 'application/msword';
+  }
+  if (ext === '.png') {
+    return 'image/png';
+  }
+  if (ext === '.jpg' || ext === '.jpeg') {
+    return 'image/jpeg';
+  }
+  if (ext === '.gif') {
+    return 'image/gif';
+  }
+  if (ext === '.txt') {
+    return 'text/plain';
+  }
+  return providedMimeType || 'application/octet-stream';
+}
+
 // Create uploads directory if it doesn't exist
 const uploadsDir = path.join(__dirname, '../uploads');
 if (!fs.existsSync(uploadsDir)) {
@@ -32,7 +69,6 @@ const upload = multer({
     fileSize: 100 * 1024 * 1024 // 100MB limit (supports short demo recordings)
   },
   fileFilter: function (req, file, cb) {
-    // Allow only specific file types
     const allowedTypes = [
       'application/pdf',
       'application/msword',
@@ -52,8 +88,15 @@ const upload = multer({
       'video/mp4',
       'application/octet-stream'
     ];
-    
-    if (allowedTypes.includes(file.mimetype)) {
+    const ext = getAllowedExtension(file.originalname || '');
+    const normalizedMime = String(file.mimetype || '').toLowerCase();
+    const isPowerPoint = ext === '.ppt' || ext === '.pptx';
+    const isTextDocument = ['.pdf', '.doc', '.docx', '.txt'].includes(ext);
+    const isImage = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'].includes(ext);
+    const isVideo = ['.mp4', '.webm', '.ogg', '.mov', '.avi', '.mkv'].includes(ext);
+    const isAudio = ['.mp3', '.wav', '.m4a', '.ogg'].includes(ext);
+
+    if (allowedTypes.includes(normalizedMime) || isPowerPoint || isTextDocument || isImage || isVideo || isAudio) {
       cb(null, true);
     } else {
       cb(new Error('Invalid file type. Allowed: documents, images, audio, and video files.'), false);
@@ -75,13 +118,14 @@ router.post('/upload', fileUploadLimiter, upload.single('file'), async (req, res
     }
 
     // Save file metadata to MongoDB
+    const resolvedMimeType = resolveMimeType(req.file.originalname, req.file.mimetype);
     const fileDoc = new File({
       filename: req.file.filename,
       originalName: req.file.originalname,
       room: room,
       uploader: uploader,
       fileSize: req.file.size,
-      mimeType: req.file.mimetype
+      mimeType: resolvedMimeType
     });
 
     await fileDoc.save();
@@ -93,7 +137,7 @@ router.post('/upload', fileUploadLimiter, upload.single('file'), async (req, res
         filename: req.file.filename,
         originalName: req.file.originalname,
         fileSize: req.file.size,
-        mimeType: req.file.mimetype,
+        mimeType: resolvedMimeType,
         uploadDate: fileDoc.uploadDate
       }
     });

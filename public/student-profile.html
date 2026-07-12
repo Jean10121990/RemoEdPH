@@ -494,11 +494,12 @@
         
         .info-row {
             display: grid;
-            grid-template-columns: 110px 1fr;
+            grid-template-columns: 110px minmax(0, 1fr);
             gap: 12px;
             align-items: start;
             padding: 12px 0;
             border-bottom: 1px solid #E8F4FD;
+            min-width: 0;
         }
         
         .info-row:last-child {
@@ -517,10 +518,17 @@
             color: #4A6FA5;
             font-size: 0.95rem;
             flex: 1;
-            word-break: normal;
-            overflow-wrap: break-word;
+            min-width: 0;
+            max-width: 100%;
+            word-break: break-word;
+            overflow-wrap: anywhere;
             white-space: normal;
             line-height: 1.35;
+        }
+
+        #sidebar-email-display {
+            word-break: break-all;
+            overflow-wrap: anywhere;
         }
         
         .info-value.empty {

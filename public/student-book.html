@@ -831,6 +831,52 @@
             background: rgba(102, 126, 234, 0.12);
         }
 
+        .teacher-preference-label-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        .teacher-preference-label-row label {
+            margin: 0;
+            flex: 1;
+            min-width: 0;
+        }
+        .teacher-pref-info-btn {
+            flex-shrink: 0;
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            border: 2px solid #e2e8f0;
+            background: #f8fafc;
+            color: #94a3b8;
+            font-size: 1.1rem;
+            font-weight: 800;
+            line-height: 1;
+            cursor: not-allowed;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s;
+        }
+        .teacher-pref-info-btn.is-active {
+            border-color: #667eea;
+            background: linear-gradient(135deg, #eef2ff, #f8fafc);
+            color: #667eea;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+        }
+        .teacher-pref-info-btn.is-active:hover {
+            background: #eef2ff;
+            border-color: #5a67d8;
+            color: #5a67d8;
+        }
+        .teacher-pref-info-btn:focus-visible {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.35);
+        }
+
         /* Glassmorphism teacher profile modal */
         .teacher-glass-overlay {
             position: fixed;
@@ -1129,9 +1175,15 @@
                                 </div>
 
                                 <div class="form-group" id="teacher-preference-group" style="display: none;">
-                                    <label id="teacher-preference-label" for="booked-teacher-select">Choose teacher</label>
-                                    <select id="booked-teacher-select" name="bookedTeacherSelect" aria-labelledby="teacher-preference-label" style="display: none; width: 100%; max-width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #ced4da; font-size: 0.95rem; margin-bottom: 8px;">
-                                    </select>
+                                    <div class="teacher-preference-label-row">
+                                        <label id="teacher-preference-label" for="booked-teacher-select">Choose teacher</label>
+                                        <button type="button" class="teacher-pref-info-btn" id="teacher-pref-info-btn" disabled aria-disabled="true" aria-label="Teacher profile and introduction" title="View this teacher’s profile">ⓘ</button>
+                                    </div>
+                                    <div id="multi-teacher-select-row" class="multi-teacher-select-row" style="display: none; align-items: center; gap: 12px; margin-bottom: 8px; width: 100%; max-width: 100%;">
+                                        <span class="custom-teacher-select__avatar-wrap" id="booked-teacher-select-avatar" style="flex-shrink: 0; width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; overflow: hidden; background: #f1f5f9; border: 1px solid #e2e8f0;" aria-hidden="true"><span class="cts-trigger-placeholder">⚡</span></span>
+                                        <select id="booked-teacher-select" name="bookedTeacherSelect" aria-labelledby="teacher-preference-label" style="display: none; flex: 1; min-width: 0; width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #ced4da; font-size: 0.95rem; margin-bottom: 0;">
+                                        </select>
+                                    </div>
                                     <div class="custom-teacher-select" id="custom-teacher-select">
                                         <input type="hidden" id="booked-teacher-id" name="bookedTeacherId" value="" autocomplete="off">
                                         <button type="button" class="custom-teacher-select__trigger" id="custom-teacher-trigger" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="teacher-preference-label">
@@ -1302,6 +1354,76 @@
         function normalizeId(id) {
             if (id == null || id === '') return '';
             return String(id).trim().toLowerCase();
+        }
+
+        function mapPublicTeacherApiToGlass(t) {
+            if (!t || typeof t !== 'object') return null;
+            return {
+                displayName: t.displayName,
+                name: t.displayName,
+                teacherId: t.teacherId,
+                teacherEmail: t.teacherId,
+                photo: t.photo,
+                intro: t.intro,
+                certifications: Array.isArray(t.certifications) ? t.certifications : [],
+                rating: t.rating != null ? t.rating : 4.9,
+                reviewCount: t.reviewCount != null ? t.reviewCount : 0,
+                videoIntroduction: t.videoIntroduction || null,
+            };
+        }
+
+        function updateTeacherPrefInfoButtonState() {
+            const btn = document.getElementById('teacher-pref-info-btn');
+            if (!btn) return;
+            const hid = document.getElementById('booked-teacher-id');
+            const sel = document.getElementById('booked-teacher-select');
+            let key = '';
+            if (hid && hid.value && String(hid.value).trim()) {
+                key = normalizeId(hid.value);
+            } else if (
+                sel &&
+                sel.style.display !== 'none' &&
+                sel.value &&
+                String(sel.value).trim()
+            ) {
+                key = normalizeId(sel.value);
+            }
+            const enabled = !!key;
+            btn.disabled = !enabled;
+            btn.setAttribute('aria-disabled', enabled ? 'false' : 'true');
+            btn.classList.toggle('is-active', enabled);
+        }
+
+        async function openTeacherProfileFromPrefButton() {
+            const btn = document.getElementById('teacher-pref-info-btn');
+            if (!btn || btn.disabled) return;
+            const hid = document.getElementById('booked-teacher-id');
+            const sel = document.getElementById('booked-teacher-select');
+            let key = '';
+            if (hid && hid.value && String(hid.value).trim()) key = String(hid.value).trim();
+            else if (sel && sel.value && String(sel.value).trim()) key = String(sel.value).trim();
+            const norm = normalizeId(key);
+            if (!norm) return;
+            const fromList = (customTeacherListTeachers || []).find(
+                (x) => normalizeId(x.teacherEmail || x.teacherId) === norm
+            );
+            if (fromList) {
+                teacherGlassPending = fromList;
+                openTeacherGlassModal(fromList);
+                return;
+            }
+            try {
+                const res = await fetch('/api/teacher/public/profile/' + encodeURIComponent(norm));
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.error || 'Could not load teacher profile');
+                const mapped = mapPublicTeacherApiToGlass(data.teacher);
+                if (!mapped) throw new Error('Invalid profile response');
+                teacherGlassPending = mapped;
+                openTeacherGlassModal(mapped);
+            } catch (e) {
+                console.warn(e);
+                alert(e.message || 'Could not load teacher profile');
+            }
         }
 
         /** Resolve Mongo slot _id for booking when multiple teachers share one calendar cell. */
@@ -2196,6 +2318,7 @@
             const sel = document.getElementById('booked-teacher-select');
             const textEl = document.getElementById('custom-teacher-trigger-text');
             const av = document.getElementById('custom-teacher-trigger-avatar');
+            const selAv = document.getElementById('booked-teacher-select-avatar');
             const tid = teacherId != null && String(teacherId).trim() !== '' ? normalizeId(teacherId) : '';
             if (hid) hid.value = tid;
             if (sel && sel.options && sel.options.length) {
@@ -2204,17 +2327,22 @@
                 else if (!tid) sel.selectedIndex = 0;
             }
             if (textEl) textEl.textContent = label || 'First available (default)';
-            if (av) {
+            function paintAvatar(el, size, eager) {
+                if (!el) return;
                 if (photo && tid) {
                     const url = teacherPhotoUrl(photo);
-                    av.innerHTML = `<img src="${escapeHtmlTeacher(url)}" alt="" width="28" height="28" loading="lazy" />`;
+                    const loadAttr = eager ? 'eager' : 'lazy';
+                    el.innerHTML = `<img src="${escapeHtmlTeacher(url)}" alt="" width="${size}" height="${size}" loading="${loadAttr}" decoding="async" />`;
                 } else {
-                    av.innerHTML = tid
+                    el.innerHTML = tid
                         ? '<span class="cts-trigger-placeholder" aria-hidden="true">👤</span>'
                         : '<span class="cts-trigger-placeholder" aria-hidden="true">⚡</span>';
                 }
             }
+            paintAvatar(av, 28, false);
+            paintAvatar(selAv, 40, true);
             updateAssignmentModeFromTeacherInput();
+            updateTeacherPrefInfoButtonState();
         }
 
         function closeCustomTeacherDropdown() {
@@ -2247,6 +2375,8 @@
                 sel.innerHTML = '';
                 sel.style.display = 'none';
             }
+            const multiRow = document.getElementById('multi-teacher-select-row');
+            if (multiRow) multiRow.style.display = 'none';
             const customRoot = document.getElementById('custom-teacher-select');
             if (customRoot) customRoot.style.display = '';
             customTeacherListTeachers = [];
@@ -2311,11 +2441,32 @@
             const teacherSel = document.getElementById('booked-teacher-select');
             if (teacherSel && teacherSel.dataset.bound !== '1') {
                 teacherSel.dataset.bound = '1';
-                teacherSel.addEventListener('change', () => {
+                teacherSel.addEventListener('change', async () => {
                     const opt = teacherSel.options[teacherSel.selectedIndex];
                     const v = normalizeId(teacherSel.value || '');
                     const lab = opt ? opt.textContent : 'First available (default)';
-                    setTeacherTriggerFromSelection(v, v ? lab : 'First available (default)', null);
+                    if (!v) {
+                        setTeacherTriggerFromSelection('', 'First available (default)', null);
+                        return;
+                    }
+                    const fromList = (customTeacherListTeachers || []).find(
+                        (x) => normalizeId(x.teacherEmail || x.teacherId) === v
+                    );
+                    let photo = fromList && fromList.photo ? fromList.photo : null;
+                    setTeacherTriggerFromSelection(v, lab, photo);
+                    if (!photo) {
+                        try {
+                            const res = await fetch(
+                                '/api/teacher/public/profile/' + encodeURIComponent(v)
+                            );
+                            const data = await res.json().catch(() => ({}));
+                            if (res.ok && data.teacher && data.teacher.photo) {
+                                setTeacherTriggerFromSelection(v, lab, data.teacher.photo);
+                            }
+                        } catch (e) {
+                            console.warn('teacher profile for booking photo', e);
+                        }
+                    }
                 });
             }
             const trigger = document.getElementById('custom-teacher-trigger');
@@ -2338,6 +2489,16 @@
                     closeTeacherGlassModal();
                 }
             });
+
+            const infoPref = document.getElementById('teacher-pref-info-btn');
+            if (infoPref && infoPref.dataset.bound !== '1') {
+                infoPref.dataset.bound = '1';
+                infoPref.addEventListener('click', (ev) => {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    openTeacherProfileFromPrefButton();
+                });
+            }
 
             const glassClose = document.getElementById('teacher-glass-close');
             const glassOverlay = document.getElementById('teacher-profile-glass-overlay');
@@ -2424,6 +2585,8 @@
             if (ids.length > 1) {
                 prefGroup.style.display = 'block';
                 if (customRoot) customRoot.style.display = 'none';
+                const multiRow = document.getElementById('multi-teacher-select-row');
+                if (multiRow) multiRow.style.display = 'flex';
                 if (sel) {
                     sel.style.display = 'block';
                     sel.innerHTML = '';
@@ -2446,6 +2609,8 @@
             } else if (ids.length === 1) {
                 prefGroup.style.display = 'none';
                 modeGroup.style.display = 'none';
+                const multiRowOne = document.getElementById('multi-teacher-select-row');
+                if (multiRowOne) multiRowOne.style.display = 'none';
                 if (sel) {
                     sel.innerHTML = '';
                     sel.style.display = 'none';
@@ -2459,6 +2624,8 @@
             } else {
                 prefGroup.style.display = 'none';
                 modeGroup.style.display = 'none';
+                const multiRowZero = document.getElementById('multi-teacher-select-row');
+                if (multiRowZero) multiRowZero.style.display = 'none';
                 if (sel) {
                     sel.innerHTML = '';
                     sel.style.display = 'none';
@@ -2483,6 +2650,21 @@
                             );
                         } else {
                             setTeacherTriggerFromSelection(preNorm, names[preNorm] || preNorm, null);
+                            try {
+                                const res = await fetch(
+                                    '/api/teacher/public/profile/' + encodeURIComponent(preNorm)
+                                );
+                                const pdata = await res.json().catch(() => ({}));
+                                if (res.ok && pdata.teacher && pdata.teacher.photo) {
+                                    setTeacherTriggerFromSelection(
+                                        preNorm,
+                                        names[preNorm] || preNorm,
+                                        pdata.teacher.photo
+                                    );
+                                }
+                            } catch (_e) {
+                                /* ignore */
+                            }
                             const hasOpt = [...sel.options].some((o) => normalizeId(o.value) === preNorm);
                             if (!hasOpt && preNorm) {
                                 const opt = document.createElement('option');
@@ -2500,6 +2682,8 @@
             } catch (e) {
                 console.warn('prefillPreferredTeacherId', e);
             }
+
+            updateTeacherPrefInfoButtonState();
         }
         
         function updateBookingPanel() {

@@ -39,6 +39,7 @@
         var path = (window.location.pathname || '').replace(/^\//, '') || window.location.href;
         if (path.indexOf('teacher-dashboard') !== -1) return 'dashboard';
         if (path.indexOf('teacher-class-table') !== -1) return 'class-schedule';
+        if (path.indexOf('teacher-schedule') !== -1) return 'class-schedule';
         if (path.indexOf('teacher-open-class') !== -1) return 'class-configuration';
         if (path.indexOf('device-check') !== -1) return 'device-check';
         if (path.indexOf('teacher-lessons-library') !== -1) return 'lessons-library';
@@ -95,7 +96,13 @@
             if (item.isLogout) {
                 return '<li title="' + item.label + '"' + idAttr + activeClass + dataNav + ' data-logout="1">' + item.icon + '<span class="menu-label">' + item.label + '</span></li>';
             }
-            return '<li title="' + item.label + '"' + activeClass + dataNav + ' onclick="window.location.href=\'' + item.href + '\'">' + item.icon + '<span class="menu-label">' + item.label + '</span></li>';
+            var badgeOrDot = '';
+            if (item.id === 'class-schedule') {
+                badgeOrDot = '<span class="remoed-schedule-count-badge" aria-hidden="true"></span>';
+            } else if (item.id === 'teaching-fee') {
+                badgeOrDot = '<span class="remoed-pending-dot" aria-hidden="true"></span>';
+            }
+            return '<li title="' + item.label + '"' + activeClass + dataNav + ' onclick="window.location.href=\'' + item.href + '\'">' + item.icon + badgeOrDot + '<span class="menu-label">' + item.label + '</span></li>';
         }).join('');
 
         var html =
@@ -178,7 +185,70 @@
         if (avatarTextEl) avatarTextEl.textContent = (raw.replace(/^Hi,\s*/i, '') || 'T')[0].toUpperCase();
 
         loadProfileIntoSidebar(container);
+        updatePendingFeedbackDots(container);
         // Mini-sidebar collapse is handled locally; no floating toggle buttons.
+    }
+
+    function setClassSchedulePendingBadge(n) {
+        var root = document.getElementById('teacher-sidebar-root');
+        if (!root) return;
+        var li = root.querySelector('li[data-nav="class-schedule"]');
+        var badge = li && li.querySelector('.remoed-schedule-count-badge');
+        if (!li || !badge) return;
+        var num = Number(n) || 0;
+        if (num > 0) {
+            li.classList.add('remoed-has-pending-count');
+            badge.textContent = num > 99 ? '99+' : String(num);
+            badge.setAttribute('aria-label', num + ' pending feedback');
+        } else {
+            li.classList.remove('remoed-has-pending-count');
+            badge.textContent = '';
+            badge.removeAttribute('aria-label');
+        }
+    }
+
+    function updatePendingFeedbackDots(container) {
+        var root =
+            container && container.querySelector
+                ? container
+                : document.getElementById('teacher-sidebar-root');
+        if (!root) return;
+        var menu = root.querySelector('.remoed-menu');
+        if (!menu) return;
+        menu.querySelectorAll('li[data-nav]').forEach(function (li) {
+            li.classList.remove('remoed-has-pending');
+        });
+        setClassSchedulePendingBadge(0);
+        var token =
+            (typeof RemoedUserSession !== 'undefined' &&
+                RemoedUserSession.getUserToken &&
+                RemoedUserSession.getUserToken()) ||
+            localStorage.getItem('token');
+        if (!token) return;
+        fetch('/api/teacher/pending-feedback-bookings', {
+            headers: { Authorization: 'Bearer ' + token },
+        })
+            .then(function (r) {
+                return r.ok ? r.json() : null;
+            })
+            .then(function (data) {
+                if (!data || !data.success) return;
+                var n = Number(data.count) || 0;
+                setClassSchedulePendingBadge(n);
+                if (n > 0) {
+                    var feeLi = menu.querySelector('li[data-nav="teaching-fee"]');
+                    if (feeLi) feeLi.classList.add('remoed-has-pending');
+                }
+            })
+            .catch(function () {});
+    }
+
+    if (!global.__remoedPendingFeedbackDotListener) {
+        global.__remoedPendingFeedbackDotListener = true;
+        global.addEventListener('remoed:pending-feedback-changed', function () {
+            var c = document.getElementById('teacher-sidebar-root');
+            if (c) updatePendingFeedbackDots(c);
+        });
     }
 
     function loadProfileIntoSidebar(container) {
@@ -221,6 +291,11 @@
 
     global.TeacherSidebar = {
         render: render,
-        MENU_ITEMS: MENU_ITEMS
+        MENU_ITEMS: MENU_ITEMS,
+        refreshPendingFeedbackDots: function () {
+            var c = document.getElementById('teacher-sidebar-root');
+            if (c) updatePendingFeedbackDots(c);
+        },
+        setClassSchedulePendingBadge: setClassSchedulePendingBadge,
     };
 })(typeof window !== 'undefined' ? window : this);

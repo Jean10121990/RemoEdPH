@@ -72,6 +72,16 @@
         </div>
       </div>
 
+      <div
+        id="ctf-pending-feedback-banner"
+        class="ctf-pending-feedback-banner"
+        role="alert"
+        hidden
+        style="display: none; position: sticky; top: 0; z-index: 35; margin: 0 0 12px; padding: 12px 14px; border-radius: 10px; border: 1px solid #f59e0b; background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%); box-shadow: 0 4px 14px rgba(245, 158, 11, 0.18);"
+      >
+        <p id="ctf-pending-feedback-banner-text" style="font-weight: 700; color: #9a3412; font-size: 0.92rem; margin: 0; line-height: 1.45;"></p>
+      </div>
+
       <!-- Modern Legend -->
       <div class="remoed-legend">
         <h3>📊 Booking Indicators</h3>
@@ -359,6 +369,142 @@
 
     const teacherTimezone = RemoedTZ.REMOED_ANCHOR_ZONE || RemoedTZ.REMOED_DISPLAY_ZONE || 'Asia/Manila';
 
+    /** Grid cells use HH:mm; API/DB may send HH:mm:ss — align keys and querySelector. */
+    function normalizeGridTime(t) {
+      if (t == null || t === '') return '';
+      const s = String(t).trim();
+      const m = s.match(/^(\d{1,2}):(\d{2})(?::\d{2})?/);
+      if (!m) return s.length >= 5 ? s.slice(0, 5) : s;
+      const hh = String(Math.min(23, Math.max(0, parseInt(m[1], 10)))).padStart(2, '0');
+      const mm = String(Math.min(59, Math.max(0, parseInt(m[2], 10)))).padStart(2, '0');
+      return `${hh}:${mm}`;
+    }
+
+    let pendingFeedbackCount = 0;
+    window.pendingFeedbackCount = 0;
+
+    function findClassTableBookingSlot(booking) {
+      if (!booking) return null;
+      const d = booking.date;
+      const t = normalizeGridTime(booking.time);
+      if (d && t) {
+        let el = document.querySelector(`.remoed-time-slot[data-date="${d}"][data-time="${t}"]`);
+        if (el) return el;
+        el = document.querySelector(`[data-date="${d}"][data-time="${t}"]`);
+        if (el) return el;
+      }
+      if (booking.localDate && booking.localTime != null) {
+        const d2 = booking.localDate;
+        const t2 = normalizeGridTime(booking.localTime);
+        let el2 = document.querySelector(`.remoed-time-slot[data-date="${d2}"][data-time="${t2}"]`);
+        if (el2) return el2;
+      }
+      if (booking.utc && typeof luxon !== 'undefined') {
+        try {
+          const { DateTime } = luxon;
+          const z = teacherTimezone;
+          const raw = booking.utc instanceof Date ? booking.utc.toISOString() : String(booking.utc);
+          const slotT = DateTime.fromISO(raw, { zone: 'utc' }).setZone(z);
+          if (slotT.isValid) {
+            const ds = slotT.toFormat('yyyy-LL-dd');
+            const ts = slotT.toFormat('HH:mm');
+            let el3 = document.querySelector(`.remoed-time-slot[data-date="${ds}"][data-time="${ts}"]`);
+            if (el3) return el3;
+          }
+        } catch (_e) {
+          /* ignore */
+        }
+      }
+      return null;
+    }
+
+    function isBookingSlotEndPassedForTable(booking) {
+      if (!booking) return false;
+      const d = booking.date;
+      const t = normalizeGridTime(booking.time);
+      if (!d || !t || typeof luxon === 'undefined') return false;
+      try {
+        const { DateTime } = luxon;
+        const z = teacherTimezone;
+        let start = DateTime.fromISO(`${d}T${t}`, { zone: z });
+        if (!start.isValid) return false;
+        return DateTime.now().setZone(z) > start.plus({ minutes: 25 });
+      } catch (_e) {
+        return false;
+      }
+    }
+
+    function bookingNeedsTeacherFeedbackCell(booking) {
+      if (!booking) return false;
+      const st = String(booking.status || '').toLowerCase();
+      if (st === 'completed') return false;
+      if (booking.feedbackSubmitted === false) return true;
+      return st === 'pending_feedback';
+    }
+
+    async function refreshCtfPendingFeedbackBanner() {
+      const wrap = document.getElementById('ctf-pending-feedback-banner');
+      const textEl = document.getElementById('ctf-pending-feedback-banner-text');
+      if (!wrap || !textEl) return;
+      const token = localStorage.getItem('token');
+      const tid = localStorage.getItem('teacherId');
+      if (!token || !tid) {
+        pendingFeedbackCount = 0;
+        window.pendingFeedbackCount = 0;
+        wrap.hidden = true;
+        wrap.style.display = 'none';
+        try {
+          if (typeof TeacherSidebar !== 'undefined' && TeacherSidebar.setClassSchedulePendingBadge) {
+            TeacherSidebar.setClassSchedulePendingBadge(0);
+          }
+        } catch (_b) {}
+        return;
+      }
+      try {
+        const res = await fetch('/api/teacher/pending-feedback-bookings', {
+          headers: { Authorization: 'Bearer ' + token },
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+          pendingFeedbackCount = 0;
+          window.pendingFeedbackCount = 0;
+          wrap.hidden = true;
+          wrap.style.display = 'none';
+          return;
+        }
+        const items = data.items || [];
+        const total = typeof data.count === 'number' ? data.count : items.length;
+        pendingFeedbackCount = total;
+        window.pendingFeedbackCount = total;
+        try {
+          if (typeof TeacherSidebar !== 'undefined' && TeacherSidebar.setClassSchedulePendingBadge) {
+            TeacherSidebar.setClassSchedulePendingBadge(total);
+          }
+        } catch (_b2) {}
+        if (total === 0) {
+          wrap.hidden = true;
+          wrap.style.display = 'none';
+          textEl.textContent = '';
+        } else {
+          textEl.textContent =
+            'You have ' + total + ' pending feedback' + (total === 1 ? '' : 's') + ' to complete.';
+          wrap.hidden = false;
+          wrap.style.display = 'block';
+        }
+      } catch (e) {
+        console.warn('ctf pending-feedback-banner', e);
+        pendingFeedbackCount = 0;
+        window.pendingFeedbackCount = 0;
+        wrap.hidden = true;
+        wrap.style.display = 'none';
+      }
+      try {
+        if (typeof TeacherSidebar !== 'undefined' && TeacherSidebar.refreshPendingFeedbackDots) {
+          TeacherSidebar.refreshPendingFeedbackDots();
+        }
+      } catch (_s) {}
+    }
+
     function bookingStartMsForDisplay(b) {
       return RemoedTZ.bookingStartMsFromRecord ? RemoedTZ.bookingStartMsFromRecord(b) : NaN;
     }
@@ -604,9 +750,9 @@
             ...slot,
             utc: utcIso,
             date: local.date,
-            time: local.time,
+            time: normalizeGridTime(local.time),
             localDate: local.date,
-            localTime: local.time,
+            localTime: normalizeGridTime(local.time),
             localLabel: local.label,
             clientTz: tz
           };
@@ -622,9 +768,9 @@
             ...booking,
             utc: utcIso,
             date: local.date,
-            time: local.time,
+            time: normalizeGridTime(local.time),
             localDate: local.date,
-            localTime: local.time,
+            localTime: normalizeGridTime(local.time),
             localLabel: local.label,
             clientTz: tz
           };
@@ -635,6 +781,8 @@
         
         // Force re-render with fresh data
         renderScheduleData();
+        void maybeOpenPendingFeedbackFromQuery();
+        void refreshCtfPendingFeedbackBanner();
         
       } catch (error) {
         console.error('❌ Error loading schedule data:', error);
@@ -662,11 +810,27 @@
       // Create a set of booked slots to check against
       const bookedSlots = new Set();
       bookingsData.forEach(booking => {
-        bookedSlots.add(`${booking.date}-${booking.time}`);
+        bookedSlots.add(`${booking.date}-${normalizeGridTime(booking.time)}`);
       });
       
       allSlots.forEach(slot => {
-        slot.classList.remove('open', 'booked', 'unavailable', 'finished', 'absent', 'unbooked', 'student-absent', 'status-completed', 'status-absent', 'status-past');
+        slot.classList.remove(
+          'open',
+          'booked',
+          'unavailable',
+          'finished',
+          'absent',
+          'unbooked',
+          'student-absent',
+          'status-completed',
+          'status-absent',
+          'status-past',
+          'status-pending-feedback',
+          'remoed-pending-feedback-actions',
+          'N',
+          'K',
+          'P'
+        );
         slot.textContent = '';
         slot.style.background = '';
         slot.style.color = '';
@@ -860,7 +1024,8 @@
         // Initialize indicator variable at the beginning
         let indicator = 'P'; // Default to Primary
         
-        const slotElement = document.querySelector(`[data-date="${booking.date}"][data-time="${booking.time}"]`);
+        const slotElement = findClassTableBookingSlot(booking);
+        let skipDefaultSlotLabel = false;
         if (slotElement) {
           slotElement.classList.remove('unavailable'); // Remove unavailable class if slot is booked
           
@@ -881,14 +1046,59 @@
           }
           
           // Session ended in classroom; teacher must still submit wrap-up feedback to get paid
-          if (String(booking.status).toLowerCase() === 'pending_feedback') {
+          if (bookingNeedsTeacherFeedbackCell(booking)) {
             console.log('⏳ Pending teacher feedback (live session ended)');
             slotElement.classList.add('status-pending-feedback');
-            indicator = '!';
-            slotElement.style.cursor = 'pointer';
-            slotElement.style.fontWeight = 'bold';
-            slotElement.style.fontSize = '1.1em';
-            slotElement.onclick = (ev) => showClassInfo(booking, ev);
+            const level = (booking.studentLevel || '').toLowerCase();
+            if (level.includes('nursery')) {
+              indicator = 'N';
+              slotElement.classList.add('N');
+            } else if (level.includes('kindergarten') || level.includes('kinder')) {
+              indicator = 'K';
+              slotElement.classList.add('K');
+            } else if (level.includes('primary') || level.includes('preparatory')) {
+              indicator = 'P';
+              slotElement.classList.add('P');
+            } else {
+              indicator = 'P';
+              slotElement.classList.add('P');
+            }
+            const slotPassed = isBookingSlotEndPassedForTable(booking);
+            if (slotPassed) {
+              skipDefaultSlotLabel = true;
+              slotElement.classList.add('remoed-pending-feedback-actions');
+              const stuRaw = booking.studentId?.firstName || booking.studentId?.username || 'Unknown';
+              const stuEsc = String(stuRaw)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/"/g, '&quot;');
+              slotElement.innerHTML =
+                '<div class="remoed-pending-feedback-inner" style="display:flex;flex-direction:column;gap:4px;align-items:stretch;text-align:center;line-height:1.15;">' +
+                '<span style="font-size:0.78rem;font-weight:700;">' +
+                indicator +
+                '- ' +
+                stuEsc +
+                '</span>' +
+                '<button type="button" class="remoed-give-feedback-btn">Give Feedback</button></div>';
+              const btn = slotElement.querySelector('.remoed-give-feedback-btn');
+              if (btn) {
+                btn.addEventListener('click', function (ev) {
+                  ev.preventDefault();
+                  ev.stopPropagation();
+                  openGiveFeedbackForBooking(booking);
+                });
+              }
+              slotElement.onclick = function (ev) {
+                if (ev.target.closest('.remoed-give-feedback-btn')) return;
+                showClassInfo(booking, ev);
+              };
+            } else {
+              indicator = '!';
+              slotElement.style.cursor = 'pointer';
+              slotElement.style.fontWeight = 'bold';
+              slotElement.style.fontSize = '1.1em';
+              slotElement.onclick = (ev) => showClassInfo(booking, ev);
+            }
           } else if (booking.status === 'completed') {
             console.log('✅ Marking as finished (manually completed by teacher)');
             slotElement.classList.add('status-completed');
@@ -990,8 +1200,10 @@
           
           // Set text content for all slots (indicator + student name)
           const studentFirstName = booking.studentId?.firstName || booking.studentId?.username || 'Unknown';
-          slotElement.textContent = `${indicator}- ${studentFirstName}`;
-                      let statusText = '';
+          if (!skipDefaultSlotLabel) {
+            slotElement.textContent = `${indicator}- ${studentFirstName}`;
+          }
+          let statusText = '';
           if (booking.status === 'absent') {
             // Check if teacher entered the classroom to determine who was absent
             const teacherEntered = booking.attendance?.teacherEntered || false;
@@ -1006,7 +1218,7 @@
             } else {
               statusText = 'Absent (Both entered)';
             }
-          } else if (String(booking.status).toLowerCase() === 'pending_feedback') {
+          } else if (bookingNeedsTeacherFeedbackCell(booking)) {
             statusText = 'Pending feedback — submit stars & comments to finalize';
           } else if (booking.status === 'completed') {
             statusText = booking.studentTechnicalIssues ? 'Class Completed (Student had technical issues)' : 'Class Completed';
@@ -1016,22 +1228,37 @@
             statusText = 'Booked Class';
           }
           slotElement.title = `${statusText} - ${booking.studentId?.firstName || booking.studentId?.username || 'Unknown Student'}`;
-          slotElement.style.cursor = 'pointer';
-          slotElement.style.fontWeight = 'bold';
-          slotElement.style.fontSize = '1.1em';
-          slotElement.onclick = (ev) => showClassInfo(booking, ev);
+          if (!skipDefaultSlotLabel) {
+            slotElement.style.cursor = 'pointer';
+            slotElement.style.fontWeight = 'bold';
+            slotElement.style.fontSize = '1.1em';
+            slotElement.onclick = (ev) => showClassInfo(booking, ev);
+          }
           
           // Ensure CSS classes take precedence over inline styles for status-based styling
           if (
             booking.status === 'completed' ||
             booking.absentMarkedAt ||
             booking.status === 'absent' ||
-            String(booking.status).toLowerCase() === 'pending_feedback'
+            (bookingNeedsTeacherFeedbackCell(booking) && !skipDefaultSlotLabel)
           ) {
             // Remove any inline background and color styles to let CSS classes work
             slotElement.style.removeProperty('background');
             slotElement.style.removeProperty('color');
           }
+        } else {
+          console.warn(
+            '⚠️ Schedule grid: no table cell matched this booking (check date/time vs grid).',
+            {
+              status: booking.status,
+              id: booking._id,
+              date: booking.date,
+              time: booking.time,
+              localDate: booking.localDate,
+              localTime: booking.localTime,
+              normalizedTime: normalizeGridTime(booking.time),
+            }
+          );
         }
       });
     }
@@ -1166,6 +1393,7 @@
     // Class Info Modal Functions
     let currentBooking = null;
     let selectedRating = 0;
+    let pendingFeedbackQueryAttempted = false;
 
     function hideClassStudentPhoto() {
       const wrap = document.getElementById('class-student-photo-wrap');
@@ -1583,6 +1811,7 @@
       initTeacherPhilippineTimeNote();
       updateWeekDisplay();
       initializeWeeklyGrid();
+      void refreshCtfPendingFeedbackBanner();
       
       // Listen for class completion events
       window.addEventListener('classFinished', () => {
@@ -1839,15 +2068,15 @@
         try {
             const token = localStorage.getItem('token');
             if (token) {
-                const response = await fetch(`/api/teacher/bookings/${currentBooking._id}`, {
+                const response = await fetch(`/api/teacher/booking/${currentBooking._id}`, {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }
                 });
                 
                 if (response.ok) {
-                    const updatedBooking = await response.json();
-                    currentBooking = updatedBooking;
+                    const updatedPayload = await response.json();
+                    currentBooking = updatedPayload.booking || updatedPayload;
                     console.log('🔄 Updated booking data:', currentBooking);
                 }
             }
@@ -1915,6 +2144,90 @@
         
         // Show modal
         document.getElementById('class-feedback-modal').classList.add('show');
+    }
+
+    async function openGiveFeedbackForBooking(booking) {
+      const id = booking && (booking._id || booking.bookingId);
+      if (!id) {
+        showNotification('Missing class reference', 'error');
+        return;
+      }
+      const token = localStorage.getItem('token');
+      if (!token) {
+        showNotification('Please sign in again', 'error');
+        return;
+      }
+      try {
+        const r = await fetch('/api/teacher/booking/' + encodeURIComponent(String(id)), {
+          headers: { Authorization: 'Bearer ' + token },
+        });
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok || !data.booking) {
+          showNotification((data && data.error) || 'Could not load class for feedback', 'error');
+          return;
+        }
+        currentBooking = data.booking;
+        await showClassFeedback();
+      } catch (e) {
+        console.warn(e);
+        showNotification('Could not open feedback form', 'error');
+      }
+    }
+
+    function openFeedbackModal(bookingId) {
+      const id = bookingId && String(bookingId).trim();
+      if (!id) {
+        showNotification('Missing class reference', 'error');
+        return;
+      }
+      openGiveFeedbackForBooking({ _id: id });
+    }
+    window.openFeedbackModal = openFeedbackModal;
+
+    async function maybeOpenPendingFeedbackFromQuery() {
+      if (pendingFeedbackQueryAttempted) return;
+      let id = '';
+      try {
+        id = (new URLSearchParams(window.location.search).get('submitFeedback') || '').trim();
+      } catch (e) {
+        return;
+      }
+      if (!id) return;
+      pendingFeedbackQueryAttempted = true;
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      try {
+        const r = await fetch('/api/teacher/booking/' + encodeURIComponent(id), {
+          headers: { Authorization: 'Bearer ' + token },
+        });
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok || !data.booking) {
+          try {
+            history.replaceState({}, '', window.location.pathname + window.location.hash);
+          } catch (_h) {
+            /* ignore */
+          }
+          return;
+        }
+        const st = String(data.booking.status || '').toLowerCase();
+        if (st !== 'pending_feedback') {
+          try {
+            history.replaceState({}, '', window.location.pathname + window.location.hash);
+          } catch (_h2) {
+            /* ignore */
+          }
+          return;
+        }
+        currentBooking = data.booking;
+        await showClassFeedback();
+        try {
+          history.replaceState({}, '', window.location.pathname + window.location.hash);
+        } catch (_h3) {
+          /* ignore */
+        }
+      } catch (err) {
+        console.warn('submitFeedback query', err);
+      }
     }
     
     // Setup star rating functionality
@@ -2083,6 +2396,13 @@
             loadScheduleData();
             if (currentBooking) {
                 currentBooking.status = 'completed';
+            }
+            try {
+              window.dispatchEvent(new CustomEvent('remoed:pending-feedback-changed'));
+            } catch (_ev) {}
+            void refreshCtfPendingFeedbackBanner();
+            if (typeof TeacherSidebar !== 'undefined' && TeacherSidebar.refreshPendingFeedbackDots) {
+              TeacherSidebar.refreshPendingFeedbackDots();
             }
         } catch (error) {
             console.error('Error submitting feedback and completing class:', error);

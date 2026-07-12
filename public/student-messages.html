@@ -6,18 +6,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="js/security-guard.js?v=1"></script>
-    <title>Messages - RemoEdPH</title>
+    <title>Messages - Student - RemoEdPH</title>
     <link rel="stylesheet" href="modern-styles.css">
     <link rel="stylesheet" href="css/teacher-sidebar.css">
     <link rel="stylesheet" href="css/global-portal.css">
+    <link rel="stylesheet" href="css/student-portal-layout.css">
+    <link rel="stylesheet" href="css/student-sidebar.css">
     <link rel="stylesheet" href="style.css">
     <script src="js/user-session.js"></script>
 </head>
-<body class="page-teacher-messages">
+<body class="student-portal page-student-messages">
     <div class="remoed-main">
-        <div id="teacher-sidebar-root"></div>
-        <script src="js/teacher-sidebar.js"></script>
-        <script>TeacherSidebar.render('teacher-sidebar-root', 'messages');</script>
+        <div id="student-sidebar-root"></div>
+        <script src="js/student-sidebar.js"></script>
+        <script>StudentSidebar.render('student-sidebar-root', 'messages');</script>
 
         <main class="remoed-content">
             <div class="messenger" id="messenger">
@@ -71,7 +73,7 @@
     <script>
         (function () {
             const token = localStorage.getItem('token');
-            const me = localStorage.getItem('teacherId');
+            const me = localStorage.getItem('studentUsername') || localStorage.getItem('remoedUsername') || localStorage.getItem('username') || '';
             const messengerEl = document.getElementById('messenger');
             const chatItemsEl = document.getElementById('chat-items');
             const chatScrollEl = document.getElementById('chat-scroll');
@@ -193,7 +195,7 @@
                     return;
                 }
                 try {
-                    const res = await fetch('/api/teacher/peer-chats/user-search?q=' + encodeURIComponent(q), { headers: { 'Authorization': `Bearer ${token}` } });
+                    const res = await fetch('/api/student/peer-chats/user-search?q=' + encodeURIComponent(q), { headers: { 'Authorization': `Bearer ${token}` } });
                     const data = await res.json();
                     if (!res.ok) throw new Error(data.error || 'Search failed');
                     userSearchHits = data.users || [];
@@ -269,9 +271,9 @@
             }
 
             async function loadChats() {
-                const res = await fetch('/api/teacher/peer-chats', { headers: { 'Authorization': `Bearer ${token}` } });
+                const res = await fetch('/api/student/peer-chats', { headers: { 'Authorization': `Bearer ${token}` } });
                 const data = await res.json();
-                if (!res.ok) throw new Error(data.error || 'Failed to load chats');
+                if (!res.ok) throw new Error(data.error || data.message || 'Failed to load chats');
                 chats = data.chats || [];
                 renderChatList();
             }
@@ -312,9 +314,9 @@
                 threadCursor.hasMore = false;
                 threadCursor.nextBefore = null;
                 threadCursor.loadingOlder = false;
-                const res = await fetch(`/api/teacher/peer-messages/${encodeURIComponent(peerId)}?limit=20`, { headers: { 'Authorization': `Bearer ${token}` } });
+                const res = await fetch(`/api/student/peer-messages/${encodeURIComponent(peerId)}?limit=20`, { headers: { 'Authorization': `Bearer ${token}` } });
                 const data = await res.json();
-                if (!res.ok) throw new Error(data.error || 'Failed to load messages');
+                if (!res.ok) throw new Error(data.error || data.message || 'Failed to load messages');
                 threadCursor.hasMore = !!data.hasMore;
                 threadCursor.nextBefore = data.nextBefore || null;
                 renderMessages(data.messages || []);
@@ -345,7 +347,7 @@
                 if (!activePeerId || threadCursor.loadingOlder || !threadCursor.hasMore || !threadCursor.nextBefore) return;
                 threadCursor.loadingOlder = true;
                 try {
-                    const u = `/api/teacher/peer-messages/${encodeURIComponent(activePeerId)}?limit=20&before=${encodeURIComponent(threadCursor.nextBefore)}`;
+                    const u = `/api/student/peer-messages/${encodeURIComponent(activePeerId)}?limit=20&before=${encodeURIComponent(threadCursor.nextBefore)}`;
                     const res = await fetch(u, { headers: { 'Authorization': `Bearer ${token}` } });
                     const data = await res.json();
                     if (!res.ok) throw new Error(data.error || 'Failed to load older');
@@ -363,14 +365,14 @@
                 const msg = (composerTextEl.value || '').trim();
                 if (!msg || !activePeerId) return;
                 sendBtnEl.disabled = true;
-                const res = await fetch('/api/teacher/peer-message', {
+                const res = await fetch('/api/student/peer-message', {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                     body: JSON.stringify({ recipientId: activePeerId, message: msg })
                 });
                 const data = await res.json();
                 sendBtnEl.disabled = false;
-                if (!res.ok || !data.success) throw new Error(data.error || 'Failed to send');
+                if (!res.ok || !data.success) throw new Error(data.error || data.message || 'Failed to send');
 
                 composerTextEl.value = '';
                 if (data.peerMessage) {
@@ -403,7 +405,7 @@
 
             if (socket) {
                 socket.on('connect', () => {
-                    if (me) socket.emit('join-teacher-messages', { teacherId: me });
+                    if (me) socket.emit('join-student-messages', { username: me });
                 });
                 socket.on('peer-message:new', (m) => {
                     if (!m || (!m.senderId && !m.recipientId)) return;
@@ -411,7 +413,7 @@
                     upsertChatFromIncoming(m);
                     if (peerId === String(activePeerId || '')) {
                         appendSingleMessage(m);
-                        fetch(`/api/teacher/peer-messages/${encodeURIComponent(peerId)}?limit=20`, {
+                        fetch(`/api/student/peer-messages/${encodeURIComponent(peerId)}?limit=20`, {
                             headers: { 'Authorization': `Bearer ${token}` }
                         }).catch(() => {});
                     }

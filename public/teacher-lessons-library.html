@@ -13,12 +13,6 @@
 <!-- Remo AI Chatbot Styles -->
     <link rel="stylesheet" href="style.css">
     <script src="js/user-session.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
-    <script>
-        if (window.pdfjsLib) {
-            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
-        }
-    </script>
     <style>
         .page-teacher-lessons-library .preview-skeleton {
             min-height: 280px;
@@ -26,11 +20,6 @@
             background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 37%, #e2e8f0 63%);
             background-size: 400% 100%;
             animation: ll-preview-skel 1.2s ease-in-out infinite;
-        }
-        .page-teacher-lessons-library .preview-skeleton--sm {
-            min-height: 0;
-            width: 56px;
-            height: 72px;
         }
         @keyframes ll-preview-skel {
             0% { background-position: 100% 50%; }
@@ -43,30 +32,6 @@
             flex: 1;
             min-width: 0;
         }
-        .page-teacher-lessons-library .file-row-thumb {
-            flex-shrink: 0;
-            width: 56px;
-            height: 72px;
-            border-radius: 6px;
-            overflow: hidden;
-            border: 1px solid #e2e8f0;
-            background: #f8fafc;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .page-teacher-lessons-library .file-row-thumb img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            display: block;
-        }
-        .page-teacher-lessons-library .pdf-preview-first {
-            max-width: 100%;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-            background: #fff;
-        }
         .page-teacher-lessons-library .pdf-full-iframe {
             width: 100%;
             min-height: 600px;
@@ -76,25 +41,20 @@
             background: white;
             display: block;
         }
-        .page-teacher-lessons-library .pdf-preview-toolbar {
+        .page-teacher-lessons-library .pdf-stream-loading {
             display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem;
+            flex-direction: column;
             align-items: center;
-            margin-bottom: 0.75rem;
+            justify-content: center;
+            gap: 0.75rem;
+            color: #64748b;
+            font-size: 0.95rem;
+            font-weight: 500;
         }
-        .page-teacher-lessons-library .pdf-preview-toolbar .btn-secondary {
-            padding: 0.45rem 0.9rem;
-            font-size: 0.875rem;
-            border-radius: 8px;
-            border: 1px solid #cbd5e1;
-            background: #fff;
-            color: #334155;
-            cursor: pointer;
-            font-weight: 600;
-        }
-        .page-teacher-lessons-library .pdf-preview-toolbar .btn-secondary:hover {
-            background: #f1f5f9;
+        .page-teacher-lessons-library .btn-icon.view.view-btn--loading {
+            opacity: 0.85;
+            color: #667eea;
+            pointer-events: none;
         }
     </style>
 </head>
@@ -236,72 +196,53 @@
         let currentLessonsCache = [];
         let curriculaCache = [];
         let previewClearTimer = null;
+        let lastLessonFilesList = [];
+        let pdfPreviewLoadTimer = null;
+        let lastPreviewViewBtn = null;
         const token = localStorage.getItem('token');
         const teacherId = localStorage.getItem('teacherId');
 
-        const LESSON_FILE_CACHE_MAX = 10;
-        const lessonFileBlobCache = new Map();
         const lessonFileJsonInflight = new Map();
+
+        function normalizeLessonFileId(raw) {
+            if (raw == null || raw === '') return '';
+            if (typeof raw === 'object') {
+                if (raw.$oid) return String(raw.$oid);
+                if (raw._id != null) return normalizeLessonFileId(raw._id);
+                return String(raw);
+            }
+            return String(raw);
+        }
+
+        function escapeHtmlAttr(s) {
+            return String(s)
+                .replace(/&/g, '&amp;')
+                .replace(/"/g, '&quot;')
+                .replace(/</g, '&lt;');
+        }
+
+        function releaseViewButton(btn) {
+            const b = btn != null ? btn : lastPreviewViewBtn;
+            if (!b) return;
+            b.classList.remove('view-btn--loading');
+            b.disabled = false;
+            if (lastPreviewViewBtn === b) lastPreviewViewBtn = null;
+        }
+
+        function primeViewButtonForPreview(btn) {
+            if (!btn) return;
+            if (lastPreviewViewBtn && lastPreviewViewBtn !== btn) {
+                releaseViewButton(lastPreviewViewBtn);
+            }
+            lastPreviewViewBtn = btn;
+            btn.classList.add('view-btn--loading');
+            btn.disabled = true;
+        }
 
         function isPdfFile(file) {
             if (!file) return false;
             if (file.fileType === 'pdf') return true;
             return String(file.fileName || '').toLowerCase().endsWith('.pdf');
-        }
-
-        function isPdfMeta(meta) {
-            if (!meta) return false;
-            if (meta.fileType === 'pdf') return true;
-            return String(meta.fileName || '').toLowerCase().endsWith('.pdf');
-        }
-
-        function cacheMetaFromFile(file) {
-            return {
-                _id: file._id,
-                fileName: file.fileName,
-                fileType: file.fileType,
-                fileSize: file.fileSize,
-                uploadedBy: file.uploadedBy,
-                uploadedAt: file.uploadedAt,
-                isPermanent: file.isPermanent
-            };
-        }
-
-        function rememberLessonFileBlob(fileId, blobUrl, meta) {
-            const id = String(fileId);
-            if (lessonFileBlobCache.has(id)) {
-                const prev = lessonFileBlobCache.get(id);
-                if (prev.blobUrl && prev.blobUrl !== blobUrl) URL.revokeObjectURL(prev.blobUrl);
-                lessonFileBlobCache.delete(id);
-            }
-            lessonFileBlobCache.set(id, { blobUrl, meta });
-            while (lessonFileBlobCache.size > LESSON_FILE_CACHE_MAX) {
-                const oldest = lessonFileBlobCache.keys().next().value;
-                const ent = lessonFileBlobCache.get(oldest);
-                if (ent?.blobUrl) URL.revokeObjectURL(ent.blobUrl);
-                lessonFileBlobCache.delete(oldest);
-            }
-        }
-
-        function touchLessonFileBlob(fileId) {
-            const id = String(fileId);
-            if (!lessonFileBlobCache.has(id)) return null;
-            const ent = lessonFileBlobCache.get(id);
-            lessonFileBlobCache.delete(id);
-            lessonFileBlobCache.set(id, ent);
-            return ent;
-        }
-
-        function dataUrlToBlob(dataUrl) {
-            const base64Data = dataUrl.includes('base64,')
-                ? dataUrl.split('base64,')[1]
-                : dataUrl.replace(/^data:[^;]+;base64,/, '').replace(/^data:[^;]+;/, '');
-            const binaryString = atob(base64Data);
-            const bytes = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
-            const mimeMatch = dataUrl.match(/^data:([^;,]+)/);
-            const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
-            return new Blob([bytes], { type: mime });
         }
 
         function normalizeFileDataToDataUrl(fileData, fileName, fileType) {
@@ -315,7 +256,7 @@
         }
 
         async function fetchLessonFileJson(fileId) {
-            const id = String(fileId);
+            const id = normalizeLessonFileId(fileId);
             if (lessonFileJsonInflight.has(id)) return lessonFileJsonInflight.get(id);
             const currentToken = localStorage.getItem('token') || token;
             const p = (async () => {
@@ -339,17 +280,100 @@
             }
         }
 
-        async function ensurePdfCachedEntry(fileId) {
-            const id = String(fileId);
-            let entry = touchLessonFileBlob(id);
-            if (entry) return entry;
-            const file = await fetchLessonFileJson(id);
-            if (!isPdfFile(file)) return null;
-            const dataUrl = normalizeFileDataToDataUrl(file.fileData, file.fileName, file.fileType);
-            if (!dataUrl) return null;
-            const blobUrl = URL.createObjectURL(dataUrlToBlob(dataUrl));
-            rememberLessonFileBlob(id, blobUrl, cacheMetaFromFile(file));
-            return touchLessonFileBlob(id);
+        function getLessonFileMetaFromLastList(fileId) {
+            const id = normalizeLessonFileId(fileId);
+            return lastLessonFilesList.find((f) => normalizeLessonFileId(f._id) === id) || null;
+        }
+
+        function buildLessonFileRawUrl(fileId, opts) {
+            const id = normalizeLessonFileId(fileId);
+            const currentToken = localStorage.getItem('token') || token;
+            const download = opts && opts.download;
+            let u = `/api/lessons/lesson-file/${encodeURIComponent(id)}/raw?token=${encodeURIComponent(currentToken)}`;
+            if (download) u += '&download=1';
+            return u;
+        }
+
+        function openPdfStreamPreview(fileId, fileName, opts) {
+            const id = normalizeLessonFileId(fileId);
+            const sourceButton = opts && opts.sourceButton;
+            const releaseSourceBtn = () => releaseViewButton(sourceButton);
+            if (pdfPreviewLoadTimer) {
+                clearTimeout(pdfPreviewLoadTimer);
+                pdfPreviewLoadTimer = null;
+            }
+            const previewPanel = document.getElementById('preview-panel');
+            const previewOverlay = document.getElementById('preview-overlay');
+            const previewContent = document.getElementById('preview-content');
+            const previewTitle = document.getElementById('preview-title');
+            previewTitle.textContent = fileName || 'PDF preview';
+            previewOverlay.classList.add('show');
+            previewPanel.classList.add('open');
+            if (previewClearTimer) {
+                clearTimeout(previewClearTimer);
+                previewClearTimer = null;
+            }
+
+            const pdfUrl = buildLessonFileRawUrl(id, { download: false });
+            previewContent.innerHTML = `
+                <div class="pdf-stream-root" style="width:100%;position:relative;">
+                    <div class="preview-skeleton pdf-stream-loading" data-pdf-loading role="status" aria-live="polite">
+                        Loading PDF…
+                    </div>
+                    <iframe class="pdf-full-iframe" style="display:none;" data-pdf-iframe></iframe>
+                    <div data-pdf-err style="display:none;text-align:center;padding:2rem 1rem;">
+                        <div class="preview-unsupported-icon" style="font-size:2rem">⚠️</div>
+                        <h3 style="margin:0.5rem 0;color:#334155">Could not load PDF</h3>
+                        <p style="color:#64748b;font-size:0.95rem;margin:0 0 1rem">The file may be missing or the connection timed out.</p>
+                        <button type="button" class="btn-secondary" data-pdf-reload style="padding:0.55rem 1.1rem;border-radius:8px;border:1px solid #cbd5e1;background:#fff;cursor:pointer;font-weight:600;color:#334155">Reload file</button>
+                    </div>
+                </div>
+            `;
+
+            const iframe = previewContent.querySelector('[data-pdf-iframe]');
+            if (iframe) iframe.title = fileName || 'PDF';
+            const loadingEl = previewContent.querySelector('[data-pdf-loading]');
+            const errEl = previewContent.querySelector('[data-pdf-err]');
+            const reloadBtn = previewContent.querySelector('[data-pdf-reload]');
+
+            const showErr = () => {
+                if (loadingEl) loadingEl.style.display = 'none';
+                if (iframe) iframe.style.display = 'none';
+                if (errEl) errEl.style.display = 'block';
+                releaseSourceBtn();
+            };
+
+            const showOk = () => {
+                if (pdfPreviewLoadTimer) {
+                    clearTimeout(pdfPreviewLoadTimer);
+                    pdfPreviewLoadTimer = null;
+                }
+                if (loadingEl) loadingEl.style.display = 'none';
+                if (iframe) iframe.style.display = 'block';
+                if (errEl) errEl.style.display = 'none';
+                releaseSourceBtn();
+            };
+
+            const armReload = (url) => {
+                if (!reloadBtn) return;
+                reloadBtn.onclick = () => {
+                    if (errEl) errEl.style.display = 'none';
+                    if (loadingEl) {
+                        loadingEl.style.display = 'flex';
+                    }
+                    if (iframe) {
+                        iframe.style.display = 'none';
+                        iframe.src = url + '&_retry=' + Date.now();
+                    }
+                    pdfPreviewLoadTimer = setTimeout(showErr, 45000);
+                };
+            };
+
+            armReload(pdfUrl);
+            pdfPreviewLoadTimer = setTimeout(showErr, 45000);
+            iframe.onload = () => showOk();
+            iframe.onerror = () => showErr();
+            iframe.src = pdfUrl;
         }
 
         function openPreviewLoadingShell(titleText) {
@@ -367,6 +391,74 @@
             previewContent.innerHTML = '<div class="preview-skeleton" role="status" aria-live="polite" aria-label="Loading preview"></div>';
         }
 
+        /**
+         * Single entry for opening a lesson file in the preview pane (same paths as auto-open on lesson select).
+         * Verifies the file belongs to lastLessonFilesList for the current lesson (currentLessonId) to avoid wrong-ID errors.
+         */
+        async function loadLessonFilePreview(fileId, fileNameHint, sourceButton) {
+            const id = normalizeLessonFileId(fileId);
+            const hint = typeof fileNameHint === 'string' ? fileNameHint : '';
+            if (!id) {
+                showAlert('error', 'Invalid file.');
+                releaseViewButton(sourceButton);
+                return;
+            }
+            if (!currentLessonId) {
+                showAlert('error', 'Select a lesson first.');
+                releaseViewButton(sourceButton);
+                return;
+            }
+            const meta = getLessonFileMetaFromLastList(id);
+            if (!meta) {
+                showAlert('error', 'This file is not in the current lesson list. Select the lesson again or refresh.');
+                releaseViewButton(sourceButton);
+                return;
+            }
+            const displayName = meta.fileName || hint;
+
+            if (sourceButton) {
+                primeViewButtonForPreview(sourceButton);
+            }
+
+            if (isPdfFile(meta)) {
+                openPdfStreamPreview(id, displayName, { sourceButton });
+                return;
+            }
+
+            openPreviewLoadingShell(displayName || 'Loading…');
+
+            try {
+                const file = await fetchLessonFileJson(id);
+                const enriched = { ...file, _id: file._id || id };
+
+                if (isPdfFile(enriched)) {
+                    openPdfStreamPreview(normalizeLessonFileId(enriched._id), enriched.fileName || displayName, { sourceButton });
+                    return;
+                }
+                openPreviewContent(enriched);
+                releaseViewButton(sourceButton);
+            } catch (error) {
+                console.error('Error loading file:', error);
+                showPreviewFetchError(id, displayName, error.message);
+                releaseViewButton(sourceButton);
+            }
+        }
+
+        function setupLessonFilesListClickDelegation() {
+            const root = document.getElementById('files-list');
+            if (!root || root.dataset.previewDelegation === '1') return;
+            root.dataset.previewDelegation = '1';
+            root.addEventListener('click', (e) => {
+                const btn = e.target.closest('button[data-action="preview-lesson-file"]');
+                if (!btn) return;
+                e.preventDefault();
+                e.stopPropagation();
+                const fileId = btn.getAttribute('data-file-id');
+                if (!fileId) return;
+                loadLessonFilePreview(fileId, '', btn);
+            });
+        }
+
         // Check authentication
         if (!token || !teacherId) {
             window.location.href = 'teacher-login.html';
@@ -377,6 +469,7 @@
             loadUserInfo();
             loadCurricula();
             setupFileUpload();
+            setupLessonFilesListClickDelegation();
             updateEditCurriculumButtonState();
         });
 
@@ -615,7 +708,10 @@
                 lessonSelect.innerHTML = '<option value="">-- Select a lesson --</option>';
                 lessonInfo.style.display = 'none';
                 uploadSection.style.display = 'none';
+                lastLessonFilesList = [];
+                document.getElementById('file-count').textContent = '0 files';
                 document.getElementById('files-list').innerHTML = '<div class="empty-state"><svg class="empty-state-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg><h3>No lesson selected</h3><p>Select a curriculum and lesson to view or upload files</p></div>';
+                closePreview();
                 return;
             }
 
@@ -630,6 +726,13 @@
                 if (!response.ok) throw new Error('Failed to load lessons');
                 const lessons = await response.json();
                 currentLessonsCache = Array.isArray(lessons) ? lessons : [];
+                lastLessonFilesList = [];
+                currentLessonId = null;
+                document.getElementById('lesson-info').style.display = 'none';
+                document.getElementById('upload-section').style.display = 'none';
+                document.getElementById('file-count').textContent = '0 files';
+                document.getElementById('files-list').innerHTML = '<div class="empty-state"><svg class="empty-state-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg><h3>No lesson selected</h3><p>Select a lesson from the list to view files</p></div>';
+                closePreview();
                 populateLessonSelect();
             } catch (error) {
                 showAlert('error', 'Failed to load lessons: ' + error.message);
@@ -643,8 +746,11 @@
             if (!selectedOption || !selectedOption.value) {
                 document.getElementById('lesson-info').style.display = 'none';
                 document.getElementById('upload-section').style.display = 'none';
+                lastLessonFilesList = [];
+                document.getElementById('file-count').textContent = '0 files';
                 document.getElementById('files-list').innerHTML = '<div class="empty-state"><svg class="empty-state-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg><h3>No lesson selected</h3><p>Select a curriculum and lesson to view or upload files</p></div>';
                 currentLessonId = null;
+                closePreview();
                 return;
             }
 
@@ -682,22 +788,19 @@
 
         function displayFiles(files) {
             const filesList = document.getElementById('files-list');
+            lastLessonFilesList = Array.isArray(files) ? files : [];
             document.getElementById('file-count').textContent = `${files.length} file${files.length !== 1 ? 's' : ''}`;
 
             if (files.length === 0) {
                 filesList.innerHTML = '<div class="empty-state"><svg class="empty-state-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg><h3>No files uploaded</h3><p>Upload files for this lesson using the upload area</p></div>';
+                closePreview();
                 return;
             }
 
             filesList.innerHTML = files.map(file => {
-                const pdfThumb = isPdfFile(file) ? `
-                    <div class="file-row-thumb file-row-thumb--pdf" data-thumb-for="${file._id}">
-                        <div class="preview-skeleton preview-skeleton--sm" aria-hidden="true"></div>
-                    </div>` : '';
                 return `
                 <div class="file-item">
                     <div class="file-info">
-                        ${pdfThumb}
                         <div class="file-icon">
                             <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
@@ -710,8 +813,8 @@
                         </div>
                     </div>
                     <div class="file-actions">
-                        <button class="btn-icon view" onclick="viewFile('${file._id}')" title="View/Download">
-                            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <button type="button" class="btn-icon view" data-action="preview-lesson-file" data-file-id="${escapeHtmlAttr(normalizeLessonFileId(file._id))}" title="View">
+                            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
                                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                                 <circle cx="12" cy="12" r="3"></circle>
                             </svg>
@@ -721,55 +824,11 @@
             `;
             }).join('');
 
-            initPdfRowThumbObserver();
-        }
-
-        function initPdfRowThumbObserver() {
-            const root = document.getElementById('files-list');
-            if (!root || typeof IntersectionObserver === 'undefined') return;
-            const io = new IntersectionObserver((entries) => {
-                entries.forEach((en) => {
-                    if (!en.isIntersecting) return;
-                    const el = en.target;
-                    if (el.dataset.thumbLoaded === '1') {
-                        io.unobserve(el);
-                        return;
-                    }
-                    el.dataset.thumbLoaded = '1';
-                    io.unobserve(el);
-                    loadPdfRowThumb(el);
-                });
-            }, { root: null, rootMargin: '100px', threshold: 0.01 });
-            root.querySelectorAll('[data-thumb-for]').forEach((el) => io.observe(el));
-        }
-
-        async function loadPdfRowThumb(wrap) {
-            const fileId = wrap.dataset.thumbFor;
-            if (!fileId) return;
-            try {
-                const entry = await ensurePdfCachedEntry(fileId);
-                if (!entry?.blobUrl || typeof pdfjsLib === 'undefined') {
-                    wrap.innerHTML = '<span style="font-size:0.65rem;color:#64748b">PDF</span>';
-                    return;
-                }
-                const doc = await pdfjsLib.getDocument({ url: entry.blobUrl }).promise;
-                const page = await doc.getPage(1);
-                const vp = page.getViewport({ scale: 0.32 });
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                canvas.width = vp.width;
-                canvas.height = vp.height;
-                await page.render({ canvasContext: ctx, viewport: vp }).promise;
-                const dataUrl = canvas.toDataURL('image/jpeg', 0.72);
-                const img = document.createElement('img');
-                img.src = dataUrl;
-                img.alt = '';
-                img.loading = 'lazy';
-                wrap.innerHTML = '';
-                wrap.appendChild(img);
-            } catch (e) {
-                console.warn('PDF row thumb failed', e);
-                wrap.innerHTML = '<span style="font-size:0.65rem;color:#64748b">PDF</span>';
+            const firstPdf = files.find(isPdfFile);
+            if (firstPdf) {
+                loadLessonFilePreview(normalizeLessonFileId(firstPdf._id), firstPdf.fileName || '', null);
+            } else {
+                closePreview();
             }
         }
 
@@ -894,45 +953,34 @@
             return types[ext] || 'other';
         }
 
-        async function viewFile(fileId) {
-            const id = String(fileId);
-            try {
-                const cached = touchLessonFileBlob(id);
-                if (cached && isPdfMeta(cached.meta)) {
-                    openPreviewContent({
-                        ...cached.meta,
-                        _id: id,
-                        fileData: null,
-                        _lessonBlobUrl: cached.blobUrl
-                    });
-                    return;
-                }
-
-                openPreviewLoadingShell('Loading preview…');
-
-                const file = await fetchLessonFileJson(id);
-                const enriched = { ...file, _id: file._id || id };
-
-                if (isPdfFile(enriched)) {
-                    const dataUrl = normalizeFileDataToDataUrl(enriched.fileData, enriched.fileName, enriched.fileType);
-                    if (!dataUrl) {
-                        throw new Error('File data not available');
-                    }
-                    const blobUrl = URL.createObjectURL(dataUrlToBlob(dataUrl));
-                    rememberLessonFileBlob(id, blobUrl, cacheMetaFromFile(enriched));
-                    openPreviewContent({
-                        ...enriched,
-                        fileData: null,
-                        _lessonBlobUrl: blobUrl
-                    });
-                } else {
-                    openPreviewContent(enriched);
-                }
-            } catch (error) {
-                console.error('Error loading file:', error);
-                showAlert('error', 'Failed to load file: ' + error.message);
-                closePreview();
+        function showPreviewFetchError(fileId, fileName, message) {
+            const previewPanel = document.getElementById('preview-panel');
+            const previewOverlay = document.getElementById('preview-overlay');
+            const previewContent = document.getElementById('preview-content');
+            const previewTitle = document.getElementById('preview-title');
+            if (previewClearTimer) {
+                clearTimeout(previewClearTimer);
+                previewClearTimer = null;
             }
+            previewTitle.textContent = fileName || 'Preview';
+            previewOverlay.classList.add('show');
+            previewPanel.classList.add('open');
+            previewContent.innerHTML = `
+                <div style="text-align:center;padding:2rem 1rem;">
+                    <div class="preview-unsupported-icon" style="font-size:2rem">⚠️</div>
+                    <h3 style="margin:0.5rem 0;color:#334155">Failed to load file</h3>
+                    <p data-err-msg style="color:#64748b;font-size:0.9rem;margin:0 0 1rem"></p>
+                    <button type="button" class="btn-secondary" data-retry-fetch style="padding:0.55rem 1.1rem;border-radius:8px;border:1px solid #cbd5e1;background:#fff;cursor:pointer;font-weight:600;color:#334155">Reload file</button>
+                </div>
+            `;
+            const msgEl = previewContent.querySelector('[data-err-msg]');
+            if (msgEl) msgEl.textContent = message || 'Unknown error';
+            const retry = previewContent.querySelector('[data-retry-fetch]');
+            if (retry) retry.onclick = () => loadLessonFilePreview(fileId, fileName, null);
+        }
+
+        function viewFile(fileId, fileNameHint) {
+            return loadLessonFilePreview(fileId, fileNameHint, null);
         }
 
         function openPreviewContent(file) {
@@ -960,8 +1008,7 @@
                 }
             }
 
-            const hasPdfBlob = !!(file._lessonBlobUrl && isPdfFile(file));
-            if (!fileData && !hasPdfBlob) {
+            if (!fileData) {
                 previewContent.innerHTML = `
                     <div class="preview-unsupported">
                         <div class="preview-unsupported-icon">⚠️</div>
@@ -1002,118 +1049,11 @@
             return 'application/octet-stream';
         }
 
-        function resolvePdfBlobUrl(file, fileData, fileName) {
-            if (file._lessonBlobUrl) return file._lessonBlobUrl;
-            let pdfDataUrl = fileData;
-            if (!pdfDataUrl.startsWith('data:')) {
-                pdfDataUrl = `data:application/pdf;base64,${fileData}`;
-            } else if (!pdfDataUrl.includes('base64,')) {
-                pdfDataUrl = pdfDataUrl.replace('data:application/pdf;', 'data:application/pdf;base64,');
-            }
-            const blob = dataUrlToBlob(pdfDataUrl);
-            const blobUrl = URL.createObjectURL(blob);
-            if (file._id) {
-                rememberLessonFileBlob(file._id, blobUrl, cacheMetaFromFile(file));
-            }
-            return blobUrl;
-        }
-
-        async function renderPdfFirstPageInto(previewContent, blobUrl, file, fileName) {
-            const skel = previewContent.querySelector('[data-pdf-skel]');
-            const holder = previewContent.querySelector('[data-pdf-first-holder]');
-            const fullHolder = previewContent.querySelector('[data-pdf-full-holder]');
-            const openBtn = previewContent.querySelector('[data-open-full-pdf]');
-            const fid = file._id || '';
-
-            try {
-                if (typeof pdfjsLib === 'undefined') throw new Error('pdfjs missing');
-                const doc = await pdfjsLib.getDocument({ url: blobUrl }).promise;
-                const page = await doc.getPage(1);
-                const maxW = Math.min(900, previewContent.clientWidth || 820);
-                const baseVp = page.getViewport({ scale: 1 });
-                const scale = Math.min(1.35, maxW / baseVp.width);
-                const viewport = page.getViewport({ scale });
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                canvas.width = viewport.width;
-                canvas.height = viewport.height;
-                await page.render({ canvasContext: ctx, viewport }).promise;
-                const jpegUrl = canvas.toDataURL('image/jpeg', 0.88);
-                if (skel) skel.remove();
-                if (holder) {
-                    holder.innerHTML = '';
-                    const img = document.createElement('img');
-                    img.className = 'pdf-preview-first';
-                    img.src = jpegUrl;
-                    img.alt = fileName || 'PDF first page';
-                    img.loading = 'lazy';
-                    holder.appendChild(img);
-                }
-                if (openBtn) {
-                    openBtn.onclick = () => {
-                        if (holder) holder.innerHTML = '';
-                        if (openBtn) openBtn.style.display = 'none';
-                        if (fullHolder) {
-                            fullHolder.innerHTML = '';
-                            const iframe = document.createElement('iframe');
-                            iframe.className = 'pdf-full-iframe';
-                            iframe.title = 'Full PDF';
-                            iframe.loading = 'lazy';
-                            iframe.src = blobUrl;
-                            fullHolder.appendChild(iframe);
-                        }
-                    };
-                }
-            } catch (err) {
-                console.error('PDF.js first-page render failed, using iframe', err);
-                if (fullHolder) {
-                    fullHolder.innerHTML = `
-                        <p style="color:#64748b;font-size:0.9rem;margin:0 0 0.5rem 0">Could not render a quick preview. Showing the full PDF viewer.</p>
-                        <iframe class="pdf-full-iframe" title="PDF" loading="lazy" src="${blobUrl}"></iframe>
-                        <p style="margin-top:0.75rem"><button type="button" class="btn-secondary" id="pdf-fallback-dl" style="padding:0.5rem 1rem;border-radius:8px;border:1px solid #cbd5e1;background:#fff;cursor:pointer;font-weight:600">Download</button></p>
-                    `;
-                    const dl = fullHolder.querySelector('#pdf-fallback-dl');
-                    if (dl) dl.onclick = () => downloadFile(fid, fileName || 'document.pdf');
-                }
-                if (holder) holder.innerHTML = '';
-                if (skel) skel.remove();
-                if (openBtn) openBtn.style.display = 'none';
-            }
-        }
-        
         function renderPreviewContent(file, fileType, fileName, fileData, previewContent) {
-            
-            // Handle different file types
-            if (fileType === 'pdf' || fileName.toLowerCase().endsWith('.pdf')) {
-                let blobUrl;
-                try {
-                    blobUrl = resolvePdfBlobUrl(file, fileData, fileName);
-                } catch (error) {
-                    console.error('Error creating PDF blob URL:', error);
-                    previewContent.innerHTML = `
-                        <div class="preview-unsupported">
-                            <div class="preview-unsupported-icon">⚠️</div>
-                            <h3>PDF preview error</h3>
-                            <p>Unable to prepare this PDF for preview.</p>
-                            <button type="button" id="pdf-err-dl" style="margin-top: 1rem; padding: 0.75rem 1.5rem; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">Download File</button>
-                        </div>
-                    `;
-                    const b = previewContent.querySelector('#pdf-err-dl');
-                    if (b) b.onclick = () => downloadFile(file._id, fileName || 'document.pdf');
-                    return;
-                }
-
-                previewContent.innerHTML = `
-                    <div class="pdf-preview-root" style="width:100%">
-                        <div class="pdf-preview-toolbar">
-                            <button type="button" class="btn-secondary" data-open-full-pdf>Open full PDF</button>
-                        </div>
-                        <div data-pdf-first-holder></div>
-                        <div class="preview-skeleton" data-pdf-skel style="min-height:360px;margin-top:0.25rem"></div>
-                        <div data-pdf-full-holder></div>
-                    </div>
-                `;
-                void renderPdfFirstPageInto(previewContent, blobUrl, file, fileName);
+            if (fileType === 'pdf' || (fileName && fileName.toLowerCase().endsWith('.pdf'))) {
+                const fid = file._id || '';
+                openPdfStreamPreview(normalizeLessonFileId(fid), fileName || 'document.pdf');
+                return;
             } else if (fileType === 'image' || /\.(jpg|jpeg|png|gif|webp)$/i.test(fileName)) {
                 // Image preview
                 const img = document.createElement('img');
@@ -1213,6 +1153,13 @@
             previewPanel.classList.remove('open');
             previewOverlay.classList.remove('show');
 
+            releaseViewButton(lastPreviewViewBtn);
+
+            if (pdfPreviewLoadTimer) {
+                clearTimeout(pdfPreviewLoadTimer);
+                pdfPreviewLoadTimer = null;
+            }
+
             if (previewClearTimer) clearTimeout(previewClearTimer);
             previewClearTimer = setTimeout(() => {
                 previewContent.innerHTML = '';
@@ -1222,12 +1169,13 @@
         
         async function downloadFile(fileId, fileName) {
             try {
-                const id = String(fileId);
-                const hit = touchLessonFileBlob(id);
-                if (hit?.blobUrl && isPdfMeta(hit.meta)) {
+                const id = normalizeLessonFileId(fileId);
+                const meta = getLessonFileMetaFromLastList(id);
+                if (meta && isPdfFile(meta)) {
+                    const url = buildLessonFileRawUrl(id, { download: true });
                     const link = document.createElement('a');
-                    link.href = hit.blobUrl;
-                    link.download = fileName || hit.meta.fileName || 'lesson.pdf';
+                    link.href = url;
+                    link.download = fileName || meta.fileName || 'lesson.pdf';
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);

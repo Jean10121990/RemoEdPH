@@ -16,6 +16,7 @@
       'book',
       'schedule',
       'classes',
+      'messages',
       'videos',
       'games',
       'profile',

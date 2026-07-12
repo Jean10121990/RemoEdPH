@@ -85,6 +85,65 @@ body.student-portal .remoed-sidebar .remoed-menu .remoed-menu-label {
   word-break: break-word;
 }
 
+/* Sidebar nav: align with teacher portal (teacher-sidebar.css) — black default, white text only when .active */
+body.student-portal nav.remoed-sidebar .remoed-menu li {
+  padding: 12px 24px;
+  font-weight: 500;
+  font-size: 0.875rem;
+  border-left: 4px solid transparent;
+}
+
+body.student-portal nav.remoed-sidebar .remoed-menu li:not(#logout-nav):not(.active) {
+  color: var(--remoed-sidebar-inactive, #000000);
+}
+
+body.student-portal nav.remoed-sidebar .remoed-menu li:not(#logout-nav):not(.active):hover {
+  background: var(--remoed-sidebar-inactive-hover-bg, rgba(90, 103, 216, 0.12));
+  color: var(--remoed-sidebar-inactive-hover-text, #4c51bf);
+  border-radius: 0 8px 8px 0;
+}
+
+body.student-portal nav.remoed-sidebar .remoed-menu li.active {
+  background: linear-gradient(
+    90deg,
+    var(--remoed-sidebar-active-start, #5a67d8) 0%,
+    var(--remoed-sidebar-active-end, #6d78e8) 100%
+  );
+  border-left: 4px solid var(--remoed-sidebar-active-border, #5a67d8);
+  color: #fff;
+  border-radius: 0 8px 8px 0;
+}
+
+body.student-portal nav.remoed-sidebar .remoed-menu li.active svg {
+  stroke: #fff;
+}
+
+body.student-portal nav.remoed-sidebar .remoed-menu li#logout-nav {
+  color: #e74c3c;
+}
+
+body.student-portal nav.remoed-sidebar .remoed-menu li#logout-nav svg {
+  stroke: #e74c3c;
+}
+
+body.student-portal nav.remoed-sidebar .remoed-menu li#logout-nav:hover {
+  background: rgba(231, 76, 60, 0.1);
+  color: #c0392b;
+}
+
+body.student-portal nav.remoed-sidebar .remoed-username {
+  color: #1a202c;
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+@media (max-width: 768px) {
+  body.student-portal nav.remoed-sidebar .remoed-menu li {
+    padding: 12px 16px;
+    font-size: 0.875rem;
+  }
+}
+
 /* Tablet (769–1024): full 260px sidebar + labels (override mobile-first icon rail). */
 @media (min-width: 769px) and (max-width: 1024px) {
   body.student-portal nav.remoed-sidebar.remoed-sidebar,
@@ -814,4 +873,35 @@ body.student-portal.page-student-assessment #score-display .assessment-score-pct
   background: linear-gradient(145deg, #34d399, #10b981);
   border-color: #059669;
   box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.35), 0 2px 8px rgba(5, 150, 105, 0.4);
+}
+
+/* --- Portal sidebar chrome (js/portal-sidebar-chrome.js): align rail width + mobile drawer UX --- */
+body.student-portal.remoed-portal-sidebar-mounted {
+  --portal-sidebar-w: 260px;
+}
+
+@media (max-width: 768px) {
+  /* Prefer the sticky top-bar hamburger from portal-layout; hide the extra fixed green toggle. */
+  body.student-portal.remoed-portal-sidebar-mounted #sidebarToggle.portal-sidebar-toggle {
+    display: none !important;
+  }
+
+  body.student-portal.remoed-portal-sidebar-mounted .remoed-mobile-topbar .remoed-nav-toggle {
+    position: static !important;
+    width: 44px !important;
+    height: 44px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    clip: auto !important;
+    white-space: normal !important;
+    border-width: 1px !important;
+  }
+}
+
+/* Desktop: student rail stays open — no second floating menu control */
+@media (min-width: 769px) {
+  body.student-portal.remoed-portal-sidebar-mounted #sidebarToggle.portal-sidebar-toggle {
+    display: none !important;
+  }
 }

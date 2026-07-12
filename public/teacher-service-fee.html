@@ -100,7 +100,8 @@
               </svg>
             </div>
             <div style="font-size: 1.2rem; font-weight: 700; margin-bottom: 3px; color: #333;" id="summary-completed-classes">0</div>
-            <div style="font-size: 0.8rem; color: #666;">Completed Classes</div>
+            <div style="font-size: 0.8rem; color: #666;">Earned (feedback finalized)</div>
+            <div id="summary-completed-hint" style="font-size: 0.68rem; color: #64748b; margin-top: 4px; line-height: 1.35;">Only classes with submitted wrap-up feedback count toward this total.</div>
           </div>
           <div style="background: #fff; border: 1px solid #e0e6ed; padding: 12px; border-radius: 8px; text-align: center; box-shadow: 0 2px 6px rgba(0,0,0,0.05);">
             <div style="font-size: 1.5rem; margin-bottom: 4px; color: #ff8c42;">
@@ -173,8 +174,15 @@
             </div>
             
             <div class="service-row" style="background: #f8f9fa; padding: 6px 8px; border-radius: 6px; margin-bottom: 6px; border: 1px solid #e9ecef;">
-              <div class="service-label" style="color: #495057; font-size: 0.78rem;">Completed classes</div>
+              <div class="service-label" style="color: #495057; font-size: 0.78rem;">Completed classes (earned)</div>
               <div class="service-value" id="completed-classes" style="color: #333; font-weight: 600; font-size: 0.86rem;">Loading...</div>
+            </div>
+            
+            <div id="pending-feedback-fee-row" class="service-row" style="display: none; background: #fff7ed; padding: 8px 10px; border-radius: 6px; margin-bottom: 6px; border: 2px solid #fdba74;">
+              <div class="service-label" style="color: #9a3412; font-size: 0.78rem; font-weight: 700;">
+                Pending feedback <span style="font-weight: 600; color: #c2410c;">(excluded from earned / net payable)</span>
+              </div>
+              <div class="service-value" id="pending-feedback-classes-count" style="color: #9a3412; font-weight: 700; font-size: 0.9rem;">0</div>
             </div>
             
             <!-- Helpful message when no completed classes -->
@@ -577,6 +585,28 @@
           const studentAbsentClasses = data.studentAbsentClasses || 0;
           document.getElementById('completed-classes').textContent = completedClasses;
           
+          try {
+            const pfRes = await fetch('/api/teacher/pending-feedback-bookings', {
+              headers: { Authorization: 'Bearer ' + token },
+            });
+            const pfData = await pfRes.json().catch(() => ({}));
+            const pfRow = document.getElementById('pending-feedback-fee-row');
+            const pfCountEl = document.getElementById('pending-feedback-classes-count');
+            if (pfRes.ok && pfData.success && pfRow && pfCountEl) {
+              const inPeriod = (pfData.items || []).filter(function (it) {
+                return it.date >= startDate && it.date <= endDate;
+              });
+              const n = inPeriod.length;
+              pfCountEl.textContent = String(n);
+              pfRow.style.display = n > 0 ? 'block' : 'none';
+            } else if (pfRow) {
+              pfRow.style.display = 'none';
+            }
+          } catch (_pf) {
+            const pfRow = document.getElementById('pending-feedback-fee-row');
+            if (pfRow) pfRow.style.display = 'none';
+          }
+          
           // Show/hide helpful message based on completed classes
           const noClassesMessage = document.getElementById('no-classes-message');
           if (completedClasses === 0) {
@@ -604,6 +634,12 @@
           
           // Check payment status for this week
           await checkPaymentStatus(startDate, endDate);
+          
+          try {
+            if (typeof TeacherSidebar !== 'undefined' && TeacherSidebar.refreshPendingFeedbackDots) {
+              TeacherSidebar.refreshPendingFeedbackDots();
+            }
+          } catch (_sb) {}
           
           console.log(`✅ Successfully loaded ${completedClasses} completed classes for period ${startDate} to ${endDate}`);
           

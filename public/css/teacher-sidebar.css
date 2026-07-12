@@ -172,6 +172,68 @@
     text-overflow: ellipsis;
 }
 
+/* Pending teacher feedback: red dot on Class Schedule + Teaching Fee */
+.remoed-menu li[data-nav] {
+    position: relative;
+}
+.remoed-menu li .remoed-pending-dot {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #dc2626;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.95);
+    display: none;
+    pointer-events: none;
+    flex-shrink: 0;
+}
+.remoed-menu li.remoed-has-pending .remoed-pending-dot {
+    display: block;
+}
+
+/* Numeric badge: Class Schedule pending feedback count */
+.remoed-menu li .remoed-schedule-count-badge {
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: #dc2626;
+    color: #fff;
+    font-size: 0.62rem;
+    font-weight: 800;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.95);
+    pointer-events: none;
+}
+.remoed-menu li.remoed-has-pending-count .remoed-schedule-count-badge {
+    display: inline-flex;
+}
+.remoed-sidebar.sidebar-collapsed .remoed-menu li .remoed-schedule-count-badge {
+    top: 4px;
+    right: 4px;
+    min-width: 16px;
+    height: 16px;
+    font-size: 0.55rem;
+}
+.remoed-menu li.active .remoed-schedule-count-badge {
+    box-shadow: 0 0 0 2px rgba(129, 140, 248, 0.95);
+}
+.remoed-sidebar.sidebar-collapsed .remoed-menu li .remoed-pending-dot {
+    top: 6px;
+    right: 6px;
+}
+.remoed-menu li.active .remoed-pending-dot {
+    box-shadow: 0 0 0 2px rgba(129, 140, 248, 0.9);
+}
+
 .remoed-menu .menu-label {
     min-width: 0;
     overflow: hidden;

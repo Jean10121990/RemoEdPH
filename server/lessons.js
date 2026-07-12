@@ -1,4 +1,10 @@
 const express = require('express');
+const fs = require('fs');
+const fsp = require('fs').promises;
+const path = require('path');
+const os = require('os');
+const crypto = require('crypto');
+const { pipeline } = require('stream/promises');
 const { body, param, validationResult } = require('express-validator');
 const router = express.Router();
 const { sanitizeTeacherNotes } = require('./utils/sanitizeHtml');
@@ -56,6 +62,153 @@ function isStaffUser(req) {
   if (req.user.isAdmin === true || req.user.role === 'admin' || req.user.username === 'admin') return true;
   if (req.user.teacherId || req.user.userType === 'teacher') return true;
   return false;
+}
+
+/** Strip data-URL prefix or return raw base64 string from lesson file payload */
+function lessonFileBase64Payload(fileData) {
+  if (!fileData || typeof fileData !== 'string') return null;
+  const s = fileData.trim();
+  if (s.startsWith('data:')) {
+    const base64Idx = s.indexOf('base64,');
+    if (base64Idx !== -1) return s.slice(base64Idx + 7);
+    const comma = s.indexOf(',');
+    return comma >= 0 ? s.slice(comma + 1) : null;
+  }
+  return s;
+}
+
+/** HTTP Range: bytes=start-end (PDF.js / browsers may request partial content) */
+function parseRangeHeader(rangeHeader, size) {
+  if (!rangeHeader || typeof rangeHeader !== 'string' || !rangeHeader.startsWith('bytes=')) {
+    return null;
+  }
+  const tail = rangeHeader.slice(6).trim();
+  const dash = tail.indexOf('-');
+  if (dash === -1) return null;
+  const startStr = tail.slice(0, dash);
+  const endStr = tail.slice(dash + 1);
+  let start;
+  let end;
+  if (startStr === '') {
+    const suffixLen = parseInt(endStr, 10);
+    if (Number.isNaN(suffixLen) || suffixLen <= 0) return null;
+    start = Math.max(0, size - suffixLen);
+    end = size - 1;
+  } else {
+    start = parseInt(startStr, 10);
+    end = endStr === '' ? size - 1 : parseInt(endStr, 10);
+    if (Number.isNaN(start) || Number.isNaN(end)) return null;
+  }
+  if (start > end || start >= size) return null;
+  if (start < 0) start = 0;
+  if (end >= size) end = size - 1;
+  return { start, end };
+}
+
+async function handleLessonPdfRaw(req, res) {
+  let tmpPath = null;
+  try {
+    const { fileId } = req.params;
+    const asDownload = req.query.download === '1' || req.query.download === 'true';
+
+    const lesson = await Lesson.findOne(
+      { 'files._id': fileId },
+      { 'files.$': 1 }
+    );
+    if (!lesson || !lesson.files || lesson.files.length === 0) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+    const file = lesson.files[0];
+    const isPdf = file.fileType === 'pdf' || /\.pdf$/i.test(file.fileName || '');
+    if (!isPdf) {
+      return res.status(415).json({ error: 'Raw stream only available for PDF files' });
+    }
+
+    const b64 = lessonFileBase64Payload(file.fileData);
+    if (!b64) {
+      return res.status(404).json({ error: 'File data not found' });
+    }
+
+    let buf;
+    try {
+      buf = Buffer.from(b64, 'base64');
+    } catch (e) {
+      return res.status(500).json({ error: 'Invalid file encoding' });
+    }
+
+    const rawName = file.fileName || 'lesson.pdf';
+    const safeName = rawName.replace(/[^\w.\- ]+/g, '_').slice(0, 180);
+    const safeId = String(fileId).replace(/[^a-f0-9]/gi, '');
+    tmpPath = path.join(
+      os.tmpdir(),
+      `remoed-lesson-${safeId || 'f'}-${crypto.randomBytes(8).toString('hex')}.pdf`
+    );
+    await fsp.writeFile(tmpPath, buf);
+
+    const cleanup = () => {
+      if (!tmpPath) return;
+      const p = tmpPath;
+      tmpPath = null;
+      fs.unlink(p, () => {});
+    };
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    if (asDownload) {
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="${safeName}"; filename*=UTF-8''${encodeURIComponent(rawName)}`
+      );
+    } else {
+      res.setHeader(
+        'Content-Disposition',
+        `inline; filename="${safeName}"; filename*=UTF-8''${encodeURIComponent(rawName)}`
+      );
+    }
+
+    if (req.method === 'HEAD') {
+      res.setHeader('Content-Length', String(buf.length));
+      cleanup();
+      return res.end();
+    }
+
+    const range = parseRangeHeader(req.headers.range, buf.length);
+    if (req.headers.range && range === null) {
+      res.status(416);
+      res.setHeader('Content-Range', `bytes */${buf.length}`);
+      cleanup();
+      return res.end();
+    }
+
+    if (range) {
+      const { start, end } = range;
+      res.status(206);
+      res.setHeader('Content-Range', `bytes ${start}-${end}/${buf.length}`);
+      res.setHeader('Content-Length', String(end - start + 1));
+      const rs = fs.createReadStream(tmpPath, { start, end });
+      try {
+        await pipeline(rs, res);
+      } finally {
+        cleanup();
+      }
+      return;
+    }
+
+    res.setHeader('Content-Length', String(buf.length));
+    const rs = fs.createReadStream(tmpPath);
+    try {
+      await pipeline(rs, res);
+    } finally {
+      cleanup();
+    }
+  } catch (error) {
+    if (tmpPath) fs.unlink(tmpPath, () => {});
+    console.error('❌ [GET FILE RAW] Error streaming lesson file:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Failed to stream file' });
+    }
+  }
 }
 
 // Get all curricula (for dropdown/selection)
@@ -520,26 +673,26 @@ router.get('/lesson/:lessonId/files', authenticateToken, async (req, res) => {
   }
 });
 
+// Stream PDF from a temp file (fs.createReadStream) so Range requests work; PDFs are stored in Mongo as base64.
+router.get('/lesson-file/:fileId/raw', authenticateToken, handleLessonPdfRaw);
+router.head('/lesson-file/:fileId/raw', authenticateToken, handleLessonPdfRaw);
+
 // Get a specific lesson file (with data) - from embedded files array
 router.get('/lesson-file/:fileId', authenticateToken, async (req, res) => {
   try {
     const { fileId } = req.params;
     console.log(`📄 [GET FILE] Fetching file data for file ID: ${fileId}`);
-    
-    // Find lesson that contains this file
-    const lesson = await Lesson.findOne({ 'files._id': fileId });
-    if (!lesson) {
+
+    const lesson = await Lesson.findOne(
+      { 'files._id': fileId },
+      { 'files.$': 1 }
+    );
+    if (!lesson || !lesson.files || lesson.files.length === 0) {
       console.error(`❌ [GET FILE] File not found in any lesson: ${fileId}`);
       return res.status(404).json({ error: 'File not found' });
     }
-    
-    console.log(`✅ [GET FILE] Found file in lesson: ${lesson.title || lesson._id}`);
-    const file = lesson.files.id(fileId);
-    if (!file) {
-      console.error(`❌ [GET FILE] File ID not found within lesson's files array: ${fileId}`);
-      return res.status(404).json({ error: 'File not found' });
-    }
-    
+
+    const file = lesson.files[0];
     console.log(`✅ [GET FILE] File found:`, {
       _id: file._id,
       fileName: file.fileName,
@@ -549,10 +702,8 @@ router.get('/lesson-file/:fileId', authenticateToken, async (req, res) => {
       dataLength: file.fileData?.length || 0
     });
 
-    // Lesson files are permanent; allow the browser to reuse the response for a long time.
-    res.set('Cache-Control', 'private, max-age=31536000, stale-while-revalidate=86400');
-    
-    // Return in same format as before for compatibility
+    res.set('Cache-Control', 'public, max-age=86400');
+
     res.json({
       _id: file._id,
       fileName: file.fileName,
