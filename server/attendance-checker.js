@@ -69,6 +69,7 @@ class AttendanceChecker {
           
           booking.status = 'absent';
           booking.attendance.absentChecked = true;
+          await this.consumeReservedCreditForBooking(booking, 'Student absent');
           await booking.save();
 
           // Create notification for teacher about teacher absence
@@ -81,6 +82,7 @@ class AttendanceChecker {
           
           booking.status = 'absent';
           booking.attendance.absentChecked = true;
+          await this.consumeReservedCreditForBooking(booking, 'Student absent');
           await booking.save();
 
           // Create notification for teacher about student absence
@@ -93,6 +95,7 @@ class AttendanceChecker {
           
           booking.status = 'absent';
           booking.attendance.absentChecked = true;
+          await this.consumeReservedCreditForBooking(booking, 'Student absent');
           await booking.save();
 
           // Create notification for teacher about teacher absence
@@ -133,6 +136,57 @@ class AttendanceChecker {
     } catch (error) {
       console.error('❌ Error creating absent notification:', error);
     }
+  }
+
+  async consumeReservedCreditForBooking(booking, descriptionPrefix = 'Student absent') {
+    if (!booking || booking.creditConsumedAt || booking.creditReservationReleasedAt) return;
+    if (!booking || !booking.studentId) return;
+    const student = await Student.findOne({
+      $or: [{ username: booking.studentId }, { email: booking.studentId }]
+    });
+    if (!student) return;
+
+    const now = new Date();
+    const safeReserved = Number(student.reservedCredits || 0);
+    if (safeReserved <= 0) return;
+    const safeTotal = Number(student.totalCredits || 0);
+    const nextReserved = Math.max(safeReserved - 1, 0);
+    const nextTotal = Math.max(safeTotal - 1, 0);
+    const nextAvailable = Math.max(nextTotal - nextReserved, 0);
+    const planLabel = student.subscriptionPlan || '';
+    const desc = `${descriptionPrefix} (${booking.date} ${booking.time})`;
+
+    await Student.updateOne(
+      { _id: student._id },
+      {
+        $set: {
+          reservedCredits: nextReserved,
+          totalCredits: nextTotal,
+          creditBalance: nextAvailable
+        },
+        $inc: { usedCredits: 1 },
+        $push: {
+          creditTransactions: {
+            date: now,
+            type: 'use',
+            plan: planLabel,
+            description: desc,
+            credits: -1,
+            balanceAfter: nextAvailable,
+            amountPaid: 0
+          },
+          creditHistory: {
+            date: now,
+            plan: planLabel,
+            credits: -1,
+            amountPaid: 0,
+            paymentId: ''
+          }
+        }
+      }
+    );
+    booking.creditConsumedAt = now;
+    booking.creditReservationReleasedAt = null;
   }
 
   // Method to manually mark a booking as absent (for testing or manual override)
