@@ -5,9 +5,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="js/security-guard.js?v=1"></script>
-    <title>My Learning Journey - RemoEdPH</title>
+    <title>📖 My Learning Journey - RemoEdPH</title>
     <link rel="stylesheet" href="modern-styles.css">
     <link rel="stylesheet" href="css/teacher-sidebar.css">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="css/student-portal-layout.css">
     <link rel="stylesheet" href="css/student-sidebar.css">
@@ -18,18 +19,22 @@
         <div id="student-sidebar-root"></div>
         <script src="js/student-lesson-progress-api.js"></script>
         <script src="js/student-sidebar.js"></script>
-        <script>StudentSidebar.render('student-sidebar-root', 'journey');</script>
+        <script src="js/student-page-header.js"></script>
+        <script>
+            StudentSidebar.render('student-sidebar-root', 'journey');
+            StudentPageHeader.render('journey');
+        </script>
         <div class="remoed-content">
             <div class="lj-page">
                 <header class="lj-hero">
-                    <h1>My Learning Journey</h1>
                     <p>Follow your path through RemoEd English. Each dot is one lesson; glowing dots are lessons you finished. Earn a trophy when you complete all 22 lessons in a batch.</p>
                     <button type="button" class="lj-back" onclick="window.location.href='student-dashboard.html'">← Back to dashboard</button>
                 </header>
                 <div class="lj-level-tabs" role="tablist" aria-label="Level">
-                    <button type="button" class="lj-tab active" data-level="nursery" role="tab" aria-selected="true">Nursery</button>
-                    <button type="button" class="lj-tab" data-level="kinder" role="tab" aria-selected="false">Kinder</button>
-                    <button type="button" class="lj-tab" data-level="prep" role="tab" aria-selected="false">Prep</button>
+                    <button type="button" class="lj-tab active" data-level="Little Seeds (Age 3)" role="tab" aria-selected="true">Little Seeds (Age 3)</button>
+                    <button type="button" class="lj-tab" data-level="Sprouts (Age 4)" role="tab" aria-selected="false">Sprouts (Age 4)</button>
+                    <button type="button" class="lj-tab" data-level="Saplings (Age 5)" role="tab" aria-selected="false">Saplings (Age 5)</button>
+                    <button type="button" class="lj-tab" data-level="Young Stewards (Age 6)" role="tab" aria-selected="false">Young Stewards (Age 6)</button>
                 </div>
                 <div id="lj-trail-root" class="lj-trail-root" aria-busy="true">Loading your journey…</div>
             </div>
@@ -45,9 +50,10 @@
             }
 
             var LEVEL_META = {
-                nursery: 'Nursery',
-                kinder: 'Kinder',
-                prep: 'Prep'
+                'Little Seeds (Age 3)': 'Little Seeds (Age 3)',
+                'Sprouts (Age 4)': 'Sprouts (Age 4)',
+                'Saplings (Age 5)': 'Saplings (Age 5)',
+                'Young Stewards (Age 6)': 'Young Stewards (Age 6)'
             };
 
             var completedSet = null;
@@ -208,8 +214,8 @@
                 RemoEdLessonProgress.loadCompletedKeys()
                     .then(function (set) {
                         completedSet = set;
-                        activateTabUi('nursery');
-                        loadAndRender('nursery');
+                        activateTabUi('Little Seeds (Age 3)');
+                        loadAndRender('Little Seeds (Age 3)');
                     })
                     .catch(function (e) {
                         if (root) {

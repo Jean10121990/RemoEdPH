@@ -22,6 +22,10 @@
         .back:hover { text-decoration: underline; }
         .err { color: #c0392b; padding: 16px; background: #fdecea; border-radius: 8px; }
         .muted { font-size: 0.8rem; color: #94a3b8; margin-top: 12px; }
+        .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; padding-top: 14px; border-top: 1px solid #e2e8f0; }
+        .actions a { display: inline-flex; align-items: center; padding: 8px 14px; border-radius: 8px; font-size: 0.88rem; font-weight: 600; text-decoration: none; }
+        .actions a.primary { background: #1ca7e7; color: #fff; }
+        .actions a.secondary { background: #f1f5f9; color: #334155; }
     </style>
 </head>
 <body>
@@ -56,7 +60,7 @@
                 var id = String(params.get('id') || '').trim();
                 var root = document.getElementById('root');
 
-                if ((type !== 'student' && type !== 'admin') || !id) {
+                if ((type !== 'student' && type !== 'admin' && type !== 'teacher') || !id) {
                     root.innerHTML = '<div class="err">Missing or invalid profile link. Use View Profile from User Management.</div>';
                     return;
                 }
@@ -69,7 +73,7 @@
                             return;
                         }
                         var u = res.j;
-                        var title = type === 'student' ? 'Student profile' : 'Admin profile';
+                        var title = type === 'student' ? 'Student profile' : type === 'teacher' ? 'Teacher profile' : 'Admin profile';
                         var rows = [];
 
                         if (type === 'student') {
@@ -81,6 +85,23 @@
                             rows.push(['Level', u.level || u.cefrLevel || '—']);
                             rows.push(['Status', u.status || '—']);
                             rows.push(['Account status', u.accountStatus || '—']);
+                            rows.push(['Joined', u.createdAt ? new Date(u.createdAt).toLocaleString() : '—']);
+                        } else if (type === 'teacher') {
+                            var credCount = [u.payoutCred1, u.payoutCred2, u.payoutCred3].filter(Boolean).length;
+                            var tierLabel = u.payoutTierBase ? ('₱' + u.payoutTierBase + '/hr base') : '—';
+                            if (credCount) tierLabel += ' · ' + credCount + ' credential' + (credCount === 1 ? '' : 's');
+                            var certs = Array.isArray(u.certifications) ? u.certifications.length : 0;
+                            var trainingDone = Array.isArray(u.trainingProgress)
+                                ? u.trainingProgress.filter(function (t) { return t && (t.status === 'completed' || t.percent >= 100); }).length
+                                : 0;
+                            rows.push(['Username', u.username || '—']);
+                            rows.push(['Email', u.email || '—']);
+                            rows.push(['Teacher ID', u.teacherId || '—']);
+                            rows.push(['Status', u.status || '—']);
+                            rows.push(['Payout tier', tierLabel]);
+                            rows.push(['Rate (25 min)', u.hourlyRate != null ? ('₱' + Number(u.hourlyRate).toFixed(2)) : '—']);
+                            rows.push(['Certifications', String(certs)]);
+                            rows.push(['Training courses completed', String(trainingDone)]);
                             rows.push(['Joined', u.createdAt ? new Date(u.createdAt).toLocaleString() : '—']);
                         } else {
                             var roleMap = { super_admin: 'Super-Admin', admin_hr: 'HR', admin_accounting: 'Accounting', admin_qa: 'QA' };
@@ -95,6 +116,12 @@
                         rows.forEach(function (pair) {
                             html += '<div class="row"><span class="k">' + esc(pair[0]) + '</span><span class="v">' + esc(pair[1]) + '</span></div>';
                         });
+                        if (type === 'teacher' && u.teacherId) {
+                            html += '<div class="actions">';
+                            html += '<a class="primary" href="admin-teacher-schedule.html?teacherId=' + encodeURIComponent(u.teacherId) + '">View schedule</a>';
+                            html += '<a class="secondary" href="/teacher-view-profile.html?teacherId=' + encodeURIComponent(u.teacherId) + '" target="_blank" rel="noopener noreferrer">Public profile</a>';
+                            html += '</div>';
+                        }
                         html += '<p class="muted">Read-only summary for administrators. Sensitive fields may be omitted or encrypted at rest.</p>';
                         root.innerHTML = html;
                     })

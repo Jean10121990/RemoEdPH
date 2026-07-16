@@ -9,6 +9,7 @@
     <title>📜 My Classes - RemoEdPH</title>
     <link rel="stylesheet" href="modern-styles.css">
 <link rel="stylesheet" href="css/teacher-sidebar.css">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="css/student-portal-layout.css">
     <link rel="stylesheet" href="css/student-sidebar.css">
@@ -18,12 +19,15 @@
     <div class="remoed-main">
         <div id="student-sidebar-root"></div>
         <script src="js/student-sidebar.js"></script>
-        <script>StudentSidebar.render('student-sidebar-root', 'classes');</script>
+        <script src="js/student-page-header.js"></script>
+        <script>
+            StudentSidebar.render('student-sidebar-root', 'classes');
+            StudentPageHeader.render('classes');
+        </script>
         <div class="remoed-content">
             <div class="booking-history-container">
                 <div class="booking-history-header">
                     <div>
-                        <h1 class="booking-history-title" style="font-size: 2rem; font-weight: 600; color: #1a202c; margin: 0;">My Classes</h1>
                         <div class="booking-count" id="booking-count">Loading...</div>
                     </div>
                 </div>

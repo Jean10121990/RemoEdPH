@@ -159,7 +159,40 @@
         .nav-left {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
+            gap: 14px;
+            flex-wrap: wrap;
+            min-width: 0;
+        }
+
+        .student-current-level {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            border-radius: 999px;
+            background: rgba(28, 167, 231, 0.12);
+            border: 1px solid rgba(28, 167, 231, 0.35);
+            font-size: 0.85rem;
+            line-height: 1.2;
+            max-width: 100%;
+        }
+
+        .student-current-level-label {
+            font-weight: 700;
+            color: #1E3A5F;
+            white-space: nowrap;
+        }
+
+        .student-current-level-value {
+            color: #1CA7E7;
+            font-weight: 700;
+            min-width: 0;
+        }
+
+        .student-current-level-value a {
+            color: #1CA7E7;
+            text-decoration: underline;
+            font-weight: 600;
         }
         
         .points-display, .badge {
@@ -281,15 +314,15 @@
         .charts-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 0.9rem;
-            margin-bottom: 1rem;
+            gap: 0.5rem;
+            margin-bottom: 0.55rem;
         }
         
         .charts-grid-secondary {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 0.9rem;
-            margin-bottom: 1rem;
+            gap: 0.5rem;
+            margin-bottom: 0.55rem;
         }
         
         @media (max-width: 1400px) {
@@ -307,8 +340,8 @@
         
         .chart-card {
             background: white;
-            border-radius: 12px;
-            padding: 0.85rem;
+            border-radius: 10px;
+            padding: 0.6rem;
             box-shadow: 0 2px 8px rgba(0,0,0,0.06);
             border: 1px solid #e0e6ed;
             transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -391,26 +424,35 @@
         .remoed-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 0.9rem;
+            gap: 0.55rem;
             flex: 1;
             min-height: 0;
+        }
+
+        .remoed-section-title {
+            margin-bottom: 0.55rem !important;
+            padding-bottom: 0.4rem !important;
+            font-size: 1rem !important;
         }
 
         /* Community & Social Responsibility */
         .community-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
+            gap: 6px;
+            max-height: min(220px, 28vh);
+            overflow-y: auto;
+            padding-right: 2px;
         }
         @media (max-width: 768px) {
-            .community-grid { grid-template-columns: 1fr; }
+            .community-grid { grid-template-columns: 1fr; max-height: none; }
         }
         .community-item {
             display: flex;
-            gap: 10px;
+            gap: 8px;
             align-items: flex-start;
-            padding: 10px 12px;
-            border-radius: 10px;
+            padding: 6px 8px;
+            border-radius: 8px;
             border: 1px solid #e0e6ed;
             background: #fafdff;
         }
@@ -458,23 +500,23 @@
         
         /* Notification and Upcoming Classes Container */
         .notification-container {
-            max-height: 250px;
+            max-height: min(250px, 32vh);
             overflow-y: auto;
             overflow-x: hidden;
             border: 1px solid #e0e6ed;
             border-radius: 8px;
             background: #f8f9fa;
-            padding: 12px;
+            padding: 8px;
         }
         
         .upcoming-classes-container {
-            max-height: 200px;
+            max-height: min(280px, 35vh);
             overflow-y: auto;
             overflow-x: hidden;
             border: 1px solid #e0e6ed;
             border-radius: 8px;
             background: #f8f9fa;
-            padding: 12px;
+            padding: 8px;
         }
         
         .notification-list, .upcoming-classes-list {
@@ -484,12 +526,12 @@
         }
         
         .notification-item, .upcoming-class-item {
-            padding: 12px 16px;
+            padding: 8px 10px;
             border-bottom: 1px solid #e0e6ed;
             background: #ffffff;
-            margin: 6px 0;
+            margin: 4px 0;
             border-radius: 6px;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             transition: background-color 0.2s ease;
         }
         .notification-item:hover, .upcoming-class-item:hover {
@@ -579,6 +621,7 @@
     <link rel="stylesheet" href="css/teacher-sidebar.css">
     <link rel="stylesheet" href="css/student-portal-layout.css">
     <link rel="stylesheet" href="css/student-sidebar.css">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css">
 </head>
   <body class="student-portal page-student-dashboard">
     <!-- Main Layout: Sidebar + Content -->
@@ -586,9 +629,13 @@
         <!-- Navigation Header -->
         <div class="nav-header">
             <div class="nav-left">
-                <h1 style="margin: 0; font-size: 1.4rem; font-weight: 700; color: #1CA7E7; display: flex; align-items: center; gap: 8px;">
-                    <span>🎮 My Learning Adventure</span>
+                <h1>
+                    <span class="nav-title-text">My Learning Adventure</span>
                 </h1>
+                <div id="student-current-level" class="student-current-level" aria-live="polite">
+                    <span class="student-current-level-label">Current Level</span>
+                    <span class="student-current-level-value" id="student-current-level-value">…</span>
+                </div>
             </div>
             <div style="display: flex; align-items: center; gap: 12px;"></div>
             <div class="nav-right">
@@ -645,7 +692,11 @@
         
         <div id="student-sidebar-root"></div>
         <script src="js/student-sidebar.js"></script>
-        <script>StudentSidebar.render('student-sidebar-root', 'dashboard');</script>
+        <script src="js/student-page-header.js"></script>
+        <script>
+            StudentSidebar.render('student-sidebar-root', 'dashboard');
+            StudentPageHeader.polishExisting('dashboard');
+        </script>
         <div class="remoed-content" style="position: relative; z-index: 2; overflow-y: auto; overflow-x: visible;">
             <!-- Populated by loadUpcomingClasses(); hidden so layout matches pre-fix grid (dropdown still shows schedule) -->
             <ul id="upcoming-classes-list" class="notification-list upcoming-classes-list" hidden></ul>
@@ -837,7 +888,7 @@
                             Announcements and Updates
                         </div>
                         <div class="upcoming-classes-container">
-                            <div id="student-announcement-list-right" style="background: #fafdff; border-radius: 10px; padding: 12px; margin-bottom: 12px;">
+                            <div id="student-announcement-list-right" style="background: #fafdff; border-radius: 10px; padding: 8px; margin-bottom: 8px;">
                                 <!-- Announcements will be loaded here -->
                             </div>
                         </div>
@@ -894,9 +945,9 @@
             return;
           }
           const html = list.map(a => `
-            <div style='background:#fafdff;border-radius:8px;padding:14px 18px;margin-bottom:10px;'>
-              <div style='font-weight:500;white-space:pre-line;'>${a.content}</div>
-              <div style='font-size:0.97rem;color:#888;margin-top:4px;'>${a.updatedAt ? new Date(a.updatedAt).toLocaleString() : ''}</div>
+            <div style='background:#fff;border:1px solid #e0e6ed;border-radius:8px;padding:8px 10px;margin-bottom:6px;'>
+              <div style='font-weight:500;white-space:pre-line;font-size:0.9rem;'>${a.content}</div>
+              <div style='font-size:0.8rem;color:#888;margin-top:4px;'>${a.updatedAt ? new Date(a.updatedAt).toLocaleString() : ''}</div>
             </div>
           `).join('');
           listDivs.forEach((listDiv) => { listDiv.innerHTML = html; });
@@ -1331,7 +1382,7 @@
       }
     }
     
-    // Load profile picture from backend
+    // Load profile picture and CEFR level from backend
     async function loadProfilePicture(studentId) {
         try {
             const token = localStorage.getItem('token');
@@ -1363,6 +1414,7 @@
             if (response.ok) {
                 const data = await response.json();
                 console.log('🔍 Profile data for picture:', data);
+                updateStudentCurrentLevel(data.profile || {});
         if (data.profile && data.profile.profilePicture && data.profile.profilePicture.trim() !== '') {
           setAvatar({
             imageUrl: data.profile.profilePicture,
@@ -1380,6 +1432,7 @@
         }
             } else {
                 console.log('❌ Failed to load profile data for picture');
+                updateStudentCurrentLevel({});
                 // Ensure avatar text is visible
                 const profileImage = document.getElementById('profile-image');
                 const avatarText = document.getElementById('avatar-text');
@@ -1390,6 +1443,7 @@
             }
         } catch (error) {
             console.error('❌ Error loading profile picture:', error);
+            updateStudentCurrentLevel({});
             // Ensure avatar text is visible on error
             const profileImage = document.getElementById('profile-image');
             const avatarText = document.getElementById('avatar-text');
@@ -1398,6 +1452,31 @@
                 avatarText.style.display = 'block';
             }
         }
+    }
+
+    const CEFR_LEVEL_LABELS = {
+      A1: 'Beginner',
+      A2: 'Elementary',
+      B1: 'Intermediate',
+      B2: 'Upper Intermediate',
+      C1: 'Advanced',
+      C2: 'Proficiency'
+    };
+
+    function updateStudentCurrentLevel(profile) {
+      const valueEl = document.getElementById('student-current-level-value');
+      if (!valueEl) return;
+      const raw = (profile && (profile.cefrLevel || profile.leveling || profile.level)) || '';
+      const level = String(raw).trim().toUpperCase();
+      if (level && CEFR_LEVEL_LABELS[level]) {
+        valueEl.textContent = level + ' · ' + CEFR_LEVEL_LABELS[level];
+        return;
+      }
+      if (level) {
+        valueEl.textContent = level;
+        return;
+      }
+      valueEl.innerHTML = '<a href="student-assessment.html">Take Assessment to unlock level</a>';
     }
     
 

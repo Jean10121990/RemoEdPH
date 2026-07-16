@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="js/security-guard.js?v=2"></script>
+    <link rel="icon" href="/images/remoed-favicon.png" type="image/png" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Training - RemoEdPH Admin</title>
+    <script src="js/admin-embed-init.js"></script>
+    <link rel="stylesheet" href="modern-styles.css">
+    <link rel="stylesheet" href="css/teacher-sidebar.css">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .tt-grid { display:grid; grid-template-columns:320px 1fr; gap:20px; }
+        @media (max-width:900px){ .tt-grid { grid-template-columns:1fr; } }
+        .tt-panel { background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:16px; }
+        .tt-list button { display:block; width:100%; text-align:left; margin-bottom:8px; padding:10px; border-radius:8px; border:1px solid #e2e8f0; background:#f8fafc; cursor:pointer; }
+        .tt-list button.active { border-color:#6366f1; background:#eef2ff; }
+        .tt-field { margin-bottom:12px; }
+        .tt-field label { display:block; font-weight:600; margin-bottom:4px; font-size:0.85rem; }
+        .tt-field input, .tt-field textarea, .tt-field select { width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:8px; }
+        .tt-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+        .tt-btn { padding:8px 14px; border-radius:8px; border:none; cursor:pointer; font-weight:600; }
+        .tt-btn-primary { background:#6366f1; color:#fff; }
+        .tt-btn-danger { background:#fee2e2; color:#b91c1c; }
+        .tt-module { border:1px solid #e2e8f0; border-radius:8px; padding:12px; margin-bottom:10px; }
+        .tt-modal-backdrop { display:none; position:fixed; inset:0; background:rgba(15,23,42,0.45); z-index:1000; align-items:center; justify-content:center; padding:16px; }
+        .tt-modal-backdrop.open { display:flex; }
+        .tt-modal { background:#fff; border-radius:12px; max-width:480px; width:100%; padding:20px; box-shadow:0 12px 40px rgba(0,0,0,0.18); }
+        .tt-modal h3 { margin:0 0 12px; }
+    </style>
+</head>
+<body class="page-admin-training">
+<div class="remoed-main">
+    <div id="admin-sidebar-root"></div>
+    <script src="js/admin-session.js"></script>
+    <script src="js/admin-sidebar.js"></script>
+    <script>AdminSidebar.render('admin-sidebar-root', 'hr-hub');</script>
+    <div class="remoed-content">
+        <div class="remoed-section">
+            <div class="remoed-section-title">Teacher Training LMS</div>
+            <p class="muted">Upload PPT/PPTX/PDF training materials for the teacher Career Growth → Training Portal. Use <strong>Add Training Material</strong> below.</p>
+
+            <div class="tt-panel" style="margin-bottom:20px;border-color:#0f766e;background:#f0fdfa;">
+                <h3 style="margin:0 0 12px;color:#0f766e;">Add New Training Material</h3>
+                <form id="tt-material-form-inline">
+                    <div class="tt-field"><label for="tt-m-title-i">Title</label><input id="tt-m-title-i" required placeholder="e.g. Classroom Standards 101"></div>
+                    <div class="tt-field"><label for="tt-m-category-i">Category / Tag</label><input id="tt-m-category-i" value="Course Material" placeholder="Course Material"></div>
+                    <div class="tt-field"><label for="tt-m-desc-i">Description</label><textarea id="tt-m-desc-i" rows="2" placeholder="Short summary shown on teacher cards"></textarea></div>
+                    <div class="tt-field"><label for="tt-m-ppt-i">Presentation (.ppt / .pptx / .pdf)</label><input id="tt-m-ppt-i" type="file" accept=".ppt,.pptx,.pdf,application/pdf,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation"></div>
+                    <div class="tt-field"><label><input type="checkbox" id="tt-m-pub-i" checked> Published (visible on teacher Training Portal)</label></div>
+                    <p id="tt-m-err-i" style="color:#b91c1c;font-size:0.85rem;display:none;"></p>
+                    <div class="tt-actions" style="margin-top:0;">
+                        <button type="submit" class="tt-btn tt-btn-primary" style="background:#0f766e;">Create training material</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="tt-grid">
+                <div class="tt-panel">
+                    <div class="tt-actions">
+                        <button type="button" class="tt-btn tt-btn-primary" id="tt-new-course">+ New course</button>
+                        <button type="button" class="tt-btn tt-btn-primary" id="tt-add-material" style="background:#0f766e;">+ Add Training Material</button>
+                    </div>
+                    <div class="tt-list" id="tt-course-list"></div>
+                </div>
+                <div class="tt-panel" id="tt-editor">
+                    <p class="muted">Select a course or create a new one.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="tt-modal-backdrop" id="tt-material-modal" role="dialog" aria-modal="true" aria-labelledby="tt-material-title">
+    <div class="tt-modal">
+        <h3 id="tt-material-title">Add New Training Material</h3>
+        <form id="tt-material-form">
+            <div class="tt-field"><label for="tt-m-title">Title</label><input id="tt-m-title" required></div>
+            <div class="tt-field"><label for="tt-m-category">Category / Tag</label><input id="tt-m-category" value="Course Material" placeholder="Course Material"></div>
+            <div class="tt-field"><label for="tt-m-desc">Description</label><textarea id="tt-m-desc" rows="3"></textarea></div>
+            <div class="tt-field"><label for="tt-m-ppt">Presentation (.ppt / .pptx / .pdf)</label><input id="tt-m-ppt" type="file" accept=".ppt,.pptx,.pdf,application/pdf,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation"></div>
+            <div class="tt-field"><label><input type="checkbox" id="tt-m-pub" checked> Published (visible on teacher Training Portal)</label></div>
+            <p id="tt-m-err" style="color:#b91c1c;font-size:0.85rem;display:none;"></p>
+            <div class="tt-actions">
+                <button type="submit" class="tt-btn tt-btn-primary">Create</button>
+                <button type="button" class="tt-btn" id="tt-m-cancel" style="background:#e2e8f0;">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+(function(){
+    function token(){
+        return (window.RemoedAdminSession && RemoedAdminSession.getAuthToken())
+            || localStorage.getItem('remoed_admin_token')
+            || localStorage.getItem('remoed_admin_auth')
+            || localStorage.getItem('adminToken')
+            || '';
+    }
+    function authErrorMessage(status, fallback) {
+        if (status === 401 || status === 403) {
+            return 'Failed to save: Unauthorized. Please log in again.';
+        }
+        return fallback || 'Request failed';
+    }
+    async function api(url, init) {
+        const t = token();
+        if (!t) throw new Error('Unauthorized. Please log in again.');
+        const opts = Object.assign({ credentials: 'include' }, init || {});
+        // Authorization must win over any headers from the caller (Content-Type, etc.)
+        opts.headers = Object.assign(
+            {},
+            (init && init.headers) || {},
+            { Authorization: 'Bearer ' + t }
+        );
+        const r = await fetch(url, opts);
+        const d = await r.json().catch(function () { return {}; });
+        if (!r.ok) {
+            throw new Error(authErrorMessage(r.status, d.message || d.error || ('HTTP ' + r.status)));
+        }
+        return d;
+    }
+    async function uploadWithAuth(url, formData) {
+        const t = token();
+        if (!t) throw new Error('Unauthorized. Please log in again.');
+        const r = await fetch(url, {
+            method: 'POST',
+            headers: { Authorization: 'Bearer ' + t },
+            body: formData,
+            credentials: 'include'
+        });
+        const d = await r.json().catch(function () { return {}; });
+        if (!r.ok) {
+            throw new Error(authErrorMessage(r.status, d.message || d.error || 'Upload failed'));
+        }
+        return d;
+    }
+    let courses = [], selectedId = null, modules = [];
+    const listEl = document.getElementById('tt-course-list');
+    const editor = document.getElementById('tt-editor');
+    const materialModal = document.getElementById('tt-material-modal');
+    function renderList(){
+        listEl.innerHTML = courses.map(c=>'<button type="button" data-id="'+c._id+'" class="'+(selectedId===String(c._id)?'active':'')+'">'+escapeHtml(c.title)+(c.category?' <small style="color:#64748b">('+escapeHtml(c.category)+')</small>':'')+'</button>').join('');
+        listEl.querySelectorAll('button').forEach(btn=>btn.addEventListener('click',()=>selectCourse(btn.dataset.id)));
+    }
+    function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+    async function loadCourses(){
+        const d = await api('/api/admin/training/courses');
+        courses = d.courses || [];
+        renderList();
+    }
+    async function selectCourse(id){
+        try {
+            selectedId = String(id);
+            renderList();
+            const course = courses.find(c=>String(c._id)===selectedId);
+            if (!course) {
+                editor.innerHTML = '<p class="muted">Course not found.</p>';
+                return;
+            }
+            const md = await api('/api/admin/training/courses/'+id+'/modules');
+            modules = md.modules || [];
+            editor.innerHTML = `
+                <h3 style="margin-top:0">${escapeHtml(course.title)}</h3>
+                <div class="tt-field"><label>Title</label><input id="tt-title" value="${escapeHtml(course.title)}"></div>
+                <div class="tt-field"><label>Category / Tag</label><input id="tt-category" value="${escapeHtml(course.category||'Course Material')}"></div>
+                <div class="tt-field"><label>Description</label><textarea id="tt-desc" rows="3">${escapeHtml(course.description||'')}</textarea></div>
+                <div class="tt-field"><label><input type="checkbox" id="tt-pub" ${course.published?'checked':''}> Published</label></div>
+                ${course.presentationUrl?'<p><a href="'+escapeHtml(course.presentationUrl)+'" target="_blank" rel="noopener">Presentation: '+escapeHtml(course.presentationName||course.presentationUrl)+'</a></p>':'<p class="muted">No presentation uploaded yet.</p>'}
+                <div class="tt-field"><label>Upload / replace presentation (.ppt / .pptx / .pdf)</label><input type="file" id="tt-ppt-replace" accept=".ppt,.pptx,.pdf,application/pdf"></div>
+                <div class="tt-actions">
+                    <button class="tt-btn tt-btn-primary" id="tt-save-course">Save course</button>
+                    <button class="tt-btn tt-btn-danger" id="tt-del-course">Delete course</button>
+                    <button class="tt-btn tt-btn-primary" id="tt-add-module">+ Add module</button>
+                </div>
+                <hr>
+                <h4>Modules</h4>
+                <div id="tt-modules"></div>`;
+            document.getElementById('tt-save-course').onclick = async ()=>{
+                try {
+                    await api('/api/admin/training/courses/'+id,{ method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({
+                        title: document.getElementById('tt-title').value,
+                        description: document.getElementById('tt-desc').value,
+                        category: document.getElementById('tt-category').value,
+                        published: document.getElementById('tt-pub').checked
+                    })});
+                    await loadCourses();
+                    await selectCourse(id);
+                    alert('Course saved.');
+                } catch (err) {
+                    alert(err.message || 'Failed to save course');
+                }
+            };
+            document.getElementById('tt-del-course').onclick = async ()=>{
+                if(!confirm('Delete this course and all modules?')) return;
+                try {
+                    await api('/api/admin/training/courses/'+id,{ method:'DELETE' });
+                    selectedId=null;
+                    editor.innerHTML='<p class="muted">Select a course.</p>';
+                    await loadCourses();
+                } catch (err) {
+                    alert(err.message || 'Failed to delete course');
+                }
+            };
+            document.getElementById('tt-add-module').onclick = async ()=>{
+                try {
+                    await api('/api/admin/training/courses/'+id+'/modules',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ title:'New module', type:'guideline' })});
+                    await selectCourse(id);
+                } catch (err) {
+                    alert(err.message || 'Failed to add module');
+                }
+            };
+            document.getElementById('tt-ppt-replace').onchange = async (e)=>{
+                const file = e.target.files && e.target.files[0];
+                if(!file) return;
+                try {
+                    const fd = new FormData();
+                    fd.append('presentation', file);
+                    await uploadWithAuth('/api/admin/training/courses/'+id+'/upload-presentation', fd);
+                    await loadCourses();
+                    await selectCourse(id);
+                } catch (err) {
+                    alert(err.message || 'Upload failed');
+                }
+            };
+            renderModules(id);
+        } catch (err) {
+            editor.innerHTML = '<p style="color:#b91c1c">' + escapeHtml(err.message || 'Failed to load course') + '</p>';
+            alert(err.message || 'Failed to load course');
+        }
+    }
+    function renderModules(courseId){
+        const wrap = document.getElementById('tt-modules');
+        wrap.innerHTML = modules.map(m=>`
+            <div class="tt-module" data-mid="${m._id}">
+                <div class="tt-field"><label>Title</label><input class="m-title" value="${escapeHtml(m.title)}"></div>
+                <div class="tt-field"><label>Type</label>
+                    <select class="m-type">
+                        <option value="guideline" ${m.type==='guideline'?'selected':''}>Guideline</option>
+                        <option value="video" ${m.type==='video'?'selected':''}>Video</option>
+                        <option value="asset" ${m.type==='asset'?'selected':''}>Asset</option>
+                        <option value="quiz_ack" ${m.type==='quiz_ack'?'selected':''}>Acknowledgment</option>
+                    </select>
+                </div>
+                <div class="tt-field"><label>Content / guidelines</label><textarea class="m-content" rows="4">${escapeHtml(m.content||'')}</textarea></div>
+                ${m.videoUrl?'<p><a href="'+m.videoUrl+'" target="_blank">Video: '+escapeHtml(m.videoUrl)+'</a></p>':''}
+                ${m.assetUrl?'<p><a href="'+m.assetUrl+'" target="_blank">Asset: '+escapeHtml(m.assetName||m.assetUrl)+'</a></p>':''}
+                <div class="tt-actions">
+                    <button type="button" class="tt-btn tt-btn-primary m-save">Save</button>
+                    <button type="button" class="tt-btn tt-btn-danger m-del">Delete</button>
+                    <label class="tt-btn" style="background:#eef2ff;color:#4338ca;cursor:pointer">Upload video<input type="file" accept="video/*" class="m-vid" hidden></label>
+                    <label class="tt-btn" style="background:#eef2ff;color:#4338ca;cursor:pointer">Upload asset<input type="file" class="m-asset" hidden></label>
+                </div>
+            </div>`).join('');
+        wrap.querySelectorAll('.tt-module').forEach(row=>{
+            const mid = row.dataset.mid;
+            row.querySelector('.m-save').onclick = async ()=>{
+                try {
+                    await api('/api/admin/training/modules/'+mid,{ method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({
+                        title: row.querySelector('.m-title').value,
+                        type: row.querySelector('.m-type').value,
+                        content: row.querySelector('.m-content').value
+                    })});
+                    await selectCourse(courseId);
+                    alert('Module saved.');
+                } catch (err) {
+                    alert(err.message || 'Failed to save module');
+                }
+            };
+            row.querySelector('.m-del').onclick = async ()=>{
+                if(!confirm('Delete module?')) return;
+                try {
+                    await api('/api/admin/training/modules/'+mid,{ method:'DELETE' });
+                    await selectCourse(courseId);
+                } catch (err) {
+                    alert(err.message || 'Failed to delete module');
+                }
+            };
+            row.querySelector('.m-vid').onchange = async (e)=>{
+                try {
+                    const fd = new FormData();
+                    fd.append('video', e.target.files[0]);
+                    await uploadWithAuth('/api/admin/training/modules/'+mid+'/upload-video', fd);
+                    await selectCourse(courseId);
+                } catch (err) {
+                    alert(err.message || 'Video upload failed');
+                }
+            };
+            row.querySelector('.m-asset').onchange = async (e)=>{
+                try {
+                    const fd = new FormData();
+                    fd.append('asset', e.target.files[0]);
+                    await uploadWithAuth('/api/admin/training/modules/'+mid+'/upload-asset', fd);
+                    await selectCourse(courseId);
+                } catch (err) {
+                    alert(err.message || 'Asset upload failed');
+                }
+            };
+        });
+    }
+    document.getElementById('tt-new-course').onclick = async ()=>{
+        const title = prompt('Course title');
+        if(!title) return;
+        try {
+            const d = await api('/api/admin/training/courses',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ title })});
+            await loadCourses();
+            if(d.course) await selectCourse(d.course._id);
+        } catch (err) {
+            alert(err.message || 'Failed to create course');
+        }
+    };
+    async function createMaterialFromFields(fields, errEl){
+        if(errEl) errEl.style.display = 'none';
+        const fd = new FormData();
+        fd.append('title', (fields.title || '').trim());
+        fd.append('category', (fields.category || '').trim() || 'Course Material');
+        fd.append('description', fields.description || '');
+        fd.append('published', fields.published ? 'true' : 'false');
+        if(fields.file) fd.append('presentation', fields.file);
+        return uploadWithAuth('/api/admin/training/courses/with-presentation', fd);
+    }
+    function openMaterialModal(){
+        document.getElementById('tt-material-form').reset();
+        document.getElementById('tt-m-category').value = 'Course Material';
+        document.getElementById('tt-m-pub').checked = true;
+        document.getElementById('tt-m-err').style.display = 'none';
+        materialModal.classList.add('open');
+    }
+    function closeMaterialModal(){ materialModal.classList.remove('open'); }
+    document.getElementById('tt-add-material').onclick = openMaterialModal;
+    document.getElementById('tt-m-cancel').onclick = closeMaterialModal;
+    materialModal.addEventListener('click', (e)=>{ if(e.target===materialModal) closeMaterialModal(); });
+    document.getElementById('tt-material-form').onsubmit = async (e)=>{
+        e.preventDefault();
+        const errEl = document.getElementById('tt-m-err');
+        try {
+            const d = await createMaterialFromFields({
+                title: document.getElementById('tt-m-title').value,
+                category: document.getElementById('tt-m-category').value,
+                description: document.getElementById('tt-m-desc').value,
+                published: document.getElementById('tt-m-pub').checked,
+                file: document.getElementById('tt-m-ppt').files[0]
+            }, errEl);
+            closeMaterialModal();
+            await loadCourses();
+            if(d.course) await selectCourse(d.course._id);
+        } catch (err) {
+            errEl.textContent = err.message || 'Failed';
+            errEl.style.display = 'block';
+        }
+    };
+    document.getElementById('tt-material-form-inline').onsubmit = async (e)=>{
+        e.preventDefault();
+        const errEl = document.getElementById('tt-m-err-i');
+        try {
+            const d = await createMaterialFromFields({
+                title: document.getElementById('tt-m-title-i').value,
+                category: document.getElementById('tt-m-category-i').value,
+                description: document.getElementById('tt-m-desc-i').value,
+                published: document.getElementById('tt-m-pub-i').checked,
+                file: document.getElementById('tt-m-ppt-i').files[0]
+            }, errEl);
+            document.getElementById('tt-material-form-inline').reset();
+            document.getElementById('tt-m-category-i').value = 'Course Material';
+            document.getElementById('tt-m-pub-i').checked = true;
+            await loadCourses();
+            if(d.course) await selectCourse(d.course._id);
+        } catch (err) {
+            errEl.textContent = err.message || 'Failed';
+            errEl.style.display = 'block';
+        }
+    };
+    loadCourses().catch(e=>{ editor.innerHTML='<p style="color:#b91c1c">'+escapeHtml(e.message)+'</p>'; });
+})();
+</script>
+</body>
+</html>

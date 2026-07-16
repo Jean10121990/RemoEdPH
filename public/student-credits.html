@@ -30,60 +30,98 @@
     </div>
 
     <div class="grid">
-      <div class="card">
-        <h2>Current Balance</h2>
-        <div class="balance" id="credits-balance">0</div>
-        <div class="muted">Lesson credits available to book future classes (pool minus credits held for upcoming bookings).</div>
-        <div class="stats">
-          <div class="stat-pill" id="credits-reserved-wrap" style="display:none;">Held for bookings: <span id="credits-reserved">0</span></div>
-          <div class="stat-pill">Used: <span id="credits-used">0</span></div>
-          <div class="stat-pill">Total purchased: <span id="credits-total">0</span></div>
-        </div>
-        <div style="margin-top:10px;">
-          <span id="subscription-pill" class="badge yellow" style="display:none;"></span>
-        </div>
-        <div class="actions">
-          <button type="button" class="secondary-btn" onclick="window.location.href='student-booking-history.html'">
-            View class booking history
-          </button>
-        </div>
-
-        <div id="student-refill-panel" class="refill-panel" style="margin-top:1.25rem;padding-top:1.1rem;border-top:1px solid #e2e8f0;">
-          <h3 style="margin:0 0 0.35rem;font-size:1.05rem;color:#0f172a;">Choose a learning plan</h3>
-          <p class="muted" style="margin:0 0 0.75rem;font-size:0.88rem;">Same plans as on our homepage (1 month = 22 lesson credits). Pay with GCash, PayMaya, or card. Credits are added after PayMongo confirms payment (usually under a minute).</p>
-          <div class="refill-row" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
-            <label for="refill-plan-select" class="muted" style="font-weight:600;">Plan</label>
-            <select id="refill-plan-select" style="min-width:min(100%,320px);padding:10px 12px;border-radius:8px;border:1px solid #cbd5e1;font-size:0.95rem;">
-              <option value="spark">RemoSpark — 1 mo, 22 credits — $91.74 USD</option>
-              <option value="steady">RemoSteady — 3 mo, 66 credits — $269.28 USD</option>
-              <option value="scholar">RemoScholar — 6 mo, 132 credits — $528.00 USD</option>
-              <option value="summit">RemoSummit — 12 mo, 264 credits — $964.32 USD</option>
-            </select>
-            <button type="button" class="primary-btn" id="refill-pay-btn" onclick="startRefillCheckout()">Continue to payment</button>
+      <div class="credits-left">
+        <div class="card">
+          <h2>Current Balance</h2>
+          <div class="balance" id="credits-balance">0</div>
+          <div class="muted" id="credits-balance-note">Lesson credits remaining on your account.</div>
+          <div class="credits-progress-track" aria-hidden="true">
+            <div class="credits-progress-fill" id="credits-progress-fill"></div>
           </div>
-          <p id="refill-status" class="muted" style="margin:10px 0 0;font-size:0.85rem;display:none;"></p>
+          <p class="credits-progress-caption" id="credits-progress-caption">0 credits remaining out of 0 total purchased.</p>
+          <div class="stats">
+            <div class="stat-pill">Used: <span id="credits-used">0</span></div>
+            <div class="stat-pill">Total purchased: <span id="credits-total">0</span></div>
+          </div>
+          <div style="margin-top:10px;">
+            <span id="subscription-pill" class="badge yellow" style="display:none;"></span>
+          </div>
+          <div class="actions">
+            <button type="button" class="secondary-btn" onclick="window.location.href='student-booking-history.html'">
+              View class booking history
+            </button>
+          </div>
         </div>
       </div>
 
-      <div class="card">
-        <h2>Credit History</h2>
-        <div class="muted">Every time you buy or use credits, it appears here.</div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Type</th>
-                <th>Description</th>
-                <th>Credits</th>
-                <th>Balance</th>
-              </tr>
-            </thead>
-            <tbody id="credits-tbody">
-            </tbody>
-          </table>
+      <div class="credits-right">
+        <div id="payment-return-banner" class="payment-return-banner" style="display:none;" role="status" aria-live="polite"></div>
+
+        <div id="student-refill-panel" class="checkout-order-card">
+          <div class="checkout-order-header">
+            <h3>Secure checkout</h3>
+            <p class="muted checkout-order-sub">Same plans as our homepage. Pay with GCash, Maya, or card via PayMongo. Credits appear after payment confirms (usually under a minute).</p>
+          </div>
+
+          <div class="checkout-plan-picker">
+            <label for="refill-plan-select">Choose a learning plan</label>
+            <select id="refill-plan-select" aria-describedby="checkout-breakdown">
+              <option value="spark">RemoSpark — Starter — 22 lessons — $154.00</option>
+              <option value="steady">RemoSteady — Progress — 66 lessons — $399.00 (Save $63)</option>
+              <option value="scholar">RemoScholar — Mastery — 132 lessons — $798.00 (Save $126)</option>
+              <option value="summit">RemoSummit — Ultimate — 264 lessons — $1,596.00 (Save $252)</option>
+            </select>
+          </div>
+
+          <div id="checkout-breakdown" class="checkout-breakdown">
+            <div class="checkout-plan-title" id="checkout-plan-name">RemoSpark — Starter Bundle</div>
+            <div class="checkout-line"><span id="checkout-line-classes">22 classes × $7.00</span><span id="checkout-line-list">$154.00</span></div>
+            <div class="checkout-line checkout-line-discount"><span id="checkout-line-discount-label">Founder Discount</span><span id="checkout-line-discount">—</span></div>
+            <div class="checkout-line checkout-line-total"><span>Total due</span><span id="checkout-total-usd">$154.00 USD</span></div>
+            <div class="checkout-php" id="checkout-total-php">~₱9,244.62 PHP est. at checkout</div>
+            <div class="checkout-validity" id="checkout-validity">Valid for 3 Months</div>
+          </div>
+
+          <button type="button" class="primary-btn checkout-pay-btn" id="refill-pay-btn" onclick="startRefillCheckout()">
+            <svg class="checkout-lock-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M7 11V8a5 5 0 0 1 10 0v3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" stroke-width="2"/>
+            </svg>
+            Continue to secure payment
+          </button>
+          <p class="checkout-trust">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 11V8a5 5 0 0 1 10 0v3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" stroke-width="2"/></svg>
+            Secure SSL Checkout · Powered by PayMongo
+          </p>
+          <div class="checkout-methods" aria-label="Accepted payment methods">
+            <span class="checkout-method-pill" title="Visa">Visa</span>
+            <span class="checkout-method-pill" title="Mastercard">Mastercard</span>
+            <span class="checkout-method-pill" title="GCash">GCash</span>
+            <span class="checkout-method-pill" title="Maya">Maya</span>
+          </div>
+          <p id="refill-status" class="muted checkout-status" style="display:none;"></p>
         </div>
-        <div id="credits-empty" class="muted" style="margin-top:8px;display:none;">No credit activity yet.</div>
+
+        <div class="card">
+          <h2>Credit History</h2>
+          <div class="muted">Every time you buy or use credits, it appears here.</div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Type</th>
+                  <th>Description</th>
+                  <th>Credits</th>
+                  <th>Balance</th>
+                </tr>
+              </thead>
+              <tbody id="credits-tbody">
+              </tbody>
+            </table>
+          </div>
+          <div id="credits-empty" class="muted" style="margin-top:8px;display:none;">No credit activity yet.</div>
+        </div>
       </div>
     </div>
   </div>
@@ -160,6 +198,112 @@
       if (s) try { s.focus(); } catch (e) {}
     }
 
+    var EXCHANGE_RATE_USED = 60.03;
+    var PLAN_CHECKOUT = {
+      spark: {
+        name: 'RemoSpark — Starter Bundle',
+        lessons: 22,
+        months: 1,
+        validityMonths: 3,
+        usdList: 154,
+        usdDiscount: 0,
+        usdTotal: 154
+      },
+      steady: {
+        name: 'RemoSteady — Progress Bundle',
+        lessons: 66,
+        months: 3,
+        validityMonths: 6,
+        usdList: 462,
+        usdDiscount: 63,
+        usdTotal: 399
+      },
+      scholar: {
+        name: 'RemoScholar — Mastery Bundle',
+        lessons: 132,
+        months: 6,
+        validityMonths: 12,
+        usdList: 924,
+        usdDiscount: 126,
+        usdTotal: 798
+      },
+      summit: {
+        name: 'RemoSummit — Ultimate Bundle',
+        lessons: 264,
+        months: 12,
+        validityMonths: 24,
+        usdList: 1848,
+        usdDiscount: 252,
+        usdTotal: 1596
+      }
+    };
+
+    function formatUsd(n) {
+      return '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function formatPhpEst(usd) {
+      var php = Number((usd * EXCHANGE_RATE_USED).toFixed(2));
+      return '~₱' + php.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' PHP est. at checkout';
+    }
+
+    function updateCheckoutBreakdown() {
+      var sel = document.getElementById('refill-plan-select');
+      if (!sel) return;
+      var plan = PLAN_CHECKOUT[sel.value] || PLAN_CHECKOUT.spark;
+      var nameEl = document.getElementById('checkout-plan-name');
+      var classesEl = document.getElementById('checkout-line-classes');
+      var listEl = document.getElementById('checkout-line-list');
+      var discLabel = document.getElementById('checkout-line-discount-label');
+      var discEl = document.getElementById('checkout-line-discount');
+      var totalEl = document.getElementById('checkout-total-usd');
+      var phpEl = document.getElementById('checkout-total-php');
+      var validEl = document.getElementById('checkout-validity');
+      if (nameEl) nameEl.textContent = plan.name;
+      if (classesEl) classesEl.textContent = plan.lessons + ' classes × $7.00';
+      if (listEl) listEl.textContent = formatUsd(plan.usdList);
+      if (plan.usdDiscount > 0) {
+        if (discLabel) discLabel.textContent = 'Founder Discount (−$21/mo × ' + plan.months + ')';
+        if (discEl) discEl.textContent = '−' + formatUsd(plan.usdDiscount);
+      } else {
+        if (discLabel) discLabel.textContent = 'Founder Discount';
+        if (discEl) discEl.textContent = '—';
+      }
+      if (totalEl) totalEl.textContent = formatUsd(plan.usdTotal) + ' USD';
+      if (phpEl) phpEl.textContent = formatPhpEst(plan.usdTotal);
+      if (validEl) validEl.textContent = 'Valid for ' + plan.validityMonths + ' Months';
+    }
+
+    function showPaymentReturnBanner(kind, planId) {
+      var banner = document.getElementById('payment-return-banner');
+      if (!banner) return;
+      if (kind === 'success') {
+        var plan = PLAN_CHECKOUT[planId] || null;
+        var planName = plan ? plan.name : 'your plan';
+        var amountLine = plan
+          ? '<div class="payment-return-amount">' + formatUsd(plan.usdTotal) + ' USD <span>(' + formatPhpEst(plan.usdTotal).replace(' at checkout', '') + ')</span></div>'
+          : '';
+        banner.className = 'payment-return-banner payment-return-success';
+        banner.style.display = 'block';
+        banner.innerHTML =
+          '<div class="payment-return-icon" aria-hidden="true">✓</div>' +
+          '<div class="payment-return-body">' +
+            '<strong>Payment successful</strong>' +
+            '<p id="payment-return-detail">Thank you! Confirming your payment and updating credits…</p>' +
+            amountLine +
+            '<p class="payment-return-secure">Secure SSL checkout completed via PayMongo</p>' +
+          '</div>';
+      } else if (kind === 'cancelled') {
+        banner.className = 'payment-return-banner payment-return-cancelled';
+        banner.style.display = 'block';
+        banner.innerHTML =
+          '<div class="payment-return-body">' +
+            '<strong>Payment cancelled</strong>' +
+            '<p>No charge was made. Choose a plan below when you are ready.</p>' +
+          '</div>';
+      }
+    }
+
     async function startRefillCheckout() {
       var token = getStudentToken();
       var studentId = getStudentIdForCheckout();
@@ -179,7 +323,11 @@
       }
       if (!sel) return;
       var planId = sel.value;
-      var label = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : planId;
+      var plan = PLAN_CHECKOUT[planId] || PLAN_CHECKOUT.spark;
+      var label = plan.name + ' — ' + formatUsd(plan.usdTotal) + ' USD';
+      try {
+        sessionStorage.setItem('remoedLastCheckoutPlan', planId);
+      } catch (e) {}
       btn.disabled = true;
       if (statusEl) {
         statusEl.style.display = 'block';
@@ -205,6 +353,11 @@
         if (!res.ok || !data.success || !data.checkout_url) {
           throw new Error(data.error || data.message || ('Checkout failed (' + res.status + ')'));
         }
+        try {
+          if (data.registrationId) {
+            sessionStorage.setItem('remoedLastCheckoutRegistrationId', String(data.registrationId));
+          }
+        } catch (e) {}
         window.location.href = data.checkout_url;
       } catch (err) {
         alert(err.message || 'Could not start checkout');
@@ -234,14 +387,20 @@
       // Server splits: deductions in `credits`, top-ups in `creditHistory` (no overlap) — avoids double rows.
       const fromHist = hist.map(function (item) {
         const c = Number(item.credits);
+        const isAdjust =
+          String(item.type || '') === 'adjustment' ||
+          String(item.plan || '').indexOf('Emergency Cancellation') === 0;
         return {
           date: item.date,
-          type: c >= 0 ? 'purchase' : 'use',
+          type: isAdjust ? 'adjustment' : c >= 0 ? 'purchase' : 'use',
           plan: item.plan,
           description:
-            c >= 0
-              ? 'Plan purchase (' + (item.plan || 'Subscription') + ')'
-              : 'Lesson completed (' + (item.plan || 'Lesson') + ')',
+            item.description ||
+            (isAdjust
+              ? item.plan || item.description || 'Emergency Cancellation (Credit Retained)'
+              : c >= 0
+                ? 'Plan purchase (' + (item.plan || 'Subscription') + ')'
+                : 'Lesson completed (' + (item.plan || 'Lesson') + ')'),
           credits: item.credits,
           balanceAfter: item.balanceAfter != null ? item.balanceAfter : '',
           amountPaid: item.amountPaid || 0
@@ -273,8 +432,12 @@
         return;
       }
       try {
-        const res = await fetch('/api/student/credits', {
-          headers: { Authorization: 'Bearer ' + token }
+        const res = await fetch('/api/student/credits?t=' + Date.now(), {
+          cache: 'no-store',
+          headers: {
+            Authorization: 'Bearer ' + token,
+            'Cache-Control': 'no-cache',
+          }
         });
         const data = await res.json().catch(function () { return {}; });
         if (!res.ok || !data.success) {
@@ -289,28 +452,44 @@
           greet.textContent = 'Hi, ' + name + '! Here are your lesson credits.';
         }
 
-        var available = Number(data.availableBalance);
-        var reserved = Number(data.reservedCredits) || 0;
-        if (data.availableBalance == null || isNaN(available)) {
+        var pool = Number(data.balance);
+        if (data.balance == null || isNaN(pool)) {
+          pool = Number(data.creditBalance);
+        }
+        if ((data.balance == null && data.creditBalance == null) || isNaN(pool)) {
           document.getElementById('credits-balance').textContent = '\u2014';
-          throw new Error('Credits API must return availableBalance (server-side summary required).');
+          throw new Error('Credits API must return balance (server-side summary required).');
         }
 
         const usedCredits = data.usedCredits != null ? data.usedCredits : (data.used ?? 0);
+        const totalPurchased =
+          data.totalPurchased != null
+            ? Number(data.totalPurchased)
+            : data.totalEarned != null
+              ? Number(data.totalEarned)
+              : 0;
 
         const balEl = document.getElementById('credits-balance');
-        balEl.textContent = String(available);
-        balEl.classList.toggle('balance-low', Number(available) < 5);
+        balEl.textContent = String(pool);
+        balEl.classList.toggle('balance-low', Number(pool) < 5);
 
-        const reservedWrap = document.getElementById('credits-reserved-wrap');
-        const reservedEl = document.getElementById('credits-reserved');
-        if (reservedWrap && reservedEl) {
-          reservedEl.textContent = String(reserved);
-          reservedWrap.style.display = reserved > 0 ? 'inline-flex' : 'none';
+        const noteEl = document.getElementById('credits-balance-note');
+        if (noteEl) {
+          noteEl.textContent = 'Lesson credits remaining on your account.';
         }
 
-        document.getElementById('credits-total').textContent =
-          data.totalPurchased != null ? data.totalPurchased : (data.totalEarned != null ? data.totalEarned : 0);
+        const fillEl = document.getElementById('credits-progress-fill');
+        const captionEl = document.getElementById('credits-progress-caption');
+        var pct = totalPurchased > 0 ? (pool / totalPurchased) * 100 : 0;
+        if (pct < 0) pct = 0;
+        if (pct > 100) pct = 100;
+        if (fillEl) fillEl.style.width = pct + '%';
+        if (captionEl) {
+          captionEl.textContent =
+            pool + ' credits remaining out of ' + totalPurchased + ' total purchased.';
+        }
+
+        document.getElementById('credits-total').textContent = totalPurchased;
         document.getElementById('credits-used').textContent = usedCredits;
 
         const pill = document.getElementById('subscription-pill');
@@ -338,25 +517,27 @@
           try {
             sessionStorage.setItem('remoedCreditsRefresh', '1');
           } catch (e) {}
-          notifyCreditsUpdated({ availableBalance: available, reservedCredits: reserved, totalPurchased: data.totalPurchased });
+          notifyCreditsUpdated({ availableBalance: pool, reservedCredits: 0, totalPurchased: totalPurchased });
           return;
         }
         empty.style.display = 'none';
 
         tbody.innerHTML = list.map(function (row) {
-          const cls = row.credits >= 0 ? 'credits-pos' : 'credits-neg';
+          const cls = row.credits > 0 ? 'credits-pos' : row.credits < 0 ? 'credits-neg' : '';
           const typeLabel =
             row.type === 'purchase' ? 'Purchase' :
             row.type === 'use' ? 'Used' :
             row.type === 'adjustment' ? 'Adjust' :
             'Entry';
           const balCell = row.balanceAfter !== '' && row.balanceAfter != null ? row.balanceAfter : '\u2014';
+          const creditsCell =
+            row.credits > 0 ? '+' + row.credits : String(row.credits);
           return (
             '<tr>' +
               '<td>' + fmtDate(row.date) + '</td>' +
               '<td>' + typeLabel + '</td>' +
               '<td>' + escHtml(row.description) + '</td>' +
-              '<td><span class="' + cls + '">' + (row.credits > 0 ? '+' : '') + row.credits + '</span></td>' +
+              '<td><span class="' + cls + '">' + creditsCell + '</span></td>' +
               '<td>' + balCell + '</td>' +
             '</tr>'
           );
@@ -366,9 +547,9 @@
           sessionStorage.setItem('remoedCreditsRefresh', '1');
         } catch (e) {}
         notifyCreditsUpdated({
-          availableBalance: available,
-          reservedCredits: reserved,
-          totalPurchased: data.totalPurchased != null ? data.totalPurchased : data.totalEarned,
+          availableBalance: pool,
+          reservedCredits: 0,
+          totalPurchased: totalPurchased,
         });
       } catch (err) {
         console.error('Credits load error:', err);
@@ -377,28 +558,157 @@
     }
 
     document.addEventListener('DOMContentLoaded', function () {
-      loadCredits();
+      updateCheckoutBreakdown();
+      var sel = document.getElementById('refill-plan-select');
+      if (sel) sel.addEventListener('change', updateCheckoutBreakdown);
       try {
         var params = new URLSearchParams(window.location.search);
         if (params.get('refill') === '1') {
           setTimeout(openRefillPanel, 500);
         }
-        if (params.get('payment') === 'success') {
-          var n = 0;
-          var poll = setInterval(function () {
-            loadCredits();
-            if (++n >= 30) clearInterval(poll);
-          }, 2000);
+
+        var lastPlan = '';
+        var lastRegId = '';
+        try {
+          lastPlan = sessionStorage.getItem('remoedLastCheckoutPlan') || '';
+          lastRegId = sessionStorage.getItem('remoedLastCheckoutRegistrationId') || '';
+        } catch (e) {}
+
+        var paymentSuccess = params.get('payment') === 'success';
+        // Always reconcile once so orphaned paid checkouts credit even without ?payment=success / sessionStorage
+        var shouldConfirm = true;
+        var shouldPoll = paymentSuccess || !!lastRegId;
+
+        function setVerifyingUi(msg) {
+          var noteEl = document.getElementById('credits-balance-note');
+          if (noteEl) noteEl.textContent = msg || 'Verifying payment\u2026';
+          var detailEl = document.getElementById('payment-return-detail');
+          if (detailEl && msg) detailEl.textContent = msg;
         }
+
+        function confirmCheckoutThenRefresh(opts) {
+          opts = opts || {};
+          var token = getStudentToken();
+          if (!token) {
+            return loadCredits();
+          }
+          if (opts.showVerifying) {
+            setVerifyingUi('Verifying payment\u2026');
+          }
+          var body = {};
+          if (lastRegId) body.registrationId = lastRegId;
+          return fetch('/api/payments/confirm-checkout', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: 'Bearer ' + token,
+              'Cache-Control': 'no-cache',
+            },
+            body: JSON.stringify(body),
+          })
+            .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, status: r.status, j: j }; }); })
+            .then(function (res) {
+              var j = res.j || {};
+              var detailEl = document.getElementById('payment-return-detail');
+              if (res.ok && j.success && (j.credited || j.duplicate)) {
+                try {
+                  sessionStorage.removeItem('remoedLastCheckoutRegistrationId');
+                  lastRegId = '';
+                } catch (e2) {}
+                if (j.credited && !paymentSuccess) {
+                  showPaymentReturnBanner('success', lastPlan || '');
+                }
+                if (detailEl) {
+                  if (j.credited) {
+                    detailEl.textContent =
+                      'Credits added to your account' +
+                      (j.creditsAdded ? ' (+' + j.creditsAdded + ')' : '') +
+                      '. Balance and history are updated below.';
+                  } else if (paymentSuccess || opts.showVerifying) {
+                    detailEl.textContent = 'Credits were already applied. Balance and history are up to date.';
+                  }
+                }
+              } else if ((j.unpaid || (res.ok && j.success && !j.credited)) && (paymentSuccess || opts.showVerifying)) {
+                if (detailEl) {
+                  detailEl.textContent =
+                    'Payment received — waiting for PayMongo confirmation. Your balance will update shortly.';
+                }
+              } else if (!res.ok && res.status !== 404 && (paymentSuccess || opts.showVerifying)) {
+                if (detailEl) {
+                  detailEl.textContent =
+                    'Could not confirm payment automatically (' +
+                    (j.error || 'error') +
+                    '). Retrying\u2026';
+                }
+              }
+              return j;
+            })
+            .catch(function () {
+              var detailEl = document.getElementById('payment-return-detail');
+              if (detailEl && paymentSuccess) {
+                detailEl.textContent =
+                  'Payment received — waiting for confirmation. Your balance will update shortly.';
+              }
+              return null;
+            })
+            .then(function (j) {
+              return loadCredits().then(function () { return j; });
+            });
+        }
+
+        if (paymentSuccess) {
+          showPaymentReturnBanner('success', lastPlan);
+          setVerifyingUi('Verifying payment\u2026');
+        }
+
+        if (shouldConfirm) {
+          var balanceBaseline = null;
+          var n = 0;
+          var poll = null;
+          function refreshAfterPayment() {
+            return loadCredits().then(function () {
+              var balEl = document.getElementById('credits-balance');
+              var now = balEl ? Number(balEl.textContent) : NaN;
+              if (isNaN(now)) return;
+              if (balanceBaseline === null) {
+                balanceBaseline = now;
+                return;
+              }
+              if (now > balanceBaseline && poll) clearInterval(poll);
+            }).catch(function () {});
+          }
+
+          confirmCheckoutThenRefresh({ showVerifying: shouldPoll }).then(function (j) {
+            if (j && (j.credited || j.duplicate) && poll) clearInterval(poll);
+            return refreshAfterPayment();
+          });
+
+          if (shouldPoll) {
+            poll = setInterval(function () {
+              if (n === 0 || n === 2) {
+                confirmCheckoutThenRefresh({ showVerifying: true });
+              } else {
+                refreshAfterPayment();
+              }
+              if (++n >= 6) clearInterval(poll);
+            }, 2500);
+          }
+        } else {
+          loadCredits();
+        }
+
         if (params.get('payment') === 'cancelled') {
+          showPaymentReturnBanner('cancelled');
           var st = document.getElementById('refill-status');
           if (st) {
             st.style.display = 'block';
-            st.textContent = 'Payment was cancelled. You can choose a plan below when you’re ready.';
+            st.textContent = 'Payment was cancelled. You can choose a plan below when you\u2019re ready.';
           }
           setTimeout(openRefillPanel, 400);
         }
-      } catch (e) {}
+      } catch (e) {
+        loadCredits();
+      }
     });
     document.addEventListener('visibilitychange', function () {
       if (document.visibilityState === 'visible') loadCredits();

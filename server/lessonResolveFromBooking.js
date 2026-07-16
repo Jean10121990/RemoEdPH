@@ -1,15 +1,9 @@
 const Curriculum = require('./models/Curriculum');
 const Lesson = require('./models/Lesson');
+const { normalizeCurriculumLevel } = require('./config/curriculumLevels');
 
 function normalizeCurriculumLevelFromStudentLevel(raw) {
-  const s = String(raw || '').toLowerCase();
-  if (s.includes('nursery')) return 'nursery';
-  if (s.includes('kinder')) return 'kinder';
-  if (s.includes('prep') || s.includes('preparatory')) return 'preparatory';
-  if (s.includes('elementary')) return 'elementary';
-  if (s.includes('intermediate')) return 'intermediate';
-  if (s.includes('advanced')) return 'advanced';
-  return null;
+  return normalizeCurriculumLevel(raw);
 }
 
 /** Same rules as student lesson-progress: Batch/Lesson in title or linear 1–220. */
@@ -84,4 +78,5 @@ async function resolveLessonIdFromBooking(booking) {
 module.exports = {
   resolveLessonIdFromBooking,
   parseBatchLessonFromTitle,
+  normalizeCurriculumLevelFromStudentLevel,
 };

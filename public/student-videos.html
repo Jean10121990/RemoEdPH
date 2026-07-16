@@ -9,6 +9,7 @@
   <title>Video library - RemoEdPH</title>
   <link rel="stylesheet" href="modern-styles.css">
   <link rel="stylesheet" href="css/teacher-sidebar.css">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css">
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="css/student-portal-layout.css">
   <link rel="stylesheet" href="css/student-sidebar.css">
@@ -167,11 +168,14 @@
   <div class="remoed-main">
     <div id="student-sidebar-root"></div>
     <script src="js/student-sidebar.js"></script>
-    <script>StudentSidebar.render('student-sidebar-root', 'videos');</script>
+    <script src="js/student-page-header.js"></script>
+    <script>
+      StudentSidebar.render('student-sidebar-root', 'videos');
+      StudentPageHeader.render('videos');
+    </script>
     <div class="remoed-content">
       <div class="sv-wrap">
         <div class="sv-hero">
-          <h1>Video library</h1>
           <p>
             Lesson clips and reference videos from your school. Tap a thumbnail to watch in a larger player, or use Watch here on the card.
             Same videos appear in live class under the Videos tab.

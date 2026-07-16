@@ -1135,7 +1135,11 @@ router.get('/time-tracking/history', verifyAdminApiAuth, requireAdmin, async (re
 router.get('/notifications', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
     const username = req.user.username;
-    const notifications = await Notification.find({ teacherId: username })
+    const cutoff = new Date(Date.now() - 31 * 24 * 60 * 60 * 1000);
+    const notifications = await Notification.find({
+      teacherId: username,
+      createdAt: { $gte: cutoff },
+    })
       .sort({ createdAt: -1 })
       .limit(50)
       .lean();
@@ -2641,13 +2645,61 @@ router.get('/recent-activity', async (req, res) => {
   }
 });
 
+// GET admin schedule grid data (bookings in date range)
+router.get('/schedule', async (req, res) => {
+  try {
+    const start = String(req.query.start || '').trim();
+    const end = String(req.query.end || '').trim();
+    const teacherId = String(req.query.teacherId || '').trim();
+    const view = String(req.query.view || 'week').trim();
+    if (!start || !end) {
+      return res.status(400).json({ success: false, error: 'start and end query params required (YYYY-MM-DD)' });
+    }
+    const filter = { date: { $gte: start, $lte: end } };
+    if (teacherId) filter.teacherId = teacherId;
+    const bookings = await Booking.find(filter)
+      .sort({ date: 1, time: 1 })
+      .lean();
+    const teachers = await Teacher.find({ username: { $exists: true, $ne: null, $ne: '' } })
+      .select('teacherId username email _id status')
+      .sort({ username: 1 })
+      .lean();
+    res.json({
+      success: true,
+      view,
+      start,
+      end,
+      bookings: bookings.map((b) => ({
+        _id: b._id,
+        teacherId: b.teacherId,
+        studentId: b.studentId,
+        date: b.date,
+        time: b.time,
+        status: b.status,
+        lesson: b.lesson,
+        classroomId: b.classroomId
+      })),
+      teachers: teachers.map((t) => ({
+        mongoId: String(t._id),
+        teacherId: t.teacherId,
+        name: t.username,
+        email: t.email,
+        status: t.status
+      }))
+    });
+  } catch (error) {
+    console.error('admin schedule error:', error);
+    res.status(500).json({ success: false, error: 'Failed to load schedule' });
+  }
+});
+
 // GET teachers list
 router.get('/teachers-list', async (req, res) => {
   try {
     // Filter out teachers with null or missing usernames
     const teachers = await Teacher.find({ 
       username: { $exists: true, $ne: null, $ne: '' } 
-    }).select('username email createdAt status teacherId');
+    }).select('username email createdAt status teacherId _id');
     
     console.log(`Found ${teachers.length} valid teachers`);
     res.json(teachers);

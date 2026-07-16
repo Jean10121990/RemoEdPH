@@ -207,10 +207,10 @@ Please do not reply to this email.
   }),
   subscriptionConfirmation: (email, username, plan, planPrice) => {
     const planLabel =
-      plan === '1month' ? 'RemoSpark (1 Month)' :
-      plan === '3months' ? 'RemoSteady (3 Months)' :
-      plan === '6months' ? 'RemoScholar (6 Months)' :
-      plan === '1year' ? 'RemoSummit (12 Months)' :
+      plan === '1month' ? 'RemoSpark — Starter Bundle (3 Months)' :
+      plan === '3months' ? 'RemoSteady — Progress Bundle (6 Months)' :
+      plan === '6months' ? 'RemoScholar — Mastery Bundle (12 Months)' :
+      plan === '1year' ? 'RemoSummit — Ultimate Bundle (24 Months)' :
       String(plan || 'Subscription');
 
     const amount = Number(planPrice || 0) || 0;

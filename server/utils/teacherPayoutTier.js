@@ -1,5 +1,9 @@
 'use strict';
 
+/**
+ * Base payout tiers (PHP/hr) → display titles:
+ * 180 Newbie Teacher | 230 Junior Teacher | 280 Senior Teacher and Trainer | 330 Head Teacher and Teaching Quality
+ */
 const TIER_VALUES = [180, 230, 280, 330];
 
 /**

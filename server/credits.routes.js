@@ -244,9 +244,10 @@ router.post(
           creditBalance: creditsToAdd,
           totalCreditsEarned: creditsToAdd,
           totalLessonsPurchased: creditsToAdd,
-          'learningJourneyPurchasedByLevel.nursery': creditsToAdd,
-          'learningJourneyPurchasedByLevel.kinder': creditsToAdd,
-          'learningJourneyPurchasedByLevel.prep': creditsToAdd,
+          'learningJourneyPurchasedByLevel.Little Seeds (Age 3)': creditsToAdd,
+          'learningJourneyPurchasedByLevel.Sprouts (Age 4)': creditsToAdd,
+          'learningJourneyPurchasedByLevel.Saplings (Age 5)': creditsToAdd,
+          'learningJourneyPurchasedByLevel.Young Stewards (Age 6)': creditsToAdd,
         },
         $push: {
           creditHistory: {

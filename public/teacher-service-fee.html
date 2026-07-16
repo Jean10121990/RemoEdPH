@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="css/teacher-sidebar.css">
   <link rel="stylesheet" href="css/global-portal.css">
   <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css">
   <script src="js/user-session.js"></script>
   <script src="js/teacher-payout-settings.js"></script>
   <style>
@@ -41,7 +42,11 @@
   <div class="remoed-main">
         <div id="teacher-sidebar-root"></div>
         <script src="js/teacher-sidebar.js"></script>
-        <script>TeacherSidebar.render('teacher-sidebar-root', 'teaching-fee');</script>
+        <script src="js/teacher-page-header.js"></script>
+        <script>
+            TeacherSidebar.render('teacher-sidebar-root', 'teaching-fee');
+            TeacherPageHeader.render('teaching-fee');
+        </script>
     <div class="remoed-content">
       <div class="service-header-panel">
         <div class="service-header">

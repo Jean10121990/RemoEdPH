@@ -5,13 +5,16 @@
     <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
     <script src="js/security-guard.js?v=1"></script>
     <title>Career Growth - RemoEdPH</title>
     <link rel="stylesheet" href="modern-styles.css">
     <link rel="stylesheet" href="css/teacher-sidebar.css">
     <link rel="stylesheet" href="css/global-portal.css">
 <!-- Remo AI Chatbot Styles -->
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=training-cards-1">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css">
     <script src="js/user-session.js"></script>
     <script src="js/teacher-payout-settings.js"></script>
 </head>
@@ -19,11 +22,13 @@
     <div class="remoed-main">
         <div id="teacher-sidebar-root"></div>
         <script src="js/teacher-sidebar.js"></script>
-        <script>TeacherSidebar.render('teacher-sidebar-root', 'professional-development');</script>
+        <script src="js/teacher-page-header.js"></script>
+        <script>
+            TeacherSidebar.render('teacher-sidebar-root', 'professional-development');
+            TeacherPageHeader.render('professional-development');
+        </script>
         <div class="remoed-content">
-            <div class="page-header">
-                <h1>🌱 Career Growth</h1>
-            </div>
+            
             
             <!-- Tab Navigation -->
             <div class="tab-buttons">
@@ -272,10 +277,10 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 12px;"><strong>Tier 1:</strong> 4-yr Grad OR 2-yrs BPO/ESL Exp</td><td style="text-align:right; padding:10px 12px; font-weight:600;">₱180</td></tr>
-                                    <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 12px;"><strong>Tier 2:</strong> 4-yr Grad (English Major)</td><td style="text-align:right; padding:10px 12px; font-weight:600;">₱230</td></tr>
-                                    <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 12px;"><strong>Tier 3:</strong> Grad + 1–3 yrs Exp/BPO</td><td style="text-align:right; padding:10px 12px; font-weight:600;">₱280</td></tr>
-                                    <tr><td style="padding:10px 12px;"><strong>Tier 4:</strong> Licensed Prof. Teacher (LET)</td><td style="text-align:right; padding:10px 12px; font-weight:600;">₱330</td></tr>
+                                    <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 12px;"><strong>Tier 1: Newbie Teacher</strong> (4-yr Grad OR 2-yrs BPO/ESL Exp)</td><td style="text-align:right; padding:10px 12px; font-weight:600;">₱180</td></tr>
+                                    <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 12px;"><strong>Tier 2: Junior Teacher</strong> (4-yr Grad (English Major))</td><td style="text-align:right; padding:10px 12px; font-weight:600;">₱230</td></tr>
+                                    <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 12px;"><strong>Tier 3: Senior Teacher and Trainer</strong> (Grad + 1–3 yrs Exp/BPO)</td><td style="text-align:right; padding:10px 12px; font-weight:600;">₱280</td></tr>
+                                    <tr><td style="padding:10px 12px;"><strong>Tier 4: Head Teacher and Teaching Quality</strong> (Licensed Prof. Teacher (LET))</td><td style="text-align:right; padding:10px 12px; font-weight:600;">₱330</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -283,10 +288,10 @@
                         <div style="margin-bottom:14px;">
                             <label for="career-payout-tier-base" style="display:block; font-weight:600; color:#334155; font-size:0.88rem; margin-bottom:6px;">Your tier (base pay)</label>
                             <select id="career-payout-tier-base" class="form-input" style="max-width:100%; opacity:0.92;" disabled aria-label="Professional tier base hourly pay (set by admin)">
-                                <option value="180">Tier 1 — ₱180/hr — 4-yr Grad OR 2-yrs BPO/ESL Exp</option>
-                                <option value="230">Tier 2 — ₱230/hr — 4-yr Grad (English Major)</option>
-                                <option value="280">Tier 3 — ₱280/hr — Grad + 1–3 yrs Exp/BPO</option>
-                                <option value="330">Tier 4 — ₱330/hr — Licensed Prof. Teacher (LET)</option>
+                                <option value="180">Tier 1 — ₱180/hr — Newbie Teacher (4-yr Grad OR 2-yrs BPO/ESL Exp)</option>
+                                <option value="230">Tier 2 — ₱230/hr — Junior Teacher (4-yr Grad (English Major))</option>
+                                <option value="280">Tier 3 — ₱280/hr — Senior Teacher and Trainer (Grad + 1–3 yrs Exp/BPO)</option>
+                                <option value="330">Tier 4 — ₱330/hr — Head Teacher and Teaching Quality (Licensed Prof. Teacher (LET))</option>
                             </select>
                         </div>
 
@@ -458,6 +463,17 @@
         if (!token) {
             window.location.href = 'teacher-login.html';
         }
+
+        function escapeHtml(unsafe) {
+            if (!unsafe) return '';
+            return unsafe.toString()
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+        window.escapeHtml = escapeHtml;
 
         /** Optional founder override (empty = use real calculated growth for everyone). */
         const REMOED_FOUNDER_TEACHER_EMAILS = [];
@@ -947,143 +963,102 @@
         }
         
         // Training Portal
+        function teacherAuthToken() {
+            return (
+                localStorage.getItem('remoed_teacher_token') ||
+                sessionStorage.getItem('remoed_teacher_token') ||
+                localStorage.getItem('remoed_teacher_auth') ||
+                localStorage.getItem('remoed_user_token') ||
+                localStorage.getItem('token') ||
+                ''
+            );
+        }
+
+        function escTraining(unsafe) {
+            if (unsafe == null) return '';
+            return String(unsafe)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
         async function loadTrainingCourses() {
             const grid = document.getElementById('training-courses-grid');
             if (!grid) return;
-            
-            // Mock training courses - in production, fetch from API
-            const courses = [
-                {
-                    id: 1,
-                    title: 'Effective Online Teaching Strategies',
-                    description: 'Learn proven techniques for engaging students in virtual classrooms and maximizing learning outcomes.',
-                    duration: '4 hours',
-                    status: 'available',
-                    icon: '💻'
-                },
-                {
-                    id: 2,
-                    title: 'TEFL Certification Course',
-                    description: 'Comprehensive training for Teaching English as a Foreign Language with internationally recognized certification.',
-                    duration: '120 hours',
-                    status: 'in-progress',
-                    progress: 45,
-                    icon: '🌍'
-                },
-                {
-                    id: 3,
-                    title: 'Student Engagement Techniques',
-                    description: 'Master the art of keeping students motivated and engaged throughout your lessons.',
-                    duration: '3 hours',
-                    status: 'completed',
-                    icon: '🎯'
-                },
-                {
-                    id: 4,
-                    title: 'Classroom Management Essentials',
-                    description: 'Essential skills for managing virtual classrooms and handling challenging situations.',
-                    duration: '2.5 hours',
-                    status: 'available',
-                    icon: '📋'
-                },
-                {
-                    id: 5,
-                    title: 'Advanced Grammar Teaching',
-                    description: 'Deep dive into teaching complex grammar concepts with practical examples and activities.',
-                    duration: '6 hours',
-                    status: 'available',
-                    icon: '📖'
-                },
-                {
-                    id: 6,
-                    title: 'Cultural Sensitivity in Teaching',
-                    description: 'Learn to create inclusive learning environments that respect diverse cultural backgrounds.',
-                    duration: '3 hours',
-                    status: 'available',
-                    icon: '🌏'
-                }
+            grid.innerHTML = '<p class="muted">Loading courses…</p>';
+            const BANNER_GRADIENTS = [
+                'linear-gradient(to right, #fdfbfb, #ebedee)',
+                'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)',
+                'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)',
+                'linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)',
+                'linear-gradient(135deg, #fef3c7 0%, #fde68a 55%, #fdfbfb 100%)',
+                'linear-gradient(135deg, #fce7f3 0%, #fbcfe8 50%, #fdf2f8 100%)'
             ];
-            
-            grid.innerHTML = courses.map(course => `
-                <div class="training-card ${course.status}" onclick="openTrainingCourse(${course.id}, event)">
-                    <div class="training-icon">${course.icon}</div>
-                    <div class="training-title">${course.title}</div>
-                    <div class="training-description">${course.description}</div>
-                    <div class="training-meta">
-                        <span>⏱️ ${course.duration}</span>
-                        <span class="training-status status-${course.status}">
-                            ${course.status === 'available' ? 'Available' : course.status === 'in-progress' ? `In Progress (${course.progress}%)` : 'Completed ✓'}
-                        </span>
-                    </div>
-                    ${course.status === 'in-progress' ? `<div style="background: #e0e6ed; border-radius: 8px; height: 6px; margin-top: 12px; overflow: hidden;"><div style="background: linear-gradient(90deg, #667eea, #764ba2); height: 100%; width: ${course.progress}%; transition: width 0.3s ease;"></div></div>` : ''}
-                </div>
-            `).join('');
-        }
-        
-        function openTrainingCourse(courseId, evt) {
-            // Prevent event bubbling
-            if (evt) {
-                evt.stopPropagation();
-            }
-            
-            // Show a modal or navigate to course content
-            const courseName = document.querySelector(`.training-card[onclick*="${courseId}"] .training-title`)?.textContent || `Course ${courseId}`;
-            
-            // Create a simple modal to show course details
-            const modal = document.createElement('div');
-            modal.className = 'training-modal';
-            modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;';
-            modal.innerHTML = `
-                <div style="background: white; border-radius: 16px; padding: 32px; max-width: 500px; width: 90%;">
-                    <h2 style="margin: 0 0 16px 0; color: #667eea;">${courseName}</h2>
-                    <p style="color: #666; margin-bottom: 24px;">Ready to start this course? Click "Start Course" to begin your learning journey.</p>
-                    <div style="display: flex; gap: 12px;">
-                        <button class="btn-primary" data-action="close">Close</button>
-                        <button class="btn-secondary" data-action="start">Start Course</button>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(modal);
-            
-            const closeButton = modal.querySelector('[data-action="close"]');
-            const startButton = modal.querySelector('[data-action="start"]');
-            if (closeButton) {
-                closeButton.addEventListener('click', () => {
-                    modal.remove();
+            try {
+                const authToken = teacherAuthToken();
+                if (!authToken) throw new Error('Not signed in. Please log in again.');
+                const res = await fetch('/api/teacher/training/courses', {
+                    headers: { Authorization: 'Bearer ' + authToken },
+                    cache: 'no-store'
                 });
-            }
-            if (startButton) {
-                startButton.addEventListener('click', () => {
-                    startCourse(courseId);
-                    modal.remove();
-                });
-            }
-            
-            // Close on background click
-            modal.addEventListener('click', function(e) {
-                if (e.target === modal) {
-                    modal.remove();
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.message || 'Could not load courses');
+                const courses = data.courses || [];
+                if (!courses.length) {
+                    grid.innerHTML = '<p class="muted">No training courses published yet.</p>';
+                    return;
                 }
-            });
+                grid.innerHTML = courses.map(function (course, index) {
+                    const id = String(course._id);
+                    const rawStatus = course.status || 'available';
+                    const progress = Number(course.progress) || 0;
+                    let uiStatus = 'pending';
+                    let statusLabel = 'Pending';
+                    if (rawStatus === 'completed') {
+                        uiStatus = 'completed';
+                        statusLabel = 'Completed';
+                    } else if (rawStatus === 'in-progress') {
+                        uiStatus = 'ongoing';
+                        statusLabel = 'Ongoing';
+                    }
+                    const category = course.category || 'Course Material';
+                    const desc = String(course.description || '').trim();
+                    const shortDesc = desc.length > 140 ? desc.slice(0, 137) + '…' : desc;
+                    const gradient = BANNER_GRADIENTS[index % BANNER_GRADIENTS.length];
+                    const safeId = escTraining(id).replace(/'/g, '');
+                    return (
+                        '<div class="course-card ' + uiStatus + '" onclick="openTrainingCourse(\'' + safeId + '\', event)">' +
+                        '<div class="course-banner" style="background: ' + gradient + ';">' +
+                        '<h3 class="course-title">' + escTraining(course.title) + '</h3>' +
+                        '<span class="course-tag">#' + escTraining(category) + '</span>' +
+                        '</div>' +
+                        '<div class="course-content">' +
+                        '<div class="course-status-row">' +
+                        '<div class="status-indicator"><span class="dot ' + uiStatus + '"></span> ' + statusLabel + '</div>' +
+                        '<div class="status-percent">' + progress + '%</div>' +
+                        '</div>' +
+                        '<div class="progress-bar"><div class="progress-fill" style="width: ' + progress + '%;"></div></div>' +
+                        (shortDesc ? '<p class="course-description">' + escTraining(shortDesc) + '</p>' : '<p class="course-description muted">No description yet.</p>') +
+                        '<div class="course-footer">' +
+                        '<button type="button" class="enter-btn" onclick="openTrainingCourse(\'' + safeId + '\', event)">Enter</button>' +
+                        '</div>' +
+                        '</div>' +
+                        '</div>'
+                    );
+                }).join('');
+            } catch (err) {
+                console.error(err);
+                grid.innerHTML = '<p style="color:#b91c1c;">' + escTraining(err.message || 'Failed to load courses') + '</p>';
+            }
         }
-        
-        function startCourse(courseId) {
-            // Map course IDs to appropriate actions
-            const courseActions = {
-                1: 'teacher-professional-development.html#training',
-                2: 'teacher-professional-development.html#training',
-                3: 'teacher-professional-development.html#training',
-                4: 'teacher-professional-development.html#training',
-                5: 'teacher-professional-development.html#training',
-                6: 'teacher-professional-development.html#training'
-            };
-            
-            // For now, redirect to training portal
-            // In production, this could redirect to a specific course page
-            const redirectUrl = courseActions[courseId] || 'teacher-professional-development.html#training';
-            window.location.href = redirectUrl;
+
+        function openTrainingCourse(courseId, evt) {
+            if (evt) evt.stopPropagation();
+            window.location.href = 'teacher-training-course.html?v=5&id=' + encodeURIComponent(String(courseId));
         }
-        
+
         // Certifications
         async function loadCertifications() {
             try {

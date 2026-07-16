@@ -10,9 +10,19 @@ const bookingSchema = new mongoose.Schema({
   teacherLocalZone: { type: String, default: null }, // IANA timezone of teacher at booking time
   lesson: { type: String, required: true },
   lessonId: { type: mongoose.Schema.Types.ObjectId, ref: 'Lesson', default: null }, // Reference to Lesson document
-  studentLevel: { type: String, required: true }, // nursery, kinder, preparatory
+  studentLevel: {
+    type: String,
+    required: true,
+    enum: [
+      'Little Seeds (Age 3)',
+      'Sprouts (Age 4)',
+      'Saplings (Age 5)',
+      'Young Stewards (Age 6)',
+    ],
+    default: 'Little Seeds (Age 3)',
+  },
   paymentMethod: { type: String, default: null }, // Optional - payment handled separately
-  status: { type: String, default: 'Booked' }, // Booked, pending, confirmed, completed, cancelled, absent
+  status: { type: String, default: 'Booked' }, // Booked, pending, confirmed, completed, cancelled, cancelled_by_student_emergency, absent
   classroomId: { type: String }, // unique classroom/room ID for the live lesson
   attendance: {
     teacherEntered: { type: Boolean, default: false },
@@ -56,5 +66,18 @@ bookingSchema.index({ studentId: 1, status: 1, date: -1 });
 // Teacher portal: "My bookings" / schedule / payment summaries by teacher + status + date.
 bookingSchema.index({ teacherId: 1, date: -1 });
 bookingSchema.index({ teacherId: 1, status: 1 });
+
+/** Hard lock: one active booking per teacher at a given UTC instant (cancelled rows excluded). */
+bookingSchema.index(
+  { teacherId: 1, dateTimeUtc: 1 },
+  {
+    unique: true,
+    name: 'uniq_teacher_datetime_active',
+    partialFilterExpression: {
+      dateTimeUtc: { $type: 'date' },
+      status: { $nin: ['cancelled', 'cancelled_by_student_emergency'] },
+    },
+  }
+);
 
 module.exports = mongoose.model('Booking', bookingSchema); 

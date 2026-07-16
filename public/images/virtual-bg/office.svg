@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#e2e8f0"/>
+      <stop offset="100%" stop-color="#94a3b8"/>
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="720" fill="url(#g)"/>
+  <rect x="80" y="420" width="1120" height="24" fill="#64748b" opacity="0.35"/>
+  <text x="640" y="360" text-anchor="middle" font-family="Segoe UI,Arial,sans-serif" font-size="48" fill="#334155">Office Background</text>
+</svg>

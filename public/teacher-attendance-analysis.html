@@ -12,16 +12,21 @@
     <link rel="stylesheet" href="css/global-portal.css">
 <!-- Remo AI Chatbot Styles -->
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css">
     <script src="js/user-session.js"></script>
 </head>
 <body class="page-teacher-attendance-analysis">
     <div class="remoed-main">
         <div id="sidebar"></div>
         <script src="js/teacher-sidebar.js"></script>
-        <script>TeacherSidebar.render('sidebar', 'performance-indicator');</script>
+        <script src="js/teacher-page-header.js"></script>
+        <script>
+            TeacherSidebar.render('sidebar', 'performance-indicator');
+            TeacherPageHeader.render('attendance-analysis');
+        </script>
         <div class="remoed-content">
             <div class="page-header">
-                <h1>Attendance Analysis</h1>
+                
                 <div class="period-selector">
                     <button class="period-btn active" data-period="weekly">This Week</button>
                     <button class="period-btn" data-period="monthly">This Month</button>

@@ -3,35 +3,36 @@
 .admin-hub-page .hub-tabs {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 0;
     margin: 0 0 20px 0;
     padding: 0;
-    border-bottom: 2px solid #e5e7eb;
+    border-bottom: 1px solid #e5e7eb;
 }
 
 .admin-hub-page .hub-tab {
-    margin: 0 0 -2px 0;
-    padding: 10px 18px;
-    font-size: 0.95rem;
-    font-weight: 700;
-    color: #64748b;
+    margin: 0 0 -1px 0;
+    padding: 10px 16px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: #000000;
     background: transparent;
     border: none;
-    border-bottom: 3px solid transparent;
-    border-radius: 8px 8px 0 0;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
     cursor: pointer;
-    transition: color 0.2s, background 0.2s, border-color 0.2s;
+    transition: border-color 0.15s ease;
 }
 
 .admin-hub-page .hub-tab:hover {
-    color: #1ca7e7;
-    background: rgba(28, 167, 231, 0.06);
+    color: #000000;
+    background: transparent;
 }
 
 .admin-hub-page .hub-tab.hub-tab--active {
-    color: #1ca7e7;
-    border-bottom-color: #1ca7e7;
-    background: rgba(28, 167, 231, 0.08);
+    color: #000000;
+    border-bottom-color: #000000;
+    background: transparent;
 }
 
 .admin-hub-page .hub-panel[hidden] {

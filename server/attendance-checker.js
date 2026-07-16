@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const Booking = require('./models/Booking');
 const Teacher = require('./models/Teacher');
 const Student = require('./models/Student');
+const { consumeReservedCreditForBooking } = require('./services/bookingCreditLedger');
 
 class AttendanceChecker {
   constructor() {
@@ -64,12 +65,12 @@ class AttendanceChecker {
         const studentEntered = booking.attendance.studentEntered || false;
         
         if (!teacherEntered && !studentEntered) {
-          // Neither teacher nor student entered - mark as teacher absent
+          // Neither teacher nor student entered - mark as teacher absent (do not deduct student credit)
           console.log(`❌ Marking booking ${booking._id} as teacher absent - neither teacher nor student entered classroom`);
           
           booking.status = 'absent';
+          booking.absentType = 'teacher';
           booking.attendance.absentChecked = true;
-          await this.consumeReservedCreditForBooking(booking, 'Student absent');
           await booking.save();
 
           // Create notification for teacher about teacher absence
@@ -77,10 +78,11 @@ class AttendanceChecker {
           
           console.log(`✅ Booking ${booking._id} marked as teacher absent`);
         } else if (teacherEntered && !studentEntered) {
-          // Teacher entered but student didn't - mark as student absent
+          // Teacher entered but student didn't - mark as student absent (deduct credit)
           console.log(`⚠️ Marking booking ${booking._id} as student absent - teacher entered but student didn't`);
           
           booking.status = 'absent';
+          booking.absentType = 'student';
           booking.attendance.absentChecked = true;
           await this.consumeReservedCreditForBooking(booking, 'Student absent');
           await booking.save();
@@ -90,12 +92,12 @@ class AttendanceChecker {
           
           console.log(`✅ Booking ${booking._id} marked as student absent`);
         } else if (!teacherEntered && studentEntered) {
-          // Student entered but teacher didn't - mark as teacher absent
+          // Student entered but teacher didn't - mark as teacher absent (do not deduct student credit)
           console.log(`❌ Marking booking ${booking._id} as teacher absent - student entered but teacher didn't`);
           
           booking.status = 'absent';
+          booking.absentType = 'teacher';
           booking.attendance.absentChecked = true;
-          await this.consumeReservedCreditForBooking(booking, 'Student absent');
           await booking.save();
 
           // Create notification for teacher about teacher absence
@@ -139,54 +141,17 @@ class AttendanceChecker {
   }
 
   async consumeReservedCreditForBooking(booking, descriptionPrefix = 'Student absent') {
-    if (!booking || booking.creditConsumedAt || booking.creditReservationReleasedAt) return;
-    if (!booking || !booking.studentId) return;
-    const student = await Student.findOne({
-      $or: [{ username: booking.studentId }, { email: booking.studentId }]
-    });
-    if (!student) return;
-
-    const now = new Date();
-    const safeReserved = Number(student.reservedCredits || 0);
-    if (safeReserved <= 0) return;
-    const safeTotal = Number(student.totalCredits || 0);
-    const nextReserved = Math.max(safeReserved - 1, 0);
-    const nextTotal = Math.max(safeTotal - 1, 0);
-    const nextAvailable = Math.max(nextTotal - nextReserved, 0);
-    const planLabel = student.subscriptionPlan || '';
-    const desc = `${descriptionPrefix} (${booking.date} ${booking.time})`;
-
-    await Student.updateOne(
-      { _id: student._id },
-      {
-        $set: {
-          reservedCredits: nextReserved,
-          totalCredits: nextTotal,
-          creditBalance: nextAvailable
-        },
-        $inc: { usedCredits: 1 },
-        $push: {
-          creditTransactions: {
-            date: now,
-            type: 'use',
-            plan: planLabel,
-            description: desc,
-            credits: -1,
-            balanceAfter: nextAvailable,
-            amountPaid: 0
-          },
-          creditHistory: {
-            date: now,
-            plan: planLabel,
-            credits: -1,
-            amountPaid: 0,
-            paymentId: ''
-          }
-        }
-      }
-    );
-    booking.creditConsumedAt = now;
-    booking.creditReservationReleasedAt = null;
+    try {
+      await consumeReservedCreditForBooking(booking, descriptionPrefix, {
+        actorType: 'system',
+        actorId: 'attendance-checker',
+      });
+    } catch (err) {
+      console.error(
+        `❌ Credit deduct failed for booking ${booking && booking._id}:`,
+        err.message || err
+      );
+    }
   }
 
   // Method to manually mark a booking as absent (for testing or manual override)
@@ -198,7 +163,11 @@ class AttendanceChecker {
       }
 
       booking.status = 'absent';
+      booking.absentType = absentType;
       booking.attendance.absentChecked = true;
+      if (absentType === 'student') {
+        await this.consumeReservedCreditForBooking(booking, 'Student absent');
+      }
       await booking.save();
 
       await this.createAbsentNotification(booking, absentType);

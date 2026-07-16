@@ -20,14 +20,16 @@
         }
         .remoed-content {
             flex: 1;
-            padding: 20px;
+            padding: 10px 14px;
             min-width: 0;
             background: transparent;
             min-height: 100vh;
+            max-height: 100vh;
             box-sizing: border-box;
             margin-left: 260px;
             max-width: calc(100vw - 260px);
             overflow-x: auto;
+            overflow-y: auto;
         }
 
         /* Games and Activities Styles */
@@ -37,7 +39,7 @@
         }
 
         .page-header {
-            margin-bottom: 16px;
+            margin-bottom: 10px;
         }
 
         .page-header h1 {
@@ -55,39 +57,39 @@
 
         .selection-section {
             background: white;
-            border-radius: 16px;
-            padding: 18px;
+            border-radius: 14px;
+            padding: 12px;
             box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08);
-            margin-bottom: 14px;
+            margin-bottom: 10px;
         }
 
         .selection-title {
-            font-size: 1.25rem;
+            font-size: 1.1rem;
             font-weight: 600;
             color: #333;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
         }
 
         .selection-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 10px;
-            margin-bottom: 12px;
+            grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+            gap: 6px;
+            margin-bottom: 8px;
         }
 
         .selection-card {
             background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
             border: 2px solid transparent;
-            border-radius: 12px;
-            padding: 12px;
+            border-radius: 10px;
+            padding: 8px 6px;
             text-align: center;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
         }
 
         .selection-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.2);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 14px rgba(102, 126, 234, 0.2);
             border-color: #667eea;
         }
 
@@ -98,34 +100,40 @@
         }
 
         .selection-card .icon {
-            font-size: 1.8rem;
-            margin-bottom: 6px;
+            font-size: 1.35rem;
+            margin-bottom: 4px;
         }
 
         .selection-card .label {
-            font-size: 0.92rem;
+            font-size: 0.78rem;
             font-weight: 600;
+            line-height: 1.2;
         }
 
         .game-display {
             background: white;
-            border-radius: 16px;
-            padding: 18px;
+            border-radius: 12px;
+            padding: 8px 10px;
             box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08);
-            min-height: 360px;
+            min-height: 0;
+            max-height: min(42vh, 380px);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
         }
 
         .game-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 24px;
-            padding-bottom: 16px;
-            border-bottom: 2px solid #e9ecef;
+            margin-bottom: 8px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid #e9ecef;
+            flex-shrink: 0;
         }
 
         .game-title {
-            font-size: 1.5rem;
+            font-size: 1rem;
             font-weight: 600;
             color: #333;
         }
@@ -136,51 +144,98 @@
 
         .game-content.active {
             display: block;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .quiz-results {
+            text-align: center;
+            padding: 12px 8px;
+            line-height: 1.25;
+        }
+        .quiz-results .quiz-accent {
+            font-size: 24px;
+            font-weight: 700;
+            margin: 0 0 6px;
+            color: #1E3A5F;
+        }
+        .quiz-results h2 {
+            color: #1CA7E7;
+            font-size: 18px;
+            font-weight: 800;
+            margin: 0 0 8px;
+            text-shadow: none;
+        }
+        .quiz-results .quiz-score {
+            font-size: 1.1rem;
+            color: #1E3A5F;
+            margin: 8px 0;
+            font-weight: 600;
+        }
+        .quiz-results .quiz-score strong {
+            color: #1CA7E7;
+        }
+        .quiz-results .quiz-stars {
+            font-size: 1.35rem;
+            margin: 8px 0;
+            color: #FFD700;
+        }
+        .quiz-results .quiz-bonus {
+            font-size: 0.9rem;
+            color: #334155;
+            font-weight: 700;
+            margin: 6px 0;
+        }
+        .quiz-results .fun-btn {
+            margin-top: 10px;
+            padding: 8px 16px;
+            font-size: 0.95rem;
         }
 
         /* Reading Game Styles */
         .word-card {
             background: linear-gradient(135deg, #667eea 0%, #5a67d8 100%);
             color: white;
-            border-radius: 16px;
-            padding: 40px;
+            border-radius: 12px;
+            padding: 8px 12px;
             text-align: center;
-            margin: 20px 0;
-            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
+            margin: 6px 0;
+            box-shadow: 0 4px 14px rgba(102, 126, 234, 0.25);
         }
 
         .word-card .word {
-            font-size: 3rem;
+            font-size: 1.55rem;
             font-weight: 700;
-            margin-bottom: 16px;
+            margin-bottom: 4px;
+            line-height: 1.2;
         }
 
         .word-card .phonetic {
-            font-size: 1.25rem;
+            font-size: 0.85rem;
             opacity: 0.9;
         }
 
         .options-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 16px;
-            margin: 24px 0;
+            grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+            gap: 6px;
+            margin: 8px 0;
         }
 
         .option-btn {
             background: #f8f9fa;
             border: 2px solid #e9ecef;
-            border-radius: 12px;
-            padding: 20px;
-            font-size: 1.1rem;
+            border-radius: 8px;
+            padding: 6px 10px;
+            font-size: 0.85rem;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
         }
 
         .option-btn:hover {
             background: #e9ecef;
-            transform: scale(1.05);
+            transform: scale(1.03);
         }
 
         .option-btn.correct {
@@ -199,17 +254,17 @@
         .speaking-card {
             background: white;
             border: 2px solid #667eea;
-            border-radius: 16px;
-            padding: 32px;
+            border-radius: 14px;
+            padding: 16px;
             text-align: center;
-            margin: 20px 0;
+            margin: 10px 0;
         }
 
         .speaking-card .phrase {
-            font-size: 1.5rem;
+            font-size: 1.2rem;
             font-weight: 600;
             color: #333;
-            margin-bottom: 24px;
+            margin-bottom: 14px;
         }
 
         .record-btn {
@@ -241,26 +296,26 @@
             background: #f8f9fa;
             border-left: 4px solid #667eea;
             border-radius: 8px;
-            padding: 24px;
-            margin: 20px 0;
+            padding: 10px 12px;
+            margin: 8px 0;
         }
 
         .writing-prompt h3 {
-            margin: 0 0 12px 0;
+            margin: 0 0 6px 0;
             color: #667eea;
-            font-size: 1.25rem;
+            font-size: 1rem;
         }
 
         .writing-area {
             width: 100%;
-            min-height: 200px;
-            padding: 16px;
+            min-height: 80px;
+            padding: 8px 10px;
             border: 2px solid #e9ecef;
             border-radius: 8px;
-            font-size: 1rem;
+            font-size: 0.9rem;
             font-family: inherit;
             resize: vertical;
-            margin: 16px 0;
+            margin: 8px 0;
         }
 
         .writing-area:focus {
@@ -271,19 +326,19 @@
         /* Listening Game Styles */
         .audio-player {
             background: #f8f9fa;
-            border-radius: 12px;
-            padding: 24px;
+            border-radius: 10px;
+            padding: 10px 12px;
             text-align: center;
-            margin: 20px 0;
+            margin: 8px 0;
         }
 
         .audio-btn {
             background: linear-gradient(135deg, #667eea 0%, #5a67d8 100%);
             color: white;
             border: none;
-            border-radius: 12px;
-            padding: 12px 24px;
-            font-size: 1rem;
+            border-radius: 10px;
+            padding: 8px 16px;
+            font-size: 0.9rem;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
@@ -298,38 +353,41 @@
         .moral-card {
             background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
             border: 2px solid #ffc107;
-            border-radius: 16px;
-            padding: 32px;
-            margin: 20px 0;
+            border-radius: 12px;
+            padding: 10px 12px;
+            margin: 6px 0;
         }
 
         .moral-card .title {
-            font-size: 1.5rem;
+            font-size: 1rem;
             font-weight: 700;
             color: #856404;
-            margin-bottom: 16px;
+            margin-bottom: 6px;
         }
 
         .moral-card .story {
-            font-size: 1.1rem;
+            font-size: 0.85rem;
             color: #856404;
-            line-height: 1.8;
-            margin-bottom: 24px;
+            line-height: 1.4;
+            margin-bottom: 8px;
         }
 
         .moral-question {
             background: white;
             border-radius: 8px;
-            padding: 20px;
-            margin: 16px 0;
+            padding: 10px 12px;
+            margin: 8px 0;
         }
 
         .feedback-message {
-            padding: 16px;
+            padding: 8px 10px;
             border-radius: 8px;
-            margin: 16px 0;
+            margin: 8px 0;
             font-weight: 600;
+            font-size: 0.88rem;
+            line-height: 1.35;
             display: none;
+            flex-shrink: 0;
         }
 
         .feedback-message.success {
@@ -349,27 +407,27 @@
         .score-display {
             background: linear-gradient(135deg, #667eea 0%, #5a67d8 100%);
             color: white;
-            border-radius: 12px;
-            padding: 16px 24px;
+            border-radius: 10px;
+            padding: 8px 14px;
             display: inline-flex;
             align-items: center;
-            gap: 12px;
-            font-size: 1.1rem;
+            gap: 8px;
+            font-size: 0.95rem;
             font-weight: 600;
-            margin: 16px 0;
+            margin: 6px 0;
         }
 
         .next-btn {
             background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
             color: white;
             border: none;
-            border-radius: 12px;
-            padding: 12px 32px;
-            font-size: 1rem;
+            border-radius: 10px;
+            padding: 8px 20px;
+            font-size: 0.9rem;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
-            margin-top: 16px;
+            margin-top: 8px;
         }
 
         .next-btn:hover {
@@ -397,41 +455,58 @@
             .remoed-content {
                 margin-left: 0;
                 max-width: 100%;
-                padding: 20px;
+                padding: 12px;
+                max-height: none;
             }
             .selection-grid {
-                grid-template-columns: 1fr;
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
             }
+        }
+
+        @media (max-height: 800px) {
+            .page-header { margin-bottom: 4px; }
+            .page-header h1 { font-size: 1.35rem !important; }
+            .page-header p { font-size: 0.85rem; }
+            .selection-section { padding: 8px; margin-bottom: 6px; }
+            .level-tabs, .activity-tabs { gap: 3px; margin-bottom: 4px; }
+            .level-tab, .activity-tab { padding: 4px 6px; font-size: 0.68rem; }
+            .game-display { max-height: min(38vh, 320px); padding: 6px 8px; }
+            .word-card { padding: 6px 10px; margin: 4px 0; }
+            .word-card .word { font-size: 1.35rem; }
+            .word-card .phonetic { font-size: 0.78rem; }
+            .options-grid { gap: 4px; margin: 6px 0; }
+            .option-btn { padding: 5px 8px; font-size: 0.78rem; }
+            .feedback-message { padding: 6px 8px; margin: 6px 0; font-size: 0.8rem; }
+            .audio-player, .writing-prompt { padding: 8px 10px; margin: 6px 0; }
+            .moral-card { padding: 8px 10px; margin: 4px 0; }
         }
     </style>
     <link rel="stylesheet" href="css/teacher-sidebar.css">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css">
     <link rel="stylesheet" href="css/student-portal-layout.css">
     <link rel="stylesheet" href="css/student-sidebar.css">
 </head>
-<body class="student-portal">
+<body class="student-portal page-student-games-activities">
     <div class="remoed-main">
         <div id="student-sidebar-root"></div>
         <script src="js/student-sidebar.js"></script>
-        <script>StudentSidebar.render('student-sidebar-root', 'games');</script>
+        <script src="js/student-page-header.js"></script>
+        <script>
+            StudentSidebar.render('student-sidebar-root', 'games');
+            StudentPageHeader.render('games');
+        </script>
         <div class="remoed-content">
             <div class="games-container">
-                <div class="page-header">
-                    <h1 style="font-size: 2rem; font-weight: 800; color: #1CA7E7; text-shadow: none; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; justify-content: center;">
-                        <span>📚📶</span>
-                        <span>🎮 Play & Learn! 🎨</span>
-                    </h1>
-                    <p style="font-size: 1rem; color: #636E72; font-weight: 600;">Have fun while learning new things!</p>
-                </div>
-
-                <div class="selection-section" style="background: white; border-radius: 14px; padding: 16px; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08); border: 1px solid #dbeafe;">
-                    <div class="selection-title" style="font-size: 1.5rem; font-weight: 800; color: #2D3436; margin-bottom: 16px;">Choose level and activity</div>
-                    <div style="font-weight:600;color:#4b5563;margin-bottom:12px;">Levels</div>
+                <div class="selection-section" style="background: white; border-radius: 12px; padding: 12px; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08); border: 1px solid #dbeafe;">
+                    <div class="selection-title" style="font-size: 1.1rem; font-weight: 800; color: #2D3436; margin-bottom: 8px;">Choose level and activity</div>
+                    <div style="font-weight:600;color:#4b5563;margin-bottom:6px;font-size:0.85rem;">Levels</div>
                     <div class="selection-grid">
-                        <div class="selection-card active" data-level="nursery"><div class="icon">🌱</div><div class="label">Nursery</div></div>
-                        <div class="selection-card" data-level="kinder"><div class="icon">⭐</div><div class="label">Kinder</div></div>
-                        <div class="selection-card" data-level="preparatory"><div class="icon">📘</div><div class="label">Preparatory</div></div>
+                        <div class="selection-card active" data-level="Little Seeds (Age 3)"><div class="icon">🌱</div><div class="label">Little Seeds (Age 3)</div></div>
+                        <div class="selection-card" data-level="Sprouts (Age 4)"><div class="icon">⭐</div><div class="label">Sprouts (Age 4)</div></div>
+                        <div class="selection-card" data-level="Saplings (Age 5)"><div class="icon">📘</div><div class="label">Saplings (Age 5)</div></div>
+                        <div class="selection-card" data-level="Young Stewards (Age 6)"><div class="icon">🌳</div><div class="label">Young Stewards (Age 6)</div></div>
                     </div>
-                    <div style="font-weight:600;color:#4b5563;margin-bottom:12px;">Activities</div>
+                    <div style="font-weight:600;color:#4b5563;margin-bottom:6px;font-size:0.85rem;">Activities</div>
                     <div class="selection-grid">
                         <div class="selection-card active" data-skill="reading"><div class="icon">📖</div><div class="label">Reading Quiz</div></div>
                         <div class="selection-card" data-skill="listening"><div class="icon">🎧</div><div class="label">Listening Quiz</div></div>
@@ -442,7 +517,7 @@
                 </div>
                 <div class="game-display" id="game-display">
                     <div class="game-header">
-                        <div class="game-title">Nursery - Reading</div>
+                        <div class="game-title">Little Seeds (Age 3) - Reading</div>
                     </div>
                     <div class="game-content active"></div>
                 </div>
@@ -451,6 +526,7 @@
     </div>
 
     <script src="avatar-helper.js"></script>
+    <script src="js/student-games-data.js"></script>
     <script>
         // Role-based access control
         const userType = localStorage.getItem('userType');
@@ -479,7 +555,7 @@
             };
             
             setupGameSelection();
-            selectedLevel = 'nursery';
+            selectedLevel = 'Little Seeds (Age 3)';
             selectedSkill = 'reading';
             loadGame(selectedLevel, selectedSkill);
         });
@@ -557,18 +633,23 @@
         }
 
         function refreshDynamicContent(level, skill) {
-            if (!gameData[level] || !Array.isArray(gameData[level][skill])) return;
-            const source = gameData[level][skill];
-            const shuffled = shuffleArray(source);
-            const maxItems = skill === 'writing' || skill === 'speaking' ? 4 : 3;
-            gameData[level][skill] = shuffled.slice(0, Math.max(1, Math.min(maxItems, shuffled.length)));
+            const master = window.REMOED_GAME_DATA_MASTER;
+            if (!master || !master[level] || !Array.isArray(master[level][skill])) return;
+            if (!gameData[level]) gameData[level] = {};
+            const shuffled = shuffleArray(master[level][skill]);
+            // Use full bank of up to 10 items per session (shuffle order each load)
+            gameData[level][skill] = shuffled.slice(0, Math.min(10, shuffled.length));
         }
 
         function getLevelName(level) {
             const names = {
-                'nursery': 'Nursery',
-                'kinder': 'Kinder',
-                'preparatory': 'Preparatory'
+                'Little Seeds (Age 3)': 'Little Seeds (Age 3)',
+                'Sprouts (Age 4)': 'Sprouts (Age 4)',
+                'Saplings (Age 5)': 'Saplings (Age 5)',
+                'Young Stewards (Age 6)': 'Young Stewards (Age 6)',
+                'nursery': 'Little Seeds (Age 3)',
+                'kinder': 'Sprouts (Age 4)',
+                'preparatory': 'Saplings (Age 5)'
             };
             return names[level] || level;
         }
@@ -584,111 +665,20 @@
             return names[skill] || skill;
         }
 
-        // Game Data
-        const gameData = {
-            nursery: {
-                reading: [
-                    { word: 'CAT', phonetic: '/kæt/', options: ['Cat', 'Dog', 'Car', 'Hat'], correct: 0 },
-                    { word: 'DOG', phonetic: '/dɔːg/', options: ['Dog', 'Cat', 'Sun', 'Moon'], correct: 0 },
-                    { word: 'SUN', phonetic: '/sʌn/', options: ['Sun', 'Moon', 'Star', 'Cloud'], correct: 0 },
-                    { word: 'BALL', phonetic: '/bɔːl/', options: ['Ball', 'Doll', 'Toy', 'Car'], correct: 0 }
-                ],
-                speaking: [
-                    'Say: "Hello, my name is [Your Name]"',
-                    'Say: "I am [your age] years old"',
-                    'Say: "I like [something you like]"',
-                    'Say: "Thank you" and "Please"'
-                ],
-                writing: [
-                    'Write the letter A',
-                    'Write your name',
-                    'Write: "I am happy"',
-                    'Write numbers 1 to 5'
-                ],
-                listening: [
-                    { audio: '🐱', question: 'What animal says "Meow"?', options: ['Cat', 'Dog', 'Bird', 'Fish'], correct: 0 },
-                    { audio: '🚗', question: 'What makes a "Vroom" sound?', options: ['Car', 'Bicycle', 'Train', 'Bus'], correct: 0 }
-                ],
-                moral: [
-                    {
-                        title: 'Sharing is Caring',
-                        story: 'Tommy had two apples. He saw his friend Sarah had no snack. Tommy shared one apple with Sarah. Sarah smiled and said "Thank you!" Both friends were happy.',
-                        question: 'What did Tommy do that made Sarah happy?',
-                        options: ['He shared his apple', 'He kept both apples', 'He ignored Sarah', 'He ran away'],
-                        correct: 0,
-                        moral: 'Sharing with others makes everyone happy!'
-                    }
-                ]
-            },
-            kinder: {
-                reading: [
-                    { word: 'BOOK', phonetic: '/bʊk/', options: ['Book', 'Look', 'Cook', 'Hook'], correct: 0 },
-                    { word: 'TREE', phonetic: '/triː/', options: ['Tree', 'Free', 'See', 'Bee'], correct: 0 },
-                    { word: 'HOUSE', phonetic: '/haʊs/', options: ['House', 'Mouse', 'Loud', 'Cloud'], correct: 0 },
-                    { word: 'WATER', phonetic: '/ˈwɔːtər/', options: ['Water', 'Later', 'Mater', 'Cater'], correct: 0 }
-                ],
-                speaking: [
-                    'Tell a short story about your day',
-                    'Describe your favorite toy or game',
-                    'Say: "My favorite color is [color] because..."',
-                    'Practice saying: "Good morning", "Good afternoon", "Good night"'
-                ],
-                writing: [
-                    'Write a sentence: "I love my family"',
-                    'Write 3 words that start with the letter B',
-                    'Write: "Today is a sunny day"',
-                    'Write a short story (2-3 sentences)'
-                ],
-                listening: [
-                    { audio: '🐦', question: 'Which animal can fly?', options: ['Bird', 'Fish', 'Cat', 'Dog'], correct: 0 },
-                    { audio: '🌊', question: 'Where do fish live?', options: ['Water', 'Sky', 'Land', 'Tree'], correct: 0 }
-                ],
-                moral: [
-                    {
-                        title: 'Helping Others',
-                        story: 'Maria saw an old lady carrying heavy bags. Maria offered to help carry the bags. The old lady was grateful and said Maria was very kind. Maria felt happy for helping.',
-                        question: 'Why did Maria feel happy?',
-                        options: ['She helped someone', 'She got a reward', 'She avoided work', 'She made fun'],
-                        correct: 0,
-                        moral: 'Helping others makes us feel good inside!'
-                    }
-                ]
-            },
-            preparatory: {
-                reading: [
-                    { word: 'FRIEND', phonetic: '/frend/', options: ['Friend', 'Trend', 'Bend', 'Send'], correct: 0 },
-                    { word: 'SCHOOL', phonetic: '/skuːl/', options: ['School', 'Cool', 'Pool', 'Tool'], correct: 0 },
-                    { word: 'LEARN', phonetic: '/lɜːrn/', options: ['Learn', 'Earn', 'Yearn', 'Turn'], correct: 0 },
-                    { word: 'TEACHER', phonetic: '/ˈtiːtʃər/', options: ['Teacher', 'Feature', 'Creature', 'Reacher'], correct: 0 }
-                ],
-                speaking: [
-                    'Give a 1-minute speech about your favorite subject',
-                    'Describe your best friend in detail',
-                    'Explain how to make your favorite food',
-                    'Practice reading a short paragraph aloud'
-                ],
-                writing: [
-                    'Write a letter to a friend',
-                    'Write a story about an adventure (5-7 sentences)',
-                    'Write: "What I want to be when I grow up"',
-                    'Write a paragraph describing your family'
-                ],
-                listening: [
-                    { audio: '🎓', question: 'Where do children go to learn?', options: ['School', 'Park', 'Mall', 'Home'], correct: 0 },
-                    { audio: '📚', question: 'What do we use to read stories?', options: ['Books', 'Toys', 'Food', 'Games'], correct: 0 }
-                ],
-                moral: [
-                    {
-                        title: 'Honesty is the Best Policy',
-                        story: 'John accidentally broke his teacher\'s favorite pen. He was scared but told the truth. The teacher thanked him for being honest and said mistakes happen. John learned that telling the truth is always better.',
-                        question: 'What did John learn from this experience?',
-                        options: ['Honesty is important', 'Lying is okay', 'Avoiding problems helps', 'Breaking things is fine'],
-                        correct: 0,
-                        moral: 'Being honest builds trust and shows good character!'
-                    }
-                ]
-            }
-        };
+        // Session copy of the master bank (shuffled per loadGame)
+        const gameData = {};
+        (function initGameDataShell() {
+            const master = window.REMOED_GAME_DATA_MASTER || {};
+            Object.keys(master).forEach(function (level) {
+                gameData[level] = {
+                    reading: [],
+                    speaking: [],
+                    writing: [],
+                    listening: [],
+                    moral: []
+                };
+            });
+        })();
 
         let currentReadingIndex = 0;
         let readingScore = 0;
@@ -701,8 +691,11 @@
         }
 
         function generateReadingGame(item) {
-            const optionsHtml = item.options.map((opt, idx) => 
-                `<button class="option-btn" onclick="checkReadingAnswer(${idx}, ${item.correct})">${opt}</button>`
+            const correctText = item.options[item.correct];
+            const shuffled = shuffleArray(item.options);
+            const correct = shuffled.indexOf(correctText);
+            const optionsHtml = shuffled.map((opt, idx) => 
+                `<button class="option-btn" onclick="checkReadingAnswer(${idx}, ${correct})">${opt}</button>`
             ).join('');
 
             return `
@@ -785,19 +778,15 @@
                 awardStars(starsEarned, 'Reading Game');
                 
                 document.querySelector('.game-content').innerHTML = `
-                    <div style="text-align: center; padding: 40px;">
-                        <div style="font-size: 2.6rem; margin-bottom: 12px;">Great work</div>
-                        <h2 style="color: #1CA7E7; font-size: 2rem; font-weight: 800; margin-bottom: 16px; text-shadow: 2px 2px 4px rgba(28, 167, 231, 0.2);">Amazing Job!</h2>
-                        <p style="font-size: 1.5rem; color: #1E3A5F; margin: 20px 0; font-weight: 600;">
-                            You got <strong style="color: #1CA7E7;">${readingScore}/${data.length}</strong> correct!
+                    <div class="quiz-results">
+                        <div class="quiz-accent">Great work</div>
+                        <h2>Amazing Job!</h2>
+                        <p class="quiz-score">
+                            You got <strong>${readingScore}/${data.length}</strong> correct!
                         </p>
-                        <div style="font-size: 2rem; margin: 20px 0; color: #FFD700; filter: drop-shadow(0 2px 4px rgba(255, 215, 0, 0.4));">
-                            ${'⭐'.repeat(starsEarned)}
-                        </div>
-                        <p style="font-size: 1.05rem; color: #334155; font-weight: 700; margin: 14px 0;">
-                            Score bonus: +${starsEarned}
-                        </p>
-                        <button class="fun-btn" onclick="loadGame('${selectedLevel}', 'reading')" style="margin-top: 24px;">Play Again! 🎮</button>
+                        <div class="quiz-stars">${'⭐'.repeat(starsEarned)}</div>
+                        <p class="quiz-bonus">Score bonus: +${starsEarned}</p>
+                        <button class="fun-btn" onclick="loadGame('${selectedLevel}', 'reading')">Play Again! 🎮</button>
                     </div>
                 `;
             }
@@ -1084,8 +1073,14 @@
         }
 
         function generateListeningGame(item, index) {
-            const optionsHtml = item.options.map((opt, idx) => 
-                `<button class="option-btn" onclick="checkListeningAnswer(${idx}, ${item.correct}, ${index})">${opt}</button>`
+            const correctText = item.options[item.correct];
+            const shuffled = shuffleArray(item.options);
+            const correct = shuffled.indexOf(correctText);
+            // Keep session item in sync so wrong-answer feedback uses remapped index
+            item.options = shuffled;
+            item.correct = correct;
+            const optionsHtml = shuffled.map((opt, idx) => 
+                `<button class="option-btn" onclick="checkListeningAnswer(${idx}, ${correct}, ${index})">${opt}</button>`
             ).join('');
 
             return `
@@ -1211,19 +1206,15 @@
                 awardStars(starsEarned, 'Listening Game');
                 
                 document.querySelector('.game-content').innerHTML = `
-                    <div style="text-align: center; padding: 40px;">
-                        <div style="font-size: 2.6rem; margin-bottom: 12px;">Great work</div>
-                        <h2 style="color: #1CA7E7; font-size: 2rem; font-weight: 800; margin-bottom: 16px; text-shadow: 2px 2px 4px rgba(28, 167, 231, 0.2);">Wonderful!</h2>
-                        <p style="font-size: 1.5rem; color: #1E3A5F; margin: 20px 0; font-weight: 600;">
-                            You got <strong style="color: #1CA7E7;">${listeningScore}/${data.length}</strong> correct!
+                    <div class="quiz-results">
+                        <div class="quiz-accent">Great work</div>
+                        <h2>Wonderful!</h2>
+                        <p class="quiz-score">
+                            You got <strong>${listeningScore}/${data.length}</strong> correct!
                         </p>
-                        <div style="font-size: 2rem; margin: 20px 0; color: #FFD700; filter: drop-shadow(0 2px 4px rgba(255, 215, 0, 0.4));">
-                            ${'⭐'.repeat(starsEarned)}
-                        </div>
-                        <p style="font-size: 1.05rem; color: #334155; font-weight: 700; margin: 14px 0;">
-                            Score bonus: +${starsEarned}
-                        </p>
-                        <button class="fun-btn" onclick="loadGame('${selectedLevel}', 'listening')" style="margin-top: 24px;">Play Again! 🎮</button>
+                        <div class="quiz-stars">${'⭐'.repeat(starsEarned)}</div>
+                        <p class="quiz-bonus">Score bonus: +${starsEarned}</p>
+                        <button class="fun-btn" onclick="loadGame('${selectedLevel}', 'listening')">Play Again! 🎮</button>
                     </div>
                 `;
                 listeningScore = 0;
@@ -1231,20 +1222,34 @@
             }
         }
 
+        let currentMoralIndex = 0;
+        let moralScore = 0;
+
         function getMoralActivity(level) {
-            const activity = gameData[level].moral[0];
-            
-            const optionsHtml = activity.options.map((opt, idx) => 
-                `<button class="option-btn" onclick="checkMoralAnswer(${idx}, ${activity.correct})">${opt}</button>`
+            const data = gameData[level].moral;
+            currentMoralIndex = 0;
+            moralScore = 0;
+            return generateMoralActivity(data[0], 0, data.length);
+        }
+
+        function generateMoralActivity(activity, index, total) {
+            const correctText = activity.options[activity.correct];
+            const shuffled = shuffleArray(activity.options);
+            const correct = shuffled.indexOf(correctText);
+            activity.options = shuffled;
+            activity.correct = correct;
+            const optionsHtml = shuffled.map((opt, idx) =>
+                `<button class="option-btn" onclick="checkMoralAnswer(${idx}, ${correct})">${opt}</button>`
             ).join('');
 
             return `
+                <div class="score-display">Story ${index + 1} / ${total} · Score: <span id="moral-score">${moralScore}</span></div>
                 <div class="moral-card">
                     <div class="title">${activity.title}</div>
                     <div class="story">${activity.story}</div>
                     <div class="moral-question">
-                        <h3 style="margin: 0 0 16px 0; color: #856404;">Question:</h3>
-                        <p style="font-size: 1.1rem; color: #333; margin-bottom: 16px;">${activity.question}</p>
+                        <h3 style="margin: 0 0 12px 0; color: #856404;">Question:</h3>
+                        <p style="font-size: 1.05rem; color: #333; margin-bottom: 12px;">${activity.question}</p>
                         <div class="options-grid">
                             ${optionsHtml}
                         </div>
@@ -1256,9 +1261,9 @@
 
         function checkMoralAnswer(selected, correct) {
             const feedback = document.getElementById('moral-feedback');
-            const activity = gameData[selectedLevel].moral[0];
+            const activity = gameData[selectedLevel].moral[currentMoralIndex];
             const buttons = document.querySelectorAll('.option-btn');
-            
+
             buttons.forEach(btn => {
                 btn.disabled = true;
                 const idx = Array.from(buttons).indexOf(btn);
@@ -1270,24 +1275,48 @@
             });
 
             if (selected === correct) {
+                moralScore++;
+                const scoreEl = document.getElementById('moral-score');
+                if (scoreEl) scoreEl.textContent = moralScore;
                 feedback.innerHTML = `✅ <strong>Excellent!</strong><br><br>${activity.moral}`;
                 feedback.className = 'feedback-message success';
                 feedback.style.display = 'block';
-                
-                // Award stars for completing moral activity
-                awardStars(3, 'Being Kind Activity');
-                
-                // Show celebration after a delay
-                setTimeout(() => {
-                    const starMsg = document.createElement('div');
-                    starMsg.style.cssText = 'margin-top: 16px; padding: 12px; background: #E8F5E9; border-radius: 12px; font-size: 1.1rem; font-weight: 700; color: #2E7D32;';
-                    starMsg.innerHTML = '+3 Stars for learning about being kind! ⭐';
-                    feedback.appendChild(starMsg);
-                }, 500);
             } else {
                 feedback.innerHTML = `❌ Not quite right. The correct answer teaches us: ${activity.moral}`;
                 feedback.className = 'feedback-message error';
                 feedback.style.display = 'block';
+            }
+
+            setTimeout(() => {
+                nextMoralQuestion();
+            }, 2200);
+        }
+
+        function nextMoralQuestion() {
+            const data = gameData[selectedLevel].moral;
+            currentMoralIndex++;
+
+            if (currentMoralIndex < data.length) {
+                document.querySelector('.game-content').innerHTML = generateMoralActivity(
+                    data[currentMoralIndex],
+                    currentMoralIndex,
+                    data.length
+                );
+            } else {
+                const starsEarned = Math.ceil((moralScore / data.length) * 5) || 1;
+                awardStars(starsEarned, 'Moral Activity');
+                document.querySelector('.game-content').innerHTML = `
+                    <div class="quiz-results">
+                        <h2>Wonderful kindness!</h2>
+                        <p class="quiz-score">
+                            You got <strong>${moralScore}/${data.length}</strong> correct!
+                        </p>
+                        <div class="quiz-stars">${'⭐'.repeat(starsEarned)}</div>
+                        <button class="fun-btn" onclick="loadGame('${selectedLevel}', 'moral')">Play Again</button>
+                    </div>
+                `;
+                moralScore = 0;
+                currentMoralIndex = 0;
             }
         }
 

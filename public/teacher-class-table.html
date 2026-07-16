@@ -44,16 +44,21 @@
 <link rel="stylesheet" href="css/teacher-sidebar.css">
 <link rel="stylesheet" href="css/global-portal.css">
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css">
 </head>
 <body class="page-teacher-class-table">
   <div class="remoed-main">
     <div id="teacher-sidebar-root"></div>
     <script src="js/teacher-sidebar.js"></script>
-    <script>TeacherSidebar.render('teacher-sidebar-root', 'class-schedule');</script>
+    <script src="js/teacher-page-header.js"></script>
+        <script>
+            TeacherSidebar.render('teacher-sidebar-root', 'class-schedule');
+            TeacherPageHeader.render('class-schedule');
+        </script>
     <div class="remoed-content">
       <!-- Modern Header -->
       <div class="remoed-header">
-        <h1>Class Schedule</h1>
+        
         <div class="remoed-header-controls">
           <div class="remoed-week-navigation">
             <button id="prev-week" class="remoed-nav-btn">← Previous Week</button>
@@ -87,16 +92,20 @@
         <h3>📊 Booking Indicators</h3>
         <div class="remoed-legend-grid">
           <div class="remoed-legend-item">
-            <div class="remoed-legend-color" style="background: #fef3c7; color: #92400e;">N</div>
-            <span class="remoed-legend-text">Nursery</span>
+            <div class="remoed-legend-color" style="background: #bbf7d0; color: #166534;">L1</div>
+            <span class="remoed-legend-text">Little Seeds</span>
           </div>
           <div class="remoed-legend-item">
-            <div class="remoed-legend-color" style="background: #fef3c7; color: #92400e;">K</div>
-            <span class="remoed-legend-text">Kinder</span>
+            <div class="remoed-legend-color" style="background: #fde68a; color: #854d0e;">L2</div>
+            <span class="remoed-legend-text">Sprouts</span>
           </div>
           <div class="remoed-legend-item">
-            <div class="remoed-legend-color" style="background: #fef3c7; color: #92400e;">P</div>
-            <span class="remoed-legend-text">Preparatory</span>
+            <div class="remoed-legend-color" style="background: #a5f3fc; color: #0e7490;">L3</div>
+            <span class="remoed-legend-text">Saplings</span>
+          </div>
+          <div class="remoed-legend-item">
+            <div class="remoed-legend-color" style="background: #bfdbfe; color: #1d4ed8;">L4</div>
+            <span class="remoed-legend-text">Young Stewards</span>
           </div>
           <div class="remoed-legend-item">
             <div class="remoed-legend-color" style="background: #fecaca; color: #991b1b;">T</div>
@@ -357,8 +366,7 @@
     const DateTimeLocal = luxon.DateTime;
     const IANAZoneLocal = luxon.IANAZone;
 
-    // Weekly grid variables - use current date
-    let currentWeek = new Date();
+    // Weekly grid variables — Luxon local week
     let slotsData = [];
     let bookingsData = [];
     const teacherId = localStorage.getItem('teacherId');
@@ -367,7 +375,13 @@
     const TEACHER_SLOT_FIRST_HOUR = RemoedTZ.REMOED_OPERATING_START_HOUR != null ? RemoedTZ.REMOED_OPERATING_START_HOUR : 6;
     const TEACHER_SLOT_END_HOUR_EXC = RemoedTZ.REMOED_OPERATING_END_HOUR_EXCLUSIVE != null ? RemoedTZ.REMOED_OPERATING_END_HOUR_EXCLUSIVE : 24;
 
-    const teacherTimezone = RemoedTZ.REMOED_ANCHOR_ZONE || RemoedTZ.REMOED_DISPLAY_ZONE || 'Asia/Manila';
+    // Viewer local zone for schedule display (UTC→local), not forced PHT
+    const teacherTimezone =
+      (RemoedTZ.getDetectedZone && RemoedTZ.getDetectedZone()) ||
+      Intl.DateTimeFormat().resolvedOptions().timeZone ||
+      'UTC';
+
+    let currentWeek = DateTimeLocal.now().setZone(teacherTimezone).startOf('week').toJSDate();
 
     /** Grid cells use HH:mm; API/DB may send HH:mm:ss — align keys and querySelector. */
     function normalizeGridTime(t) {
@@ -382,51 +396,80 @@
 
     let pendingFeedbackCount = 0;
     window.pendingFeedbackCount = 0;
+    /** Guards concurrent loadScheduleData → only latest seq paints */
+    let scheduleLoadSeq = 0;
 
-    function findClassTableBookingSlot(booking) {
-      if (!booking) return null;
-      const d = booking.date;
-      const t = normalizeGridTime(booking.time);
-      if (d && t) {
-        let el = document.querySelector(`.remoed-time-slot[data-date="${d}"][data-time="${t}"]`);
-        if (el) return el;
-        el = document.querySelector(`[data-date="${d}"][data-time="${t}"]`);
-        if (el) return el;
+    /** Replace cell contents before writing (prevents stacked buttons on refresh races). */
+    function clearSlotCellContents(slotElement) {
+      if (!slotElement) return;
+      slotElement.innerHTML = '';
+      slotElement.textContent = '';
+      slotElement.onclick = null;
+    }
+
+    /** Keep one booking per grid cell (localDate|localTime). */
+    function dedupeBookingsByLocalCell(list) {
+      const map = new Map();
+      (list || []).forEach((booking) => {
+        const parts = resolveGridDateTime(booking);
+        if (!parts || !parts.date || !parts.time) {
+          map.set(`_noid_${map.size}_${booking._id || Math.random()}`, booking);
+          return;
+        }
+        const key = `${parts.date}|${parts.time}`;
+        if (!map.has(key)) map.set(key, booking);
+      });
+      return Array.from(map.values());
+    }
+
+    /** Resolve (date, time) for grid querySelector — prefer localDate/localTime, no day-index math. */
+    function resolveGridDateTime(record) {
+      if (!record) return null;
+      if (record.localDate && record.localTime != null) {
+        return {
+          date: String(record.localDate),
+          time: normalizeGridTime(record.localTime),
+        };
       }
-      if (booking.localDate && booking.localTime != null) {
-        const d2 = booking.localDate;
-        const t2 = normalizeGridTime(booking.localTime);
-        let el2 = document.querySelector(`.remoed-time-slot[data-date="${d2}"][data-time="${t2}"]`);
-        if (el2) return el2;
-      }
-      if (booking.utc && typeof luxon !== 'undefined') {
+      const utcRaw = record.startTime || record.utc || record.dateTimeUtc || record.dateTimeUTC;
+      if (utcRaw && typeof luxon !== 'undefined') {
         try {
           const { DateTime } = luxon;
-          const z = teacherTimezone;
-          const raw = booking.utc instanceof Date ? booking.utc.toISOString() : String(booking.utc);
-          const slotT = DateTime.fromISO(raw, { zone: 'utc' }).setZone(z);
+          const raw = utcRaw instanceof Date ? utcRaw.toISOString() : String(utcRaw);
+          const slotT = DateTime.fromISO(raw, { zone: 'utc' }).setZone(teacherTimezone);
           if (slotT.isValid) {
-            const ds = slotT.toFormat('yyyy-LL-dd');
-            const ts = slotT.toFormat('HH:mm');
-            let el3 = document.querySelector(`.remoed-time-slot[data-date="${ds}"][data-time="${ts}"]`);
-            if (el3) return el3;
+            return { date: slotT.toFormat('yyyy-LL-dd'), time: slotT.toFormat('HH:mm') };
           }
         } catch (_e) {
           /* ignore */
         }
       }
+      if (record.date && record.time != null) {
+        return { date: String(record.date), time: normalizeGridTime(record.time) };
+      }
       return null;
     }
 
+    function findClassTableBookingSlot(booking) {
+      if (!booking) return null;
+      const parts = resolveGridDateTime(booking);
+      if (!parts || !parts.date || !parts.time) return null;
+      return (
+        document.querySelector(
+          `.remoed-time-slot[data-date="${parts.date}"][data-time="${parts.time}"]`
+        ) ||
+        document.querySelector(`[data-date="${parts.date}"][data-time="${parts.time}"]`)
+      );
+    }
+
     function isBookingSlotEndPassedForTable(booking) {
-      if (!booking) return false;
-      const d = booking.date;
-      const t = normalizeGridTime(booking.time);
-      if (!d || !t || typeof luxon === 'undefined') return false;
+      if (!booking || typeof luxon === 'undefined') return false;
+      const parts = resolveGridDateTime(booking);
+      if (!parts || !parts.date || !parts.time) return false;
       try {
         const { DateTime } = luxon;
         const z = teacherTimezone;
-        let start = DateTime.fromISO(`${d}T${t}`, { zone: z });
+        let start = DateTime.fromISO(`${parts.date}T${parts.time}`, { zone: z });
         if (!start.isValid) return false;
         return DateTime.now().setZone(z) > start.plus({ minutes: 25 });
       } catch (_e) {
@@ -546,7 +589,7 @@
       const p = document.createElement('p');
       p.id = 'teacher-class-table-pht-note';
       p.style.cssText = 'margin:8px 0 0;width:100%;font-size:0.78rem;color:#475569;font-weight:600;';
-      p.textContent = 'All times are Philippine Time (PHT, Asia/Manila, UTC+8). Other regions on the same offset match this clock.';
+      p.textContent = `All times shown in your local timezone (${teacherTimezone}).`;
       controls.appendChild(p);
     }
 
@@ -577,7 +620,7 @@
       loadScheduleData();
     }
 
-    // Generate day headers (week boundaries in teacher's aligned zone)
+    // Generate day headers (week boundaries in viewer's local zone)
     function generateDayHeaders() {
       const { DateTime } = luxon;
       const dayHeadersRow = document.getElementById('day-headers-row');
@@ -586,8 +629,7 @@
         dayHeadersRow.removeChild(dayHeadersRow.lastChild);
       }
 
-      const baseWeek = DateTime.fromJSDate(currentWeek, { zone: teacherTimezone });
-      const monday = baseWeek.minus({ days: baseWeek.weekday - 1 });
+      const monday = DateTime.fromJSDate(currentWeek, { zone: teacherTimezone }).startOf('week');
 
       for (let i = 0; i < 7; i++) {
         const day = monday.plus({ days: i });
@@ -599,14 +641,13 @@
       }
     }
 
-    // 30-minute slots from 06:00 through 23:30 in teacherTimezone (aligned region)
+    // 30-minute slots from 06:00 through 23:30 in viewer local timezone
     function generateTimeSlots() {
       const gridBody = document.getElementById('time-slots-grid');
       gridBody.innerHTML = '';
 
       const { DateTime } = luxon;
-      const baseWeek = DateTime.fromJSDate(currentWeek, { zone: teacherTimezone });
-      const monday = baseWeek.minus({ days: baseWeek.weekday - 1 });
+      const monday = DateTime.fromJSDate(currentWeek, { zone: teacherTimezone }).startOf('week');
       const weekDates = [];
       for (let i = 0; i < 7; i++) {
         weekDates.push(monday.plus({ days: i }).toISODate());
@@ -651,11 +692,13 @@
     async function loadScheduleData() {
       const teacherId = localStorage.getItem('teacherId');
       if (!teacherId) return;
+
+      const loadSeq = ++scheduleLoadSeq;
       
       try {
       const { DateTime } = luxon;
-      const base = DateTime.fromJSDate(currentWeek, { zone: teacherTimezone });
-      const weekString = base.minus({ days: base.weekday - 1 }).toISODate();
+      const weekString = DateTime.fromJSDate(currentWeek, { zone: teacherTimezone }).startOf('week').toISODate();
+      const timezoneOffset = new Date().getTimezoneOffset();
         
         console.log('🔄 Loading FRESH schedule data for week:', weekString, 'teacherId:', teacherId);
         console.log('🔄 Current time:', new Date().toISOString());
@@ -667,7 +710,7 @@
         // Force fresh data with multiple cache-busting parameters
         const timestamp = Date.now();
         const random = Math.random();
-        const url = `/api/teacher/slots?teacherId=${teacherId}&week=${weekString}&allSlots=true&tz=${encodeURIComponent(teacherTimezone)}&t=${timestamp}&v=${random}&fresh=true&nocache=${timestamp}&force=${timestamp}&clear=${random}&update=${Date.now()}&refresh=${Math.random()}`;
+        const url = `/api/teacher/slots?teacherId=${teacherId}&week=${weekString}&allSlots=true&tz=${encodeURIComponent(teacherTimezone)}&timezoneOffset=${timezoneOffset}&t=${timestamp}&v=${random}&fresh=true&nocache=${timestamp}&force=${timestamp}&clear=${random}&update=${Date.now()}&refresh=${Math.random()}`;
         console.log('🔍 Making fetch request to:', url);
         
         const response = await fetch(url, {
@@ -682,6 +725,11 @@
         
         console.log('🔍 Response status:', response.status);
         console.log('🔍 Response ok:', response.ok);
+
+        if (loadSeq !== scheduleLoadSeq) {
+          console.log('⏭ Stale schedule load skipped (seq)', loadSeq, 'latest', scheduleLoadSeq);
+          return;
+        }
         
         if (!response.ok) {
           console.error('❌ Fetch request failed with status:', response.status);
@@ -692,6 +740,11 @@
         
         const data = await response.json();
         console.log('🔍 Raw response data:', data);
+
+        if (loadSeq !== scheduleLoadSeq) {
+          console.log('⏭ Stale schedule load skipped after JSON (seq)', loadSeq);
+          return;
+        }
         
         // Check if there's an error in the response
         if (data.error) {
@@ -759,7 +812,7 @@
         });
 
         // Normalize bookings to teacher timezone while keeping canonical UTC
-        bookingsData = (data.bookings || []).map((booking) => {
+        const normalizedBookings = (data.bookings || []).map((booking) => {
           const utcIso = booking.dateTimeUtc
             ? (booking.dateTimeUtc instanceof Date ? booking.dateTimeUtc.toISOString() : booking.dateTimeUtc)
             : (booking.utc || null);
@@ -775,6 +828,12 @@
             clientTz: tz
           };
         });
+        bookingsData = dedupeBookingsByLocalCell(normalizedBookings);
+
+        if (loadSeq !== scheduleLoadSeq) {
+          console.log('⏭ Stale schedule load skipped before render (seq)', loadSeq);
+          return;
+        }
         
         console.log('🔄 Updated slotsData (from database):', slotsData);
         console.log('🔄 Updated bookingsData (from database):', bookingsData);
@@ -802,15 +861,18 @@
       const allSlots = document.querySelectorAll('.remoed-time-slot[data-date]');
       console.log('Found', allSlots.length, 'slots to clear');
       
-      // Manila time snapshot for consistent past checks
+      // Local-zone today (avoid UTC day from toISOString)
       const manilaNow = getManilaNow();
-      const manilaTodayStr = manilaNow.toISOString().split('T')[0];
+      const manilaTodayStr = DateTimeLocal.now().setZone(teacherTimezone).toISODate();
       const manilaTodayStart = getManilaDate(manilaTodayStr, '00:00');
 
-      // Create a set of booked slots to check against
+      // Booked keys must match grid data-date / data-time (localDate/localTime)
       const bookedSlots = new Set();
-      bookingsData.forEach(booking => {
-        bookedSlots.add(`${booking.date}-${normalizeGridTime(booking.time)}`);
+      bookingsData.forEach((booking) => {
+        const parts = resolveGridDateTime(booking);
+        if (parts && parts.date && parts.time) {
+          bookedSlots.add(`${parts.date}-${parts.time}`);
+        }
       });
       
       allSlots.forEach(slot => {
@@ -831,27 +893,27 @@
           'K',
           'P'
         );
-        slot.textContent = '';
+        clearSlotCellContents(slot);
         slot.style.background = '';
         slot.style.color = '';
         slot.style.fontWeight = '';
         slot.style.cursor = '';
-        slot.onclick = null;
         
         // Check if slot is in the past AND has no booking data
         const slotKey = `${slot.dataset.date}-${slot.dataset.time}`;
         
-        // Mark past open slots as "Unbooked" (Philippine time) instead of unavailable
+        // Mark past open slots as "Unbooked" instead of unavailable
         const slotDate = getManilaDate(slot.dataset.date, '00:00');
         
         if (slotDate < manilaTodayStart && !bookedSlots.has(slotKey)) {
+          clearSlotCellContents(slot);
           slot.classList.add('unbooked');
           slot.textContent = 'Unbooked';
           slot.style.background = '#f8f9fa';
           slot.style.color = '#6c757d';
           slot.style.fontWeight = 'normal';
           slot.style.cursor = 'default';
-          slot.title = 'Past slot (PH) - no longer available for booking';
+          slot.title = 'Past slot - no longer available for booking';
         }
       });
 
@@ -867,57 +929,27 @@
       }
       
       slotsData.forEach(slot => {
-        const slotKey = `${slot.date}-${slot.time}`;
+        const parts = resolveGridDateTime(slot);
+        if (!parts || !parts.date || !parts.time) return;
+        const slotKey = `${parts.date}-${parts.time}`;
         
         // Skip if this slot is booked
         if (bookedSlots.has(slotKey)) {
-          console.log('🔄 Skipping open slot (already booked):', slot.date, slot.time);
+          console.log('🔄 Skipping open slot (already booked):', parts.date, parts.time);
           return;
         }
         
-        // Check if the class duration has passed (25 minutes after start) using PH time
-        let isClassDurationPassed = false;
-        if (slot.date === manilaTodayStr) {
-            const startPH = getManilaDate(slot.date, slot.time);
-            const endPH = new Date(startPH.getTime() + 25 * 60 * 1000);
-            isClassDurationPassed = manilaNow > endPH;
-        }
-        
-        // For open slots, we should always show them as "Open" regardless of time
-        // Only skip if they are actually booked
-        console.log('🔄 Processing open slot:', slot.date, slot.time);
-        
-        // Check if slot is in the past (strictly past dates, not current day) in PH time
-        const slotDate = getManilaDate(slot.date, '00:00');
+        const slotDate = getManilaDate(parts.date, '00:00');
         const today = manilaTodayStart;
         
-        console.log('🔄 Processing open slot:', slot.date, slot.time);
-        const slotElement = document.querySelector(`[data-date="${slot.date}"][data-time="${slot.time}"]`);
+        console.log('🔄 Processing open slot:', parts.date, parts.time);
+        const slotElement = document.querySelector(
+          `.remoed-time-slot[data-date="${parts.date}"][data-time="${parts.time}"]`
+        ) || document.querySelector(`[data-date="${parts.date}"][data-time="${parts.time}"]`);
         if (slotElement) {
-          console.log('✅ Found slot element for:', slot.date, slot.time);
-          
-          // Check if slot is in the past (strictly past dates, not current day) in PH time
-          const slotDate = getManilaDate(slot.date, '00:00');
-          const today = manilaTodayStart;
-          
-                      // Check if the class duration has passed (25 minutes after start time)
-            const slotNow = new Date();
-            const currentDate = slotNow.toISOString().split('T')[0];
-            const currentTime = slotNow.toTimeString().split(' ')[0].substring(0, 5); // HH:MM format
+          console.log('✅ Found slot element for:', parts.date, parts.time);
+          clearSlotCellContents(slotElement);
             
-            let isClassDurationPassed = false;
-            if (slot.date === currentDate) {
-                // If it's today, check if the class duration has passed (25 minutes after start)
-                const [startHour, startMinute] = slot.time.split(':').map(Number);
-                const endTime = new Date();
-                endTime.setHours(startHour, startMinute + 25, 0, 0); // 25 minutes after start
-                
-                const currentDateTime = new Date();
-                isClassDurationPassed = currentDateTime > endTime;
-            }
-            
-            // For open slots, always show as "Open" regardless of time
-            // Only mark as "Unbooked" if it's strictly in the past (not current day)
             if (slotDate < today) {
               slotElement.classList.remove('unavailable', 'open');
               slotElement.classList.add('unbooked');
@@ -927,80 +959,61 @@
               slotElement.style.fontWeight = 'normal';
               slotElement.style.cursor = 'default';
               slotElement.title = 'Past slot - no longer available for booking';
-              console.log('✅ Marked past slot as Unbooked:', slot.date, slot.time);
+              console.log('✅ Marked past slot as Unbooked:', parts.date, parts.time);
             } else {
-            slotElement.classList.remove('unavailable', 'unbooked'); // Remove unavailable/unbooked class if slot is open
+            slotElement.classList.remove('unavailable', 'unbooked');
             slotElement.classList.add('open');
             slotElement.textContent = 'Open';
-            slotElement.style.background = '#90EE90'; // Light green
+            slotElement.style.background = '#90EE90';
             slotElement.style.color = '#333';
             slotElement.style.fontWeight = 'bold';
             slotElement.style.cursor = 'pointer';
             slotElement.title = 'Open slot - Click to book';
-            console.log('✅ Successfully rendered open slot:', slot.date, slot.time);
+            console.log('✅ Successfully rendered open slot:', parts.date, parts.time);
           }
         } else {
-          console.log('❌ Slot element NOT found for:', slot.date, slot.time);
-          // Try alternative selector
-          const alternativeElement = document.querySelector(`td[data-date="${slot.date}"][data-time="${slot.time}"]`);
-          if (alternativeElement) {
-            console.log('✅ Found slot element with alternative selector for:', slot.date, slot.time);
-            
-            // Check if slot is in the past (strictly past dates, not current day)
-            const slotDate = new Date(slot.date);
-            const today = new Date();
-            today.setHours(0, 0, 0, 0); // Start of today
-            
-            // Check if the class duration has passed (25 minutes after start time) using PH time
-            let isClassDurationPassed = false;
-            if (slot.date === manilaTodayStr) {
-                const startPH = getManilaDate(slot.date, slot.time);
-                const endPH = new Date(startPH.getTime() + 25 * 60 * 1000);
-                isClassDurationPassed = manilaNow > endPH;
-            }
-            
-            // For open slots, always show as "Open" regardless of time
-            // Only mark as "Unbooked" if it's strictly in the past (not current day)
-            if (slotDate < today) {
-              alternativeElement.classList.remove('unavailable', 'open');
-              alternativeElement.classList.add('unbooked');
-              alternativeElement.textContent = 'Unbooked';
-              alternativeElement.style.background = '#f8f9fa';
-              alternativeElement.style.color = '#6c757d';
-              alternativeElement.style.fontWeight = 'normal';
-              alternativeElement.style.cursor = 'default';
-              alternativeElement.title = 'Past slot - no longer available for booking';
-              console.log('✅ Marked past slot as Unbooked (alternative selector):', slot.date, slot.time);
-            } else {
-              alternativeElement.classList.remove('unavailable', 'unbooked');
-              alternativeElement.classList.add('open');
-              alternativeElement.textContent = 'Open';
-              alternativeElement.style.background = '#90EE90';
-              alternativeElement.style.color = '#333';
-              alternativeElement.style.fontWeight = 'bold';
-              alternativeElement.style.cursor = 'pointer';
-              alternativeElement.title = 'Open slot - Click to book';
-            }
-          } else {
-            console.log('❌ Slot element NOT found with alternative selector for:', slot.date, slot.time);
-            console.log('🔍 Available slot elements:');
-            const allSlots = document.querySelectorAll('[data-date][data-time]');
-            console.log('🔍 Total slot elements found:', allSlots.length);
-            allSlots.forEach(el => {
-              if (el.dataset.date === slot.date) {
-                console.log(`  - Date: ${el.dataset.date}, Time: ${el.dataset.time}`);
-              }
-            });
-            
-            // Also check for the specific time
-            const timeSlots = document.querySelectorAll(`[data-time="${slot.time}"]`);
-            console.log(`🔍 Slots with time ${slot.time}:`, timeSlots.length);
-            timeSlots.forEach(el => {
-              console.log(`  - Date: ${el.dataset.date}, Time: ${el.dataset.time}`);
-            });
-          }
+          console.log('❌ Slot element NOT found for:', parts.date, parts.time);
         }
       });
+
+      function getLevelBookingPrefix(studentLevel) {
+        const level = String(studentLevel || '').toLowerCase();
+        if (level.includes('little seeds') || level.includes('nursery') || level.includes('age 3')) return 'L1';
+        if (level.includes('sprouts') || level.includes('kinder') || level.includes('age 4')) return 'L2';
+        if (level.includes('saplings') || level.includes('prep') || level.includes('age 5')) return 'L3';
+        if (level.includes('young stewards') || level.includes('steward') || level.includes('age 6')) return 'L4';
+        return 'L1';
+      }
+
+      function applyLevelSlotClass(slotElement, prefix) {
+        slotElement.classList.remove('N', 'K', 'P', 'L1', 'L2', 'L3', 'L4');
+        if (prefix === 'L1') slotElement.classList.add('N', 'L1');
+        else if (prefix === 'L2') slotElement.classList.add('K', 'L2');
+        else if (prefix === 'L3') slotElement.classList.add('P', 'L3');
+        else if (prefix === 'L4') slotElement.classList.add('P', 'L4');
+      }
+
+      function escapeSlotLabelHtml(s) {
+        return String(s == null ? '' : s)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      /** Embossed booked/finished cell label: camera icon + centered text. */
+      function setEmbossedSlotLabel(slotElement, labelText) {
+        if (!slotElement) return;
+        clearSlotCellContents(slotElement);
+        const safe = escapeSlotLabelHtml(labelText);
+        slotElement.innerHTML =
+          '<span class="remoed-slot-label-inner">' +
+          '<svg class="remoed-slot-enter-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+          '<path d="M17 10.5V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3.5l4 4v-11l-4 4z"/>' +
+          '</svg>' +
+          '<span class="remoed-slot-label-text">' +
+          safe +
+          '</span></span>';
+      }
 
       // Render booked classes with indicators
       console.log('🔄 Rendering booked classes...');
@@ -1022,11 +1035,12 @@
         });
         
         // Initialize indicator variable at the beginning
-        let indicator = 'P'; // Default to Primary
+        let indicator = 'L1';
         
         const slotElement = findClassTableBookingSlot(booking);
         let skipDefaultSlotLabel = false;
         if (slotElement) {
+          clearSlotCellContents(slotElement);
           slotElement.classList.remove('unavailable'); // Remove unavailable class if slot is booked
           
           // Check if the class duration has passed (25 minutes after start time)
@@ -1049,20 +1063,8 @@
           if (bookingNeedsTeacherFeedbackCell(booking)) {
             console.log('⏳ Pending teacher feedback (live session ended)');
             slotElement.classList.add('status-pending-feedback');
-            const level = (booking.studentLevel || '').toLowerCase();
-            if (level.includes('nursery')) {
-              indicator = 'N';
-              slotElement.classList.add('N');
-            } else if (level.includes('kindergarten') || level.includes('kinder')) {
-              indicator = 'K';
-              slotElement.classList.add('K');
-            } else if (level.includes('primary') || level.includes('preparatory')) {
-              indicator = 'P';
-              slotElement.classList.add('P');
-            } else {
-              indicator = 'P';
-              slotElement.classList.add('P');
-            }
+            indicator = getLevelBookingPrefix(booking.studentLevel);
+            applyLevelSlotClass(slotElement, indicator);
             const slotPassed = isBookingSlotEndPassedForTable(booking);
             if (slotPassed) {
               skipDefaultSlotLabel = true;
@@ -1076,7 +1078,7 @@
                 '<div class="remoed-pending-feedback-inner" style="display:flex;flex-direction:column;gap:4px;align-items:stretch;text-align:center;line-height:1.15;">' +
                 '<span style="font-size:0.78rem;font-weight:700;">' +
                 indicator +
-                '- ' +
+                ' - ' +
                 stuEsc +
                 '</span>' +
                 '<button type="button" class="remoed-give-feedback-btn">Give Feedback</button></div>';
@@ -1174,34 +1176,16 @@
                     } else {
             // Default case - show as booked (teacher must manually complete or mark absent)
             console.log('📋 Marking as booked (waiting for teacher action)');
-            // Default indicator based on student level
-            const level = booking.studentLevel?.toLowerCase() || '';
-            if (level.includes('nursery')) {
-              slotElement.classList.add('N');
-              indicator = 'N';
-            } else if (level.includes('kindergarten') || level.includes('kinder')) {
-              slotElement.classList.add('K');
-              indicator = 'K';
-            } else if (level.includes('primary') || level.includes('preparatory')) {
-              slotElement.classList.add('P');
-              indicator = 'P';
-            } else {
-              // If no level specified, default to Preparatory
-              slotElement.classList.add('P');
-              indicator = 'P';
-            }
+            indicator = getLevelBookingPrefix(booking.studentLevel);
+            applyLevelSlotClass(slotElement, indicator);
             slotElement.classList.add('booked');
-            // Only apply yellow background and blue text for booked slots that are NOT completed or absent
-            if (booking.status !== 'completed' && !booking.absentMarkedAt && booking.status !== 'absent') {
-              slotElement.style.background = '#ffe85a';
-              slotElement.style.color = '#1ca7e7';
-            }
+            // Let CSS emboss styles own background/color (no inline overrides)
           }
           
-          // Set text content for all slots (indicator + student name)
+          // Set embossed label (indicator + student name + enter cue)
           const studentFirstName = booking.studentId?.firstName || booking.studentId?.username || 'Unknown';
           if (!skipDefaultSlotLabel) {
-            slotElement.textContent = `${indicator}- ${studentFirstName}`;
+            setEmbossedSlotLabel(slotElement, `${indicator} - ${studentFirstName}`);
           }
           let statusText = '';
           if (booking.status === 'absent') {
@@ -1227,11 +1211,13 @@
           } else {
             statusText = 'Booked Class';
           }
-          slotElement.title = `${statusText} - ${booking.studentId?.firstName || booking.studentId?.username || 'Unknown Student'}`;
+          slotElement.title =
+            `${statusText} - ${booking.studentId?.firstName || booking.studentId?.username || 'Unknown Student'} — Click to open class / enter classroom`;
           if (!skipDefaultSlotLabel) {
             slotElement.style.cursor = 'pointer';
-            slotElement.style.fontWeight = 'bold';
-            slotElement.style.fontSize = '1.1em';
+            slotElement.style.removeProperty('font-weight');
+            slotElement.style.removeProperty('background');
+            slotElement.style.removeProperty('color');
             slotElement.onclick = (ev) => showClassInfo(booking, ev);
           }
           
@@ -1345,7 +1331,10 @@
         prevBtn.style.background = '#ffe85a';
       }, 200);
       
-      currentWeek.setDate(currentWeek.getDate() - 7);
+      currentWeek = DateTimeLocal.fromJSDate(currentWeek, { zone: teacherTimezone })
+        .minus({ weeks: 1 })
+        .startOf('week')
+        .toJSDate();
       console.log('New currentWeek:', currentWeek.toISOString());
       updateWeekDisplay();
       initializeWeeklyGrid();
@@ -1361,26 +1350,29 @@
         nextBtn.style.background = '#ffe85a';
       }, 200);
       
-      currentWeek.setDate(currentWeek.getDate() + 7);
+      currentWeek = DateTimeLocal.fromJSDate(currentWeek, { zone: teacherTimezone })
+        .plus({ weeks: 1 })
+        .startOf('week')
+        .toJSDate();
       console.log('New currentWeek:', currentWeek.toISOString());
       updateWeekDisplay();
       initializeWeeklyGrid();
     });
 
     document.getElementById('current-week').addEventListener('click', () => {
-      currentWeek = new Date();
+      currentWeek = DateTimeLocal.now().setZone(teacherTimezone).startOf('week').toJSDate();
       updateWeekDisplay();
       initializeWeeklyGrid();
     });
 
-    // Update week display (aligned zone)
+    // Update week display (viewer local zone)
     function updateWeekDisplay() {
       const display = document.getElementById('week-display');
       const { DateTime } = luxon;
-      const base = DateTime.fromJSDate(currentWeek, { zone: teacherTimezone });
-      const mon = base.minus({ days: base.weekday - 1 });
-      const sun = mon.plus({ days: 6 });
-      display.textContent = `${mon.toFormat('MMM d')} - ${sun.toFormat('MMM d, yyyy')} (Philippine Time, PHT)`;
+      const localStartOfWeek = DateTime.fromJSDate(currentWeek, { zone: teacherTimezone }).startOf('week');
+      const localEndOfWeek = localStartOfWeek.plus({ days: 6 });
+      const zoneName = DateTime.local().zoneName || teacherTimezone;
+      display.textContent = `${localStartOfWeek.toFormat('MMM d')} - ${localEndOfWeek.toFormat('MMM d, yyyy')} (${zoneName})`;
       
       // Allow navigation to previous weeks (remove the restriction)
       const prevBtn = document.getElementById('prev-week');

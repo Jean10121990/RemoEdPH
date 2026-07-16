@@ -5,6 +5,7 @@
  */
 
 @import url('mobile-first.css');
+@import url('portal-chrome-compact.css');
 
 /* Brand + sidebar tokens (use these instead of ad-hoc light blues) */
 :root {
@@ -246,6 +247,14 @@
     display: none !important;
 }
 
+.remoed-sidebar.sidebar-collapsed .sidebar-user {
+    padding: 8px !important;
+}
+
+.remoed-sidebar.sidebar-collapsed .sidebar-user-inner {
+    justify-content: center;
+}
+
 .remoed-sidebar.sidebar-collapsed .sidebar-header-inner {
     flex-direction: column;
     justify-content: center;
@@ -265,7 +274,8 @@
     gap: 0;
     border-left-width: 0;
 }
-.remoed-sidebar.sidebar-collapsed .remoed-menu .menu-label {
+.remoed-sidebar.sidebar-collapsed .remoed-menu .menu-label,
+.remoed-sidebar.sidebar-collapsed .remoed-menu .remoed-menu-label {
     display: none;
 }
 
@@ -322,9 +332,12 @@
     box-sizing: border-box;
 }
 
-body.teacher-sidebar-collapsed .remoed-content {
-    margin-left: 70px;
-    max-width: calc(100vw - 70px);
+body.teacher-sidebar-collapsed .remoed-content,
+body.student-sidebar-collapsed .remoed-content,
+body.admin-sidebar-collapsed .remoed-content,
+body.student-portal.student-sidebar-collapsed .remoed-content {
+    margin-left: 70px !important;
+    max-width: calc(100vw - 70px) !important;
 }
 
 /* Portal-wide sidebar/drawer/tab-ribbon logic moved to css/global-portal.css */
@@ -341,7 +354,7 @@ body.teacher-sidebar-collapsed .remoed-content {
     color: #2563eb;
 }
 .admin-sidebar.remoed-sidebar .sidebar-subtitle {
-    color: #5b7fd4;
+    color: #111827 !important;
     font-weight: 600;
 }
 .admin-sidebar.remoed-sidebar .remoed-username {
@@ -354,10 +367,13 @@ body.teacher-sidebar-collapsed .remoed-content {
 .admin-sidebar.remoed-sidebar .remoed-menu li:not(.active):not(#logout-nav):hover {
     color: #1d4ed8;
     background: linear-gradient(90deg, rgba(37, 99, 235, 0.12) 0%, rgba(37, 99, 235, 0.06) 100%);
+    border-radius: 0 8px 8px 0;
 }
 .admin-sidebar.remoed-sidebar .remoed-menu li.active {
     background: linear-gradient(90deg, #2563eb 0%, #1d4ed8 100%);
     border-left-color: #1e40af;
+    border-radius: 0 8px 8px 0;
+    color: white;
 }
 
 /* Easier-to-see scrollbars (Firefox) */

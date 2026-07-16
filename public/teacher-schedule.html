@@ -27,6 +27,7 @@
   </script>
 <!-- Remo AI Chatbot Styles -->
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css">
     <style>
       .page-teacher-schedule .pending-feedback-banner--sticky {
         position: sticky;
@@ -87,10 +88,14 @@
   <div class="remoed-main">
     <div id="teacher-sidebar-root"></div>
     <script src="js/teacher-sidebar.js"></script>
-    <script>TeacherSidebar.render('teacher-sidebar-root', 'class-schedule');</script>
+    <script src="js/teacher-page-header.js"></script>
+        <script>
+            TeacherSidebar.render('teacher-sidebar-root', 'class-schedule');
+            TeacherPageHeader.render('class-schedule');
+        </script>
   <div class="remoed-content">
     <div class="header">
-      <h1>Class Schedule</h1>
+      
       <div class="header-controls" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
         <div class="week-navigation" style="display: flex; align-items: center; gap: 12px;">
           <button id="prev-week" class="nav-btn">← Previous Week</button>
@@ -120,16 +125,20 @@
       <div style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; flex-wrap: nowrap; overflow-x: auto;">
         <h3 style="margin: 0; color: #1ca7e7; font-size: 1.1rem; font-weight: 600;">📊 Booking Indicators:</h3>
         <div style="display: flex; align-items: center; gap: 4px; white-space: nowrap; flex-shrink: 0;">
-          <span style="display: inline-block; width: 18px; height: 18px; background: #ffe85a; color: #1ca7e7; text-align: center; font-weight: bold; border-radius: 3px; font-size: 0.75rem; line-height: 18px;">N</span>
-          <span style="white-space: nowrap;">Nursery</span>
+          <span style="display: inline-block; width: 22px; height: 18px; background: #ffe85a; color: #1ca7e7; text-align: center; font-weight: bold; border-radius: 3px; font-size: 0.65rem; line-height: 18px;">LS</span>
+          <span style="white-space: nowrap;">Little Seeds (Age 3)</span>
         </div>
         <div style="display: flex; align-items: center; gap: 4px; white-space: nowrap; flex-shrink: 0;">
-          <span style="display: inline-block; width: 18px; height: 18px; background: #ffe85a; color: #1ca7e7; text-align: center; font-weight: bold; border-radius: 3px; font-size: 0.75rem; line-height: 18px;">K</span>
-          <span style="white-space: nowrap;">Kinder</span>
+          <span style="display: inline-block; width: 22px; height: 18px; background: #ffe85a; color: #1ca7e7; text-align: center; font-weight: bold; border-radius: 3px; font-size: 0.65rem; line-height: 18px;">Sp</span>
+          <span style="white-space: nowrap;">Sprouts (Age 4)</span>
         </div>
         <div style="display: flex; align-items: center; gap: 4px; white-space: nowrap; flex-shrink: 0;">
-          <span style="display: inline-block; width: 18px; height: 18px; background: #ffe85a; color: #1ca7e7; text-align: center; font-weight: bold; border-radius: 3px; font-size: 0.75rem; line-height: 18px;">P</span>
-          <span style="white-space: nowrap;">Preparatory</span>
+          <span style="display: inline-block; width: 22px; height: 18px; background: #ffe85a; color: #1ca7e7; text-align: center; font-weight: bold; border-radius: 3px; font-size: 0.65rem; line-height: 18px;">Sa</span>
+          <span style="white-space: nowrap;">Saplings (Age 5)</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 4px; white-space: nowrap; flex-shrink: 0;">
+          <span style="display: inline-block; width: 22px; height: 18px; background: #ffe85a; color: #1ca7e7; text-align: center; font-weight: bold; border-radius: 3px; font-size: 0.65rem; line-height: 18px;">YS</span>
+          <span style="white-space: nowrap;">Young Stewards (Age 6)</span>
         </div>
         <div style="display: flex; align-items: center; gap: 4px; white-space: nowrap; flex-shrink: 0;">
           <span style="display: inline-block; width: 18px; height: 18px; background: #ff6b6b; color: white; text-align: center; font-weight: bold; border-radius: 3px; font-size: 0.75rem; line-height: 18px;">T</span>
@@ -307,7 +316,10 @@
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const RemoedSchedTZ = window.TimezoneUtils || {};
-    const scheduleViewZone = RemoedSchedTZ.REMOED_ANCHOR_ZONE || RemoedSchedTZ.REMOED_DISPLAY_ZONE || 'Asia/Manila';
+    const scheduleViewZone =
+      (RemoedSchedTZ.getDetectedZone && RemoedSchedTZ.getDetectedZone()) ||
+      Intl.DateTimeFormat().resolvedOptions().timeZone ||
+      'UTC';
     const SCHED_PAGE_FIRST_HOUR = RemoedSchedTZ.REMOED_OPERATING_START_HOUR != null ? RemoedSchedTZ.REMOED_OPERATING_START_HOUR : 6;
     const SCHED_PAGE_END_HOUR_EXC = RemoedSchedTZ.REMOED_OPERATING_END_HOUR_EXCLUSIVE != null ? RemoedSchedTZ.REMOED_OPERATING_END_HOUR_EXCLUSIVE : 24;
 
@@ -318,7 +330,7 @@
       const p = document.createElement('p');
       p.id = 'teacher-schedule-pht-note';
       p.style.cssText = 'margin:8px 0 0;width:100%;font-size:0.78rem;color:#475569;font-weight:600;';
-      p.textContent = 'All times are Philippine Time (PHT, Asia/Manila, UTC+8).';
+      p.textContent = `All times shown in your local timezone (${scheduleViewZone}).`;
       hc.appendChild(p);
     }
 
@@ -360,9 +372,31 @@
     };
 
     // Weekly grid variables - use current date
-    let currentWeek = new Date();
+    let currentWeek = luxon.DateTime.now().setZone(scheduleViewZone).startOf('week').toJSDate();
     let slotsData = [];
     let bookingsData = [];
+    let scheduleLoadSeq = 0;
+
+    function clearSlotCellContents(slotElement) {
+      if (!slotElement) return;
+      slotElement.innerHTML = '';
+      slotElement.textContent = '';
+      slotElement.onclick = null;
+    }
+
+    function dedupeBookingsByLocalCell(list) {
+      const map = new Map();
+      (list || []).forEach((booking) => {
+        const { date: bd, time: bt } = getBookingCellDateTime(booking);
+        if (!bd || !bt) {
+          map.set(`_noid_${map.size}_${booking._id || Math.random()}`, booking);
+          return;
+        }
+        const key = `${bd}|${bt}`;
+        if (!map.has(key)) map.set(key, booking);
+      });
+      return Array.from(map.values());
+    }
     let pendingFeedbackCount = 0;
     window.pendingFeedbackCount = 0;
     let feedbackModalBooking = null;
@@ -467,8 +501,7 @@
         dayHeadersRow.removeChild(dayHeadersRow.lastChild);
       }
 
-      const baseWeek = DateTime.fromJSDate(currentWeek, { zone: timeZone });
-      const monday = baseWeek.minus({ days: baseWeek.weekday - 1 }); // ISO weekday (1=Mon, 7=Sun)
+      const monday = DateTime.fromJSDate(currentWeek, { zone: timeZone }).startOf('week');
 
       for (let i = 0; i < 7; i++) {
         const day = monday.plus({ days: i });
@@ -516,21 +549,21 @@
       }
     }
 
-    /** Match booking to grid: prefer API local fields, else convert UTC instant to local calendar + time */
+    /** Match booking to grid: prefer UTC → viewer local, then API local fields */
     function getBookingCellDateTime(booking) {
-      if (booking.localDate && booking.localTime) {
-        return { date: booking.localDate, time: normalizeGridTime(booking.localTime) };
-      }
-      const utcIso = booking.utc || booking.dateTimeUtc;
+      const utcIso = booking.startTime || booking.utc || booking.dateTimeUtc;
       if (utcIso && typeof luxon !== 'undefined') {
         try {
           const { DateTime } = luxon;
           const raw = typeof utcIso === 'string' ? utcIso : new Date(utcIso).toISOString();
-          const dt = DateTime.fromISO(raw, { zone: 'utc' }).setZone(getScheduleTimeZone());
+          const dt = DateTime.fromISO(raw, { zone: 'utc' }).toLocal();
           return { date: dt.toFormat('yyyy-LL-dd'), time: normalizeGridTime(dt.toFormat('HH:mm')) };
         } catch (e) {
           console.warn('getBookingCellDateTime UTC convert failed:', e);
         }
+      }
+      if (booking.localDate && booking.localTime) {
+        return { date: booking.localDate, time: normalizeGridTime(booking.localTime) };
       }
       return { date: booking.date, time: normalizeGridTime(booking.time) };
     }
@@ -593,8 +626,7 @@
       
       const { DateTime } = luxon;
       const timeZone = getScheduleTimeZone();
-      const baseWeek = DateTime.fromJSDate(currentWeek, { zone: timeZone });
-      const monday = baseWeek.minus({ days: baseWeek.weekday - 1 });
+      const monday = DateTime.fromJSDate(currentWeek, { zone: timeZone }).startOf('week');
       
       const startHour = SCHED_PAGE_FIRST_HOUR;
       const endHour = SCHED_PAGE_END_HOUR_EXC;
@@ -657,14 +689,13 @@
     // Load schedule data from backend - ALWAYS FRESH FROM DATABASE
     async function loadScheduleData() {
       if (!teacherId) return;
+
+      const loadSeq = ++scheduleLoadSeq;
       
       try {
-              const weekStart = new Date(currentWeek);
-      // Calculate Monday as the start of the week (Monday = 1, Sunday = 0)
-      const dayOfWeek = currentWeek.getDay();
-      const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // If Sunday, go back 6 days; if Monday, go back 0 days, etc.
-      weekStart.setDate(currentWeek.getDate() - daysToMonday);
-      const weekString = weekStart.toISOString().split('T')[0];
+        const { DateTime } = luxon;
+        const weekString = DateTime.fromJSDate(currentWeek, { zone: getScheduleTimeZone() }).startOf('week').toISODate();
+        const timezoneOffset = new Date().getTimezoneOffset();
         
         console.log('🔄 Loading FRESH schedule data for week:', weekString, 'teacherId:', teacherId);
         console.log('🔄 Current time:', new Date().toISOString());
@@ -677,7 +708,7 @@
         const timestamp = Date.now();
         const random = Math.random();
         const tz = encodeURIComponent(getScheduleTimeZone());
-        const url = `/api/teacher/slots?teacherId=${teacherId}&week=${weekString}&allSlots=true&tz=${tz}&t=${timestamp}&v=${random}&fresh=true&nocache=${timestamp}&force=${timestamp}&clear=${random}&update=${Date.now()}&refresh=${Math.random()}`;
+        const url = `/api/teacher/slots?teacherId=${teacherId}&week=${weekString}&allSlots=true&tz=${tz}&timezoneOffset=${timezoneOffset}&t=${timestamp}&v=${random}&fresh=true&nocache=${timestamp}&force=${timestamp}&clear=${random}&update=${Date.now()}&refresh=${Math.random()}`;
         console.log('🔍 Making fetch request to:', url);
         
         const response = await fetch(url, {
@@ -692,6 +723,11 @@
         
         console.log('🔍 Response status:', response.status);
         console.log('🔍 Response ok:', response.ok);
+
+        if (loadSeq !== scheduleLoadSeq) {
+          console.log('⏭ Stale schedule load skipped (seq)', loadSeq);
+          return;
+        }
         
         if (!response.ok) {
           console.error('❌ Fetch request failed with status:', response.status);
@@ -702,6 +738,11 @@
         
         const data = await response.json();
         console.log('🔍 Raw response data:', data);
+
+        if (loadSeq !== scheduleLoadSeq) {
+          console.log('⏭ Stale schedule load skipped after JSON (seq)', loadSeq);
+          return;
+        }
         
         // Check if there's an error in the response
         if (data.error) {
@@ -712,8 +753,6 @@
         console.log('🔄 FRESH Schedule data received:', data);
         console.log('🔄 Slots count:', data.slots ? data.slots.length : 0);
         console.log('🔄 Bookings count:', data.bookings ? data.bookings.length : 0);
-        console.log('🔄 Raw slots data:', JSON.stringify(data.slots, null, 2));
-        console.log('🔄 Raw bookings data:', JSON.stringify(data.bookings, null, 2));
         
         // Check if we're getting the right teacher's data
         console.log('🔄 Current teacher ID from localStorage:', teacherId);
@@ -725,7 +764,12 @@
         
         // Set new data from database
         slotsData = data.slots || [];
-        bookingsData = data.bookings || [];
+        bookingsData = dedupeBookingsByLocalCell(data.bookings || []);
+
+        if (loadSeq !== scheduleLoadSeq) {
+          console.log('⏭ Stale schedule load skipped before render (seq)', loadSeq);
+          return;
+        }
         
         console.log('🔄 Updated slotsData (from database):', slotsData);
         console.log('🔄 Updated bookingsData (from database):', bookingsData);
@@ -784,14 +828,13 @@
           'schedule-cell-pending-fb'
         );
         slot.removeAttribute('data-booking-id');
-        slot.textContent = '';
+        clearSlotCellContents(slot);
         slot.style.background = '';
         slot.style.color = '';
         slot.style.fontWeight = '';
         slot.style.cursor = '';
         slot.style.border = '';
         slot.style.boxShadow = '';
-        slot.onclick = null;
         
         // Check if slot is in the past AND has no booking data
         const slotKey = `${slot.dataset.date}-${slot.dataset.time}`;
@@ -893,6 +936,7 @@
         const slotElement = document.querySelector(`[data-date="${slot.date}"][data-time="${slot.time}"]`);
         if (slotElement) {
           console.log('✅ Found slot element for:', slot.date, slot.time);
+          clearSlotCellContents(slotElement);
           
           // Check if slot is in the past (strictly past dates, not current day)
           const slotDate = new Date(slot.date);
@@ -1044,6 +1088,7 @@
         const slotElement = findBookingSlotElement(bd, bt, booking);
         if (slotElement) {
           console.log('✅ Found slot element for booking:', bd, bt, '(raw:', booking.date, booking.time, ')');
+          clearSlotCellContents(slotElement);
           slotElement.classList.remove('unavailable'); // Remove unavailable class if slot is booked
         } else {
           console.log('❌ Slot element NOT found for booking:', bd, bt, 'raw:', booking.date, booking.time);
@@ -1108,9 +1153,11 @@
 
           if (bookingNeedsPastFeedbackSubmit(booking, bd, bt)) {
             const level = (booking.studentLevel || '').toLowerCase();
-            let indicator = 'P';
-            if (level.includes('nursery')) indicator = 'N';
-            else if (level.includes('kinder')) indicator = 'K';
+            let indicator = 'LS';
+            if (level.includes('little seeds') || level.includes('nursery') || level.includes('age 3')) indicator = 'LS';
+            else if (level.includes('sprouts') || level.includes('kinder') || level.includes('age 4')) indicator = 'Sp';
+            else if (level.includes('saplings') || level.includes('prep') || level.includes('age 5')) indicator = 'Sa';
+            else if (level.includes('young stewards') || level.includes('steward') || level.includes('age 6')) indicator = 'YS';
             const studentFirstName =
               getBookingStudentDisplayName(booking).split(/\s+/)[0] || 'Student';
             const esc = (s) =>
@@ -1230,7 +1277,7 @@
           }
           
                   // Initialize indicator variable
-          let indicator = 'P'; // Default to Preparatory
+          let indicator = 'LS'; // Default to Little Seeds (Age 3)
           
           if (booking.status === 'absent') {
             // Check if teacher entered the classroom to determine who was absent
@@ -1362,19 +1409,22 @@
             console.log('📋 Marking as booked (default)');
             // Default indicator based on student level
             const level = booking.studentLevel?.toLowerCase() || '';
-            if (level.includes('nursery')) {
+            if (level.includes('little seeds') || level.includes('nursery') || level.includes('age 3')) {
               slotElement.classList.add('N');
-              indicator = 'N';
-            } else if (level.includes('kindergarten') || level.includes('kinder')) {
+              indicator = 'LS';
+            } else if (level.includes('sprouts') || level.includes('kindergarten') || level.includes('kinder') || level.includes('age 4')) {
               slotElement.classList.add('K');
-              indicator = 'K';
-            } else if (level.includes('primary') || level.includes('preparatory')) {
+              indicator = 'Sp';
+            } else if (level.includes('saplings') || level.includes('primary') || level.includes('preparatory') || level.includes('prep') || level.includes('age 5')) {
               slotElement.classList.add('P');
-              indicator = 'P';
+              indicator = 'Sa';
+            } else if (level.includes('young stewards') || level.includes('steward') || level.includes('age 6')) {
+              slotElement.classList.add('P');
+              indicator = 'YS';
             } else {
-              // If no level specified, default to Preparatory
-              slotElement.classList.add('P');
-              indicator = 'P';
+              // If no level specified, default to Little Seeds (Age 3)
+              slotElement.classList.add('N');
+              indicator = 'LS';
             }
             slotElement.classList.add('booked');
             // Force yellow background and blue text for booked slots
@@ -1505,7 +1555,11 @@
         prevBtn.style.background = '#ffe85a';
       }, 200);
       
-      currentWeek.setDate(currentWeek.getDate() - 7);
+      const { DateTime } = luxon;
+      currentWeek = DateTime.fromJSDate(currentWeek, { zone: getScheduleTimeZone() })
+        .minus({ weeks: 1 })
+        .startOf('week')
+        .toJSDate();
       console.log('New currentWeek:', currentWeek.toISOString());
       updateWeekDisplay();
       initializeWeeklyGrid();
@@ -1521,26 +1575,31 @@
         nextBtn.style.background = '#ffe85a';
       }, 200);
       
-      currentWeek.setDate(currentWeek.getDate() + 7);
+      const { DateTime } = luxon;
+      currentWeek = DateTime.fromJSDate(currentWeek, { zone: getScheduleTimeZone() })
+        .plus({ weeks: 1 })
+        .startOf('week')
+        .toJSDate();
       console.log('New currentWeek:', currentWeek.toISOString());
       updateWeekDisplay();
       initializeWeeklyGrid();
     });
 
     document.getElementById('current-week').addEventListener('click', () => {
-      currentWeek = new Date();
+      const { DateTime } = luxon;
+      currentWeek = DateTime.now().setZone(getScheduleTimeZone()).startOf('week').toJSDate();
       updateWeekDisplay();
       initializeWeeklyGrid();
     });
 
-    // Update week display (selected aligned zone)
+    // Update week display (viewer local zone)
     function updateWeekDisplay() {
       const display = document.getElementById('week-display');
       const { DateTime } = luxon;
-      const base = DateTime.fromJSDate(currentWeek, { zone: getScheduleTimeZone() });
-      const mon = base.minus({ days: base.weekday - 1 });
-      const sun = mon.plus({ days: 6 });
-      display.textContent = `${mon.toFormat('MMM d')} - ${sun.toFormat('MMM d, yyyy')} (Philippine Time, PHT)`;
+      const localStartOfWeek = DateTime.fromJSDate(currentWeek, { zone: getScheduleTimeZone() }).startOf('week');
+      const localEndOfWeek = localStartOfWeek.plus({ days: 6 });
+      const zoneName = DateTime.local().zoneName || getScheduleTimeZone();
+      display.textContent = `${localStartOfWeek.toFormat('MMM d')} - ${localEndOfWeek.toFormat('MMM d, yyyy')} (${zoneName})`;
 
       const prevBtn = document.getElementById('prev-week');
       prevBtn.disabled = false;
@@ -1553,18 +1612,20 @@
 
     function showClassInfo(booking) {
       currentBooking = booking;
-      
-      const formattedDate = RemoedSchedTZ.formatYmdAsPhilippinesLongDate
-        ? RemoedSchedTZ.formatYmdAsPhilippinesLongDate(booking.date)
-        : new Date(booking.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      const cell = getBookingCellDateTime(booking);
+      let formattedDate = cell.date || booking.date;
+      if (typeof luxon !== 'undefined' && cell.date) {
+        const { DateTime } = luxon;
+        const d = DateTime.fromISO(cell.date, { zone: getScheduleTimeZone() });
+        if (d.isValid) formattedDate = d.toFormat('cccc, LLLL d, yyyy');
+      }
       
       // Populate modal with booking data
       document.getElementById('class-date').textContent = formattedDate;
-      // Format time as 24-hour format
-      let formattedTime = booking.time;
-      if (booking.time) {
-        const [hour, minute] = booking.time.split(':');
-        formattedTime = `${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`;
+      let formattedTime = cell.time || booking.time;
+      if (formattedTime) {
+        const [hour, minute] = String(formattedTime).split(':');
+        formattedTime = `${hour.padStart(2, '0')}:${(minute || '00').padStart(2, '0')}`;
       }
       document.getElementById('class-time').textContent = formattedTime;
       document.getElementById('class-student').textContent = booking.studentId?.firstName || booking.studentId?.username || 'Unknown Student';

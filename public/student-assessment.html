@@ -5,10 +5,11 @@
     <link rel="apple-touch-icon" href="/images/remoed-favicon.png" /><!-- comment -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="js/security-guard.js?v=1"></script>
+    <script src="js/security-guard.js?v=2"></script>
     <title>🎯 My Level Assessment - RemoEdPH</title>
     <link rel="stylesheet" href="modern-styles.css">
 <link rel="stylesheet" href="css/teacher-sidebar.css">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="css/student-portal-layout.css">
     <link rel="stylesheet" href="css/student-sidebar.css">
@@ -95,14 +96,17 @@
     <div class="remoed-main">
         <div id="student-sidebar-root"></div>
         <script src="js/student-sidebar.js"></script>
-        <script>StudentSidebar.render('student-sidebar-root', 'level');</script>
+        <script src="js/student-page-header.js"></script>
+        <script>
+            StudentSidebar.render('student-sidebar-root', 'level');
+            StudentPageHeader.render('level');
+        </script>
         <div class="remoed-content">
             <div class="assessment-container">
                 <!-- Introduction Screen -->
                 <div id="intro-screen">
                     <div class="assessment-header">
-                        <h1>🎯 Welcome to Your Level Assessment!</h1>
-                        <p>Let's find out your English level together! 🌟</p>
+                        <p>Let's find out your English level together!</p>
                     </div>
                     
                     <div class="assessment-intro">
@@ -383,9 +387,10 @@
             }
 
             var userType = localStorage.getItem('userType');
-            if (userType !== 'student') {
-                alert('Access denied. This page is for students only.');
-                window.location.href = 'index.html';
+            var hasStudentToken = !!(localStorage.getItem('token') || localStorage.getItem('studentToken') || localStorage.getItem('remoed_user_token'));
+            if (userType !== 'student' || !hasStudentToken) {
+                // Guests without prefill: send to landing assessment form instead of a hard deny.
+                window.location.href = 'index.html#assessment';
                 return;
             }
 

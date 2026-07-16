@@ -10,6 +10,7 @@
     <title>Admin Dashboard - RemoEdPH</title>
     <link rel="stylesheet" href="modern-styles.css">
     <link rel="stylesheet" href="css/teacher-sidebar.css">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
 
@@ -802,13 +803,13 @@
         }
     </style>
 </head>
-<body>
+<body class="page-admin-dashboard has-admin-page-header">
     <!-- Main Layout: Sidebar + Content -->
     <div class="remoed-main">
         <!-- Top navigation bar with notifications -->
         <div class="nav-header">
             <div class="nav-left">
-                <h1 style="margin: 0; font-size: 1.5rem; color: #1a202c;">Admin Dashboard</h1>
+                <h1><svg class="nav-title-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg><span class="nav-title-text">Admin Dashboard</span></h1>
             </div>
             <div class="nav-right">
                 <div class="time-tracking-mini">
@@ -836,6 +837,7 @@
 
         <div id="admin-sidebar-root"></div>
         <script src="js/admin-session.js"></script>
+        <script src="js/admin-page-header.js"></script>
         <script src="js/admin-sidebar.js"></script>
         <script>AdminSidebar.render('admin-sidebar-root', 'dashboard');</script>
         <div class="remoed-content" style="margin-top:60px;">
@@ -1015,6 +1017,34 @@
                                     <div class="quick-stat-label">Avg. Rating</div>
                                 </div>
                             </div>
+                            <div class="quick-stat-item">
+                                <div class="quick-stat-icon">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M4 19.5A2.5 2.5 0 016.5 17H20"/>
+                                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/>
+                                    </svg>
+                                </div>
+                                <div class="quick-stat-content">
+                                    <a href="admin-hr-hub.html#training" style="color:inherit;text-decoration:none;display:block;">
+                                        <div class="quick-stat-value" style="font-size:0.95rem;">HR Training</div>
+                                        <div class="quick-stat-label">Manage courses</div>
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="quick-stat-item">
+                                <div class="quick-stat-icon">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="3" y="4" width="18" height="18" rx="2"/>
+                                        <path d="M16 2v4M8 2v4M3 10h18"/>
+                                    </svg>
+                                </div>
+                                <div class="quick-stat-content">
+                                    <a href="admin-hr-hub.html#schedule" style="color:inherit;text-decoration:none;display:block;">
+                                        <div class="quick-stat-value" style="font-size:0.95rem;">Schedule</div>
+                                        <div class="quick-stat-label">Day / Week / Month</div>
+                                    </a>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -1042,6 +1072,20 @@
                             <!-- Recent activity will be loaded here -->
                         </div>
                     </div>
+                </div>
+
+                <div class="remoed-section" id="dashboard-schedule-section" style="margin-bottom:12px;">
+                    <div class="remoed-section-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+                        <span>Teacher Schedule Grid</span>
+                        <a href="admin-hr-hub.html#schedule" style="font-size:0.85rem;font-weight:600;color:#1ca7e7;">Open in HR Hub →</a>
+                    </div>
+                    <iframe
+                        id="dashboard-schedule-iframe"
+                        title="Teacher schedule calendar"
+                        src="admin-teacher-schedule.html?adminEmbed=1&embedVer=2"
+                        style="width:100%;height:520px;border:1px solid #e2e8f0;border-radius:10px;background:#fff;"
+                        loading="lazy"
+                    ></iframe>
                 </div>
 
                 <!-- Community & Social Responsibility -->
@@ -1485,29 +1529,37 @@
             return fallbackLabel;
         }
 
+        function getCurrentMonthScheduleRange() {
+            const now = new Date();
+            const start = new Date(now.getFullYear(), now.getMonth(), 1);
+            const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            const fmt = (d) => d.toISOString().slice(0, 10);
+            return { start: fmt(start), end: fmt(end) };
+        }
+
+        async function fetchTeachersAndBookings() {
+            const range = getCurrentMonthScheduleRange();
+            const [teachersResponse, scheduleResponse] = await Promise.all([
+                adminApiFetch('/api/admin/teachers-list'),
+                adminApiFetch('/api/admin/schedule?start=' + encodeURIComponent(range.start) + '&end=' + encodeURIComponent(range.end) + '&view=month')
+            ]);
+            const teachers = teachersResponse.ok ? await teachersResponse.json() : [];
+            const scheduleData = scheduleResponse.ok ? await scheduleResponse.json() : { bookings: [] };
+            return {
+                teachers: Array.isArray(teachers) ? teachers : [],
+                bookings: scheduleData.bookings || []
+            };
+        }
+
         async function loadTopPerformers() {
             try {
                 const performersList = document.getElementById('top-performers-list');
-                
-                // Fetch real data from multiple sources
-                const [teachersResponse, bookingsResponse] = await Promise.all([
-                    adminApiFetch('/api/admin/teachers-count'),
-                    adminApiFetch('/api/admin/bookings-count')
-                ]);
-
-                const teachersData = teachersResponse.ok ? await teachersResponse.json() : { teachers: [] };
-                const bookingsData = bookingsResponse.ok ? await bookingsResponse.json() : { bookings: [] };
-
-                // Get actual teachers from the system
-                const actualTeachers = teachersData.teachers || teachersData.recentTeachers || [];
+                const { teachers: actualTeachers, bookings } = await fetchTeachersAndBookings();
                 
                 if (actualTeachers.length > 0) {
-                    // Calculate performance metrics for each teacher
                     const teacherPerformance = actualTeachers.map(teacher => {
-                        // Get all bookings for this teacher
-                        const teacherBookings = bookingsData.bookings?.filter(b => 
-                            b.teacherId === teacher.teacherId
-                        ) || [];
+                        const tid = teacher.teacherId || teacher.username;
+                        const teacherBookings = bookings.filter(b => b.teacherId === tid);
                         
                         const totalClasses = teacherBookings.length;
                         const completedClasses = teacherBookings.filter(b => b.status === 'completed').length;
@@ -1518,7 +1570,8 @@
                             totalClasses: totalClasses,
                             completedClasses: completedClasses,
                             completionRate: completionRate,
-                            teacherId: teacher.teacherId
+                            teacherId: tid,
+                            mongoId: teacher._id
                         };
                     });
 
@@ -1529,8 +1582,12 @@
                         .slice(0, 5);
 
                     if (topBooked.length > 0) {
-                        performersList.innerHTML = topBooked.map((teacher, index) => `
-                            <div class="performer-item">
+                        performersList.innerHTML = topBooked.map((teacher, index) => {
+                            const profileHref = teacher.mongoId
+                                ? ('/admin/admin-view-user-profile.html?type=teacher&id=' + encodeURIComponent(teacher.mongoId))
+                                : ('/admin/admin-teacher-schedule.html?teacherId=' + encodeURIComponent(teacher.teacherId || ''));
+                            return `
+                            <div class="performer-item" style="cursor:pointer;" onclick="window.open('${profileHref}','_blank','noopener,noreferrer')" title="View teacher profile">
                                 <div class="performer-rank">${index + 1}</div>
                                 <div class="performer-avatar">${teacher.teacher.charAt(0)}</div>
                                 <div class="performer-info">
@@ -1540,8 +1597,8 @@
                                         <span class="performer-value">${teacher.completionRate}%</span> completion rate
                                     </div>
                                 </div>
-                            </div>
-                        `).join('');
+                            </div>`;
+                        }).join('');
                     } else {
                         performersList.innerHTML = '<div class="performer-item"><div class="performer-stats">No classes booked yet</div></div>';
                     }
@@ -1572,28 +1629,20 @@
             try {
                 const performersList = document.getElementById('top-performers-list');
                 
-                // Fetch real data from multiple sources
-                const [teachersResponse, bookingsResponse, financialResponse] = await Promise.all([
-                    adminApiFetch('/api/admin/teachers-count'),
-                    adminApiFetch('/api/admin/bookings-count'),
+                const [{ teachers: actualTeachers, bookings }, financialResponse] = await Promise.all([
+                    fetchTeachersAndBookings(),
                     adminApiFetch('/api/admin/reports/financial')
                 ]);
 
-                const teachersData = teachersResponse.ok ? await teachersResponse.json() : { teachers: [] };
-                const bookingsData = bookingsResponse.ok ? await bookingsResponse.json() : { bookings: [] };
                 const financialData = financialResponse.ok ? await financialResponse.json() : { data: {} };
-
-                // Get actual teachers from the system
-                const actualTeachers = teachersData.teachers || teachersData.recentTeachers || [];
                 
                 if (actualTeachers.length > 0) {
-                    // Calculate earnings based on completed classes and rate
-                    const globalRate = financialData.data?.globalRate || 500; // Default rate per class
+                    const globalRate = financialData.data?.globalRate || 500;
                     const teacherEarnings = actualTeachers.map(teacher => {
-                        // Get teacher's completed classes
-                        const teacherBookings = bookingsData.bookings?.filter(b => 
-                            b.teacherId === teacher.teacherId && b.status === 'completed'
-                        ) || [];
+                        const tid = teacher.teacherId || teacher.username;
+                        const teacherBookings = bookings.filter(b =>
+                            b.teacherId === tid && b.status === 'completed'
+                        );
                         
                         const completedClasses = teacherBookings.length;
                         const earnings = completedClasses * globalRate;
@@ -1602,7 +1651,8 @@
                             teacher: getPersonDisplayName(teacher, 'Teacher'),
                             earnings: earnings,
                             classes: completedClasses,
-                            teacherId: teacher.teacherId
+                            teacherId: tid,
+                            mongoId: teacher._id
                         };
                     });
 
@@ -1613,8 +1663,12 @@
                         .slice(0, 5);
 
                     if (topEarners.length > 0) {
-                        performersList.innerHTML = topEarners.map((teacher, index) => `
-                            <div class="performer-item">
+                        performersList.innerHTML = topEarners.map((teacher, index) => {
+                            const profileHref = teacher.mongoId
+                                ? ('/admin/admin-view-user-profile.html?type=teacher&id=' + encodeURIComponent(teacher.mongoId))
+                                : ('/admin/admin-teacher-schedule.html?teacherId=' + encodeURIComponent(teacher.teacherId || ''));
+                            return `
+                            <div class="performer-item" style="cursor:pointer;" onclick="window.open('${profileHref}','_blank','noopener,noreferrer')" title="View teacher profile">
                                 <div class="performer-rank">${index + 1}</div>
                                 <div class="performer-avatar">${teacher.teacher.charAt(0)}</div>
                                 <div class="performer-info">
@@ -1624,8 +1678,8 @@
                                         <span class="performer-value">${teacher.classes}</span> classes
                                     </div>
                                 </div>
-                            </div>
-                        `).join('');
+                            </div>`;
+                        }).join('');
                     } else {
                         performersList.innerHTML = '<div class="performer-item"><div class="performer-stats">No completed classes yet</div></div>';
                     }

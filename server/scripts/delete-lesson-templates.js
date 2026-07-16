@@ -10,9 +10,10 @@ async function deleteLessonTemplates() {
     await mongoose.connect(MONGODB_URI);
     console.log('✅ Connected to MongoDB');
 
-    // Get all curricula for nursery, kinder, and preparatory levels
+    // Get all curricula for growth levels
+    const { CURRICULUM_LEVELS } = require('../config/curriculumLevels');
     const curricula = await Curriculum.find({ 
-      level: { $in: ['nursery', 'kinder', 'preparatory'] },
+      level: { $in: CURRICULUM_LEVELS },
       isActive: true 
     });
 

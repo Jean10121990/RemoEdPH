@@ -5,6 +5,8 @@ const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
 const { pipeline } = require('stream/promises');
+const multer = require('multer');
+const mongoose = require('mongoose');
 const { body, param, validationResult } = require('express-validator');
 const router = express.Router();
 const { sanitizeTeacherNotes } = require('./utils/sanitizeHtml');
@@ -14,6 +16,57 @@ const Lesson = require('./models/Lesson');
 const LessonProgress = require('./models/LessonProgress');
 // Import auth middleware
 const { isTokenBlacklisted } = require('./services/jwtBlacklist');
+const {
+  isValidOfficeEmbedUrl,
+  extractHtml5Zip,
+  presentationPublicFields,
+  PRESENTATIONS_ROOT
+} = require('./utils/presentationUpload');
+const {
+  diskPathFromHtml5EntryUrl,
+  ensurePptxPreviewPdf,
+  publicPreviewUrl,
+  fileExists
+} = require('./utils/pptxLocalPreview');
+
+const LESSON_UPLOAD_MAX_BYTES = 50 * 1024 * 1024;
+const lessonUploadTmp = path.join(__dirname, '../uploads/tmp-lesson-uploads');
+fs.mkdirSync(lessonUploadTmp, { recursive: true });
+fs.mkdirSync(PRESENTATIONS_ROOT, { recursive: true });
+
+const lessonFileUpload = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, lessonUploadTmp),
+    filename: (_req, file, cb) => {
+      const safe = String(file.originalname || 'upload').replace(/[^a-zA-Z0-9._-]/g, '_');
+      cb(null, `${Date.now()}-${crypto.randomBytes(6).toString('hex')}-${safe}`);
+    }
+  }),
+  limits: { fileSize: LESSON_UPLOAD_MAX_BYTES }
+});
+
+function parseOptionalMultipartLessonUpload(req, res, next) {
+  const ct = String(req.headers['content-type'] || '');
+  if (!ct.includes('multipart/form-data')) return next();
+  return lessonFileUpload.single('file')(req, res, (err) => {
+    if (!err) return next();
+    if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(413).json({
+        error: `File is too large. Maximum size is ${LESSON_UPLOAD_MAX_BYTES / (1024 * 1024)}MB.`
+      });
+    }
+    return res.status(400).json({ error: err.message || 'Upload failed' });
+  });
+}
+
+function safeStoredFileName(name) {
+  const base = path.basename(String(name || 'file')).replace(/[^a-zA-Z0-9._\- ()[\]]+/g, '_');
+  return base || 'file.bin';
+}
+
+function publicUrlForStoredPresentation(fileId, storedName) {
+  return '/uploads/presentations/' + String(fileId) + '/' + encodeURIComponent(storedName);
+}
 
 const authenticateToken = (req, res, next) => {
   // Accept token from Authorization header, query, or body for flexibility (devtunnels)
@@ -75,6 +128,43 @@ function lessonFileBase64Payload(fileData) {
     return comma >= 0 ? s.slice(comma + 1) : null;
   }
   return s;
+}
+
+function serializeLessonFileMeta(file) {
+  if (!file) return null;
+  const pub = presentationPublicFields(file);
+  const fileUrl = file.html5EntryUrl || '';
+  return {
+    _id: file._id,
+    fileName: file.fileName,
+    fileType: file.fileType,
+    fileSize: file.fileSize,
+    uploadedBy: file.uploadedBy,
+    uploadedAt: file.uploadedAt,
+    isPermanent: file.isPermanent,
+    hasFileData: !!(file.fileData && String(file.fileData).length > 0),
+    fileUrl,
+    ...pub
+  };
+}
+
+/** Prefer disk for PPT/ZIP and any binary large enough to blow past JSON/Mongo limits as base64. */
+function shouldStoreOnDisk(fileName, fileType, fileSize) {
+  if (isPptPresentation(fileName, fileType) || isZipPresentation(fileName, fileType)) return true;
+  const n = Number(fileSize) || 0;
+  return n > 2 * 1024 * 1024;
+}
+
+function isZipPresentation(fileName, fileType) {
+  const n = String(fileName || '').toLowerCase();
+  const t = String(fileType || '').toLowerCase();
+  return n.endsWith('.zip') || t.includes('zip');
+}
+
+function isPptPresentation(fileName, fileType) {
+  const n = String(fileName || '').toLowerCase();
+  const t = String(fileType || '').toLowerCase();
+  return /\.(ppt|pptx)$/.test(n) || t.includes('powerpoint') || t.includes('presentation');
 }
 
 /** HTTP Range: bytes=start-end (PDF.js / browsers may request partial content) */
@@ -217,8 +307,9 @@ router.get('/curricula', authenticateToken, async (req, res) => {
     const curricula = await Curriculum.find({ isActive: true })
       .select('title description level order');
     
-    // Sort by custom order: nursery, kinder, preparatory
-    const levelOrder = { 'nursery': 1, 'kinder': 2, 'preparatory': 3, 'elementary': 4, 'intermediate': 5, 'advanced': 6 };
+    // Sort by growth-level order
+    const { LEVEL_ORDER } = require('./config/curriculumLevels');
+    const levelOrder = LEVEL_ORDER;
     curricula.sort((a, b) => {
       const orderA = levelOrder[a.level] || 99;
       const orderB = levelOrder[b.level] || 99;
@@ -250,7 +341,8 @@ router.post('/curriculum', authenticateToken, requireTeacher, async (req, res) =
     }
 
     // Validate level
-    const validLevels = ['nursery', 'kinder', 'preparatory', 'elementary', 'intermediate', 'advanced'];
+    const { CURRICULUM_LEVELS } = require('./config/curriculumLevels');
+    const validLevels = CURRICULUM_LEVELS;
     if (!validLevels.includes(level)) {
       return res.status(400).json({ error: `Invalid level. Must be one of: ${validLevels.join(', ')}` });
     }
@@ -306,7 +398,8 @@ router.put('/curriculum/:curriculumId', authenticateToken, requireTeacher, async
       return res.status(404).json({ error: 'Curriculum not found' });
     }
 
-    const validLevels = ['nursery', 'kinder', 'preparatory', 'elementary', 'intermediate', 'advanced'];
+    const { CURRICULUM_LEVELS } = require('./config/curriculumLevels');
+    const validLevels = CURRICULUM_LEVELS;
     const nextTitle = title !== undefined ? String(title).trim() : curriculum.title;
     const nextLevel = level !== undefined ? level : curriculum.level;
     const nextDescription = description !== undefined ? String(description) : curriculum.description;
@@ -651,7 +744,10 @@ router.get('/lesson/:lessonId/files', authenticateToken, async (req, res) => {
         fileType: file.fileType,
         fileSize: file.fileSize,
         uploadedBy: file.uploadedBy,
-        uploadedAt: file.uploadedAt
+        uploadedAt: file.uploadedAt,
+        ...presentationPublicFields(file),
+        fileUrl: file.html5EntryUrl || '',
+        hasFileData: !!(file.fileData && String(file.fileData).length > 0)
       };
       
       if (withData) {
@@ -660,7 +756,7 @@ router.get('/lesson/:lessonId/files', authenticateToken, async (req, res) => {
         baseFile.name = file.fileName;
         baseFile.type = file.fileType;
         baseFile.size = file.fileSize;
-        baseFile.data = file.fileData; // Add data for compatibility
+        baseFile.data = file.fileData || file.html5EntryUrl || ''; // URL fallback for disk-stored PPTX
       }
       
       return baseFile;
@@ -699,7 +795,8 @@ router.get('/lesson-file/:fileId', authenticateToken, async (req, res) => {
       fileType: file.fileType,
       fileSize: file.fileSize,
       hasData: !!file.fileData,
-      dataLength: file.fileData?.length || 0
+      dataLength: file.fileData?.length || 0,
+      fileUrl: file.html5EntryUrl || ''
     });
 
     res.set('Cache-Control', 'public, max-age=86400');
@@ -709,10 +806,12 @@ router.get('/lesson-file/:fileId', authenticateToken, async (req, res) => {
       fileName: file.fileName,
       fileType: file.fileType,
       fileSize: file.fileSize,
-      fileData: file.fileData,
+      fileData: file.fileData || '',
+      fileUrl: file.html5EntryUrl || '',
       uploadedBy: file.uploadedBy,
       uploadedAt: file.uploadedAt,
-      isPermanent: file.isPermanent
+      isPermanent: file.isPermanent,
+      ...presentationPublicFields(file)
     });
   } catch (error) {
     console.error('❌ [GET FILE] Error fetching lesson file:', error);
@@ -721,136 +820,379 @@ router.get('/lesson-file/:fileId', authenticateToken, async (req, res) => {
 });
 
 // Upload lesson file (teacher only) - add to embedded files array
-router.post('/lesson/:lessonId/upload-file', authenticateToken, requireTeacher, async (req, res) => {
+// Supports JSON (legacy base64) and multipart/form-data (preferred for PPTX / large files).
+router.post('/lesson/:lessonId/upload-file', authenticateToken, requireTeacher, parseOptionalMultipartLessonUpload, async (req, res) => {
+  let tmpCleanupPath = null;
   try {
     const { lessonId } = req.params;
-    const { fileName, fileType, fileSize, fileData } = req.body;
+    const body = req.body || {};
+    const fileName = body.fileName || (req.file && req.file.originalname) || '';
+    const fileType = body.fileType || '';
+    const fileSize = Number(body.fileSize) || (req.file && req.file.size) || 0;
+    let fileData = body.fileData || '';
+    const embedUrl = body.embedUrl;
+    const bodyPresentationType = body.presentationType;
     const teacherId = req.user.teacherId || req.user.userId;
     const isAdmin = req.user && (req.user.isAdmin === true || req.user.role === 'admin' || req.user.username === 'admin');
     const uploadedBy = isAdmin ? (req.user.username || 'admin') : (teacherId || req.user.userId);
 
-    console.log(`📤 [UPLOAD] ========== Uploading file to lesson ==========`);
-    console.log(`📤 [UPLOAD] Lesson ID: ${lessonId}`);
-    console.log(`📤 [UPLOAD] File name: ${fileName}`);
-    console.log(`📤 [UPLOAD] File type: ${fileType}`);
-    console.log(`📤 [UPLOAD] File size: ${fileSize} bytes`);
-    console.log(`📤 [UPLOAD] File data length: ${fileData?.length || 0} bytes`);
-    console.log(`📤 [UPLOAD] Uploaded by: ${uploadedBy} (${isAdmin ? 'admin' : 'teacher'})`);
-
-    if (!fileName || !fileType || !fileData) {
-      console.error('❌ [UPLOAD] Missing required fields:', { 
-        hasFileName: !!fileName, 
-        hasFileType: !!fileType, 
-        hasFileData: !!fileData 
-      });
-      return res.status(400).json({ error: 'Missing required fields' });
-    }
-
     const lesson = await Lesson.findById(lessonId);
     if (!lesson) {
-      console.error(`❌ [UPLOAD] Lesson not found: ${lessonId}`);
       return res.status(404).json({ error: 'Lesson not found' });
     }
 
-    console.log(`✅ [UPLOAD] Lesson found: ${lesson.title}`);
-    console.log(`📚 [UPLOAD] Current files count: ${lesson.files?.length || 0}`);
-
-    // Initialize files array if it doesn't exist
     if (!lesson.files) {
       lesson.files = [];
-      console.log('📚 [UPLOAD] Initialized empty files array');
     }
 
-    // Check MongoDB document size limit (16MB)
-    const estimatedDocSize = JSON.stringify(lesson).length + fileData.length;
-    const maxDocSize = 16 * 1024 * 1024; // 16MB
-    if (estimatedDocSize > maxDocSize) {
-      console.error(`❌ [UPLOAD] File too large! Estimated document size: ${(estimatedDocSize / 1024 / 1024).toFixed(2)} MB (max: 16 MB)`);
-      return res.status(400).json({ 
-        error: `File is too large. The lesson document would exceed MongoDB's 16MB limit. Please use a smaller file or split the lesson.` 
-      });
-    }
-    
-    // Add file to embedded files array
-    const newFile = {
-      fileName,
-      fileType,
-      fileSize: fileSize || 0,
-      fileData,
-      uploadedBy: uploadedBy,
-      isPermanent: false
-    };
-    
-    console.log('📚 [UPLOAD] Adding file to lesson.files array...');
-    lesson.files.push(newFile);
-    console.log(`📚 [UPLOAD] Files array now has ${lesson.files.length} file(s)`);
-    
-    console.log('💾 [UPLOAD] Saving lesson to database...');
-    try {
-      await lesson.save();
-      console.log('✅ [UPLOAD] Lesson saved successfully');
-    } catch (saveError) {
-      console.error('❌ [UPLOAD] Error saving lesson:', saveError);
-      // Check if it's a size error
-      if (saveError.message && saveError.message.includes('too large')) {
-        console.error('❌ [UPLOAD] MongoDB document size limit exceeded!');
-        return res.status(400).json({ 
-          error: `File is too large. The lesson document exceeds MongoDB's 16MB limit. Please use a smaller file.` 
+    let newFile;
+
+    if (embedUrl && String(embedUrl).trim()) {
+      if (!isValidOfficeEmbedUrl(embedUrl)) {
+        return res.status(400).json({ error: 'Invalid Office/Microsoft embed URL' });
+      }
+      newFile = {
+        fileName: fileName || 'Office Presentation',
+        fileType: fileType || 'office_embed',
+        fileSize: fileSize || 0,
+        fileData: '',
+        presentationType: 'office_embed',
+        embedUrl: String(embedUrl).trim(),
+        html5PackagePath: '',
+        html5EntryUrl: '',
+        uploadedBy,
+        isPermanent: false
+      };
+    } else if (!fileName || !fileType) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    } else if (isZipPresentation(fileName, fileType) || bodyPresentationType === 'html5_zip') {
+      const fileId = new mongoose.Types.ObjectId();
+      const destDir = path.join(PRESENTATIONS_ROOT, String(fileId));
+      let buffer;
+      if (req.file && req.file.path) {
+        tmpCleanupPath = req.file.path;
+        buffer = await fsp.readFile(req.file.path);
+      } else if (fileData) {
+        const b64 = lessonFileBase64Payload(fileData);
+        if (!b64) {
+          return res.status(400).json({ error: 'Invalid zip data' });
+        }
+        buffer = Buffer.from(b64, 'base64');
+      } else {
+        return res.status(400).json({ error: 'HTML5 zip package requires file upload' });
+      }
+      const entryRel = extractHtml5Zip(buffer, destDir);
+      const html5EntryUrl = '/uploads/presentations/' + fileId + '/' + entryRel.split('/').map(encodeURIComponent).join('/');
+      newFile = {
+        _id: fileId,
+        fileName,
+        fileType: fileType || 'application/zip',
+        fileSize: fileSize || buffer.length,
+        fileData: '',
+        presentationType: 'html5_zip',
+        embedUrl: '',
+        html5PackagePath: destDir,
+        html5EntryUrl,
+        uploadedBy,
+        isPermanent: false
+      };
+    } else if (req.file || shouldStoreOnDisk(fileName, fileType, fileSize)) {
+      // Store PPTX and large binaries on disk (avoid 413 from base64 JSON + Mongo 16MB doc limit).
+      const fileId = new mongoose.Types.ObjectId();
+      const destDir = path.join(PRESENTATIONS_ROOT, String(fileId));
+      await fsp.mkdir(destDir, { recursive: true });
+      const storedName = safeStoredFileName(fileName);
+      const destPath = path.join(destDir, storedName);
+
+      if (req.file && req.file.path) {
+        tmpCleanupPath = req.file.path;
+        try {
+          await fsp.rename(req.file.path, destPath);
+        } catch (_renameErr) {
+          await fsp.copyFile(req.file.path, destPath);
+          await fsp.unlink(req.file.path).catch(() => {});
+        }
+        tmpCleanupPath = null;
+      } else if (fileData) {
+        const b64 = lessonFileBase64Payload(fileData);
+        if (!b64) {
+          return res.status(400).json({ error: 'Invalid file data' });
+        }
+        await fsp.writeFile(destPath, Buffer.from(b64, 'base64'));
+      } else {
+        return res.status(400).json({ error: 'Missing file data' });
+      }
+
+      let storedSize = fileSize;
+      try {
+        storedSize = (await fsp.stat(destPath)).size;
+      } catch (_e) { /* keep client size */ }
+
+      const entryUrl = publicUrlForStoredPresentation(fileId, storedName);
+      const presType = isPptPresentation(fileName, fileType) ? 'file' : (bodyPresentationType || 'file');
+      newFile = {
+        _id: fileId,
+        fileName,
+        fileType,
+        fileSize: storedSize,
+        fileData: '',
+        presentationType: presType,
+        embedUrl: '',
+        html5PackagePath: destDir,
+        html5EntryUrl: entryUrl,
+        uploadedBy,
+        isPermanent: false
+      };
+    } else {
+      if (!fileData) {
+        return res.status(400).json({ error: 'Missing file data' });
+      }
+      const estimatedDocSize = JSON.stringify(lesson).length + fileData.length;
+      const maxDocSize = 16 * 1024 * 1024;
+      if (estimatedDocSize > maxDocSize) {
+        return res.status(400).json({
+          error: 'File is too large. The lesson document would exceed MongoDB\'s 16MB limit. Use a smaller file or upload as PPTX/ZIP (stored on disk).'
         });
       }
-      throw saveError;
+      const presType = isPptPresentation(fileName, fileType) ? 'file' : (bodyPresentationType || 'file');
+      newFile = {
+        fileName,
+        fileType,
+        fileSize: fileSize || 0,
+        fileData,
+        presentationType: presType,
+        embedUrl: '',
+        html5PackagePath: '',
+        html5EntryUrl: '',
+        uploadedBy,
+        isPermanent: false
+      };
     }
-    
-    // Refresh the lesson from database to verify the save
+
+    lesson.files.push(newFile);
+    await lesson.save();
+
     const savedLesson = await Lesson.findById(lessonId).select('files');
-    const savedFilesCount = savedLesson?.files?.length || 0;
-    console.log(`✅ [UPLOAD] Verified: Lesson now has ${savedFilesCount} file(s) in database`);
-    
-    if (savedFilesCount !== lesson.files.length) {
-      console.error(`❌ [UPLOAD] MISMATCH! Saved count (${savedFilesCount}) != expected count (${lesson.files.length})`);
-    }
-    
-    // Verify the specific file was saved
-    const savedFile = savedLesson.files[savedLesson.files.length - 1];
-    if (!savedFile || !savedFile.fileData) {
-      console.error(`❌ [UPLOAD] CRITICAL: Saved file is missing data!`, {
-        hasFile: !!savedFile,
-        hasData: !!(savedFile?.fileData),
-        dataLength: savedFile?.fileData?.length || 0
-      });
-    } else {
-      console.log(`✅ [UPLOAD] Verified: Last file has data (${savedFile.fileData.length} bytes)`);
-    }
-    
-    // Get the newly added file (last one in array)
     const addedFile = savedLesson.files[savedLesson.files.length - 1];
-    
-    console.log('✅ [UPLOAD] File upload complete:', {
-      fileId: addedFile._id,
-      fileName: addedFile.fileName,
-      fileType: addedFile.fileType,
-      fileSize: addedFile.fileSize,
-      hasData: !!addedFile.fileData,
-      dataLength: addedFile.fileData?.length || 0
-    });
-    
-    // Return the file WITHOUT fileData to save bandwidth (client should fetch separately)
-    res.json({ 
-      message: 'File uploaded successfully', 
-      file: {
-        _id: addedFile._id,
-        fileName: addedFile.fileName,
-        fileType: addedFile.fileType,
-        fileSize: addedFile.fileSize,
-        uploadedBy: addedFile.uploadedBy,
-        uploadedAt: addedFile.uploadedAt,
-        isPermanent: addedFile.isPermanent
-      }
+
+    res.json({
+      message: 'File uploaded successfully',
+      file: serializeLessonFileMeta(addedFile)
     });
   } catch (error) {
     console.error('❌ [UPLOAD] Error uploading lesson file:', error);
-    console.error('❌ [UPLOAD] Error stack:', error.stack);
-    res.status(500).json({ error: 'Failed to upload file' });
+    res.status(500).json({ error: error.message || 'Failed to upload file' });
+  } finally {
+    if (tmpCleanupPath) {
+      fsp.unlink(tmpCleanupPath).catch(() => {});
+    }
+  }
+});
+
+// Presentation view metadata / redirect for iframe embedding
+router.get('/presentation/:fileId/view', authenticateToken, async (req, res) => {
+  try {
+    const { fileId } = req.params;
+    const lesson = await Lesson.findOne({ 'files._id': fileId }).select('files');
+    if (!lesson) {
+      return res.status(404).json({ error: 'Presentation not found' });
+    }
+    const file = lesson.files.id(fileId);
+    if (!file) {
+      return res.status(404).json({ error: 'Presentation not found' });
+    }
+    const pType = file.presentationType || 'file';
+    if (pType === 'office_embed' && file.embedUrl) {
+      return res.json({
+        presentationType: 'office_embed',
+        iframeUrl: file.embedUrl,
+        fileName: file.fileName
+      });
+    }
+    if (pType === 'html5_zip' && file.html5EntryUrl) {
+      return res.json({
+        presentationType: 'html5_zip',
+        iframeUrl: file.html5EntryUrl,
+        fileName: file.fileName
+      });
+    }
+    if (file.fileData) {
+      return res.json({
+        presentationType: 'file',
+        iframeUrl: null,
+        fileName: file.fileName,
+        fileType: file.fileType,
+        hasFileData: true
+      });
+    }
+    if (file.html5EntryUrl) {
+      return res.json({
+        presentationType: file.presentationType || 'file',
+        iframeUrl: file.html5EntryUrl,
+        fileName: file.fileName,
+        fileType: file.fileType,
+        hasFileData: false
+      });
+    }
+    return res.status(404).json({ error: 'No viewable presentation source' });
+  } catch (error) {
+    console.error('Presentation view error:', error);
+    res.status(500).json({ error: 'Failed to resolve presentation' });
+  }
+});
+
+/**
+ * Read-only embed metadata for Lessons Library preview (no direct download URL).
+ * Client loads Microsoft Office Online (or stored Office embed / HTML5 package) in an iframe.
+ */
+router.get('/presentation/:fileId/secure-embed', authenticateToken, async (req, res) => {
+  try {
+    const { fileId } = req.params;
+    const lesson = await Lesson.findOne({ 'files._id': fileId }).select('files');
+    if (!lesson) {
+      return res.status(404).json({ error: 'Presentation not found' });
+    }
+    const file = lesson.files.id(fileId);
+    if (!file) {
+      return res.status(404).json({ error: 'Presentation not found' });
+    }
+
+    const pType = file.presentationType || 'file';
+    const fileName = file.fileName || 'presentation.pptx';
+
+    if (pType === 'office_embed' && file.embedUrl) {
+      return res.json({
+        success: true,
+        mode: 'office_embed',
+        embedUrl: file.embedUrl,
+        fileName,
+        downloadAllowed: false
+      });
+    }
+
+    if (pType === 'html5_zip' && file.html5EntryUrl) {
+      return res.json({
+        success: true,
+        mode: 'html5_zip',
+        embedUrl: file.html5EntryUrl,
+        fileName,
+        downloadAllowed: false
+      });
+    }
+
+    const pathOrUrl = file.html5EntryUrl || '';
+    if (!pathOrUrl) {
+      return res.status(404).json({ error: 'No embeddable presentation source' });
+    }
+
+    const proto = String(req.headers['x-forwarded-proto'] || req.protocol || 'http').split(',')[0].trim();
+    const host = String(req.headers['x-forwarded-host'] || req.get('host') || '').split(',')[0].trim();
+    const isLocalHost = /localhost|127\.0\.0\.1/i.test(host);
+    // Never point Office Online at FRONTEND_URL when the request is from localhost —
+    // that was part of the old ngrok/public-URL workaround and breaks local files.
+    const publicBase = (
+      isLocalHost ? `${proto}://${host}` : (process.env.FRONTEND_URL || `${proto}://${host}`)
+    ).replace(/\/$/, '');
+    const absolute =
+      /^https?:\/\//i.test(pathOrUrl) ? pathOrUrl : publicBase + (pathOrUrl.startsWith('/') ? pathOrUrl : '/' + pathOrUrl);
+
+    const isLocal =
+      isLocalHost || /localhost|127\.0\.0\.1/i.test(absolute);
+    const officeEmbed =
+      'https://view.officeapps.live.com/op/embed.aspx?src=' + encodeURIComponent(absolute);
+
+    return res.json({
+      success: true,
+      mode: isLocal ? 'local_pdf_required' : 'office_online',
+      embedUrl: isLocal ? '' : officeEmbed,
+      fileName,
+      downloadAllowed: false,
+      localPreviewPath: isLocal ? `/api/lessons/presentation/${encodeURIComponent(fileId)}/local-preview` : null,
+      hint: isLocal
+        ? 'Microsoft Office Online cannot reach localhost. Use Live Classroom local PDF preview (no ngrok).'
+        : null
+    });
+  } catch (error) {
+    console.error('Presentation secure-embed error:', error);
+    res.status(500).json({ error: 'Failed to resolve secure embed' });
+  }
+});
+
+/**
+ * Localhost PPTX preview: convert to PDF once and cache beside the file.
+ * Use this instead of Office Online / ngrok when developing on http://localhost:8080.
+ */
+router.get('/presentation/:fileId/local-preview', authenticateToken, async (req, res) => {
+  try {
+    const { fileId } = req.params;
+    const lesson = await Lesson.findOne({ 'files._id': fileId }).select('files');
+    if (!lesson) {
+      return res.status(404).json({ error: 'Presentation not found' });
+    }
+    const file = lesson.files.id(fileId);
+    if (!file) {
+      return res.status(404).json({ error: 'Presentation not found' });
+    }
+
+    const pType = file.presentationType || 'file';
+    if (pType === 'html5_zip' && file.html5EntryUrl) {
+      return res.json({
+        success: true,
+        mode: 'html5_zip',
+        previewUrl: file.html5EntryUrl,
+        fileName: file.fileName
+      });
+    }
+    if (pType === 'office_embed' && file.embedUrl) {
+      return res.json({
+        success: true,
+        mode: 'office_embed',
+        previewUrl: file.embedUrl,
+        fileName: file.fileName
+      });
+    }
+
+    let sourcePath = diskPathFromHtml5EntryUrl(file.html5EntryUrl);
+    if (!sourcePath && file.html5PackagePath) {
+      try {
+        const names = await fsp.readdir(file.html5PackagePath);
+        const pptName = names.find((n) => /\.(ppt|pptx)$/i.test(n));
+        if (pptName) sourcePath = path.join(file.html5PackagePath, pptName);
+      } catch (_e) {}
+    }
+    if (!sourcePath || !(await fileExists(sourcePath))) {
+      return res.status(404).json({
+        error:
+          'PPTX file not found under uploads/presentations on this machine. Re-upload the lesson file while running on localhost:8080.'
+      });
+    }
+
+    const result = await ensurePptxPreviewPdf({
+      sourcePath,
+      fileName: file.fileName
+    });
+    const previewUrl = publicPreviewUrl(fileId);
+    // Verify static path matches where we wrote the file
+    const expectedStatic = path.join(PRESENTATIONS_ROOT, String(fileId), 'preview.pdf');
+    if (result.previewPath !== expectedStatic) {
+      try {
+        await fsp.copyFile(result.previewPath, expectedStatic);
+      } catch (_c) {}
+    }
+
+    return res.json({
+      success: true,
+      mode: 'pdf',
+      previewUrl,
+      cached: !!result.cached,
+      method: result.method || null,
+      fileName: (file.fileName || 'presentation').replace(/\.(ppt|pptx)$/i, '.pdf')
+    });
+  } catch (error) {
+    console.error('Presentation local-preview error:', error);
+    res.status(500).json({
+      error: error.message || 'Failed to build local PPTX preview'
+    });
   }
 });
 

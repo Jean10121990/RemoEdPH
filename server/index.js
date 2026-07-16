@@ -17,6 +17,8 @@ const teacherRoutes = require('./teacher');
 const studentRoutes = require('./routes/studentRoutes');
 const adminRoutes = require('./admin');
 const adminPortalVideoRoutes = require('./adminPortalVideoRoutes');
+const adminTrainingRoutes = require('./adminTrainingRoutes');
+const teacherTrainingRoutes = require('./teacherTrainingRoutes');
 const paymentRoutes = require('./payments');
 const webhookRoutes = require('./webhooks');
 const creditsRoutes = require('./credits.routes');
@@ -31,6 +33,8 @@ const slotsRoutes = require('./routes/slots');
 const Booking = require('./models/Booking');
 const { consumeReservedCreditForBooking } = require('./services/bookingCreditLedger');
 const LessonMaterial = require('./models/LessonMaterial');
+const Notification = require('./models/Notification');
+const StudentNotification = require('./models/StudentNotification');
 const { DateTime } = require('luxon');
 // LessonSlides model removed - PPTX conversion still works but slides are not saved to database
 const fs = require('fs');
@@ -46,7 +50,7 @@ const app = express();
 // Reduce fingerprinting: hide Express signature header.
 app.disable('x-powered-by');
 
-// Reverse proxies (ngrok, nginx, Cloud Run, etc.) send X-Forwarded-For. express-rate-limit validates that
+// Reverse proxies (nginx, Cloud Run, etc.) send X-Forwarded-For. express-rate-limit validates that
 // trust proxy is enabled when that header is present, or it throws ValidationError (see ERR_ERL_UNEXPECTED_X_FORWARDED_FOR).
 const trustProxyRaw = process.env.TRUST_PROXY;
 const trustProxyOff = trustProxyRaw === '0' || String(trustProxyRaw || '').toLowerCase() === 'false';
@@ -122,8 +126,6 @@ function isAllowedOrigin(origin) {
       if (host === allowedHost) return true;
     }
     if (host.endsWith('.devtunnels.ms')) return true;
-    if (host.endsWith('.ngrok.io')) return true;
-    if (host.endsWith('.ngrok-free.dev')) return true;
   } catch {
     return false;
   }
@@ -226,8 +228,9 @@ if (process.env.DISABLE_COMPRESSION_DEBUG !== '1') {
 // Keep raw body for PayMongo webhook signature verification.
 app.use('/api/webhooks/paymongo', express.raw({ type: 'application/json' }));
 
-// Large JSON bodies: lesson library uploads send base64 fileData (UI allows up to ~50MB files).
-const jsonBodyLimit = process.env.JSON_BODY_LIMIT || '52mb';
+// Large JSON bodies: legacy lesson uploads may still send small base64 payloads.
+// PPTX / large files should use multipart (disk) — see lessons.js upload-file.
+const jsonBodyLimit = process.env.JSON_BODY_LIMIT || '80mb';
 app.use(express.json({ limit: jsonBodyLimit }));
 app.use(express.urlencoded({ extended: true, limit: jsonBodyLimit }));
 app.use(bodyParser.json({ limit: jsonBodyLimit }));
@@ -356,6 +359,7 @@ app.use('/admin', noStoreProtectedResponse, express.static(path.join(__dirname, 
 // API Routes (no-store on role-protected APIs)
 app.use('/api/auth', noStoreProtectedResponse, authRoutes);
 app.use('/api/teacher', noStoreProtectedResponse, teacherRoutes);
+app.use('/api/teacher/training', noStoreProtectedResponse, teacherTrainingRoutes);
 {
   const landingHandler =
     typeof teacherRoutes.publicLandingHandler === 'function'
@@ -380,7 +384,10 @@ app.use('/api', applicationRoutes);
 app.use('/api', noStoreProtectedResponse, classroomRecordingRouter);
 // Main admin router MUST run before portal-video routes: portal router applies admin-only auth to every
 // request, which blocked public GET /api/admin/teacher-rate (teacher Teaching Fee page).
+// Teacher training LMS: mount BEFORE adminRoutes so /training/* is not run through
+// admin.js RBAC fallthrough (which can break PUT/POST under some tunnel setups).
 const adminApiCombined = express.Router();
+adminApiCombined.use('/training', adminTrainingRoutes);
 adminApiCombined.use(adminRoutes);
 adminApiCombined.use(adminPortalVideoRoutes);
 app.use('/api/admin', noStoreProtectedResponse, adminRouterLimiter, adminApiCombined);
@@ -530,7 +537,9 @@ const protectedHtmlFiles = new Set([
 ]);
 try {
   fs.readdirSync(publicDir).forEach((name) => {
-    if (/^admin-.*\.html$/i.test(name)) protectedHtmlFiles.add(name);
+    // Admin + teacher portal HTML must never be sticky-cached (dev tunnels / Back button
+    // otherwise serve stale scripts until a hard refresh).
+    if (/^(admin|teacher)-.*\.html$/i.test(name)) protectedHtmlFiles.add(name);
   });
 } catch (e) {
   /* ignore */
@@ -570,8 +579,15 @@ app.get('/favicon.ico', (req, res) => {
 app.use(
   express.static(publicDir, {
     setHeaders(res, filePath) {
-      if (String(filePath).toLowerCase().endsWith('.css')) {
+      const lower = String(filePath).toLowerCase();
+      if (lower.endsWith('.css')) {
         res.setHeader('Content-Type', 'text/css; charset=utf-8');
+      }
+      // Portal HTML/JS updates must land without requiring Ctrl+F5.
+      if (lower.endsWith('.html') || /[\\/]js[\\/].+\.js$/i.test(filePath)) {
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
       }
     },
   })
@@ -1175,8 +1191,8 @@ app.get('/api', (req, res) => {
 app.get('/api/health', (req, res) => {
   try {
     const dbInfo = getDbConnectionInfo();
-    res.json({
-      status: 'OK',
+    res.json({ 
+      status: 'OK', 
       message: 'Server is running',
       database: db.readyState === 1 ? 'Connected' : 'Disconnected',
       databaseMode: dbInfo.mode,
@@ -2249,7 +2265,33 @@ io.on('connection', socket => {
     socket.on('presentation-slide-changed', (data) => {
         console.log('🎬 Presentation slide changed in room:', data.room);
         socket.to(data.room).emit('presentation-slide-changed', {
-            currentSlideIndex: data.currentSlideIndex
+            currentSlideIndex: data.currentSlideIndex,
+            materialId: data.materialId,
+            slideUrl: data.slideUrl || null,
+            room: data.room
+        });
+        // Alias for clients that listen for slide-changed
+        socket.to(data.room).emit('slide-changed', {
+            currentSlideIndex: data.currentSlideIndex,
+            materialId: data.materialId,
+            slideUrl: data.slideUrl || null,
+            room: data.room
+        });
+    });
+
+    socket.on('slide-changed', (data) => {
+        if (!data || !data.room) return;
+        socket.to(data.room).emit('presentation-slide-changed', {
+            currentSlideIndex: data.currentSlideIndex,
+            materialId: data.materialId,
+            slideUrl: data.slideUrl || null,
+            room: data.room
+        });
+        socket.to(data.room).emit('slide-changed', {
+            currentSlideIndex: data.currentSlideIndex,
+            materialId: data.materialId,
+            slideUrl: data.slideUrl || null,
+            room: data.room
         });
     });
     
@@ -2335,9 +2377,14 @@ io.on('connection', socket => {
                 size: m.size,
                 data: m.data,
                 uploader: m.uploader,
-                uploadedAt: m.uploadedAt.getTime()
+                uploadedAt: m.uploadedAt.getTime(),
+                presentationType: m.presentationType || 'file',
+                embedUrl: m.embedUrl || '',
+                html5EntryUrl: m.html5EntryUrl || ''
             })).filter(m => {
-                // Only include materials with valid data (at least 100 bytes)
+                const pType = m.presentationType || 'file';
+                if (pType === 'office_embed' && m.embedUrl) return true;
+                if (pType === 'html5_zip' && m.html5EntryUrl) return true;
                 const hasValidData = m.data && m.data.length >= 100;
                 if (!hasValidData) {
                     console.warn(`⚠️ [SERVER] Filtering out material ${m.name} - missing or invalid data (length: ${m.data?.length || 0})`);
@@ -2357,7 +2404,10 @@ io.on('connection', socket => {
     socket.on('lesson-upload', async (data = {}) => {
         try {
             const { room, material } = data;
-            if (!room || !material || !material.data) {
+            const pType = material && (material.presentationType || 'file');
+            const hasEmbed = pType === 'office_embed' && material && material.embedUrl;
+            const hasHtml5 = pType === 'html5_zip' && material && material.html5EntryUrl;
+            if (!room || !material || (!material.data && !hasEmbed && !hasHtml5)) {
                 console.warn('⚠️ Invalid lesson-upload request:', { room, hasMaterial: !!material, hasData: !!(material && material.data) });
                 return;
             }
@@ -2397,10 +2447,14 @@ io.on('connection', socket => {
                 existing.name = material.name || existing.name;
                 existing.type = material.type || existing.type;
                 existing.size = material.size || existing.size;
-                existing.data = material.data;
+                if (material.data) existing.data = material.data;
+                existing.presentationType = material.presentationType || existing.presentationType || 'file';
+                existing.embedUrl = material.embedUrl || existing.embedUrl || '';
+                existing.html5EntryUrl = material.html5EntryUrl || existing.html5EntryUrl || '';
+                existing.html5PackagePath = material.html5PackagePath || existing.html5PackagePath || '';
                 existing.uploader = uploader;
                 await existing.save();
-                lessonMaterial = existing; // Use existing document
+                lessonMaterial = existing;
                 console.log(`💾 [SERVER] Updated lesson material in database:`);
                 console.log(`   - Name: ${material.name}`);
                 console.log(`   - Room: "${room}"`);
@@ -2415,7 +2469,11 @@ io.on('connection', socket => {
                     name: material.name || 'Untitled material',
                     type: material.type || 'application/octet-stream',
                     size: material.size || 0,
-                    data: material.data,
+                    data: material.data || '',
+                    presentationType: material.presentationType || 'file',
+                    embedUrl: material.embedUrl || '',
+                    html5EntryUrl: material.html5EntryUrl || '',
+                    html5PackagePath: material.html5PackagePath || '',
                     uploader: uploader,
                     uploadedAt: material.uploadedAt ? new Date(material.uploadedAt) : new Date()
                 });
@@ -2445,7 +2503,10 @@ io.on('connection', socket => {
                 size: lessonMaterial.size,
                 data: lessonMaterial.data,
                 uploader: lessonMaterial.uploader,
-                uploadedAt: lessonMaterial.uploadedAt.getTime()
+                uploadedAt: lessonMaterial.uploadedAt.getTime(),
+                presentationType: lessonMaterial.presentationType || 'file',
+                embedUrl: lessonMaterial.embedUrl || '',
+                html5EntryUrl: lessonMaterial.html5EntryUrl || ''
             };
 
             const materials = lessonMaterialsByRoom.get(room) || [];
@@ -2697,6 +2758,26 @@ io.on('connection', socket => {
       console.error('Error forwarding annotation-sync:', err);
     }
   });
+
+  socket.on('presentation-interaction-mode', (data) => {
+    try {
+      const { room } = data || {};
+      if (!room) return;
+      socket.to(room).emit('presentation-interaction-mode', data);
+    } catch (err) {
+      console.error('Error forwarding presentation-interaction-mode:', err);
+    }
+  });
+
+  socket.on('qa-tab-share', (data) => {
+    try {
+      const { room } = data || {};
+      if (!room) return;
+      socket.to(room).emit('qa-tab-share', data);
+    } catch (err) {
+      console.error('Error forwarding qa-tab-share:', err);
+    }
+  });
 });
 
 // Function to check and mark absent students
@@ -2870,6 +2951,25 @@ async function cleanupExpiredMaterials() {
     }
 }
 
+/** Delete teacher/admin and student notifications older than 31 days. */
+async function cleanupOldNotifications() {
+    try {
+        const cutoff = new Date(Date.now() - 31 * 24 * 60 * 60 * 1000);
+        const [teacherRes, studentRes] = await Promise.all([
+            Notification.deleteMany({ createdAt: { $lt: cutoff } }),
+            StudentNotification.deleteMany({ createdAt: { $lt: cutoff } }),
+        ]);
+        const total = (teacherRes.deletedCount || 0) + (studentRes.deletedCount || 0);
+        if (total > 0) {
+            console.log(
+                `🧹 Cleaned up notifications older than 31 days (teacher/admin: ${teacherRes.deletedCount}, student: ${studentRes.deletedCount})`
+            );
+        }
+    } catch (err) {
+        console.error('Error cleaning up old notifications:', err);
+    }
+}
+
 // Run cleanup after database is connected (not at startup to avoid blocking)
 // This will be scheduled after DB connection in startServer()
 let cleanupInterval = null;
@@ -2919,7 +3019,11 @@ const startServer = () => {
           
           // Schedule cleanup jobs only after DB is connected
           cleanupExpiredMaterials(); // Run once immediately
-          cleanupInterval = setInterval(cleanupExpiredMaterials, 60 * 60 * 1000); // Every hour
+          cleanupOldNotifications();
+          cleanupInterval = setInterval(() => {
+            cleanupExpiredMaterials();
+            cleanupOldNotifications();
+          }, 60 * 60 * 1000); // Every hour
           console.log(`🧹 Cleanup jobs scheduled (every hour)`);
 
           try {

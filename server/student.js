@@ -29,7 +29,7 @@ const {
   computeBatchUnlockState,
   DEFAULT_MAX_BATCH,
 } = require('./services/learningJourneyUnlock');
-const { releaseReservedCreditForBooking } = require('./services/bookingCreditLedger');
+const { logEmergencyCreditRetained } = require('./services/bookingCreditLedger');
 const crypto = require('crypto');
 const { body, validationResult } = require('express-validator');
 const { encryptPiiString } = require('./utils/piiCrypto');
@@ -484,84 +484,127 @@ router.post('/request-cancellation', verifyToken, requireStudent, async (req, re
   }
 });
 
-// Direct cancellation endpoint for students (no admin approval needed)
+// Direct cancellation endpoint for students (emergency cancel with credit protection)
 // Route: POST /api/student/cancel-booking
 router.post('/cancel-booking', verifyToken, requireStudent, async (req, res) => {
   console.log('📞 [SERVER] /api/student/cancel-booking endpoint called');
   console.log('📞 [SERVER] Request body:', req.body);
   console.log('📞 [SERVER] Student username:', req.user?.username);
   try {
-    const { bookingId } = req.body;
+    const { bookingId, reason, emergency } = req.body;
     const studentUsername = req.user.username;
-    
+    const EMERGENCY_REASONS = [
+      'Power Interruption',
+      'Natural Disaster',
+      'Accident/Medical Emergency',
+      'Other Valid Reason',
+    ];
+
     if (!bookingId) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Booking ID is required' 
-      });
-    }
-    
-    // Find the booking and verify it belongs to this student
-    const booking = await Booking.findById(bookingId);
-    
-    if (!booking) {
-      return res.status(404).json({ 
-        success: false, 
-        error: 'Booking not found' 
-      });
-    }
-    
-    if (booking.studentId !== studentUsername) {
-      return res.status(403).json({ 
-        success: false, 
-        error: 'Access denied. This booking does not belong to you.' 
-      });
-    }
-    
-    // Check if booking is already cancelled
-    if (booking.status === 'cancelled') {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'This booking is already cancelled' 
-      });
-    }
-    
-    // Check if class has already started or completed
-    const classDateTime = getBookingStartAsDate(booking);
-    const now = new Date();
-    if (!classDateTime || classDateTime <= now) {
       return res.status(400).json({
         success: false,
-        error: !classDateTime
-          ? 'Cannot determine class schedule for cancellation'
-          : 'Cannot cancel a class that has already started or completed',
+        error: 'Booking ID is required',
       });
     }
-    
-    // Update booking status to cancelled
-    booking.status = 'cancelled';
-    booking.cancellationTime = new Date();
+
+    const reasonText = String(reason || '').trim();
+    if (!EMERGENCY_REASONS.includes(reasonText)) {
+      return res.status(400).json({
+        success: false,
+        error: 'A valid emergency cancellation reason is required',
+      });
+    }
+
+    const booking = await Booking.findById(bookingId);
+
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        error: 'Booking not found',
+      });
+    }
+
+    const ownerIds = collectStudentIdentifiers(req);
+    if (!ownerIds.includes(booking.studentId)) {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied. This booking does not belong to you.',
+      });
+    }
+
+    const { isCancelledStatus } = require('./utils/bookingStatus');
+    if (isCancelledStatus(booking.status)) {
+      return res.status(400).json({
+        success: false,
+        error: 'This booking is already cancelled',
+      });
+    }
+
+    const classDateTime = getBookingStartAsDate(booking);
+    const now = new Date();
+    if (!classDateTime) {
+      return res.status(400).json({
+        success: false,
+        error: 'Cannot determine class schedule for cancellation',
+      });
+    }
+    if (classDateTime <= now) {
+      return res.status(400).json({
+        success: false,
+        error: 'Cannot cancel a class that has already started or completed',
+      });
+    }
+
+    const minutesUntilStart = (classDateTime.getTime() - now.getTime()) / 60000;
+    if (minutesUntilStart <= 30) {
+      return res.status(400).json({
+        success: false,
+        error:
+          'The 30-minute emergency cancellation window has closed. Credits will be forfeited if you do not attend.',
+      });
+    }
+
+    booking.status = 'cancelled_by_student_emergency';
+    booking.cancellationTime = now;
     booking.cancellationReason = {
-      reason: 'Cancelled by student',
-      rejected: false
+      reason: reasonText,
+      rejected: false,
+      emergency: emergency !== false,
     };
 
-    await releaseReservedCreditForBooking(booking);
-    
+    // No-reserve model: balance was never held; log retain only (no release/refund).
+    await logEmergencyCreditRetained(booking);
+
     await booking.save();
-    
-    console.log(`✅ [STUDENT] Booking ${bookingId} cancelled by student ${studentUsername}`);
-    
+
+    try {
+      const TeacherSlot = require('./models/TeacherSlot');
+      const slotUpdateResult = await TeacherSlot.updateOne(
+        { teacherId: booking.teacherId, date: booking.date, time: booking.time },
+        { available: true }
+      );
+      console.log(
+        '✅ Slot marked available after student emergency cancel:',
+        slotUpdateResult.modifiedCount > 0
+      );
+    } catch (slotErr) {
+      console.error('⚠️ Could not reopen TeacherSlot after emergency cancel:', slotErr.message || slotErr);
+    }
+
+    console.log(
+      `✅ [STUDENT] Booking ${bookingId} emergency-cancelled by student ${studentUsername}`
+    );
+
     res.json({
       success: true,
-      message: 'Booking cancelled successfully',
-      booking
+      message: 'Booking cancelled successfully. Credit retained.',
+      booking,
     });
   } catch (err) {
     console.error('❌ Error cancelling booking:', err);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Failed to cancel booking' 
+      error: 'Failed to cancel booking',
     });
   }
 });
@@ -728,10 +771,10 @@ router.get('/bookings/history', verifyToken, requireStudent, async (req, res) =>
   }
 });
 
-// Get student bookings for a week
+// Get student bookings for a week (filter window = client's local week → UTC)
 router.get('/bookings', verifyToken, requireStudent, async (req, res) => {
   try {
-    const { week } = req.query;
+    const { week, timezoneOffset, tz } = req.query;
     console.log('Fetching bookings for:', req.user.id);
     const uniqueIdentifiers = collectStudentIdentifiers(req);
 
@@ -746,34 +789,39 @@ router.get('/bookings', verifyToken, requireStudent, async (req, res) => {
       return res.status(400).json({ error: 'Missing week parameter' });
     }
 
-    // Parse week start date (Monday)
-    const start = new Date(week + 'T00:00:00');
-    // Calculate end date (next Monday, exclusive) - this ensures we include all 7 days (Mon-Sun)
-    const end = new Date(start);
-    end.setDate(start.getDate() + 7);
-    // Format end date as YYYY-MM-DD (use local date to avoid timezone issues)
-    const endDateString =
-      end.getFullYear() +
-      '-' +
-      String(end.getMonth() + 1).padStart(2, '0') +
-      '-' +
-      String(end.getDate()).padStart(2, '0');
+    const { resolveLocalWeekUtcWindow, localWeekEndDateString } = require('./utils/localWeekWindow');
+    let startUtc;
+    let endUtc;
+    let endDateString;
+    let zoneLabel = 'utc';
+    try {
+      const window = resolveLocalWeekUtcWindow(week, { timezoneOffset, tz });
+      startUtc = window.startUtc;
+      endUtc = window.endUtc;
+      zoneLabel = window.zoneLabel;
+      endDateString = localWeekEndDateString(week, { timezoneOffset, tz });
+    } catch (parseErr) {
+      return res.status(400).json({ error: parseErr.message || 'Invalid week/timezone' });
+    }
 
     console.log(`🔍 Looking for bookings for student identifiers: ${uniqueIdentifiers.join(', ')} in week: ${week}`);
-    console.log(`🔍 Date range: ${week} to ${endDateString} (exclusive)`);
-    console.log(
-      `🔍 Student from req.student:`,
-      req.student ? { username: req.student.username, email: req.student.email, _id: req.student._id } : 'null'
-    );
-    console.log(
-      `🔍 User from token:`,
-      req.user ? { username: req.user.username, studentId: req.user.studentId } : 'null'
-    );
+    console.log(`🔍 Local-week UTC window: ${startUtc.toISOString()} → ${endUtc.toISOString()} (zone ${zoneLabel})`);
+    console.log(`🔍 Legacy date fallback range: ${week} to ${endDateString} (exclusive)`);
 
+    const { cancelledStatusValues } = require('./utils/bookingStatus');
     const bookings = await Booking.find({
       studentId: { $in: uniqueIdentifiers },
-      date: { $gte: week, $lt: endDateString },
-      status: { $ne: 'cancelled' },
+      status: { $nin: cancelledStatusValues() },
+      $or: [
+        { dateTimeUtc: { $gte: startUtc, $lt: endUtc } },
+        // Legacy rows without dateTimeUtc: fall back to stored UTC date strings
+        {
+          $and: [
+            { $or: [{ dateTimeUtc: null }, { dateTimeUtc: { $exists: false } }] },
+            { date: { $gte: week, $lt: endDateString } },
+          ],
+        },
+      ],
     }).lean();
 
     console.log(`🔍 Raw bookings query result count: ${bookings.length}`);
@@ -788,32 +836,29 @@ router.get('/bookings', verifyToken, requireStudent, async (req, res) => {
       uniqueIdentifiers
     );
 
-    console.log(`✅ Found ${bookingsWithTeacherInfo.length} bookings for student ${studentIdentifierForLog} in week ${week}`);
-    console.log(
-      '🔍 Bookings found:',
-      bookingsWithTeacherInfo.map((b) => ({
-        id: b._id,
-        date: b.date,
-        time: b.time,
-        studentId: b.studentId,
-        teacherId: b.teacherId,
-      }))
-    );
+    const payload = bookingsWithTeacherInfo.map((b) => {
+      const startTime =
+        b.dateTimeUtc instanceof Date
+          ? b.dateTimeUtc.toISOString()
+          : b.dateTimeUtc
+            ? new Date(b.dateTimeUtc).toISOString()
+            : null;
+      return { ...b, startTime };
+    });
 
-    res.json({ bookings: bookingsWithTeacherInfo });
+    console.log(`✅ Found ${payload.length} bookings for student ${studentIdentifierForLog} in week ${week}`);
+
+    res.json({ bookings: payload, week, timezoneOffset: timezoneOffset ?? null, tz: tz || zoneLabel });
   } catch (err) {
     console.error('❌ Error fetching student bookings:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-/** Maps DB / UI level strings to progress sidebar keys: nursery | kinder | prep */
+/** Maps DB / UI level strings to progress sidebar keys (canonical growth levels). */
 function normalizeProgressLevel(raw) {
-  const s = String(raw || '').toLowerCase();
-  if (s.includes('nursery')) return 'nursery';
-  if (s.includes('kinder')) return 'kinder';
-  if (s.includes('prep') || s.includes('preparatory')) return 'prep';
-  return null;
+  const { normalizeCurriculumLevel } = require('./config/curriculumLevels');
+  return normalizeCurriculumLevel(raw);
 }
 
 /** Parse "Batch X" / "Lesson Y" from stored booking title; or linear lesson index 1–220. */
@@ -853,7 +898,7 @@ function isBookingLessonCompleted(b) {
 
 /**
  * All non-cancelled bookings → completed lesson keys for the progress sidebar
- * (3 levels × 10 batches × 22 lessons). Keys: "nursery:1:1" … "prep:10:22".
+ * (4 levels × 10 batches × 22 lessons). Keys: "Little Seeds (Age 3):1:1" … "Young Stewards (Age 6):10:22".
  */
 router.get('/lesson-progress', verifyToken, requireStudent, async (req, res) => {
   try {
@@ -862,9 +907,10 @@ router.get('/lesson-progress', verifyToken, requireStudent, async (req, res) => 
       return res.status(400).json({ error: 'Student identifier missing' });
     }
 
+    const { cancelledStatusValues } = require('./utils/bookingStatus');
     const bookings = await Booking.find({
       studentId: { $in: uniqueIdentifiers },
-      status: { $ne: 'cancelled' },
+      status: { $nin: cancelledStatusValues() },
     })
       .select('lesson studentLevel status attendance lessonId classroomId')
       .lean();
@@ -925,7 +971,7 @@ router.get('/lesson-progress', verifyToken, requireStudent, async (req, res) => 
     res.json({
       success: true,
       completedKeys: [...completedKeys],
-      levels: ['nursery', 'kinder', 'prep'],
+      levels: require('./config/curriculumLevels').CURRICULUM_LEVELS,
       batchesPerLevel: 10,
       lessonsPerBatch: 22,
     });
@@ -935,16 +981,18 @@ router.get('/lesson-progress', verifyToken, requireStudent, async (req, res) => 
   }
 });
 
-// Get student notifications
+// Get student notifications (last 31 days only)
 router.get('/notifications', verifyToken, requireStudent, async (req, res) => {
   try {
     const studentUsername = req.user.username;
-    
-    // Get notifications for the student from database
-    const notifications = await StudentNotification.find({ studentId: studentUsername })
+    const cutoff = new Date(Date.now() - 31 * 24 * 60 * 60 * 1000);
+    const notifications = await StudentNotification.find({
+      studentId: studentUsername,
+      createdAt: { $gte: cutoff },
+    })
       .sort({ createdAt: -1 })
-      .limit(50); // Limit to 50 most recent notifications
-    
+      .limit(50);
+
     res.json({
       success: true,
       notifications
@@ -1392,28 +1440,46 @@ router.post('/confirm-payment', async (req, res) => {
         creditsToAdd = 0;
     }
     if (creditsToAdd > 0) {
-      const newBalance = (student.creditBalance || 0) + creditsToAdd;
-      student.creditBalance = newBalance;
-      student.totalCreditsEarned = (student.totalCreditsEarned || 0) + creditsToAdd;
-      student.totalLessonsPurchased = (student.totalLessonsPurchased || 0) + creditsToAdd;
-      student.learningJourneyPurchasedByLevel = student.learningJourneyPurchasedByLevel || {};
-      ['nursery', 'kinder', 'prep'].forEach(function (k) {
-        student.learningJourneyPurchasedByLevel[k] =
-          (student.learningJourneyPurchasedByLevel[k] || 0) + creditsToAdd;
+      const nowCredits = new Date();
+      const levels = require('./config/curriculumLevels').CURRICULUM_LEVELS;
+      const incDoc = {
+        creditBalance: creditsToAdd,
+        totalCreditsEarned: creditsToAdd,
+        totalLessonsPurchased: creditsToAdd,
+      };
+      levels.forEach(function (k) {
+        incDoc['learningJourneyPurchasedByLevel.' + k] = creditsToAdd;
       });
-      student.creditTransactions = student.creditTransactions || [];
-      student.creditTransactions.push({
-        date: new Date(),
-        type: 'purchase',
-        plan: planLabel,
-        description: `Subscription purchase (${planLabel})`,
-        credits: creditsToAdd,
-        balanceAfter: newBalance,
-        amountPaid: priceNumber
-      });
+      await student.save();
+      await Student.updateOne(
+        { _id: student._id },
+        {
+          $inc: incDoc,
+          $push: {
+            creditTransactions: {
+              date: nowCredits,
+              type: 'purchase',
+              plan: planLabel,
+              description: `Subscription purchase (${planLabel})`,
+              credits: creditsToAdd,
+              balanceAfter: null,
+              amountPaid: priceNumber,
+            },
+            creditHistory: {
+              date: nowCredits,
+              plan: planLabel,
+              credits: creditsToAdd,
+              amountPaid: priceNumber,
+              paymentId: String(reference || '').trim() || '',
+              entryType: 'purchase',
+              balanceAfter: null,
+            },
+          },
+        }
+      );
+    } else {
+      await student.save();
     }
-
-    await student.save();
 
     // Send subscription confirmation email (best-effort)
     let emailStatus = { attempted: true, success: false, fallback: false };
@@ -2367,43 +2433,9 @@ router.get('/peer-chats', verifyToken, requireStudent, async (req, res) => {
   }
 });
 
-/** Search teachers — runs only when the student types a query (min 2 chars). */
+/** Contact search disabled — students cannot start DMs with teachers. */
 router.get('/peer-chats/user-search', verifyToken, requireStudent, async (req, res) => {
-  try {
-    const q = String(req.query.q || '').trim();
-    if (q.length < 2) {
-      return res.json({ success: true, users: [] });
-    }
-    const esc = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const teachers = await Teacher.find({
-      $or: [
-        { teacherId: { $regex: esc, $options: 'i' } },
-        { username: { $regex: esc, $options: 'i' } },
-        { fullname: { $regex: esc, $options: 'i' } },
-        { firstName: { $regex: esc, $options: 'i' } },
-        { lastName: { $regex: esc, $options: 'i' } },
-        { email: { $regex: esc, $options: 'i' } },
-      ],
-    })
-      .select('teacherId fullname firstName lastName profilePicture username')
-      .limit(25)
-      .lean();
-
-    const users = teachers.map((t) => ({
-      peerId: t.teacherId,
-      name:
-        t.fullname ||
-        `${t.firstName || ''} ${t.lastName || ''}`.trim() ||
-        t.username ||
-        t.teacherId,
-      profilePicture: t.profilePicture || null,
-    }));
-
-    res.json({ success: true, users });
-  } catch (err) {
-    console.error('student peer-chats user-search:', err);
-    res.status(500).json({ success: false, error: 'Search failed' });
-  }
+  res.json({ success: true, users: [] });
 });
 
 router.get('/peer-messages/:peerId', verifyToken, requireStudent, async (req, res) => {
@@ -2433,66 +2465,10 @@ router.get('/peer-messages/:peerId', verifyToken, requireStudent, async (req, re
 });
 
 router.post('/peer-message', verifyToken, requireStudent, async (req, res) => {
-  try {
-    const senderId = studentPeerCanonicalId(req);
-    if (!senderId) return res.status(400).json({ success: false, error: 'Missing user identity' });
-    const { recipientId, message } = req.body;
-    if (!recipientId || !message || !message.trim()) {
-      return res.status(400).json({ success: false, error: 'Recipient and message are required' });
-    }
-    const teacher = await Teacher.findOne({ teacherId: String(recipientId).trim() }).lean();
-    if (!teacher) {
-      return res.status(400).json({ success: false, error: 'Invalid teacher recipient' });
-    }
-
-    const stu = await Student.findOne({
-      $or: [
-        { username: req.user.username },
-        { username: senderId },
-        ...(req.user.studentId ? [{ studentId: req.user.studentId }] : []),
-      ],
-    })
-      .select('firstName lastName username')
-      .lean();
-    const senderName =
-      [stu?.firstName, stu?.lastName].filter(Boolean).join(' ').trim() ||
-      stu?.username ||
-      senderId;
-
-    const savedMessage = await PeerMessage.create({
-      senderId,
-      recipientId: String(recipientId).trim(),
-      message: message.trim(),
-    });
-
-    await Notification.create({
-      teacherId: String(recipientId).trim(),
-      type: 'peer-message',
-      message: `${senderName}: ${message.trim()}`,
-      senderId,
-      read: false,
-    });
-
-    const payload = {
-      id: savedMessage._id.toString(),
-      senderId,
-      recipientId: String(recipientId).trim(),
-      message: savedMessage.message,
-      createdAt: savedMessage.createdAt,
-      readAt: savedMessage.readAt || null,
-    };
-    const io = realtime.getIo();
-    if (io) {
-      io.to(`teacher-msg:${payload.recipientId}`).emit('peer-message:new', payload);
-      io.to(`teacher-msg:${senderId}`).emit('peer-message:new', payload);
-      io.to(`student-msg:${payload.recipientId}`).emit('peer-message:new', payload);
-      io.to(`student-msg:${senderId}`).emit('peer-message:new', payload);
-    }
-    res.json({ success: true, message: 'Message sent successfully', peerMessage: payload });
-  } catch (err) {
-    console.error('student peer-message:', err);
-    res.status(500).json({ success: false, error: 'Failed to send message' });
-  }
+  return res.status(403).json({
+    success: false,
+    error: 'Direct messaging between teachers and students is disabled.',
+  });
 });
 
 /** Library videos uploaded by admins — watchable in live classroom (student token). */

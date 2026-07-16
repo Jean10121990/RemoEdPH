@@ -9,6 +9,7 @@
     <title>HR Hub - RemoEdPH Admin</title>
     <link rel="stylesheet" href="modern-styles.css">
     <link rel="stylesheet" href="css/teacher-sidebar.css">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="css/admin-hub-shell.css">
 </head>
@@ -16,18 +17,21 @@
     <div class="remoed-main">
         <div id="admin-sidebar-root"></div>
         <script src="js/admin-session.js"></script>
+        <script src="js/admin-page-header.js"></script>
         <script src="js/admin-sidebar.js"></script>
         <script src="js/admin-hub-guard.js" data-hub="hr"></script>
         <script>AdminSidebar.render('admin-sidebar-root', 'hr-hub');</script>
         <div class="remoed-content">
             <div class="remoed-section">
                 <div class="remoed-section-title">HR Hub</div>
-                <p class="muted" style="margin-top:0;margin-bottom:16px;">Users, teacher assessments, and hiring pipeline in one place.</p>
+                <p class="muted" style="margin-top:0;margin-bottom:16px;">Users, teacher assessments, <strong>Teacher Pipeline</strong>, Teacher Training (PPT materials), and teacher schedule in one place.</p>
 
                 <div class="hub-tabs" role="tablist" aria-label="HR Hub sections">
                     <button type="button" class="hub-tab hub-tab--active" role="tab" id="hr-tab-users" aria-selected="true" aria-controls="hr-panel-users">User Management</button>
                     <button type="button" class="hub-tab" role="tab" id="hr-tab-assessments" aria-selected="false" aria-controls="hr-panel-assessments">Teacher Assessments</button>
                     <button type="button" class="hub-tab" role="tab" id="hr-tab-pipeline" aria-selected="false" aria-controls="hr-panel-pipeline">Teacher Pipeline</button>
+                    <button type="button" class="hub-tab" role="tab" id="hr-tab-training" aria-selected="false" aria-controls="hr-panel-training">Teacher Training</button>
+                    <button type="button" class="hub-tab" role="tab" id="hr-tab-schedule" aria-selected="false" aria-controls="hr-panel-schedule">Teacher Schedule</button>
                 </div>
 
                 <div id="hr-panel-users" class="hub-panel" role="tabpanel" aria-labelledby="hr-tab-users">
@@ -39,15 +43,23 @@
                 <div id="hr-panel-pipeline" class="hub-panel" role="tabpanel" aria-labelledby="hr-tab-pipeline" hidden>
                     <iframe id="iframe-hr-pipeline" class="hub-iframe" title="Teacher Pipeline"></iframe>
                 </div>
+                <div id="hr-panel-training" class="hub-panel" role="tabpanel" aria-labelledby="hr-tab-training" hidden>
+                    <iframe id="iframe-hr-training" class="hub-iframe" title="Teacher Training"></iframe>
+                </div>
+                <div id="hr-panel-schedule" class="hub-panel" role="tabpanel" aria-labelledby="hr-tab-schedule" hidden>
+                    <iframe id="iframe-hr-schedule" class="hub-iframe" title="Teacher Schedule"></iframe>
+                </div>
             </div>
         </div>
     </div>
     <script>
         (function () {
             var IFRAMES = {
-                users: { id: 'iframe-hr-users', src: '/admin/admin-users.html?adminEmbed=1&embedVer=2' },
-                assessments: { id: 'iframe-hr-assessments', src: '/admin/admin-teacher-assessments.html?adminEmbed=1&embedVer=2' },
-                pipeline: { id: 'iframe-hr-pipeline', src: '/admin/admin-teacher-pipeline.html?adminEmbed=1&embedVer=2' }
+                users: { id: 'iframe-hr-users', src: '/admin/admin-users.html?adminEmbed=1&embedVer=7' },
+                assessments: { id: 'iframe-hr-assessments', src: '/admin/admin-teacher-assessments.html?adminEmbed=1&embedVer=5' },
+                pipeline: { id: 'iframe-hr-pipeline', src: '/admin/admin-teacher-pipeline.html?adminEmbed=1&embedVer=5' },
+                training: { id: 'iframe-hr-training', src: '/admin/admin-teacher-training.html?adminEmbed=1&embedVer=7' },
+                schedule: { id: 'iframe-hr-schedule', src: '/admin/admin-teacher-schedule.html?adminEmbed=1&embedVer=5' }
             };
 
             function checkAuth() {
@@ -79,7 +91,7 @@
 
             function setHash(tab) {
                 try {
-                    var h = tab === 'assessments' ? '#assessments' : tab === 'pipeline' ? '#pipeline' : '#users';
+                    var h = tab === 'assessments' ? '#assessments' : tab === 'pipeline' ? '#pipeline' : tab === 'training' ? '#training' : tab === 'schedule' ? '#schedule' : '#users';
                     if (window.location.hash !== h) {
                         history.replaceState(null, '', 'admin-hr-hub.html' + h);
                     }
@@ -90,7 +102,9 @@
                 var map = [
                     { key: 'users', t: 'hr-tab-users', p: 'hr-panel-users' },
                     { key: 'assessments', t: 'hr-tab-assessments', p: 'hr-panel-assessments' },
-                    { key: 'pipeline', t: 'hr-tab-pipeline', p: 'hr-panel-pipeline' }
+                    { key: 'pipeline', t: 'hr-tab-pipeline', p: 'hr-panel-pipeline' },
+                    { key: 'training', t: 'hr-tab-training', p: 'hr-panel-training' },
+                    { key: 'schedule', t: 'hr-tab-schedule', p: 'hr-panel-schedule' }
                 ];
                 map.forEach(function (row) {
                     var on = row.key === tab;
@@ -108,13 +122,21 @@
 
             document.addEventListener('DOMContentLoaded', function () {
                 if (!checkAuth()) return;
-                document.getElementById('hr-tab-users').addEventListener('click', function () { showTab('users'); });
-                document.getElementById('hr-tab-assessments').addEventListener('click', function () { showTab('assessments'); });
-                document.getElementById('hr-tab-pipeline').addEventListener('click', function () { showTab('pipeline'); });
+                function bindTab(id, key) {
+                    var el = document.getElementById(id);
+                    if (el) el.addEventListener('click', function () { showTab(key); });
+                }
+                bindTab('hr-tab-users', 'users');
+                bindTab('hr-tab-assessments', 'assessments');
+                bindTab('hr-tab-pipeline', 'pipeline');
+                bindTab('hr-tab-training', 'training');
+                bindTab('hr-tab-schedule', 'schedule');
                 function applyHash() {
                     var h = window.location.hash;
                     if (h === '#assessments') showTab('assessments');
                     else if (h === '#pipeline') showTab('pipeline');
+                    else if (h === '#training') showTab('training');
+                    else if (h === '#schedule') showTab('schedule');
                     else showTab('users');
                 }
                 applyHash();

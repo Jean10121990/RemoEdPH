@@ -10,6 +10,7 @@
   <script src="js/admin-embed-init.js"></script>
   <title>TeacherPipeline - Admin</title>
   <link rel="stylesheet" href="css/teacher-sidebar.css" />
+    <link rel="stylesheet" href="css/portal-chrome-compact.css">
     <link rel="stylesheet" href="style.css">
   <style>
     .page-admin-teacher-pipeline .action-btns { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
@@ -77,10 +78,6 @@
           <div class="muted">Text answers</div>
           <div id="answer-text" class="answers" style="margin-top: 8px;">No text answers.</div>
         </div>
-        <div class="panel">
-          <div class="muted">Video answer URLs</div>
-          <div id="answer-videos" class="video-list" style="margin-top: 8px;"></div>
-        </div>
       </div>
       <div class="actions">
         <button class="btn btn-fail" id="modal-fail">Fail</button>
@@ -106,7 +103,6 @@
     const demoVideo = document.getElementById('demo-video');
     const demoVideoLink = document.getElementById('demo-video-link');
     const answerText = document.getElementById('answer-text');
-    const answerVideos = document.getElementById('answer-videos');
     const applicantContact = document.getElementById('applicant-contact');
     const passBtn = document.getElementById('modal-pass');
     const failBtn = document.getElementById('modal-fail');
@@ -168,7 +164,7 @@
         const data = await api('/api/admin/teacher-pipeline/applicants');
         const rows = data.applicants || [];
         if (!rows.length) {
-          bodyEl.innerHTML = '<tr><td colspan="7" class="muted" style="padding: 18px;">No applicants found.</td></tr>';
+          bodyEl.innerHTML = '<tr><td colspan="7" class="muted" style="padding: 18px;">No pending applicants at this time.</td></tr>';
           return;
         }
         bodyEl.innerHTML = rows.map((a) => {
@@ -252,11 +248,6 @@
         const txt = applicant?.testAnswers?.text || '';
         answerText.textContent = txt || 'No text answers.';
 
-        const vids = Array.isArray(applicant?.testAnswers?.videoUrls) ? applicant.testAnswers.videoUrls : [];
-        answerVideos.innerHTML = vids.length
-          ? vids.map((url, idx) => `<a href="${url}" target="_blank" rel="noopener">Video Answer ${idx + 1}</a>`).join('')
-          : '<span class="muted">No video answer URLs.</span>';
-
         const stModal = String(applicant.currentStage || '').toLowerCase();
         const terminal = stModal === 'passed' || stModal === 'failed';
         passBtn.style.display = terminal ? 'none' : '';
@@ -270,27 +261,31 @@
 
     async function passApplicantById(applicantId, displayName, options = {}) {
       const label = displayName && displayName !== applicantId ? displayName : 'this applicant';
-      if (!options.skipConfirm && !confirm(`Pass ${label}? An onboarding email with the sign-up link will be sent.`)) return;
+      if (!options.skipConfirm && !confirm(`Pass ${label}? An onboarding email with the sign-up link will be sent.`)) return false;
       try {
         const result = await api(`/api/admin/teacher-pipeline/applicants/${applicantId}/pass`, { method: 'POST' });
         const info = result.emailResult?.success ? 'Invitation email sent.' : `Email issue: ${result.emailResult?.error || 'unknown'}`;
         alert(`Applicant passed. ${info}`);
         await loadApplicants();
+        return true;
       } catch (error) {
         alert(error.message);
+        return false;
       }
     }
 
     async function failApplicantById(applicantId, displayName, options = {}) {
       const label = displayName && displayName !== applicantId ? displayName : 'this applicant';
-      if (!options.skipConfirm && !confirm(`Fail ${label}? They will be emailed and may re-apply after 3 months.`)) return;
+      if (!options.skipConfirm && !confirm(`Fail ${label}? They will be emailed and may re-apply after 3 months.`)) return false;
       try {
         const result = await api(`/api/admin/teacher-pipeline/applicants/${applicantId}/fail`, { method: 'POST' });
         const info = result.emailResult?.success ? 'Notification email sent.' : `Email issue: ${result.emailResult?.error || 'unknown'}`;
         alert(`Applicant marked as failed. ${info}`);
         await loadApplicants();
+        return true;
       } catch (error) {
         alert(error.message);
+        return false;
       }
     }
 
@@ -298,10 +293,8 @@
       if (!selectedApplicantId) return;
       passBtn.disabled = true;
       try {
-        await passApplicantById(selectedApplicantId, modalName.textContent.replace(/^Review:\s*/, ''), {
-          skipConfirm: true
-        });
-        closeModal();
+        const ok = await passApplicantById(selectedApplicantId, modalName.textContent.replace(/^Review:\s*/, ''));
+        if (ok) closeModal();
       } finally {
         passBtn.disabled = false;
       }
@@ -311,10 +304,8 @@
       if (!selectedApplicantId) return;
       failBtn.disabled = true;
       try {
-        await failApplicantById(selectedApplicantId, modalName.textContent.replace(/^Review:\s*/, ''), {
-          skipConfirm: true
-        });
-        closeModal();
+        const ok = await failApplicantById(selectedApplicantId, modalName.textContent.replace(/^Review:\s*/, ''));
+        if (ok) closeModal();
       } finally {
         failBtn.disabled = false;
       }
@@ -326,7 +317,6 @@
       demoVideo.pause();
       demoVideo.src = '';
       answerText.textContent = '';
-      answerVideos.innerHTML = '';
       passBtn.style.display = '';
       failBtn.style.display = '';
     }

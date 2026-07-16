@@ -9,6 +9,7 @@
     <title>Messages - Student - RemoEdPH</title>
     <link rel="stylesheet" href="modern-styles.css">
     <link rel="stylesheet" href="css/teacher-sidebar.css">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css">
     <link rel="stylesheet" href="css/global-portal.css">
     <link rel="stylesheet" href="css/student-portal-layout.css">
     <link rel="stylesheet" href="css/student-sidebar.css">
@@ -19,23 +20,29 @@
     <div class="remoed-main">
         <div id="student-sidebar-root"></div>
         <script src="js/student-sidebar.js"></script>
-        <script>StudentSidebar.render('student-sidebar-root', 'messages');</script>
+        <script src="js/student-page-header.js"></script>
+        <script>
+            StudentSidebar.render('student-sidebar-root', 'messages');
+            StudentPageHeader.render('messages');
+        </script>
 
         <main class="remoed-content">
             <div class="messenger" id="messenger">
                 <aside class="chat-list">
                     <div class="chat-list-header">
                         <div class="chat-list-header-text">
-                            <h1>Messages</h1>
-                            <p class="chat-list-subtitle">Recent chats</p>
+                            <p class="chat-list-subtitle" style="margin:0;">Recent chats</p>
                         </div>
                     </div>
                     <div class="chat-search">
                         <input id="chat-filter" type="search" placeholder="Filter recent chats…" autocomplete="off" />
                     </div>
-                    <div class="chat-search" style="margin-top:8px;">
-                        <input id="user-search" type="search" placeholder="Search teachers by name…" autocomplete="off" />
+                    <div class="chat-search" style="margin-top:8px;display:none;" aria-hidden="true">
+                        <input id="user-search" type="search" disabled placeholder="Search disabled" autocomplete="off" />
                     </div>
+                    <p class="chat-list-subtitle" style="margin:8px 12px 0;font-size:12px;color:#64748b;line-height:1.4;">
+                        Direct messaging with teachers is disabled. You can still view past chats below.
+                    </p>
                     <div class="chat-items" id="chat-items">
                         <div style="padding:16px;color:#64748b;">Loading chats...</div>
                     </div>
@@ -307,7 +314,8 @@
                 const initial = (peer.name || 'T')[0].toUpperCase();
                 const img = normalizeImg(peer.profilePicture);
                 paneAvatarEl.innerHTML = img ? `<img src="${img}" alt="${esc(peer.name)}">` : initial;
-                composerEl.style.display = '';
+                composerEl.style.display = 'none';
+                paneSubEl.textContent = 'Messaging with teachers is disabled';
                 messengerEl.classList.add('show-chat');
                 renderChatList();
 

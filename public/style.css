@@ -818,7 +818,7 @@ body.page-admin-classroom-recordings{ font-family: 'Segoe UI', Tahoma, Geneva, V
 
 /* --- Source: public/admin-issue-management.html --- */
 body.page-admin-issue-management{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f6fbff; }.page-admin-issue-management .remoed-main{ display: flex; min-height: calc(100vh - 70px); }.page-admin-issue-management .remoed-sidebar{ width: 220px; background: #fff; box-shadow: 2px 0 8px rgba(0,0,0,0.05); padding: 32px 0 0 0; display: flex; flex-direction: column; }.page-admin-issue-management .remoed-logo{ display: flex; align-items: center; gap: 14px; }.page-admin-issue-management .remoed-logo img{ height: 48px; }.page-admin-issue-management .remoed-title{ font-size: 1.7rem; font-weight: 700; color: #667eea; letter-spacing: 1px; }.page-admin-issue-management .remoed-user{ display: flex; align-items: center; gap: 10px; }.page-admin-issue-management .remoed-avatar{ width: 72px; height: 72px; border-radius: 50%; background: #667eea; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 2.2rem; }.page-admin-issue-management .remoed-username{ color: #667eea; font-weight: 600; }.page-admin-issue-management .remoed-menu{ list-style: none; padding: 0; margin: 0; }.page-admin-issue-management .remoed-menu li{ padding: 14px 32px; color: #667eea; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 12px; border-left: 4px solid transparent; transition: all 0.2s; }.page-admin-issue-management .remoed-menu li.active, .page-admin-issue-management .remoed-menu li:hover{ background: linear-gradient(90deg, #667eea 0%, #5a67d8 100%); border-left: 4px solid #667eea; color: white; transform: translateX(4px); }.page-admin-issue-management .remoed-menu svg{ width: 20px; height: 20px; }.page-admin-issue-management .remoed-content{ flex: 1; padding: 12px 16px; }.page-admin-issue-management .remoed-section{ background: #fff; border-radius: 12px; box-shadow: 0 4px 24px rgba(28,167,231,0.07); padding: 12px; margin-bottom: 12px; }.page-admin-issue-management .remoed-section-title{ font-size: 1rem; font-weight: 700; color: #1ca7e7; margin-bottom: 10px; letter-spacing: 0.5px; }.page-admin-issue-management /* Issue Management Styles */
-        .issue-filters{ display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }.page-admin-issue-management .filter-group{ display: flex; flex-direction: column; gap: 4px; }.page-admin-issue-management .filter-group label{ font-size: 0.8rem; font-weight: 600; color: #374151; }.page-admin-issue-management .filter-group select, .page-admin-issue-management .filter-group input{ padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.8rem; }.page-admin-issue-management .issue-card{ background: #f8f9fa; border-radius: 8px; padding: 10px; margin-bottom: 8px; border-left: 4px solid #1ca7e7; }.page-admin-issue-management .issue-header{ display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }.page-admin-issue-management .issue-title{ font-size: 0.95rem; font-weight: 600; color: #1ca7e7; }.page-admin-issue-management .issue-status{ padding: 3px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }.page-admin-issue-management .status-pending{ background: #fef3c7; color: #92400e; }.page-admin-issue-management .status-reviewed{ background: #dbeafe; color: #1e40af; }.page-admin-issue-management .status-resolved{ background: #d1fae5; color: #065f46; }.page-admin-issue-management .status-dismissed{ background: #fee2e2; color: #991b1b; }.page-admin-issue-management .issue-details{ display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }.page-admin-issue-management .issue-detail{ display: flex; flex-direction: column; gap: 4px; }.page-admin-issue-management .issue-detail label{ font-size: 0.75rem; font-weight: 600; color: #6b7280; }.page-admin-issue-management .issue-detail span{ font-size: 0.8rem; color: #374151; }.page-admin-issue-management .issue-description{ background: #fff; padding: 8px; border-radius: 6px; margin-bottom: 8px; border: 1px solid #e5e7eb; }.page-admin-issue-management .issue-description h4{ margin: 0 0 6px 0; font-size: 0.8rem; color: #374151; }.page-admin-issue-management .issue-description p{ margin: 0; font-size: 0.8rem; color: #6b7280; line-height: 1.3; }.page-admin-issue-management .issue-actions{ display: flex; gap: 6px; flex-wrap: wrap; }.page-admin-issue-management .btn{ padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.75rem; transition: all 0.2s; }.page-admin-issue-management .btn-primary{ background: #1ca7e7; color: #fff; }.page-admin-issue-management .btn-primary:hover{ background: #168fc1; }.page-admin-issue-management .btn-success{ background: #10b981; color: #fff; }.page-admin-issue-management .btn-success:hover{ background: #059669; }.page-admin-issue-management .btn-warning{ background: #f59e0b; color: #fff; }.page-admin-issue-management .btn-warning:hover{ background: #d97706; }.page-admin-issue-management .btn-danger{ background: #ef4444; color: #fff; }.page-admin-issue-management .btn-danger:hover{ background: #dc2626; }.page-admin-issue-management .btn-secondary{ background: #6b7280; color: #fff; }.page-admin-issue-management .btn-secondary:hover{ background: #4b5563; }.page-admin-issue-management .screenshot-preview{ max-width: 200px; max-height: 150px; border-radius: 6px; border: 1px solid #d1d5db; }.page-admin-issue-management .review-modal{ display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }.page-admin-issue-management .review-modal-content{ background-color: #fff; margin: 2% auto; padding: 16px; border-radius: 8px; width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto; }.page-admin-issue-management .review-modal-header{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }.page-admin-issue-management .review-modal-header h2{ margin: 0; color: #1ca7e7; font-size: 1.1rem; }.page-admin-issue-management .close{ color: #aaa; font-size: 24px; font-weight: bold; cursor: pointer; }.page-admin-issue-management .close:hover{ color: #000; }.page-admin-issue-management .review-form{ display: flex; flex-direction: column; gap: 10px; }.page-admin-issue-management .form-group{ display: flex; flex-direction: column; gap: 4px; }.page-admin-issue-management .form-group label{ font-weight: 600; color: #374151; font-size: 0.85rem; }.page-admin-issue-management .form-group select, .page-admin-issue-management .form-group textarea{ padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.85rem; }.page-admin-issue-management .form-group textarea{ resize: vertical; min-height: 80px; }.page-admin-issue-management .validity-badge{ padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: 600; }.page-admin-issue-management .validity-valid{ background: #d1fae5; color: #065f46; }.page-admin-issue-management .validity-invalid{ background: #fee2e2; color: #991b1b; }.page-admin-issue-management .validity-pending{ background: #fef3c7; color: #92400e; }.page-admin-issue-management .reschedule-info{ background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 6px; padding: 10px; margin-top: 10px; }.page-admin-issue-management .reschedule-info h4{ margin: 0 0 5px 0; font-size: 0.9rem; color: #0c4a6e; }.page-admin-issue-management .reschedule-info p{ margin: 0; font-size: 0.8rem; color: #0369a1; }.page-admin-issue-management .resolution-options{ display: flex; flex-direction: column; gap: 10px; }.page-admin-issue-management .resolution-option{ display: flex; align-items: flex-start; gap: 10px; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; transition: all 0.2s; }.page-admin-issue-management .resolution-option:hover{ border-color: #1ca7e7; background: #f8f9fa; }.page-admin-issue-management .resolution-option input[type="radio"]{ margin-top: 2px; }.page-admin-issue-management .resolution-option input[type="radio"]:checked + .option-text{ color: #1ca7e7; }.page-admin-issue-management .resolution-option:has(input[type="radio"]:checked){ border-color: #1ca7e7; background: #eaf7ff; }.page-admin-issue-management .option-text{ flex: 1; }.page-admin-issue-management .option-text strong{ display: block; margin-bottom: 4px; }.page-admin-issue-management .option-text small{ color: #6b7280; }@media (max-width: 900px){.page-admin-issue-management .remoed-main{ flex-direction: column; }.page-admin-issue-management .remoed-sidebar{ width: 100%; flex-direction: row; box-shadow: none; border-bottom: 1px solid #e0e6ed; }.page-admin-issue-management .remoed-menu li{ padding: 12px 10px; font-size: 0.97rem; }.page-admin-issue-management .remoed-content{ padding: 18px 6px; }.page-admin-issue-management .issue-details{ grid-template-columns: 1fr; }.page-admin-issue-management .issue-actions{ flex-direction: column; }
+        .issue-filters{ display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; position: sticky; top: 0; z-index: 5; background: #fff; padding: 10px 0 12px; border-bottom: 1px solid #e5e7eb; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06); }.page-admin-issue-management .filter-group{ display: flex; flex-direction: column; gap: 4px; }.page-admin-issue-management .filter-group label{ font-size: 0.8rem; font-weight: 600; color: #374151; }.page-admin-issue-management .filter-group select, .page-admin-issue-management .filter-group input{ padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.8rem; }.page-admin-issue-management .issue-card{ background: #f8f9fa; border-radius: 8px; padding: 10px; margin-bottom: 8px; border-left: 4px solid #1ca7e7; }.page-admin-issue-management .issue-header{ display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }.page-admin-issue-management .issue-title{ font-size: 0.95rem; font-weight: 600; color: #1ca7e7; }.page-admin-issue-management .issue-status{ padding: 3px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }.page-admin-issue-management .status-pending{ background: #fef3c7; color: #92400e; }.page-admin-issue-management .status-reviewed{ background: #dbeafe; color: #1e40af; }.page-admin-issue-management .status-resolved{ background: #d1fae5; color: #065f46; }.page-admin-issue-management .status-dismissed{ background: #fee2e2; color: #991b1b; }.page-admin-issue-management .issue-details{ display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }.page-admin-issue-management .issue-detail{ display: flex; flex-direction: column; gap: 4px; }.page-admin-issue-management .issue-detail label{ font-size: 0.75rem; font-weight: 600; color: #6b7280; }.page-admin-issue-management .issue-detail span{ font-size: 0.8rem; color: #374151; }.page-admin-issue-management .issue-description{ background: #fff; padding: 8px; border-radius: 6px; margin-bottom: 8px; border: 1px solid #e5e7eb; }.page-admin-issue-management .issue-description h4{ margin: 0 0 6px 0; font-size: 0.8rem; color: #374151; }.page-admin-issue-management .issue-description p{ margin: 0; font-size: 0.8rem; color: #6b7280; line-height: 1.3; }.page-admin-issue-management .issue-actions{ display: flex; gap: 6px; flex-wrap: wrap; }.page-admin-issue-management .btn{ padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.75rem; transition: all 0.2s; }.page-admin-issue-management .btn-primary{ background: #1ca7e7; color: #fff; }.page-admin-issue-management .btn-primary:hover{ background: #168fc1; }.page-admin-issue-management .btn-success{ background: #10b981; color: #fff; }.page-admin-issue-management .btn-success:hover{ background: #059669; }.page-admin-issue-management .btn-warning{ background: #f59e0b; color: #fff; }.page-admin-issue-management .btn-warning:hover{ background: #d97706; }.page-admin-issue-management .btn-danger{ background: #ef4444; color: #fff; }.page-admin-issue-management .btn-danger:hover{ background: #dc2626; }.page-admin-issue-management .btn-secondary{ background: #6b7280; color: #fff; }.page-admin-issue-management .btn-secondary:hover{ background: #4b5563; }.page-admin-issue-management .screenshot-preview{ max-width: 200px; max-height: 150px; border-radius: 6px; border: 1px solid #d1d5db; }.page-admin-issue-management .review-modal{ display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }.page-admin-issue-management .review-modal-content{ background-color: #fff; margin: 2% auto; padding: 16px; border-radius: 8px; width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto; }.page-admin-issue-management .review-modal-header{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }.page-admin-issue-management .review-modal-header h2{ margin: 0; color: #1ca7e7; font-size: 1.1rem; }.page-admin-issue-management .close{ color: #aaa; font-size: 24px; font-weight: bold; cursor: pointer; }.page-admin-issue-management .close:hover{ color: #000; }.page-admin-issue-management .review-form{ display: flex; flex-direction: column; gap: 10px; }.page-admin-issue-management .form-group{ display: flex; flex-direction: column; gap: 4px; }.page-admin-issue-management .form-group label{ font-weight: 600; color: #374151; font-size: 0.85rem; }.page-admin-issue-management .form-group select, .page-admin-issue-management .form-group textarea{ padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.85rem; }.page-admin-issue-management .form-group textarea{ resize: vertical; min-height: 80px; }.page-admin-issue-management .validity-badge{ padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: 600; }.page-admin-issue-management .validity-valid{ background: #d1fae5; color: #065f46; }.page-admin-issue-management .validity-invalid{ background: #fee2e2; color: #991b1b; }.page-admin-issue-management .validity-pending{ background: #fef3c7; color: #92400e; }.page-admin-issue-management .reschedule-info{ background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 6px; padding: 10px; margin-top: 10px; }.page-admin-issue-management .reschedule-info h4{ margin: 0 0 5px 0; font-size: 0.9rem; color: #0c4a6e; }.page-admin-issue-management .reschedule-info p{ margin: 0; font-size: 0.8rem; color: #0369a1; }.page-admin-issue-management .resolution-options{ display: flex; flex-direction: column; gap: 10px; }.page-admin-issue-management .resolution-option{ display: flex; align-items: flex-start; gap: 10px; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; transition: all 0.2s; }.page-admin-issue-management .resolution-option:hover{ border-color: #1ca7e7; background: #f8f9fa; }.page-admin-issue-management .resolution-option input[type="radio"]{ margin-top: 2px; }.page-admin-issue-management .resolution-option input[type="radio"]:checked + .option-text{ color: #1ca7e7; }.page-admin-issue-management .resolution-option:has(input[type="radio"]:checked){ border-color: #1ca7e7; background: #eaf7ff; }.page-admin-issue-management .option-text{ flex: 1; }.page-admin-issue-management .option-text strong{ display: block; margin-bottom: 4px; }.page-admin-issue-management .option-text small{ color: #6b7280; }@media (max-width: 900px){.page-admin-issue-management .remoed-main{ flex-direction: column; }.page-admin-issue-management .remoed-sidebar{ width: 100%; flex-direction: row; box-shadow: none; border-bottom: 1px solid #e0e6ed; }.page-admin-issue-management .remoed-menu li{ padding: 12px 10px; font-size: 0.97rem; }.page-admin-issue-management .remoed-content{ padding: 18px 6px; }.page-admin-issue-management .issue-details{ grid-template-columns: 1fr; }.page-admin-issue-management .issue-actions{ flex-direction: column; }
         }
 
 
@@ -1892,9 +1892,9 @@ body.page-device-check{
                 height: 240px;
             }
         }.page-device-check .device-title{ 
-            font-size: 1.5rem; 
+            font-size: 18px; 
             font-weight: 600; 
-            color: #333; 
+            color: #111827; 
             margin-bottom: 1.2rem; 
             text-align: left; 
         }.page-device-check .video-section{
@@ -5437,9 +5437,51 @@ body.page-student-class-table{
       color: #666;
       min-height: 40px;
     }.page-student-class-table .time-slot.booked{
-      background: #f8d7da;
-      color: #721c24;
-      font-weight: 600;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.08) 42%, transparent 70%),
+        linear-gradient(135deg, #fff59a 0%, #ffe85a 45%, #f6c800 100%) !important;
+      color: #0b5f8a !important;
+      font-weight: 700 !important;
+      border: 1px solid rgba(255,255,255,0.65) !important;
+      border-radius: 6px !important;
+      box-shadow:
+        0 2px 4px rgba(0,0,0,0.1),
+        inset 0 1px 2px rgba(255,255,255,0.4),
+        0 3px 0 rgba(212, 160, 0, 0.45),
+        0 6px 14px rgba(28, 167, 231, 0.28) !important;
+      cursor: pointer;
+      transition: transform 0.15s ease-in-out, box-shadow 0.15s ease-in-out, filter 0.15s ease-in-out;
+      display: flex !important;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 5px 6px;
+    }.page-student-class-table .time-slot.booked:hover{
+      transform: translateY(-2px) scale(1.02);
+      filter: brightness(1.08) saturate(1.08);
+    }.page-student-class-table .time-slot.booked:active{
+      transform: translateY(1px) scale(0.99);
+      filter: brightness(0.97);
+    }.page-student-class-table .remoed-slot-label-inner{
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      max-width: 100%;
+      line-height: 1.15;
+      pointer-events: none;
+    }.page-student-class-table .remoed-slot-enter-icon{
+      width: 12px;
+      height: 12px;
+      flex-shrink: 0;
+      fill: currentColor;
+      opacity: 0.9;
+    }.page-student-class-table .remoed-slot-label-text{
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 9.5em;
+      font-size: 0.78rem;
     }.page-student-class-table .time-slot.unavailable{
       background: #f5f5f5;
       color: #999;
@@ -5788,6 +5830,38 @@ body.page-student-class-table{
       gap: 0.75rem;
       justify-content: flex-end;
       background: #f8fafc;
+    }.page-student-class-table .remoed-btn{
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.65rem 1.25rem;
+      border: none;
+      border-radius: 0.5rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }.page-student-class-table .remoed-btn-primary{
+      background: linear-gradient(135deg, #667eea, #5a67d8);
+      color: white;
+    }.page-student-class-table .remoed-btn-primary:hover{
+      filter: brightness(1.05);
+      transform: translateY(-1px);
+    }.page-student-class-table .remoed-btn-secondary{
+      background: #6b7280;
+      color: white;
+    }.page-student-class-table .remoed-btn-secondary:hover{
+      background: #4b5563;
+    }.page-student-class-table .remoed-btn-danger{
+      background: linear-gradient(135deg, #dc3545, #c82333);
+      color: white;
+    }.page-student-class-table .remoed-btn-danger:hover{
+      filter: brightness(1.05);
+    }.page-student-class-table .remoed-btn-danger:disabled{
+      opacity: 0.55;
+      cursor: not-allowed;
+      filter: none;
     }.page-student-class-table /* Generic modal styles for class info / cancellation */
     .modal{
       display: none; /* Shown via JS */
@@ -6039,7 +6113,7 @@ body.page-student-credits{
       min-height:100vh;
       padding:24px 16px;
       color:#0f172a;
-    }.page-student-credits .shell{max-width:1040px;margin:0 auto;}.page-student-credits .header{
+    }.page-student-credits .shell{max-width:1200px;margin:0 auto;}.page-student-credits .header{
       display:flex;
       align-items:center;
       justify-content:space-between;
@@ -6068,12 +6142,19 @@ body.page-student-credits{
       font-size:.9rem;
     }.page-student-credits .grid{
       display:grid;
-      grid-template-columns:2fr 3fr;
-      gap:18px;
+      grid-template-columns:1fr 2fr;
+      gap:24px;
+    }.page-student-credits .credits-right{
+      display:flex;
+      flex-direction:column;
+      gap:24px;
+      min-width:0;
+    }.page-student-credits .credits-left{
+      min-width:0;
     }@media(max-width:900px){.page-student-credits .grid{grid-template-columns:1fr;}}.page-student-credits .card{
       background:rgba(255,255,255,.9);
       border-radius:18px;
-      padding:18px;
+      padding:24px;
       box-shadow:0 18px 40px rgba(15,23,42,.08);
       border:1px solid rgba(148,163,184,.3);
     }.page-student-credits .card h2{
@@ -6087,6 +6168,22 @@ body.page-student-credits{
       color:#0ea5e9;
       margin:4px 0;
       transition: color .2s ease;
+    }.page-student-credits .credits-progress-track{
+      margin:10px 0 6px;
+      height:10px;
+      border-radius:999px;
+      background:#e2e8f0;
+      overflow:hidden;
+    }.page-student-credits .credits-progress-fill{
+      height:100%;
+      width:0%;
+      border-radius:999px;
+      background:linear-gradient(90deg,#667eea,#1ca7e7);
+      transition:width .35s ease;
+    }.page-student-credits .credits-progress-caption{
+      margin:0 0 10px;
+      font-size:.9rem;
+      color:#64748b;
     }.page-student-credits .balance.balance-low{
       color:#dc2626;
     }.page-student-credits .muted{color:#64748b;font-size:.9rem;}.page-student-credits .stats{
@@ -6155,6 +6252,161 @@ body.page-student-credits{
       font-size:.75rem;
       font-weight:700;
     }.page-student-credits .badge.green{background:#ecfdf3;color:#15803d;}.page-student-credits .badge.yellow{background:#fffbeb;color:#92400e;}
+
+    .page-student-credits .checkout-order-card{
+      margin-top:0;
+      padding:24px;
+      background:linear-gradient(165deg,#ffffff 0%,#f0f9ff 55%,#e0f2fe 100%);
+      border:1px solid rgba(28,167,231,0.22);
+      border-radius:18px;
+      box-shadow:0 10px 28px rgba(15,23,42,0.08),0 2px 6px rgba(28,167,231,0.08);
+    }
+    .page-student-credits .checkout-order-header h3{
+      margin:0 0 0.35rem;
+      font-size:1.15rem;
+      color:#0f172a;
+      font-weight:800;
+    }
+    .page-student-credits .checkout-order-sub{margin:0 0 1rem;font-size:0.88rem;line-height:1.45;}
+    .page-student-credits .checkout-plan-picker{
+      display:flex;
+      flex-direction:column;
+      gap:0.4rem;
+      margin-bottom:1rem;
+    }
+    .page-student-credits .checkout-plan-picker label{
+      font-weight:700;
+      font-size:0.88rem;
+      color:#334155;
+    }
+    .page-student-credits .checkout-plan-picker select{
+      width:100%;
+      padding:12px 14px;
+      border-radius:12px;
+      border:1px solid #cbd5e1;
+      font-size:0.95rem;
+      background:#fff;
+      box-shadow:inset 0 1px 2px rgba(15,23,42,0.04);
+    }
+    .page-student-credits .checkout-breakdown{
+      background:#fff;
+      border-radius:14px;
+      padding:1rem 1.1rem;
+      border:1px solid #e2e8f0;
+      box-shadow:0 4px 14px rgba(15,23,42,0.05);
+      margin-bottom:1rem;
+    }
+    .page-student-credits .checkout-plan-title{
+      font-weight:800;
+      color:#0b5f8a;
+      margin-bottom:0.75rem;
+      font-size:1.02rem;
+    }
+    .page-student-credits .checkout-line{
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      font-size:0.92rem;
+      color:#334155;
+      padding:0.28rem 0;
+    }
+    .page-student-credits .checkout-line-discount{color:#047857;}
+    .page-student-credits .checkout-line-total{
+      margin-top:0.45rem;
+      padding-top:0.65rem;
+      border-top:1px dashed #cbd5e1;
+      font-weight:800;
+      font-size:1.05rem;
+      color:#0f172a;
+    }
+    .page-student-credits .checkout-php{
+      margin-top:0.35rem;
+      font-size:0.85rem;
+      color:#64748b;
+      text-align:right;
+    }
+    .page-student-credits .checkout-validity{
+      margin-top:0.55rem;
+      font-size:0.82rem;
+      font-weight:600;
+      color:#1CA7E7;
+    }
+    .page-student-credits .checkout-pay-btn{
+      width:100%;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+      padding:14px 18px;
+      border-radius:14px;
+      font-size:1rem;
+      font-weight:800;
+      box-shadow:0 6px 16px rgba(22,163,74,0.28);
+    }
+    .page-student-credits .checkout-lock-icon{flex-shrink:0;}
+    .page-student-credits .checkout-trust{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:6px;
+      margin:0.7rem 0 0.55rem;
+      font-size:0.82rem;
+      color:#475569;
+      font-weight:600;
+    }
+    .page-student-credits .checkout-trust svg{color:#16a34a;}
+    .page-student-credits .checkout-methods{
+      display:flex;
+      flex-wrap:wrap;
+      justify-content:center;
+      gap:8px;
+    }
+    .page-student-credits .checkout-method-pill{
+      display:inline-flex;
+      align-items:center;
+      padding:4px 10px;
+      border-radius:999px;
+      background:#fff;
+      border:1px solid #e2e8f0;
+      font-size:0.72rem;
+      font-weight:700;
+      color:#475569;
+      letter-spacing:0.02em;
+    }
+    .page-student-credits .checkout-status{margin:10px 0 0;font-size:0.85rem;}
+    .page-student-credits .payment-return-banner{
+      margin:0 0 1rem;
+      padding:1rem 1.15rem;
+      border-radius:16px;
+      display:flex;
+      gap:12px;
+      align-items:flex-start;
+      box-shadow:0 8px 22px rgba(15,23,42,0.08);
+    }
+    .page-student-credits .payment-return-success{
+      background:linear-gradient(135deg,#ecfdf5,#d1fae5);
+      border:1px solid #6ee7b7;
+      color:#065f46;
+    }
+    .page-student-credits .payment-return-cancelled{
+      background:#fff7ed;
+      border:1px solid #fdba74;
+      color:#9a3412;
+    }
+    .page-student-credits .payment-return-icon{
+      width:36px;height:36px;border-radius:50%;
+      background:#10b981;color:#fff;
+      display:flex;align-items:center;justify-content:center;
+      font-weight:800;flex-shrink:0;
+    }
+    .page-student-credits .payment-return-body{flex:1;min-width:0;}
+    .page-student-credits .payment-return-body strong{display:block;font-size:1.05rem;margin-bottom:0.25rem;}
+    .page-student-credits .payment-return-body p{margin:0.25rem 0;font-size:0.9rem;line-height:1.45;}
+    .page-student-credits .payment-return-amount{
+      margin-top:0.45rem;font-size:1.15rem;font-weight:800;color:#047857;
+    }
+    .page-student-credits .payment-return-amount span{font-size:0.85rem;font-weight:600;color:#059669;}
+    .page-student-credits .payment-return-secure{font-size:0.8rem !important;color:#047857;opacity:0.9;}
 
 
 /* --- Source: public/student-dashboard.html --- */
@@ -9683,11 +9935,11 @@ body.page-teacher-attendance-analysis{
       box-shadow: 0 2px 12px rgba(28, 167, 231, 0.08);
       border: 1px solid rgba(28, 167, 231, 0.1);
     }.page-teacher-class-table .remoed-header h1{
-      color: #667eea;
-      font-size: 1.5rem;
-      font-weight: 700;
+      color: #111827;
+      font-size: 18px;
+      font-weight: 600;
       margin: 0 0 12px 0;
-      letter-spacing: -0.5px;
+      letter-spacing: normal;
     }.page-teacher-class-table .remoed-header-controls{
       display: flex;
       justify-content: space-between;
@@ -9860,16 +10112,8 @@ body.page-teacher-attendance-analysis{
       transition: all 0.2s ease;
       cursor: pointer;
         position: relative;
-    }.page-teacher-class-table /* Status-based styling */
-    .status-completed{
-      background: linear-gradient(135deg, #10b981, #059669) !important;
-      color: white !important;
-      font-weight: 600 !important;
-      text-shadow: 0 1px 2px rgba(0,0,0,0.2) !important;
-      border: 2px solid #047857 !important;
-      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3) !important;
-      background-color: #10b981 !important;
-    }.page-teacher-class-table .status-completed::after{
+    }.page-teacher-class-table /* Status-based styling — glossy completed styles below with .booked */
+    .page-teacher-class-table .status-completed::after{
       content: '✓';
       position: absolute;
       top: 2px;
@@ -9884,6 +10128,8 @@ body.page-teacher-attendance-analysis{
       display: flex;
       align-items: center;
       justify-content: center;
+      z-index: 2;
+      pointer-events: none;
     }.page-teacher-class-table .status-pending-feedback{
       background: linear-gradient(135deg, #f59e0b, #d97706) !important;
       color: white !important;
@@ -9965,13 +10211,117 @@ body.page-teacher-attendance-analysis{
       background: #bbf7d0;
       transform: scale(1.02);
     }.page-teacher-class-table .remoed-time-slot.booked{
-      background: #fef3c7 !important;
-      color: #92400e !important;
-      font-weight: 600;
-      border: 2px solid #f59e0b;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.08) 42%, transparent 70%),
+        linear-gradient(135deg, #fff59a 0%, #ffe85a 45%, #f6c800 100%) !important;
+      color: #0b5f8a !important;
+      font-weight: 700 !important;
+      border: 1px solid rgba(255,255,255,0.65) !important;
+      border-radius: 8px !important;
+      box-shadow:
+        0 3px 0 rgba(212, 160, 0, 0.45),
+        0 6px 14px rgba(28, 167, 231, 0.28),
+        inset 0 1px 0 rgba(255,255,255,0.85),
+        inset 0 -2px 4px rgba(180, 120, 0, 0.18) !important;
+      cursor: pointer;
+      transition: transform 0.15s ease-in-out, box-shadow 0.15s ease-in-out, filter 0.15s ease-in-out;
+      display: flex !important;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 5px 6px;
+      animation: remoed-booked-glow 2.4s ease-in-out infinite;
     }.page-teacher-class-table .remoed-time-slot.booked:hover{
-      background: #fde68a !important;
-      transform: scale(1.02);
+      transform: translateY(-2px) scale(1.02);
+      box-shadow:
+        0 5px 0 rgba(212, 160, 0, 0.4),
+        0 10px 22px rgba(28, 167, 231, 0.38),
+        inset 0 1px 0 rgba(255,255,255,0.95),
+        inset 0 -2px 4px rgba(180, 120, 0, 0.12) !important;
+      filter: brightness(1.08) saturate(1.08);
+      animation: none;
+    }.page-teacher-class-table .remoed-time-slot.booked:active{
+      transform: translateY(1px) scale(0.99);
+      box-shadow:
+        0 1px 0 rgba(212, 160, 0, 0.35),
+        0 2px 6px rgba(0,0,0,0.12),
+        inset 0 3px 6px rgba(0,0,0,0.18) !important;
+      filter: brightness(0.97);
+      animation: none;
+    }.page-teacher-class-table .remoed-time-slot.booked .remoed-slot-enter-icon{
+      filter: drop-shadow(0 0 3px rgba(28, 167, 231, 0.55));
+    }
+    @keyframes remoed-booked-glow {
+      0%, 100% {
+        box-shadow:
+          0 3px 0 rgba(212, 160, 0, 0.45),
+          0 6px 14px rgba(28, 167, 231, 0.22),
+          inset 0 1px 0 rgba(255,255,255,0.85),
+          inset 0 -2px 4px rgba(180, 120, 0, 0.18);
+      }
+      50% {
+        box-shadow:
+          0 3px 0 rgba(212, 160, 0, 0.5),
+          0 8px 20px rgba(28, 167, 231, 0.42),
+          inset 0 1px 0 rgba(255,255,255,0.95),
+          inset 0 -2px 4px rgba(180, 120, 0, 0.15);
+      }
+    }
+    .page-teacher-class-table .remoed-time-slot.status-completed{
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.05) 45%, transparent 70%),
+        linear-gradient(135deg, #34d399 0%, #10b981 50%, #059669 100%) !important;
+      color: white !important;
+      font-weight: 700 !important;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.2) !important;
+      border: 1px solid rgba(255,255,255,0.45) !important;
+      border-radius: 8px !important;
+      box-shadow:
+        0 3px 0 rgba(4, 120, 87, 0.35),
+        0 6px 14px rgba(16, 185, 129, 0.35),
+        inset 0 1px 0 rgba(255,255,255,0.45),
+        inset 0 -2px 4px rgba(0,0,0,0.12) !important;
+      cursor: pointer;
+      transition: transform 0.15s ease-in-out, box-shadow 0.15s ease-in-out, filter 0.15s ease-in-out;
+      display: flex !important;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 5px 6px;
+    }.page-teacher-class-table .remoed-time-slot.status-completed:hover{
+      transform: translateY(-2px) scale(1.02);
+      box-shadow:
+        0 5px 0 rgba(4, 120, 87, 0.3),
+        0 10px 22px rgba(16, 185, 129, 0.45),
+        inset 0 1px 0 rgba(255,255,255,0.55),
+        inset 0 -2px 4px rgba(0,0,0,0.1) !important;
+      filter: brightness(1.06);
+    }.page-teacher-class-table .remoed-time-slot.status-completed:active{
+      transform: translateY(1px) scale(0.99);
+      box-shadow:
+        0 1px 0 rgba(4, 120, 87, 0.3),
+        0 2px 6px rgba(0,0,0,0.12),
+        inset 0 3px 6px rgba(0,0,0,0.2) !important;
+      filter: brightness(0.97);
+    }.page-teacher-class-table .remoed-slot-label-inner{
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      max-width: 100%;
+      line-height: 1.15;
+      pointer-events: none;
+    }.page-teacher-class-table .remoed-slot-enter-icon{
+      width: 12px;
+      height: 12px;
+      flex-shrink: 0;
+      fill: currentColor;
+      opacity: 0.9;
+    }.page-teacher-class-table .remoed-slot-label-text{
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 9.5em;
     }.page-teacher-class-table .remoed-time-slot.finished{
       background: #dbeafe !important;
       color: #1e40af !important;
@@ -11193,9 +11543,9 @@ body.page-teacher-lessons-library{
             margin-bottom: 1rem;
         }.page-teacher-lessons-library .page-header h1{
             margin: 0;
-            color: #667eea;
-            font-size: 1.5rem;
-            font-weight: 700;
+            color: #111827;
+            font-size: 18px;
+            font-weight: 600;
         }.page-teacher-lessons-library .page-header p{
             margin: 0.5rem 0 0 0;
             color: #64748b;
@@ -12112,9 +12462,9 @@ body.page-teacher-messages, body.page-student-messages{ font-family: 'Segoe UI',
             min-width: 0;
         }.page-teacher-messages .chat-list-header h1, .page-student-messages .chat-list-header h1{
             margin: 0;
-            font-size: 1.1rem;
-            color: #667eea;
-            font-weight: 800;
+            font-size: 18px;
+            color: #111827;
+            font-weight: 600;
         }.page-teacher-messages .chat-list-subtitle, .page-student-messages .chat-list-subtitle{
             margin: 6px 0 0;
             font-size: 0.8rem;
@@ -12991,9 +13341,9 @@ body.page-teacher-performance-indicator{
             align-items: center;
             margin-bottom: 32px;
         }.page-teacher-performance-indicator .page-header h1{
-            color: #667eea;
-            font-size: 2rem;
-            font-weight: 700;
+            color: #111827;
+            font-size: 18px;
+            font-weight: 600;
             margin: 0;
         }.page-teacher-performance-indicator .period-selector{
             display: flex;
@@ -13463,9 +13813,9 @@ body.page-teacher-professional-development{
             align-items: center;
             margin-bottom: 32px;
         }.page-teacher-professional-development .page-header h1{
-            color: #667eea;
-            font-size: 2rem;
-            font-weight: 700;
+            color: #111827;
+            font-size: 18px;
+            font-weight: 600;
             margin: 0;
         }.page-teacher-professional-development .section-card{
             background: white;
@@ -13475,25 +13825,133 @@ body.page-teacher-professional-development{
             box-shadow: 0 2px 8px rgba(0,0,0,0.08);
             border: 1px solid #e8f4fd;
         }.page-teacher-professional-development .section-title{
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #667eea;
+            font-size: 18px;
+            font-weight: 600;
+            color: #111827;
             margin-bottom: 20px;
             display: flex;
             align-items: center;
             gap: 12px;
+            text-shadow: none;
         }.page-teacher-professional-development .training-grid{
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
             gap: 20px;
             margin-top: 20px;
+        }.page-teacher-professional-development .course-card{
+            background: #fff;
+            border: 1px solid #e8edf5;
+            border-radius: 14px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }.page-teacher-professional-development .course-card:hover{
+            transform: translateY(-3px);
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.1);
+        }.page-teacher-professional-development .course-banner{
+            min-height: 120px;
+            padding: 18px 20px 16px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            gap: 8px;
+            position: relative;
+        }.page-teacher-professional-development .course-title{
+            margin: 0;
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.3;
+            max-width: 85%;
+        }.page-teacher-professional-development .course-tag{
+            display: inline-block;
+            align-self: flex-start;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: #64748b;
+        }.page-teacher-professional-development .course-content{
+            padding: 14px 18px 16px;
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            gap: 10px;
+        }.page-teacher-professional-development .course-status-row{
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            font-size: 0.85rem;
+            color: #475569;
+        }.page-teacher-professional-development .status-indicator{
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 600;
+        }.page-teacher-professional-development .status-indicator .dot{
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            background: #94a3b8;
+            flex-shrink: 0;
+        }.page-teacher-professional-development .status-indicator .dot.ongoing{
+            background: #ec4899;
+        }.page-teacher-professional-development .status-indicator .dot.pending{
+            background: #a5b4fc;
+        }.page-teacher-professional-development .status-indicator .dot.completed{
+            background: #10b981;
+        }.page-teacher-professional-development .status-percent{
+            font-weight: 700;
+            color: #334155;
+        }.page-teacher-professional-development .course-content .progress-bar{
+            width: 100%;
+            height: 6px;
+            border-radius: 999px;
+            background: #e2e8f0;
+            overflow: hidden;
+        }.page-teacher-professional-development .course-content .progress-fill{
+            height: 100%;
+            border-radius: 999px;
+            background: #3b82f6;
+            transition: width 0.25s ease;
+        }.page-teacher-professional-development .course-description{
+            margin: 0;
+            font-size: 0.88rem;
+            line-height: 1.45;
+            color: #64748b;
+            flex: 1;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }.page-teacher-professional-development .course-footer{
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 4px;
+        }.page-teacher-professional-development .enter-btn{
+            border: none;
+            border-radius: 6px;
+            background: #3b82f6;
+            color: #fff;
+            font-weight: 700;
+            font-size: 0.82rem;
+            padding: 7px 16px;
+            cursor: pointer;
+        }.page-teacher-professional-development .enter-btn:hover{
+            background: #2563eb;
         }.page-teacher-professional-development .training-card{
             background: linear-gradient(135deg, #f0f8ff 0%, #ffffff 100%);
             border: 2px solid #e8f4fd;
             border-radius: 12px;
-            padding: 20px;
+            padding: 0;
+            overflow: hidden;
             transition: all 0.3s ease;
             cursor: pointer;
+            display: flex;
+            flex-direction: column;
         }.page-teacher-professional-development .training-card:hover{
             transform: translateY(-4px);
             box-shadow: 0 8px 20px rgba(102, 126, 234, 0.2);
@@ -13504,29 +13962,72 @@ body.page-teacher-professional-development{
         }.page-teacher-professional-development .training-card.in-progress{
             background: linear-gradient(135deg, #fff4e6 0%, #ffffff 100%);
             border-color: #f59e0b;
+        }.page-teacher-professional-development .training-banner{
+            height: 88px;
+            background: linear-gradient(135deg, #667eea 0%, #5a67d8 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.25rem;
+        }.page-teacher-professional-development .training-card-body{
+            padding: 16px 20px 20px;
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            gap: 8px;
         }.page-teacher-professional-development .training-icon{
             font-size: 2.5rem;
             margin-bottom: 12px;
+        }.page-teacher-professional-development .training-category{
+            display: inline-flex;
+            align-items: center;
+            align-self: flex-start;
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            background: #eef2ff;
+            color: #4338ca;
+            letter-spacing: 0.02em;
         }.page-teacher-professional-development .training-title{
             font-size: 1.1rem;
             font-weight: 700;
             color: #667eea;
-            margin-bottom: 8px;
+            margin: 0;
         }.page-teacher-professional-development .training-description{
             font-size: 0.9rem;
             color: #666;
-            margin-bottom: 12px;
+            margin: 0;
             line-height: 1.5;
+            flex: 1;
         }.page-teacher-professional-development .training-meta{
             display: flex;
             justify-content: space-between;
             align-items: center;
             font-size: 0.85rem;
             color: #666;
-            margin-top: 12px;
+            margin-top: 4px;
             padding-top: 12px;
             border-top: 1px solid #e8f4fd;
-        }.page-teacher-professional-development .training-status{
+            gap: 8px;
+        }.page-teacher-professional-development .training-status-dot{
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 600;
+            font-size: 0.8rem;
+        }.page-teacher-professional-development .training-status-dot::before{
+            content: '';
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #94a3b8;
+            flex-shrink: 0;
+        }.page-teacher-professional-development .training-status-dot.status-available::before{ background: #667eea; }
+        .page-teacher-professional-development .training-status-dot.status-in-progress::before,
+        .page-teacher-professional-development .training-status-dot.status-ongoing::before{ background: #f59e0b; }
+        .page-teacher-professional-development .training-status-dot.status-completed::before{ background: #10b981; }
+        .page-teacher-professional-development .training-status{
             padding: 4px 12px;
             border-radius: 12px;
             font-weight: 600;
@@ -13540,6 +14041,28 @@ body.page-teacher-professional-development{
         }.page-teacher-professional-development .status-in-progress{
             background: #fef3c7;
             color: #f59e0b;
+        }.page-teacher-professional-development .training-enter-btn{
+            margin-top: 12px;
+            width: 100%;
+            padding: 10px 14px;
+            border: none;
+            border-radius: 8px;
+            background: #667eea;
+            color: #fff;
+            font-weight: 700;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }.page-teacher-professional-development .training-enter-btn:hover{
+            background: #5a67d8;
+        }.page-teacher-professional-development .training-progress-bar{
+            background: #e0e6ed;
+            border-radius: 8px;
+            height: 6px;
+            margin-top: 4px;
+            overflow: hidden;
+        }.page-teacher-professional-development .training-progress-fill{
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            height: 100%;
         }.page-teacher-professional-development .certification-table{
             width: 100%;
             border-collapse: collapse;
@@ -15219,7 +15742,7 @@ body.page-teacher-profile{
 
 /* --- Source: public/teacher-referrals.html --- */
 body.page-teacher-referrals{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f6fbff; margin: 0; color: #1a202c; }.page-teacher-referrals .remoed-main{ display: flex; min-height: 100vh; }.page-teacher-referrals .remoed-content{ flex: 1; margin-left: 260px; padding: 16px 20px 40px; min-width: 0; box-sizing: border-box; }@media (max-width: 900px){.page-teacher-referrals .remoed-content{ margin-left: 0; padding: 12px; }
-    }.page-teacher-referrals .page-head{ margin-bottom: 16px; }.page-teacher-referrals .page-head h1{ margin: 0; font-size: 1.5rem; color: #667eea; font-weight: 800; }.page-teacher-referrals .page-head p{ margin: 8px 0 0; color: #64748b; font-size: 0.9rem; max-width: 720px; }.page-teacher-referrals .banner-info{
+    }.page-teacher-referrals .page-head{ margin-bottom: 16px; }.page-teacher-referrals .page-head h1{ margin: 0; font-size: 18px; color: #111827; font-weight: 600; }.page-teacher-referrals .page-head p{ margin: 8px 0 0; color: #64748b; font-size: 0.9rem; max-width: 720px; }.page-teacher-referrals .banner-info{
       background: linear-gradient(135deg, rgba(102,126,234,0.12), rgba(28,167,231,0.1));
       border: 1px solid rgba(102,126,234,0.25);
       border-radius: 12px;
@@ -18227,3 +18750,50 @@ body.page-student-forgot-password button {
   font-family: inherit;
 }
 
+
+/* === Portal page titles: match Dashboard header (black / 18px / 600) === */
+body[class*='page-teacher-'] .nav-header h1,
+body[class*='page-teacher-'] .nav-left h1,
+body[class*='page-teacher-'] .remoed-content > .header > h1,
+body[class*='page-teacher-'] .remoed-content .header > h1,
+body[class*='page-teacher-'] .remoed-content > .remoed-header > h1,
+body[class*='page-teacher-'] .remoed-content .remoed-header > h1,
+body[class*='page-teacher-'] .remoed-content > .page-header > h1,
+body[class*='page-teacher-'] .remoed-content .page-header > h1,
+body[class*='page-teacher-'] .remoed-content > .page-head > h1,
+body[class*='page-teacher-'] .remoed-content .page-head > h1,
+body[class*='page-teacher-'] .chat-list-header h1,
+body.page-teacher-lessons-library .page-header h1,
+body.page-teacher-performance-indicator .page-header h1,
+body.page-teacher-professional-development .page-header h1,
+body.page-teacher-referrals .page-head h1,
+body.page-teacher-messages .chat-list-header h1,
+body.page-teacher-class-table .remoed-header h1,
+body.page-teacher-schedule .header h1,
+body.page-teacher-open-class .header h1,
+body.page-teacher-service-fee .service-header h1,
+body.page-teacher-attendance-analysis .page-header h1,
+body.page-teacher-peer-learning-connections .page-header h1,
+body.page-teacher-profile .page-header h1,
+body.page-teacher-assessment .header h1 {
+  color: #111827 !important;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+  font-size: 18px !important;
+  font-weight: 600 !important;
+  margin: 0 !important;
+  letter-spacing: normal !important;
+  text-shadow: none !important;
+  filter: none !important;
+}
+body.page-teacher-professional-development .section-title {
+  color: #111827 !important;
+  font-size: 18px !important;
+  font-weight: 600 !important;
+  text-shadow: none !important;
+}
+
+body.page-device-check .device-title {
+  color: #111827 !important;
+  font-size: 18px !important;
+  font-weight: 600 !important;
+}

@@ -1031,8 +1031,52 @@ router.post('/student-register', authRegisterLimiter, async (req, res) => {
 
     await student.save();
 
+    // Always grant 1 welcome free-trial lesson on successful registration (never double-credit).
+    const now = new Date();
+    const prevBal = Math.max(0, Number(student.creditBalance) || 0);
+    const reserved = Math.max(0, Number(student.reservedCredits) || 0);
+    const balanceAfterPool = prevBal + 1;
+    const welcomeUpdate = {
+      $inc: {
+        creditBalance: 1,
+        totalCreditsEarned: 1,
+        totalLessonsPurchased: 1,
+        'learningJourneyPurchasedByLevel.Little Seeds (Age 3)': 1,
+        'learningJourneyPurchasedByLevel.Sprouts (Age 4)': 1,
+        'learningJourneyPurchasedByLevel.Saplings (Age 5)': 1,
+        'learningJourneyPurchasedByLevel.Young Stewards (Age 6)': 1,
+      },
+      $set: {
+        hasFreeTrial: true,
+        assessmentTrialCreditActive: true,
+        accountStatus: 'trial_active',
+        isSubscribed: false,
+        assessmentTrialGrantedAt: now,
+      },
+      $push: {
+        creditHistory: {
+          date: now,
+          plan: 'Welcome Trial',
+          credits: 1,
+          amountPaid: 0,
+          paymentId: 'welcome-trial',
+          entryType: 'purchase',
+          balanceAfter: balanceAfterPool,
+        },
+        creditTransactions: {
+          date: now,
+          type: 'adjustment',
+          plan: 'welcome-trial',
+          description: 'Welcome! 1 Free Trial Lesson',
+          credits: 1,
+          balanceAfter: Math.max(balanceAfterPool - reserved, 0),
+          amountPaid: 0,
+        },
+      },
+    };
+
+    let assessmentTrialActivated = false;
     if (trial) {
-      const now = new Date();
       const redeem = await AssessmentTrial.findOneAndUpdate(
         { _id: trial._id, redeemedByStudentId: null },
         { $set: { redeemedByStudentId: student._id, redeemedAt: now } },
@@ -1044,50 +1088,20 @@ router.post('/student-register', authRegisterLimiter, async (req, res) => {
           message: 'This assessment trial link was just used. Please refresh and try again.',
         });
       }
-      const prevBal = Math.max(0, Number(student.creditBalance) || 0);
-      const reserved = Math.max(0, Number(student.reservedCredits) || 0);
-      const balanceAfterPool = prevBal + 1;
-      const trialProfileSet = {
-        assessmentTrialCreditActive: true,
-        accountStatus: 'trial_active',
-        hasFreeTrial: true,
-        isSubscribed: false,
-        assessmentTrialGrantedAt: now,
-      };
+      assessmentTrialActivated = true;
       if (redeem.cefrLevel) {
-        trialProfileSet.cefrLevel = redeem.cefrLevel;
-        trialProfileSet.leveling = redeem.cefrLevel;
+        welcomeUpdate.$set.cefrLevel = redeem.cefrLevel;
+        welcomeUpdate.$set.leveling = redeem.cefrLevel;
       }
       if (redeem.score != null && redeem.score !== undefined) {
-        trialProfileSet.assessmentScore = Number(redeem.score) || 0;
+        welcomeUpdate.$set.assessmentScore = Number(redeem.score) || 0;
       }
-      trialProfileSet.assessmentDate = new Date();
+      welcomeUpdate.$set.assessmentDate = new Date();
+    }
 
-      await Student.updateOne(
-        { _id: student._id },
-        {
-          $inc: {
-            creditBalance: 1,
-            totalCreditsEarned: 1,
-            totalLessonsPurchased: 1,
-            'learningJourneyPurchasedByLevel.nursery': 1,
-            'learningJourneyPurchasedByLevel.kinder': 1,
-            'learningJourneyPurchasedByLevel.prep': 1,
-          },
-          $set: trialProfileSet,
-          $push: {
-            creditTransactions: {
-              date: now,
-              type: 'adjustment',
-              plan: 'assessment-trial',
-              description: 'Free trial class from level assessment',
-              credits: 1,
-              balanceAfter: Math.max(balanceAfterPool - reserved, 0),
-              amountPaid: 0,
-            },
-          },
-        }
-      );
+    await Student.updateOne({ _id: student._id }, welcomeUpdate);
+
+    if (assessmentTrialActivated) {
       return res.json({
         success: true,
         message: 'Student registered successfully. Log in to book your free trial class.',
@@ -1096,7 +1110,12 @@ router.post('/student-register', authRegisterLimiter, async (req, res) => {
       });
     }
 
-    res.json({ success: true, message: 'Student registered successfully', studentId: student._id });
+    res.json({
+      success: true,
+      message: 'Student registered successfully. You received 1 free trial lesson.',
+      studentId: student._id,
+      welcomeTrialGranted: true,
+    });
   } catch (err) {
     console.error('❌ Student registration error:', err);
     console.error('Error details:', {

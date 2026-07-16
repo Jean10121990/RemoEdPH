@@ -1036,6 +1036,7 @@
         }
     </style>
     <link rel="stylesheet" href="css/teacher-sidebar.css">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css">
     <link rel="stylesheet" href="css/student-portal-layout.css">
     <link rel="stylesheet" href="css/student-sidebar.css">
 </head>
@@ -1043,16 +1044,13 @@
     <div class="remoed-main">
         <div id="student-sidebar-root"></div>
         <script src="js/student-sidebar.js"></script>
-        <script>StudentSidebar.render('student-sidebar-root', 'book');</script>
+        <script src="js/student-page-header.js"></script>
+        <script>
+            StudentSidebar.render('student-sidebar-root', 'book');
+            StudentPageHeader.render('book');
+        </script>
         <div class="remoed-content">
             <div style="flex-shrink: 0;">
-                <div class="header">
-                    <h1 style="font-size: 2rem; font-weight: 800; color: #1CA7E7; text-shadow: 2px 2px 4px rgba(28, 167, 231, 0.2); display: flex; align-items: center; gap: 12px;">
-                        <span>📚📶</span>
-                        <span>➕ Book a Fun Class! 📚</span>
-                    </h1>
-                </div>
-
                 <div class="header-info">
                 <div class="info-item">
                     <span class="quota" id="available-slots-info">Select a time slot to book a class</span>
@@ -1158,9 +1156,10 @@
                                     <label for="student-level">Student Level <span style="color: #dc3545;">*</span></label>
                                     <select id="student-level" required onchange="clearFieldError('student-level'); loadLessonsForLevel();">
                                         <option value="">Select level</option>
-                                        <option value="nursery">Nursery</option>
-                                        <option value="kinder">Kinder</option>
-                                        <option value="preparatory">Preparatory</option>
+                                        <option value="Little Seeds (Age 3)">Little Seeds (Age 3)</option>
+                                        <option value="Sprouts (Age 4)">Sprouts (Age 4)</option>
+                                        <option value="Saplings (Age 5)">Saplings (Age 5)</option>
+                                        <option value="Young Stewards (Age 6)">Young Stewards (Age 6)</option>
                                     </select>
                                     <div class="error-message" id="student-level-error"></div>
                                 </div>
@@ -1818,7 +1817,7 @@
                     console.warn('prefillPreferredTeacherId for slots', e);
                 }
 
-                const response = await fetch(`/api/teacher/slots?week=${weekString}&tz=${encodeURIComponent(userTimezone)}${scopedTeacherParam}`, {
+                const response = await fetch(`/api/teacher/slots?week=${weekString}&tz=${encodeURIComponent(userTimezone)}&timezoneOffset=${new Date().getTimezoneOffset()}${scopedTeacherParam}`, {
                     headers: {
                         'Authorization': `Bearer ${token}`,
                         'Cache-Control': 'no-cache',
@@ -1962,7 +1961,7 @@
                             ''
                     );
                     data.bookings.forEach((booking) => {
-                        let utc = booking.dateTimeUtc || null;
+                        let utc = booking.dateTimeUtc || booking.startTime || null;
                         if (!utc && booking.date && booking.time) {
                             try {
                                 utc = TimezoneUtils.toUtcIso(booking.date, booking.time, booking.teacherLocalZone || booking.studentLocalZone || 'Asia/Manila');
@@ -1973,6 +1972,8 @@
                         if (!utc) return;
                         const { key } = toKey(utc, booking.date, booking.time, booking.teacherLocalZone);
                         bookedSlots.set(key, true);
+                        // Drop competing "available" entry for same local cell
+                        availableSlots.delete(key);
                         if (me && normalizeId(booking.studentId) === me) {
                             ownBookedSlotKeys.add(key);
                         }
@@ -2066,8 +2067,8 @@
                     // Remove click handler for past slots
                     cell.onclick = null;
 
-                } else if (ownBookedSlotKeys.has(slotKey)) {
-                    // Your booking at this time — show Booked even if another teacher still has an open slot in the same cell
+                } else if (ownBookedSlotKeys.has(slotKey) || bookedSlots.has(slotKey)) {
+                    // Existing booking at this local date/time — hard lock (grey Booked)
                     cell.classList.remove('available', 'unavailable', 'past');
                     cell.classList.add('booked');
                     cell.textContent = 'Booked';
@@ -2087,16 +2088,6 @@
                     cell.style.color = '#28a745';
                     cell.onclick = () => toggleSlot(date, time);
                     availableCount++;
-                } else if (bookedSlots.has(slotKey)) {
-                    cell.classList.remove('available', 'unavailable', 'past');
-                    cell.classList.add('booked');
-                    cell.textContent = 'Booked';
-                    cell.style.cursor = 'not-allowed';
-                    cell.style.fontWeight = 'bold';
-                    cell.style.fontSize = '0.8rem';
-                    cell.style.color = '#dc3545';
-                    cell.onclick = null;
-
                 } else {
                     // Slot is not available (grey) - this includes slots that don't exist
                     cell.classList.remove('available', 'unavailable', 'past');
@@ -2134,8 +2125,8 @@
             const isTimePassed = isSameDay && (Lux ? slotLocal <= now : slotLocal.getTime() <= now.getTime());
             
             const isOwnBooked = ownBookedSlotKeys.has(slotKey);
-            const isAvailable = availableSlots.has(slotKey) && !isOwnBooked;
-            const isBooked = isOwnBooked || (!availableSlots.has(slotKey) && bookedSlots.has(slotKey));
+            const isAvailable = availableSlots.has(slotKey) && !isOwnBooked && !bookedSlots.has(slotKey);
+            const isBooked = isOwnBooked || bookedSlots.has(slotKey);
             
             console.log(`Toggling slot: ${date} ${time}`);
             console.log(`  - Slot key: ${slotKey}`);
@@ -3067,6 +3058,22 @@
                 if (!response.ok) {
                     const errorMsg = result.error || result.message || 'Booking failed';
                     const errorDetails = result.details || {};
+
+                    // Slot taken — lock UI and refresh calendar
+                    if (
+                        response.status === 409 ||
+                        result.code === 'ALREADY_BOOKED' ||
+                        result.code === 'SLOT_NOT_AVAILABLE' ||
+                        /already been booked|already booked|no longer available/i.test(String(errorMsg))
+                    ) {
+                        showMessage(errorMsg || 'This slot has already been booked.', 'error');
+                        closeBookingModal();
+                        clearAllSelections();
+                        await loadAvailableSlots();
+                        bookBtn.disabled = false;
+                        bookBtnText.textContent = 'Book Class';
+                        return;
+                    }
                     
                     // Highlight missing fields based on server response
                     if (errorMsg.includes('Missing required fields') || result.missingFields) {
@@ -3098,18 +3105,21 @@
                     localStorage.setItem('studentCreditsBalance', String(remainingCredits));
                 }
                 localStorage.setItem('creditsLastUpdatedAt', String(Date.now()));
-                showMessage(
-                    `✅ Booking successful! You have booked 1 class.${typeof remainingCredits === 'number' ? ` Remaining credits: ${remainingCredits}.` : ''} You will receive a confirmation email shortly.`,
-                    'success'
-                );
-                
+
                 // Close modal and clear selections after successful booking
                 closeBookingModal();
                 clearAllSelections();
-                
+
                 // Refresh the grid to show updated availability
                 generateWeeklyGrid();
-                
+
+                const creditNote = typeof remainingCredits === 'number'
+                    ? ` Remaining credits: ${remainingCredits}.`
+                    : '';
+                showNotification(
+                    'Booking Successful! Your class has been scheduled.' + creditNote,
+                    'success'
+                );                
             } catch (error) {
                 console.error('❌ Booking error:', error);
                 
@@ -3138,6 +3148,7 @@
         
         function showMessage(text, type) {
             const messageDiv = document.getElementById('booking-message');
+            if (!messageDiv) return;
             messageDiv.textContent = text;
             messageDiv.className = `message ${type}`;
             messageDiv.classList.remove('hidden');
@@ -3145,6 +3156,34 @@
             setTimeout(() => {
                 messageDiv.classList.add('hidden');
             }, 5000);
+        }
+
+        function showNotification(message, type) {
+            const notification = document.createElement('div');
+            notification.setAttribute('role', 'status');
+            notification.setAttribute('aria-live', 'polite');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                max-width: min(420px, calc(100vw - 32px));
+                padding: 16px 20px;
+                border-radius: 12px;
+                color: white;
+                font-weight: 700;
+                font-size: 0.98rem;
+                line-height: 1.4;
+                z-index: 10000;
+                background: ${type === 'success' ? '#16a34a' : type === 'info' ? '#0ea5e9' : '#dc2626'};
+                box-shadow: 0 8px 24px rgba(15,23,42,0.18);
+            `;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 4500);
         }
         
         // Load profile picture from backend

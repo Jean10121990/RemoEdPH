@@ -13,6 +13,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="live-classroom.css">
 </head>
 <body class="page-video-room">
     <script>
@@ -152,6 +153,7 @@
                       <input type="range" id="local-beautify-slider" min="0" max="100" step="1" value="0" style="flex:1;">
                       <span id="local-beautify-value" style="font-size:0.9rem; color:#666; min-width:30px;">0%</span>
                     </div>
+                    <div id="vb-settings-mount" style="width:220px;margin-top:8px;"></div>
                     <button id="toggle-camera-btn" style="margin-top:18px; background:#1ca7e7; color:#fff; border:none; border-radius:6px; padding:8px 18px; font-size:1rem; cursor:pointer; display:flex; align-items:center; gap:8px;">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
@@ -173,6 +175,8 @@
         </div>
     </div>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="js/presentation-overlay.js"></script>
+    <script src="js/virtual-background.js"></script>
     <script>
     // --- Setup ---
     const SIGNALING_SERVER_URL = window.location.origin || '';
@@ -205,13 +209,40 @@
 
     // --- Video/WebRTC logic ---
     let localStream, peerConnection;
+    let vbController = null;
     const config = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
     document.addEventListener('DOMContentLoaded', async function() {
         try {
             localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
             localVideo.srcObject = localStream;
-            socket.emit('join', room);
+            const joinUserType = localStorage.getItem('userType') || 'teacher';
+            const joinUserId = localStorage.getItem('teacherId') || localStorage.getItem('studentId') || localStorage.getItem('username') || 'guest';
+            const joinUsername = localStorage.getItem('username') || joinUserId;
+            socket.emit('join', { room, userType: joinUserType, userId: joinUserId, username: joinUsername });
+            if (!window.__vrPptSocketBound) {
+                window.__vrPptSocketBound = true;
+                socket.on('annotation-sync', function (data) {
+                    if (window.currentPptOverlay && window.currentPptOverlay.handleRemoteAnnotation) {
+                        window.currentPptOverlay.handleRemoteAnnotation(data);
+                    }
+                });
+                socket.on('presentation-interaction-mode', function (data) {
+                    if (typeof RemoedPresentationOverlay !== 'undefined') {
+                        RemoedPresentationOverlay.handlePresentationInteractionMode(data);
+                    }
+                });
+                socket.on('presentation-slide-changed', function (data) {
+                    if (typeof RemoedPresentationOverlay !== 'undefined') {
+                        RemoedPresentationOverlay.handlePresentationSlideChanged(data);
+                    }
+                });
+                socket.on('slide-changed', function (data) {
+                    if (typeof RemoedPresentationOverlay !== 'undefined') {
+                        RemoedPresentationOverlay.handlePresentationSlideChanged(data);
+                    }
+                });
+            }
             
             // Load initial files from server
             await loadFilesForRoom();
@@ -230,6 +261,16 @@
             
             // Setup chat functionality
             setupChat();
+            
+            if (typeof RemoedVirtualBackground !== 'undefined') {
+                vbController = RemoedVirtualBackground.create({
+                    getLocalStream: function () { return localStream; },
+                    getPeerConnection: function () { return peerConnection; },
+                    localVideoEl: localVideo
+                });
+                const vbMount = document.getElementById('vb-settings-mount');
+                if (vbMount) RemoedVirtualBackground.mountSettingsUI(vbMount, vbController);
+            }
             
             // Start class timer
             startClassTimer();
@@ -504,9 +545,15 @@
                 localVideo.srcObject = screenStream;
                 screenTrack.onended = async () => {
                     if (localStream) {
-                        const camTrack = localStream.getVideoTracks()[0];
-                        if (sender) sender.replaceTrack(camTrack);
-                        localVideo.srcObject = localStream;
+                        const restoreTrack = vbController && vbController.getActiveVideoTrack
+                            ? vbController.getActiveVideoTrack()
+                            : localStream.getVideoTracks()[0];
+                        if (sender && restoreTrack) sender.replaceTrack(restoreTrack);
+                        if (vbController && vbController.mode !== 'off' && vbController.blurOutputStream) {
+                            localVideo.srcObject = vbController.blurOutputStream;
+                        } else {
+                            localVideo.srcObject = localStream;
+                        }
                     }
                 };
             } catch (err) {
@@ -758,9 +805,16 @@
                 });
                 
                 if (room) {
-                    socket.emit('whiteboard-path', {
+                    const rect = canvas.getBoundingClientRect();
+                    const normalizedPoints = points.map(function (pt) {
+                        return {
+                            x: rect.width ? pt.x / rect.width : 0,
+                            y: rect.height ? pt.y / rect.height : 0
+                        };
+                    });
+                    socket.emit('whiteboard-draw', {
                         room,
-                        points: points,
+                        points: normalizedPoints,
                         color: ctx.strokeStyle,
                         width: ctx.lineWidth,
                         tool: currentTool
@@ -772,9 +826,16 @@
         });
         
         // Listen for whiteboard events from other participants
-        socket.on('whiteboard-path', (data) => {
+        socket.on('whiteboard-draw', (data) => {
+            const rect = canvas.getBoundingClientRect();
+            const scaledPoints = (data.points || []).map(function (pt) {
+                if (pt.x <= 1 && pt.y <= 1) {
+                    return { x: pt.x * rect.width, y: pt.y * rect.height };
+                }
+                return pt;
+            });
             const path = {
-                points: data.points,
+                points: scaledPoints,
                 color: data.color,
                 width: data.width,
                 tool: data.tool
@@ -1156,50 +1217,27 @@
             `;
             viewer.appendChild(video);
         } else if (category === 'presentation') {
-            const wrapper = document.createElement('div');
-            wrapper.style.cssText = `
-                display: flex;
-                flex-direction: column;
-                gap: 12px;
-            `;
-            const hint = document.createElement('div');
-            hint.textContent = 'PowerPoint slides are opened in a browser preview when available.';
-            hint.style.cssText = `
-                color: #475569;
-                font-size: 0.95rem;
-                background: #f8fafc;
-                border: 1px solid #e2e8f0;
-                border-radius: 8px;
-                padding: 10px 12px;
-            `;
-            const iframe = document.createElement('iframe');
-            iframe.src = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent((previewUrl.startsWith('http') ? previewUrl : `${window.location.origin}${previewUrl}`))}`;
-            iframe.style.cssText = `
-                width: 100%;
-                height: 700px;
-                min-height: 70vh;
-                border: 1px solid #e2e8f0;
-                border-radius: 8px;
-                background: white;
-            `;
-            const downloadLink = document.createElement('a');
-            downloadLink.href = file.url || previewUrl;
-            downloadLink.target = '_blank';
-            downloadLink.rel = 'noopener noreferrer';
-            downloadLink.textContent = '⬇️ Download PowerPoint';
-            downloadLink.style.cssText = `
-                align-self: flex-start;
-                background: #1ca7e7;
-                color: white;
-                text-decoration: none;
-                padding: 10px 16px;
-                border-radius: 6px;
-                font-weight: 600;
-            `;
-            wrapper.appendChild(hint);
-            wrapper.appendChild(iframe);
-            wrapper.appendChild(downloadLink);
-            viewer.appendChild(wrapper);
+            const material = {
+                id: file._id || file.id || file.name,
+                name: file.name,
+                type: file.type || 'presentation',
+                data: previewUrl,
+                presentationType: file.presentationType || 'file',
+                embedUrl: file.embedUrl || '',
+                html5EntryUrl: file.html5EntryUrl || ''
+            };
+            if (window.currentPptOverlay && window.currentPptOverlay.destroy) {
+                window.currentPptOverlay.destroy();
+            }
+            if (typeof RemoedPresentationOverlay !== 'undefined') {
+                const role = (localStorage.getItem('userType') || 'teacher').toLowerCase();
+                window.currentPptOverlay = RemoedPresentationOverlay.mountStackedPresentation(viewer, {
+                    material: material,
+                    socket: socket,
+                    room: room,
+                    isTeacher: role === 'teacher'
+                });
+            }
         } else {
             const previewCard = document.createElement('div');
             previewCard.style.cssText = `

@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="css/global-portal.css">
 <!-- Remo AI Chatbot Styles -->
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css">
     <script src="js/user-session.js"></script>
     <style>
         .page-teacher-lessons-library .preview-skeleton {
@@ -41,6 +42,44 @@
             background: white;
             display: block;
         }
+        .page-teacher-lessons-library .ppt-eye-preview-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 8px;
+            padding: 10px 18px;
+            border: none;
+            border-radius: 8px;
+            background: #1ca7e7;
+            color: #fff;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+        }
+        .page-teacher-lessons-library .ppt-eye-preview-btn:hover { background: #1691d1; }
+        .page-teacher-lessons-library .secure-ppt-frame-wrap {
+            width: 100%;
+            height: min(70vh, 720px);
+            min-height: 420px;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #0f172a;
+            border: 1px solid #e2e8f0;
+        }
+        .page-teacher-lessons-library .secure-ppt-frame-wrap iframe {
+            width: 100%;
+            height: 100%;
+            min-height: 420px;
+            border: none;
+            background: #fff;
+        }
+        .page-teacher-lessons-library .secure-ppt-hint {
+            margin-top: 10px;
+            font-size: 0.85rem;
+            color: #64748b;
+            text-align: center;
+            padding: 0 12px;
+        }
         .page-teacher-lessons-library .pdf-stream-loading {
             display: flex;
             flex-direction: column;
@@ -59,12 +98,16 @@
     </style>
 </head>
 <body class="page-teacher-lessons-library">
+    <div class="remoed-main">
     <div id="teacher-sidebar-root"></div>
     <script src="js/teacher-sidebar.js"></script>
-    <script>TeacherSidebar.render('teacher-sidebar-root', 'lessons-library');</script>
+    <script src="js/teacher-page-header.js"></script>
+        <script>
+            TeacherSidebar.render('teacher-sidebar-root', 'lessons-library');
+            TeacherPageHeader.render('lessons-library');
+        </script>
     <div class="remoed-content">
         <div class="page-header">
-            <h1>📚 Lessons Library</h1>
             <p>Manage and upload lesson files for your curriculum. Files are stored permanently and cannot be deleted.</p>
         </div>
 
@@ -102,12 +145,10 @@
                     <div class="form-group" style="margin-bottom: 1rem;">
                         <label for="edit-curriculum-level">Level *</label>
                         <select id="edit-curriculum-level" class="form-control" required>
-                            <option value="nursery">Nursery</option>
-                            <option value="kinder">Kinder</option>
-                            <option value="preparatory">Preparatory</option>
-                            <option value="elementary">Elementary</option>
-                            <option value="intermediate">Intermediate</option>
-                            <option value="advanced">Advanced</option>
+                            <option value="Little Seeds (Age 3)">Little Seeds (Age 3)</option>
+                            <option value="Sprouts (Age 4)">Sprouts (Age 4)</option>
+                            <option value="Saplings (Age 5)">Saplings (Age 5)</option>
+                            <option value="Young Stewards (Age 6)">Young Stewards (Age 6)</option>
                         </select>
                     </div>
                     <div class="form-group" style="margin-bottom: 1rem;">
@@ -129,7 +170,18 @@
                 </div>
 
                 <div id="lesson-info" class="lesson-info" style="display: none;">
-                    <h3 id="lesson-title"></h3>
+                    <div class="lesson-title-row">
+                        <h3 id="lesson-title"></h3>
+                        <button type="button" id="lesson-title-edit-btn" class="lesson-title-edit-btn" title="Edit title" aria-label="Edit lesson title">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            </svg>
+                        </button>
+                        <button type="button" id="lesson-title-save-btn" class="lesson-title-save-btn" hidden>Save</button>
+                        <button type="button" id="lesson-title-cancel-btn" class="lesson-title-cancel-btn" hidden>Cancel</button>
+                    </div>
+                    <input type="text" id="lesson-title-input" class="lesson-title-input" hidden maxlength="300" aria-label="Lesson title" />
                     <p id="lesson-description"></p>
                     <p><strong>Duration:</strong> <span id="lesson-duration"></span> minutes</p>
                 </div>
@@ -471,6 +523,7 @@
             setupFileUpload();
             setupLessonFilesListClickDelegation();
             updateEditCurriculumButtonState();
+            setupLessonTitleEditing();
         });
 
         function onCurriculumSelectChange() {
@@ -485,6 +538,156 @@
             const duplicatePrefix = new RegExp(`^Lesson\\s*${lessonNumber}\\s*:\\s*`, 'i');
             const cleanTitle = rawTitle.replace(duplicatePrefix, '').trim();
             return `Lesson ${lessonNumber}: ${cleanTitle || rawTitle || 'Untitled Lesson'}`;
+        }
+
+        let lessonTitleEditSnapshot = '';
+
+        function setLessonTitleEditMode(editing) {
+            const titleEl = document.getElementById('lesson-title');
+            const inputEl = document.getElementById('lesson-title-input');
+            const editBtn = document.getElementById('lesson-title-edit-btn');
+            const saveBtn = document.getElementById('lesson-title-save-btn');
+            const cancelBtn = document.getElementById('lesson-title-cancel-btn');
+            if (!titleEl || !inputEl || !editBtn || !saveBtn) return;
+
+            if (editing) {
+                lessonTitleEditSnapshot = titleEl.textContent || '';
+                inputEl.value = lessonTitleEditSnapshot;
+                titleEl.hidden = true;
+                editBtn.hidden = true;
+                inputEl.hidden = false;
+                saveBtn.hidden = false;
+                if (cancelBtn) cancelBtn.hidden = false;
+                inputEl.focus();
+                inputEl.select();
+            } else {
+                titleEl.hidden = false;
+                editBtn.hidden = false;
+                inputEl.hidden = true;
+                saveBtn.hidden = true;
+                if (cancelBtn) cancelBtn.hidden = true;
+            }
+        }
+
+        function cancelLessonTitleEdit() {
+            const titleEl = document.getElementById('lesson-title');
+            if (titleEl) titleEl.textContent = lessonTitleEditSnapshot;
+            setLessonTitleEditMode(false);
+        }
+
+        async function updateLessonTitle(lessonId, newTitle) {
+            const trimmed = String(newTitle || '').trim();
+            if (!lessonId) throw new Error('No lesson selected');
+            if (!trimmed) throw new Error('Lesson title is required');
+
+            const currentToken = localStorage.getItem('token') || token;
+            if (!currentToken) throw new Error('Authentication required. Please log in again.');
+
+            const response = await fetch(`/api/lessons/lesson/${encodeURIComponent(lessonId)}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: 'Bearer ' + currentToken
+                },
+                body: JSON.stringify({ title: trimmed })
+            });
+
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error((data && (data.error || data.message)) || 'Failed to update lesson title');
+            }
+            return data.lesson || { _id: lessonId, title: trimmed };
+        }
+
+        async function saveLessonTitleEdit() {
+            if (!currentLessonId) {
+                showAlert('error', 'No lesson selected');
+                return;
+            }
+            const inputEl = document.getElementById('lesson-title-input');
+            const saveBtn = document.getElementById('lesson-title-save-btn');
+            const newTitle = (inputEl && inputEl.value) || '';
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.textContent = 'Saving…';
+            }
+            try {
+                const updated = await updateLessonTitle(currentLessonId, newTitle);
+                const bareTitle = updated.title || String(newTitle).trim();
+
+                document.getElementById('lesson-title').textContent = bareTitle;
+
+                const lessonSelect = document.getElementById('lesson-select');
+                const selectedOption = lessonSelect && lessonSelect.options[lessonSelect.selectedIndex];
+                let lessonObj = null;
+                if (selectedOption && selectedOption.dataset.lesson) {
+                    try {
+                        lessonObj = JSON.parse(selectedOption.dataset.lesson);
+                    } catch (_e) {
+                        lessonObj = null;
+                    }
+                }
+                if (!lessonObj) {
+                    lessonObj = currentLessonsCache.find(function (l) {
+                        return String(l._id) === String(currentLessonId);
+                    }) || { _id: currentLessonId };
+                }
+                lessonObj.title = bareTitle;
+                if (selectedOption) {
+                    selectedOption.dataset.lesson = JSON.stringify(lessonObj);
+                    selectedOption.textContent = formatLessonLabel(lessonObj);
+                }
+                currentLessonsCache = currentLessonsCache.map(function (l) {
+                    if (String(l._id) === String(currentLessonId)) {
+                        return Object.assign({}, l, { title: bareTitle });
+                    }
+                    return l;
+                });
+
+                setLessonTitleEditMode(false);
+                showAlert('success', 'Lesson title updated.');
+            } catch (err) {
+                showAlert('error', (err && err.message) || 'Failed to update lesson title');
+            } finally {
+                if (saveBtn) {
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = 'Save';
+                }
+            }
+        }
+
+        function setupLessonTitleEditing() {
+            const editBtn = document.getElementById('lesson-title-edit-btn');
+            const saveBtn = document.getElementById('lesson-title-save-btn');
+            const cancelBtn = document.getElementById('lesson-title-cancel-btn');
+            const inputEl = document.getElementById('lesson-title-input');
+            if (editBtn) {
+                editBtn.addEventListener('click', function () {
+                    if (!currentLessonId) return;
+                    setLessonTitleEditMode(true);
+                });
+            }
+            if (saveBtn) {
+                saveBtn.addEventListener('click', function () {
+                    saveLessonTitleEdit();
+                });
+            }
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', function () {
+                    cancelLessonTitleEdit();
+                });
+            }
+            if (inputEl) {
+                inputEl.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        saveLessonTitleEdit();
+                    } else if (e.key === 'Escape') {
+                        e.preventDefault();
+                        cancelLessonTitleEdit();
+                    }
+                });
+            }
         }
 
         function updateEditCurriculumButtonState() {
@@ -750,6 +953,7 @@
                 document.getElementById('file-count').textContent = '0 files';
                 document.getElementById('files-list').innerHTML = '<div class="empty-state"><svg class="empty-state-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg><h3>No lesson selected</h3><p>Select a curriculum and lesson to view or upload files</p></div>';
                 currentLessonId = null;
+                setLessonTitleEditMode(false);
                 closePreview();
                 return;
             }
@@ -758,6 +962,7 @@
             currentLessonId = lesson._id;
 
             // Show lesson info
+            setLessonTitleEditMode(false);
             document.getElementById('lesson-title').textContent = lesson.title;
             document.getElementById('lesson-description').textContent = lesson.description || 'No description';
             document.getElementById('lesson-duration').textContent = lesson.estimatedDuration || 30;
@@ -895,26 +1100,24 @@
 
             try {
                 for (const file of selectedFiles) {
-                    const fileData = await fileToBase64(file);
                     const fileType = getFileType(file.name);
-                    
                     const currentToken = localStorage.getItem('token') || token;
+                    const form = new FormData();
+                    form.append('file', file, file.name);
+                    form.append('fileName', file.name);
+                    form.append('fileType', fileType);
+                    form.append('fileSize', String(file.size));
+
                     const response = await fetch(`/api/lessons/lesson/${currentLessonId}/upload-file?token=${encodeURIComponent(currentToken)}`, {
                         method: 'POST',
                         headers: {
-                            'Content-Type': 'application/json',
                             'Authorization': `Bearer ${currentToken}`
                         },
-                        body: JSON.stringify({
-                            fileName: file.name,
-                            fileType: fileType,
-                            fileSize: file.size,
-                            fileData: fileData
-                        })
+                        body: form
                     });
 
                     if (!response.ok) {
-                        const error = await response.json();
+                        const error = await response.json().catch(() => ({ error: 'Upload failed' }));
                         throw new Error(error.error || 'Upload failed');
                     }
                 }
@@ -993,6 +1196,73 @@
             const previewContent = document.getElementById('preview-content');
             const previewTitle = document.getElementById('preview-title');
 
+            function escapeHtml(s) {
+                return String(s == null ? '' : s)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
+            }
+
+            async function loadSecurePptPreview(fileId, name, fallbackUrl, embedUrl, presentationType, mountEl) {
+                mountEl.innerHTML = `
+                    <div class="preview-unsupported">
+                        <div class="preview-unsupported-icon">⏳</div>
+                        <h3>Loading secure preview…</h3>
+                    </div>
+                `;
+                const tok = localStorage.getItem('token') || '';
+                let src = '';
+                let hint = '';
+                try {
+                    if (fileId && tok) {
+                        const res = await fetch('/api/lessons/presentation/' + encodeURIComponent(fileId) + '/secure-embed', {
+                            headers: { Authorization: 'Bearer ' + tok },
+                            credentials: 'include'
+                        });
+                        const data = await res.json().catch(() => ({}));
+                        if (res.ok && data.embedUrl) {
+                            src = data.embedUrl;
+                            hint = data.hint || '';
+                        }
+                    }
+                } catch (_e) {}
+                if (!src && embedUrl) src = embedUrl;
+                if (!src && presentationType === 'html5_zip' && fallbackUrl) {
+                    src = fallbackUrl.startsWith('http') ? fallbackUrl : (window.location.origin + fallbackUrl);
+                }
+                if (!src && fallbackUrl && /\.(ppt|pptx)(\?|#|$)/i.test(fallbackUrl)) {
+                    const abs = fallbackUrl.startsWith('http') ? fallbackUrl : (window.location.origin + fallbackUrl);
+                    src = 'https://view.officeapps.live.com/op/embed.aspx?src=' + encodeURIComponent(abs);
+                    if (/localhost|127\.0\.0\.1/i.test(window.location.hostname)) {
+                        hint = 'Microsoft Office Online cannot reach localhost files. Preview works on a public HTTPS deploy; use Live Classroom locally. Direct downloads stay disabled.';
+                    }
+                }
+                if (!src) {
+                    mountEl.innerHTML = `
+                        <div class="preview-unsupported">
+                            <div class="preview-unsupported-icon">🔒</div>
+                            <h3>Preview unavailable</h3>
+                            <p>Direct downloads are disabled. Open this lesson in Live Classroom to present.</p>
+                            <p style="margin-top:1rem;font-size:0.9rem;color:#64748b;">File: ${escapeHtml(name)}</p>
+                        </div>
+                    `;
+                    return;
+                }
+                mountEl.innerHTML = `
+                    <div class="secure-ppt-frame-wrap">
+                        <iframe
+                            title="${escapeHtml(name)} (read-only preview)"
+                            src="${src.replace(/"/g, '&quot;')}"
+                            sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-presentation"
+                            allowfullscreen
+                            referrerpolicy="no-referrer"
+                        ></iframe>
+                    </div>
+                    ${hint ? `<p class="secure-ppt-hint">${escapeHtml(hint)}</p>` : '<p class="secure-ppt-hint">Read-only web preview — downloading the original .pptx from this panel is disabled.</p>'}
+                `;
+            }
+
             previewTitle.textContent = file.fileName || 'Preview';
             previewOverlay.classList.add('show');
             previewPanel.classList.add('open');
@@ -1000,6 +1270,7 @@
             const fileType = file.fileType || '';
             const fileName = file.fileName || '';
             let fileData = file.fileData || '';
+            const fileUrl = file.fileUrl || file.html5EntryUrl || '';
 
             if (fileData && !fileData.startsWith('data:')) {
                 const mimeType = getMimeType(fileName, fileType);
@@ -1008,13 +1279,31 @@
                 }
             }
 
+            if (!fileData && fileUrl) {
+                const isPpt = /\.(ppt|pptx)$/i.test(fileName) || String(fileType).includes('ppt') || String(file.presentationType || '').includes('office') || String(file.presentationType || '') === 'html5_zip';
+                const fileId = file._id || file.id || '';
+                if (isPpt) {
+                    loadSecurePptPreview(fileId, fileName, fileUrl, file.embedUrl || '', file.presentationType || '', previewContent);
+                    return;
+                }
+                previewContent.innerHTML = `
+                    <div class="preview-unsupported">
+                        <div class="preview-unsupported-icon">📄</div>
+                        <h3>File stored on server</h3>
+                        <p style="margin: 0.75rem 0;">Preview is not available for this file type in the library.</p>
+                        <p style="margin-top: 1rem; font-size: 0.9rem; color: #64748b;">File: ${escapeHtml(fileName)}</p>
+                    </div>
+                `;
+                return;
+            }
+
             if (!fileData) {
                 previewContent.innerHTML = `
                     <div class="preview-unsupported">
                         <div class="preview-unsupported-icon">⚠️</div>
                         <h3>File data not available</h3>
                         <p>Unable to load file content. The file may be corrupted or missing.</p>
-                        <p style="margin-top: 1rem; font-size: 0.9rem; color: #64748b;">File: ${fileName}</p>
+                        <p style="margin-top: 1rem; font-size: 0.9rem; color: #64748b;">File: ${escapeHtml(fileName)}</p>
                     </div>
                 `;
                 return;
@@ -1683,6 +1972,7 @@
         });
       }
     </script>
+    </div><!-- .remoed-main -->
 </body>
 </html>
 

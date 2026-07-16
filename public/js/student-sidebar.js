@@ -6,6 +6,17 @@
     'use strict';
 
     var SVG_STROKE = 'stroke-width="2"';
+    var LS_KEY = 'remoed_student_sidebar_collapsed';
+
+    function svgBars() {
+        return (
+            '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+            SVG_STROKE +
+            ' aria-hidden="true">' +
+            '<path d="M4 6h16M4 12h16M4 18h16"/>' +
+            '</svg>'
+        );
+    }
 
     var MENU_ITEMS = [
         { id: 'dashboard', label: 'Dashboard', href: 'student-dashboard.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/></svg>' },
@@ -106,12 +117,28 @@
         return { label: 'Book Class', href: 'student-book.html' };
     }
 
-    function menuIconWrap(svgHtml) {
-        return '<span class="remoed-menu-icon" aria-hidden="true">' + svgHtml + '</span>';
+    function escapeLabel(text) {
+        return String(text).replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
-    function menuLabelWrap(text) {
-        return '<span class="remoed-menu-label">' + String(text).replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</span>';
+    function readCollapsedPref() {
+        try {
+            return localStorage.getItem(LS_KEY) === '1';
+        } catch (_e) {
+            return false;
+        }
+    }
+
+    function writeCollapsedPref(collapsed) {
+        try {
+            localStorage.setItem(LS_KEY, collapsed ? '1' : '0');
+        } catch (_e) {}
+    }
+
+    function applyCollapsedState(nav, collapsed) {
+        if (!nav) return;
+        nav.classList.toggle('sidebar-collapsed', !!collapsed);
+        document.body.classList.toggle('student-sidebar-collapsed', !!collapsed);
     }
 
     function refreshBookNavItem(container) {
@@ -120,7 +147,8 @@
         if (!li) return;
         var spec = getBookNavSpec();
         var icon = MENU_ITEMS.filter(function (x) { return x.id === 'book'; })[0].icon;
-        li.innerHTML = menuIconWrap(icon) + menuLabelWrap(spec.label);
+        li.setAttribute('title', spec.label);
+        li.innerHTML = icon + '<span class="menu-label">' + escapeLabel(spec.label) + '</span>';
         li.onclick = function () {
             window.location.href = spec.href;
         };
@@ -192,6 +220,15 @@
             : containerIdOrElement;
         if (!container) return;
 
+        // Hard cleanup: remove any legacy floating toggles/overlays.
+        try {
+            var legacy = document.getElementById('sidebarToggle');
+            if (legacy) legacy.remove();
+            document.querySelectorAll('.mobile-hamburger, .mobile-sidebar-overlay, .remoed-mobile-topbar').forEach(function (el) {
+                try { el.remove(); } catch (_e) {}
+            });
+        } catch (_e) {}
+
         var active = activePageId || getActiveFromPath();
         var showJourney = shouldShowLearningJourneyNav();
         var menuHtml = MENU_ITEMS.filter(function (item) {
@@ -207,25 +244,29 @@
                 bookSpec = getBookNavSpec();
                 label = bookSpec.label;
             }
-            var inner = menuIconWrap(item.icon) + menuLabelWrap(label);
+            var titleAttr = ' title="' + escapeLabel(label) + '"';
+            var inner = item.icon + '<span class="menu-label">' + escapeLabel(label) + '</span>';
             if (item.isLogout) {
-                return '<li' + idAttr + activeClass + dataNav + ' data-logout="1">' + inner + '</li>';
+                return '<li' + titleAttr + idAttr + activeClass + dataNav + ' data-logout="1">' + inner + '</li>';
             }
             if (item.id === 'book') {
-                return '<li' + activeClass + dataNav + ' onclick="window.location.href=\'' + bookSpec.href + '\'">' + inner + '</li>';
+                return '<li' + titleAttr + activeClass + dataNav + ' onclick="window.location.href=\'' + bookSpec.href + '\'">' + inner + '</li>';
             }
-            return '<li' + activeClass + dataNav + ' onclick="window.location.href=\'' + item.href + '\'">' + inner + '</li>';
+            return '<li' + titleAttr + activeClass + dataNav + ' onclick="window.location.href=\'' + item.href + '\'">' + inner + '</li>';
         }).join('');
 
         container.innerHTML =
-            '<nav class="remoed-sidebar">' +
+            '<nav class="remoed-sidebar student-sidebar">' +
             '  <div class="sidebar-header">' +
-            '    <div class="sidebar-header-inner logo-container logo-section">' +
-            '      <img class="sidebar-logo-img sidebar-logo" src="images/remoed-logo.png" alt="RemoEdPH" onerror="this.src=\'remoed-logo.png\'">' +
+            '    <div class="sidebar-header-inner">' +
+            '      <img class="sidebar-logo-img" src="images/remoed-logo.png" alt="RemoEdPH" onerror="this.src=\'remoed-logo.png\'">' +
             '      <div class="sidebar-brand">' +
             '        <div class="sidebar-title">RemoEdPH</div>' +
             '        <div class="sidebar-subtitle">Student Portal</div>' +
             '      </div>' +
+            '      <button type="button" class="sidebar-collapse-toggle" aria-label="Toggle sidebar" title="Toggle sidebar">' +
+            svgBars() +
+            '      </button>' +
             '    </div>' +
             '  </div>' +
             '  <div class="sidebar-user">' +
@@ -241,6 +282,23 @@
             '</nav>';
 
         injectStudentNoMotionStyles();
+
+        var nav = container.querySelector('nav.remoed-sidebar');
+        applyCollapsedState(nav, readCollapsedPref());
+
+        var toggleBtn = container.querySelector('.sidebar-collapse-toggle');
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var next = !(nav && nav.classList.contains('sidebar-collapsed'));
+                applyCollapsedState(nav, next);
+                writeCollapsedPref(next);
+                try {
+                    global.dispatchEvent(new Event('resize'));
+                } catch (_e) {}
+            });
+        }
 
         var logoutLi = container.querySelector('#logout-nav');
         if (logoutLi) {

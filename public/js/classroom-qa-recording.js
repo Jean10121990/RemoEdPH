@@ -211,6 +211,53 @@
   }
 
   /** Whole-class/tab recording (teacher): capture the visible classroom as a screen recording. */
+  function resolvePresentationCropElement() {
+    return (
+      document.getElementById('presentation-container') ||
+      document.querySelector('.remoed-ppt-stack') ||
+      document.querySelector('.remoed-ppt-mount') ||
+      document.getElementById('lesson-file-viewer')
+    );
+  }
+
+  /**
+   * Region Capture: crop the display track to the PowerPoint surface so sidebars/chat
+   * (and the infinite mirror of the share UI) are excluded from the outgoing stream.
+   */
+  function applyRegionCropToDisplayStream(stream) {
+    if (!stream) return Promise.resolve(stream);
+    var track = stream.getVideoTracks && stream.getVideoTracks()[0];
+    if (!track) return Promise.resolve(stream);
+
+    if (typeof track.cropTo !== 'function') {
+      console.warn('[QA] Region Capture unsupported (no MediaStreamTrack.cropTo). Full tab will be shared.');
+      return Promise.resolve(stream);
+    }
+    if (typeof window.CropTarget === 'undefined' || typeof window.CropTarget.fromElement !== 'function') {
+      console.warn('[QA] CropTarget API unsupported in this browser. Full tab will be shared.');
+      return Promise.resolve(stream);
+    }
+
+    var el = resolvePresentationCropElement();
+    if (!el) {
+      console.warn('[QA] No #presentation-container found for CropTarget; full tab will be shared.');
+      return Promise.resolve(stream);
+    }
+
+    return window.CropTarget.fromElement(el)
+      .then(function (cropTarget) {
+        return track.cropTo(cropTarget).then(function () {
+          console.log('[QA] Region Capture applied to presentation container');
+          setStatus('Region capture active — sharing presentation area only.');
+          return stream;
+        });
+      })
+      .catch(function (err) {
+        console.warn('[QA] CropTarget failed; continuing with full tab capture:', err);
+        return stream;
+      });
+  }
+
   function getScreenRecordableStream() {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
       return Promise.reject(new Error('Screen capture not supported in this browser'));
@@ -230,12 +277,15 @@
         var vTrack = stream.getVideoTracks && stream.getVideoTracks()[0];
         var label = vTrack && vTrack.label ? String(vTrack.label) : '';
         if (label) {
-          setStatus('Captured source: ' + label + '. If wrong, Stop then Start and choose \"This tab\".');
+          setStatus('Captured source: ' + label + '. Cropping to presentation…');
         } else {
-          setStatus('Screen capture started. Confirm you selected \"This tab (Live Classroom)\".');
+          setStatus('Screen capture started. Cropping to presentation…');
         }
       } catch (e) {}
-      return { stream: stream, mode: 'screen_tab' };
+      return applyRegionCropToDisplayStream(stream).then(function (cropped) {
+        state.screenStream = cropped;
+        return { stream: cropped, mode: 'screen_tab' };
+      });
     });
   }
 
@@ -347,7 +397,19 @@
   }
 
   function resetAfterStopUi() {
-    if (state.btnStart) state.btnStart.disabled = false;
+    try {
+      if (window.RemoedLiveClassroomWebrtc && typeof window.RemoedLiveClassroomWebrtc.unpublishScreenShare === 'function') {
+        window.RemoedLiveClassroomWebrtc.unpublishScreenShare();
+      }
+    } catch (e) {
+      console.warn('QA unpublish screen share:', e);
+    }
+    if (state.btnStart) {
+      state.btnStart.disabled = false;
+      state.btnStart.textContent = 'Start';
+      state.btnStart.style.opacity = '1';
+      state.btnStart.style.cursor = 'pointer';
+    }
     if (state.btnStop) {
       state.btnStop.disabled = true;
       state.btnStop.style.opacity = '0.6';
@@ -414,6 +476,11 @@
           } catch (e) {}
           if (vTrack) {
             vTrack.onended = function () {
+              try {
+                if (window.RemoedLiveClassroomWebrtc && typeof window.RemoedLiveClassroomWebrtc.unpublishScreenShare === 'function') {
+                  window.RemoedLiveClassroomWebrtc.unpublishScreenShare();
+                }
+              } catch (_u) {}
               if (state.mediaRecorder && state.mediaRecorder.state === 'recording') {
                 setStatus('Screen share stopped — finishing recording…');
                 state.mediaRecorder.stop();
@@ -505,11 +572,32 @@
         };
 
         mr.start(state.chunkMs);
+        // Phase 3: lock Start only after stream init (+ optional crop) succeeded
+        if (state.btnStart) {
+          state.btnStart.disabled = true;
+          state.btnStart.textContent = 'Recording Active';
+          state.btnStart.setAttribute('aria-disabled', 'true');
+          state.btnStart.style.opacity = '0.85';
+          state.btnStart.style.cursor = 'default';
+        }
         if (state.btnStop) {
           state.btnStop.disabled = false;
           state.btnStop.style.opacity = '1';
         }
         setStatus('Recording… ' + formatTime(0));
+
+        // Broadcast the same tab-capture tracks to the student (webcam stays on its own senders).
+        if (ctx.got.mode === 'screen_tab' && state.screenStream) {
+          try {
+            if (window.RemoedLiveClassroomWebrtc && typeof window.RemoedLiveClassroomWebrtc.publishScreenShare === 'function') {
+              window.RemoedLiveClassroomWebrtc.publishScreenShare(state.screenStream).catch(function (err) {
+                console.warn('QA tab-share publish failed:', err);
+              });
+            }
+          } catch (pubErr) {
+            console.warn('QA tab-share publish error:', pubErr);
+          }
+        }
 
         state.tickTimer = setInterval(function () {
           if (!state.startedAt) return;
@@ -530,7 +618,12 @@
         } else {
           setStatus('Start failed: ' + (e.message || e));
         }
-        if (state.btnStart) state.btnStart.disabled = false;
+        if (state.btnStart) {
+          state.btnStart.disabled = false;
+          state.btnStart.textContent = 'Start';
+          state.btnStart.style.opacity = '1';
+          state.btnStart.style.cursor = 'pointer';
+        }
         state.recordingId = null;
         state.mediaRecorder = null;
         teardownRecordingExtras();
@@ -592,6 +685,10 @@
   }
 
   function buildPanel() {
+    try {
+      var existing = document.getElementById('qa-recording-panel');
+      if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+    } catch (_e) {}
     var wrap = document.createElement('div');
     wrap.id = 'qa-recording-panel';
     wrap.setAttribute(
@@ -646,6 +743,10 @@
 
       // Privacy + authority: only teachers can start/see QA recording controls.
       if (liveUserType() !== 'teacher') {
+        try {
+          var leftover = document.getElementById('qa-recording-panel');
+          if (leftover && leftover.parentNode) leftover.parentNode.removeChild(leftover);
+        } catch (_e) {}
         window.ClassroomQaRecording = {
           stopAndFinalize: function () { return Promise.resolve(); },
           isRecording: function () { return false; },

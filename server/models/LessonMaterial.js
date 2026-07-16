@@ -24,8 +24,25 @@ const lessonMaterialSchema = new mongoose.Schema({
     required: true
   },
   data: {
-    type: String, // Base64 data URL
-    required: true
+    type: String,
+    default: ''
+  },
+  presentationType: {
+    type: String,
+    enum: ['file', 'office_embed', 'html5_zip'],
+    default: 'file'
+  },
+  embedUrl: {
+    type: String,
+    default: ''
+  },
+  html5PackagePath: {
+    type: String,
+    default: ''
+  },
+  html5EntryUrl: {
+    type: String,
+    default: ''
   },
   uploader: {
     type: String,
@@ -34,23 +51,19 @@ const lessonMaterialSchema = new mongoose.Schema({
   uploadedAt: {
     type: Date,
     default: Date.now,
-    index: true // For cleanup queries
+    index: true
   },
   expiresAt: {
     type: Date,
-    default: function() {
-      // Expire after 1 day
+    default: function () {
       return new Date(Date.now() + 24 * 60 * 60 * 1000);
-    },
-    // TTL index only via lessonMaterialSchema.index below — avoid duplicate index on expiresAt
+    }
   }
 }, {
   timestamps: true
 });
 
-// Index for efficient queries
 lessonMaterialSchema.index({ room: 1, uploadedAt: -1 });
-lessonMaterialSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 }); // TTL index
+lessonMaterialSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 module.exports = mongoose.model('LessonMaterial', lessonMaterialSchema);
-

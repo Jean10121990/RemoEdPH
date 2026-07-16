@@ -11,6 +11,7 @@
     <title>User Management - RemoEdPH Admin</title>
     <link rel="stylesheet" href="modern-styles.css">
     <link rel="stylesheet" href="css/teacher-sidebar.css">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css">
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f6fbff; }
         .remoed-main { display: flex; min-height: calc(100vh - 70px); }
@@ -224,10 +225,10 @@
                         <div style="font-weight: 600; color: #334155; margin-bottom: 8px; font-size: 0.95rem;">Payout tier (base pay)</div>
                         <label for="admin-payout-tier-base" style="display: block; margin-bottom: 5px; font-weight: 600; color: #333; font-size: 0.88rem;">Professional tier</label>
                         <select id="admin-payout-tier-base" name="payoutTierBase" onchange="adminTeacherRatePreviewUpdate()" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; margin-bottom: 10px;">
-                            <option value="180">Tier 1 — ₱180/hr — 4-yr Grad OR 2-yrs BPO/ESL Exp</option>
-                            <option value="230">Tier 2 — ₱230/hr — 4-yr Grad (English Major)</option>
-                            <option value="280">Tier 3 — ₱280/hr — Grad + 1–3 yrs Exp/BPO</option>
-                            <option value="330">Tier 4 — ₱330/hr — Licensed Prof. Teacher (LET)</option>
+                            <option value="180">Tier 1 — ₱180/hr — Newbie Teacher (4-yr Grad OR 2-yrs BPO/ESL Exp)</option>
+                            <option value="230">Tier 2 — ₱230/hr — Junior Teacher (4-yr Grad (English Major))</option>
+                            <option value="280">Tier 3 — ₱280/hr — Senior Teacher and Trainer (Grad + 1–3 yrs Exp/BPO)</option>
+                            <option value="330">Tier 4 — ₱330/hr — Head Teacher and Teaching Quality (Licensed Prof. Teacher (LET))</option>
                         </select>
                         <div style="font-size: 0.85rem; color: #64748b; margin-bottom: 6px;">Specialized credentials (+₱10/hr each, +₱5 per 25-min class)</div>
                         <div style="border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; margin-bottom: 10px; background: #fff;">
@@ -357,33 +358,41 @@
         }
         window.adminTeacherRatePreviewUpdate = adminTeacherRatePreviewUpdate;
 
+        function viewTeacherAdminProfile(mongoId, teacherCode) {
+            var id = String(mongoId || '').trim();
+            if (!id) {
+                alert('No teacher record available for this row.');
+                return;
+            }
+            window.open('/admin/admin-view-user-profile.html?type=teacher&id=' + encodeURIComponent(id), '_blank', 'noopener,noreferrer');
+        }
+
         function viewTeacherPublicProfile(teacherId) {
             var id = String(teacherId || '').trim();
             if (!id) {
                 alert('No teacher ID available for this row.');
                 return;
             }
-            // Use absolute path so this works when admin-users is embedded under /admin/* (HR hub iframe).
             window.open('/teacher-view-profile.html?teacherId=' + encodeURIComponent(id), '_blank', 'noopener,noreferrer');
         }
 
         function viewStudentProfile(userMongoId) {
             var id = String(userMongoId || '').trim();
             if (!id) return;
-            window.open('admin-view-user-profile.html?type=student&id=' + encodeURIComponent(id), '_blank', 'noopener,noreferrer');
+            window.open('/admin/admin-view-user-profile.html?type=student&id=' + encodeURIComponent(id), '_blank', 'noopener,noreferrer');
         }
 
         function viewAdminProfile(userMongoId) {
             var id = String(userMongoId || '').trim();
             if (!id) return;
-            window.open('admin-view-user-profile.html?type=admin&id=' + encodeURIComponent(id), '_blank', 'noopener,noreferrer');
+            window.open('/admin/admin-view-user-profile.html?type=admin&id=' + encodeURIComponent(id), '_blank', 'noopener,noreferrer');
         }
 
         // Role-based access control
         const lsPortalUserType = localStorage.getItem('userType');
         if (lsPortalUserType !== 'admin') {
             alert('Access denied. This page is for administrators only.');
-            window.location.href = 'index.html';
+            window.location.href = '/';
         }
 
         document.addEventListener('DOMContentLoaded', function() {
@@ -450,7 +459,7 @@
                 tbody.innerHTML = teachers.map(teacher => `
                     <tr>
                         <td>
-                            <button type="button" class="action-btn btn-view-profile" onclick="viewTeacherPublicProfile(decodeURIComponent('${encodeURIComponent((teacher.teacherId && String(teacher.teacherId).trim()) || (teacher.username && String(teacher.username).trim()) || '')}'))" title="View Profile">
+                            <button type="button" class="action-btn btn-view-profile" onclick="viewTeacherAdminProfile('${teacher._id}', decodeURIComponent('${encodeURIComponent((teacher.teacherId && String(teacher.teacherId).trim()) || (teacher.username && String(teacher.username).trim()) || '')}'))" title="View admin profile">
                                 <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>

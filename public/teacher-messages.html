@@ -11,20 +11,25 @@
     <link rel="stylesheet" href="css/teacher-sidebar.css">
     <link rel="stylesheet" href="css/global-portal.css">
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css">
     <script src="js/user-session.js"></script>
 </head>
 <body class="page-teacher-messages">
     <div class="remoed-main">
         <div id="teacher-sidebar-root"></div>
         <script src="js/teacher-sidebar.js"></script>
-        <script>TeacherSidebar.render('teacher-sidebar-root', 'messages');</script>
+        <script src="js/teacher-page-header.js"></script>
+        <script>
+            TeacherSidebar.render('teacher-sidebar-root', 'messages');
+            TeacherPageHeader.render('messages');
+        </script>
 
         <main class="remoed-content">
             <div class="messenger" id="messenger">
                 <aside class="chat-list">
                     <div class="chat-list-header">
                         <div class="chat-list-header-text">
-                            <h1>Messages</h1>
+                            
                             <p class="chat-list-subtitle">Recent chats</p>
                         </div>
                     </div>
@@ -32,7 +37,7 @@
                         <input id="chat-filter" type="search" placeholder="Filter recent chats…" autocomplete="off" />
                     </div>
                     <div class="chat-search" style="margin-top:8px;">
-                        <input id="user-search" type="search" placeholder="Search teachers by name…" autocomplete="off" />
+                        <input id="user-search" type="search" placeholder="Search teachers or admins…" autocomplete="off" />
                     </div>
                     <div class="chat-items" id="chat-items">
                         <div style="padding:16px;color:#64748b;">Loading chats...</div>
