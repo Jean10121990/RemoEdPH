@@ -11,17 +11,22 @@
   <link rel="stylesheet" href="css/teacher-sidebar.css">
   <link rel="stylesheet" href="css/global-portal.css">
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css">
     <script src="js/user-session.js"></script>
 </head>
 <body class="page-teacher-referrals">
   <div class="remoed-main">
     <div id="teacher-sidebar-root"></div>
     <script src="js/teacher-sidebar.js"></script>
-    <script>TeacherSidebar.render('teacher-sidebar-root', 'referral-rewards');</script>
+    <script src="js/teacher-page-header.js"></script>
+        <script>
+            TeacherSidebar.render('teacher-sidebar-root', 'referral-rewards');
+            TeacherPageHeader.render('referral-rewards');
+        </script>
 
     <div class="remoed-content">
       <div class="page-head">
-        <h1>Referral Rewards</h1>
+        
         <p>Track students who subscribed using <strong>your</strong> referral link. Each enrollee gets a unique reference number. Totals show subscription amounts and your commission.</p>
       </div>
 
@@ -29,6 +34,7 @@
         <strong>Teacher vs admin:</strong> Administrators use <em>Unique Link Commission</em> in the admin portal to see <strong>all</strong> teachers. This page only shows referrals tied to <strong>your</strong> code — separate tracking for your classroom.
       </div>
 
+      <div class="referral-link-stats-row">
       <div class="link-card" id="link-section">
         <h2>Your referral link</h2>
         <p class="muted" style="margin-top:0;">Share this link so new families land on plans with your code saved for signup.</p>
@@ -57,6 +63,7 @@
           <div class="big" id="total-amount">₱0</div>
           <div class="muted">Sum of plan amounts attributed to you</div>
         </div>
+      </div>
       </div>
 
       <div class="filters">

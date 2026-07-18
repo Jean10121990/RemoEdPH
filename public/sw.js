@@ -1,9 +1,9 @@
 /**
  * Service Worker for RemoEdPH (teacher push + light offline shell)
- * v4: bump cache name (drop stale HTML) + network-first for static assets + safe cache storage (no double Brotli)
+ * v6: bump cache — teacher schedule HTML (cache-first) was serving stale class-table after updates
  */
 
-const CACHE_NAME = 'remoed-teacher-v5';
+const CACHE_NAME = 'remoed-teacher-v6';
 
 /** HTML shells only — avoid precaching CSS/JS (encoding + freshness handled at fetch time). */
 const urlsToCache = ['/teacher-dashboard.html', '/teacher-profile.html'];

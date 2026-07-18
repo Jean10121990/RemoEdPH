@@ -11,22 +11,33 @@
     <link rel="stylesheet" href="css/teacher-sidebar.css">
     <link rel="stylesheet" href="css/global-portal.css">
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css">
     <script src="js/user-session.js"></script>
 </head>
 <body class="page-teacher-messages">
     <div class="remoed-main">
         <div id="teacher-sidebar-root"></div>
         <script src="js/teacher-sidebar.js"></script>
-        <script>TeacherSidebar.render('teacher-sidebar-root', 'messages');</script>
+        <script src="js/teacher-page-header.js"></script>
+        <script>
+            TeacherSidebar.render('teacher-sidebar-root', 'messages');
+            TeacherPageHeader.render('messages');
+        </script>
 
         <main class="remoed-content">
             <div class="messenger" id="messenger">
                 <aside class="chat-list">
                     <div class="chat-list-header">
-                        <h1>Messages</h1>
+                        <div class="chat-list-header-text">
+                            
+                            <p class="chat-list-subtitle">Recent chats</p>
+                        </div>
                     </div>
                     <div class="chat-search">
-                        <input id="chat-search" placeholder="Search chats..." />
+                        <input id="chat-filter" type="search" placeholder="Filter recent chats…" autocomplete="off" />
+                    </div>
+                    <div class="chat-search" style="margin-top:8px;">
+                        <input id="user-search" type="search" placeholder="Search teachers or admins…" autocomplete="off" />
                     </div>
                     <div class="chat-items" id="chat-items">
                         <div style="padding:16px;color:#64748b;">Loading chats...</div>
@@ -75,12 +86,16 @@
             const composerEl = document.getElementById('composer');
             const composerTextEl = document.getElementById('composer-text');
             const sendBtnEl = document.getElementById('send-btn');
-            const searchEl = document.getElementById('chat-search');
+            const chatFilterEl = document.getElementById('chat-filter');
+            const userSearchEl = document.getElementById('user-search');
             const backBtnEl = document.getElementById('back-btn');
 
             let chats = [];
+            let userSearchHits = [];
+            let userSearchTimer = null;
             let activePeerId = null;
             const seenMessageIds = new Set();
+            const threadCursor = { hasMore: false, nextBefore: null, loadingOlder: false };
             const __skTok = (window.RemoedSecurityGuard && typeof window.RemoedSecurityGuard.getToken === 'function')
                 ? window.RemoedSecurityGuard.getToken()
                 : (localStorage.getItem('remoed_user_token') || localStorage.getItem('token') || '');
@@ -121,21 +136,24 @@
                 return `Last seen ${TU.formatDateTimePhilippines ? TU.formatDateTimePhilippines(d) : d.toLocaleString()}`;
             }
 
-            function renderChatList(filter = '') {
-                const f = filter.trim().toLowerCase();
+            function renderChatList() {
+                const f = (chatFilterEl && chatFilterEl.value) ? chatFilterEl.value.trim().toLowerCase() : '';
                 const rows = chats.filter(c => !f || (c.name || '').toLowerCase().includes(f));
-                if (rows.length === 0) {
-                    chatItemsEl.innerHTML = '<div style="padding:16px;color:#64748b;">No chats found.</div>';
+                const hits = userSearchHits.filter(h => !rows.some(r => String(r.peerId) === String(h.peerId)));
+                let html = '';
+                if (rows.length === 0 && hits.length === 0) {
+                    chatItemsEl.innerHTML = '<div style="padding:16px;color:#64748b;">No chats match. Try &quot;Search teachers&quot; below to find someone new.</div>';
                     return;
                 }
-                chatItemsEl.innerHTML = rows.map(c => {
-                    const active = c.peerId === activePeerId ? 'active' : '';
-                    const initial = (c.name || 'T')[0].toUpperCase();
-                    const img = normalizeImg(c.profilePicture);
-                    const avatar = img ? `<img src="${img}" alt="${esc(c.name)}">` : initial;
-                    const unread = c.unreadCount > 0 ? `<span class="unread-pill">${c.unreadCount}</span>` : '';
-                    return `
-                        <div class="chat-item ${active}" data-peer-id="${c.peerId}">
+                if (rows.length) {
+                    html += rows.map(c => {
+                        const active = String(c.peerId) === String(activePeerId) ? 'active' : '';
+                        const initial = (c.name || 'T')[0].toUpperCase();
+                        const img = normalizeImg(c.profilePicture);
+                        const avatar = img ? `<img src="${img}" alt="${esc(c.name)}">` : initial;
+                        const unread = c.unreadCount > 0 ? `<span class="unread-pill">${c.unreadCount}</span>` : '';
+                        return `
+                        <div class="chat-item ${active}" data-peer-id="${String(c.peerId).replace(/"/g, '&quot;')}" data-hit="0">
                             <div class="avatar">${avatar}</div>
                             <div class="chat-item-main">
                                 <div class="chat-item-top">
@@ -144,13 +162,52 @@
                                 </div>
                                 <div class="chat-snippet">${esc(c.lastMessage || '')}</div>
                             </div>
-                        </div>
-                    `;
-                }).join('');
-
+                        </div>`;
+                    }).join('');
+                }
+                if (hits.length) {
+                    html += `<div style="padding:8px 16px 4px;font-size:0.75rem;font-weight:600;color:#64748b;text-transform:uppercase;">Search results</div>`;
+                    html += hits.map(h => {
+                        const active = String(h.peerId) === String(activePeerId) ? 'active' : '';
+                        const initial = (h.name || 'T')[0].toUpperCase();
+                        const img = normalizeImg(h.profilePicture);
+                        const avatar = img ? `<img src="${img}" alt="${esc(h.name)}">` : initial;
+                        return `
+                        <div class="chat-item ${active}" data-peer-id="${String(h.peerId).replace(/"/g, '&quot;')}" data-hit="1">
+                            <div class="avatar">${avatar}</div>
+                            <div class="chat-item-main">
+                                <div class="chat-item-top">
+                                    <div class="chat-name">${esc(h.name)}</div>
+                                </div>
+                                <div class="chat-snippet" style="font-size:0.8rem;color:#94a3b8;">Tap to start a conversation</div>
+                            </div>
+                        </div>`;
+                    }).join('');
+                }
+                chatItemsEl.innerHTML = html;
                 chatItemsEl.querySelectorAll('.chat-item').forEach(el => {
                     el.addEventListener('click', () => openChat(el.getAttribute('data-peer-id')));
                 });
+            }
+
+            async function runUserSearch() {
+                const q = (userSearchEl && userSearchEl.value) ? userSearchEl.value.trim() : '';
+                if (q.length < 2) {
+                    userSearchHits = [];
+                    renderChatList();
+                    return;
+                }
+                try {
+                    const res = await fetch('/api/teacher/peer-chats/user-search?q=' + encodeURIComponent(q), { headers: { 'Authorization': `Bearer ${token}` } });
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.error || 'Search failed');
+                    userSearchHits = data.users || [];
+                    renderChatList();
+                } catch (e) {
+                    console.warn(e);
+                    userSearchHits = [];
+                    renderChatList();
+                }
             }
 
             function renderMessages(messages) {
@@ -213,7 +270,7 @@
                     });
                 }
                 chats.sort((a, b) => new Date(b.lastAt || 0) - new Date(a.lastAt || 0));
-                renderChatList(searchEl.value);
+                renderChatList();
             }
 
             async function loadChats() {
@@ -221,12 +278,33 @@
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || 'Failed to load chats');
                 chats = data.chats || [];
-                renderChatList(searchEl.value);
+                renderChatList();
+            }
+
+            function mergePeerIntoChats(peerId, partial) {
+                const id = String(peerId);
+                const idx = chats.findIndex(c => String(c.peerId) === id);
+                if (idx >= 0) {
+                    chats[idx] = { ...chats[idx], ...partial };
+                } else {
+                    chats.unshift({
+                        peerId: id,
+                        name: partial.name || id,
+                        profilePicture: partial.profilePicture || null,
+                        lastMessage: partial.lastMessage || '',
+                        lastAt: partial.lastAt || new Date().toISOString(),
+                        unreadCount: partial.unreadCount != null ? partial.unreadCount : 0,
+                    });
+                }
             }
 
             async function openChat(peerId) {
                 activePeerId = peerId;
-                const peer = chats.find(c => c.peerId === peerId) || { peerId, name: peerId };
+                const fromHit = userSearchHits.find(h => String(h.peerId) === String(peerId));
+                const peer = chats.find(c => String(c.peerId) === String(peerId)) || fromHit || { peerId, name: peerId };
+                if (fromHit && !chats.some(c => String(c.peerId) === String(peerId))) {
+                    mergePeerIntoChats(peerId, { name: fromHit.name, profilePicture: fromHit.profilePicture, lastMessage: '', lastAt: new Date().toISOString(), unreadCount: 0 });
+                }
                 paneNameEl.textContent = peer.name || peerId;
                 paneSubEl.textContent = lastSeenText(peer.lastAt);
                 const initial = (peer.name || 'T')[0].toUpperCase();
@@ -234,15 +312,56 @@
                 paneAvatarEl.innerHTML = img ? `<img src="${img}" alt="${esc(peer.name)}">` : initial;
                 composerEl.style.display = '';
                 messengerEl.classList.add('show-chat');
-                renderChatList(searchEl.value);
+                renderChatList();
 
-                const res = await fetch(`/api/teacher/peer-messages/${encodeURIComponent(peerId)}`, { headers: { 'Authorization': `Bearer ${token}` } });
+                threadCursor.hasMore = false;
+                threadCursor.nextBefore = null;
+                threadCursor.loadingOlder = false;
+                const res = await fetch(`/api/teacher/peer-messages/${encodeURIComponent(peerId)}?limit=20`, { headers: { 'Authorization': `Bearer ${token}` } });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || 'Failed to load messages');
+                threadCursor.hasMore = !!data.hasMore;
+                threadCursor.nextBefore = data.nextBefore || null;
                 renderMessages(data.messages || []);
 
-                chats = chats.map(c => c.peerId === peerId ? { ...c, unreadCount: 0 } : c);
-                renderChatList(searchEl.value);
+                chats = chats.map(c => String(c.peerId) === String(peerId) ? { ...c, unreadCount: 0 } : c);
+                renderChatList();
+            }
+
+            function prependMessages(older) {
+                if (!older || !older.length) return;
+                const frag = document.createDocumentFragment();
+                const prevHeight = chatScrollEl.scrollHeight;
+                older.forEach(m => {
+                    if (m.id) seenMessageIds.add(String(m.id));
+                    const isMe = String(m.senderId || '') === String(me || '');
+                    const bubbleClass = isMe ? 'message-sent' : 'message-received';
+                    const metaClass = isMe ? 'meta-sent' : 'meta-received';
+                    const wrap = document.createElement('div');
+                    wrap.className = 'message-wrap';
+                    wrap.innerHTML = `<div class="bubble ${bubbleClass}">${esc(m.message)}</div><div class="bubble-meta ${metaClass}">${fmtTime(m.createdAt)}</div>`;
+                    frag.appendChild(wrap);
+                });
+                chatScrollEl.insertBefore(frag, chatScrollEl.firstChild);
+                chatScrollEl.scrollTop = chatScrollEl.scrollHeight - prevHeight;
+            }
+
+            async function loadOlderMessages() {
+                if (!activePeerId || threadCursor.loadingOlder || !threadCursor.hasMore || !threadCursor.nextBefore) return;
+                threadCursor.loadingOlder = true;
+                try {
+                    const u = `/api/teacher/peer-messages/${encodeURIComponent(activePeerId)}?limit=20&before=${encodeURIComponent(threadCursor.nextBefore)}`;
+                    const res = await fetch(u, { headers: { 'Authorization': `Bearer ${token}` } });
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.error || 'Failed to load older');
+                    threadCursor.hasMore = !!data.hasMore;
+                    threadCursor.nextBefore = data.nextBefore || null;
+                    prependMessages(data.messages || []);
+                } catch (e) {
+                    console.warn(e);
+                } finally {
+                    threadCursor.loadingOlder = false;
+                }
             }
 
             async function sendMessage() {
@@ -273,7 +392,14 @@
                 return;
             }
 
-            searchEl.addEventListener('input', () => renderChatList(searchEl.value));
+            chatFilterEl.addEventListener('input', () => renderChatList());
+            userSearchEl.addEventListener('input', () => {
+                clearTimeout(userSearchTimer);
+                userSearchTimer = setTimeout(runUserSearch, 320);
+            });
+            chatScrollEl.addEventListener('scroll', () => {
+                if (chatScrollEl.scrollTop < 64) loadOlderMessages();
+            });
             sendBtnEl.addEventListener('click', () => sendMessage().catch(e => alert(e.message)));
             composerTextEl.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage().catch(err => alert(err.message)); }
@@ -290,8 +416,7 @@
                     upsertChatFromIncoming(m);
                     if (peerId === String(activePeerId || '')) {
                         appendSingleMessage(m);
-                        // Mark as read server-side by reloading current thread in background
-                        fetch(`/api/teacher/peer-messages/${encodeURIComponent(peerId)}`, {
+                        fetch(`/api/teacher/peer-messages/${encodeURIComponent(peerId)}?limit=20`, {
                             headers: { 'Authorization': `Bearer ${token}` }
                         }).catch(() => {});
                     }

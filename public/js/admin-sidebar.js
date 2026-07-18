@@ -6,6 +6,17 @@
     'use strict';
 
     var SVG_STROKE = 'stroke-width="2"';
+    var LS_KEY = 'remoed_admin_sidebar_collapsed';
+
+    function svgBars() {
+        return (
+            '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+            SVG_STROKE +
+            ' aria-hidden="true">' +
+            '<path d="M4 6h16M4 12h16M4 18h16"/>' +
+            '</svg>'
+        );
+    }
 
     var MENU_ITEMS = [
         { id: 'dashboard', label: 'Dashboard', href: 'admin-dashboard.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/></svg>' },
@@ -63,6 +74,59 @@
         if (avatarTextEl) avatarTextEl.textContent = (friendly[0] || 'A').toUpperCase();
     }
 
+    function getAdminAuthToken() {
+        return (
+            (typeof RemoedAdminSession !== 'undefined' && RemoedAdminSession.getAuthToken && RemoedAdminSession.getAuthToken()) ||
+            localStorage.getItem('remoed_admin_token') ||
+            localStorage.getItem('remoed_admin_auth') ||
+            localStorage.getItem('adminToken') ||
+            localStorage.getItem('token') ||
+            ''
+        );
+    }
+
+    /** Show uploaded photo in sidebar avatar, or fall back to letter initial. */
+    function applyAvatarFromUrl(url) {
+        var img = document.getElementById('profile-image');
+        var text = document.getElementById('avatar-text');
+        if (!img || !text) return;
+        var src = String(url || '').trim();
+        if (src) {
+            img.src = src;
+            img.style.display = 'block';
+            text.style.display = 'none';
+        } else {
+            img.removeAttribute('src');
+            img.style.display = 'none';
+            text.style.display = '';
+        }
+    }
+
+    function loadProfileIntoSidebar() {
+        var token = getAdminAuthToken();
+        if (!token) return;
+        fetch('/api/admin/me', {
+            method: 'GET',
+            headers: { Authorization: 'Bearer ' + token },
+            credentials: 'include'
+        })
+            .then(function (r) {
+                return r.ok ? r.json() : null;
+            })
+            .then(function (data) {
+                if (!data || !data.profile) return;
+                var p = data.profile;
+                var nameBits = [(p.firstName || ''), (p.lastName || '')].join(' ').trim();
+                var friendly = nameBits || displayNameFromUsername(p.username || localStorage.getItem('adminUsername') || 'Admin');
+                var usernameEl = document.getElementById('remoed-username');
+                var avatarTextEl = document.getElementById('avatar-text');
+                if (usernameEl) usernameEl.textContent = 'Hi, ' + String(friendly).split(/\s+/)[0];
+                if (avatarTextEl) avatarTextEl.textContent = (String(friendly).charAt(0) || 'A').toUpperCase();
+                applyAvatarFromUrl(p.profilePictureUrl || '');
+            })
+            .catch(function () {});
+    }
+
     /** HR / QA / Accounting hub entries — visibility by adminRole (matches adminhr@ / adminqa@ / adminacct@ roles). */
     function shouldShowNavItem(itemId) {
         var role = '';
@@ -86,11 +150,51 @@
         return role === 'super_admin' ? 'admin-settings.html' : 'admin-profile-settings.html';
     }
 
+    function readCollapsedPref() {
+        try {
+            return localStorage.getItem(LS_KEY) === '1';
+        } catch (_e) {
+            return false;
+        }
+    }
+
+    function writeCollapsedPref(collapsed) {
+        try {
+            localStorage.setItem(LS_KEY, collapsed ? '1' : '0');
+        } catch (_e) {}
+    }
+
+    function applyCollapsedState(nav, collapsed) {
+        if (!nav) return;
+        nav.classList.toggle('sidebar-collapsed', !!collapsed);
+        document.body.classList.toggle('admin-sidebar-collapsed', !!collapsed);
+        // Drop dual off-canvas model used by floating portal chrome.
+        document.body.classList.remove('remoed-desktop-sidebar-collapsed', 'remoed-portal-sidebar-mounted', 'remoed-drawer-open');
+    }
+
+    function removeLegacyFloatingChrome() {
+        try {
+            var legacy = document.getElementById('sidebarToggle');
+            if (legacy) legacy.remove();
+            var closeBtn = document.getElementById('sidebarClose');
+            if (closeBtn) closeBtn.remove();
+            document.querySelectorAll(
+                '.mobile-hamburger, .mobile-sidebar-overlay, .remoed-mobile-topbar, .portal-sidebar-toggle, #remoed-nav-toggle'
+            ).forEach(function (el) {
+                try { el.remove(); } catch (_e) {}
+            });
+            document.body.classList.remove('remoed-desktop-sidebar-collapsed', 'remoed-portal-sidebar-mounted', 'remoed-drawer-open');
+        } catch (_e) {}
+    }
+
     function render(containerIdOrElement, activePageId) {
         var container = typeof containerIdOrElement === 'string'
             ? document.getElementById(containerIdOrElement)
             : containerIdOrElement;
         if (!container) return;
+
+        // Mirror Teacher SoT: in-sidebar collapse only; remove floating #sidebarToggle.
+        removeLegacyFloatingChrome();
 
         var active = activePageId || getActiveFromPath();
 
@@ -100,10 +204,11 @@
             var activeClass = (item.id === active && !item.isLogout) ? ' class="active"' : '';
             var idAttr = item.id === 'logout' ? ' id="logout-nav"' : '';
             var dataNav = ' data-nav="' + item.id + '"';
+            var labelSpan = '<span class="menu-label">' + item.label + '</span>';
             if (item.isLogout) {
-                return '<li' + idAttr + activeClass + dataNav + ' data-logout="1">' + item.icon + item.label + '</li>';
+                return '<li title="' + item.label + '"' + idAttr + activeClass + dataNav + ' data-logout="1">' + item.icon + labelSpan + '</li>';
             }
-            return '<li' + activeClass + dataNav + ' onclick="window.location.href=\'' + item.href + '\'">' + item.icon + item.label + '</li>';
+            return '<li title="' + item.label + '"' + activeClass + dataNav + ' onclick="window.location.href=\'' + item.href + '\'">' + item.icon + labelSpan + '</li>';
         }).join('');
 
         var avatarHref = systemSettingsHref().replace(/'/g, "\\'");
@@ -113,15 +218,19 @@
             '  <div class="sidebar-header">' +
             '    <div class="sidebar-header-inner">' +
             '      <img class="sidebar-logo-img" src="images/remoed-logo.png" alt="RemoEdPH" onerror="this.src=\'remoed-logo.png\'">' +
-            '      <div>' +
+            '      <div class="sidebar-brand">' +
             '        <div class="sidebar-title">RemoEdPH</div>' +
             '        <div class="sidebar-subtitle">Admin Portal</div>' +
             '      </div>' +
+            '      <button type="button" class="sidebar-collapse-toggle" aria-label="Toggle sidebar" title="Toggle sidebar">' +
+            svgBars() +
+            '      </button>' +
             '    </div>' +
             '  </div>' +
             '  <div class="sidebar-user">' +
             '    <div class="sidebar-user-inner">' +
             '      <div id="remoed-avatar" onclick="window.location.href=\'' + avatarHref + '\'" style="cursor:pointer;" title="Profile">' +
+            '        <img id="profile-image" src="" alt="Profile" style="width:100%;height:100%;border-radius:50%;object-fit:cover;display:none;">' +
             '        <span id="avatar-text">A</span>' +
             '      </div>' +
             '      <span class="remoed-username" id="remoed-username">Hi, Admin</span>' +
@@ -131,6 +240,23 @@
             '</nav>';
 
         container.innerHTML = html;
+
+        var nav = container.querySelector('nav.remoed-sidebar');
+        applyCollapsedState(nav, readCollapsedPref());
+
+        var toggleBtn = container.querySelector('.sidebar-collapse-toggle');
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var next = !(nav && nav.classList.contains('sidebar-collapsed'));
+                applyCollapsedState(nav, next);
+                writeCollapsedPref(next);
+                try {
+                    global.dispatchEvent(new Event('resize'));
+                } catch (_e) {}
+            });
+        }
 
         var logoutLi = container.querySelector('#logout-nav');
         if (logoutLi) {
@@ -170,87 +296,31 @@
         }
 
         applyGreetingFromStorage();
-        ensurePortalSidebarChromeThen(queuePortalLayoutMount);
-    }
+        loadProfileIntoSidebar();
+        // Mini-sidebar collapse is handled locally (.sidebar-collapse-toggle); no floating portal chrome.
+        removeLegacyFloatingChrome();
 
-    function ensurePortalSidebarChromeThen(callback) {
-        if (global.RemoedPortalSidebarChrome) {
-            callback();
-            return;
-        }
-        var existing = document.querySelector('script[data-remoed-portal-sidebar-chrome]');
-        if (existing) {
-            if (global.RemoedPortalSidebarChrome) {
-                callback();
-            } else {
-                existing.addEventListener('load', function once() {
-                    existing.removeEventListener('load', once);
-                    callback();
-                });
+        // Shared top header (black 18px title) on full admin pages — skip hub embeds.
+        try {
+            if (!global.__ADMIN_EMBED__ && global.AdminPageHeader && typeof global.AdminPageHeader.render === 'function') {
+                global.AdminPageHeader.render(active);
+            } else if (!global.__ADMIN_EMBED__) {
+                var s = document.createElement('script');
+                s.src = 'js/admin-page-header.js';
+                s.onload = function () {
+                    if (global.AdminPageHeader) global.AdminPageHeader.render(active);
+                };
+                document.head.appendChild(s);
             }
-            return;
-        }
-        var ch = document.createElement('script');
-        ch.src = '/js/portal-sidebar-chrome.js';
-        ch.async = false;
-        ch.setAttribute('data-remoed-portal-sidebar-chrome', '1');
-        var fired = false;
-        function runOnce() {
-            if (fired) return;
-            fired = true;
-            callback();
-        }
-        ch.onload = function () {
-            runOnce();
-        };
-        document.head.appendChild(ch);
-        if (global.RemoedPortalSidebarChrome) {
-            runOnce();
-        }
-    }
-
-    function afterPortalSidebarChromeMount() {
-        if (global.RemoedPortalSidebarChrome && typeof global.RemoedPortalSidebarChrome.mount === 'function') {
-            global.RemoedPortalSidebarChrome.mount();
-        }
-    }
-
-    function queuePortalLayoutMount() {
-        if (typeof global.RemoedPortalLayout !== 'undefined' && global.RemoedPortalLayout.mount) {
-            global.RemoedPortalLayout.mount();
-            afterPortalSidebarChromeMount();
-            return;
-        }
-        if (document.querySelector('script[data-remoed-portal-layout]')) {
-            document.addEventListener('remoed-portal-layout-ready', function once() {
-                document.removeEventListener('remoed-portal-layout-ready', once);
-                if (global.RemoedPortalLayout && global.RemoedPortalLayout.mount) {
-                    global.RemoedPortalLayout.mount();
-                }
-                afterPortalSidebarChromeMount();
-            });
-            return;
-        }
-        var s = document.createElement('script');
-        s.src = '/js/portal-layout.js';
-        s.async = true;
-        s.setAttribute('data-remoed-portal-layout', '1');
-        s.onload = function () {
-            if (global.RemoedPortalLayout && global.RemoedPortalLayout.mount) {
-                global.RemoedPortalLayout.mount();
-            }
-            afterPortalSidebarChromeMount();
-            try {
-                document.dispatchEvent(new Event('remoed-portal-layout-ready'));
-            } catch (e1) { /* ignore */ }
-        };
-        document.head.appendChild(s);
+        } catch (_hdr) {}
     }
 
     global.AdminSidebar = {
         render: render,
         MENU_ITEMS: MENU_ITEMS,
         applyGreetingFromStorage: applyGreetingFromStorage,
+        applyAvatarFromUrl: applyAvatarFromUrl,
+        loadProfileIntoSidebar: loadProfileIntoSidebar,
         shouldShowNavItem: shouldShowNavItem,
         systemSettingsHref: systemSettingsHref
     };

@@ -108,7 +108,9 @@
     if (!nav) return;
 
     document.body.classList.add('remoed-portal-sidebar-mounted');
-    if (!isMobile()) {
+    var isStudentPortal = document.body.classList.contains('student-portal');
+    /* Teacher desktop: sidebar starts collapsed behind the green toggle. Student: rail stays open on desktop. */
+    if (!isMobile() && !isStudentPortal) {
       document.body.classList.add('remoed-desktop-sidebar-collapsed');
     }
 

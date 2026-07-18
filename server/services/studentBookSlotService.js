@@ -64,11 +64,39 @@ function bookingWhenLabelForNotification(canonicalUtcIso, slotDoc, fallbackZone)
   }
 }
 
+function isMongoDuplicateKeyError(err) {
+  if (!err) return false;
+  const code = err.code != null ? err.code : err.codeName;
+  if (code === 11000 || code === '11000' || code === 'DuplicateKey') return true;
+  const msg = String(err.message || '');
+  return /E11000|duplicate key/i.test(msg);
+}
+
 function toUtcFromLocal(dateStr, timeStr, zone) {
-  const z = zone && DateTime.now().setZone(zone).isValid ? zone : 'Asia/Manila';
+  // Prefer client IANA zone; never force Asia/Manila — missing zone → interpret as UTC.
+  const z = zone && DateTime.now().setZone(zone).isValid ? zone : 'utc';
   const dt = DateTime.fromISO(`${dateStr}T${timeStr}`, { zone: z });
   if (!dt.isValid) throw new Error(`Invalid date/time: ${dateStr} ${timeStr} in zone ${z}`);
   return { utcIso: dt.toUTC().toISO(), zoneUsed: z };
+}
+
+/** Parse client startTime / dateTimeUtc into a strict UTC ISO string. */
+function normalizeBookingStartToUtcIso(raw) {
+  if (raw == null || raw === '') return null;
+  if (raw instanceof Date && !Number.isNaN(raw.getTime())) {
+    return DateTime.fromJSDate(raw, { zone: 'utc' }).toUTC().toISO();
+  }
+  const s = String(raw).trim();
+  let dt = DateTime.fromISO(s, { setZone: true });
+  if (!dt.isValid) dt = DateTime.fromISO(s, { zone: 'utc' });
+  if (!dt.isValid) {
+    const asDate = new Date(s);
+    if (!Number.isNaN(asDate.getTime())) {
+      dt = DateTime.fromJSDate(asDate, { zone: 'utc' });
+    }
+  }
+  if (!dt.isValid) return null;
+  return dt.toUTC().toISO();
 }
 
 async function createBookingNotification(teacherId, type, message) {
@@ -93,6 +121,7 @@ async function runBookSlot(req, res) {
       date,
       time,
       dateTimeUtc,
+      startTime,
       lesson,
       lessonId,
       studentLevel,
@@ -114,19 +143,20 @@ async function runBookSlot(req, res) {
       (student.paymentStatus === 'paid' && student.subscriptionStatus === 'active');
     const studentId = student.username;
     const availableCredits = getAvailableBookingCredits(student);
-    if (!effectiveSubscribed && availableCredits <= 0) {
+    const canUseTrial = !!student.assessmentTrialCreditActive;
+    if (!effectiveSubscribed && availableCredits <= 0 && !canUseTrial) {
       return res.status(403).json({
         error: 'Subscription required to book your next lesson.',
         code: 'SUBSCRIPTION_REQUIRED_LESSON_2',
       });
     }
-    if (availableCredits <= 0) {
+    if (availableCredits <= 0 && !canUseTrial) {
       return res.status(400).json({ error: 'Insufficient credits. Please top up your plan.' });
     }
 
     const missingFields = [];
     if (!studentId) missingFields.push('studentId');
-    if (!dateTimeUtc && (!date || !time)) missingFields.push('dateTimeUtc');
+    if (!dateTimeUtc && !startTime && (!date || !time)) missingFields.push('dateTimeUtc|startTime');
     if (!lesson) missingFields.push('lesson');
     if (!studentLevel) missingFields.push('studentLevel');
 
@@ -137,6 +167,8 @@ async function runBookSlot(req, res) {
           studentId: !!studentId,
           date: !!date,
           time: !!time,
+          dateTimeUtc: !!dateTimeUtc,
+          startTime: !!startTime,
           lesson: !!lesson,
           studentLevel: !!studentLevel
         },
@@ -144,12 +176,25 @@ async function runBookSlot(req, res) {
       });
     }
 
-    let canonicalUtc = dateTimeUtc;
+    // Canonical storage: always UTC ISO (never persist server/PHT wall-clock).
+    let canonicalUtc = normalizeBookingStartToUtcIso(dateTimeUtc || startTime);
     if (!canonicalUtc) {
-      const { utcIso } = toUtcFromLocal(date, time, timezone || 'Asia/Manila');
+      if (!date || !time) {
+        return res.status(400).json({ error: 'Invalid startTime / dateTimeUtc' });
+      }
+      if (!timezone) {
+        return res.status(400).json({
+          error: 'timezone (IANA) is required when date/time are sent without a UTC startTime',
+          code: 'TIMEZONE_REQUIRED',
+        });
+      }
+      const { utcIso } = toUtcFromLocal(date, time, timezone);
       canonicalUtc = utcIso;
     }
     const dt = DateTime.fromISO(canonicalUtc, { zone: 'utc' });
+    if (!dt.isValid) {
+      return res.status(400).json({ error: 'Could not normalize booking start to UTC' });
+    }
     const dateUtc = dt.toISODate();
     const timeUtc = dt.toFormat('HH:mm');
 
@@ -245,42 +290,26 @@ async function runBookSlot(req, res) {
 
       let dupQ = Booking.findOne({
         teacherId: chosenTeacherId,
-        $or: [{ dateTimeUtc: utcInstant }, { dateTimeUtc: canonicalUtc }],
-        status: { $nin: ['cancelled'] }
+        dateTimeUtc: utcInstant,
+        status: { $nin: ['cancelled', 'cancelled_by_student_emergency'] },
       });
       if (session) dupQ = dupQ.session(session);
-      const dup = await dupQ;
-      if (dup) {
-        const err = new Error('Selected slot is already booked');
-        err.statusCode = 400;
+      const existingBooking = await dupQ;
+      if (existingBooking) {
+        const err = new Error('This slot has already been booked.');
+        err.statusCode = 409;
         err.code = 'ALREADY_BOOKED';
         throw err;
       }
 
-      const reservedStudent = await Student.findOneAndUpdate(
-        {
-          _id: req.user.studentId,
-          $expr: {
-            $gt: [
-              {
-                $subtract: [
-                  { $ifNull: ['$totalCredits', { $ifNull: ['$creditBalance', 0] }] },
-                  { $ifNull: ['$reservedCredits', 0] },
-                ],
-              },
-              0,
-            ],
-          },
-        },
-        {
-          $inc: {
-            reservedCredits: 1,
-            creditBalance: -1
-          }
-        },
-        findOpts
-      );
-      if (!reservedStudent) {
+      // Gate: live balance > 0 (no reserve-on-book). Allow active free-trial booking.
+      let creditGateQ = Student.findOne({
+        _id: req.user.studentId,
+        $or: [{ creditBalance: { $gt: 0 } }, { assessmentTrialCreditActive: true }],
+      });
+      if (session) creditGateQ = creditGateQ.session(session);
+      const creditGate = await creditGateQ;
+      if (!creditGate) {
         const err = new Error('Insufficient credits. Please top up your plan.');
         err.statusCode = 400;
         err.code = 'INSUFFICIENT_CREDITS';
@@ -295,14 +324,6 @@ async function runBookSlot(req, res) {
       );
 
       if (!lockedSlot) {
-        if (!session) {
-          await Student.updateOne(
-            { _id: req.user.studentId },
-            {
-              $inc: { creditBalance: 1, reservedCredits: -1 }
-            }
-          ).catch(() => {});
-        }
         const err = new Error(
           'This time slot was just booked by another student. Please choose a different time.'
         );
@@ -346,12 +367,12 @@ async function runBookSlot(req, res) {
             { _id: existingSlot._id, teacherId: existingSlot.teacherId },
             { $set: { available: true } }
           );
-          await Student.updateOne(
-            { _id: req.user.studentId },
-            {
-              $inc: { creditBalance: 1, reservedCredits: -1 }
-            }
-          ).catch(() => {});
+        }
+        if (isMongoDuplicateKeyError(saveErr)) {
+          const err = new Error('Sorry, this slot was just booked by someone else.');
+          err.statusCode = 409;
+          err.code = 'ALREADY_BOOKED';
+          throw err;
         }
         throw saveErr;
       }
@@ -429,6 +450,12 @@ async function runBookSlot(req, res) {
             : bookErr && bookErr.cause && bookErr.cause.statusCode
               ? bookErr.cause
               : bookErr;
+        if (isMongoDuplicateKeyError(bookErr) || isMongoDuplicateKeyError(e)) {
+          return res.status(409).json({
+            error: 'Sorry, this slot was just booked by someone else.',
+            code: 'ALREADY_BOOKED',
+          });
+        }
         if (e && e.statusCode && e.message) {
           return res.status(e.statusCode).json({
             error: e.message,
@@ -489,6 +516,12 @@ async function runBookSlot(req, res) {
     }
   } catch (err) {
     console.error('❌ Error booking class:', err);
+    if (isMongoDuplicateKeyError(err)) {
+      return res.status(409).json({
+        error: 'Sorry, this slot was just booked by someone else.',
+        code: 'ALREADY_BOOKED',
+      });
+    }
     res.status(500).json({ error: err.message });
   }
 }

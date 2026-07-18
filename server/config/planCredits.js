@@ -1,17 +1,24 @@
 /**
- * Canonical subscription plans: 1 month = 22 lesson credits.
- * Credits = months × 22. PayMongo and webhooks must use this only for credit counts / durations.
+ * Canonical subscription plans: pack size = months × 22 lesson credits.
+ * validityMonths = recommended credit window (Asia/Manila calendar months).
+ * PayMongo and webhooks must use this only for credit counts / durations.
  * Never accept credit amounts from the client.
+ *
+ * Pricing (server/payments.js): $7/class; Founder Discount $21 × months (spark = $0).
+ * spark  Starter  — 22 lessons, $154, Valid 3 Months
+ * steady Progress — 66 lessons, $399, Save $63, Valid 6 Months
+ * scholar Mastery — 132 lessons, $798, Save $126, Valid 12 Months
+ * summit Ultimate — 264 lessons, $1,596, Save $252, Valid 24 Months
  */
 
 const CREDITS_PER_MONTH = 22;
 
-/** months + marketing label; credits derived as months × CREDITS_PER_MONTH */
+/** months drives credit pack size; validityMonths drives subscription window */
 const PLAN_DEFINITIONS = {
-  spark: { months: 1, label: 'RemoSpark' },
-  steady: { months: 3, label: 'RemoSteady' },
-  scholar: { months: 6, label: 'RemoScholar' },
-  summit: { months: 12, label: 'RemoSummit' },
+  spark: { months: 1, validityMonths: 3, label: 'RemoSpark', bundleName: 'Starter Bundle' },
+  steady: { months: 3, validityMonths: 6, label: 'RemoSteady', bundleName: 'Progress Bundle' },
+  scholar: { months: 6, validityMonths: 12, label: 'RemoScholar', bundleName: 'Mastery Bundle' },
+  summit: { months: 12, validityMonths: 24, label: 'RemoSummit', bundleName: 'Ultimate Bundle' },
 };
 
 const PLAN_CREDITS = Object.fromEntries(
@@ -19,7 +26,9 @@ const PLAN_CREDITS = Object.fromEntries(
     id,
     {
       months: def.months,
+      validityMonths: def.validityMonths,
       label: def.label,
+      bundleName: def.bundleName,
       credits: def.months * CREDITS_PER_MONTH,
     },
   ])
@@ -34,18 +43,26 @@ function normalizePlanId(plan) {
   return p;
 }
 
-/** Calendar months for subscription window (webhooks / subscriptionEndDate). */
+/** Calendar months for subscription / credit validity window. */
 function getPlanDurationMonths(planRaw) {
   const id = normalizePlanId(planRaw);
   const row = PLAN_CREDITS[id];
-  return row && row.months != null ? row.months : 1;
+  if (!row) return 1;
+  return row.validityMonths != null ? row.validityMonths : row.months;
 }
 
 function creditsForPlan(plan) {
   const id = normalizePlanId(plan);
   const row = PLAN_CREDITS[id];
   return row
-    ? { planId: id, credits: row.credits, label: row.label, months: row.months }
+    ? {
+        planId: id,
+        credits: row.credits,
+        label: row.label,
+        months: row.months,
+        validityMonths: row.validityMonths,
+        bundleName: row.bundleName,
+      }
     : null;
 }
 

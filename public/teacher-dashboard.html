@@ -19,6 +19,7 @@
 <script src="teacher-tour.js"></script>
 <script src="js/user-session.js"></script>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css">
 </head>
 <body class="page-teacher-dashboard">
     <!-- Main Layout: Sidebar + Content -->
@@ -26,7 +27,7 @@
         <!-- Navigation Header -->
         <div class="nav-header">
             <div class="nav-left">
-                <h1 style="margin: 0; font-size: 1.25rem; color: #1a202c;">Dashboard</h1>
+                <h1><span class="nav-title-text">Dashboard</span></h1>
             </div>
             <div class="nav-right">
                 <!-- Time Tracking Mini -->
@@ -81,12 +82,15 @@
         
         <div id="teacher-sidebar-root"></div>
         <script src="js/teacher-sidebar.js"></script>
-        <script>TeacherSidebar.render('teacher-sidebar-root', 'dashboard');</script>
+        <script src="js/teacher-page-header.js"></script>
+        <script>
+            TeacherSidebar.render('teacher-sidebar-root', 'dashboard');
+            TeacherPageHeader.polishExisting('dashboard');
+        </script>
         <div class="remoed-content">
-            <!-- Primary Charts Grid (Time Tracking) -->
-            <div class="charts-grid">
-                <!-- Time Tracking Section -->
-                <div class="remoed-section" style="grid-column: 1 / -1; margin-bottom: 0.75rem;">
+            <!-- Top row: Time Log | Announcements -->
+            <div class="dashboard-top-row">
+                <div class="remoed-section dashboard-top-row__time">
                     <div class="remoed-section-title" style="display: flex; align-items: center; gap: 10px;">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="color: #667eea;">
                             <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"/>
@@ -102,21 +106,20 @@
                             <div style="font-size: 1rem; font-weight: 600; color: #333;">Teacher Time Log</div>
                         </div>
                         <div style="color: #666; margin-bottom: 12px; font-size: 0.85rem;">Track your working hours and view weekly time logs.</div>
-                        
-                        <div style="display: flex; gap: 16px; align-items: flex-start;">
-                            <div style="flex: 1; background: #fff; border: 1px solid #e9ecef; border-radius: 6px; padding: 10px;">
+
+                        <div class="time-log-actions-row">
+                            <div class="time-log-status-panel" style="background: #fff; border: 1px solid #e9ecef; border-radius: 6px; padding: 10px;">
                                 <div id="time-status" style="margin-bottom: 6px; font-weight: 600; font-size: 0.9rem; color: #333;">
                                     Status: <span id="current-status" style="color: #dc3545;">Not Clocked In</span>
                                 </div>
                                 <div id="current-time" style="margin-bottom: 6px; font-size: 1rem; font-weight: bold; color: #333;">
                                     Current Time: <span id="time-display">--:--:--</span>
                                 </div>
-                                <div id="session-time" style="margin-bottom: 6px; font-size: 0.85rem; display: none; color: #333;">
+                                <div id="session-time" style="margin-bottom: 0; font-size: 0.85rem; display: none; color: #333;">
                                     Session Duration: <span id="duration-display">00:00:00</span>
                                 </div>
                             </div>
-                            
-                            <div style="display: flex; flex-direction: column; gap: 8px; flex-shrink: 0;">
+                            <div class="time-log-buttons">
                                 <button id="time-in-btn" style="background: #28a745; color: white; padding: 8px 14px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: all 0.2s ease; white-space: nowrap;">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 6px; vertical-align: middle;">
                                         <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
@@ -138,6 +141,18 @@
                             </div>
                         </div>
                         <div id="time-status-message" style="margin-top: 10px; font-size: 0.8rem; color: #666; display: none; padding: 8px; border-radius: 4px;"></div>
+                    </div>
+                </div>
+
+                <div class="remoed-section dashboard-top-row__announcements">
+                    <div class="remoed-section-title" style="display: flex; align-items: center; gap: 10px;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="color: #667eea;">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                        </svg>
+                        Announcements and Upcoming Trainings
+                    </div>
+                    <div id="announcement-content" style="background: #fafdff; border-radius: 8px; padding: 10px; margin-bottom: 0; max-height: 280px; overflow-y: auto;">
+                        <!-- Announcements will be loaded here -->
                     </div>
                 </div>
             </div>
@@ -286,18 +301,6 @@
                     </div>
                 </div>
                 <div>
-                    <!-- Announcements -->
-                    <div class="remoed-section">
-                        <div class="remoed-section-title" style="display: flex; align-items: center; gap: 10px;">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="color: #667eea;">
-                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                            </svg>
-                            Announcements and Upcoming Trainings
-                        </div>
-                        <div id="announcement-content" style="background: #fafdff; border-radius: 8px; padding: 10px; margin-bottom: 8px; max-height: 300px; overflow-y: auto;">
-                            <!-- Announcements will be loaded here -->
-                        </div>
-                    </div>
                     <!-- Referral Link (Teacher) -->
                     <div class="remoed-section" id="teacher-referral-box">
                         <div class="remoed-section-title" style="display:flex;align-items:center;gap:10px;">

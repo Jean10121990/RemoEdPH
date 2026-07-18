@@ -6,6 +6,8 @@
  * - Fixes for "ghost labels" / icon alignment
  */
 
+@import url('portal-chrome-compact.css');
+
 /* ---- Sidebar: menu label visibility + icon alignment ---- */
 
 nav.remoed-sidebar .remoed-menu li {
@@ -20,7 +22,8 @@ nav.remoed-sidebar .remoed-menu .menu-label {
 }
 
 /* Only hide labels when mini sidebar is collapsed */
-nav.remoed-sidebar.sidebar-collapsed .remoed-menu .menu-label {
+nav.remoed-sidebar.sidebar-collapsed .remoed-menu .menu-label,
+nav.remoed-sidebar.sidebar-collapsed .remoed-menu .remoed-menu-label {
   display: none !important;
 }
 

@@ -6,6 +6,17 @@
     'use strict';
 
     var SVG_STROKE = 'stroke-width="2"';
+    var LS_KEY = 'remoed_student_sidebar_collapsed';
+
+    function svgBars() {
+        return (
+            '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+            SVG_STROKE +
+            ' aria-hidden="true">' +
+            '<path d="M4 6h16M4 12h16M4 18h16"/>' +
+            '</svg>'
+        );
+    }
 
     var MENU_ITEMS = [
         { id: 'dashboard', label: 'Dashboard', href: 'student-dashboard.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/></svg>' },
@@ -14,6 +25,7 @@
         { id: 'classes', label: 'My Classes', href: 'student-booking-history.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>' },
         { id: 'games', label: 'Play & Learn', href: 'student-games-activities.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M6 12h4M8 10v4"/><path d="M15 11h.01M18 13h.01"/><rect x="2" y="7" width="20" height="10" rx="5"/></svg>' },
         { id: 'videos', label: 'Videos', href: 'student-videos.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><rect x="2" y="7" width="15" height="10" rx="2"/><path d="M17 10l5-3v10l-5-3z"/></svg>' },
+        { id: 'messages', label: 'Messages', href: 'student-messages.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>' },
         { id: 'journey', label: 'My Learning Journey', href: 'student-learning-journey.html', studentOnly: true, icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M4 19h16"/><path d="M6 17l4-14 4 10 4-6 2 10"/><circle cx="8" cy="17" r="2"/><circle cx="12" cy="13" r="2"/><circle cx="16" cy="11" r="2"/><circle cx="18" cy="17" r="2"/></svg>' },
         { id: 'profile', label: 'My Profile', href: 'student-profile.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>' },
         { id: 'level', label: 'My Level', href: 'student-assessment.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 12h10M7 8h6M7 16h4"/></svg>' },
@@ -46,6 +58,8 @@
                 return 'games';
             case 'student-videos.html':
                 return 'videos';
+            case 'student-messages.html':
+                return 'messages';
             case 'student-learning-journey.html':
                 return 'journey';
             case 'student-profile.html':
@@ -103,12 +117,28 @@
         return { label: 'Book Class', href: 'student-book.html' };
     }
 
-    function menuIconWrap(svgHtml) {
-        return '<span class="remoed-menu-icon" aria-hidden="true">' + svgHtml + '</span>';
+    function escapeLabel(text) {
+        return String(text).replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
-    function menuLabelWrap(text) {
-        return '<span class="remoed-menu-label">' + String(text).replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</span>';
+    function readCollapsedPref() {
+        try {
+            return localStorage.getItem(LS_KEY) === '1';
+        } catch (_e) {
+            return false;
+        }
+    }
+
+    function writeCollapsedPref(collapsed) {
+        try {
+            localStorage.setItem(LS_KEY, collapsed ? '1' : '0');
+        } catch (_e) {}
+    }
+
+    function applyCollapsedState(nav, collapsed) {
+        if (!nav) return;
+        nav.classList.toggle('sidebar-collapsed', !!collapsed);
+        document.body.classList.toggle('student-sidebar-collapsed', !!collapsed);
     }
 
     function refreshBookNavItem(container) {
@@ -117,7 +147,8 @@
         if (!li) return;
         var spec = getBookNavSpec();
         var icon = MENU_ITEMS.filter(function (x) { return x.id === 'book'; })[0].icon;
-        li.innerHTML = menuIconWrap(icon) + menuLabelWrap(spec.label);
+        li.setAttribute('title', spec.label);
+        li.innerHTML = icon + '<span class="menu-label">' + escapeLabel(spec.label) + '</span>';
         li.onclick = function () {
             window.location.href = spec.href;
         };
@@ -189,6 +220,15 @@
             : containerIdOrElement;
         if (!container) return;
 
+        // Hard cleanup: remove any legacy floating toggles/overlays.
+        try {
+            var legacy = document.getElementById('sidebarToggle');
+            if (legacy) legacy.remove();
+            document.querySelectorAll('.mobile-hamburger, .mobile-sidebar-overlay, .remoed-mobile-topbar').forEach(function (el) {
+                try { el.remove(); } catch (_e) {}
+            });
+        } catch (_e) {}
+
         var active = activePageId || getActiveFromPath();
         var showJourney = shouldShowLearningJourneyNav();
         var menuHtml = MENU_ITEMS.filter(function (item) {
@@ -204,25 +244,29 @@
                 bookSpec = getBookNavSpec();
                 label = bookSpec.label;
             }
-            var inner = menuIconWrap(item.icon) + menuLabelWrap(label);
+            var titleAttr = ' title="' + escapeLabel(label) + '"';
+            var inner = item.icon + '<span class="menu-label">' + escapeLabel(label) + '</span>';
             if (item.isLogout) {
-                return '<li' + idAttr + activeClass + dataNav + ' data-logout="1">' + inner + '</li>';
+                return '<li' + titleAttr + idAttr + activeClass + dataNav + ' data-logout="1">' + inner + '</li>';
             }
             if (item.id === 'book') {
-                return '<li' + activeClass + dataNav + ' onclick="window.location.href=\'' + bookSpec.href + '\'">' + inner + '</li>';
+                return '<li' + titleAttr + activeClass + dataNav + ' onclick="window.location.href=\'' + bookSpec.href + '\'">' + inner + '</li>';
             }
-            return '<li' + activeClass + dataNav + ' onclick="window.location.href=\'' + item.href + '\'">' + inner + '</li>';
+            return '<li' + titleAttr + activeClass + dataNav + ' onclick="window.location.href=\'' + item.href + '\'">' + inner + '</li>';
         }).join('');
 
         container.innerHTML =
-            '<nav class="remoed-sidebar">' +
+            '<nav class="remoed-sidebar student-sidebar">' +
             '  <div class="sidebar-header">' +
-            '    <div class="sidebar-header-inner logo-container logo-section">' +
-            '      <img class="sidebar-logo-img sidebar-logo" src="images/remoed-logo.png" alt="RemoEdPH" onerror="this.src=\'remoed-logo.png\'">' +
+            '    <div class="sidebar-header-inner">' +
+            '      <img class="sidebar-logo-img" src="images/remoed-logo.png" alt="RemoEdPH" onerror="this.src=\'remoed-logo.png\'">' +
             '      <div class="sidebar-brand">' +
             '        <div class="sidebar-title">RemoEdPH</div>' +
             '        <div class="sidebar-subtitle">Student Portal</div>' +
             '      </div>' +
+            '      <button type="button" class="sidebar-collapse-toggle" aria-label="Toggle sidebar" title="Toggle sidebar">' +
+            svgBars() +
+            '      </button>' +
             '    </div>' +
             '  </div>' +
             '  <div class="sidebar-user">' +
@@ -238,6 +282,23 @@
             '</nav>';
 
         injectStudentNoMotionStyles();
+
+        var nav = container.querySelector('nav.remoed-sidebar');
+        applyCollapsedState(nav, readCollapsedPref());
+
+        var toggleBtn = container.querySelector('.sidebar-collapse-toggle');
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var next = !(nav && nav.classList.contains('sidebar-collapsed'));
+                applyCollapsedState(nav, next);
+                writeCollapsedPref(next);
+                try {
+                    global.dispatchEvent(new Event('resize'));
+                } catch (_e) {}
+            });
+        }
 
         var logoutLi = container.querySelector('#logout-nav');
         if (logoutLi) {
@@ -270,6 +331,7 @@
         applyGreetingFromStorage(container);
         loadProfileIntoSidebar(container);
         queuePortalLayoutMount();
+        queuePortalSidebarChromeMount();
     }
 
     function queuePortalLayoutMount() {
@@ -299,6 +361,35 @@
             } catch (e1) { /* ignore */ }
         };
         document.head.appendChild(s);
+    }
+
+    function queuePortalSidebarChromeMount() {
+        if (typeof global.RemoedPortalSidebarChrome !== 'undefined' && global.RemoedPortalSidebarChrome.mount) {
+            global.RemoedPortalSidebarChrome.mount();
+            return;
+        }
+        if (document.querySelector('script[data-remoed-portal-sidebar-chrome]')) {
+            document.addEventListener('remoed-portal-sidebar-chrome-ready', function onceCh() {
+                document.removeEventListener('remoed-portal-sidebar-chrome-ready', onceCh);
+                if (global.RemoedPortalSidebarChrome && global.RemoedPortalSidebarChrome.mount) {
+                    global.RemoedPortalSidebarChrome.mount();
+                }
+            });
+            return;
+        }
+        var ch = document.createElement('script');
+        ch.src = 'js/portal-sidebar-chrome.js';
+        ch.async = true;
+        ch.setAttribute('data-remoed-portal-sidebar-chrome', '1');
+        ch.onload = function () {
+            if (global.RemoedPortalSidebarChrome && global.RemoedPortalSidebarChrome.mount) {
+                global.RemoedPortalSidebarChrome.mount();
+            }
+            try {
+                document.dispatchEvent(new Event('remoed-portal-sidebar-chrome-ready'));
+            } catch (e2) { /* ignore */ }
+        };
+        document.head.appendChild(ch);
     }
 
     function injectStudentNoMotionStyles() {

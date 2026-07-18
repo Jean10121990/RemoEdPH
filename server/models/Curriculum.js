@@ -12,7 +12,13 @@ const curriculumSchema = new mongoose.Schema({
   level: {
     type: String,
     required: true,
-    enum: ['nursery', 'kinder', 'preparatory', 'elementary', 'intermediate', 'advanced'],
+    enum: [
+      'Little Seeds (Age 3)',
+      'Sprouts (Age 4)',
+      'Saplings (Age 5)',
+      'Young Stewards (Age 6)',
+    ],
+    default: 'Little Seeds (Age 3)',
     index: true
   },
   order: {

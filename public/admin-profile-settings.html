@@ -8,12 +8,14 @@
     <title>Profile Settings - RemoEdPH Admin</title>
     <link rel="stylesheet" href="modern-styles.css">
     <link rel="stylesheet" href="css/teacher-sidebar.css">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css">
     <link rel="stylesheet" href="style.css">
 </head>
-<body class="page-teacher-profile">
+<body class="page-admin-profile-settings page-teacher-profile has-admin-page-header">
     <div class="remoed-main">
         <div id="admin-sidebar-root"></div>
         <script src="js/admin-session.js"></script>
+        <script src="js/admin-page-header.js"></script>
         <script src="js/admin-sidebar.js"></script>
         <script>AdminSidebar.render('admin-sidebar-root', 'profile-settings');</script>
         <div class="remoed-content">
@@ -357,6 +359,9 @@
                 tx.style.display = 'inline-block';
                 tx.textContent = (dispName.charAt(0) || 'A').toUpperCase();
             }
+            if (window.AdminSidebar && typeof AdminSidebar.applyAvatarFromUrl === 'function') {
+                AdminSidebar.applyAvatarFromUrl(p.profilePictureUrl || '');
+            }
 
             setDocumentPreview('id-doc', p.idDocumentUrl);
             setDocumentPreview('nbi-doc', p.nbiClearanceDocumentUrl);
@@ -399,6 +404,9 @@
                 if (!r.ok) throw new Error(j.message || 'Upload failed');
                 showMsg('Photo updated.', false);
                 this.value = '';
+                if (j.profilePictureUrl && window.AdminSidebar && typeof AdminSidebar.applyAvatarFromUrl === 'function') {
+                    AdminSidebar.applyAvatarFromUrl(j.profilePictureUrl);
+                }
                 loadProfile();
             } catch (e) {
                 showMsg(e.message, true);

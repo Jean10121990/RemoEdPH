@@ -25,7 +25,7 @@ function applyBookingFirstSlotOverlay(slots, bookings, canonicalTeacherId, opts 
   const bookedUtcMin = new Set();
 
   for (const b of bookings || []) {
-    if (String(b.status || '').toLowerCase() === 'cancelled') continue;
+    if (String(b.status || '').toLowerCase().startsWith('cancelled')) continue;
     if (normalizeId(b.teacherId) !== tid) continue;
     const d = String(b.date || '').slice(0, 10);
     const tm = padSlotTime(b.time);

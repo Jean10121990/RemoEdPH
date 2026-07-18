@@ -13,6 +13,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="live-classroom.css">
 </head>
 <body class="page-video-room">
     <script>
@@ -152,6 +153,7 @@
                       <input type="range" id="local-beautify-slider" min="0" max="100" step="1" value="0" style="flex:1;">
                       <span id="local-beautify-value" style="font-size:0.9rem; color:#666; min-width:30px;">0%</span>
                     </div>
+                    <div id="vb-settings-mount" style="width:220px;margin-top:8px;"></div>
                     <button id="toggle-camera-btn" style="margin-top:18px; background:#1ca7e7; color:#fff; border:none; border-radius:6px; padding:8px 18px; font-size:1rem; cursor:pointer; display:flex; align-items:center; gap:8px;">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
@@ -173,6 +175,8 @@
         </div>
     </div>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="js/presentation-overlay.js"></script>
+    <script src="js/virtual-background.js"></script>
     <script>
     // --- Setup ---
     const SIGNALING_SERVER_URL = window.location.origin || '';
@@ -205,13 +209,40 @@
 
     // --- Video/WebRTC logic ---
     let localStream, peerConnection;
+    let vbController = null;
     const config = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
     document.addEventListener('DOMContentLoaded', async function() {
         try {
             localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
             localVideo.srcObject = localStream;
-            socket.emit('join', room);
+            const joinUserType = localStorage.getItem('userType') || 'teacher';
+            const joinUserId = localStorage.getItem('teacherId') || localStorage.getItem('studentId') || localStorage.getItem('username') || 'guest';
+            const joinUsername = localStorage.getItem('username') || joinUserId;
+            socket.emit('join', { room, userType: joinUserType, userId: joinUserId, username: joinUsername });
+            if (!window.__vrPptSocketBound) {
+                window.__vrPptSocketBound = true;
+                socket.on('annotation-sync', function (data) {
+                    if (window.currentPptOverlay && window.currentPptOverlay.handleRemoteAnnotation) {
+                        window.currentPptOverlay.handleRemoteAnnotation(data);
+                    }
+                });
+                socket.on('presentation-interaction-mode', function (data) {
+                    if (typeof RemoedPresentationOverlay !== 'undefined') {
+                        RemoedPresentationOverlay.handlePresentationInteractionMode(data);
+                    }
+                });
+                socket.on('presentation-slide-changed', function (data) {
+                    if (typeof RemoedPresentationOverlay !== 'undefined') {
+                        RemoedPresentationOverlay.handlePresentationSlideChanged(data);
+                    }
+                });
+                socket.on('slide-changed', function (data) {
+                    if (typeof RemoedPresentationOverlay !== 'undefined') {
+                        RemoedPresentationOverlay.handlePresentationSlideChanged(data);
+                    }
+                });
+            }
             
             // Load initial files from server
             await loadFilesForRoom();
@@ -230,6 +261,16 @@
             
             // Setup chat functionality
             setupChat();
+            
+            if (typeof RemoedVirtualBackground !== 'undefined') {
+                vbController = RemoedVirtualBackground.create({
+                    getLocalStream: function () { return localStream; },
+                    getPeerConnection: function () { return peerConnection; },
+                    localVideoEl: localVideo
+                });
+                const vbMount = document.getElementById('vb-settings-mount');
+                if (vbMount) RemoedVirtualBackground.mountSettingsUI(vbMount, vbController);
+            }
             
             // Start class timer
             startClassTimer();
@@ -504,9 +545,15 @@
                 localVideo.srcObject = screenStream;
                 screenTrack.onended = async () => {
                     if (localStream) {
-                        const camTrack = localStream.getVideoTracks()[0];
-                        if (sender) sender.replaceTrack(camTrack);
-                        localVideo.srcObject = localStream;
+                        const restoreTrack = vbController && vbController.getActiveVideoTrack
+                            ? vbController.getActiveVideoTrack()
+                            : localStream.getVideoTracks()[0];
+                        if (sender && restoreTrack) sender.replaceTrack(restoreTrack);
+                        if (vbController && vbController.mode !== 'off' && vbController.blurOutputStream) {
+                            localVideo.srcObject = vbController.blurOutputStream;
+                        } else {
+                            localVideo.srcObject = localStream;
+                        }
                     }
                 };
             } catch (err) {
@@ -758,9 +805,16 @@
                 });
                 
                 if (room) {
-                    socket.emit('whiteboard-path', {
+                    const rect = canvas.getBoundingClientRect();
+                    const normalizedPoints = points.map(function (pt) {
+                        return {
+                            x: rect.width ? pt.x / rect.width : 0,
+                            y: rect.height ? pt.y / rect.height : 0
+                        };
+                    });
+                    socket.emit('whiteboard-draw', {
                         room,
-                        points: points,
+                        points: normalizedPoints,
                         color: ctx.strokeStyle,
                         width: ctx.lineWidth,
                         tool: currentTool
@@ -772,9 +826,16 @@
         });
         
         // Listen for whiteboard events from other participants
-        socket.on('whiteboard-path', (data) => {
+        socket.on('whiteboard-draw', (data) => {
+            const rect = canvas.getBoundingClientRect();
+            const scaledPoints = (data.points || []).map(function (pt) {
+                if (pt.x <= 1 && pt.y <= 1) {
+                    return { x: pt.x * rect.width, y: pt.y * rect.height };
+                }
+                return pt;
+            });
             const path = {
-                points: data.points,
+                points: scaledPoints,
                 color: data.color,
                 width: data.width,
                 tool: data.tool
@@ -980,17 +1041,7 @@
                 color: #1ca7e7;
             `;
             
-            if (file.type.includes('pdf')) {
-                fileIcon.textContent = '📄';
-            } else if (file.type.includes('image')) {
-                fileIcon.textContent = '🖼️';
-            } else if (file.type.includes('document') || file.name.includes('.doc')) {
-                fileIcon.textContent = '📝';
-            } else if (file.type.includes('presentation') || file.name.includes('.ppt')) {
-                fileIcon.textContent = '📊';
-            } else {
-                fileIcon.textContent = '📁';
-            }
+            fileIcon.textContent = getLessonFileIcon(file);
             
             const fileDetails = document.createElement('div');
             fileDetails.innerHTML = `
@@ -1069,6 +1120,27 @@
         }
     }
 
+    function getFileCategory(file) {
+        const name = String(file.name || file.originalName || '').toLowerCase();
+        const type = String(file.type || file.mimeType || '').toLowerCase();
+        if (type.includes('pdf') || name.endsWith('.pdf')) return 'pdf';
+        if (type.includes('image') || /\.(png|jpe?g|gif|webp|bmp)$/i.test(name)) return 'image';
+        if (type.includes('video') || /\.(mp4|webm|ogg|mov|avi|mkv)$/i.test(name)) return 'video';
+        if (type.includes('presentation') || type.includes('powerpoint') || /\.(pptx?|key)$/i.test(name)) return 'presentation';
+        if (type.includes('document') || type.includes('text/plain') || /\.(docx?|odt|txt)$/i.test(name)) return 'document';
+        return 'file';
+    }
+
+    function getLessonFileIcon(file) {
+        const category = getFileCategory(file);
+        if (category === 'pdf') return '📄';
+        if (category === 'image') return '🖼️';
+        if (category === 'video') return '🎥';
+        if (category === 'presentation') return '📊';
+        if (category === 'document') return '📝';
+        return '📁';
+    }
+
     function updateLessonFilePicker() {
         const pickerContainer = document.getElementById('lesson-file-picker-container');
         const viewer = document.getElementById('lesson-file-viewer');
@@ -1112,7 +1184,9 @@
         viewer.innerHTML = '';
         const previewUrl = file.previewUrl || file.url;
         
-        if (file.type.includes('pdf')) {
+        const category = getFileCategory(file);
+
+        if (category === 'pdf') {
             const iframe = document.createElement('iframe');
             iframe.src = previewUrl;
             iframe.style.cssText = `
@@ -1122,7 +1196,7 @@
                 border-radius: 8px;
             `;
             viewer.appendChild(iframe);
-        } else if (file.type.includes('image')) {
+        } else if (category === 'image') {
             const img = document.createElement('img');
             img.src = previewUrl;
             img.style.cssText = `
@@ -1132,7 +1206,7 @@
             `;
             img.alt = file.name;
             viewer.appendChild(img);
-        } else if (file.type.includes('video')) {
+        } else if (category === 'video') {
             const video = document.createElement('video');
             video.src = previewUrl;
             video.controls = true;
@@ -1142,6 +1216,28 @@
                 border-radius: 8px;
             `;
             viewer.appendChild(video);
+        } else if (category === 'presentation') {
+            const material = {
+                id: file._id || file.id || file.name,
+                name: file.name,
+                type: file.type || 'presentation',
+                data: previewUrl,
+                presentationType: file.presentationType || 'file',
+                embedUrl: file.embedUrl || '',
+                html5EntryUrl: file.html5EntryUrl || ''
+            };
+            if (window.currentPptOverlay && window.currentPptOverlay.destroy) {
+                window.currentPptOverlay.destroy();
+            }
+            if (typeof RemoedPresentationOverlay !== 'undefined') {
+                const role = (localStorage.getItem('userType') || 'teacher').toLowerCase();
+                window.currentPptOverlay = RemoedPresentationOverlay.mountStackedPresentation(viewer, {
+                    material: material,
+                    socket: socket,
+                    room: room,
+                    isTeacher: role === 'teacher'
+                });
+            }
         } else {
             const previewCard = document.createElement('div');
             previewCard.style.cssText = `
@@ -1163,13 +1259,7 @@
                 color: #1ca7e7;
             `;
             
-            if (file.type.includes('document') || file.name.includes('.doc')) {
-                fileIcon.textContent = '📝';
-            } else if (file.type.includes('presentation') || file.name.includes('.ppt')) {
-                fileIcon.textContent = '📊';
-            } else {
-                fileIcon.textContent = '📁';
-            }
+            fileIcon.textContent = getLessonFileIcon(file);
             
             const fileName = document.createElement('h3');
             fileName.textContent = file.name;
@@ -1327,17 +1417,7 @@
                     color: #1ca7e7;
                 `;
                 
-                if (file.type.includes('pdf')) {
-                    fileIcon.textContent = '📄';
-                } else if (file.type.includes('image')) {
-                    fileIcon.textContent = '🖼️';
-                } else if (file.type.includes('document') || file.name.includes('.doc')) {
-                    fileIcon.textContent = '📝';
-                } else if (file.type.includes('presentation') || file.name.includes('.ppt')) {
-                    fileIcon.textContent = '📊';
-                } else {
-                    fileIcon.textContent = '📁';
-                }
+                fileIcon.textContent = getLessonFileIcon(file);
                 
                 const fileDetails = document.createElement('div');
                 fileDetails.innerHTML = `

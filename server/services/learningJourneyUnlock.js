@@ -2,14 +2,19 @@
  * Subscription-based batch unlocks for My Learning Journey (22 lessons per batch).
  */
 
+const {
+  CURRICULUM_LEVELS,
+  DEFAULT_CURRICULUM_LEVEL,
+  normalizeCurriculumLevel,
+} = require('../config/curriculumLevels');
+
 const LESSONS_PER_BATCH = 22;
 const DEFAULT_MAX_BATCH = 10;
 
-const LEVEL_KEYS = ['nursery', 'kinder', 'prep'];
+const LEVEL_KEYS = CURRICULUM_LEVELS.slice();
 
 function normalizeLevelKey(level) {
-  const k = String(level || 'nursery').toLowerCase().trim();
-  return LEVEL_KEYS.includes(k) ? k : 'nursery';
+  return normalizeCurriculumLevel(level) || DEFAULT_CURRICULUM_LEVEL;
 }
 
 /**
@@ -24,12 +29,33 @@ function getEffectiveTotalLessonsPurchased(student) {
 
 /**
  * Total used for a tab: explicit per-level counter if set, else effective global (migration / legacy).
+ * Also falls back to legacy nursery/kinder/prep keys when present.
  */
 function getTotalForLearningJourneyLevel(student, levelKey) {
   const g = getEffectiveTotalLessonsPurchased(student);
   const m = student.learningJourneyPurchasedByLevel;
   if (!m) return g;
-  const raw = m[levelKey];
+  const canonical = normalizeLevelKey(levelKey);
+  let raw = m[canonical];
+  if (raw == null && m.toObject) {
+    const plain = m.toObject();
+    raw = plain[canonical];
+  }
+  // Legacy slug fallbacks
+  if ((raw == null || raw === 0) && typeof m === 'object') {
+    const legacyMap = {
+      'Little Seeds (Age 3)': ['nursery'],
+      'Sprouts (Age 4)': ['kinder'],
+      'Saplings (Age 5)': ['prep', 'preparatory'],
+    };
+    const aliases = legacyMap[canonical] || [];
+    for (const a of aliases) {
+      if (m[a] != null) {
+        raw = m[a];
+        break;
+      }
+    }
+  }
   const lv = Math.max(0, Number(raw) || 0);
   if (lv > 0) return Math.max(lv, g);
   return g;

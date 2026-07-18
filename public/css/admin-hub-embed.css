@@ -29,3 +29,23 @@ html.admin-embed body.page-admin-teacher-pipeline .content {
     max-width: none !important;
     box-sizing: border-box !important;
 }
+
+/* Hub tab already names the view — hide duplicate page titles in embeds */
+html.admin-embed .remoed-content > .remoed-section > .remoed-section-title:first-child {
+    display: none !important;
+}
+html.admin-embed body.page-admin-teacher-pipeline .card > .head .title {
+    display: none !important;
+}
+html.admin-embed body.page-admin-teacher-pipeline .card > .head .sub {
+    margin-top: 0;
+}
+
+/* Lessons Library embed: tab already names the view */
+html.admin-embed .page-header h1,
+html.admin-embed body.page-admin-lessons-library .page-header h1 {
+    display: none !important;
+}
+html.admin-embed .page-header p {
+    margin-top: 0;
+}

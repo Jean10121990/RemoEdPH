@@ -12,16 +12,20 @@
     <link rel="stylesheet" href="css/global-portal.css">
 <!-- Remo AI Chatbot Styles -->
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css">
     <script src="js/user-session.js"></script>
 </head>
 <body class="page-teacher-performance-indicator">
     <div class="remoed-main">
         <div id="sidebar"></div>
         <script src="js/teacher-sidebar.js"></script>
-        <script>TeacherSidebar.render('sidebar', 'performance-indicator');</script>
+        <script src="js/teacher-page-header.js"></script>
+        <script>
+            TeacherSidebar.render('sidebar', 'performance-indicator');
+            TeacherPageHeader.render('performance-indicator');
+        </script>
         <div class="remoed-content">
-            <div class="page-header">
-                <h1>Performance Indicator</h1>
+            <div class="page-header" style="display:flex;justify-content:flex-end;align-items:center;margin-bottom:16px;">
                 <div class="period-selector">
                     <button class="period-btn active" data-period="weekly">This Week</button>
                     <button class="period-btn" data-period="monthly">This Month</button>
@@ -117,6 +121,7 @@
                     <div class="badges-header">
                         <h2>🏆 Achievement Badges</h2>
                         <p>Earn badges by demonstrating excellence in teaching!</p>
+                        <p id="badges-period-caption" style="margin-top:0.35rem;font-size:0.85rem;color:#64748b;"></p>
                     </div>
                     <div class="badges-grid" id="badges-grid"></div>
                 </div>
@@ -402,9 +407,9 @@
                 
                 const data = await response.json().catch(function () { return null; });
                 if (data && data.success && data.analysis) {
-                    // Fetch additional data for badges (slots, feedback)
-                    const badgeData = await fetchBadgeData(teacherId, token, params, data.analysis);
-                    displayAnalysis(data.analysis, badgeData);
+                    // Badges always evaluate previous full calendar month (server rules engine)
+                    const badgePayload = await fetchMonthlyBadges(token);
+                    displayAnalysis(data.analysis, badgePayload);
                 } else {
                     throw new Error('Invalid response from server');
                 }
@@ -416,420 +421,125 @@
             }
         }
         
-        async function fetchBadgeData(teacherId, token, params, analysis) {
+        async function fetchMonthlyBadges(token) {
             try {
-                // Use analysis period dates if available
-                const periodStart = analysis?.periodStart ? new Date(analysis.periodStart) : new Date();
-                const periodEnd = analysis?.periodEnd ? new Date(analysis.periodEnd) : new Date();
-                const now = new Date();
-                
-                // Fetch slots to check for weekends
-                let weekStr = now.toISOString().split('T')[0];
-                if (params.periodType === 'weekly') {
-                    const dayOfWeek = now.getDay();
-                    const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-                    const weekStart = new Date(now);
-                    weekStart.setDate(now.getDate() - daysToMonday);
-                    weekStr = weekStart.toISOString().split('T')[0];
+                const response = await fetch('/api/teacher/badges', {
+                    headers: { Authorization: 'Bearer ' + token },
+                    credentials: 'include'
+                });
+                if (!response.ok) {
+                    const errData = await response.json().catch(function () { return {}; });
+                    throw new Error(errData.error || 'Failed to load badges');
                 }
-                
-                const slotsResponse = await fetch(`/api/teacher/slots?teacherId=${teacherId}&week=${weekStr}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                }).catch(() => null);
-                
-                let slots = [];
-                if (slotsResponse && slotsResponse.ok) {
-                    const slotsData = await slotsResponse.json().catch(() => ({ slots: [] }));
-                    slots = slotsData.slots || [];
+                const data = await response.json().catch(function () { return null; });
+                if (!data || !data.success || !Array.isArray(data.badges)) {
+                    throw new Error('Invalid badges response');
                 }
-                
-                // Try to fetch feedback/ratings - if endpoint doesn't exist, use empty array
-                const feedbackResponse = await fetch(`/api/feedback?teacherId=${teacherId}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                }).catch(() => null);
-                
-                let feedbacks = [];
-                if (feedbackResponse && feedbackResponse.ok) {
-                    const feedbackData = await feedbackResponse.json().catch(() => ({ feedback: [] }));
-                    feedbacks = feedbackData.feedback || feedbackData || [];
-                }
-                
-                // Extract bookings from breakdown for rebooking analysis
-                const allBookings = analysis?.breakdown ? [
-                    ...(analysis.breakdown.completed || []),
-                    ...(analysis.breakdown.cancelled || []),
-                    ...(analysis.breakdown.teacherAbsent || []),
-                    ...(analysis.breakdown.studentAbsent || [])
-                ] : [];
-                
-                return {
-                    periodStart,
-                    periodEnd,
-                    feedback: { feedback: Array.isArray(feedbacks) ? feedbacks : [] },
-                    slots: { slots: slots },
-                    bookings: allBookings
-                };
+                return data;
             } catch (err) {
-                console.error('Error fetching badge data:', err);
-                return { 
-                    periodStart: new Date(), 
-                    periodEnd: new Date(), 
-                    feedback: { feedback: [] }, 
-                    slots: { slots: [] },
-                    bookings: []
-                };
+                console.error('Error fetching monthly badges:', err);
+                return { period: null, metrics: null, badges: [] };
             }
         }
-        
-        function calculateBadges(analysis, badgeData) {
-            const badges = [];
-            const periodType = analysis.periodType || 'weekly';
-            const isMonthly = periodType === 'monthly';
-            const isWeekly = periodType === 'weekly';
-            
-            // Get feedback data
-            const feedbacks = badgeData?.feedback?.feedback || [];
-            const ratings = feedbacks.map(f => f.rating || 0).filter(r => r > 0);
-            const avgRating = ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : 0;
-            const allFiveStars = ratings.length > 0 && ratings.every(r => r === 5);
-            
-            // Get slots data
-            const slots = badgeData?.slots?.slots || [];
-            const weekendSlots = slots.filter(slot => {
-                const date = new Date(slot.date);
-                const day = date.getDay();
-                return day === 0 || day === 6; // Saturday or Sunday
-            });
-            
-            // Calculate weekly bookings
-            const weeklyBookings = isWeekly ? analysis.totalScheduled : 0;
-            const monthlyBookings = isMonthly ? analysis.totalScheduled : 0;
-            
-            // Badge 1: No Late in a Month
-            if (isMonthly && analysis.lateArrivals === 0) {
-                badges.push({
-                    id: 'no-late-month',
-                    name: 'Punctual Pro',
-                    icon: '⏰',
-                    description: 'No late arrivals this month',
-                    earned: true,
-                    progress: 100
-                });
-            } else if (isMonthly) {
-                badges.push({
-                    id: 'no-late-month',
-                    name: 'Punctual Pro',
-                    icon: '⏰',
-                    description: 'No late arrivals this month',
-                    earned: false,
-                    progress: Math.max(0, 100 - (analysis.lateArrivals / analysis.totalScheduled * 100))
-                });
+
+        function displayBadges(badges, periodLabel) {
+            const caption = document.getElementById('badges-period-caption');
+            if (caption) {
+                caption.textContent = periodLabel
+                    ? ('Badges: ' + periodLabel + ' (previous month, Asia/Manila)')
+                    : 'Badges: previous calendar month';
             }
-            
-            // Badge 2: Completed Most Bookings
-            const completionRate = analysis.totalScheduled > 0 ? (analysis.completedClasses / analysis.totalScheduled) * 100 : 0;
-            if (completionRate >= 98) {
-                badges.push({
-                    id: 'completion-master',
-                    name: 'Completion Master',
-                    icon: '✅',
-                    description: 'Completed 98%+ of bookings',
-                    earned: true,
-                    progress: 100
-                });
-            } else {
-                badges.push({
-                    id: 'completion-master',
-                    name: 'Completion Master',
-                    icon: '✅',
-                    description: 'Complete 98%+ of bookings',
-                    earned: false,
-                    progress: completionRate
-                });
-            }
-            
-            // Badge 3: No Cancellation
-            // Only award if teacher has had classes AND no cancellations
-            if (analysis.totalScheduled > 0 && analysis.cancellations === 0) {
-                badges.push({
-                    id: 'no-cancellation',
-                    name: 'Reliable Teacher',
-                    icon: '🎯',
-                    description: 'No cancellations',
-                    earned: true,
-                    progress: 100
-                });
-            } else {
-                badges.push({
-                    id: 'no-cancellation',
-                    name: 'Reliable Teacher',
-                    icon: '🎯',
-                    description: 'No cancellations',
-                    earned: false,
-                    progress: analysis.totalScheduled > 0 ? Math.max(0, 100 - (analysis.cancellations / analysis.totalScheduled * 100)) : 0
-                });
-            }
-            
-            // Badge 4: No Absent
-            // Only award if teacher has had classes AND no absences
-            if (analysis.totalScheduled > 0 && analysis.teacherAbsences === 0) {
-                badges.push({
-                    id: 'no-absent',
-                    name: 'Perfect Attendance',
-                    icon: '🌟',
-                    description: 'No absences',
-                    earned: true,
-                    progress: 100
-                });
-            } else {
-                badges.push({
-                    id: 'no-absent',
-                    name: 'Perfect Attendance',
-                    icon: '🌟',
-                    description: 'No absences',
-                    earned: false,
-                    progress: analysis.totalScheduled > 0 ? Math.max(0, 100 - (analysis.teacherAbsences / analysis.totalScheduled * 100)) : 0
-                });
-            }
-            
-            // Badge 5-8: Booking Milestones (Weekly)
-            if (isWeekly) {
-                const milestones = [
-                    { count: 20, name: 'Rising Star', icon: '⭐' },
-                    { count: 40, name: 'Super Teacher', icon: '🔥' },
-                    { count: 60, name: 'Elite Educator', icon: '💎' },
-                    { count: 100, name: 'Teaching Legend', icon: '👑' }
-                ];
-                
-                milestones.forEach(milestone => {
-                    if (weeklyBookings >= milestone.count) {
-                        badges.push({
-                            id: `bookings-${milestone.count}`,
-                            name: milestone.name,
-                            icon: milestone.icon,
-                            description: `${milestone.count}+ bookings this week`,
-                            earned: true,
-                            progress: 100
-                        });
-                    } else {
-                        badges.push({
-                            id: `bookings-${milestone.count}`,
-                            name: milestone.name,
-                            icon: milestone.icon,
-                            description: `Reach ${milestone.count} bookings/week`,
-                            earned: false,
-                            progress: (weeklyBookings / milestone.count) * 100
-                        });
-                    }
-                });
-            }
-            
-            // Badge 9: More than 100 bookings a week
-            if (isWeekly && weeklyBookings > 100) {
-                badges.push({
-                    id: 'over-100-week',
-                    name: 'Ultra Performer',
-                    icon: '🚀',
-                    description: '100+ bookings this week',
-                    earned: true,
-                    progress: 100
-                });
-            } else if (isWeekly) {
-                badges.push({
-                    id: 'over-100-week',
-                    name: 'Ultra Performer',
-                    icon: '🚀',
-                    description: 'Reach 100+ bookings/week',
-                    earned: false,
-                    progress: Math.min(100, (weeklyBookings / 100) * 100)
-                });
-            }
-            
-            // Badge 10: Open Slots on Weekends
-            if (weekendSlots.length > 0) {
-                badges.push({
-                    id: 'weekend-warrior',
-                    name: 'Weekend Warrior',
-                    icon: '🏋️',
-                    description: 'Opens slots on weekends',
-                    earned: true,
-                    progress: 100
-                });
-            } else {
-                badges.push({
-                    id: 'weekend-warrior',
-                    name: 'Weekend Warrior',
-                    icon: '🏋️',
-                    description: 'Open slots on weekends',
-                    earned: false,
-                    progress: 0
-                });
-            }
-            
-            // Badge 11: Always Got 5 Stars
-            if (allFiveStars && ratings.length >= 10) {
-                badges.push({
-                    id: 'five-star-master',
-                    name: 'Five Star Master',
-                    icon: '⭐⭐⭐⭐⭐',
-                    description: 'All 5-star ratings (10+ reviews)',
-                    earned: true,
-                    progress: 100
-                });
-            } else if (ratings.length > 0) {
-                badges.push({
-                    id: 'five-star-master',
-                    name: 'Five Star Master',
-                    icon: '⭐⭐⭐⭐⭐',
-                    description: 'Get all 5-star ratings (10+ reviews)',
-                    earned: false,
-                    progress: (ratings.filter(r => r === 5).length / Math.max(10, ratings.length)) * 100
-                });
-            } else {
-                badges.push({
-                    id: 'five-star-master',
-                    name: 'Five Star Master',
-                    icon: '⭐⭐⭐⭐⭐',
-                    description: 'Get all 5-star ratings',
-                    earned: false,
-                    progress: 0
-                });
-            }
-            
-            // Badge 12: Monthly Class Achievement (for promotion)
-            if (isMonthly && monthlyBookings >= 200) {
-                badges.push({
-                    id: 'promotion-ready',
-                    name: 'Promotion Ready',
-                    icon: '📈',
-                    description: '200+ classes this month',
-                    earned: true,
-                    progress: 100
-                });
-            } else if (isMonthly) {
-                badges.push({
-                    id: 'promotion-ready',
-                    name: 'Promotion Ready',
-                    icon: '📈',
-                    description: 'Reach 200+ classes/month',
-                    earned: false,
-                    progress: Math.min(100, (monthlyBookings / 200) * 100)
-                });
-            }
-            
-            // Badge 13: Students Love Them (High Rebooking Rate)
-            const bookings = badgeData?.bookings || [];
-            const uniqueStudents = new Set(bookings.map(b => b.studentId).filter(Boolean));
-            const totalBookings = bookings.length;
-            const rebookingRate = uniqueStudents.size > 0 ? (totalBookings / uniqueStudents.size) : 0;
-            
-            if (rebookingRate >= 3 && totalBookings >= 20) {
-                badges.push({
-                    id: 'student-favorite',
-                    name: 'Student Favorite',
-                    icon: '❤️',
-                    description: 'High student rebooking rate',
-                    earned: true,
-                    progress: 100
-                });
-            } else if (totalBookings > 0) {
-                badges.push({
-                    id: 'student-favorite',
-                    name: 'Student Favorite',
-                    icon: '❤️',
-                    description: 'High student rebooking rate',
-                    earned: false,
-                    progress: Math.min(100, (rebookingRate / 3) * 100)
-                });
-            } else {
-                badges.push({
-                    id: 'student-favorite',
-                    name: 'Student Favorite',
-                    icon: '❤️',
-                    description: 'High student rebooking rate',
-                    earned: false,
-                    progress: 0
-                });
-            }
-            
-            // Badge 14: Good Pronunciation (would need feedback analysis)
-            badges.push({
-                id: 'pronunciation-pro',
-                name: 'Pronunciation Pro',
-                icon: '🗣️',
-                description: 'Excellent pronunciation',
-                earned: false, // Would need feedback text analysis
-                progress: 0
-            });
-            
-            // Badge 15: Grammar Expert (would need feedback analysis)
-            badges.push({
-                id: 'grammar-expert',
-                name: 'Grammar Expert',
-                icon: '📚',
-                description: 'Strong grammar skills',
-                earned: false, // Would need feedback text analysis
-                progress: 0
-            });
-            
-            // Badge 16: Energetic in Class (would need feedback analysis)
-            badges.push({
-                id: 'energetic',
-                name: 'Energetic Teacher',
-                icon: '⚡',
-                description: 'Always energetic in class',
-                earned: false, // Would need feedback text analysis
-                progress: 0
-            });
-            
-            // Badge 17: Smiling Face (would need feedback analysis)
-            badges.push({
-                id: 'smiling-face',
-                name: 'Smiling Face',
-                icon: '😊',
-                description: 'Positive and cheerful',
-                earned: false, // Would need feedback text analysis
-                progress: 0
-            });
-            
-            // Badge 18: Knowledgeable (would need feedback analysis)
-            badges.push({
-                id: 'knowledgeable',
-                name: 'Knowledgeable',
-                icon: '🧠',
-                description: 'Deep subject knowledge',
-                earned: false, // Would need feedback text analysis
-                progress: 0
-            });
-            
-            return badges;
-        }
-        
-        function displayBadges(badges) {
             const badgesGrid = document.getElementById('badges-grid');
-            badgesGrid.innerHTML = badges.map(badge => `
-                <div class="badge-card ${badge.earned ? 'earned' : 'locked'}" title="${badge.description}">
-                    <span class="badge-icon">${badge.icon}</span>
-                    <div class="badge-name">${badge.name}</div>
-                    <div class="badge-description">${badge.description}</div>
-                    ${badge.earned ? 
-                        `<div class="badge-status earned">✓ Earned</div>` :
-                        `<div class="badge-status locked">Locked</div>
-                         <div class="badge-progress">
-                             <div class="badge-progress-bar" style="width: ${Math.min(100, badge.progress)}%"></div>
-                         </div>`
-                    }
-                </div>
-            `).join('');
+            if (!badgesGrid) return;
+
+            function escapeAttr(v) {
+                return String(v == null ? '' : v)
+                    .replace(/&/g, '&amp;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/</g, '&lt;');
+            }
+
+            badgesGrid.innerHTML = (badges || []).map(function (badge) {
+                const isFeedback = badge.progressMode === 'feedback';
+                const earned = !!badge.earned || badge.status === 'earned';
+                const locked = badge.status === 'locked' || (!earned && isFeedback);
+                const cardClass = earned ? 'earned' : 'locked';
+                const title = isFeedback
+                    ? (badge.description + ' — Based on Student Feedback')
+                    : badge.description;
+
+                let progressLabel = '';
+                if (!isFeedback && badge.targetValue != null) {
+                    const unit = badge.unit ? (' ' + badge.unit) : '';
+                    progressLabel =
+                        '<div class="badge-progress-label" style="font-size:0.7rem;color:#64748b;margin-top:4px;">' +
+                        escapeAttr(badge.currentValue) +
+                        ' / ' +
+                        escapeAttr(badge.targetValue) +
+                        escapeAttr(unit) +
+                        '</div>';
+                } else if (isFeedback) {
+                    progressLabel =
+                        '<div class="badge-progress-label" style="font-size:0.7rem;color:#64748b;margin-top:4px;" title="Based on Student Feedback">Based on Student Feedback</div>';
+                }
+
+                let statusHtml = '';
+                if (earned) {
+                    statusHtml = '<div class="badge-status earned">✓ Earned</div>';
+                } else if (locked && isFeedback) {
+                    statusHtml =
+                        '<div class="badge-status locked">Locked</div>' + progressLabel;
+                } else if (locked) {
+                    statusHtml =
+                        '<div class="badge-status locked">Locked</div>' +
+                        '<div class="badge-progress" title="' +
+                        escapeAttr(title) +
+                        '">' +
+                        '<div class="badge-progress-bar" style="width: ' +
+                        Math.min(100, Number(badge.progress) || 0) +
+                        '%"></div></div>' +
+                        progressLabel;
+                } else {
+                    statusHtml =
+                        '<div class="badge-status locked">In Progress</div>' +
+                        '<div class="badge-progress" title="' +
+                        escapeAttr(title) +
+                        '">' +
+                        '<div class="badge-progress-bar" style="width: ' +
+                        Math.min(100, Number(badge.progress) || 0) +
+                        '%"></div></div>' +
+                        progressLabel;
+                }
+
+                return (
+                    '<div class="badge-card ' +
+                    cardClass +
+                    '" title="' +
+                    escapeAttr(title) +
+                    '">' +
+                    '<span class="badge-icon">' +
+                    badge.icon +
+                    '</span>' +
+                    '<div class="badge-name">' +
+                    escapeAttr(badge.name) +
+                    '</div>' +
+                    '<div class="badge-description">' +
+                    escapeAttr(badge.description) +
+                    '</div>' +
+                    statusHtml +
+                    '</div>'
+                );
+            }).join('');
         }
         
-        function displayAnalysis(analysis, badgeData) {
+        function displayAnalysis(analysis, badgePayload) {
             const content = document.getElementById('content');
             content.style.display = 'block';
             
-            // Calculate and display badges
-            const badges = calculateBadges(analysis, badgeData);
-            displayBadges(badges);
+            // Monthly badge rules engine payload (previous calendar month)
+            const badges = (badgePayload && badgePayload.badges) || [];
+            const periodLabel = badgePayload && badgePayload.period ? badgePayload.period.label : '';
+            displayBadges(badges, periodLabel);
             
             // Display stats
             const statsGrid = document.getElementById('stats-grid');

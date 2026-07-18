@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="js/security-guard.js?v=2"></script>
+    <link rel="icon" href="/images/remoed-favicon.png" type="image/png" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <title>Training Course - RemoEdPH</title>
+    <link rel="stylesheet" href="modern-styles.css">
+    <link rel="stylesheet" href="css/teacher-sidebar.css">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
+    <style>
+        .tc-layout { display:grid; grid-template-columns:260px 1fr; gap:20px; min-height:60vh; }
+        @media (max-width:768px){ .tc-layout { grid-template-columns:1fr; } }
+        .tc-sidebar { background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:12px; }
+        .tc-mod { padding:10px; border-radius:8px; margin-bottom:6px; cursor:pointer; border:1px solid transparent; }
+        .tc-mod.active { background:#eef2ff; border-color:#6366f1; }
+        .tc-mod.done::after { content:' ✓'; color:#16a34a; }
+        .tc-content { background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:20px; }
+        .tc-video { width:100%; max-height:420px; border-radius:8px; background:#000; }
+        .tc-pdf-shell {
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            background: #f8fafc;
+            overflow: hidden;
+            min-height: 70vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .tc-pdf-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            background: #1e293b;
+            color: #f8fafc;
+            flex-wrap: wrap;
+        }
+        .tc-pdf-toolbar button {
+            background: #334155;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .tc-pdf-toolbar button:disabled { opacity: 0.45; cursor: default; }
+        .tc-pdf-pages {
+            flex: 1;
+            overflow: auto;
+            padding: 16px;
+            background: #64748b;
+            min-height: 70vh;
+            max-height: 80vh;
+        }
+        .tc-pdf-pages canvas {
+            display: block;
+            margin: 0 auto 16px;
+            max-width: 100%;
+            height: auto !important;
+            box-shadow: 0 8px 24px rgba(15, 23, 42, 0.35);
+            background: #fff;
+        }
+        .tc-preview-note {
+            margin: 8px 0 0;
+            font-size: 0.8rem;
+            color: #64748b;
+        }
+        .tc-preview-loading { padding: 24px; color: #64748b; }
+    </style>
+</head>
+<body class="teacher-portal">
+<div class="remoed-main">
+    <div id="teacher-sidebar-root"></div>
+    <script src="js/teacher-sidebar.js"></script>
+    <script>TeacherSidebar.render('teacher-sidebar-root', 'professional-development');</script>
+    <div class="remoed-content">
+        <div class="remoed-section">
+            <a href="teacher-professional-development.html#training" style="font-size:0.9rem;">← Back to Training Portal</a>
+            <h1 id="tc-title" style="margin:12px 0 4px;">Loading…</h1>
+            <p id="tc-desc" class="muted"></p>
+            <div class="tc-layout">
+                <div class="tc-sidebar" id="tc-modules"></div>
+                <div class="tc-content" id="tc-viewer"><p class="muted">Select a module</p></div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+(function(){
+    const params = new URLSearchParams(location.search);
+    const courseId = params.get('id');
+    function teacherToken() {
+        return (
+            localStorage.getItem('remoed_teacher_token') ||
+            sessionStorage.getItem('remoed_teacher_token') ||
+            localStorage.getItem('remoed_teacher_auth') ||
+            localStorage.getItem('remoed_user_token') ||
+            localStorage.getItem('token') ||
+            ''
+        );
+    }
+    let courseData = null, modules = [], activeIdx = 0;
+    const blobUrls = [];
+    let pdfDoc = null;
+    let pdfPage = 1;
+
+    function revokeBlobs() {
+        while (blobUrls.length) {
+            try { URL.revokeObjectURL(blobUrls.pop()); } catch (_e) {}
+        }
+        pdfDoc = null;
+    }
+
+    async function api(url, init){
+        const tok = teacherToken();
+        if (!tok) throw new Error('Not signed in. Please log in again.');
+        const opts = Object.assign({}, init || {});
+        opts.headers = Object.assign(
+            {},
+            (init && init.headers) || {},
+            { Authorization: 'Bearer ' + tok }
+        );
+        const r = await fetch(url, opts);
+        const d = await r.json().catch(function () { return {}; });
+        if (!r.ok) throw new Error(d.message || d.error || ('Request failed (' + r.status + ')'));
+        return d;
+    }
+
+    async function fetchAuthBuffer(url) {
+        const tok = teacherToken();
+        const r = await fetch(url, { headers: { Authorization: 'Bearer ' + tok } });
+        if (!r.ok) throw new Error('Could not load document (' + r.status + ')');
+        return r.arrayBuffer();
+    }
+
+    async function fetchBlobUrl(url) {
+        const tok = teacherToken();
+        const r = await fetch(url, { headers: { Authorization: 'Bearer ' + tok } });
+        if (!r.ok) throw new Error('Could not load media (' + r.status + ')');
+        const blob = await r.blob();
+        const obj = URL.createObjectURL(blob);
+        blobUrls.push(obj);
+        return obj;
+    }
+
+    function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+
+    function isPdfExt(ext) {
+        return String(ext || '').toLowerCase() === '.pdf';
+    }
+
+    function moduleHasPdf(m) {
+        if (!m) return false;
+        if (m.hasAsset && (isPdfExt(m.assetExt) || !m.assetExt)) return true;
+        if (m.type === 'asset' && (isPdfExt(m.assetExt) || !m.assetExt)) return true;
+        return false;
+    }
+
+    function courseHasPdf() {
+        return !!(courseData && courseData.hasPresentation && (isPdfExt(courseData.presentationExt) || !courseData.presentationExt));
+    }
+
+    async function paintPdfPage() {
+        if (!pdfDoc) return;
+        const host = document.getElementById('tc-pdf-pages');
+        const label = document.getElementById('tc-pdf-page-label');
+        const prev = document.getElementById('tc-pdf-prev');
+        const next = document.getElementById('tc-pdf-next');
+        if (!host) return;
+        const page = await pdfDoc.getPage(pdfPage);
+        const base = page.getViewport({ scale: 1 });
+        const fit = Math.min(1.35, Math.max(0.7, (host.clientWidth - 32) / base.width));
+        const viewport = page.getViewport({ scale: fit });
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        host.innerHTML = '';
+        host.appendChild(canvas);
+        await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+        if (label) label.textContent = 'Page ' + pdfPage + ' / ' + pdfDoc.numPages;
+        if (prev) prev.disabled = pdfPage <= 1;
+        if (next) next.disabled = pdfPage >= pdfDoc.numPages;
+    }
+
+    function pdfShellHtml(title) {
+        return (
+            '<div class="tc-pdf-shell" oncontextmenu="return false;">' +
+            '<div class="tc-pdf-toolbar">' +
+            '<strong style="margin-right:auto">' + esc(title || 'PDF preview') + '</strong>' +
+            '<button type="button" id="tc-pdf-prev">Previous</button>' +
+            '<span id="tc-pdf-page-label">Loading…</span>' +
+            '<button type="button" id="tc-pdf-next">Next</button>' +
+            '</div>' +
+            '<div class="tc-pdf-pages" id="tc-pdf-pages"><p class="tc-preview-loading">Loading PDF…</p></div>' +
+            '</div>' +
+            '<p class="tc-preview-note">Preview only — downloading this material is not permitted (company IP).</p>'
+        );
+    }
+
+    async function mountPdfViewer(streamUrl, title) {
+        const data = await fetchAuthBuffer(streamUrl);
+        pdfDoc = await pdfjsLib.getDocument({ data: data }).promise;
+        pdfPage = 1;
+        const host = document.getElementById('tc-pdf-pages');
+        if (!host) return;
+        const prev = document.getElementById('tc-pdf-prev');
+        const next = document.getElementById('tc-pdf-next');
+        if (prev) prev.onclick = async function () {
+            if (pdfPage <= 1) return;
+            pdfPage -= 1;
+            await paintPdfPage();
+        };
+        if (next) next.onclick = async function () {
+            if (!pdfDoc || pdfPage >= pdfDoc.numPages) return;
+            pdfPage += 1;
+            await paintPdfPage();
+        };
+        await paintPdfPage();
+        window.addEventListener('resize', paintPdfPage);
+    }
+
+    function renderSidebar(){
+        const el = document.getElementById('tc-modules');
+        el.innerHTML = modules.map((m,i)=>{
+            const done = m.progress && m.progress.status === 'completed';
+            return '<div class="tc-mod '+(i===activeIdx?'active':'')+(done?' done':'')+'" data-i="'+i+'">'+(i+1)+'. '+esc(m.title)+'</div>';
+        }).join('') || '<p class="muted" style="padding:8px;">No modules yet.</p>';
+        el.querySelectorAll('.tc-mod').forEach(row=>row.addEventListener('click',()=>{ activeIdx=+row.dataset.i; renderSidebar(); renderModule(); }));
+    }
+
+    async function renderModule(){
+        const m = modules[activeIdx];
+        const v = document.getElementById('tc-viewer');
+        if(!m){ v.innerHTML='<p class="muted">No modules</p>'; return; }
+        const mid = String(m._id);
+        const isSynthetic = mid === 'course-material';
+        const done = m.progress && m.progress.status === 'completed';
+        const completeBtn = isSynthetic
+            ? ''
+            : '<button type="button" id="tc-complete" style="margin-top:20px;padding:10px 18px;background:'+(done?'#16a34a':'#6366f1')+';color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;">'+(done?'Completed ✓':'Mark module complete')+'</button>';
+
+        v.innerHTML = '<h2 style="margin-top:0">'+esc(m.title)+'</h2><p class="tc-preview-loading">Loading…</p>' + completeBtn;
+
+        let body = '';
+        try {
+            if (m.hasVideo) {
+                const videoBlob = await fetchBlobUrl('/api/teacher/training/modules/' + encodeURIComponent(mid) + '/video');
+                body = '<video class="tc-video" controls controlsList="nodownload" src="'+esc(videoBlob)+'"></video>';
+                if (m.content) body += '<div style="margin-top:14px;line-height:1.6;white-space:pre-wrap">'+esc(m.content)+'</div>';
+            } else if (moduleHasPdf(m)) {
+                body = pdfShellHtml(m.assetName || m.title);
+                v.innerHTML = '<h2 style="margin-top:0">'+esc(m.title)+'</h2>' + body + completeBtn;
+                await mountPdfViewer('/api/teacher/training/modules/' + encodeURIComponent(mid) + '/asset', m.assetName || m.title);
+                if (m.content) {
+                    const note = document.createElement('div');
+                    note.style.cssText = 'margin-top:14px;line-height:1.6;white-space:pre-wrap';
+                    note.textContent = m.content;
+                    v.insertBefore(note, document.getElementById('tc-complete'));
+                }
+                wireComplete(mid, done);
+                return;
+            } else if (courseHasPdf()) {
+                body = pdfShellHtml(courseData.presentationName || 'Course material');
+                v.innerHTML = '<h2 style="margin-top:0">'+esc(m.title)+'</h2>' + body + completeBtn;
+                await mountPdfViewer('/api/teacher/training/courses/' + encodeURIComponent(courseId) + '/presentation', courseData.presentationName);
+                if (m.content) {
+                    const note = document.createElement('div');
+                    note.style.cssText = 'margin-top:14px;line-height:1.6;white-space:pre-wrap';
+                    note.textContent = m.content;
+                    v.insertBefore(note, document.getElementById('tc-complete'));
+                }
+                wireComplete(mid, done);
+                return;
+            } else if (m.hasAsset) {
+                body = '<p class="muted">This asset type cannot be previewed in the browser. Download is disabled.</p>';
+                if (m.content) body += '<div style="margin-top:14px;line-height:1.6;white-space:pre-wrap">'+esc(m.content)+'</div>';
+            } else if (courseData && courseData.hasPresentation) {
+                body = '<p class="muted">This course file type cannot be previewed in the browser. Download is disabled.</p>';
+                if (m.content) body += '<div style="margin-top:14px;line-height:1.6;white-space:pre-wrap">'+esc(m.content)+'</div>';
+            } else {
+                body = '<div style="line-height:1.6;white-space:pre-wrap">'+esc(m.content||'No content yet.')+'</div>';
+            }
+        } catch (err) {
+            body = '<p style="color:#b91c1c">' + esc(err.message) + '</p>';
+            if (m && m.content) {
+                body += '<div style="margin-top:14px;line-height:1.6;white-space:pre-wrap">'+esc(m.content)+'</div>';
+            }
+        }
+
+        v.innerHTML = '<h2 style="margin-top:0">'+esc(m.title)+'</h2>'+body + completeBtn;
+        wireComplete(mid, done);
+    }
+
+    function wireComplete(mid, done) {
+        const btn = document.getElementById('tc-complete');
+        if (!btn) return;
+        if (done) {
+            btn.disabled = true;
+            return;
+        }
+        btn.onclick = async function () {
+            btn.disabled = true;
+            try {
+                await api('/api/teacher/training/modules/' + encodeURIComponent(mid) + '/complete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                const d = await api('/api/teacher/training/courses/' + encodeURIComponent(courseId));
+                modules = d.modules || [];
+                courseData = d.course;
+                renderSidebar();
+                await renderModule();
+            } catch (err) {
+                btn.disabled = false;
+                alert(err.message || 'Could not mark complete');
+            }
+        };
+    }
+
+    async function init(){
+        if(!courseId){ document.getElementById('tc-viewer').innerHTML='<p>Missing course id</p>'; return; }
+        if(!teacherToken()){
+            document.getElementById('tc-viewer').innerHTML='<p style="color:#b91c1c">Please log in as a teacher again.</p>';
+            return;
+        }
+        revokeBlobs();
+        let d;
+        try {
+            d = await api('/api/teacher/training/courses/'+encodeURIComponent(courseId));
+        } catch (err) {
+            document.getElementById('tc-viewer').innerHTML =
+                '<p style="color:#b91c1c">'+esc(err.message)+'</p>' +
+                '<p class="muted">If this course was recreated, go back to the Training Portal and open it again from the course card.</p>';
+            return;
+        }
+        courseData = d.course;
+        modules = d.modules || [];
+        document.getElementById('tc-title').textContent = courseData.title;
+        document.getElementById('tc-desc').textContent = courseData.description || '';
+        if (!modules.length && courseHasPdf()) {
+            modules = [{
+                _id: 'course-material',
+                title: 'Course material',
+                type: 'asset',
+                content: '',
+                hasVideo: false,
+                hasAsset: false,
+                assetExt: '.pdf',
+                progress: { status: 'not_started', watchSeconds: 0 }
+            }];
+        }
+        renderSidebar();
+        await renderModule();
+    }
+    window.addEventListener('beforeunload', revokeBlobs);
+    init().catch(e=>{ document.getElementById('tc-viewer').innerHTML='<p style="color:#b91c1c">'+esc(e.message)+'</p>'; });
+})();
+</script>
+</body>
+</html>

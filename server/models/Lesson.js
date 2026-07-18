@@ -61,8 +61,25 @@ const lessonSchema = new mongoose.Schema({
       required: true
     },
     fileData: {
-      type: String, // Base64 data URL
-      required: true
+      type: String, // Base64 data URL (optional for office_embed / html5_zip)
+      default: ''
+    },
+    presentationType: {
+      type: String,
+      enum: ['file', 'office_embed', 'html5_zip'],
+      default: 'file'
+    },
+    embedUrl: {
+      type: String,
+      default: ''
+    },
+    html5PackagePath: {
+      type: String,
+      default: ''
+    },
+    html5EntryUrl: {
+      type: String,
+      default: ''
     },
     uploadedBy: {
       type: String, // teacherId

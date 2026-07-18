@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7dd3fc"/>
+      <stop offset="100%" stop-color="#bbf7d0"/>
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="720" fill="url(#sky)"/>
+  <ellipse cx="640" cy="520" rx="520" ry="80" fill="#16a34a" opacity="0.45"/>
+  <text x="640" y="340" text-anchor="middle" font-family="Segoe UI,Arial,sans-serif" font-size="48" fill="#14532d">Nature Background</text>
+</svg>

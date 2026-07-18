@@ -160,9 +160,87 @@
     }
     
     .time-slot.booked {
-      background: #f8d7da;
-      color: #721c24;
-      font-weight: 600;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.08) 42%, transparent 70%),
+        linear-gradient(135deg, #fff59a 0%, #ffe85a 45%, #f6c800 100%) !important;
+      color: #0b5f8a !important;
+      font-weight: 700 !important;
+      border: 1px solid rgba(255,255,255,0.65) !important;
+      border-radius: 6px !important;
+      box-shadow:
+        0 2px 4px rgba(0,0,0,0.1),
+        inset 0 1px 2px rgba(255,255,255,0.4),
+        0 3px 0 rgba(212, 160, 0, 0.45),
+        0 6px 14px rgba(28, 167, 231, 0.28) !important;
+      cursor: pointer;
+      transition: transform 0.15s ease-in-out, box-shadow 0.15s ease-in-out, filter 0.15s ease-in-out;
+      display: flex !important;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 5px 6px;
+      animation: remoed-student-booked-glow 2.4s ease-in-out infinite;
+    }
+    .time-slot.booked:hover {
+      transform: translateY(-2px) scale(1.02);
+      box-shadow:
+        0 5px 0 rgba(212, 160, 0, 0.4),
+        0 10px 22px rgba(28, 167, 231, 0.38),
+        inset 0 1px 0 rgba(255,255,255,0.95),
+        inset 0 -2px 4px rgba(180, 120, 0, 0.12) !important;
+      filter: brightness(1.08) saturate(1.08);
+      animation: none;
+    }
+    .time-slot.booked:active {
+      transform: translateY(1px) scale(0.99);
+      box-shadow:
+        0 1px 0 rgba(212, 160, 0, 0.35),
+        0 2px 6px rgba(0,0,0,0.12),
+        inset 0 3px 6px rgba(0,0,0,0.18) !important;
+      filter: brightness(0.97);
+      animation: none;
+    }
+    .time-slot.booked .remoed-slot-enter-icon {
+      filter: drop-shadow(0 0 3px rgba(28, 167, 231, 0.55));
+    }
+    @keyframes remoed-student-booked-glow {
+      0%, 100% {
+        box-shadow:
+          0 2px 4px rgba(0,0,0,0.1),
+          inset 0 1px 2px rgba(255,255,255,0.4),
+          0 3px 0 rgba(212, 160, 0, 0.45),
+          0 6px 14px rgba(28, 167, 231, 0.22);
+      }
+      50% {
+        box-shadow:
+          0 2px 4px rgba(0,0,0,0.1),
+          inset 0 1px 2px rgba(255,255,255,0.5),
+          0 3px 0 rgba(212, 160, 0, 0.5),
+          0 8px 20px rgba(28, 167, 231, 0.42);
+      }
+    }
+    .remoed-slot-label-inner {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      max-width: 100%;
+      line-height: 1.15;
+      pointer-events: none;
+    }
+    .remoed-slot-enter-icon {
+      width: 12px;
+      height: 12px;
+      flex-shrink: 0;
+      fill: currentColor;
+      opacity: 0.9;
+    }
+    .remoed-slot-label-text {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 9.5em;
+      font-size: 0.78rem;
     }
     
     .time-slot.unavailable {
@@ -926,6 +1004,7 @@
      
   </style>
   <link rel="stylesheet" href="css/teacher-sidebar.css">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css">
   <link rel="stylesheet" href="css/student-portal-layout.css">
   <link rel="stylesheet" href="css/student-sidebar.css">
 </head>
@@ -933,13 +1012,13 @@
   <div class="remoed-main">
     <div id="student-sidebar-root"></div>
     <script src="js/student-sidebar.js"></script>
-    <script>StudentSidebar.render('student-sidebar-root', 'schedule');</script>
+    <script src="js/student-page-header.js"></script>
+    <script>
+      StudentSidebar.render('student-sidebar-root', 'schedule');
+      StudentPageHeader.render('schedule');
+    </script>
   <div class="remoed-content">
     <div class="header">
-      <h1 style="font-size: 2rem; font-weight: 800; color: #1CA7E7; text-shadow: 2px 2px 4px rgba(28, 167, 231, 0.2); display: flex; align-items: center; gap: 12px;">
-        <span>📚📶</span>
-        <span>📅 My Schedule</span>
-      </h1>
       <div class="header-controls">
         <div class="week-navigation">
           <button id="prev-week" class="nav-btn">← Previous Week</button>
@@ -947,6 +1026,9 @@
           <button id="next-week" class="nav-btn">Next Week →</button>
           <button id="current-week" class="nav-btn current-week-btn">Today</button>
         </div>
+        <p id="student-schedule-local-note" style="margin:8px 0 0;width:100%;font-size:0.78rem;color:#475569;font-weight:600;">
+          All times shown in your local timezone.
+        </p>
       </div>
     </div>
 
@@ -999,57 +1081,74 @@
     </div>
   </div>
   <!-- Class Info Modal -->
-  <div id="booking-info-modal" class="modal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h2>Class Information</h2>
-        <span class="close" id="close-booking-info-modal">&times;</span>
+  <div id="booking-info-modal" class="remoed-modal">
+    <div class="remoed-modal-content">
+      <div class="remoed-modal-header">
+        <h2 class="remoed-modal-title">Class Information</h2>
+        <button type="button" class="remoed-modal-close" id="close-booking-info-modal" aria-label="Close">&times;</button>
       </div>
-      <div class="modal-body">
-        <div class="class-details">
-          <div class="detail-row">
-            <label>Date:</label>
-            <span id="info-class-date"></span>
+      <div class="remoed-modal-body">
+        <div class="class-details" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px 15px; font-size: 0.85rem; margin-bottom: 12px;">
+          <div class="detail-row" style="margin: 0; display: flex; align-items: center; gap: 8px;">
+            <label style="font-weight: bold; color: #000; font-size: 0.8rem; min-width: 70px;">Date:</label>
+            <span id="info-class-date" style="color: #000; font-weight: bold; flex: 1;"></span>
           </div>
-          <div class="detail-row">
-            <label>Time:</label>
-            <span id="info-class-time"></span>
+          <div class="detail-row" style="margin: 0; display: flex; align-items: center; gap: 8px;">
+            <label style="font-weight: bold; color: #000; font-size: 0.8rem; min-width: 70px;">Time:</label>
+            <span id="info-class-time" style="color: #000; font-weight: bold; flex: 1;"></span>
           </div>
-          <div class="detail-row">
-            <label>Teacher:</label>
-            <span id="info-class-teacher"></span>
+          <div class="detail-row" style="margin: 0; display: flex; align-items: center; gap: 8px;">
+            <label style="font-weight: bold; color: #000; font-size: 0.8rem; min-width: 70px;">Teacher:</label>
+            <span id="info-class-teacher" style="color: #000; font-weight: bold; flex: 1;"></span>
           </div>
-          <div class="detail-row">
-            <label>Level:</label>
-            <span id="info-class-level"></span>
+          <div class="detail-row" style="margin: 0; display: flex; align-items: center; gap: 8px;">
+            <label style="font-weight: bold; color: #000; font-size: 0.8rem; min-width: 70px;">Lesson:</label>
+            <span id="info-class-lesson" style="color: #000; font-weight: bold; flex: 1;"></span>
           </div>
-          <div class="detail-row">
-            <label>Lesson:</label>
-            <span id="info-class-lesson"></span>
-          </div>
-          <div class="detail-row">
-            <label>Classroom ID:</label>
-            <span id="info-classroom-id" style="font-weight: bold; color: #667eea;"></span>
-          </div>
-          <div class="detail-row">
-            <label>Join Classroom:</label>
-            <button class="btn-join" id="join-classroom-btn">Enter Live Classroom</button>
-          </div>
-          <div class="detail-row" id="cancel-booking-row" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #e0e6ed;">
-            <label>Actions:</label>
-            <button class="btn-cancel" id="cancel-booking-btn" style="background: #dc3545; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; transition: all 0.3s ease;">
-              Cancel Booking
-            </button>
+          <div class="detail-row" style="margin: 0; display: flex; align-items: center; gap: 8px; grid-column: 1 / -1;">
+            <label style="font-weight: bold; color: #000; font-size: 0.8rem; min-width: 90px;">Classroom ID:</label>
+            <span id="info-classroom-id" style="font-weight: bold; color: #1ca7e7; font-size: 0.75rem; flex: 1;"></span>
           </div>
         </div>
-        <div class="modal-actions">
-          <button class="btn-secondary" id="close-booking-info-modal2">Close</button>
+
+        <div style="margin: 10px 0; text-align: center;">
+          <button type="button" class="remoed-btn remoed-btn-primary" id="join-classroom-btn">Enter Live Classroom</button>
         </div>
+
+        <div id="cancel-booking-row" style="margin: 10px 0;">
+          <label style="font-weight: 600; color: #333; display: block; margin-bottom: 6px; font-size: 0.85rem;">Actions:</label>
+          <div id="cancel-window-notice" style="display: none; padding: 8px 10px; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 6px; margin-bottom: 8px; font-size: 0.75rem; color: #856404; line-height: 1.35;">
+            The 30-minute emergency cancellation window has closed. Late cancellations forfeit the class credit if you do not attend.
+          </div>
+          <button type="button" class="remoed-btn remoed-btn-danger" id="cancel-booking-btn">Request Cancellation</button>
+        </div>
+
+        <div id="emergency-cancel-panel" style="display: none; margin-top: 8px; padding: 10px; background: #f8f9fa; border-radius: 4px; border: 1px solid #e0e6ed;">
+          <h4 style="margin: 0 0 6px 0; color: #dc3545; font-size: 0.9rem;">Emergency Cancellation</h4>
+          <p style="margin: 0 0 8px 0; font-size: 0.75rem; color: #555;">Cancel at least 30 minutes before start to keep your lesson credit.</p>
+          <div class="form-group">
+            <label for="emergency-cancel-reason" style="display: block; margin-bottom: 3px; font-weight: 600; color: #333; font-size: 0.8rem;">Reason:</label>
+            <select id="emergency-cancel-reason" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.85rem; box-sizing: border-box;">
+              <option value="">Select a reason…</option>
+              <option value="Power Interruption">Power Interruption</option>
+              <option value="Natural Disaster">Natural Disaster</option>
+              <option value="Accident/Medical Emergency">Accident/Medical Emergency</option>
+              <option value="Other Valid Reason">Other Valid Reason</option>
+            </select>
+          </div>
+          <div style="display: flex; gap: 6px; margin-top: 8px;">
+            <button type="button" class="remoed-btn remoed-btn-secondary" id="emergency-cancel-back-btn" style="padding: 5px 10px; font-size: 0.8rem;">Back</button>
+            <button type="button" class="remoed-btn remoed-btn-danger" id="emergency-cancel-submit-btn" style="padding: 5px 10px; font-size: 0.8rem;">Submit Cancellation</button>
+          </div>
+        </div>
+      </div>
+      <div class="remoed-modal-footer">
+        <button type="button" class="remoed-btn remoed-btn-secondary" id="close-booking-info-modal2">Close</button>
       </div>
     </div>
   </div>
 
-  <!-- Cancellation Reason Modal -->
+  <!-- Cancellation Reason Modal (legacy admin-request path) -->
   <div id="cancellation-modal" class="modal" style="display: none;">
     <div class="modal-content">
       <div class="modal-header">
@@ -1765,10 +1864,64 @@
       window.location.href = 'student-login.html';
     };
 
-    // Weekly grid variables
-    let currentWeek = new Date();
+    // Weekly grid variables — Luxon local week (viewer clock)
+    const VIEWER_ZONE = (Intl.DateTimeFormat().resolvedOptions().timeZone) || 'UTC';
+    let currentWeek = (window.luxon && window.luxon.DateTime)
+      ? window.luxon.DateTime.now().startOf('week').toJSDate()
+      : new Date();
     let bookingsData = [];
     let feedbackHistory = []; // Store feedback history
+
+    function getViewerZone() {
+      return VIEWER_ZONE;
+    }
+
+    /** Monday–Sunday bounds in the viewer's local zone */
+    function getLocalWeekBounds(anchorDate) {
+      const Lux = window.luxon && window.luxon.DateTime;
+      if (Lux) {
+        const base = Lux.fromJSDate(anchorDate instanceof Date ? anchorDate : new Date(anchorDate)).setZone(getViewerZone());
+        const localStartOfWeek = base.startOf('week');
+        const localEndOfWeek = localStartOfWeek.plus({ days: 6 });
+        return { localStartOfWeek, localEndOfWeek };
+      }
+      const d = new Date(anchorDate);
+      const day = d.getDay();
+      const toMon = day === 0 ? 6 : day - 1;
+      const mon = new Date(d.getFullYear(), d.getMonth(), d.getDate() - toMon);
+      const sun = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + 6);
+      return {
+        localStartOfWeek: {
+          toISODate: () =>
+            `${mon.getFullYear()}-${String(mon.getMonth() + 1).padStart(2, '0')}-${String(mon.getDate()).padStart(2, '0')}`,
+          toFormat: (fmt) => {
+            if (fmt === 'MMM d') return mon.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            if (fmt === 'ccc') return mon.toLocaleDateString('en-US', { weekday: 'short' });
+            if (fmt === 'LLLL d') return mon.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+            return mon.toLocaleDateString();
+          },
+          plus: ({ days = 0 } = {}) => {
+            const n = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + days);
+            return {
+              toISODate: () =>
+                `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`,
+              toFormat: (fmt) => {
+                if (fmt === 'ccc') return n.toLocaleDateString('en-US', { weekday: 'short' });
+                if (fmt === 'LLLL d') return n.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+                if (fmt === 'MMM d, yyyy') return n.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                return n.toLocaleDateString();
+              },
+            };
+          },
+        },
+        localEndOfWeek: {
+          toFormat: (fmt) => {
+            if (fmt === 'MMM d, yyyy') return sun.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            return sun.toLocaleDateString();
+          },
+        },
+      };
+    }
 
     // Initialize the weekly grid
     function initializeWeeklyGrid() {
@@ -1777,43 +1930,18 @@
       loadScheduleData();
     }
 
-    // Luxon helper (with native fallback)
-    function createDateTime(jsDate, timeZone) {
-      const Lux = window.luxon && window.luxon.DateTime;
-      if (Lux) return Lux.fromJSDate(jsDate, { zone: timeZone });
-      const d = new Date(jsDate);
-      return {
-        _d: d,
-        weekday: ((d.getDay() + 6) % 7) + 1, // ISO: Monday=1 ... Sunday=7
-        plus: ({ days = 0 } = {}) => createDateTime(new Date(d.getTime() + days * 86400000), timeZone),
-        minus: ({ days = 0 } = {}) => createDateTime(new Date(d.getTime() - days * 86400000), timeZone),
-        toFormat: (fmt) => {
-          if (fmt === 'ccc') return d.toLocaleDateString(undefined, { weekday: 'short' });
-          if (fmt === 'LLLL d') return d.toLocaleDateString(undefined, { month: 'long', day: 'numeric' });
-          if (fmt === 'ccc LLLL d') {
-            return `${d.toLocaleDateString(undefined, { weekday: 'short' })} ${d.toLocaleDateString(undefined, { month: 'long' })} ${d.getDate()}`;
-          }
-          return d.toLocaleDateString();
-        },
-        toISODate: () => d.toISOString().split('T')[0]
-      };
-    }
-
-    // Generate day headers
+    // Generate day headers in viewer local week
     function generateDayHeaders() {
-      const timeZone = getDisplayZone();
       const dayHeadersRow = document.getElementById('day-headers-row');
 
-      // Clear existing day headers, but keep the 'Time' th
       while (dayHeadersRow.children.length > 1) {
         dayHeadersRow.removeChild(dayHeadersRow.lastChild);
       }
 
-      const baseWeek = createDateTime(currentWeek, timeZone);
-      const monday = baseWeek.minus({ days: baseWeek.weekday - 1 }); // ISO weekday: 1=Monday, 7=Sunday
+      const { localStartOfWeek } = getLocalWeekBounds(currentWeek);
 
       for (let i = 0; i < 7; i++) {
-        const day = monday.plus({ days: i });
+        const day = localStartOfWeek.plus({ days: i });
 
         const dayTh = document.createElement('th');
         dayTh.className = 'day-column';
@@ -1824,66 +1952,51 @@
       }
     }
 
-    // Generate time slots (30-minute intervals from 01:00 to 24:00) - 24-hour format
+    // Generate time slots (30-minute intervals from 01:00 to 24:00) - local calendar dates
     function generateTimeSlots() {
       const gridBody = document.getElementById('time-slots-grid');
       gridBody.innerHTML = '';
-      
+
+      const { localStartOfWeek } = getLocalWeekBounds(currentWeek);
+      const weekDates = [];
+      for (let i = 0; i < 7; i++) {
+        weekDates.push(localStartOfWeek.plus({ days: i }).toISODate());
+      }
+
+      const Lux = window.luxon && window.luxon.DateTime;
+      const nowLocal = Lux ? Lux.now() : null;
+
       const startHour = 1;
       const endHour = 24;
-      
+
       for (let hour = startHour; hour < endHour; hour++) {
         for (let minute = 0; minute < 60; minute += 30) {
           const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-          
+
           const timeRow = document.createElement('tr');
-          
-          // Time column
+
           const timeColumn = document.createElement('td');
           timeColumn.className = 'time-slot';
           timeColumn.textContent = formatTime24Hour(timeString);
           timeRow.appendChild(timeColumn);
-          
-          // Day columns
-                  for (let day = 0; day < 7; day++) {
-          const date = new Date(currentWeek);
-          // Calculate Monday as the start of the week
-          const dayOfWeek = currentWeek.getDay();
-          const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-          date.setDate(currentWeek.getDate() - daysToMonday + day);
-            const dateString = date.toISOString().split('T')[0];
-            
+
+          for (let day = 0; day < 7; day++) {
+            const dateString = weekDates[day];
+
             const slot = document.createElement('td');
             slot.className = 'time-slot';
             slot.dataset.date = dateString;
             slot.dataset.time = timeString;
-            
-            // Check if slot is in the past
-            const slotDateTime = new Date(`${dateString}T${timeString}`);
-            const now = new Date();
-            
-            // Check if the class duration has passed (25 minutes after start time)
-            const currentDate = now.toISOString().split('T')[0];
-            const currentTime = now.toTimeString().split(' ')[0].substring(0, 5); // HH:MM format
-            
-            let isClassDurationPassed = false;
-            if (dateString === currentDate) {
-                // If it's today, check if the class duration has passed (25 minutes after start)
-                const [startHour, startMinute] = timeString.split(':').map(Number);
-                const endTime = new Date();
-                endTime.setHours(startHour, startMinute + 25, 0, 0); // 25 minutes after start
-                
-                const currentDateTime = new Date();
-                isClassDurationPassed = currentDateTime > endTime;
+
+            if (Lux && nowLocal) {
+              const slotStart = Lux.fromISO(`${dateString}T${timeString}`, { zone: getViewerZone() });
+              const slotEnd = slotStart.plus({ minutes: 25 });
+              if (nowLocal > slotEnd) slot.classList.add('unavailable');
             }
-            
-            if (slotDateTime <= now && isClassDurationPassed) {
-              slot.classList.add('unavailable');
-            }
-            
+
             timeRow.appendChild(slot);
           }
-          
+
           gridBody.appendChild(timeRow);
         }
       }
@@ -1892,41 +2005,41 @@
     // Load schedule data from backend
     async function loadScheduleData() {
       try {
-              const weekStart = new Date(currentWeek);
-      // Calculate Monday as the start of the week
-      const dayOfWeek = currentWeek.getDay();
-      const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-      weekStart.setDate(currentWeek.getDate() - daysToMonday);
-      const weekString = weekStart.toISOString().split('T')[0];
-        
-        console.log('🔍 Loading student bookings for week:', weekString);
+        const { localStartOfWeek } = getLocalWeekBounds(currentWeek);
+        const weekString = localStartOfWeek.toISODate();
+        const timezoneOffset = new Date().getTimezoneOffset();
+        const tz = encodeURIComponent(getViewerZone());
+
+        console.log('🔍 Loading student bookings for local week:', weekString, getViewerZone());
         console.log('🔍 Username from localStorage:', username);
-        
+
         const token = localStorage.getItem('token');
         console.log('🔍 Token being sent:', token ? 'Token exists' : 'No token');
-        
+
         if (!token) {
           console.error('❌ No auth token found - student may not be logged in');
           showMessage('Please log in to view your class schedule.', 'error');
           return;
         }
-        
-        // Add timeout to prevent hanging
+
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-        
-        const response = await fetch(`/api/student/bookings?week=${weekString}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache'
-          },
-          signal: controller.signal
-        });
-        
+
+        const response = await fetch(
+          `/api/student/bookings?week=${weekString}&timezoneOffset=${timezoneOffset}&tz=${tz}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Cache-Control': 'no-cache',
+              Pragma: 'no-cache',
+            },
+            signal: controller.signal,
+          }
+        );
+
         clearTimeout(timeoutId);
         console.log('🔍 Response status:', response.status);
-        
+
         if (!response.ok) {
           if (response.status === 401) {
             console.log('❌ Unauthorized - token may be expired');
@@ -1946,20 +2059,19 @@
             return;
           }
         }
-        
+
         const data = await response.json();
-        
+
         console.log('✅ Student bookings data:', data);
-        
+
         bookingsData = data.bookings || [];
-        
+
         if (bookingsData.length === 0) {
           console.log('ℹ️ No bookings found for this week');
         } else {
           console.log('✅ Found', bookingsData.length, 'bookings');
         }
-        
-        // Load feedback history to check which bookings already have feedback
+
         await loadFeedbackHistory();
 
         renderScheduleData();
@@ -1973,17 +2085,8 @@
       }
     }
 
-    const VIEWER_ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; // viewer's local timezone
-
     function getDisplayZone() {
-      const first = bookingsData[0] || {};
-      return (
-        first.studentLocalZone ||
-        first.studentTimezone ||
-        first.clientTz ||
-        first.timezone ||
-        VIEWER_ZONE
-      );
+      return getViewerZone();
     }
 
     // Fallback converter when Luxon is unavailable; only supports UTC -> target zone
@@ -2015,19 +2118,15 @@
     function bookingDisplayDateTime(booking) {
       const Lux = window.luxon && window.luxon.DateTime;
       const normalized = normalizeTimeToHHMM(booking.time);
-      const zone =
-        booking.studentLocalZone ||
-        booking.studentTimezone ||
-        booking.clientTz ||
-        booking.timezone ||
-        getDisplayZone();
+      const zone = getViewerZone();
 
       if (!Lux || !normalized) {
         return { date: booking.date, slot: normalized, label: normalized, zone };
       }
 
-      // If we have an authoritative UTC, convert directly to the student's zone.
+      // Prefer canonical UTC ISO (startTime / dateTimeUtc) → viewer local
       const utcString =
+        booking.startTime ||
         booking.dateTimeUtc ||
         booking.dateTimeUTC ||
         booking.datetimeUtc ||
@@ -2035,32 +2134,36 @@
         booking.dateTime;
 
       if (utcString) {
-        // Try Luxon first
         if (Lux) {
-          const utcDt = Lux.fromISO(utcString, { zone: 'utc' });
+          const utcDt = Lux.fromISO(
+            utcString instanceof Date ? utcString.toISOString() : String(utcString),
+            { zone: 'utc' }
+          );
           if (utcDt.isValid) {
-            const local = utcDt.setZone(zone || VIEWER_ZONE);
+            const local = utcDt.toLocal();
             return {
               date: local.toISODate(),
               slot: local.toFormat('HH:mm'),
               label: local.toFormat('hh:mm a'),
-              zone: zone || VIEWER_ZONE
+              zone: local.zoneName || zone
             };
           }
         }
-        // Fallback using Intl if Luxon missing/invalid
-        const parts = utcToZoneParts(utcString, zone || VIEWER_ZONE);
+        const parts = utcToZoneParts(
+          utcString instanceof Date ? utcString.toISOString() : String(utcString),
+          zone
+        );
         if (parts) {
           return {
             date: parts.date,
             slot: parts.time,
             label: parts.time,
-            zone: zone || VIEWER_ZONE
+            zone
           };
         }
       }
 
-      // Fallback: parse booking.date + booking.time using the student's zone (or offset if provided)
+      // Fallback: treat date+time as UTC wall components, then toLocal
       const isoCandidate = booking.time && booking.time.includes('T')
         ? booking.time
         : `${booking.date || ''}T${normalized}`;
@@ -2069,29 +2172,28 @@
       if (Lux) {
         const dt = hasOffset
           ? Lux.fromISO(isoCandidate)
-          : Lux.fromISO(isoCandidate, { zone: zone || VIEWER_ZONE });
+          : Lux.fromISO(isoCandidate, { zone: 'utc' });
 
         if (!dt.isValid) {
           return { date: booking.date, slot: normalized, label: normalized, zone };
         }
 
-        const local = dt.setZone(zone || VIEWER_ZONE);
+        const local = dt.toLocal();
         return {
           date: local.toISODate(),
           slot: local.toFormat('HH:mm'),
           label: local.toFormat('hh:mm a'),
-          zone: zone || VIEWER_ZONE
+          zone: local.zoneName || zone
         };
       }
 
-      // Intl fallback (no offset parsing beyond UTC strings)
-      const parts = utcToZoneParts(isoCandidate, zone || VIEWER_ZONE);
+      const parts = utcToZoneParts(isoCandidate, zone);
       if (parts) {
         return {
           date: parts.date,
           slot: parts.time,
           label: parts.time,
-          zone: zone || VIEWER_ZONE
+          zone
         };
       }
 
@@ -2184,9 +2286,15 @@
               console.log(`⚠️ Slot marked as feedback needed: Past`);
             }
           } else {
-            // If class duration hasn't passed, show as "Booked"
+            // If class duration hasn't passed, show embossed "Enter Class" CTA
             slotElement.classList.add('booked');
-            slotElement.textContent = 'Booked';
+            const teacherFirst =
+              (booking.teacherId && (booking.teacherId.firstName || booking.teacherId.username)) || '';
+            const labelText = teacherFirst
+              ? ('Enter · ' + String(teacherFirst).split(' ')[0])
+              : 'Enter Class';
+            setEmbossedSlotLabel(slotElement, labelText);
+            slotElement.title = 'Click for class information';
             slotElement.onclick = () => showBookingInfo(booking);
           }
         }
@@ -2224,59 +2332,134 @@
 
     // Modal logic for class info
     let currentBookingInfo = null;
+
+    function escapeSlotLabelHtml(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    /** Embossed booked cell label: camera icon + centered text. */
+    function setEmbossedSlotLabel(slotElement, labelText) {
+      if (!slotElement) return;
+      const safe = escapeSlotLabelHtml(labelText);
+      slotElement.innerHTML =
+        '<span class="remoed-slot-label-inner">' +
+        '<svg class="remoed-slot-enter-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+        '<path d="M17 10.5V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3.5l4 4v-11l-4 4z"/>' +
+        '</svg>' +
+        '<span class="remoed-slot-label-text">' +
+        safe +
+        '</span></span>';
+    }
+
+    function enterLiveClassroom(booking) {
+      if (!booking) return;
+      const classroomId = booking.classroomId;
+      if (!classroomId) {
+        alert('No classroom ID set for this booking.');
+        return;
+      }
+      const slotTime = booking.time || '';
+      const roomUrl =
+        'live-classroom.html?room=' +
+        encodeURIComponent(classroomId) +
+        '&type=student&bookingId=' +
+        encodeURIComponent(booking._id || '') +
+        '&slot=' +
+        encodeURIComponent(slotTime);
+      window.open(roomUrl, '_blank');
+    }
+
+    function isCancelledBookingStatus(status) {
+      const s = String(status || '').toLowerCase();
+      return s === 'cancelled' || s === 'cancelled_by_student_emergency' || s.indexOf('cancelled') === 0;
+    }
+
+    function getBookingStartDate(booking) {
+      if (!booking) return null;
+      if (booking.dateTimeUtc) {
+        const utc = new Date(booking.dateTimeUtc);
+        if (!Number.isNaN(utc.getTime())) return utc;
+      }
+      if (booking.date && booking.time) {
+        const local = new Date(String(booking.date) + 'T' + String(booking.time) + ':00');
+        if (!Number.isNaN(local.getTime())) return local;
+      }
+      return null;
+    }
+
+    function getMinutesUntilClassStart(booking) {
+      const start = getBookingStartDate(booking);
+      if (!start) return null;
+      return (start.getTime() - Date.now()) / 60000;
+    }
+
+    function hideEmergencyCancelPanel() {
+      const panel = document.getElementById('emergency-cancel-panel');
+      if (panel) panel.style.display = 'none';
+      const reason = document.getElementById('emergency-cancel-reason');
+      if (reason) reason.value = '';
+    }
+
     function showBookingInfo(booking) {
       currentBookingInfo = booking;
-      // Format date
+      hideEmergencyCancelPanel();
       const date = new Date(booking.date);
       const formattedDate = date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
       document.getElementById('info-class-date').textContent = formattedDate;
       document.getElementById('info-class-time').textContent = formatTime24Hour(booking.time);
-      // Handle both old and new teacher data structures
       let teacherName = 'Unknown Teacher';
       if (booking.teacherId) {
         if (typeof booking.teacherId === 'string') {
           teacherName = booking.teacherId;
+        } else if (booking.teacherId.firstName || booking.teacherId.lastName) {
+          teacherName = `${booking.teacherId.firstName || ''} ${booking.teacherId.lastName || ''}`.trim();
         } else if (booking.teacherId.username) {
           teacherName = booking.teacherId.username;
-        } else if (booking.teacherId.firstName) {
-          teacherName = `${booking.teacherId.firstName} ${booking.teacherId.lastName || ''}`.trim();
         }
       }
       document.getElementById('info-class-teacher').textContent = teacherName;
-      document.getElementById('info-class-level').textContent = booking.studentLevel || 'Not specified';
       document.getElementById('info-class-lesson').textContent = booking.lesson || 'Not specified';
       document.getElementById('info-classroom-id').textContent = booking.classroomId || 'Not set';
-      
-      // Show/hide cancel button based on booking status and time
+
       const cancelRow = document.getElementById('cancel-booking-row');
       const cancelBtn = document.getElementById('cancel-booking-btn');
-      const classDateTime = new Date(`${booking.date}T${booking.time}:00`);
-      const now = new Date();
-      const isPastOrStarted = classDateTime <= now;
-      const isCancelled = booking.status === 'cancelled';
+      const cancelNotice = document.getElementById('cancel-window-notice');
+      const minutesUntil = getMinutesUntilClassStart(booking);
+      const isPastOrStarted = minutesUntil == null || minutesUntil <= 0;
+      const isCancelled = isCancelledBookingStatus(booking.status);
+      const withinEmergencyWindow = !isPastOrStarted && minutesUntil > 30;
       const joinBtn = document.getElementById('join-classroom-btn');
       if (joinBtn) joinBtn.style.display = 'inline-block';
-      
+
       if (isCancelled || isPastOrStarted) {
-        cancelRow.style.display = 'none';
+        if (cancelRow) cancelRow.style.display = 'none';
       } else {
-        cancelRow.style.display = 'flex';
-        cancelBtn.disabled = false;
-        cancelBtn.textContent = 'Cancel Booking';
+        if (cancelRow) cancelRow.style.display = 'block';
+        if (cancelBtn) {
+          cancelBtn.textContent = 'Request Cancellation';
+          cancelBtn.disabled = !withinEmergencyWindow;
+          cancelBtn.style.opacity = withinEmergencyWindow ? '1' : '0.55';
+          cancelBtn.style.cursor = withinEmergencyWindow ? 'pointer' : 'not-allowed';
+        }
+        if (cancelNotice) {
+          cancelNotice.style.display = withinEmergencyWindow ? 'none' : 'block';
+        }
       }
-      
+
       const modal = document.getElementById('booking-info-modal');
-      if (modal) {
-        modal.classList.add('show');
-      }
+      if (modal) modal.classList.add('show');
     }
+
     function closeBookingInfo() {
       const modal = document.getElementById('booking-info-modal');
-      if (modal) {
-        modal.classList.remove('show');
-      }
+      if (modal) modal.classList.remove('show');
+      hideEmergencyCancelPanel();
       currentBookingInfo = null;
     }
+
     document.getElementById('close-booking-info-modal').onclick = closeBookingInfo;
     document.getElementById('close-booking-info-modal2').onclick = closeBookingInfo;
     document.getElementById('booking-info-modal').onclick = function(e) {
@@ -2284,39 +2467,55 @@
     };
     document.getElementById('join-classroom-btn').onclick = function() {
       if (!currentBookingInfo) return;
-      const classroomId = currentBookingInfo.classroomId;
-      if (!classroomId) {
-        alert('No classroom ID set for this booking.');
-        return;
-      }
-      const slotTime = currentBookingInfo.time || '';
-      const roomUrl = `live-classroom.html?room=${classroomId}&type=student&bookingId=${currentBookingInfo._id}&slot=${encodeURIComponent(slotTime)}`;
-      window.open(roomUrl, '_blank');
+      enterLiveClassroom(currentBookingInfo);
     };
-    
-    // Cancel booking functionality
-    document.getElementById('cancel-booking-btn').onclick = async function() {
+
+    document.getElementById('cancel-booking-btn').onclick = function() {
       if (!currentBookingInfo) return;
-      
-      // Check if class has already started
-      const classDateTime = new Date(`${currentBookingInfo.date}T${currentBookingInfo.time}:00`);
-      const now = new Date();
-      
-      if (classDateTime <= now) {
+      const minutesUntil = getMinutesUntilClassStart(currentBookingInfo);
+      if (minutesUntil == null || minutesUntil <= 0) {
         alert('Cannot cancel a class that has already started.');
         return;
       }
-      
-      // Confirmation dialog
+      if (minutesUntil <= 30) {
+        alert(
+          'The 30-minute emergency cancellation window has closed. ' +
+          'Credits will be forfeited if you do not attend.'
+        );
+        return;
+      }
+      const panel = document.getElementById('emergency-cancel-panel');
+      if (panel) panel.style.display = 'block';
+    };
+
+    document.getElementById('emergency-cancel-back-btn').onclick = hideEmergencyCancelPanel;
+
+    document.getElementById('emergency-cancel-submit-btn').onclick = async function() {
+      if (!currentBookingInfo) return;
+      const reasonEl = document.getElementById('emergency-cancel-reason');
+      const reason = reasonEl ? String(reasonEl.value || '').trim() : '';
+      if (!reason) {
+        alert('Please select an emergency cancellation reason.');
+        return;
+      }
+      const minutesUntil = getMinutesUntilClassStart(currentBookingInfo);
+      if (minutesUntil == null || minutesUntil <= 30) {
+        alert(
+          'The 30-minute emergency cancellation window has closed. ' +
+          'Credits will be forfeited if you do not attend.'
+        );
+        return;
+      }
+
       const confirmed = confirm(
-        `Are you sure you want to cancel this booking?\n\n` +
-        `Date: ${new Date(currentBookingInfo.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}\n` +
-        `Time: ${formatTime24Hour(currentBookingInfo.time)}\n\n` +
-        `This action cannot be undone.`
+        'Submit emergency cancellation?\n\n' +
+        'Reason: ' + reason + '\n\n' +
+        'Your lesson credit will be retained (not deducted).'
       );
-      
       if (!confirmed) return;
-      
+
+      const submitBtn = document.getElementById('emergency-cancel-submit-btn');
+      const cancelBtn = document.getElementById('cancel-booking-btn');
       try {
         const token = localStorage.getItem('token');
         if (!token) {
@@ -2324,85 +2523,97 @@
           window.location.href = 'student-login.html';
           return;
         }
-        
-        // Disable button during request
-        const cancelBtn = document.getElementById('cancel-booking-btn');
-        cancelBtn.disabled = true;
-        cancelBtn.textContent = 'Cancelling...';
-        
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Submitting…';
+        }
+        if (cancelBtn) cancelBtn.disabled = true;
+
         const response = await fetch('/api/student/cancel-booking', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
+            'Authorization': 'Bearer ' + token
           },
           body: JSON.stringify({
-            bookingId: currentBookingInfo._id
+            bookingId: currentBookingInfo._id,
+            emergency: true,
+            reason: reason
           })
         });
-        
-        const data = await response.json();
-        
+        const data = await response.json().catch(function () { return {}; });
         if (response.ok && data.success) {
-          alert('Booking cancelled successfully!');
+          alert('Class cancelled. Your lesson credit has been retained.');
           closeBookingInfo();
-          // Reload the schedule to reflect the cancellation
           loadScheduleData();
         } else {
-          const errorMsg = data.error || data.message || response.statusText || 'Unknown error';
-          console.error('Cancellation error:', { status: response.status, statusText: response.statusText, data });
-          alert(`Failed to cancel booking: ${errorMsg}`);
-          cancelBtn.disabled = false;
-          cancelBtn.textContent = 'Cancel Booking';
+          alert('Failed to cancel: ' + (data.error || data.message || response.statusText || 'Unknown error'));
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Submit Cancellation';
+          }
+          if (cancelBtn) cancelBtn.disabled = false;
         }
       } catch (error) {
         console.error('Error cancelling booking:', error);
-        let errorMessage = 'An error occurred while cancelling the booking.';
-        if (error.message) {
-          errorMessage += ` Error: ${error.message}`;
+        alert('An error occurred while cancelling the booking.');
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Submit Cancellation';
         }
-        alert(errorMessage);
-        const cancelBtn = document.getElementById('cancel-booking-btn');
-        cancelBtn.disabled = false;
-        cancelBtn.textContent = 'Cancel Booking';
+        if (cancelBtn) cancelBtn.disabled = false;
       }
     };
 
     // Week navigation functionality
     document.getElementById('prev-week').addEventListener('click', () => {
-      currentWeek.setDate(currentWeek.getDate() - 7);
+      const Lux = window.luxon && window.luxon.DateTime;
+      if (Lux) {
+        currentWeek = Lux.fromJSDate(currentWeek).setZone(getViewerZone()).minus({ weeks: 1 }).startOf('week').toJSDate();
+      } else {
+        currentWeek.setDate(currentWeek.getDate() - 7);
+      }
       updateWeekDisplay();
       initializeWeeklyGrid();
     });
 
     document.getElementById('next-week').addEventListener('click', () => {
-      currentWeek.setDate(currentWeek.getDate() + 7);
+      const Lux = window.luxon && window.luxon.DateTime;
+      if (Lux) {
+        currentWeek = Lux.fromJSDate(currentWeek).setZone(getViewerZone()).plus({ weeks: 1 }).startOf('week').toJSDate();
+      } else {
+        currentWeek.setDate(currentWeek.getDate() + 7);
+      }
       updateWeekDisplay();
       initializeWeeklyGrid();
     });
 
     document.getElementById('current-week').addEventListener('click', () => {
-      currentWeek = new Date();
+      const Lux = window.luxon && window.luxon.DateTime;
+      currentWeek = Lux
+        ? Lux.now().startOf('week').toJSDate()
+        : new Date();
       updateWeekDisplay();
       initializeWeeklyGrid();
     });
 
-    // Update week display
+    // Update week display with local range + zone name
     function updateWeekDisplay() {
-      const weekStart = new Date(currentWeek);
-      // Calculate Monday as the start of the week (Monday = 1, Sunday = 0)
-      const dayOfWeek = currentWeek.getDay();
-      const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // If Sunday, go back 6 days; if Monday, go back 0 days, etc.
-      weekStart.setDate(currentWeek.getDate() - daysToMonday);
-      const weekEnd = new Date(weekStart);
-      weekEnd.setDate(weekStart.getDate() + 6);
-      
+      const { localStartOfWeek, localEndOfWeek } = getLocalWeekBounds(currentWeek);
+      const Lux = window.luxon && window.luxon.DateTime;
+      const zoneName = Lux ? Lux.local().zoneName : getViewerZone();
+      const headerText = `${localStartOfWeek.toFormat('MMM d')} - ${localEndOfWeek.toFormat('MMM d, yyyy')} (${zoneName})`;
+
       const display = document.getElementById('week-display');
-      display.textContent = `${weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
-      
-      // Allow navigation to previous weeks (remove the restriction)
+      display.textContent = headerText;
+
+      const note = document.getElementById('student-schedule-local-note');
+      if (note) {
+        note.textContent = `All times shown in your local timezone (${zoneName}).`;
+      }
+
       const prevBtn = document.getElementById('prev-week');
-      prevBtn.disabled = false; // Always allow previous week navigation
+      prevBtn.disabled = false;
     }
 
     // Initialize when page loads

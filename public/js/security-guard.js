@@ -1,7 +1,7 @@
 /**
  * Global auth guard for dashboards and live classroom.
  * Uses role-specific tokens (remoed_admin_token, remoed_teacher_token, remoed_student_token) with legacy fallbacks.
- * Missing or wrong session for the current portal → window.location.replace('index.html')
+ * Missing or wrong session for the current portal → window.location.replace('/')
  * Login pages: valid session → replace() to the matching dashboard (user never sees the form).
  */
 (function () {
@@ -12,7 +12,8 @@
   var LS_STUDENT = 'remoed_student_token';
 
   function replaceToIndex() {
-    window.location.replace('index.html');
+    // Absolute site root — relative "index.html" under /admin/* becomes the intentional /admin/index.html 404.
+    window.location.replace('/');
   }
 
   function portalKindFromPath() {
@@ -357,6 +358,7 @@
     p.indexOf('student-login') !== -1 ||
     p.indexOf('teacher-login') !== -1 ||
     p.indexOf('student-register') !== -1 ||
+    p.indexOf('student-assessment') !== -1 ||
     p.indexOf('student-forgot') !== -1 ||
     p.indexOf('student-signup') !== -1 ||
     p.indexOf('trial-class') !== -1 ||

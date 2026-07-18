@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="js/security-guard.js?v=2"></script>
+    <link rel="icon" href="/images/remoed-favicon.png" type="image/png" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Schedule - RemoEdPH Admin</title>
+    <script src="js/admin-embed-init.js"></script>
+    <link rel="stylesheet" href="modern-styles.css">
+    <link rel="stylesheet" href="css/teacher-sidebar.css">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/luxon@3/build/global/luxon.min.js"></script>
+    <style>
+        .as-toolbar { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:16px; }
+        .as-toolbar select, .as-toolbar button { padding:8px 12px; border-radius:8px; border:1px solid #cbd5e1; }
+        .as-grid { overflow:auto; border:1px solid #e2e8f0; border-radius:12px; background:#fff; }
+        .as-grid table { border-collapse:collapse; min-width:100%; font-size:0.82rem; }
+        .as-grid th, .as-grid td { border:1px solid #e2e8f0; padding:6px 8px; vertical-align:top; min-width:90px; }
+        .as-grid th { background:#f8fafc; position:sticky; top:0; z-index:1; }
+        .as-slot { background:#eef2ff; border-radius:6px; padding:4px 6px; margin-bottom:4px; cursor:pointer; font-size:0.75rem; }
+        .as-slot:hover { background:#c7d2fe; }
+        .as-drawer { position:fixed; right:0; top:0; bottom:0; width:min(360px,92vw); background:#fff; box-shadow:-4px 0 24px rgba(0,0,0,.12); padding:20px; z-index:9000; transform:translateX(110%); transition:transform .2s; overflow:auto; }
+        .as-drawer.open { transform:translateX(0); }
+    </style>
+</head>
+<body class="page-admin-schedule">
+<div class="remoed-main">
+    <div id="admin-sidebar-root"></div>
+    <script src="js/admin-session.js"></script>
+    <script src="js/admin-sidebar.js"></script>
+    <script>AdminSidebar.render('admin-sidebar-root', 'hr-hub');</script>
+    <div class="remoed-content">
+        <div class="remoed-section">
+            <div class="remoed-section-title">Teacher Schedule</div>
+            <div class="as-toolbar">
+                <select id="as-teacher"><option value="">All teachers</option></select>
+                <select id="as-view">
+                    <option value="day">Day</option>
+                    <option value="week" selected>Week</option>
+                    <option value="month">Month</option>
+                </select>
+                <button type="button" id="as-prev">←</button>
+                <button type="button" id="as-today">Today</button>
+                <button type="button" id="as-next">→</button>
+                <span id="as-range-label" style="font-weight:600;margin-left:8px;"></span>
+            </div>
+            <div class="as-grid" id="as-grid"><p class="muted" style="padding:16px;">Loading…</p></div>
+        </div>
+    </div>
+</div>
+<div class="as-drawer" id="as-drawer">
+    <button type="button" id="as-drawer-close" style="float:right;border:none;background:none;font-size:1.4rem;cursor:pointer;">×</button>
+    <div id="as-drawer-body"></div>
+</div>
+<script>
+(function(){
+    const DateTime = luxon.DateTime;
+    const ZONE = 'Asia/Manila';
+    let anchor = DateTime.now().setZone(ZONE).startOf('day');
+    let view = 'week';
+    let teachers = [];
+    let bookings = [];
+    function token(){ return (window.RemoedAdminSession && RemoedAdminSession.getAuthToken()) || localStorage.getItem('remoed_admin_token') || localStorage.getItem('adminToken') || ''; }
+    function rangeForView(){
+        if(view==='day') return { start: anchor, end: anchor };
+        if(view==='month') return { start: anchor.startOf('month'), end: anchor.endOf('month') };
+        return { start: anchor.startOf('week'), end: anchor.endOf('week') };
+    }
+    async function load(){
+        const r = rangeForView();
+        document.getElementById('as-range-label').textContent = r.start.toFormat('MMM d') + ' – ' + r.end.toFormat('MMM d, yyyy');
+        const teacherId = document.getElementById('as-teacher').value;
+        const qs = new URLSearchParams({ start: r.start.toISODate(), end: r.end.toISODate(), view });
+        if(teacherId) qs.set('teacherId', teacherId);
+        const res = await fetch('/api/admin/schedule?' + qs, { headers:{ Authorization:'Bearer '+token() }, credentials:'include' });
+        const data = await res.json();
+        if(!res.ok) throw new Error(data.error || 'Load failed');
+        bookings = data.bookings || [];
+        if(!teachers.length && data.teachers){
+            teachers = data.teachers;
+            const sel = document.getElementById('as-teacher');
+            const cur = sel.value;
+            sel.innerHTML = '<option value="">All teachers</option>' + teachers.map(t=>'<option value="'+t.teacherId+'">'+esc(t.name||t.teacherId)+'</option>').join('');
+            if(cur) sel.value = cur;
+            const urlT = new URLSearchParams(location.search).get('teacherId');
+            if(urlT) sel.value = urlT;
+        }
+        renderGrid(r);
+    }
+    function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+    function renderGrid(r){
+        const days = [];
+        let d = r.start;
+        while(d <= r.end){ days.push(d); d = d.plus({ days:1 }); }
+        const byKey = {};
+        bookings.forEach(b=>{
+            const k = b.date + '|' + (b.time||'').slice(0,5);
+            if(!byKey[k]) byKey[k]=[];
+            byKey[k].push(b);
+        });
+        const hours = [];
+        for(let h=6; h<24; h++) hours.push(String(h).padStart(2,'0')+':00');
+        let html = '<table><thead><tr><th>Time</th>';
+        days.forEach(day=>{ html += '<th>'+day.toFormat('EEE M/d')+'</th>'; });
+        html += '</tr></thead><tbody>';
+        hours.forEach(hour=>{
+            html += '<tr><th>'+hour+'</th>';
+            days.forEach(day=>{
+                const key = day.toISODate() + '|' + hour;
+                html += '<td>';
+                (byKey[key]||[]).forEach(b=>{
+                    html += '<div class="as-slot" data-id="'+b._id+'">'+esc(b.studentId)+'<br><small>'+esc(b.status)+'</small></div>';
+                });
+                html += '</td>';
+            });
+            html += '</tr>';
+        });
+        html += '</tbody></table>';
+        document.getElementById('as-grid').innerHTML = html;
+        document.querySelectorAll('.as-slot').forEach(el=>el.addEventListener('click',()=>openDrawer(el.dataset.id)));
+    }
+    async function openDrawer(id){
+        const res = await fetch('/api/admin/booking/'+id, { headers:{ Authorization:'Bearer '+token() } });
+        const b = await res.json();
+        const t = teachers.find(x=>x.teacherId===b.teacherId);
+        document.getElementById('as-drawer-body').innerHTML =
+            '<h3 style="margin-top:0">Booking</h3>'+
+            '<p><strong>Student:</strong> '+esc(b.studentId)+'</p>'+
+            '<p><strong>Teacher:</strong> '+esc(b.teacherId)+'</p>'+
+            '<p><strong>Date:</strong> '+esc(b.date)+' '+esc(b.time)+'</p>'+
+            '<p><strong>Status:</strong> '+esc(b.status)+'</p>'+
+            '<p><strong>Lesson:</strong> '+esc(b.lesson)+'</p>'+
+            (t && t.mongoId
+                ? '<p><a href="/admin/admin-view-user-profile.html?type=teacher&id='+encodeURIComponent(t.mongoId)+'" target="_blank" rel="noopener">View teacher profile</a></p>'
+                : (b.teacherId ? '<p><a href="admin-teacher-schedule.html?teacherId='+encodeURIComponent(b.teacherId)+'">Filter by this teacher</a></p>' : ''));
+        document.getElementById('as-drawer').classList.add('open');
+    }
+    document.getElementById('as-view').onchange = e=>{ view=e.target.value; load().catch(console.error); };
+    document.getElementById('as-teacher').onchange = ()=> load().catch(console.error);
+    document.getElementById('as-prev').onclick = ()=>{ anchor = anchor.minus(view==='month'?{months:1}:view==='week'?{weeks:1}:{days:1}); load().catch(console.error); };
+    document.getElementById('as-next').onclick = ()=>{ anchor = anchor.plus(view==='month'?{months:1}:view==='week'?{weeks:1}:{days:1}); load().catch(console.error); };
+    document.getElementById('as-today').onclick = ()=>{ anchor = DateTime.now().setZone(ZONE).startOf('day'); load().catch(console.error); };
+    document.getElementById('as-drawer-close').onclick = ()=> document.getElementById('as-drawer').classList.remove('open');
+    load().catch(e=>{ document.getElementById('as-grid').innerHTML='<p style="color:#b91c1c;padding:16px;">'+e.message+'</p>'; });
+})();
+</script>
+</body>
+</html>

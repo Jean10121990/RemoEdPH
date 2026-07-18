@@ -3,6 +3,8 @@
  * compressed headers on Schedule / Book / Dashboard. Load after teacher-sidebar.css.
  */
 
+@import url('portal-chrome-compact.css');
+
 /* Fallback when this file is loaded without teacher-sidebar.css (e.g. credits page) */
 :root {
   --remoed-brand-blue: #5a67d8;
@@ -67,11 +69,24 @@ body.student-portal .remoed-sidebar .remoed-menu li#logout-nav {
 body.student-portal nav.remoed-sidebar.remoed-sidebar {
   width: 260px;
   min-width: 260px;
+  transition: width 0.3s ease, min-width 0.3s ease, max-width 0.3s ease;
+}
+
+/* Beat the expanded 260px lock when mini-collapsed (Teacher SoT: 70px). */
+body.student-portal nav.remoed-sidebar.remoed-sidebar.sidebar-collapsed {
+  width: 70px !important;
+  min-width: 70px !important;
+  max-width: 70px !important;
 }
 
 body.student-portal .remoed-content {
   margin-left: 260px;
   max-width: calc(100vw - 260px);
+}
+
+body.student-portal.student-sidebar-collapsed .remoed-content {
+  margin-left: 70px !important;
+  max-width: calc(100vw - 70px) !important;
 }
 
 /* Long labels (e.g. My Learning Journey): allow wrap; teacher defaults use single-line ellipsis. */
@@ -81,14 +96,74 @@ body.student-portal .remoed-sidebar .remoed-menu li {
   text-overflow: unset;
 }
 
-body.student-portal .remoed-sidebar .remoed-menu .remoed-menu-label {
+body.student-portal .remoed-sidebar .remoed-menu .remoed-menu-label,
+body.student-portal .remoed-sidebar .remoed-menu .menu-label {
   word-break: break-word;
+}
+
+/* Sidebar nav: align with teacher portal (teacher-sidebar.css) — black default, white text only when .active */
+body.student-portal nav.remoed-sidebar .remoed-menu li {
+  padding: 12px 24px;
+  font-weight: 500;
+  font-size: 0.875rem;
+  border-left: 4px solid transparent;
+}
+
+body.student-portal nav.remoed-sidebar .remoed-menu li:not(#logout-nav):not(.active) {
+  color: var(--remoed-sidebar-inactive, #000000);
+}
+
+body.student-portal nav.remoed-sidebar .remoed-menu li:not(#logout-nav):not(.active):hover {
+  background: var(--remoed-sidebar-inactive-hover-bg, rgba(90, 103, 216, 0.12));
+  color: var(--remoed-sidebar-inactive-hover-text, #4c51bf);
+  border-radius: 0 8px 8px 0;
+}
+
+body.student-portal nav.remoed-sidebar .remoed-menu li.active {
+  background: linear-gradient(
+    90deg,
+    var(--remoed-sidebar-active-start, #5a67d8) 0%,
+    var(--remoed-sidebar-active-end, #6d78e8) 100%
+  );
+  border-left: 4px solid var(--remoed-sidebar-active-border, #5a67d8);
+  color: #fff;
+  border-radius: 0 8px 8px 0;
+}
+
+body.student-portal nav.remoed-sidebar .remoed-menu li.active svg {
+  stroke: #fff;
+}
+
+body.student-portal nav.remoed-sidebar .remoed-menu li#logout-nav {
+  color: #e74c3c;
+}
+
+body.student-portal nav.remoed-sidebar .remoed-menu li#logout-nav svg {
+  stroke: #e74c3c;
+}
+
+body.student-portal nav.remoed-sidebar .remoed-menu li#logout-nav:hover {
+  background: rgba(231, 76, 60, 0.1);
+  color: #c0392b;
+}
+
+body.student-portal nav.remoed-sidebar .remoed-username {
+  color: #1a202c;
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+@media (max-width: 768px) {
+  body.student-portal nav.remoed-sidebar .remoed-menu li {
+    padding: 12px 16px;
+    font-size: 0.875rem;
+  }
 }
 
 /* Tablet (769–1024): full 260px sidebar + labels (override mobile-first icon rail). */
 @media (min-width: 769px) and (max-width: 1024px) {
-  body.student-portal nav.remoed-sidebar.remoed-sidebar,
-  html body.student-portal .remoed-main > [id$="-sidebar-root"] > nav.remoed-sidebar {
+  body.student-portal nav.remoed-sidebar.remoed-sidebar:not(.sidebar-collapsed),
+  html body.student-portal .remoed-main > [id$="-sidebar-root"] > nav.remoed-sidebar:not(.sidebar-collapsed) {
     width: 260px !important;
     min-width: 260px !important;
     max-width: 260px !important;
@@ -100,15 +175,20 @@ body.student-portal .remoed-sidebar .remoed-menu .remoed-menu-label {
     max-width: calc(100vw - 260px) !important;
   }
 
-  body.student-portal .remoed-sidebar .sidebar-header-inner {
+  body.student-portal.student-sidebar-collapsed .remoed-content {
+    margin-left: 70px !important;
+    max-width: calc(100vw - 70px) !important;
+  }
+
+  body.student-portal .remoed-sidebar:not(.sidebar-collapsed) .sidebar-header-inner {
     justify-content: flex-start !important;
   }
 
-  body.student-portal .remoed-sidebar .sidebar-header-inner > div:nth-child(2) {
+  body.student-portal .remoed-sidebar:not(.sidebar-collapsed) .sidebar-header-inner > div:nth-child(2) {
     display: block !important;
   }
 
-  body.student-portal .remoed-sidebar .remoed-username {
+  body.student-portal .remoed-sidebar:not(.sidebar-collapsed) .remoed-username {
     display: block !important;
   }
 }
@@ -249,21 +329,23 @@ body.page-student-class-table .weekly-grid {
 
 /* --- Dashboard: slimmer top bar + less content padding --- */
 body.page-student-dashboard .nav-header {
-  height: 48px;
-  padding: 0 1rem;
+  height: 56px;
+  padding: 0 20px;
 }
 
 body.page-student-dashboard .remoed-content {
-  margin-top: 48px;
-  min-height: calc(100vh - 48px);
-  padding: 0.65rem 1rem 1rem;
-  padding-top: 0.7rem;
+  margin-top: 56px;
+  min-height: calc(100vh - 56px);
+  max-height: calc(100vh - 56px);
+  padding: 0.45rem 0.85rem 0.75rem;
+  padding-top: 0.5rem;
+  overflow-y: auto;
 }
 
 body.page-student-dashboard .nav-left h1 {
-  font-size: 1.12rem !important;
+  font-size: 18px !important;
   font-weight: 600 !important;
-  color: #1a202c !important;
+  color: #111827 !important;
 }
 
 body.page-student-dashboard .nav-icon {
@@ -435,35 +517,50 @@ body.page-student-credits .primary-btn {
 
 /* --- Student Profile --- */
 body.student-portal.page-student-profile .profile-name-large {
-  color: var(--remoed-brand-blue) !important;
+  color: #111827 !important;
+  font-size: 18px !important;
+  font-weight: 600 !important;
   text-shadow: none !important;
 }
 
 body.student-portal.page-student-profile .profile-email-large {
-  color: var(--remoed-brand-blue) !important;
-  opacity: 0.88;
+  color: #4b5563 !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  opacity: 1;
+}
+
+body.student-portal.page-student-profile .profile-header {
+  padding: 16px 20px !important;
+  gap: 16px !important;
+}
+
+body.student-portal.page-student-profile .profile-avatar-large {
+  width: 88px !important;
+  height: 88px !important;
+  background: linear-gradient(135deg, var(--remoed-brand-blue), var(--remoed-brand-blue-soft)) !important;
+  box-shadow: 0 4px 12px rgba(90, 103, 216, 0.28) !important;
 }
 
 body.student-portal.page-student-profile .back-btn {
   background: linear-gradient(135deg, var(--remoed-brand-blue), var(--remoed-brand-blue-soft)) !important;
   box-shadow: 0 4px 14px rgba(90, 103, 216, 0.35) !important;
+  padding: 8px 16px !important;
+  font-size: 13px !important;
 }
 
 body.student-portal.page-student-profile .back-btn:hover {
   box-shadow: 0 6px 20px rgba(90, 103, 216, 0.45) !important;
 }
 
-body.student-portal.page-student-profile .profile-avatar-large {
-  background: linear-gradient(135deg, var(--remoed-brand-blue), var(--remoed-brand-blue-soft)) !important;
-  box-shadow: 0 8px 24px rgba(90, 103, 216, 0.35) !important;
-}
-
 body.student-portal.page-student-profile .profile-avatar-large:hover {
-  box-shadow: 0 12px 32px rgba(90, 103, 216, 0.45) !important;
+  box-shadow: 0 8px 20px rgba(90, 103, 216, 0.4) !important;
 }
 
 body.student-portal.page-student-profile .section-title {
-  color: var(--remoed-brand-blue) !important;
+  color: #111827 !important;
+  font-size: 15px !important;
+  font-weight: 600 !important;
 }
 
 body.student-portal.page-student-profile .form-input:focus,
@@ -814,4 +911,35 @@ body.student-portal.page-student-assessment #score-display .assessment-score-pct
   background: linear-gradient(145deg, #34d399, #10b981);
   border-color: #059669;
   box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.35), 0 2px 8px rgba(5, 150, 105, 0.4);
+}
+
+/* --- Portal sidebar chrome (js/portal-sidebar-chrome.js): align rail width + mobile drawer UX --- */
+body.student-portal.remoed-portal-sidebar-mounted {
+  --portal-sidebar-w: 260px;
+}
+
+@media (max-width: 768px) {
+  /* Prefer the sticky top-bar hamburger from portal-layout; hide the extra fixed green toggle. */
+  body.student-portal.remoed-portal-sidebar-mounted #sidebarToggle.portal-sidebar-toggle {
+    display: none !important;
+  }
+
+  body.student-portal.remoed-portal-sidebar-mounted .remoed-mobile-topbar .remoed-nav-toggle {
+    position: static !important;
+    width: 44px !important;
+    height: 44px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    clip: auto !important;
+    white-space: normal !important;
+    border-width: 1px !important;
+  }
+}
+
+/* Desktop: student rail stays open — no second floating menu control */
+@media (min-width: 769px) {
+  body.student-portal.remoed-portal-sidebar-mounted #sidebarToggle.portal-sidebar-toggle {
+    display: none !important;
+  }
 }

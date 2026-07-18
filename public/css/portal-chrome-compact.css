@@ -1,0 +1,1182 @@
+/**
+ * Portal chrome — minimalist compact sidebar + top header.
+ * Maps the uniform typography refresh onto RemoEd class names:
+ *   .sidebar      → .remoed-sidebar
+ *   .top-header   → .nav-header
+ *   .user-name    → .remoed-username
+ *   .user-profile → .sidebar-user / .sidebar-user-inner
+ *   .user-avatar  → #remoed-avatar
+ *   .action-btn   → .time-btn-mini, .nav-icon
+ * Load after teacher-sidebar.css / style.css page chrome so these win.
+ */
+
+/* Force crisp dark charcoal/black for maximum readability */
+.remoed-sidebar .remoed-menu li:not(.active):not(#logout-nav),
+.remoed-sidebar .remoed-menu li:not(.active):not(#logout-nav) .menu-label,
+.remoed-sidebar .remoed-username,
+.nav-header h1,
+.nav-header .page-title,
+.nav-left h1 {
+  color: #111827 !important;
+}
+
+/* Sidebar menu items: professional, compact sizing */
+.remoed-sidebar .remoed-menu li {
+  font-size: 14px !important;
+  font-weight: 500;
+  text-decoration: none;
+  padding: 8px 12px !important;
+  margin-bottom: 2px;
+  display: flex;
+  align-items: center;
+  border-radius: 6px;
+  gap: 10px;
+}
+
+.remoed-sidebar .remoed-menu li .menu-label {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* Keep active / logout contrast */
+.remoed-sidebar .remoed-menu li.active,
+.remoed-sidebar .remoed-menu li.active .menu-label {
+  color: #ffffff !important;
+}
+
+.remoed-sidebar .remoed-menu li#logout-nav,
+.remoed-sidebar .remoed-menu li#logout-nav .menu-label {
+  color: #e74c3c !important;
+}
+
+/* Compact the user profile block */
+.remoed-sidebar .sidebar-user {
+  padding: 8px 12px !important;
+}
+
+.remoed-sidebar .sidebar-user-inner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.remoed-sidebar .remoed-username {
+  font-size: 13px !important;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+/* Slightly smaller avatar to save vertical space */
+.remoed-sidebar #remoed-avatar,
+.remoed-sidebar .remoed-avatar {
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 50%;
+}
+
+/* Slimmer sidebar header / brand block */
+.remoed-sidebar .sidebar-header-inner,
+.remoed-sidebar .sidebar-header-inner.logo-section {
+  padding: 10px 12px !important;
+}
+
+.remoed-sidebar .sidebar-logo-img {
+  width: 40px;
+  height: 40px;
+}
+
+/* Page titles: match Dashboard header (black, 18px, weight 600) — all portals */
+body[class*="page-teacher-"] .nav-header h1,
+body[class*="page-teacher-"] .nav-left h1,
+body[class*="page-teacher-"] .remoed-content > .header > h1,
+body[class*="page-teacher-"] .remoed-content .header > h1,
+body[class*="page-teacher-"] .remoed-content > .remoed-header > h1,
+body[class*="page-teacher-"] .remoed-content .remoed-header > h1,
+body[class*="page-teacher-"] .remoed-content > .page-header > h1,
+body[class*="page-teacher-"] .remoed-content .page-header > h1,
+body[class*="page-teacher-"] .remoed-content > .page-head > h1,
+body[class*="page-teacher-"] .remoed-content .page-head > h1,
+body[class*="page-teacher-"] .chat-list-header h1,
+body[class*="page-student-"] .nav-header h1,
+body[class*="page-student-"] .nav-left h1,
+body[class*="page-student-"] .remoed-content > .header > h1,
+body[class*="page-student-"] .remoed-content .header > h1,
+body[class*="page-student-"] .remoed-content > .remoed-header > h1,
+body[class*="page-student-"] .remoed-content .remoed-header > h1,
+body[class*="page-student-"] .remoed-content > .page-header > h1,
+body[class*="page-student-"] .remoed-content .page-header > h1,
+body[class*="page-student-"] .remoed-content > .page-head > h1,
+body[class*="page-student-"] .remoed-content .page-head > h1,
+body[class*="page-student-"] .chat-list-header h1,
+body[class*="page-admin-"] .nav-header h1,
+body[class*="page-admin-"] .nav-left h1,
+body[class*="page-admin-"] .remoed-content > .header > h1,
+body[class*="page-admin-"] .remoed-content .header > h1,
+body[class*="page-admin-"] .remoed-content > .remoed-header > h1,
+body[class*="page-admin-"] .remoed-content .remoed-header > h1,
+body[class*="page-admin-"] .remoed-content > .page-header > h1,
+body[class*="page-admin-"] .remoed-content .page-header > h1,
+body[class*="page-admin-"] .remoed-content > .page-head > h1,
+body[class*="page-admin-"] .remoed-content .page-head > h1,
+body.page-teacher-lessons-library .page-header h1,
+body.page-teacher-performance-indicator .page-header h1,
+body.page-teacher-professional-development .page-header h1,
+body.page-teacher-referrals .page-head h1,
+body.page-teacher-messages .chat-list-header h1,
+body.page-teacher-class-table .remoed-header h1,
+body.page-teacher-schedule .header h1,
+body.page-teacher-open-class .header h1,
+body.page-teacher-service-fee .service-header h1,
+body.page-teacher-attendance-analysis .page-header h1,
+body.page-teacher-peer-learning-connections .page-header h1,
+body.page-teacher-profile .page-header h1,
+body.page-teacher-assessment .header h1,
+body.student-portal .nav-header h1,
+body.student-portal .nav-left h1,
+body.student-portal .page-header h1,
+body.student-portal .remoed-header h1,
+body.student-portal .header h1 {
+  color: #111827 !important;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+  font-size: 18px !important;
+  font-weight: 600 !important;
+  margin: 0 !important;
+  letter-spacing: normal !important;
+  text-shadow: none !important;
+  filter: none !important;
+}
+
+body.page-device-check .device-title,
+body[class*="page-teacher-"] .device-title,
+body[class*="page-student-"] .device-title {
+  color: #111827 !important;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+  font-size: 18px !important;
+  font-weight: 600 !important;
+  text-shadow: none !important;
+}
+
+/* Compact profile headers (teacher / student / admin) */
+body.page-teacher-profile .profile-header,
+body.page-student-profile .profile-header,
+body.student-portal.page-student-profile .profile-header {
+  padding: 16px 20px !important;
+  gap: 16px !important;
+  margin-bottom: 16px !important;
+}
+
+body.page-teacher-profile .profile-avatar-large,
+body.page-student-profile .profile-avatar-large,
+body.student-portal.page-student-profile .profile-avatar-large {
+  width: 88px !important;
+  height: 88px !important;
+  font-size: 2rem !important;
+  border-width: 3px !important;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.22) !important;
+}
+
+body.page-teacher-profile .profile-name-large,
+body.page-student-profile .profile-name-large,
+body.student-portal.page-student-profile .profile-name-large,
+body.page-teacher-profile h1.profile-name-large {
+  font-size: 18px !important;
+  font-weight: 600 !important;
+  color: #111827 !important;
+  margin: 0 0 4px 0 !important;
+  text-shadow: none !important;
+  line-height: 1.3 !important;
+}
+
+body.page-teacher-profile .profile-email-large,
+body.page-student-profile .profile-email-large,
+body.student-portal.page-student-profile .profile-email-large {
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  color: #4b5563 !important;
+  margin: 0 0 10px 0 !important;
+  opacity: 1 !important;
+}
+
+body.page-teacher-profile .section-title,
+body.page-student-profile .section-title,
+body.student-portal.page-student-profile .section-title,
+body.page-teacher-profile .info-card .section-title {
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  color: #111827 !important;
+}
+
+body.page-teacher-profile .profile-avatar-large #profile-avatar-text,
+body.page-teacher-profile .profile-avatar-large span[style*="font-size"],
+body.page-student-profile .profile-avatar-large span,
+body.student-portal.page-student-profile .profile-avatar-large span {
+  font-size: 1.75rem !important;
+}
+
+/* Performance Indicator — compact metrics + black headers */
+body.page-teacher-performance-indicator .page-header h1,
+body.page-teacher-performance-indicator .breakdown-header {
+  color: #111827 !important;
+  font-size: 18px !important;
+  font-weight: 600 !important;
+}
+
+body.page-teacher-performance-indicator .breakdown-header {
+  font-size: 15px !important;
+  margin-bottom: 12px !important;
+  padding-bottom: 8px !important;
+}
+
+body.page-teacher-performance-indicator .stats-grid {
+  gap: 14px !important;
+  margin-bottom: 20px !important;
+}
+
+body.page-teacher-performance-indicator .stat-card,
+body.page-teacher-performance-indicator .metrics-section,
+body.page-teacher-performance-indicator .breakdown-section {
+  padding: 14px 16px !important;
+  margin-bottom: 16px !important;
+  border-radius: 10px !important;
+}
+
+body.page-teacher-performance-indicator .stat-label,
+body.page-teacher-performance-indicator .metric-label {
+  font-size: 12px !important;
+  margin-bottom: 4px !important;
+}
+
+body.page-teacher-performance-indicator .stat-value {
+  font-size: 1.35rem !important;
+  font-weight: 700 !important;
+}
+
+body.page-teacher-performance-indicator .metric-value {
+  font-size: 1.25rem !important;
+  font-weight: 700 !important;
+  color: #111827 !important;
+}
+
+body.page-teacher-performance-indicator .metrics-grid {
+  gap: 14px !important;
+}
+
+body.page-teacher-performance-indicator .remoed-content {
+  padding: 20px 24px !important;
+}
+
+body.page-teacher-performance-indicator .page-header {
+  margin-bottom: 18px !important;
+}
+
+
+/* Slim header height — beat page-scoped .nav-header rules in style.css */
+.nav-header,
+body[class*="page-teacher-"] .nav-header,
+body[class*="page-student-"] .nav-header,
+body[class*="page-admin-"] .nav-header,
+body.page-teacher-dashboard .nav-header,
+body.page-student-dashboard .nav-header,
+body.page-admin-dashboard .nav-header {
+  height: 56px !important;
+  min-height: 56px !important;
+  max-height: 56px !important;
+  padding: 0 20px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  border-bottom: 1px solid #e5e7eb !important;
+  box-sizing: border-box;
+}
+
+/* Content offset under fixed 56px header */
+body.page-teacher-dashboard .remoed-content,
+body.page-student-dashboard .remoed-content,
+body.page-admin-dashboard .remoed-content,
+body[class*="page-admin-"].has-admin-page-header .remoed-content {
+  margin-top: 56px !important;
+}
+
+/* Scale down header action buttons (Clock In/Out, Notifications) */
+.nav-header .time-btn-mini,
+.nav-header .action-btn {
+  padding: 6px 12px !important;
+  font-size: 13px !important;
+  height: 32px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  box-sizing: border-box;
+}
+
+.nav-header .nav-icon {
+  width: 32px !important;
+  height: 32px !important;
+}
+
+.nav-header .nav-icon svg {
+  width: 16px !important;
+  height: 16px !important;
+}
+
+.nav-header .time-tracking-mini {
+  gap: 8px;
+}
+
+.nav-header .time-status-mini {
+  font-size: 12px;
+}
+
+/* Compact menu icons to match 14px labels */
+.remoed-sidebar .remoed-menu svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Collapsed mini-rail: keep centered compact hits */
+.remoed-sidebar.sidebar-collapsed .remoed-menu li {
+  justify-content: center;
+  padding: 8px 0 !important;
+  gap: 0;
+}
+
+/* Student logo block: less top padding so menu fits one screen */
+body.student-portal .remoed-sidebar .logo-section,
+body.student-portal .remoed-sidebar .sidebar-header-inner.logo-container.logo-section {
+  padding: 16px 12px 10px 12px !important;
+}
+
+body.student-portal .remoed-sidebar .sidebar-user {
+  padding: 12px !important;
+}
+
+/* Override global-portal teacher expanded menu size to match compact chrome */
+body[class*="page-teacher-"] nav.remoed-sidebar:not(.sidebar-collapsed) .remoed-menu li {
+  font-size: 14px !important;
+  line-height: 1.25 !important;
+}
+
+body[class*="page-teacher-"] nav.remoed-sidebar:not(.sidebar-collapsed) .remoed-menu li:not(.active):not(#logout-nav) {
+  color: #111827 !important;
+}
+
+body[class*="page-admin-"] nav.remoed-sidebar:not(.sidebar-collapsed) .remoed-menu li {
+  font-size: 14px !important;
+  line-height: 1.25 !important;
+}
+
+/* —— Portal top bar (Dashboard reference): icon + black 18px title, lavender circular actions —— */
+.nav-header,
+.student-page-nav-header {
+  background: #ffffff !important;
+  border-bottom: 1px solid #e5e7eb !important;
+  box-shadow: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+
+.nav-header .nav-left,
+.student-page-nav-header .nav-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.nav-header .nav-left h1,
+.student-page-nav-header .nav-left h1 {
+  margin: 0 !important;
+  display: inline-flex !important;
+  align-items: center;
+  gap: 10px;
+  font-size: 18px !important;
+  font-weight: 600 !important;
+  color: #000000 !important;
+  letter-spacing: normal !important;
+  text-shadow: none !important;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nav-header .nav-title-icon,
+.student-page-nav-header .nav-title-icon {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  color: #5a67d8;
+}
+
+.nav-header .nav-title-text,
+.student-page-nav-header .nav-title-text {
+  color: #000000 !important;
+  font-size: 18px !important;
+  font-weight: 600 !important;
+}
+
+/* Admin page top titles (hub + tools): black 18px — keep existing labels */
+body[class*="page-admin-"].has-admin-page-header .nav-header .nav-title-text,
+body.admin-hub-page.has-admin-page-header .nav-header .nav-title-text {
+  color: #000000 !important;
+  font-size: 18px !important;
+  font-weight: 600 !important;
+}
+
+/* Hide duplicate in-content page title when sticky header is present */
+body[class*="page-admin-"].has-admin-page-header.admin-hub-page .remoed-content > .remoed-section > .remoed-section-title:first-child {
+  display: none !important;
+}
+
+/* Admin header time mini (shared across pages, not only dashboard) */
+body[class*="page-admin-"] .nav-header .time-tracking-mini,
+.nav-header .time-tracking-mini {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 10px;
+  background: #ffffff;
+  border-radius: 999px;
+  border: 1px solid #e2e8f0;
+}
+body[class*="page-admin-"] .nav-header .time-status-mini,
+.nav-header .time-status-mini {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+body[class*="page-admin-"] .nav-header .time-status-mini.clocked-in,
+.nav-header .time-status-mini.clocked-in {
+  background: #dcfce7;
+  color: #166534;
+}
+body[class*="page-admin-"] .nav-header .time-status-mini.not-clocked,
+.nav-header .time-status-mini.not-clocked {
+  background: #f1f5f9;
+  color: #64748b;
+}
+body[class*="page-admin-"] .nav-header .time-btn-mini,
+.nav-header .time-btn-mini {
+  border: none;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+body[class*="page-admin-"] .nav-header .time-btn-mini.clock-in.primary,
+.nav-header .time-btn-mini.clock-in.primary {
+  background: #667eea;
+  color: #fff;
+}
+body[class*="page-admin-"] .nav-header .time-btn-mini.clock-out,
+.nav-header .time-btn-mini.clock-out {
+  background: #dc3545;
+  color: #fff;
+}
+
+body[class*="page-admin-"] .nav-header .nav-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+body[class*="page-admin-"] .nav-header .nav-dropdown {
+  display: none;
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 320px;
+  max-height: 360px;
+  overflow: auto;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
+  z-index: 80;
+}
+body[class*="page-admin-"] .nav-header .nav-dropdown.show {
+  display: block;
+}
+body[class*="page-admin-"] .nav-header .nav-dropdown-header {
+  padding: 10px 12px;
+  border-bottom: 1px solid #e2e8f0;
+  font-weight: 600;
+  color: #0f172a;
+}
+body[class*="page-admin-"] .nav-header .nav-dropdown-content {
+  padding: 8px 0;
+}
+
+.nav-header .nav-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.nav-header .nav-icon,
+.student-page-nav-header .nav-icon {
+  position: relative;
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 50% !important;
+  background: #eef0ff !important;
+  border: none !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+  box-shadow: none !important;
+}
+
+.nav-header .nav-icon:hover,
+.student-page-nav-header .nav-icon:hover {
+  background: #e0e4ff !important;
+  transform: translateY(-1px);
+}
+
+.nav-header .nav-icon svg,
+.student-page-nav-header .nav-icon svg {
+  width: 18px !important;
+  height: 18px !important;
+  color: #5a67d8 !important;
+}
+
+.nav-header .nav-icon.primary svg {
+  color: #5a67d8 !important;
+}
+
+body.student-portal.has-student-page-header .nav-header,
+body.student-portal.has-student-page-header .student-page-nav-header {
+  position: fixed;
+  top: 0;
+  left: 260px;
+  right: 0;
+  height: 56px !important;
+  z-index: 50;
+  padding: 0 20px !important;
+  box-sizing: border-box;
+}
+
+body.student-portal.has-student-page-header.student-sidebar-collapsed .nav-header,
+body.student-portal.has-student-page-header.student-sidebar-collapsed .student-page-nav-header {
+  left: 70px;
+}
+
+body.student-portal.has-student-page-header .remoed-content {
+  margin-top: 56px !important;
+}
+
+@media (max-width: 768px) {
+  body.student-portal.has-student-page-header .nav-header,
+  body.student-portal.has-student-page-header .student-page-nav-header {
+    left: 0;
+  }
+
+  body.student-portal.has-student-page-header .remoed-main:has(#remoed-mobile-shell) .nav-header,
+  body.student-portal.has-student-page-header .remoed-main:has(#remoed-mobile-shell) .student-page-nav-header {
+    top: 52px;
+  }
+
+  body.student-portal.has-student-page-header .remoed-main:has(#remoed-mobile-shell) .remoed-content {
+    margin-top: calc(52px + 48px) !important;
+  }
+}
+
+/* Teacher portal fixed top bar (same design) */
+body[class*="page-teacher-"].has-teacher-page-header .nav-header,
+body[class*="page-teacher-"].has-teacher-page-header .teacher-page-nav-header {
+  position: fixed;
+  top: 0;
+  left: 260px;
+  right: 0;
+  height: 56px !important;
+  z-index: 50;
+  padding: 0 20px !important;
+  box-sizing: border-box;
+}
+
+body[class*="page-teacher-"].has-teacher-page-header.teacher-sidebar-collapsed .nav-header,
+body[class*="page-teacher-"].has-teacher-page-header.teacher-sidebar-collapsed .teacher-page-nav-header {
+  left: 70px;
+}
+
+body[class*="page-teacher-"].has-teacher-page-header .remoed-content {
+  margin-top: 56px !important;
+}
+
+@media (max-width: 768px) {
+  body[class*="page-teacher-"].has-teacher-page-header .nav-header,
+  body[class*="page-teacher-"].has-teacher-page-header .teacher-page-nav-header {
+    left: 0;
+  }
+}
+
+
+/* Admin portal fixed top bar (Teacher SoT parity) */
+body[class*="page-admin-"].has-admin-page-header .nav-header {
+  position: fixed;
+  top: 0;
+  left: 260px;
+  right: 0;
+  height: 56px !important;
+  min-height: 56px !important;
+  max-height: 56px !important;
+  z-index: 50;
+  padding: 0 20px !important;
+  box-sizing: border-box;
+}
+body[class*="page-admin-"].has-admin-page-header.admin-sidebar-collapsed .nav-header {
+  left: 70px;
+}
+body[class*="page-admin-"].has-admin-page-header .remoed-content {
+  margin-top: 56px !important;
+}
+
+/* Profile Settings: keep title left / actions right on the sticky bar */
+body.page-admin-profile-settings.has-admin-page-header .nav-header {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  width: 100%;
+}
+body.page-admin-profile-settings.has-admin-page-header .nav-header .nav-right {
+  display: flex !important;
+  gap: 15px !important;
+  align-items: center !important;
+  margin-left: auto;
+}
+
+@media (max-width: 768px) {
+  body[class*="page-admin-"].has-admin-page-header .nav-header {
+    left: 0;
+  }
+}
+
+/* ==========================================================================
+   Compact Profile / Performance badges / Referrals (Career Growth proportions)
+   ========================================================================== */
+
+/* —— Phase 1: Teacher Profile —— */
+body.page-teacher-profile .profile-header {
+  margin-bottom: 12px !important;
+  padding: 14px 16px !important;
+  gap: 14px !important;
+}
+
+body.page-teacher-profile .remoed-content {
+  padding: 16px 20px !important;
+}
+
+body.page-teacher-profile .profile-content-grid {
+  gap: 14px !important;
+}
+
+body.page-teacher-profile .profile-sidebar-card,
+body.page-teacher-profile .profile-main-card {
+  padding: 16px !important;
+  border-radius: 12px !important;
+}
+
+body.page-teacher-profile .info-section {
+  margin-bottom: 15px !important;
+}
+
+body.page-teacher-profile .section-title,
+body.page-teacher-profile .info-section-title,
+body.page-teacher-profile .profile-sidebar-card .section-title {
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  color: #111827 !important;
+  margin-bottom: 10px !important;
+  padding-bottom: 6px !important;
+}
+
+body.page-teacher-profile .form-grid {
+  gap: 12px !important;
+}
+
+body.page-teacher-profile .form-group {
+  margin-bottom: 12px !important;
+}
+
+body.page-teacher-profile .form-input,
+body.page-teacher-profile .form-textarea {
+  padding: 8px 12px !important;
+  border-radius: 6px !important;
+  font-size: 14px !important;
+}
+
+body.page-teacher-profile .form-textarea {
+  min-height: 80px !important;
+}
+
+body.page-teacher-profile .info-row {
+  padding: 8px 0 !important;
+}
+
+body.page-teacher-profile .info-card {
+  padding: 12px 14px !important;
+}
+
+body.page-teacher-profile .back-btn,
+body.page-teacher-profile .edit-btn,
+body.page-teacher-profile .save-btn,
+body.page-teacher-profile .cancel-btn,
+body.page-teacher-profile .add-btn,
+body.page-teacher-profile .video-upload-btn,
+body.page-teacher-profile .preview-btn,
+body.page-teacher-profile #preview-profile-btn {
+  padding: 6px 16px !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  border-radius: 6px !important;
+  line-height: 1.3 !important;
+}
+
+body.page-teacher-profile .preview-btn,
+body.page-teacher-profile #preview-profile-btn {
+  background: linear-gradient(135deg, #667eea, #764ba2) !important;
+  color: #fff !important;
+  border: none !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+body.page-teacher-profile .video-upload-section {
+  margin-top: 12px !important;
+}
+
+body.page-teacher-profile .video-upload-btn svg {
+  width: 18px !important;
+  height: 18px !important;
+}
+
+body.page-teacher-profile .file-upload-label {
+  padding: 10px 12px !important;
+  border-width: 2px !important;
+  font-size: 13px !important;
+}
+
+body.page-teacher-profile #profile-completion-indicator {
+  padding: 12px 14px !important;
+  margin-bottom: 15px !important;
+  border-radius: 10px !important;
+}
+
+body.page-teacher-profile .tab-container {
+  margin-bottom: 12px !important;
+}
+
+body.page-teacher-profile .tab-buttons {
+  gap: 4px !important;
+  margin-bottom: 12px !important;
+}
+
+body.page-teacher-profile .tab-button {
+  padding: 8px 12px !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+}
+
+body.page-teacher-profile .profile-footer-actions,
+body.page-teacher-profile .education-item {
+  margin-top: 12px !important;
+  margin-bottom: 12px !important;
+  padding: 12px !important;
+}
+
+body.page-teacher-profile .assessment-notice,
+body.page-teacher-profile .skill-assessment-card {
+  padding: 12px 14px !important;
+  margin-bottom: 15px !important;
+}
+
+/* —— Phase 2: Performance Indicator — Achievement Badges —— */
+body.page-teacher-performance-indicator .badges-section {
+  padding: 16px !important;
+  margin-bottom: 15px !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.22) !important;
+}
+
+body.page-teacher-performance-indicator .badges-header {
+  margin-bottom: 12px !important;
+}
+
+body.page-teacher-performance-indicator .badges-header h2 {
+  font-size: 18px !important;
+  font-weight: 600 !important;
+  margin: 0 0 4px 0 !important;
+  gap: 8px !important;
+}
+
+body.page-teacher-performance-indicator .badges-header p {
+  font-size: 12px !important;
+  line-height: 1.35 !important;
+}
+
+body.page-teacher-performance-indicator .badges-grid {
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important;
+  gap: 10px !important;
+  margin-top: 12px !important;
+}
+
+body.page-teacher-performance-indicator .badge-card {
+  padding: 12px !important;
+  border-radius: 10px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+}
+
+body.page-teacher-performance-indicator .badge-card.earned {
+  transform: none !important;
+  border-width: 2px !important;
+  box-shadow: 0 2px 10px rgba(40, 167, 69, 0.28) !important;
+}
+
+body.page-teacher-performance-indicator .badge-icon {
+  font-size: 48px !important;
+  max-width: 48px !important;
+  max-height: 48px !important;
+  margin: 0 auto 8px !important;
+  line-height: 1 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: hidden !important;
+}
+
+body.page-teacher-performance-indicator .badge-icon img,
+body.page-teacher-performance-indicator .badge-icon svg {
+  max-width: 48px !important;
+  max-height: 48px !important;
+  width: 48px !important;
+  height: 48px !important;
+  object-fit: contain !important;
+}
+
+body.page-teacher-performance-indicator .badge-progress {
+  margin-top: 6px !important;
+  height: 3px !important;
+}
+
+body.page-teacher-performance-indicator .badge-status {
+  margin-top: 4px !important;
+  font-size: 11px !important;
+}
+
+body.page-teacher-performance-indicator .badge-progress-label {
+  font-size: 11px !important;
+}
+
+body.page-teacher-performance-indicator .badge-name {
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  margin-bottom: 4px !important;
+  line-height: 1.25 !important;
+}
+
+body.page-teacher-performance-indicator .badge-description {
+  font-size: 11px !important;
+  line-height: 1.35 !important;
+  margin-bottom: 4px !important;
+}
+
+body.page-teacher-performance-indicator .badge-status,
+body.page-teacher-performance-indicator .badge-progress,
+body.page-teacher-performance-indicator .badge-card .progress-text,
+body.page-teacher-performance-indicator .badge-card small {
+  font-size: 11px !important;
+}
+
+body.page-teacher-performance-indicator .attendance-analysis-section {
+  margin-top: 15px !important;
+}
+
+body.page-teacher-performance-indicator .attendance-analysis-section .section-title {
+  font-size: 15px !important;
+  margin-bottom: 12px !important;
+  padding-bottom: 6px !important;
+  border-bottom-width: 2px !important;
+}
+
+body.page-teacher-performance-indicator .charts-grid-secondary,
+body.page-teacher-performance-indicator .stats-grid {
+  margin-bottom: 15px !important;
+}
+
+body.page-teacher-performance-indicator .period-btn {
+  padding: 6px 14px !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  border-radius: 6px !important;
+}
+
+/* —— Phase 3: Referral Rewards —— */
+body.page-teacher-referrals .remoed-content {
+  padding: 16px 20px 20px !important;
+}
+
+body.page-teacher-referrals .page-head {
+  margin-bottom: 12px !important;
+}
+
+body.page-teacher-referrals .page-head p {
+  margin: 6px 0 0 !important;
+  font-size: 0.85rem !important;
+}
+
+body.page-teacher-referrals .banner-info {
+  padding: 8px 12px !important;
+  margin-bottom: 12px !important;
+  border-radius: 8px !important;
+  font-size: 0.82rem !important;
+  line-height: 1.4 !important;
+}
+
+body.page-teacher-referrals .link-card {
+  padding: 12px 14px !important;
+  margin-bottom: 12px !important;
+  border-radius: 10px !important;
+}
+
+body.page-teacher-referrals .link-card h2 {
+  margin: 0 0 8px !important;
+  font-size: 0.95rem !important;
+}
+
+body.page-teacher-referrals .code-row {
+  gap: 8px !important;
+  margin-bottom: 8px !important;
+}
+
+body.page-teacher-referrals .code-pill {
+  padding: 6px 10px !important;
+  border-radius: 6px !important;
+  font-size: 0.85rem !important;
+}
+
+body.page-teacher-referrals .btn,
+body.page-teacher-referrals .filters button,
+body.page-teacher-referrals button.btn {
+  padding: 6px 16px !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  border-radius: 6px !important;
+}
+
+body.page-teacher-referrals .grid-stats {
+  gap: 10px !important;
+  margin-bottom: 12px !important;
+}
+
+body.page-teacher-referrals .grid-stats .stat-card {
+  padding: 12px 14px !important;
+  border-radius: 10px !important;
+}
+
+body.page-teacher-referrals .grid-stats .stat-card h3 {
+  margin: 0 0 4px !important;
+  font-size: 0.8rem !important;
+}
+
+body.page-teacher-referrals .grid-stats .stat-card .big {
+  font-size: 1.3rem !important;
+  font-weight: 700 !important;
+  line-height: 1.2 !important;
+}
+
+body.page-teacher-referrals .filters {
+  gap: 10px !important;
+  margin-bottom: 12px !important;
+}
+
+body.page-teacher-referrals .empty {
+  padding: 20px !important;
+}
+
+body.page-teacher-referrals .table-wrap {
+  max-height: 420px !important;
+}
+
+/* Widescreen: referral link | stats stack */
+body.page-teacher-referrals .referral-link-stats-row {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 20px;
+  align-items: stretch;
+  margin-bottom: 12px;
+}
+
+body.page-teacher-referrals .referral-link-stats-row .link-card {
+  margin-bottom: 0 !important;
+  height: 100%;
+}
+
+body.page-teacher-referrals .referral-link-stats-row .grid-stats {
+  grid-template-columns: 1fr !important;
+  gap: 10px !important;
+  margin-bottom: 0 !important;
+}
+
+@media (max-width: 992px) {
+  body.page-teacher-referrals .referral-link-stats-row {
+    grid-template-columns: 1fr;
+  }
+
+  body.page-teacher-referrals .referral-link-stats-row .grid-stats {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+}
+
+@media (max-width: 800px) {
+  body.page-teacher-referrals .referral-link-stats-row .grid-stats {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* —— Teacher Dashboard: Time Log | Announcements —— */
+body.page-teacher-dashboard .dashboard-top-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 16px;
+  align-items: stretch;
+}
+
+body.page-teacher-dashboard .dashboard-top-row > .remoed-section {
+  margin-bottom: 0;
+  height: 100%;
+}
+
+body.page-teacher-dashboard .time-log-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
+body.page-teacher-dashboard .time-log-status-panel {
+  flex: 0 1 auto;
+  min-width: 200px;
+}
+
+body.page-teacher-dashboard .time-log-buttons {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+@media (max-width: 992px) {
+  body.page-teacher-dashboard .dashboard-top-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* —— Lessons Library: inline title edit —— */
+body.page-teacher-lessons-library .lesson-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+body.page-teacher-lessons-library .lesson-title-row #lesson-title {
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+body.page-teacher-lessons-library .lesson-title-edit-btn,
+body.page-teacher-lessons-library .lesson-title-save-btn,
+body.page-teacher-lessons-library .lesson-title-cancel-btn {
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #334155;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  line-height: 1;
+}
+
+body.page-teacher-lessons-library .lesson-title-edit-btn:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+body.page-teacher-lessons-library .lesson-title-save-btn {
+  background: #5a67d8;
+  border-color: #5a67d8;
+  color: #fff;
+}
+
+body.page-teacher-lessons-library .lesson-title-save-btn:hover {
+  background: #4c51bf;
+}
+
+body.page-teacher-lessons-library .lesson-title-input {
+  display: block;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 0 10px 0;
+  padding: 8px 12px;
+  font-size: 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  box-sizing: border-box;
+}
+
+body.page-teacher-lessons-library .lesson-title-input[hidden],
+body.page-teacher-lessons-library .lesson-title-edit-btn[hidden],
+body.page-teacher-lessons-library .lesson-title-save-btn[hidden],
+body.page-teacher-lessons-library .lesson-title-cancel-btn[hidden],
+body.page-teacher-lessons-library #lesson-title[hidden] {
+  display: none !important;
+}
+
+/* —— Phase 4: shared block spacing / no forced min-heights —— */
+body.page-teacher-profile .profile-header,
+body.page-teacher-profile .profile-content-grid,
+body.page-teacher-performance-indicator .page-header,
+body.page-teacher-performance-indicator .charts-grid-secondary,
+body.page-teacher-performance-indicator .badges-section,
+body.page-teacher-referrals .banner-info,
+body.page-teacher-referrals .link-card,
+body.page-teacher-referrals .grid-stats {
+  min-height: 0 !important;
+}
+
+body.page-teacher-profile .profile-main-card,
+body.page-teacher-profile .profile-sidebar-card,
+body.page-teacher-performance-indicator .stat-card,
+body.page-teacher-performance-indicator .metrics-section,
+body.page-teacher-referrals .link-card,
+body.page-teacher-referrals .grid-stats .stat-card {
+  min-height: 0 !important;
+}

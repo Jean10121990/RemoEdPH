@@ -101,13 +101,14 @@ const studentSchema = new mongoose.Schema({
   /** Cumulative lifetime lesson credits purchased (subscription top-ups); mirrors purchase $inc with totalCreditsEarned. */
   totalLessonsPurchased: { type: Number, default: 0 },
   /**
-   * Learning-journey batch unlock totals by portal level tab (nursery / kinder / prep).
+   * Learning-journey batch unlock totals by portal level tab.
    * Incremented with each plan purchase for all keys so tabs stay aligned; use for level-scoped rules later.
    */
   learningJourneyPurchasedByLevel: {
-    nursery: { type: Number, default: 0 },
-    kinder: { type: Number, default: 0 },
-    prep: { type: Number, default: 0 },
+    'Little Seeds (Age 3)': { type: Number, default: 0 },
+    'Sprouts (Age 4)': { type: Number, default: 0 },
+    'Saplings (Age 5)': { type: Number, default: 0 },
+    'Young Stewards (Age 6)': { type: Number, default: 0 },
   },
   usedCredits: { type: Number, default: 0 }, // lifetime credits spent on bookings
   /** Optional explicit pool size; booking math falls back to creditBalance when unset. */
@@ -120,8 +121,8 @@ const studentSchema = new mongoose.Schema({
     credits: { type: Number, default: 0 },
     amountPaid: { type: Number, default: 0 },
     paymentId: { type: String, default: '' },
-    /** purchase = top-up; usage = lesson consumed after teacher marks class finished */
-    entryType: { type: String, enum: ['purchase', 'usage'], default: 'purchase' },
+    /** purchase = top-up; usage = lesson consumed after teacher marks class finished; adjustment = refund/credit restore */
+    entryType: { type: String, enum: ['purchase', 'usage', 'adjustment'], default: 'purchase' },
     balanceAfter: { type: Number, default: null }
   }],
   creditTransactions: [{

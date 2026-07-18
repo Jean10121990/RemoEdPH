@@ -27,6 +27,14 @@ const Reward = require('./models/Reward');
 const Feedback = require('./models/Feedback');
 const IssueReport = require('./models/IssueReport');
 const PeerMessage = require('./models/PeerMessage');
+const { aggregateActiveChats, fetchPeerMessagesPage } = require('./services/peerInboxQueries');
+const {
+  DENY_TEACHER_STUDENT_MSG,
+  teacherMayMessageRecipient,
+  resolvePeerRole,
+  adminPeerId,
+} = require('./utils/peerMessageAuth');
+const Admin = require('./models/Admin');
 const Referral = require('./models/Referral');
 const PortalVideo = require('./models/PortalVideo');
 const { verifyToken, requireTeacher, requireStudent, requireOwnTeacherData, requireOwnStudentData, logAccess } = require('./authMiddleware');
@@ -37,6 +45,7 @@ const { generateReferralCode } = require('./utils/referralCode');
 const slotsRedisCache = require('./services/slotsRedisCache');
 const studentController = require('./studentController');
 const { tutorCancellationDeductionPeso } = require('./utils/tutorCancellationDeduction');
+const { evaluateTeacherBadges } = require('./services/badgeRulesEngine');
 const { effectivePayoutFields } = require('./utils/teacherPayoutTier');
 const {
   isProbableHexObjectIdForTeacher,
@@ -439,6 +448,24 @@ router.get('/test', (req, res) => {
 
 const PUBLIC_TEACHER_FILTER = { status: { $ne: 'suspended' } };
 
+/** Resolve a student booking key (often normalized email) to a Teacher doc for public profile APIs. */
+async function findLeanTeacherForPublicProfile(rawKey) {
+  const raw = String(rawKey || '').trim();
+  if (!raw) return null;
+  const norm = normalizeId(raw);
+  const or = [{ teacherId: raw }, { teacherId: norm }];
+  if (norm.includes('@')) {
+    const rx = new RegExp(`^${escapeRegexForTeacherLookup(norm)}$`, 'i');
+    or.push({ email: { $regex: rx } });
+    or.push({ username: { $regex: rx } });
+  }
+  return Teacher.findOne({ ...PUBLIC_TEACHER_FILTER, $or: or })
+    .select(
+      'teacherId username firstName middleName lastName fullname profilePicture introduction intro videoIntroduction language professionalCertifications documents.certifications'
+    )
+    .lean();
+}
+
 function displayNameFromTeacherRow(t) {
   return (
     (t.fullname && String(t.fullname).trim()) ||
@@ -555,11 +582,7 @@ router.get('/public/profile/:teacherId', async (req, res) => {
     if (!teacherId) {
       return res.status(400).json({ error: 'Invalid teacher id' });
     }
-    const t = await Teacher.findOne({ teacherId, ...PUBLIC_TEACHER_FILTER })
-      .select(
-        'teacherId username firstName middleName lastName fullname profilePicture introduction intro videoIntroduction language professionalCertifications documents.certifications'
-      )
-      .lean();
+    const t = await findLeanTeacherForPublicProfile(teacherId);
     if (!t) {
       return res.status(404).json({ error: 'Teacher not found' });
     }
@@ -601,35 +624,51 @@ router.post('/peer-message', verifyToken, requireTeacher, async (req, res) => {
     if (!recipientId || !message || !message.trim()) {
       return res.status(400).json({ error: 'Recipient and message are required' });
     }
+    const rid = String(recipientId).trim();
+    const allowed = await teacherMayMessageRecipient(rid);
+    if (!allowed) {
+      return res.status(403).json({
+        success: false,
+        error: DENY_TEACHER_STUDENT_MSG,
+      });
+    }
+    const recipientRole = await resolvePeerRole(rid);
+    const canonicalRecipient =
+      recipientRole === 'admin' && !rid.startsWith('admin:')
+        ? adminPeerId(rid)
+        : rid;
+
     const sender = await Teacher.findOne({ teacherId: senderId });
     const senderName = sender?.fullname || `${sender?.firstName || ''} ${sender?.lastName || ''}`.trim() || 'A teacher';
-    // Persist message for chat history
     const savedMessage = await PeerMessage.create({
       senderId,
-      recipientId,
+      recipientId: canonicalRecipient,
       message: message.trim()
     });
-    // Also create a notification for the recipient
-    await Notification.create({
-      teacherId: recipientId,
-      type: 'peer-message',
-      message: `${senderName}: ${message.trim()}`,
-      senderId: senderId,
-      read: false
-    });
-    // Real-time emit to recipient + sender tabs
+    if (recipientRole === 'teacher') {
+      await Notification.create({
+        teacherId: canonicalRecipient,
+        type: 'peer-message',
+        message: `${senderName}: ${message.trim()}`,
+        senderId: senderId,
+        read: false
+      });
+    }
     const payload = {
       id: savedMessage._id.toString(),
       senderId,
-      recipientId,
+      recipientId: canonicalRecipient,
       message: savedMessage.message,
       createdAt: savedMessage.createdAt,
       readAt: savedMessage.readAt || null
     };
     const io = realtime.getIo();
     if (io) {
-      io.to(`teacher-msg:${recipientId}`).emit('peer-message:new', payload);
+      io.to(`teacher-msg:${canonicalRecipient}`).emit('peer-message:new', payload);
       io.to(`teacher-msg:${senderId}`).emit('peer-message:new', payload);
+      if (canonicalRecipient.startsWith('admin:')) {
+        io.to(`admin-msg:${canonicalRecipient.slice(6)}`).emit('peer-message:new', payload);
+      }
     }
     res.json({ success: true, message: 'Message sent successfully', peerMessage: payload });
   } catch (err) {
@@ -638,47 +677,31 @@ router.post('/peer-message', verifyToken, requireTeacher, async (req, res) => {
   }
 });
 
-// List recent peer chats (Messenger-style list)
+// List peer chats — only users with at least one message (aggregation)
 router.get('/peer-chats', verifyToken, requireTeacher, async (req, res) => {
   try {
     const me = req.user.teacherId;
-    const msgs = await PeerMessage.find({
-      $or: [{ senderId: me }, { recipientId: me }]
-    }).sort({ createdAt: -1 }).limit(200);
+    const rows = await aggregateActiveChats(me);
 
-    const byPeer = new Map();
-    for (const m of msgs) {
-      const peerId = m.senderId === me ? m.recipientId : m.senderId;
-      if (!byPeer.has(peerId)) {
-        byPeer.set(peerId, {
-          peerId,
-          lastMessage: m.message,
-          lastAt: m.createdAt,
-          unreadCount: 0
-        });
-      }
-      if (m.recipientId === me && !m.readAt) {
-        const row = byPeer.get(peerId);
-        row.unreadCount += 1;
-      }
-    }
+    const peerIds = rows.map((r) => r.peerId);
+    const peers = await Teacher.find({ teacherId: { $in: peerIds } })
+      .select('teacherId fullname firstName lastName profilePicture')
+      .lean();
+    const peerMap = new Map(peers.map((t) => [t.teacherId, t]));
 
-    const peers = await Teacher.find({ teacherId: { $in: Array.from(byPeer.keys()) } })
-      .select('teacherId fullname firstName lastName profilePicture');
-    const peerMap = new Map(peers.map(t => [t.teacherId, t]));
-
-    const chats = Array.from(byPeer.values()).map(c => {
+    const chats = rows.map((c) => {
       const t = peerMap.get(c.peerId);
-      const name = t?.fullname || `${t?.firstName || ''} ${t?.lastName || ''}`.trim() || c.peerId;
+      const name =
+        t?.fullname || `${t?.firstName || ''} ${t?.lastName || ''}`.trim() || c.peerId;
       return {
         peerId: c.peerId,
         name,
         profilePicture: t?.profilePicture || null,
         lastMessage: c.lastMessage,
         lastAt: c.lastAt,
-        unreadCount: c.unreadCount
+        unreadCount: c.unreadCount,
       };
-    }).sort((a, b) => new Date(b.lastAt) - new Date(a.lastAt));
+    });
 
     res.json({ success: true, chats });
   } catch (err) {
@@ -687,21 +710,82 @@ router.get('/peer-chats', verifyToken, requireTeacher, async (req, res) => {
   }
 });
 
-// Get conversation messages with a specific peer
+/** Search teachers and admins by name — never students. */
+router.get('/peer-chats/user-search', verifyToken, requireTeacher, async (req, res) => {
+  try {
+    const me = req.user.teacherId;
+    const q = String(req.query.q || '').trim();
+    if (q.length < 2) {
+      return res.json({ success: true, users: [] });
+    }
+    const esc = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const teachers = await Teacher.find({
+      teacherId: { $ne: me },
+      $or: [
+        { teacherId: { $regex: esc, $options: 'i' } },
+        { username: { $regex: esc, $options: 'i' } },
+        { fullname: { $regex: esc, $options: 'i' } },
+        { firstName: { $regex: esc, $options: 'i' } },
+        { lastName: { $regex: esc, $options: 'i' } },
+        { email: { $regex: esc, $options: 'i' } },
+      ],
+    })
+      .select('teacherId fullname firstName lastName profilePicture username')
+      .limit(20)
+      .lean();
+
+    const admins = await Admin.find({
+      status: { $ne: 'suspended' },
+      $or: [
+        { username: { $regex: esc, $options: 'i' } },
+        { email: { $regex: esc, $options: 'i' } },
+      ],
+    })
+      .select('username email')
+      .limit(10)
+      .lean();
+
+    const users = teachers
+      .map((t) => ({
+        peerId: t.teacherId,
+        name:
+          t.fullname ||
+          `${t.firstName || ''} ${t.lastName || ''}`.trim() ||
+          t.username ||
+          t.teacherId,
+        profilePicture: t.profilePicture || null,
+        role: 'teacher',
+      }))
+      .concat(
+        admins.map((a) => ({
+          peerId: adminPeerId(a.username),
+          name: (a.username || 'Admin') + ' (Admin)',
+          profilePicture: null,
+          role: 'admin',
+        }))
+      );
+
+    res.json({ success: true, users });
+  } catch (err) {
+    console.error('peer-chats user-search:', err);
+    res.status(500).json({ error: 'Search failed' });
+  }
+});
+
+// Get conversation messages with a specific peer (paginated: newest batch first, scroll up for older)
 router.get('/peer-messages/:peerId', verifyToken, requireTeacher, async (req, res) => {
   try {
     const me = req.user.teacherId;
     const peerId = String(req.params.peerId || '');
     if (!peerId) return res.status(400).json({ error: 'Missing peerId' });
 
-    const messages = await PeerMessage.find({
-      $or: [
-        { senderId: me, recipientId: peerId },
-        { senderId: peerId, recipientId: me }
-      ]
-    }).sort({ createdAt: 1 }).limit(1000);
+    const { messages, hasMore, nextBefore } = await fetchPeerMessagesPage({
+      me,
+      peerId,
+      before: req.query.before || null,
+      limit: req.query.limit,
+    });
 
-    // Mark incoming as read
     await PeerMessage.updateMany(
       { senderId: peerId, recipientId: me, readAt: null },
       { $set: { readAt: new Date() } }
@@ -709,14 +793,9 @@ router.get('/peer-messages/:peerId', verifyToken, requireTeacher, async (req, re
 
     res.json({
       success: true,
-      messages: messages.map(m => ({
-        id: m._id.toString(),
-        senderId: m.senderId,
-        recipientId: m.recipientId,
-        message: m.message,
-        createdAt: m.createdAt,
-        readAt: m.readAt
-      }))
+      messages,
+      hasMore,
+      nextBefore,
     });
   } catch (err) {
     console.error('Error loading peer messages:', err);
@@ -1260,23 +1339,32 @@ router.post('/close-slot', verifyToken, requireTeacher, handleTeacherCloseSlots)
 // Fetch teacher's open slots and bookings for a week
 router.get('/slots', async (req, res) => {
   try {
-    const { teacherId, week, allSlots } = req.query; // week = Monday date (YYYY-MM-DD), allSlots = return all slots (not just available)
+    const { teacherId, week, allSlots, timezoneOffset, tz } = req.query; // week = Monday (local YYYY-MM-DD)
     
     // For students, allow getting all available slots without teacherId
     if (!week) return res.status(400).json({ error: 'Missing week parameter' });
+
+    const { resolveLocalWeekUtcWindow } = require('./utils/localWeekWindow');
+    let weekWindow;
+    try {
+      weekWindow = resolveLocalWeekUtcWindow(week, { timezoneOffset, tz });
+    } catch (e) {
+      return res.status(400).json({ error: e.message || 'Invalid week/timezone' });
+    }
     
     // If no teacherId is provided, return all available slots for the week (for students)
     if (!teacherId) {
       console.log('🔍 Student request: Getting all available slots for week:', week);
-      const clientTz = req.query.tz && DateTime.now().setZone(req.query.tz).isValid ? req.query.tz : null;
+      const clientTz =
+        (tz && DateTime.now().setZone(tz).isValid && String(tz)) ||
+        (weekWindow.zoneLabel && weekWindow.zoneLabel !== 'utc' ? weekWindow.zoneLabel : null);
 
-      // Week range in UTC
-      const startUtc = DateTime.fromISO(week, { zone: 'utc' }).startOf('day');
-      const endUtc = startUtc.plus({ days: 7 });
+      const startUtcJs = weekWindow.startUtc;
+      const endUtcJs = weekWindow.endUtc;
       
       const queryFilter = {
         available: true,
-        dateTimeUtc: { $gte: startUtc.toJSDate(), $lt: endUtc.toJSDate() }
+        dateTimeUtc: { $gte: startUtcJs, $lt: endUtcJs }
       };
       
       const slotsQuery = await TeacherSlot.find(queryFilter);
@@ -1322,9 +1410,9 @@ router.get('/slots', async (req, res) => {
       // Filter out null slots (those without teacherId)
       const validSlots = slots.filter(slot => slot !== null);
       
-      // Get bookings for these slots in UTC window
+      // Get bookings for these slots in the client's local-week UTC window
       const bookings = await Booking.find({
-        dateTimeUtc: { $gte: startUtc.toJSDate(), $lt: endUtc.toJSDate() },
+        dateTimeUtc: { $gte: startUtcJs, $lt: endUtcJs },
         status: { $ne: 'cancelled' }
       });
       
@@ -1413,7 +1501,9 @@ router.get('/slots', async (req, res) => {
     }
 
     // Determine client timezone for convenience conversion (optional)
-    const clientTz = req.query.tz && DateTime.now().setZone(req.query.tz).isValid ? req.query.tz : null;
+    const clientTz =
+      (tz && DateTime.now().setZone(tz).isValid && String(tz)) ||
+      (weekWindow.zoneLabel && weekWindow.zoneLabel !== 'utc' ? String(weekWindow.zoneLabel) : null);
     const allSlotsFlag =
       String(allSlots || '') === '1' ||
       String(allSlots || '').toLowerCase() === 'true' ||
@@ -1432,15 +1522,32 @@ router.get('/slots', async (req, res) => {
         'Last-Modified': new Date().toUTCString(),
         ETag: `"${Date.now()}-${crypto.randomBytes(8).toString('hex')}"`,
       });
-      const endForBookings = new Date(week + 'T00:00:00');
-      endForBookings.setDate(endForBookings.getDate() + 7);
       const freshBookingsForOverlay = await Booking.find({
-        $or: [
-          { teacherId: actualTeacherId },
-          { $expr: { $eq: [{ $toLower: { $ifNull: ['$teacherId', ''] } }, actualTeacherId] } },
+        $and: [
+          {
+            $or: [
+              { teacherId: actualTeacherId },
+              { $expr: { $eq: [{ $toLower: { $ifNull: ['$teacherId', ''] } }, actualTeacherId] } },
+            ],
+          },
+          { status: { $ne: 'cancelled' } },
+          {
+            $or: [
+              { dateTimeUtc: { $gte: weekWindow.startUtc, $lt: weekWindow.endUtc } },
+              {
+                $and: [
+                  { $or: [{ dateTimeUtc: null }, { dateTimeUtc: { $exists: false } }] },
+                  {
+                    date: {
+                      $gte: week,
+                      $lt: weekWindow.startLocal.plus({ days: 7 }).toFormat('yyyy-LL-dd'),
+                    },
+                  },
+                ],
+              },
+            ],
+          },
         ],
-        date: { $gte: week, $lte: endForBookings.toISOString().slice(0, 10) },
-        status: { $ne: 'cancelled' },
       }).lean();
       applyBookingFirstSlotOverlay(tCached.slots, freshBookingsForOverlay, actualTeacherId, {
         debugTime: '19:00',
@@ -1448,17 +1555,16 @@ router.get('/slots', async (req, res) => {
       return res.json(tCached);
     }
 
-    // Get all slots for this teacher for the week - use local timezone instead of hardcoded +08:00
-    const start = new Date(week + 'T00:00:00');
-    const end = new Date(start);
-    end.setDate(start.getDate() + 7);
+    // Local-week UTC window for slots/bookings (not server PHT calendar days)
+    const startUtcJs = weekWindow.startUtc;
+    const endUtcJs = weekWindow.endUtc;
+    const endDateString = weekWindow.startLocal.plus({ days: 7 }).toFormat('yyyy-LL-dd');
 
     console.log('🔍 Date range for slots query:');
-    console.log('  - Week start:', week);
-    console.log('  - Week end:', end.toISOString().slice(0, 10));
+    console.log('  - Week start (local Monday):', week);
+    console.log('  - UTC window:', startUtcJs.toISOString(), '→', endUtcJs.toISOString());
     console.log('  - TeacherId being searched:', actualTeacherId);
 
-    // Use inclusive end date to include the last day of the week
     // Return all slots or only available slots based on allSlots parameter
     const teacherRow = await Teacher.findOne({
       $expr: { $eq: [{ $toLower: '$teacherId' }, actualTeacherId] },
@@ -1473,8 +1579,20 @@ router.get('/slots', async (req, res) => {
     }
 
     const queryFilter = {
-      $or: teacherIdOr,
-      date: { $gte: week, $lte: end.toISOString().slice(0, 10) }
+      $and: [
+        { $or: teacherIdOr },
+        {
+          $or: [
+            { dateTimeUtc: { $gte: startUtcJs, $lt: endUtcJs } },
+            {
+              $and: [
+                { $or: [{ dateTimeUtc: null }, { dateTimeUtc: { $exists: false } }] },
+                { date: { $gte: week, $lt: endDateString } },
+              ],
+            },
+          ],
+        },
+      ],
     };
 
     // If allSlots is not specified, only return available slots (for student booking)
@@ -1483,12 +1601,26 @@ router.get('/slots', async (req, res) => {
     }
 
     const bookings = await Booking.find({
-      $or: [
-        { teacherId: actualTeacherId },
-        { $expr: { $eq: [{ $toLower: { $ifNull: ['$teacherId', ''] } }, actualTeacherId] } },
+      $and: [
+        {
+          $or: [
+            { teacherId: actualTeacherId },
+            { $expr: { $eq: [{ $toLower: { $ifNull: ['$teacherId', ''] } }, actualTeacherId] } },
+          ],
+        },
+        { status: { $ne: 'cancelled' } },
+        {
+          $or: [
+            { dateTimeUtc: { $gte: startUtcJs, $lt: endUtcJs } },
+            {
+              $and: [
+                { $or: [{ dateTimeUtc: null }, { dateTimeUtc: { $exists: false } }] },
+                { date: { $gte: week, $lt: endDateString } },
+              ],
+            },
+          ],
+        },
       ],
-      date: { $gte: week, $lte: end.toISOString().slice(0, 10) },
-      status: { $ne: 'cancelled' },
     });
 
     const slotsQuery = await TeacherSlot.find(queryFilter);
@@ -1603,6 +1735,7 @@ router.get('/slots', async (req, res) => {
 
       // Always expose canonical UTC string
       obj.utc = utcSource ? utcSource.toISOString() : null;
+      obj.startTime = obj.utc;
 
       if (clientTz && utcSource) {
         const local = DateTime.fromJSDate(utcSource, { zone: 'utc' }).setZone(clientTz);
@@ -1759,7 +1892,7 @@ router.get('/student/bookings', verifyToken, requireStudent, logAccess, async (r
     const bookings = await Booking.find({
       studentId,
       date: { $gte: week, $lt: end.toISOString().slice(0, 10) },
-      status: { $ne: 'cancelled' }
+      status: { $nin: ['cancelled', 'cancelled_by_student_emergency'] }
     }).populate('teacherId', 'username photo intro');
 
     res.json({ bookings });
@@ -1977,12 +2110,16 @@ router.get('/booking/:bookingId', verifyToken, requireTeacher, async (req, res) 
   }
 });
 
-// Get notifications for a teacher
+// Get notifications for a teacher (last 31 days only)
 router.get('/notifications', async (req, res) => {
   const { teacherId } = req.query;
   if (!teacherId) return res.status(400).json({ error: 'Missing teacherId' });
   try {
-    const notifications = await Notification.find({ teacherId }).sort({ createdAt: -1 });
+    const cutoff = new Date(Date.now() - 31 * 24 * 60 * 60 * 1000);
+    const notifications = await Notification.find({
+      teacherId,
+      createdAt: { $gte: cutoff },
+    }).sort({ createdAt: -1 });
     res.json(notifications);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -2071,8 +2208,24 @@ router.post('/mark-absent', verifyToken, requireTeacher, requireOwnTeacherData, 
       return res.status(404).json({ error: 'Booking not found' });
     }
 
-    // Mark as absent (you can add an 'absent' field to the booking schema)
     booking.status = 'absent';
+    booking.absentType = 'student';
+    booking.absentReason = reason || '';
+    booking.absentMarkedAt = new Date();
+
+    try {
+      await consumeReservedCreditForBooking(booking, 'Student absent', {
+        actorType: 'teacher',
+        actorId: String(teacherId || ''),
+      });
+    } catch (creditErr) {
+      console.error('Credit deduct on mark-absent failed:', creditErr.message || creditErr);
+      if (creditErr.code === 'NO_CREDITS') {
+        return res.status(400).json({ error: creditErr.message, code: creditErr.code });
+      }
+      throw creditErr;
+    }
+
     await booking.save();
 
     // Create notification for absent student
@@ -2099,11 +2252,12 @@ router.get('/teacher/completed-classes', async (req, res) => {
       return res.status(400).json({ error: 'Missing teacherId, startDate, or endDate' });
     }
 
-    // Find completed classes within the date range
+    // Only sessions finalized after teacher wrap-up (classCompleted) count toward teaching fee.
     const completedClasses = await Booking.countDocuments({
       teacherId,
       date: { $gte: startDate, $lte: endDate },
-      status: 'completed'
+      status: 'completed',
+      'attendance.classCompleted': true,
     });
 
     res.json({ 
@@ -3320,6 +3474,77 @@ router.get('/completed-classes', verifyToken, requireTeacher, async (req, res) =
   } catch (err) {
     console.error('Error getting completed classes:', err);
     res.status(500).json({ success: false, error: 'Failed to get completed classes' });
+  }
+});
+
+/** Bookings waiting for teacher wrap-up feedback (salary / credit finalization blocked until submitted). */
+router.get('/pending-feedback-bookings', verifyToken, requireTeacher, async (req, res) => {
+  try {
+    const teacherId = req.user.teacherId;
+    const now = new Date();
+    const raw = await Booking.find({
+      teacherId,
+      status: 'pending_feedback',
+    })
+      .select(
+        'date time lesson studentId dateTimeUtc teacherLocalZone studentLocalZone finishedAt sessionEndedAt'
+      )
+      .sort({ date: -1, time: -1 })
+      .lean();
+
+    const startedOrUnknown = raw.filter((b) => {
+      const start = getBookingStartAsDate(b);
+      return start == null || start.getTime() < now.getTime();
+    });
+
+    const ids = startedOrUnknown.map((b) => String(b._id));
+    const withFb =
+      ids.length > 0
+        ? await Feedback.find({
+            bookingId: { $in: ids },
+            feedbackRole: FEEDBACK_ROLE_TEACHER_TO_STUDENT,
+          })
+            .select('bookingId')
+            .lean()
+        : [];
+    const hasFb = new Set(withFb.map((f) => String(f.bookingId)));
+
+    const pending = startedOrUnknown.filter((b) => !hasFb.has(String(b._id)));
+
+    const items = [];
+    for (const b of pending) {
+      let studentName = '';
+      try {
+        const st = await Student.findOne({
+          $or: [{ username: b.studentId }, { email: b.studentId }],
+        })
+          .select('firstName lastName username')
+          .lean();
+        if (st) {
+          studentName =
+            [st.firstName, st.lastName].filter(Boolean).join(' ').trim() || st.username || '';
+        }
+      } catch (_e) {
+        /* ignore */
+      }
+      items.push({
+        bookingId: String(b._id),
+        date: b.date,
+        time: b.time,
+        lesson: b.lesson || '',
+        studentId: b.studentId,
+        studentName: studentName || b.studentId || 'Student',
+      });
+    }
+
+    res.json({
+      success: true,
+      count: items.length,
+      items,
+    });
+  } catch (err) {
+    console.error('pending-feedback-bookings:', err);
+    res.status(500).json({ success: false, error: 'Failed to load pending feedback' });
   }
 });
 
@@ -5245,6 +5470,31 @@ router.get('/resolved-issue-payments', verifyToken, requireTeacher, async (req, 
   }
 });
 
+// Monthly badge rules engine (previous full calendar month, Asia/Manila)
+router.get('/badges', verifyToken, requireTeacher, async (req, res) => {
+  try {
+    let teacherId = req.user.teacherId || req.user.id || req.user._id || req.query.teacherId;
+    if (!teacherId && req.teacher) {
+      teacherId = req.teacher.teacherId || req.teacher._id || req.teacher.id;
+    }
+    if (teacherId && typeof teacherId.toString === 'function') {
+      teacherId = teacherId.toString();
+    }
+    if (!teacherId) {
+      return res.status(400).json({ success: false, error: 'Teacher ID is required' });
+    }
+
+    const result = await evaluateTeacherBadges(teacherId);
+    return res.json({ success: true, ...result });
+  } catch (error) {
+    console.error('❌ Badge evaluation error:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to evaluate badges',
+    });
+  }
+});
+
 // Get teacher attendance analysis
 router.get('/attendance-analysis', verifyToken, requireTeacher, async (req, res) => {
   try {
@@ -6281,7 +6531,11 @@ const Connection = require('./models/Connection');
 router.get('/public-profile/:teacherId', async (req, res) => {
   try {
     const { teacherId } = req.params;
-    const teacher = await Teacher.findOne({ teacherId })
+    const row = await findLeanTeacherForPublicProfile(teacherId);
+    if (!row) {
+      return res.status(404).json({ error: 'Teacher not found' });
+    }
+    const teacher = await Teacher.findOne({ teacherId: row.teacherId })
       .select('teacherId fullname firstName lastName profilePicture introduction experience education workExperience teachingAbilities');
     if (!teacher) {
       return res.status(404).json({ error: 'Teacher not found' });

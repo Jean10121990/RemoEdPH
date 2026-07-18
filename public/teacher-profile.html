@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="css/global-portal.css">
 <!-- Remo AI Chatbot Styles -->
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css">
     <script src="js/user-session.js"></script>
 </head>
 <body class="page-teacher-profile">
@@ -46,7 +47,7 @@
                 <div class="profile-content-grid">
                     <!-- Profile Sidebar Card -->
                     <div class="profile-sidebar-card">
-                        <h3 class="section-title" style="font-size: 1.3rem; margin-bottom: 20px;">Quick Info</h3>
+                        <h3 class="section-title">Quick Info</h3>
                         <div class="info-card">
                             <div class="info-row">
                                 <span class="info-label">Email:</span>
@@ -67,7 +68,7 @@
                         </div>
                         
                         <!-- Video Introduction Upload -->
-                        <div class="video-upload-section" style="margin-top: 24px;">
+                        <div class="video-upload-section">
                             <h4 class="info-section-title" style="font-size: 1rem; margin-bottom: 12px;">Video Introduction</h4>
                             <div class="video-upload-btn" onclick="document.getElementById('video-introduction').click()">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -94,14 +95,14 @@
                     <div class="profile-main-card">
                 <div id="profile-form">
                     <!-- Profile Completion Indicator -->
-                    <div id="profile-completion-indicator" style="background: linear-gradient(135deg, #f0f8ff 0%, #e8f4fd 100%); border: 2px solid #667eea; border-radius: 12px; padding: 16px 20px; margin-bottom: 24px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <div id="profile-completion-indicator" style="background: linear-gradient(135deg, #f0f8ff 0%, #e8f4fd 100%); border: 2px solid #667eea; border-radius: 10px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                             <div>
-                                <h4 style="margin: 0; color: #667eea; font-size: 1rem; font-weight: 700;">Profile Completion</h4>
-                                <p style="margin: 4px 0 0 0; color: #666; font-size: 0.85rem;" id="completion-message">Complete your profile to attract more students</p>
+                                <h4 style="margin: 0; color: #667eea; font-size: 0.95rem; font-weight: 600;">Profile Completion</h4>
+                                <p style="margin: 4px 0 0 0; color: #666; font-size: 0.8rem;" id="completion-message">Complete your profile to attract more students</p>
                             </div>
-                            <button type="button" class="preview-btn" id="preview-profile-btn" onclick="togglePreviewMode()" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.9rem; transition: all 0.3s ease;">
-                                👁️ Preview Profile
+                            <button type="button" class="preview-btn" id="preview-profile-btn" onclick="togglePreviewMode()">
+                                Preview Profile
                             </button>
                         </div>
                         <div style="background: #e0e6ed; border-radius: 8px; height: 12px; overflow: hidden; position: relative;">
@@ -696,6 +697,10 @@
                 script.onload = function() {
                     TeacherSidebar.render('sidebar', 'profile');
                     updateSidebarProfile();
+                    var h = document.createElement('script');
+                    h.src = 'js/teacher-page-header.js';
+                    h.onload = function() { TeacherPageHeader.render('profile'); };
+                    document.head.appendChild(h);
                 };
                 document.head.appendChild(script);
             })();

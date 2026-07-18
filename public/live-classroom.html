@@ -95,12 +95,12 @@
       </div>
       
       <!-- Lesson Content Tab -->
-      <div class="panel-content active" id="lesson-content-panel" style="padding: 12px;">
+      <div class="panel-content active" id="lesson-content-panel">
         <div class="lesson-viewer">
           <!-- Lesson Content Viewer title removed -->
           <!-- Lesson content viewer dropdown removed - lesson loads automatically from booking -->
           <!-- Presenter Mode Status and Navigation Controls -->
-          <div id="presenter-mode-controls" style="display:none; gap:8px; align-items:center; justify-content:center; margin:8px 0;">
+          <div id="presenter-mode-controls" style="display:none; gap:8px; align-items:center; justify-content:center; margin:8px 0; flex-shrink:0;">
             <span id="presenter-status-indicator" style="font-size:18px; color:#e11d48;" title="Live Sync Active">●</span>
             <!-- Navigation buttons for PDF (moved outside iframe) -->
             <div id="pdf-navigation-controls" style="display:none; gap:4px; align-items:center;">
@@ -165,12 +165,11 @@
             <button id="toggle-camera" class="video-control-btn" title="Toggle Camera">📷</button>
             <button id="toggle-mic" class="video-control-btn" title="Toggle Microphone">🎤</button>
             <button id="toggle-mute" class="video-control-btn" title="Mute Audio">🔇</button>
-            <button id="toggle-bg-blur" class="video-control-btn" title="Background Blur (disabled)" style="display:none;">🫧</button>
           </div>
         </div>
       </div>
       
-      <div class="chat-section">
+      <div class="chat-section" id="classChat">
         <div class="chat-header">Class Chat</div>
         <div id="chat-messages" class="chat-messages"></div>
         <form id="chat-form" class="chat-form">
@@ -216,9 +215,9 @@
     })();
   </script>
             
-  <!-- Annotation overlay (shared canvas for presentation annotations) -->
-  <div id="annotation-overlay" style="position:fixed;left:calc(60px + 40%);top:50px;right:0;bottom:0;pointer-events:none;z-index:50;">
-    <canvas id="annotation-canvas" style="width:100%;height:100%;"></canvas>
+  <!-- Legacy annotation overlay (unused; PPT draw uses .remoed-ppt-annotation-canvas). Kept hidden so it cannot cover chat. -->
+  <div id="annotation-overlay" aria-hidden="true" hidden style="display:none;pointer-events:none;">
+    <canvas id="annotation-canvas" style="width:100%;height:100%;pointer-events:none;"></canvas>
   </div>
 
   <!-- Centered Class Info Modal -->
@@ -314,6 +313,8 @@
   </div>
     <script src="js/classroom-entry.js"></script>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="js/presentation-overlay.js"></script>
+    <script src="js/virtual-background.js"></script>
     <script src="js/classroom-qa-recording.js" defer></script>
     <script>
     // Collaborative annotation client
@@ -376,6 +377,29 @@
           setupRewardAnimationListener();
         } else {
           console.warn('⚠️ setupRewardAnimationListener not yet defined, will set up after function definition');
+        }
+        if (!window.__remoedPptSocketBound) {
+          window.__remoedPptSocketBound = true;
+          socket.on('annotation-sync', function (data) {
+            if (window.currentPptOverlay && window.currentPptOverlay.handleRemoteAnnotation) {
+              window.currentPptOverlay.handleRemoteAnnotation(data);
+            }
+          });
+          socket.on('presentation-interaction-mode', function (data) {
+            if (typeof RemoedPresentationOverlay !== 'undefined') {
+              RemoedPresentationOverlay.handlePresentationInteractionMode(data);
+            }
+          });
+          socket.on('presentation-slide-changed', function (data) {
+            if (typeof RemoedPresentationOverlay !== 'undefined') {
+              RemoedPresentationOverlay.handlePresentationSlideChanged(data);
+            }
+          });
+          socket.on('slide-changed', function (data) {
+            if (typeof RemoedPresentationOverlay !== 'undefined') {
+              RemoedPresentationOverlay.handlePresentationSlideChanged(data);
+            }
+          });
         }
       });
       
@@ -531,6 +555,9 @@
 
       // For QA lesson recording (classroom-qa-recording.js): teacher auto-start + Finish finalization
       window.__liveClassroomUserType = userType;
+      try {
+        document.body.dataset.classroomRole = userType === 'teacher' ? 'teacher' : 'student';
+      } catch (_e) {}
 
       // Update video labels so the local tile matches the current role
       try {
@@ -707,6 +734,12 @@
       let peerConnection = null;
       let isCreatingOffer = false;
       let isSettingRemoteDescription = false;
+      /** Screen/tab share senders added for QA recording → student presentation feed */
+      let qaScreenShareSenders = [];
+      let qaScreenShareStreamId = null;
+      let expectedQaScreenStreamId = null;
+      let remotePresentationStream = null;
+      let studentWebcamStreamId = null;
       let reconnectAttempts = 0;
       let maxReconnectAttempts = 5;
       let reconnectTimeout = null;
@@ -963,6 +996,379 @@
         });
       }
 
+      function renegotiatePeerConnection(reason) {
+        if (!peerConnection || userType !== 'teacher') return Promise.resolve();
+        if (isCreatingOffer) {
+          return new Promise(function (resolve) {
+            setTimeout(function () {
+              renegotiatePeerConnection(reason).then(resolve).catch(resolve);
+            }, 400);
+          });
+        }
+        isCreatingOffer = true;
+        console.log('🔄 Renegotiating peer connection:', reason || '');
+        return peerConnection
+          .createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true, voiceActivityDetection: true })
+          .then(function (offer) {
+            return peerConnection.setLocalDescription(offer);
+          })
+          .then(function () {
+            socket.emit('offer', { room: room, offer: peerConnection.localDescription });
+            isCreatingOffer = false;
+          })
+          .catch(function (err) {
+            console.error('❌ Renegotiation failed:', err);
+            isCreatingOffer = false;
+          });
+      }
+
+      function isDisplayCaptureTrack(track) {
+        if (!track || track.kind !== 'video') return false;
+        try {
+          const settings = typeof track.getSettings === 'function' ? track.getSettings() : null;
+          if (settings && settings.displaySurface) return true;
+        } catch (_s) {}
+        try {
+          if (track.contentHint === 'detail' || track.contentHint === 'text') return true;
+        } catch (_c) {}
+        const label = String(track.label || '');
+        return /screen|window|tab|web-contents|display|monitor|entire|present/i.test(label);
+      }
+
+      function streamLooksLikePresentation(stream) {
+        if (!stream) return false;
+        if (expectedQaScreenStreamId && stream.id === expectedQaScreenStreamId) return true;
+        if (remotePresentationStream && stream.id === remotePresentationStream.id) return true;
+        return stream.getVideoTracks().some(function (t) {
+          return t && t.readyState !== 'ended' && isDisplayCaptureTrack(t);
+        });
+      }
+
+      function shouldRouteVideoToPresentation(track, stream) {
+        if (!track || track.kind !== 'video') return false;
+        if (expectedQaScreenStreamId && stream && stream.id === expectedQaScreenStreamId) return true;
+        if (remotePresentationStream && stream && stream.id === remotePresentationStream.id) return true;
+        if (isDisplayCaptureTrack(track)) return true;
+
+        const rv = document.getElementById('remote-video');
+        const camStream = rv && rv.srcObject;
+        if (camStream && stream && stream.id !== camStream.id) {
+          // Tile already shows a real webcam → any other video stream is presentation
+          const camHasCameraVideo = camStream.getVideoTracks().some(function (t) {
+            return t && t.readyState !== 'ended' && !isDisplayCaptureTrack(t);
+          });
+          if (camHasCameraVideo) return true;
+          // Tile currently holds display media → this non-display track is the webcam (not presentation)
+          if (streamLooksLikePresentation(camStream)) return false;
+        }
+        if (
+          studentWebcamStreamId &&
+          stream &&
+          stream.id !== studentWebcamStreamId &&
+          !isDisplayCaptureTrack(track)
+        ) {
+          // We already locked a webcam stream id; a different non-display stream is unusual —
+          // treat as presentation only if the webcam tile is already occupied by that webcam id.
+          if (camStream && camStream.id === studentWebcamStreamId) return true;
+        }
+        return false;
+      }
+
+      function attachTeacherAudioTrack(track) {
+        const rv = document.getElementById('remote-video');
+        if (!rv || !track || track.kind !== 'audio') return;
+        let mix = rv.srcObject;
+        if (!mix) {
+          mix = new MediaStream();
+          rv.srcObject = mix;
+          remoteStream = mix;
+        }
+        if (!mix.getAudioTracks().some(function (t) {
+          return t.id === track.id;
+        })) {
+          try {
+            mix.addTrack(track);
+          } catch (_e) {}
+        }
+        rv.muted = false;
+        rv.autoplay = true;
+        rv.playsInline = true;
+        if (rv.paused) rv.play().catch(function () {});
+      }
+
+      function attachTeacherWebcamStream(stream, track) {
+        const rv = document.getElementById('remote-video');
+        if (!rv || !stream) return;
+
+        // If the camera tile currently holds a screen-share stream, move it to presentation
+        if (rv.srcObject && streamLooksLikePresentation(rv.srcObject) && rv.srcObject.id !== stream.id) {
+          console.warn('📺 Relocating misrouted screen-share from #remote-video to presentation');
+          attachStudentPresentationShare(rv.srcObject);
+        }
+
+        if (track && track.kind === 'video' && !isDisplayCaptureTrack(track)) {
+          studentWebcamStreamId = stream.id;
+        }
+
+        remoteStream = stream;
+        attachStreamWithRetry(rv, remoteStream, { muted: false, label: 'remote-video' }).catch(function () {});
+        rv.muted = false;
+        rv.autoplay = true;
+        rv.playsInline = true;
+        rv.style.display = 'block';
+        rv.style.visibility = 'visible';
+        if (rv.paused) {
+          rv.play().catch(function () {});
+        }
+      }
+
+      function detachStudentPresentationShare() {
+        remotePresentationStream = null;
+        const video = document.getElementById('student-presentation-video');
+        if (video) {
+          try {
+            video.srcObject = null;
+          } catch (_e) {}
+          if (video.parentNode) video.parentNode.removeChild(video);
+        }
+        document.querySelectorAll('.remoed-ppt-iframe-wrap iframe, #lesson-file-viewer iframe').forEach(function (iframe) {
+          iframe.style.display = '';
+          iframe.style.visibility = '';
+        });
+      }
+
+      function syncStudentPresentationCanvas(video, canvas, stack) {
+        if (!video || !canvas) return;
+        function applySize() {
+          var w = 0;
+          var h = 0;
+          // Prefer the rendered video box so drawings align with object-fit:contain content
+          try {
+            var vRect = video.getBoundingClientRect();
+            w = Math.floor(vRect.width);
+            h = Math.floor(vRect.height);
+          } catch (_e) {}
+          if ((!w || !h) && stack) {
+            try {
+              var sRect = stack.getBoundingClientRect();
+              w = Math.floor(sRect.width);
+              h = Math.floor(sRect.height);
+            } catch (_e2) {}
+          }
+          if (!w || !h) {
+            w = video.videoWidth || canvas.width || 1280;
+            h = video.videoHeight || canvas.height || 720;
+          }
+          if (canvas.width !== w || canvas.height !== h) {
+            canvas.width = w;
+            canvas.height = h;
+          }
+          canvas.style.position = 'absolute';
+          canvas.style.inset = '0';
+          canvas.style.zIndex = '2';
+          canvas.style.width = '100%';
+          canvas.style.height = '100%';
+          canvas.style.pointerEvents = canvas.style.pointerEvents || 'none';
+        }
+        applySize();
+        video.addEventListener('loadedmetadata', applySize);
+        video.addEventListener('resize', applySize);
+        if (typeof ResizeObserver !== 'undefined') {
+          try {
+            if (video._remoedCanvasRo) video._remoedCanvasRo.disconnect();
+            var ro = new ResizeObserver(applySize);
+            ro.observe(video);
+            if (stack) ro.observe(stack);
+            video._remoedCanvasRo = ro;
+          } catch (_e3) {}
+        }
+        window.addEventListener('resize', applySize);
+      }
+
+      function attachStudentPresentationShare(stream) {
+        if (userType !== 'student' || !stream) return;
+        const videoTracks = stream.getVideoTracks().filter(function (t) {
+          return t && t.readyState !== 'ended';
+        });
+        if (!videoTracks.length) return;
+
+        remotePresentationStream = stream;
+        const viewer = document.getElementById('lesson-file-viewer');
+        if (!viewer) return;
+
+        let mount = viewer.querySelector('.remoed-ppt-mount');
+        if (!mount) {
+          mount = document.createElement('div');
+          mount.className = 'remoed-ppt-mount';
+          mount.style.cssText =
+            'width:100%;max-width:100%;position:relative;border-radius:8px;overflow:hidden;background:#0f172a;display:flex;flex-direction:column;flex:1 1 auto;min-height:0;max-height:100%;height:100%;';
+          viewer.innerHTML = '';
+          viewer.appendChild(mount);
+        }
+
+        let stack = mount.querySelector('.remoed-ppt-stack') || document.getElementById('presentation-container');
+        if (!stack) {
+          stack = document.createElement('div');
+          stack.className = 'remoed-ppt-stack';
+          stack.id = 'presentation-container';
+          stack.style.cssText =
+            'position:relative;width:100%;flex:1 1 auto;min-height:0;max-height:100%;background:#0f172a;display:flex;align-items:center;justify-content:center;overflow:hidden;';
+          mount.appendChild(stack);
+        } else if (!stack.id) {
+          stack.id = 'presentation-container';
+        }
+
+        let iframeWrap = stack.querySelector('.remoed-ppt-iframe-wrap');
+        if (!iframeWrap) {
+          iframeWrap = document.createElement('div');
+          iframeWrap.className = 'remoed-ppt-iframe-wrap';
+          iframeWrap.style.cssText = 'position:absolute;inset:0;z-index:1;';
+          stack.insertBefore(iframeWrap, stack.firstChild);
+        }
+
+        stack.querySelectorAll('iframe').forEach(function (iframe) {
+          iframe.style.display = 'none';
+          iframe.style.visibility = 'hidden';
+        });
+
+        let video = document.getElementById('student-presentation-video');
+        if (!video) {
+          video = document.createElement('video');
+          video.id = 'student-presentation-video';
+          video.setAttribute('autoplay', '');
+          video.setAttribute('playsinline', '');
+          video.muted = true;
+          video.playsInline = true;
+          video.autoplay = true;
+          video.style.cssText =
+            'position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000;display:block;border:none;z-index:1;';
+          iframeWrap.appendChild(video);
+        } else {
+          video.style.objectFit = 'contain';
+          video.style.width = '100%';
+          video.style.height = '100%';
+        }
+
+        const presentStream = new MediaStream(videoTracks);
+        video.srcObject = presentStream;
+        video.style.display = 'block';
+        video.play().catch(function () {});
+
+        // Keep annotation canvas above the live tab feed (PPT overlay or create one)
+        let canvas = stack.querySelector('.remoed-ppt-annotation-canvas') || stack.querySelector('#annotationCanvas') || stack.querySelector('canvas');
+        if (!canvas && window.currentPptOverlay && window.currentPptOverlay.materialId) {
+          canvas = document.getElementById('ppt-annotation-canvas-' + window.currentPptOverlay.materialId);
+        }
+        if (!canvas) {
+          canvas = document.createElement('canvas');
+          canvas.className = 'remoed-ppt-annotation-canvas';
+          canvas.id = 'annotationCanvas';
+          canvas.style.cssText =
+            'position:absolute;inset:0;z-index:2;width:100%;height:100%;touch-action:none;pointer-events:none;';
+          stack.appendChild(canvas);
+        } else {
+          if (!canvas.id) canvas.id = 'annotationCanvas';
+          canvas.classList.add('remoed-ppt-annotation-canvas');
+        }
+
+        syncStudentPresentationCanvas(video, canvas, stack);
+
+        videoTracks.forEach(function (track) {
+          track.onended = function () {
+            detachStudentPresentationShare();
+          };
+        });
+        console.log('📺 Student presentation feed attached from teacher tab share');
+      }
+
+      function publishQaScreenShare(displayStream) {
+        if (userType !== 'teacher' || !peerConnection || !displayStream) {
+          return Promise.resolve(false);
+        }
+        ensurePeerConnection();
+        addLocalTracksToPeerConnection();
+
+        // Remove prior QA share senders without touching webcam senders
+        qaScreenShareSenders.slice().forEach(function (sender) {
+          try {
+            peerConnection.removeTrack(sender);
+          } catch (_e) {}
+        });
+        qaScreenShareSenders = [];
+
+        qaScreenShareStreamId = displayStream.id;
+        const tracks = displayStream.getTracks().filter(function (t) {
+          return t && t.readyState !== 'ended';
+        });
+        // Notify student before renegotiation so ontrack can match stream id
+        socket.emit('qa-tab-share', {
+          room: room,
+          action: 'start',
+          streamId: qaScreenShareStreamId
+        });
+        tracks.forEach(function (track) {
+          try {
+            if (track.kind === 'video') {
+              track.contentHint = 'detail';
+            }
+          } catch (_c) {}
+          try {
+            const sender = peerConnection.addTrack(track, displayStream);
+            qaScreenShareSenders.push(sender);
+            console.log('➕ QA tab-share track added:', track.kind, track.id);
+          } catch (err) {
+            console.warn('Failed to add QA tab-share track:', err);
+          }
+        });
+
+        return renegotiatePeerConnection('qa-tab-share-start').then(function () {
+          return true;
+        });
+      }
+
+      function unpublishQaScreenShare() {
+        if (!peerConnection) {
+          qaScreenShareSenders = [];
+          qaScreenShareStreamId = null;
+          return Promise.resolve();
+        }
+        qaScreenShareSenders.slice().forEach(function (sender) {
+          try {
+            peerConnection.removeTrack(sender);
+          } catch (_e) {}
+        });
+        qaScreenShareSenders = [];
+        const hadShare = !!qaScreenShareStreamId;
+        qaScreenShareStreamId = null;
+        if (hadShare) {
+          socket.emit('qa-tab-share', { room: room, action: 'stop' });
+          return renegotiatePeerConnection('qa-tab-share-stop');
+        }
+        return Promise.resolve();
+      }
+
+      window.RemoedLiveClassroomWebrtc = {
+        publishScreenShare: publishQaScreenShare,
+        unpublishScreenShare: unpublishQaScreenShare,
+        getPeerConnection: function () {
+          return peerConnection;
+        },
+        getLocalStream: function () {
+          return localStream;
+        }
+      };
+
+      socket.on('qa-tab-share', function (data) {
+        if (userType !== 'student' || !data) return;
+        if (data.action === 'start') {
+          expectedQaScreenStreamId = data.streamId || null;
+          console.log('📺 Expecting teacher tab-share stream:', expectedQaScreenStreamId);
+        } else if (data.action === 'stop') {
+          expectedQaScreenStreamId = null;
+          detachStudentPresentationShare();
+        }
+      });
+
       function ensurePeerConnection() {
         if (!rtcConfigReady) {
           rtcConfigPromise.then(() => ensurePeerConnection());
@@ -988,6 +1394,7 @@
             isCreatingOffer = false;
             isSettingRemoteDescription = false;
             iceCandidatesQueue.length = 0;
+            studentWebcamStreamId = null;
           } else {
             // Connection exists and is valid, just ensure tracks are added
             addLocalTracksToPeerConnection();
@@ -1041,8 +1448,15 @@
                   'Use a TURN that supports turns:443?transport=tcp (TLS over 443) or a different provider/VPS coturn.'
               );
               try {
-                const status = document.getElementById('connection-status');
-                if (status) status.textContent = 'TURN unreachable (firewall). Use turns:443.';
+                if (typeof window.setConnectionStatusUi === 'function') {
+                  window.setConnectionStatusUi('poor');
+                } else {
+                  const status = document.getElementById('connection-status');
+                  if (status) {
+                    status.className = 'conn-poor';
+                    status.innerHTML = '<span class="conn-dot" aria-hidden="true"></span><span>Poor Connection</span>';
+                  }
+                }
               } catch (_) {}
             }
 
@@ -1105,94 +1519,123 @@
         peerConnection.ontrack = (event) => {
           console.log('📹 ontrack event received, userType:', userType);
           console.log('📹 Event streams:', event.streams.length);
-          console.log('📹 Event track:', event.track ? { kind: event.track.kind, enabled: event.track.enabled, readyState: event.track.readyState } : 'null');
-          
-          // Handle both event.streams and event.track
+          console.log('📹 Event track:', event.track ? { kind: event.track.kind, enabled: event.track.enabled, readyState: event.track.readyState, label: event.track.label, id: event.track.id, contentHint: event.track.contentHint } : 'null');
+
+          const track = event.track;
+          if (!track) return;
+
           let streamToUse = null;
           if (event.streams && event.streams.length > 0) {
             streamToUse = event.streams[0];
-          } else if (event.track) {
-            // Create a new stream from the track if no stream provided
-            streamToUse = new MediaStream([event.track]);
+          } else {
+            streamToUse = new MediaStream([track]);
             console.log('📹 Created stream from track');
           }
-          
-          if (remoteVideo && streamToUse) {
-            remoteStream = streamToUse;
-            console.log('📹 Remote stream tracks:', remoteStream.getTracks().map(t => ({ 
-              kind: t.kind, 
-              enabled: t.enabled, 
-              readyState: t.readyState,
-              id: t.id 
-            })));
-            
-            // Attach remote stream with retry (max 3 attempts, 5s each)
-            attachStreamWithRetry(remoteVideo, remoteStream, { muted: false, label: 'remote-video' }).catch(() => {});
-            console.log('✅ Remote stream received, tracks:', remoteStream.getTracks().length);
-            
-            // Ensure video element is visible and properly configured
-            remoteVideo.muted = false; // Allow audio from remote
-            remoteVideo.autoplay = true;
-            remoteVideo.playsInline = true;
-            remoteVideo.style.display = 'block';
-            remoteVideo.style.visibility = 'visible';
-            
-            // Log video element state
-            console.log('📹 Remote video element state:', {
-              hasSrcObject: !!remoteVideo.srcObject,
-              muted: remoteVideo.muted,
-              autoplay: remoteVideo.autoplay,
-              paused: remoteVideo.paused,
-              readyState: remoteVideo.readyState,
-              videoWidth: remoteVideo.videoWidth,
-              videoHeight: remoteVideo.videoHeight
-            });
-            
-            // Make sure video plays - prevent multiple simultaneous play() calls
-            if (remoteVideo.paused) {
-              const playPromise = remoteVideo.play();
-              if (playPromise !== undefined) {
-                playPromise
-                  .then(() => {
-                    console.log('✅ Remote video playing successfully');
-                  })
-                  .catch(err => {
-                    // Silently ignore AbortError and other expected errors
-                    if (err.name !== 'AbortError' && err.name !== 'NotAllowedError') {
-                      // Only log unexpected errors in debug mode
-                      if (window.DEBUG_MODE) {
-                        console.debug('Remote video play:', err.name);
-                      }
-                      // Retry once after a delay (silently)
-                      setTimeout(() => {
-                        if (remoteVideo.paused && remoteVideo.srcObject) {
-                          remoteVideo.play().catch(() => {
-                            // Silently ignore retry errors
-                          });
-                        }
-                      }, 300);
-                    }
-                  });
+
+          const remoteVideoEl = document.getElementById('remote-video');
+
+          // —— Student: never put screen-share into #remote-video (teacher webcam tile) ——
+          if (userType === 'student') {
+            if (track.kind === 'video') {
+              if (shouldRouteVideoToPresentation(track, streamToUse)) {
+                console.log('📺 Routing teacher tab-share track to #student-presentation-video', {
+                  streamId: streamToUse.id,
+                  expected: expectedQaScreenStreamId,
+                  label: track.label
+                });
+                attachStudentPresentationShare(streamToUse);
+                track.onended = function () {
+                  detachStudentPresentationShare();
+                };
+                return;
               }
-            } else {
-              console.log('✅ Remote video already playing');
+
+              // Incoming camera while tile still shows a misrouted screen share
+              if (
+                remoteVideoEl &&
+                remoteVideoEl.srcObject &&
+                streamToUse.id !== remoteVideoEl.srcObject.id &&
+                streamLooksLikePresentation(remoteVideoEl.srcObject)
+              ) {
+                console.warn('📺 Moving misrouted screen-share off #remote-video before attaching webcam');
+                attachStudentPresentationShare(remoteVideoEl.srcObject);
+              }
+
+              console.log('📹 Routing teacher webcam track to #remote-video');
+              attachTeacherWebcamStream(streamToUse, track);
+              track.onended = function () {
+                console.log('⚠️ Remote webcam track ended');
+              };
+              return;
             }
-            
-            // Listen for track ended events
+
+            if (track.kind === 'audio') {
+              // Screen-share tab audio: mix into webcam element without replacing its video
+              if (streamLooksLikePresentation(streamToUse)) {
+                console.log('🔊 Mixing tab-share audio into #remote-video (video tile unchanged)');
+                attachTeacherAudioTrack(track);
+                return;
+              }
+              attachTeacherWebcamStream(streamToUse, track);
+              return;
+            }
+          }
+
+          // —— Teacher / default: attach peer stream to #remote-video ——
+          if (remoteVideoEl && streamToUse) {
+            if (
+              userType === 'student' &&
+              remotePresentationStream &&
+              streamToUse.id === remotePresentationStream.id
+            ) {
+              attachStudentPresentationShare(streamToUse);
+              return;
+            }
+
+            remoteStream = streamToUse;
+            console.log('📹 Remote stream tracks:', remoteStream.getTracks().map(t => ({
+              kind: t.kind,
+              enabled: t.enabled,
+              readyState: t.readyState,
+              id: t.id
+            })));
+
+            attachStreamWithRetry(remoteVideoEl, remoteStream, { muted: false, label: 'remote-video' }).catch(() => {});
+            console.log('✅ Remote stream received, tracks:', remoteStream.getTracks().length);
+
+            remoteVideoEl.muted = false;
+            remoteVideoEl.autoplay = true;
+            remoteVideoEl.playsInline = true;
+            remoteVideoEl.style.display = 'block';
+            remoteVideoEl.style.visibility = 'visible';
+
+            if (remoteVideoEl.paused) {
+              const playPromise = remoteVideoEl.play();
+              if (playPromise !== undefined) {
+                playPromise.catch(err => {
+                  if (err.name !== 'AbortError' && err.name !== 'NotAllowedError') {
+                    setTimeout(() => {
+                      if (remoteVideoEl.paused && remoteVideoEl.srcObject) {
+                        remoteVideoEl.play().catch(() => {});
+                      }
+                    }, 300);
+                  }
+                });
+              }
+            }
+
             event.track.onended = () => {
               console.log('⚠️ Remote track ended:', event.track.kind);
             };
-            
             event.track.onmute = () => {
               console.log('⚠️ Remote track muted:', event.track.kind);
             };
-            
             event.track.onunmute = () => {
               console.log('✅ Remote track unmuted:', event.track.kind);
             };
           } else {
-            console.warn('⚠️ Cannot set remote video:', { 
-              hasRemoteVideo: !!remoteVideo, 
+            console.warn('⚠️ Cannot set remote video:', {
+              hasRemoteVideo: !!remoteVideoEl,
               hasStream: !!streamToUse,
               hasStreams: event.streams && event.streams.length > 0,
               hasTrack: !!event.track
@@ -1765,7 +2208,16 @@
       // Track currently displayed material to prevent duplicate rendering
       let currentDisplayedMaterialId = null;
       let isRenderingLesson = false;
-      
+
+      function materialHasRenderablePayload(material) {
+        if (!material) return false;
+        if (material.html5EntryUrl || material.embedUrl || material.previewUrl) return true;
+        const d = material.data;
+        if (!d) return false;
+        if (d.startsWith('/') || d.startsWith('http') || d.startsWith('data:')) return true;
+        return d.length >= 100;
+      }
+
       function showLessonFile(material) {
         if (!lessonFileViewer || !material) return;
         
@@ -1794,8 +2246,13 @@
         const isImage = fileType.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp)$/i.test(fileName);
         const isPDF = fileType.includes('pdf') || fileType.includes('application/pdf') || fileName.endsWith('.pdf');
         const isVideo = fileType.includes('video') || /\.(mp4|webm|ogg)$/i.test(fileName);
-        const isPpt = fileType.includes('ppt') || /\.(ppt|pptx)$/i.test(fileName);
-        
+        const isPpt =
+          fileType.includes('ppt') ||
+          /\.(ppt|pptx)$/i.test(fileName) ||
+          material.presentationType === 'office_embed' ||
+          material.presentationType === 'html5_zip' ||
+          (!!material.html5EntryUrl && /\.(ppt|pptx)(\?|$)/i.test(material.html5EntryUrl || ''));
+
         if (isImage) {
           console.log('🖼️ [CLIENT] Displaying as image');
           const img = document.createElement('img');
@@ -1903,22 +2360,6 @@
           starBtn.className = 'action-btn star-btn';
           starBtn.textContent = '⭐';
           starBtn.title = 'Star reward';
-          
-          const bindRewardButton = (btn, type) => {
-            btn.addEventListener('click', () => {
-              if (userType === 'teacher') {
-                playRewardChime();
-                showRewardAnimation(type);
-                if (socket && socket.connected) {
-                  socket.emit('reward-animation', { type, room });
-                }
-              }
-            });
-          };
-          
-          bindRewardButton(flagBtn, 'flag');
-          bindRewardButton(cookieBtn, 'cookie');
-          bindRewardButton(starBtn, 'star');
           
           const annotatorControls = document.createElement('div');
           annotatorControls.className = 'pdf-annotator-controls';
@@ -2111,10 +2552,11 @@
           function drawStrokeOnLayer(layerInfo, stroke) {
             if (!layerInfo || !stroke || !Array.isArray(stroke.points) || stroke.points.length < 2) return;
             const { canvas, ctx } = layerInfo;
+            const dpr = layerInfo.outputScale || 1;
             ctx.save();
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
-            ctx.lineWidth = stroke.size || 3;
+            ctx.lineWidth = (stroke.size || 3) * dpr;
             ctx.strokeStyle = stroke.color || '#ff3b30';
             ctx.globalCompositeOperation = stroke.tool === 'erase' ? 'destination-out' : 'source-over';
             ctx.beginPath();
@@ -2142,16 +2584,19 @@
           
           function registerAnnotationLayer(pageNumber, viewport, canvasDiv) {
             if (!canvasDiv || !viewport) return;
+            const outputScale = getPdfOutputScale();
+            const cssW = Math.floor(viewport.width);
+            const cssH = Math.floor(viewport.height);
             const annotationCanvas = document.createElement('canvas');
             annotationCanvas.className = 'pdf-annotation-layer';
-            annotationCanvas.width = viewport.width;
-            annotationCanvas.height = viewport.height;
-            annotationCanvas.style.width = viewport.width + 'px';
-            annotationCanvas.style.height = viewport.height + 'px';
+            annotationCanvas.width = Math.floor(cssW * outputScale);
+            annotationCanvas.height = Math.floor(cssH * outputScale);
+            annotationCanvas.style.width = cssW + 'px';
+            annotationCanvas.style.height = cssH + 'px';
             annotationCanvas.style.pointerEvents = annotationEnabled && (isTeacher || allowStudentAnnotations) ? 'auto' : 'none';
             canvasDiv.appendChild(annotationCanvas);
             const ctx = annotationCanvas.getContext('2d');
-            annotationLayers.set(pageNumber, { canvas: annotationCanvas, ctx, viewport });
+            annotationLayers.set(pageNumber, { canvas: annotationCanvas, ctx, viewport, outputScale });
             redrawAnnotations(pageNumber);
             if (isTeacher || allowStudentAnnotations) {
               attachAnnotationListeners(annotationCanvas, pageNumber);
@@ -2191,10 +2636,11 @@
               const pts = activeStroke.points;
               if (pts.length < 2) return;
               const prev = pts[pts.length - 2];
+              const dpr = layerInfo.outputScale || 1;
               ctx.save();
               ctx.lineCap = 'round';
               ctx.lineJoin = 'round';
-              ctx.lineWidth = activeStroke.size || 3;
+              ctx.lineWidth = (activeStroke.size || 3) * dpr;
               ctx.strokeStyle = activeStroke.color || '#ff3b30';
               ctx.globalCompositeOperation = activeStroke.tool === 'erase' ? 'destination-out' : 'source-over';
               ctx.beginPath();
@@ -2301,7 +2747,22 @@
             });
           }
 
-          // Calculate scale to fit viewer size
+          // Calculate scale to fit viewer size (CSS pixels — do not bake in devicePixelRatio)
+          function getPdfOutputScale() {
+            return Math.min(window.devicePixelRatio || 1, 2);
+          }
+
+          function applyPdfCanvasHiDpi(canvas, viewport) {
+            const outputScale = getPdfOutputScale();
+            const cssW = Math.floor(viewport.width);
+            const cssH = Math.floor(viewport.height);
+            canvas.width = Math.floor(cssW * outputScale);
+            canvas.height = Math.floor(cssH * outputScale);
+            canvas.style.width = cssW + 'px';
+            canvas.style.height = cssH + 'px';
+            return outputScale;
+          }
+
           function calculateFitToViewerScale(page) {
             const pad = getCanvasContainerPadding();
             const containerWidth = Math.max(1, canvasContainer.clientWidth - pad.left - pad.right);
@@ -2347,16 +2808,16 @@
               
               const canvas = document.createElement('canvas');
               const ctx = canvas.getContext('2d');
-              canvas.height = viewport.height;
-              canvas.width = viewport.width;
+              const outputScale = applyPdfCanvasHiDpi(canvas, viewport);
               
               canvasDiv.appendChild(canvas);
-              pageCanvases[safeNum] = { canvas, canvasDiv, scale: renderScale };
+              pageCanvases[safeNum] = { canvas, canvasDiv, scale: renderScale, outputScale };
               registerAnnotationLayer(safeNum, viewport, canvasDiv);
               
               const renderContext = {
                 canvasContext: ctx,
-                viewport: viewport
+                viewport: viewport,
+                transform: outputScale !== 1 ? [outputScale, 0, 0, outputScale, 0, 0] : undefined
               };
               
               page.render(renderContext).promise.then(function() {
@@ -2398,17 +2859,17 @@
                 
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
-                canvas.height = viewport.height;
-                canvas.width = viewport.width;
+                const outputScale = applyPdfCanvasHiDpi(canvas, viewport);
                 
                 canvasDiv.appendChild(canvas);
                 canvasContainer.appendChild(canvasDiv);
-                pageCanvases[i] = { canvas, canvasDiv, scale: renderScale };
+                pageCanvases[i] = { canvas, canvasDiv, scale: renderScale, outputScale };
                 registerAnnotationLayer(i, viewport, canvasDiv);
                 
                 const renderContext = {
                   canvasContext: ctx,
-                  viewport: viewport
+                  viewport: viewport,
+                  transform: outputScale !== 1 ? [outputScale, 0, 0, outputScale, 0, 0] : undefined
                 };
                 
                 page.render(renderContext).promise.then(function() {
@@ -2657,21 +3118,37 @@
             });
           }
           
-          // Load PDF document
+          // Load PDF document (base64 data URL, raw base64, or same-origin /http URL)
           let pdfData = material.data;
-          
-          // Convert data URL to Uint8Array for PDF.js
-          if (pdfData.startsWith('data:')) {
+          let pdfLoadOpts = null;
+
+          if (typeof pdfData === 'string' && (pdfData.startsWith('/') || /^https?:\/\//i.test(pdfData))) {
+            const url = pdfData.startsWith('/') ? window.location.origin + pdfData : pdfData;
+            pdfLoadOpts = { url: url, withCredentials: true };
+          } else if (typeof pdfData === 'string' && pdfData.startsWith('data:')) {
             const base64Data = pdfData.split(',')[1];
             const binaryString = atob(base64Data);
             const bytes = new Uint8Array(binaryString.length);
             for (let i = 0; i < binaryString.length; i++) {
               bytes[i] = binaryString.charCodeAt(i);
             }
-            pdfData = bytes.buffer;
+            pdfLoadOpts = { data: bytes.buffer };
+          } else if (typeof pdfData === 'string' && pdfData.length > 32) {
+            try {
+              const binaryString = atob(pdfData);
+              const bytes = new Uint8Array(binaryString.length);
+              for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+              }
+              pdfLoadOpts = { data: bytes.buffer };
+            } catch (_e) {
+              pdfLoadOpts = { data: pdfData };
+            }
+          } else {
+            pdfLoadOpts = { data: pdfData };
           }
           
-          pdfjsLib.getDocument({ data: pdfData }).promise.then(function(pdf) {
+          pdfjsLib.getDocument(pdfLoadOpts).promise.then(function(pdf) {
             console.log('✅ PDF loaded successfully:', pdf.numPages, 'pages');
             pdfDoc = pdf;
             pageNum = 1;
@@ -2715,13 +3192,13 @@
           // Broadcast to students if teacher
           if (socket && socket.connected && userType === 'teacher') {
             setTimeout(() => {
-              if (material.data && material.data.length > 100) {
+              if (materialHasRenderablePayload(material)) {
                 const materialToBroadcast = {
                   id: material.id,
                   materialId: material.id,
                   name: material.name,
                   type: material.type,
-                  size: material.size || material.data.length,
+                  size: material.size || (material.data && material.data.length) || 0,
                   data: material.data,
                   uploader: material.uploader || 'Teacher'
                 };
@@ -2735,149 +3212,65 @@
             }, 500);
           }
         } else if (isPpt) {
-          console.log('📽️ [CLIENT] PPTX detected - loading directly');
-          
-          // Load PPTX file using iframe with proper viewer (prevents downloads)
+          console.log('📽️ [CLIENT] Presentation detected - stacked iframe + annotation overlay');
           const pptContainer = document.createElement('div');
-          pptContainer.style.cssText = 'width:100%;height:calc(100vh - 200px);min-height:600px;position:relative;border-radius:8px;overflow:hidden;background:#f5f5f5;display:flex;flex-direction:column;';
-          pptContainer.id = 'ppt-container-' + material.id;
-
-          let pptUrl = material.data;
-          let blobUrl = null;
-          
-          // Show loading message
-          pptContainer.innerHTML = `
-            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:40px;text-align:center;">
-              <p style="font-size:1.2rem;margin-bottom:16px;color:#333;">📊 Loading Presentation...</p>
-              <p style="color:#666;margin-bottom:24px;">${escapeHtml(material.name || 'presentation.pptx')}</p>
-              <p style="color:#999;font-size:0.9rem;">Please wait while the presentation loads...</p>
-            </div>
-          `;
-          
-          // Convert to publicly accessible URL if needed and load in iframe
-          (async () => {
-            try {
-              let finalUrl = pptUrl;
-              
-              // If it's a data URL or relative URL, we need to make it publicly accessible
-              // For now, use Google Docs Viewer which accepts publicly accessible URLs
-              // Note: For local development, we'll need to serve files through the server
-              
-              if (pptUrl.startsWith('data:')) {
-                // For data URLs, browsers cannot preview PPTX natively
-                // Base64 data URLs need to be converted to actual file size for checking
-                // Show informative placeholder confirming file is loaded and synced
-                console.log('✅ PPTX file loaded (data URL - browsers cannot preview PPTX natively)');
-                
-                // Calculate actual file size from base64 data URL
-                const base64Data = pptUrl.split(',')[1] || '';
-                const actualSize = (base64Data.length * 3) / 4; // Base64 is ~33% larger
-                const sizeMB = (actualSize / 1024 / 1024).toFixed(2);
-                
-                pptContainer.innerHTML = `
-                  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:40px;text-align:center;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);color:#fff;border-radius:8px;">
-                    <div style="font-size:4rem;margin-bottom:20px;">📊</div>
-                    <p style="font-size:1.5rem;margin-bottom:12px;font-weight:600;">PowerPoint Presentation Loaded</p>
-                    <p style="font-size:1.1rem;margin-bottom:8px;opacity:0.9;">${escapeHtml(material.name || 'presentation.pptx')}</p>
-                    <p style="font-size:0.9rem;margin-bottom:24px;opacity:0.7;">Size: ${sizeMB} MB</p>
-                    <div style="background:rgba(255,255,255,0.2);padding:16px 24px;border-radius:8px;margin-top:16px;">
-                      <p style="margin:0;font-size:0.95rem;font-weight:600;">✅ File is synced with students</p>
-                      <p style="margin:8px 0 0 0;font-size:0.85rem;opacity:0.8;">Students will receive this presentation automatically in their classroom.</p>
-                      <p style="margin:8px 0 0 0;font-size:0.8rem;opacity:0.7;font-style:italic;">Note: PPTX files are displayed directly in the browser.</p>
-                    </div>
-                  </div>
-                `;
-                
-              } else if (pptUrl.startsWith('http')) {
-                // Public URL - use Google Docs Viewer
-                const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(pptUrl)}&embedded=true`;
-                const iframe = document.createElement('iframe');
-                iframe.src = viewerUrl;
-                iframe.style.cssText = 'width:100%;height:100%;border:none;flex:1;';
-                iframe.id = 'ppt-iframe-' + material.id;
-                
-                iframe.onload = () => {
-                  console.log('✅ PPTX loaded via Google Docs Viewer');
-                };
-                
-                iframe.onerror = () => {
-                  console.warn('⚠️ Google Docs Viewer failed, trying direct URL');
-                  // Fallback to direct URL
-                  iframe.src = pptUrl;
-                };
-                
-                pptContainer.innerHTML = '';
-                pptContainer.appendChild(iframe);
-                
-              } else {
-                // Relative URL - convert to absolute
-                const baseUrl = window.location.origin;
-                finalUrl = pptUrl.startsWith('/') ? baseUrl + pptUrl : baseUrl + '/' + pptUrl;
-                
-                // Use Google Docs Viewer for absolute URLs
-                const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(finalUrl)}&embedded=true`;
-                const iframe = document.createElement('iframe');
-                iframe.src = viewerUrl;
-                iframe.style.cssText = 'width:100%;height:100%;border:none;flex:1;';
-                iframe.id = 'ppt-iframe-' + material.id;
-                
-                iframe.onload = () => {
-                  console.log('✅ PPTX loaded via Google Docs Viewer');
-                };
-                
-                iframe.onerror = () => {
-                  console.warn('⚠️ Google Docs Viewer failed, trying direct URL');
-                  iframe.src = finalUrl;
-                };
-                
-                pptContainer.innerHTML = '';
-                pptContainer.appendChild(iframe);
-              }
-              
-            } catch (e) {
-              console.error('❌ Error loading PPTX:', e);
-              pptContainer.innerHTML = `
-                <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:40px;text-align:center;">
-                  <p style="font-size:1.2rem;margin-bottom:16px;color:#333;">📊 PowerPoint Presentation</p>
-                  <p style="color:#666;margin-bottom:24px;">${escapeHtml(material.name || 'presentation.pptx')}</p>
-                  <p style="color:#999;font-size:0.9rem;">The presentation is available. Students will see it automatically.</p>
-                  <p style="color:#666;font-size:0.85rem;margin-top:12px;">Note: PPTX preview may not work in all browsers. Students will receive the file through the classroom sync.</p>
-                </div>
-              `;
-              }
-            })();
-          
-          lessonFileViewer.innerHTML = '';
           lessonFileViewer.appendChild(pptContainer);
-
-              // Store material ID for sync
-              window.currentMaterialId = material.id;
-              window.currentPdfMaterialId = material.id; // Reuse for compatibility
-
-          // Automatically start presenter sync for teachers when lesson loads
+          window.currentMaterialId = material.id;
+          window.currentPdfMaterialId = material.id;
+          if (window.currentPptOverlay && window.currentPptOverlay.destroy) {
+            window.currentPptOverlay.destroy();
+          }
+          const materialsList = Array.from(lessonState.values());
+          const materialIndex = Math.max(0, materialsList.findIndex((m) => String(m.id) === String(material.id)));
+          if (typeof RemoedPresentationOverlay !== 'undefined') {
+            window.currentPptOverlay = RemoedPresentationOverlay.mountStackedPresentation(pptContainer, {
+              material: material,
+              socket: socket,
+              room: room,
+              isTeacher: userType === 'teacher',
+              materialIndex: materialIndex >= 0 ? materialIndex : 0,
+              materialCount: Math.max(1, materialsList.length),
+              onNavigateMaterial: (delta) => {
+                if (!materialsList.length) return;
+                const cur = Math.max(0, materialsList.findIndex((m) => String(m.id) === String(material.id)));
+                const nextIdx = cur + delta;
+                if (nextIdx < 0 || nextIdx >= materialsList.length) return;
+                const nextMat = materialsList[nextIdx];
+                if (nextMat) showLessonFile(nextMat);
+              }
+            });
+          }
           if (userType === 'teacher') {
-            // Auto-start presenter mode if not already active
             if (!presenterModeActive) {
               presenterModeActive = true;
               if (presenterModeControls) presenterModeControls.style.display = 'flex';
               if (presenterStatusIndicator) presenterStatusIndicator.style.display = 'inline-block';
-              
-              // Notify server to start presenter mode
               if (socket && socket.connected) {
                 socket.emit('presenter-mode-start', { room });
-                console.log('📺 [TEACHER] Presenter mode started automatically');
               }
             }
-            
-            // Store PPTX iframe reference for potential future sync improvements
-            const pptIframe = document.getElementById('ppt-iframe-' + material.id);
-            if (pptIframe) {
-              window.currentPptIframe = pptIframe;
-              console.log('✅ PPTX iframe stored for sync:', material.name);
+            // Broadcast presentation (URL-based, not base64) to students
+            if (socket && socket.connected) {
+              setTimeout(() => {
+                const payload = {
+                  id: material.id,
+                  materialId: material.id,
+                  name: material.name,
+                  type: material.type,
+                  size: material.size || 0,
+                  data: material.data || material.html5EntryUrl || '',
+                  html5EntryUrl: material.html5EntryUrl || '',
+                  embedUrl: material.embedUrl || '',
+                  presentationType: material.presentationType || 'file',
+                  uploader: material.uploader || 'Teacher'
+                };
+                if (payload.html5EntryUrl || payload.embedUrl || (payload.data && payload.data.length > 8)) {
+                  socket.emit('lesson-file-select', { room, materialId: material.id, material: payload });
+                }
+              }, 400);
             }
           }
-          
-          console.log('✅ PPTX file loaded directly:', material.name);
+          console.log('✅ Presentation overlay mounted:', material.name);
         } else if (isVideo) {
           const video = document.createElement('video');
           video.src = material.data;
@@ -3188,11 +3581,11 @@
         }
         
         // Validate material has required fields
-        if (!material.id || !material.data) {
+        if (!material.id || (!material.data && !material.html5EntryUrl && !material.embedUrl && !material.previewUrl)) {
           console.error('⚠️ Invalid material received - missing id or data:', { hasId: !!material.id, hasData: !!material.data, material });
           // Try to get from lessonState if available
           const existingMaterial = lessonState.get(materialId);
-          if (existingMaterial && existingMaterial.data) {
+          if (existingMaterial && materialHasRenderablePayload(existingMaterial)) {
             console.log('📚 Using existing material from lessonState');
             material = existingMaterial;
           } else {
@@ -3212,7 +3605,7 @@
             isBase64: material.data?.startsWith('data:') || material.data?.startsWith('JVBERi')
           });
           
-          if (!material.data || material.data.length < 100) {
+          if (!materialHasRenderablePayload(material)) {
             console.error('❌ [STUDENT] PDF data is missing or too short!');
           }
         }
@@ -3243,8 +3636,8 @@
           return;
         }
         
-        // Verify data one more time before displaying
-        if (!material.data || material.data.length < 100) {
+        // Verify data one more time before displaying (URLs / presentation paths are valid even if short)
+        if (!materialHasRenderablePayload(material)) {
           console.error('❌ [STUDENT] Material data is invalid or too short. Length:', material.data?.length || 0);
           alert('Failed to receive lesson material. Please ask the teacher to reload the file.');
           return;
@@ -4117,9 +4510,7 @@
                location.protocol === 'https:' || 
                location.hostname === 'localhost' || 
                location.hostname === '127.0.0.1' ||
-               location.hostname.endsWith('.devtunnels.ms') ||
-               location.hostname.endsWith('.ngrok.io') ||
-               location.hostname.endsWith('.ngrok-free.dev');
+               location.hostname.endsWith('.devtunnels.ms');
       }
 
       // Check permissions before requesting
@@ -4458,9 +4849,52 @@
         });
       }
 
-      // Background blur disabled (stability preference)
+      // Virtual background (blur + image presets)
+      let vbController = null;
+      let vbgPresetIndex = -1;
+      const toggleVbgImageBtn = document.getElementById('toggle-vbg-image');
+      function ensureVbController() {
+        if (vbController || typeof RemoedVirtualBackground === 'undefined') return vbController;
+        vbController = RemoedVirtualBackground.create({
+          getLocalStream: function () { return localStream; },
+          getPeerConnection: function () { return peerConnection; },
+          localVideoEl: localVideo
+        });
+        return vbController;
+      }
       if (toggleBgBlurBtn) {
-        toggleBgBlurBtn.style.display = 'none';
+        toggleBgBlurBtn.style.display = userType === 'teacher' ? '' : 'none';
+        toggleBgBlurBtn.addEventListener('click', async function () {
+          const vb = ensureVbController();
+          if (!vb) return;
+          isBgBlurOn = !isBgBlurOn;
+          if (isBgBlurOn) {
+            vbgPresetIndex = -1;
+            await vb.applyMode('blur');
+          } else {
+            await vb.applyMode('off');
+          }
+          syncBgBlurButton(false);
+        });
+      }
+      if (toggleVbgImageBtn) {
+        toggleVbgImageBtn.style.display = userType === 'teacher' ? '' : 'none';
+        toggleVbgImageBtn.addEventListener('click', async function () {
+          const vb = ensureVbController();
+          if (!vb || !RemoedVirtualBackground.PRESET_BACKGROUNDS.length) return;
+          isBgBlurOn = false;
+          vbgPresetIndex = (vbgPresetIndex + 1) % (RemoedVirtualBackground.PRESET_BACKGROUNDS.length + 1);
+          if (vbgPresetIndex >= RemoedVirtualBackground.PRESET_BACKGROUNDS.length) {
+            await vb.applyMode('off');
+            toggleVbgImageBtn.style.opacity = '0.7';
+          } else {
+            const preset = RemoedVirtualBackground.PRESET_BACKGROUNDS[vbgPresetIndex];
+            await vb.applyMode('image', preset.url);
+            toggleVbgImageBtn.style.opacity = '1';
+            toggleVbgImageBtn.title = 'Virtual Background: ' + preset.label;
+          }
+          syncBgBlurButton(false);
+        });
       }
 
       // Reconnection logic
@@ -4696,18 +5130,33 @@
         }, 10000); // Check every 10 seconds
       }
 
-      // Connection status indicator
+      // Connection status indicator (generic labels only — never expose TURN/ICE details in UI)
       const connectionStatusEl = document.getElementById('connection-status');
+      function setConnectionStatusUi(kind) {
+        if (!connectionStatusEl) return;
+        const map = {
+          good: { cls: 'conn-good', label: 'Connected' },
+          poor: { cls: 'conn-poor', label: 'Poor Connection' },
+          offline: { cls: 'conn-offline', label: 'Disconnected' }
+        };
+        const meta = map[kind] || map.offline;
+        connectionStatusEl.classList.remove('conn-good', 'conn-poor', 'conn-offline');
+        connectionStatusEl.classList.add(meta.cls);
+        connectionStatusEl.style.background = '';
+        connectionStatusEl.style.color = '';
+        connectionStatusEl.innerHTML =
+          '<span class="conn-dot" aria-hidden="true"></span><span>' + meta.label + '</span>';
+        connectionStatusEl.setAttribute('title', meta.label);
+        connectionStatusEl.setAttribute('aria-label', meta.label);
+      }
+      window.setConnectionStatusUi = setConnectionStatusUi;
+
       function updateConnectionStatus() {
         if (!connectionStatusEl) return;
         if (socket && socket.connected) {
-          connectionStatusEl.textContent = '🟢 Connected';
-          connectionStatusEl.style.background = '#d4edda';
-          connectionStatusEl.style.color = '#155724';
+          setConnectionStatusUi('good');
         } else {
-          connectionStatusEl.textContent = '🔴 Disconnected';
-          connectionStatusEl.style.background = '#f8d7da';
-          connectionStatusEl.style.color = '#721c24';
+          setConnectionStatusUi('offline');
         }
       }
       
@@ -5335,9 +5784,12 @@
               name: file.name || file.fileName,
               type: file.type || file.fileType,
               size: file.size || file.fileSize,
-              data: file.data || file.fileData,
+              data: file.data || file.fileData || file.fileUrl || file.html5EntryUrl || '',
               uploader: file.uploadedBy || 'System',
-              uploadedAt: file.uploadedAt ? new Date(file.uploadedAt).getTime() : Date.now()
+              uploadedAt: file.uploadedAt ? new Date(file.uploadedAt).getTime() : Date.now(),
+              presentationType: file.presentationType || 'file',
+              embedUrl: file.embedUrl || '',
+              html5EntryUrl: file.html5EntryUrl || file.fileUrl || ''
             };
             
             // Only log first file details, summarize others
@@ -5345,8 +5797,11 @@
               console.log(`📚 [AUTO-LOAD] Processing: ${material.name} (${files.length} file${files.length > 1 ? 's' : ''})`);
             }
             
-            // Add to lessonState
-            if (material.id && material.data && material.data.length > 100) {
+            // Add to lessonState (base64 OR disk/embed presentation URL)
+            const hasInlineData = !!(material.data && material.data.length > 100);
+            const hasPresentationUrl = !!(material.html5EntryUrl || material.embedUrl ||
+              (material.data && (material.data.startsWith('/') || material.data.startsWith('http'))));
+            if (material.id && (hasInlineData || hasPresentationUrl)) {
               renderLessonMaterial(material);
               
               // If this is the first file, display it immediately (no delay)
@@ -5464,10 +5919,11 @@
           let studentLevel = '-';
           if (booking && booking.studentLevel) {
             const level = booking.studentLevel.toLowerCase();
-            if (level === 'nursery') studentLevel = 'Nursery';
-            else if (level === 'kinder' || level === 'kindergarten') studentLevel = 'Kinder';
-            else if (level === 'preparatory' || level === 'primary') studentLevel = 'Preparatory';
-            else studentLevel = booking.studentLevel.charAt(0).toUpperCase() + booking.studentLevel.slice(1);
+            if (level.includes('little seeds') || level === 'nursery') studentLevel = 'Little Seeds (Age 3)';
+            else if (level.includes('sprouts') || level === 'kinder' || level === 'kindergarten') studentLevel = 'Sprouts (Age 4)';
+            else if (level.includes('saplings') || level === 'preparatory' || level === 'prep' || level === 'primary') studentLevel = 'Saplings (Age 5)';
+            else if (level.includes('young stewards') || level.includes('steward')) studentLevel = 'Young Stewards (Age 6)';
+            else studentLevel = booking.studentLevel;
           }
           setText('ci-student-level', studentLevel);
         } catch (error) {
@@ -5506,9 +5962,6 @@
       const finishBtn = document.getElementById('finish-btn');
       const absentBtn = document.getElementById('absent-btn');
       const leaveBtn = document.getElementById('leave-btn');
-      const flagBtn = document.querySelector('.flag-btn');
-      const cookieBtn = document.querySelector('.cookie-btn');
-      const starBtnGlobal = document.querySelector('.star-btn');
       const navIconBtns = document.querySelectorAll('.nav-icon-btn');
 
       // Show/hide buttons based on user type
@@ -5953,53 +6406,25 @@
         }
       });
 
-      if (flagBtn) {
-        flagBtn.addEventListener('click', () => {
-          if (userType === 'teacher') {
-            console.log('🚩 [TEACHER] Flag button clicked, emitting reward animation');
-            playRewardChime();
-            // Show animation locally
-            showRewardAnimation('flag');
-            // Emit to students - ensure socket is connected
-            if (socket && socket.connected) {
-              socket.emit('reward-animation', { type: 'flag', room });
-              console.log('🚩 [TEACHER] Reward animation emitted to room:', room);
-            } else {
-              console.error('❌ [TEACHER] Socket not connected, cannot send reward animation');
-            }
-          }
-        });
+      function emitTeacherReward(type) {
+        if (userType !== 'teacher') return;
+        playRewardChime();
+        showRewardAnimation(type);
+        if (socket && socket.connected) {
+          socket.emit('reward-animation', { type, room });
+        } else {
+          console.error('❌ [TEACHER] Socket not connected, cannot send reward animation');
+        }
       }
 
-      if (cookieBtn) {
-        cookieBtn.addEventListener('click', () => {
-          if (userType === 'teacher') {
-            console.log('🍪 [TEACHER] Cookie button clicked, emitting reward animation');
-            playRewardChime();
-            // Show animation locally
-            showRewardAnimation('cookie');
-            // Emit to students - ensure socket is connected
-            if (socket && socket.connected) {
-              socket.emit('reward-animation', { type: 'cookie', room });
-              console.log('🍪 [TEACHER] Reward animation emitted to room:', room);
-            } else {
-              console.error('❌ [TEACHER] Socket not connected, cannot send reward animation');
-            }
-          }
-        });
-      }
-
-      if (starBtnGlobal) {
-        starBtnGlobal.addEventListener('click', () => {
-          if (userType === 'teacher') {
-            playRewardChime();
-            showRewardAnimation('star');
-            if (socket && socket.connected) {
-              socket.emit('reward-animation', { type: 'star', room });
-            }
-          }
-        });
-      }
+      // Delegate so rewards work from PDF toolbar, PPT toolbar, and left rail
+      document.addEventListener('click', (e) => {
+        const btn = e.target && e.target.closest ? e.target.closest('.flag-btn, .cookie-btn, .star-btn') : null;
+        if (!btn || userType !== 'teacher') return;
+        if (btn.classList.contains('flag-btn')) emitTeacherReward('flag');
+        else if (btn.classList.contains('cookie-btn')) emitTeacherReward('cookie');
+        else if (btn.classList.contains('star-btn')) emitTeacherReward('star');
+      });
 
       // Direct handler for lessons button
       // Lessons tab removed - moved to admin side

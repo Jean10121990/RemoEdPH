@@ -3,39 +3,16 @@ const crypto = require('crypto');
 const Student = require('./models/Student');
 const PendingRegistration = require('./models/PendingRegistration');
 const PaymongoWebhookEvent = require('./models/PaymongoWebhookEvent');
+const {
+  paymongoNotYetProcessedFilter,
+  computeSubscriptionDates,
+  applyExistingStudentPurchase,
+  normalizePlanId,
+  PLAN_CREDITS,
+} = require('./services/paymongoCreditApply');
 
 const router = express.Router();
-const {
-  PLAN_CREDITS,
-  normalizePlanId,
-  getPlanDurationMonths,
-} = require('./config/planCredits');
 
-/** True if any idempotency key is already stored on the student (PayMongo retries / alternate ids). */
-function paymongoKeysOverlap(processedIds, keys) {
-  const arr = Array.isArray(processedIds) ? processedIds : [];
-  const ks = [...new Set(keys.filter(Boolean))];
-  return ks.some((k) => arr.includes(k));
-}
-
-/**
- * Atomic filter: processedPaymentIds must not intersect guard keys (prevents double-credit).
- * @param {string[]} guardKeys
- */
-function paymongoNotYetProcessedFilter(guardKeys) {
-  const keys = [...new Set(guardKeys.filter(Boolean))];
-  if (keys.length === 0) {
-    return { _id: { $exists: false } };
-  }
-  return {
-    $expr: {
-      $eq: [
-        { $size: { $setIntersection: [{ $ifNull: ['$processedPaymentIds', []] }, keys] } },
-        0
-      ]
-    }
-  };
-}
 
 async function markPaymongoWebhookEventProcessed(eventId, eventType) {
   const id = String(eventId || '').trim();
@@ -87,14 +64,6 @@ function extractCheckoutSessionContext(payload) {
     checkoutAttributes,
     metadata: metadata && typeof metadata === 'object' ? metadata : {}
   };
-}
-
-function computeSubscriptionDates(plan) {
-  const startDate = new Date();
-  const endDate = new Date(startDate);
-  const months = getPlanDurationMonths(plan);
-  endDate.setMonth(endDate.getMonth() + months);
-  return { startDate, endDate };
 }
 
 async function handlePaymongoWebhook(req, res) {
@@ -369,101 +338,42 @@ async function handlePaymongoWebhook(req, res) {
         username: existing.username
       });
 
-      if (paymongoKeysOverlap(existing.processedPaymentIds, guardKeys)) {
-        console.log('ℹ️ [PAYMONGO WEBHOOK] Duplicate webhook ignored, payment already processed for student', existing._id);
-        await markPaymongoWebhookEventProcessed(paymongoEventId, eventType);
-        return sendAck({ processed: true, duplicate: true });
-      }
-
-      const normalizedPlanId = normalizePlanId(planId || pending.plan);
-      const planCreditConfig = PLAN_CREDITS[normalizedPlanId] || { credits: 0, label: pending.plan || 'Plan' };
-      const creditsToAdd = Number(planCreditConfig.credits || 0);
-      const amountPaid = Number(pending.amount || 0);
-      const creditTimestamp = new Date();
-      const { startDate, endDate } = computeSubscriptionDates(normalizedPlanId || pending.plan);
-      const balanceAfterPurchase = (existing.creditBalance || 0) + creditsToAdd;
-      const historyPaymentId = paymongoPaymentId || idempotencyKey;
-
-      const updateExisting = await Student.updateOne(
-        { _id: existing._id, ...paymongoNotYetProcessedFilter(guardKeys) },
-        {
-          $set: {
-            paymentStatus: 'paid',
-            paymentMethod: 'paymongo',
-            paymentReference: paymongoPaymentId || idempotencyKey,
-            paymentPaidAt: creditTimestamp,
-            subscriptionStatus: 'active',
-            subscriptionPlan: normalizedPlanId || existing.subscriptionPlan || pending.plan,
-            subscriptionStartDate: startDate,
-            subscriptionEndDate: endDate,
-            accountStatus: 'active_subscriber',
-            isSubscribed: true,
-          },
-          $inc: {
-            creditBalance: creditsToAdd,
-            totalCreditsEarned: creditsToAdd,
-            totalLessonsPurchased: creditsToAdd,
-            'learningJourneyPurchasedByLevel.nursery': creditsToAdd,
-            'learningJourneyPurchasedByLevel.kinder': creditsToAdd,
-            'learningJourneyPurchasedByLevel.prep': creditsToAdd,
-          },
-          $push: {
-            processedPaymentIds: idempotencyKey,
-            creditHistory: {
-              date: creditTimestamp,
-              plan: planCreditConfig.label,
-              credits: creditsToAdd,
-              amountPaid,
-              paymentId: historyPaymentId,
-              entryType: 'purchase',
-              balanceAfter: balanceAfterPurchase
-            }
-          }
-        }
-      );
-
-      if (updateExisting.matchedCount === 0) {
-        console.error('❌ [PAYMONGO WEBHOOK] Student.updateOne matched 0 documents (refill). Idempotency filter may exclude this payment.', {
-          studentId: String(existing._id),
-          idempotencyKey,
-          paymongoPaymentId
-        });
-      } else {
-        console.log('📊 [PAYMONGO WEBHOOK] Student.updateOne (refill)', {
-          matchedCount: updateExisting.matchedCount,
-          modifiedCount: updateExisting.modifiedCount
-        });
-      }
-
-      pending.status = 'paid';
-      pending.paymongoEventId = paymongoEventId;
-      pending.processedAt = new Date();
-      if (checkoutSessionId) pending.paymongoCheckoutId = checkoutSessionId;
-      try {
-        await pending.save();
-      } catch (pendErr) {
-        console.error('❌ [PAYMONGO WEBHOOK] pending.save failed after refill (payment already applied to student)', {
-          message: pendErr.message,
-          code: pendErr.code,
-          registrationId: pending.registrationId
-        });
-        await markPaymongoWebhookEventProcessed(paymongoEventId, eventType);
-        return sendAck({
-          processed: true,
-          refill: true,
-          warning: 'Student updated but pending registration row not updated',
-          error: pendErr.message
-        });
-      }
-      console.log('✅ [PAYMONGO WEBHOOK] Existing student refill credited', {
-        studentId: existing._id?.toString?.(),
-        creditsToAdd,
+      const applyResult = await applyExistingStudentPurchase({
+        student: existing,
+        pending,
+        planId: planId || pending.plan,
         idempotencyKey,
         paymongoPaymentId,
-        modifiedCount: updateExisting.modifiedCount
+        checkoutSessionId,
+        paymongoEventId,
+      });
+
+      if (applyResult.duplicate) {
+        console.log('ℹ️ [PAYMONGO WEBHOOK] Duplicate webhook ignored, payment already processed for student', existing._id);
+        await markPaymongoWebhookEventProcessed(paymongoEventId, eventType);
+        return sendAck({ processed: true, duplicate: true, refill: true });
+      }
+
+      if (!applyResult.ok) {
+        console.error('❌ [PAYMONGO WEBHOOK] Existing student credit apply failed', {
+          studentId: String(existing._id),
+          error: applyResult.error,
+          idempotencyKey,
+        });
+        return sendAck({ processed: false, error: applyResult.error || 'Credit apply failed', refill: true });
+      }
+
+      console.log('✅ [PAYMONGO WEBHOOK] Existing student refill credited', {
+        studentId: existing._id?.toString?.(),
+        creditsAdded: applyResult.creditsAdded,
+        availableBalance: applyResult.availableBalance,
+        matchedCount: applyResult.matchedCount,
+        modifiedCount: applyResult.modifiedCount,
+        idempotencyKey,
+        paymongoPaymentId,
       });
       await markPaymongoWebhookEventProcessed(paymongoEventId, eventType);
-      return sendAck({ processed: true, refill: true });
+      return sendAck({ processed: true, refill: true, creditsAdded: applyResult.creditsAdded });
     }
 
     console.log('👤 [PAYMONGO WEBHOOK] Branch: NEW STUDENT — creating Student from PendingRegistration + metadata');
@@ -526,9 +436,10 @@ async function handlePaymongoWebhook(req, res) {
               creditBalance: creditsToAdd,
               totalCreditsEarned: creditsToAdd,
               totalLessonsPurchased: creditsToAdd,
-              'learningJourneyPurchasedByLevel.nursery': creditsToAdd,
-              'learningJourneyPurchasedByLevel.kinder': creditsToAdd,
-              'learningJourneyPurchasedByLevel.prep': creditsToAdd,
+              'learningJourneyPurchasedByLevel.Little Seeds (Age 3)': creditsToAdd,
+              'learningJourneyPurchasedByLevel.Sprouts (Age 4)': creditsToAdd,
+              'learningJourneyPurchasedByLevel.Saplings (Age 5)': creditsToAdd,
+              'learningJourneyPurchasedByLevel.Young Stewards (Age 6)': creditsToAdd,
             },
             $push: {
               processedPaymentIds: idempotencyKey,
@@ -624,6 +535,15 @@ async function handlePaymongoWebhook(req, res) {
   }
 }
 
+/**
+ * PayMongo Checkout webhook.
+ * Credits are applied only on event type `checkout_session.payment.paid`.
+ *
+ * LOCAL TESTING: PayMongo cannot reach localhost. Use the PayMongo CLI webhook
+ * forwarder or a tunnel (ngrok / localtunnel) pointing at
+ * POST /api/webhooks/paymongo — otherwise ?payment=success polling refreshes
+ * the UI but credits never land until a reachable webhook URL receives the event.
+ */
 router.post('/paymongo', (req, res) => {
   handlePaymongoWebhook(req, res).catch((err) => {
     console.error('❌ [PAYMONGO WEBHOOK] Unhandled promise rejection (prevents Express 500):', {

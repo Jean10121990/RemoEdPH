@@ -12,6 +12,7 @@
     <title>Lessons Library - RemoEdPH Admin</title>
     <link rel="stylesheet" href="modern-styles.css">
     <link rel="stylesheet" href="css/teacher-sidebar.css">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css">
     <style>
         body { 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
@@ -571,6 +572,47 @@
             font-size: 4rem;
             margin-bottom: 1rem;
         }
+
+        .ppt-eye-preview-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 8px;
+            padding: 10px 18px;
+            border: none;
+            border-radius: 8px;
+            background: #1ca7e7;
+            color: #fff;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(28, 167, 231, 0.25);
+        }
+        .ppt-eye-preview-btn:hover { background: #1691d1; }
+        .ppt-eye-preview-btn:disabled { opacity: 0.65; cursor: wait; }
+        .secure-ppt-frame-wrap {
+            width: 100%;
+            height: min(70vh, 720px);
+            min-height: 420px;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #0f172a;
+            border: 1px solid #e2e8f0;
+        }
+        .secure-ppt-frame-wrap iframe {
+            width: 100%;
+            height: 100%;
+            min-height: 420px;
+            border: none;
+            background: #fff;
+        }
+        .secure-ppt-hint {
+            margin-top: 10px;
+            font-size: 0.85rem;
+            color: #64748b;
+            text-align: center;
+            padding: 0 12px;
+        }
         
         .preview-overlay {
             position: fixed;
@@ -661,12 +703,10 @@
                             <label for="new-curriculum-level">Level *</label>
                             <select id="new-curriculum-level" class="form-control" required>
                                 <option value="">-- Select level --</option>
-                                <option value="nursery">Nursery</option>
-                                <option value="kinder">Kinder</option>
-                                <option value="preparatory">Preparatory</option>
-                                <option value="elementary">Elementary</option>
-                                <option value="intermediate">Intermediate</option>
-                                <option value="advanced">Advanced</option>
+                                <option value="Little Seeds (Age 3)">Little Seeds (Age 3)</option>
+                                <option value="Sprouts (Age 4)">Sprouts (Age 4)</option>
+                                <option value="Saplings (Age 5)">Saplings (Age 5)</option>
+                                <option value="Young Stewards (Age 6)">Young Stewards (Age 6)</option>
                             </select>
                         </div>
                         <div class="form-group" style="margin-bottom: 1rem;">
@@ -694,12 +734,10 @@
                         <div class="form-group" style="margin-bottom: 1rem;">
                             <label for="edit-curriculum-level">Level *</label>
                             <select id="edit-curriculum-level" class="form-control" required>
-                                <option value="nursery">Nursery</option>
-                                <option value="kinder">Kinder</option>
-                                <option value="preparatory">Preparatory</option>
-                                <option value="elementary">Elementary</option>
-                                <option value="intermediate">Intermediate</option>
-                                <option value="advanced">Advanced</option>
+                                <option value="Little Seeds (Age 3)">Little Seeds (Age 3)</option>
+                                <option value="Sprouts (Age 4)">Sprouts (Age 4)</option>
+                                <option value="Saplings (Age 5)">Saplings (Age 5)</option>
+                                <option value="Young Stewards (Age 6)">Young Stewards (Age 6)</option>
                             </select>
                         </div>
                         <div class="form-group" style="margin-bottom: 1rem;">
@@ -1295,26 +1333,25 @@
 
             try {
                 for (const file of selectedFiles) {
-                    const fileData = await fileToBase64(file);
                     const fileType = getFileType(file.name);
-                    
+                    // Multipart avoids 413 from base64 JSON (50MB file ≈ 67MB JSON body).
+                    const form = new FormData();
+                    form.append('file', file, file.name);
+                    form.append('fileName', file.name);
+                    form.append('fileType', fileType);
+                    form.append('fileSize', String(file.size));
+
                     const response = await fetch(`/api/lessons/lesson/${currentLessonId}/upload-file`, {
                         method: 'POST',
                         headers: {
-                            'Content-Type': 'application/json',
                             'Authorization': `Bearer ${token}`
                         },
-                        body: JSON.stringify({
-                            fileName: file.name,
-                            fileType: fileType,
-                            fileSize: file.size,
-                            fileData: fileData
-                        })
+                        body: form
                     });
 
                     if (!response.ok) {
-                        const error = await response.json();
-                        throw new Error(error.error || 'Upload failed');
+                        const error = await response.json().catch(() => ({ error: 'Upload failed (' + response.status + ')' }));
+                        throw new Error(error.error || error.hint || 'Upload failed');
                     }
                 }
 
@@ -1383,6 +1420,77 @@
             const previewContent = document.getElementById('preview-content');
             const previewTitle = document.getElementById('preview-title');
             
+            function escapeHtml(s) {
+                return String(s == null ? '' : s)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
+            }
+
+            async function loadSecurePptPreview(fileId, name, fallbackUrl, embedUrl, presentationType, mountEl) {
+                mountEl.innerHTML = `
+                    <div class="preview-unsupported">
+                        <div class="preview-unsupported-icon">⏳</div>
+                        <h3>Loading secure preview…</h3>
+                    </div>
+                `;
+                const token = (window.RemoedAdminSession && RemoedAdminSession.getAuthToken ? RemoedAdminSession.getAuthToken() : null)
+                    || localStorage.getItem('remoed_admin_token')
+                    || localStorage.getItem('adminToken')
+                    || localStorage.getItem('token')
+                    || '';
+                let src = '';
+                let hint = '';
+                try {
+                    if (fileId && token) {
+                        const res = await fetch('/api/lessons/presentation/' + encodeURIComponent(fileId) + '/secure-embed', {
+                            headers: { Authorization: 'Bearer ' + token },
+                            credentials: 'include'
+                        });
+                        const data = await res.json().catch(() => ({}));
+                        if (res.ok && data.embedUrl) {
+                            src = data.embedUrl;
+                            hint = data.hint || '';
+                        }
+                    }
+                } catch (_e) {}
+                if (!src && embedUrl) src = embedUrl;
+                if (!src && presentationType === 'html5_zip' && fallbackUrl) {
+                    src = fallbackUrl.startsWith('http') ? fallbackUrl : (window.location.origin + fallbackUrl);
+                }
+                if (!src && fallbackUrl && /\.(ppt|pptx)(\?|#|$)/i.test(fallbackUrl)) {
+                    const abs = fallbackUrl.startsWith('http') ? fallbackUrl : (window.location.origin + fallbackUrl);
+                    src = 'https://view.officeapps.live.com/op/embed.aspx?src=' + encodeURIComponent(abs);
+                    if (/localhost|127\.0\.0\.1/i.test(window.location.hostname)) {
+                        hint = 'Microsoft Office Online cannot reach localhost files. Preview works on a public HTTPS deploy; use Live Classroom locally. Direct downloads stay disabled.';
+                    }
+                }
+                if (!src) {
+                    mountEl.innerHTML = `
+                        <div class="preview-unsupported">
+                            <div class="preview-unsupported-icon">🔒</div>
+                            <h3>Preview unavailable</h3>
+                            <p>Direct downloads are disabled. Open this lesson in Live Classroom to present.</p>
+                            <p style="margin-top:1rem;font-size:0.9rem;color:#64748b;">File: ${escapeHtml(name)}</p>
+                        </div>
+                    `;
+                    return;
+                }
+                mountEl.innerHTML = `
+                    <div class="secure-ppt-frame-wrap">
+                        <iframe
+                            title="${escapeHtml(name)} (read-only preview)"
+                            src="${src.replace(/"/g, '&quot;')}"
+                            sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-presentation"
+                            allowfullscreen
+                            referrerpolicy="no-referrer"
+                        ></iframe>
+                    </div>
+                    ${hint ? `<p class="secure-ppt-hint">${escapeHtml(hint)}</p>` : '<p class="secure-ppt-hint">Read-only web preview — downloading the original .pptx from this panel is disabled.</p>'}
+                `;
+            }
+            
             previewTitle.textContent = file.fileName || 'Preview';
             previewOverlay.classList.add('show');
             previewPanel.classList.add('open');
@@ -1397,12 +1505,31 @@
             const fileType = file.fileType || '';
             const fileName = file.fileName || '';
             let fileData = file.fileData || '';
+            const fileUrl = file.fileUrl || file.html5EntryUrl || '';
 
             if (fileData && !fileData.startsWith('data:')) {
                 const mimeType = getMimeType(fileName, fileType);
                 if (mimeType) {
                     fileData = `data:${mimeType};base64,${fileData}`;
                 }
+            }
+
+            if (!fileData && fileUrl) {
+                const isPpt = /\.(ppt|pptx)$/i.test(fileName) || String(fileType).includes('ppt') || String(file.presentationType || '').includes('office') || String(file.presentationType || '') === 'html5_zip';
+                const fileId = file._id || file.id || '';
+                if (isPpt) {
+                    loadSecurePptPreview(fileId, fileName, fileUrl, file.embedUrl || '', file.presentationType || '', previewContent);
+                    return;
+                }
+                previewContent.innerHTML = `
+                    <div class="preview-unsupported">
+                        <div class="preview-unsupported-icon">📄</div>
+                        <h3>File stored on server</h3>
+                        <p style="margin: 0.75rem 0;">Preview is not available for this file type in the library.</p>
+                        <p style="margin-top: 1rem; font-size: 0.9rem; color: #64748b;">File: ${escapeHtml(fileName)}</p>
+                    </div>
+                `;
+                return;
             }
 
             if (!fileData) {
@@ -1894,21 +2021,19 @@
                 }
 
                 try {
-                    const fileData = await fileToBase64(file);
                     const fileType = getFileType(file.name);
+                    const form = new FormData();
+                    form.append('file', file, file.name);
+                    form.append('fileName', file.name);
+                    form.append('fileType', fileType);
+                    form.append('fileSize', String(file.size));
 
                     const uploadResponse = await fetch(`/api/lessons/lesson/${newLessonId}/upload-file`, {
                         method: 'POST',
                         headers: {
-                            'Content-Type': 'application/json',
                             'Authorization': `Bearer ${token}`
                         },
-                        body: JSON.stringify({
-                            fileName: file.name,
-                            fileType: fileType,
-                            fileSize: file.size,
-                            fileData: fileData
-                        })
+                        body: form
                     });
 
                     if (!uploadResponse.ok) {
