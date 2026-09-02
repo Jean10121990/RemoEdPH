@@ -8,7 +8,6 @@
   <title>Teacher Signup - RemoEdPH</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="css/portal-chrome-compact.css">
-    <script src="js/user-session.js"></script>
 </head>
 <body class="page-teacher-signup">
   <div class="card">
@@ -78,19 +77,22 @@
 
     async function validateToken() {
       if (!invitation) {
-        window.location.href = '/';
+        setStatus('This sign-up link is missing an invitation. Please use the link from your email.', 'error');
+        submitBtn.disabled = true;
         return null;
       }
       try {
         const res = await fetch(`/api/auth/teacher-signup/validate?token=${encodeURIComponent(invitation)}`);
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         if (!res.ok || !data.success) {
-          window.location.href = '/';
+          setStatus(data.message || 'This invitation is invalid or expired.', 'error');
+          submitBtn.disabled = true;
           return null;
         }
         return data.applicant;
       } catch (e) {
-        window.location.href = '/';
+        setStatus('Could not verify this invitation. Please try again or ask admin to resend your email.', 'error');
+        submitBtn.disabled = true;
         return null;
       }
     }

@@ -45,7 +45,7 @@ const { encryptTotpSecret, decryptTotpSecret } = require('./utils/twoFactorSecre
 const { ADMIN_2FA_ENROLLMENT_PURPOSE } = require('./utils/adminForce2fa');
 const { recordAdminLoginActivity, getAdminSessionVersion } = require('./services/adminLoginActivity');
 const { generateReferralCode } = require('./utils/referralCode');
-const { resolveFrontendBaseUrl } = require('./utils/frontendBaseUrl');
+const { buildTeacherInvitationSignupUrl } = require('./utils/frontendBaseUrl');
 // Allow slight device clock drift during enrollment/verification.
 authenticator.options = { window: 2 };
 const path = require('path');
@@ -1294,9 +1294,7 @@ router.post('/teacher-pipeline/applicants/:id/pass', verifyAdminApiAuth, require
       });
     }
 
-    const frontendBase = resolveFrontendBaseUrl(req);
-    const appIdStr = applicant._id.toString();
-    const signupLink = `${frontendBase}/register.html?appId=${encodeURIComponent(appIdStr)}&invitation=${encodeURIComponent(invitation.token)}`;
+    const signupLink = buildTeacherInvitationSignupUrl(invitation.token, req);
 
     const emailResult = await sendTeacherPipelineWelcomeEmail(
       recipientEmail,
@@ -1386,9 +1384,7 @@ router.post('/teacher-pipeline/applicants/:id/resend-invitation', verifyAdminApi
     }
 
     const invitation = await getOrCreatePipelineInvitation(applicant._id, recipientEmail);
-    const frontendBase = resolveFrontendBaseUrl(req);
-    const appIdStr = applicant._id.toString();
-    const signupLink = `${frontendBase}/register.html?appId=${encodeURIComponent(appIdStr)}&invitation=${encodeURIComponent(invitation.token)}`;
+    const signupLink = buildTeacherInvitationSignupUrl(invitation.token, req);
 
     console.log('Resending pipeline invitation to:', recipientEmail);
 

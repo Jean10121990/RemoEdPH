@@ -30,6 +30,25 @@ function resolveFrontendBaseUrl(req) {
   return `http://localhost:${port}`;
 }
 
+/**
+ * Base URL for Gmail / applicant invitation emails.
+ * Prefers FRONTEND_URL so Pass from localhost still emails https://remoedph.com, not localhost.
+ */
+function resolveInvitationEmailBaseUrl(req) {
+  const envUrl = String(process.env.FRONTEND_URL || '').trim().replace(/\/$/, '');
+  if (envUrl) {
+    return envUrl;
+  }
+  return resolveFrontendBaseUrl(req);
+}
+
+function buildTeacherInvitationSignupUrl(token, req) {
+  const base = resolveInvitationEmailBaseUrl(req);
+  return `${base}/teacher-signup?invitation=${encodeURIComponent(String(token || '').trim())}`;
+}
+
 module.exports = {
   resolveFrontendBaseUrl,
+  resolveInvitationEmailBaseUrl,
+  buildTeacherInvitationSignupUrl,
 };

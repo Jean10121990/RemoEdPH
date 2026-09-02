@@ -10,6 +10,14 @@ function trimEnv(value) {
   return String(value == null ? '' : value).trim();
 }
 
+function escapeHtml(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 function isPlaceholderSecret(value) {
   const v = trimEnv(value).toLowerCase();
   return (
@@ -557,7 +565,12 @@ Please do not reply to this email.
 © 2025 RemoEdPH. All rights reserved.
     `
   }),
-  teacherPipelineWelcome: (firstName, fullName, signupLink) => ({
+  teacherPipelineWelcome: (firstName, fullName, signupLink) => {
+    const safeFirst = firstName && String(firstName).trim() ? escapeHtml(String(firstName).trim()) : 'Teacher';
+    const safeFull = fullName && String(fullName).trim() ? escapeHtml(String(fullName).trim()) : '';
+    const rawLink = String(signupLink || '').trim();
+    const hrefLink = escapeHtml(rawLink);
+    return {
     subject: 'Welcome to the Team - RemoEdPH',
     html: `
       <!DOCTYPE html>
@@ -583,14 +596,14 @@ Please do not reply to this email.
             <p>RemoEdPH Teacher Pipeline</p>
           </div>
           <div class="content">
-            <p>Dear ${firstName && String(firstName).trim() ? String(firstName).trim() : 'Teacher'},</p>
-            <p>Congratulations! You passed our teacher pipeline${fullName && String(fullName).trim() ? `, <strong>${String(fullName).trim()}</strong>` : ''}. Please complete your official teacher portal sign-up using the secure link below.</p>
+            <p>Dear ${safeFirst},</p>
+            <p>Congratulations! You passed our teacher pipeline${safeFull ? `, <strong>${safeFull}</strong>` : ''}. Please complete your official teacher portal sign-up using the secure link below.</p>
             <div class="box">
               <p><strong>Secure sign-up link:</strong></p>
-              <p style="word-break: break-all;">${signupLink}</p>
+              <p style="word-break: break-all;">${hrefLink}</p>
             </div>
             <p style="text-align:center; margin-top: 20px;">
-              <a class="btn" href="${signupLink}">Complete Teacher Sign-up</a>
+              <a class="btn" href="${hrefLink}">Complete Teacher Sign-up</a>
             </p>
             <p>This link is unique to your account and may expire. If you have trouble accessing it, please contact admin support.</p>
           </div>
@@ -608,12 +621,13 @@ Dear ${firstName && String(firstName).trim() ? String(firstName).trim() : 'Teach
 
 Congratulations! You passed our teacher pipeline${fullName && String(fullName).trim() ? `, ${String(fullName).trim()}` : ''}.
 Complete your official teacher portal sign-up using this secure link:
-${signupLink}
+${rawLink}
 
 This link is unique to your account and may expire.
 If you need help, contact admin support.
     `.trim()
-  }),
+  };
+  },
   teacherPipelineFail: (firstName, reapplyLine) => ({
     subject: 'Update on your RemoEd Tutor Application',
     html: `

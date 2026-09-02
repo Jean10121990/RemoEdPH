@@ -27,6 +27,7 @@ const {
 const crypto = require('crypto');
 const mongoose = require('mongoose');
 const { sendPasswordResetEmail } = require('./emailService');
+const { findActivePassedInvitation, inviteErrorMessage } = require('./utils/teacherInvitation');
 const { recordAdminLoginActivity, getAdminSessionVersion } = require('./services/adminLoginActivity');
 const {
   ADMIN_2FA_ENROLLMENT_PURPOSE,
@@ -134,6 +135,148 @@ router.get(
     }
   }
 );
+
+router.get(
+  '/teacher-signup/validate',
+  teacherInviteByApplicationLimiter,
+  async (req, res) => {
+    try {
+      const found = await findActivePassedInvitation(req.query.token);
+      if (!found.ok) {
+        return res.status(404).json({
+          success: false,
+          message: inviteErrorMessage(found.reason),
+        });
+      }
+      return res.json({
+        success: true,
+        applicant: {
+          email: found.application.email || '',
+          fullName: found.application.fullName || '',
+        },
+      });
+    } catch (e) {
+      console.error('GET /api/auth/teacher-signup/validate:', e);
+      return res.status(500).json({ success: false, message: 'Server error' });
+    }
+  }
+);
+
+router.post('/teacher-signup/complete', authRegisterLimiter, async (req, res) => {
+  try {
+    const token = String(req.body && req.body.token != null ? req.body.token : '').trim();
+    const firstName = String(req.body && req.body.firstName != null ? req.body.firstName : '').trim();
+    const middleName = String(req.body && req.body.middleName != null ? req.body.middleName : '').trim();
+    const lastName = String(req.body && req.body.lastName != null ? req.body.lastName : '').trim();
+    const username = String(req.body && req.body.username != null ? req.body.username : '').trim();
+    const password = String(req.body && req.body.password != null ? req.body.password : '');
+    const contact = String(req.body && req.body.contact != null ? req.body.contact : '').trim();
+    const address = String(req.body && req.body.address != null ? req.body.address : '').trim();
+
+    if (!username || !password || !firstName || !lastName) {
+      return res.status(400).json({ success: false, message: 'Please complete required fields.' });
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 6 characters.' });
+    }
+
+    const found = await findActivePassedInvitation(token);
+    if (!found.ok) {
+      return res.status(404).json({
+        success: false,
+        message: inviteErrorMessage(found.reason),
+      });
+    }
+
+    const { invitation, application } = found;
+    const email = String(application.email || invitation.email || '').trim().toLowerCase();
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'This application has no email on file. Contact admin support.',
+      });
+    }
+
+    const teacherId = username;
+    const existingUsername = await Teacher.findOne({ username });
+    if (existingUsername) {
+      return res.status(409).json({ success: false, message: 'Username already exists.' });
+    }
+    const existingTeacherId = await Teacher.findOne({ teacherId });
+    if (existingTeacherId) {
+      return res.status(409).json({
+        success: false,
+        message: 'That teacher id is already in use. Choose a different username.',
+      });
+    }
+    const existingEmail = await Teacher.findOne({ email });
+    if (existingEmail) {
+      return res.status(409).json({ success: false, message: 'A teacher account already exists for this email.' });
+    }
+
+    const now = new Date();
+    const claimed = await InvitationToken.findOneAndUpdate(
+      {
+        _id: invitation._id,
+        isUsed: false,
+        expiresAt: { $gt: now },
+      },
+      { $set: { isUsed: true, usedAt: now } },
+      { new: true }
+    );
+    if (!claimed) {
+      return res.status(409).json({
+        success: false,
+        message: 'This invitation has already been used.',
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const fullname = [firstName, middleName, lastName].filter(Boolean).join(' ');
+    const teacher = new Teacher({
+      username,
+      password: hashedPassword,
+      teacherId,
+      firstName,
+      middleName,
+      lastName,
+      fullname,
+      email,
+      contact: contact || undefined,
+      address: address || undefined,
+      hireDate: now,
+    });
+
+    try {
+      await teacher.save();
+      application.teacherActivationStatus = 'Active Teacher';
+      application.hiredAt = now;
+      await application.save();
+    } catch (saveErr) {
+      await InvitationToken.updateOne(
+        { _id: claimed._id },
+        { $set: { isUsed: false, usedAt: null } }
+      );
+      throw saveErr;
+    }
+
+    return res.json({
+      success: true,
+      teacherId,
+      message: 'Account created successfully!',
+    });
+  } catch (err) {
+    console.error('POST /api/auth/teacher-signup/complete:', err);
+    if (err && err.code === 11000) {
+      const field = err.keyPattern ? Object.keys(err.keyPattern)[0] : 'account';
+      return res.status(409).json({ success: false, message: `${field} already exists.` });
+    }
+    return res.status(500).json({
+      success: false,
+      message: 'Server error: ' + (err.message || 'Failed to create account'),
+    });
+  }
+});
 
 // Function to generate strong password (10 characters) - NO SPECIAL CHARACTERS
 function generateStrongPassword() {
@@ -590,56 +733,10 @@ router.post('/login', authLoginLimiter, async (req, res) => {
 });
 
 router.post('/register', authRegisterLimiter, async (req, res) => {
-  const { username, password, firstName = '', middleName = '', lastName = '', email = '' } = req.body;
-  if (!username || !password) {
-    return res.status(400).json({ success: false, message: 'Username and password are required.' });
-  }
-  try {
-    // Check if username already exists
-    const existingUsername = await Teacher.findOne({ username });
-    if (existingUsername) {
-      return res.status(409).json({ success: false, message: 'Username already exists.' });
-    }
-    
-    // Check if email already exists (if provided)
-    if (email) {
-      const existingEmail = await Teacher.findOne({ email });
-      if (existingEmail) {
-        return res.status(409).json({ success: false, message: 'Email already exists.' });
-      }
-    }
-    
-    // teacherId is the same stable string as login username (unique on Teacher).
-    const teacherId = String(username).trim();
-    const teacherIdTaken = await Teacher.findOne({ teacherId });
-    if (teacherIdTaken) {
-      return res.status(409).json({
-        success: false,
-        message: 'That teacher id is already in use. Choose a different username.',
-      });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const teacher = new Teacher({ 
-      username,
-      password: hashedPassword,
-      teacherId: teacherId,
-      firstName,
-      middleName,
-      lastName,
-      email: email || undefined
-    });
-    await teacher.save();
-    res.json({ success: true, teacherId: teacherId, message: 'Account created successfully!' });
-  } catch (err) {
-    console.error('Registration error:', err);
-    if (err.code === 11000) {
-      // Duplicate key error
-      const field = Object.keys(err.keyPattern)[0];
-      return res.status(409).json({ success: false, message: `${field} already exists.` });
-    }
-    res.status(500).json({ success: false, message: 'Server error: ' + (err.message || 'Failed to create account') });
-  }
+  return res.status(403).json({
+    success: false,
+    message: 'Teacher accounts are invitation-only. Use the sign-up link from your passed-applicant email.',
+  });
 });
 
 // Student login endpoint
