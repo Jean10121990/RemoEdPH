@@ -23,10 +23,8 @@ const {
   PRESENTATIONS_ROOT
 } = require('./utils/presentationUpload');
 const {
-  diskPathFromHtml5EntryUrl,
-  ensurePptxPreviewPdf,
-  publicPreviewUrl,
-  fileExists
+  buildLessonPptxPreviewPdf,
+  publicPreviewUrl
 } = require('./utils/pptxLocalPreview');
 
 const LESSON_UPLOAD_MAX_BYTES = 50 * 1024 * 1024;
@@ -1081,36 +1079,19 @@ router.get('/presentation/:fileId/secure-embed', authenticateToken, async (req, 
     }
 
     const pathOrUrl = file.html5EntryUrl || '';
-    if (!pathOrUrl) {
+    if (!pathOrUrl && !file.fileData) {
       return res.status(404).json({ error: 'No embeddable presentation source' });
     }
 
-    const proto = String(req.headers['x-forwarded-proto'] || req.protocol || 'http').split(',')[0].trim();
-    const host = String(req.headers['x-forwarded-host'] || req.get('host') || '').split(',')[0].trim();
-    const isLocalHost = /localhost|127\.0\.0\.1/i.test(host);
-    // Never point Office Online at FRONTEND_URL when the request is from localhost —
-    // that was part of the old ngrok/public-URL workaround and breaks local files.
-    const publicBase = (
-      isLocalHost ? `${proto}://${host}` : (process.env.FRONTEND_URL || `${proto}://${host}`)
-    ).replace(/\/$/, '');
-    const absolute =
-      /^https?:\/\//i.test(pathOrUrl) ? pathOrUrl : publicBase + (pathOrUrl.startsWith('/') ? pathOrUrl : '/' + pathOrUrl);
-
-    const isLocal =
-      isLocalHost || /localhost|127\.0\.0\.1/i.test(absolute);
-    const officeEmbed =
-      'https://view.officeapps.live.com/op/embed.aspx?src=' + encodeURIComponent(absolute);
-
     return res.json({
       success: true,
-      mode: isLocal ? 'local_pdf_required' : 'office_online',
-      embedUrl: isLocal ? '' : officeEmbed,
+      mode: 'pdf_preview',
+      embedUrl: '',
       fileName,
       downloadAllowed: false,
-      localPreviewPath: isLocal ? `/api/lessons/presentation/${encodeURIComponent(fileId)}/local-preview` : null,
-      hint: isLocal
-        ? 'Microsoft Office Online cannot reach localhost. Use Live Classroom local PDF preview (no ngrok).'
-        : null
+      localPreviewPath: `/api/lessons/presentation/${encodeURIComponent(fileId)}/local-preview`,
+      previewPdfPath: `/api/lessons/presentation/${encodeURIComponent(fileId)}/preview.pdf`,
+      hint: 'Read-only PDF preview for class prep. Microsoft Office Online is not used.'
     });
   } catch (error) {
     console.error('Presentation secure-embed error:', error);
@@ -1119,8 +1100,8 @@ router.get('/presentation/:fileId/secure-embed', authenticateToken, async (req, 
 });
 
 /**
- * Localhost PPTX preview: convert to PDF once and cache beside the file.
- * Use this instead of Office Online / ngrok when developing on http://localhost:8080.
+ * PPTX preview: convert to PDF once and cache beside the file.
+ * Used by Lessons Library instead of Microsoft Office Online (which cannot fetch private/localhost URLs).
  */
 router.get('/presentation/:fileId/local-preview', authenticateToken, async (req, res) => {
   try {
@@ -1152,27 +1133,8 @@ router.get('/presentation/:fileId/local-preview', authenticateToken, async (req,
       });
     }
 
-    let sourcePath = diskPathFromHtml5EntryUrl(file.html5EntryUrl);
-    if (!sourcePath && file.html5PackagePath) {
-      try {
-        const names = await fsp.readdir(file.html5PackagePath);
-        const pptName = names.find((n) => /\.(ppt|pptx)$/i.test(n));
-        if (pptName) sourcePath = path.join(file.html5PackagePath, pptName);
-      } catch (_e) {}
-    }
-    if (!sourcePath || !(await fileExists(sourcePath))) {
-      return res.status(404).json({
-        error:
-          'PPTX file not found under uploads/presentations on this machine. Re-upload the lesson file while running on localhost:8080.'
-      });
-    }
-
-    const result = await ensurePptxPreviewPdf({
-      sourcePath,
-      fileName: file.fileName
-    });
+    const result = await buildLessonPptxPreviewPdf(file);
     const previewUrl = publicPreviewUrl(fileId);
-    // Verify static path matches where we wrote the file
     const expectedStatic = path.join(PRESENTATIONS_ROOT, String(fileId), 'preview.pdf');
     if (result.previewPath !== expectedStatic) {
       try {
@@ -1184,6 +1146,7 @@ router.get('/presentation/:fileId/local-preview', authenticateToken, async (req,
       success: true,
       mode: 'pdf',
       previewUrl,
+      previewPdfPath: `/api/lessons/presentation/${encodeURIComponent(fileId)}/preview.pdf`,
       cached: !!result.cached,
       method: result.method || null,
       fileName: (file.fileName || 'presentation').replace(/\.(ppt|pptx)$/i, '.pdf')
@@ -1191,8 +1154,36 @@ router.get('/presentation/:fileId/local-preview', authenticateToken, async (req,
   } catch (error) {
     console.error('Presentation local-preview error:', error);
     res.status(500).json({
-      error: error.message || 'Failed to build local PPTX preview'
+      error: error.message || 'Failed to build lesson preview'
     });
+  }
+});
+
+/** Same-origin PDF stream for the Lessons Library iframe (token in query, like PDF raw). */
+router.get('/presentation/:fileId/preview.pdf', authenticateToken, async (req, res) => {
+  try {
+    const { fileId } = req.params;
+    const lesson = await Lesson.findOne({ 'files._id': fileId }).select('files');
+    if (!lesson) {
+      return res.status(404).json({ error: 'Presentation not found' });
+    }
+    const file = lesson.files.id(fileId);
+    if (!file) {
+      return res.status(404).json({ error: 'Presentation not found' });
+    }
+    const pType = file.presentationType || 'file';
+    if (pType === 'html5_zip' || pType === 'office_embed') {
+      return res.status(409).json({ error: 'This presentation uses an embed package, not a PDF preview.' });
+    }
+    const result = await buildLessonPptxPreviewPdf(file);
+    const pdfName = String(file.fileName || 'preview').replace(/\.(ppt|pptx)$/i, '') + '.pdf';
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${pdfName.replace(/"/g, '')}"`);
+    res.setHeader('Cache-Control', 'private, max-age=300');
+    return res.sendFile(result.previewPath);
+  } catch (error) {
+    console.error('Presentation preview.pdf error:', error);
+    res.status(500).json({ error: error.message || 'Failed to open lesson preview' });
   }
 });
 

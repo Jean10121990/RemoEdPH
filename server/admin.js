@@ -46,6 +46,10 @@ const { ADMIN_2FA_ENROLLMENT_PURPOSE } = require('./utils/adminForce2fa');
 const { recordAdminLoginActivity, getAdminSessionVersion } = require('./services/adminLoginActivity');
 const { generateReferralCode } = require('./utils/referralCode');
 const { buildTeacherInvitationSignupUrl } = require('./utils/frontendBaseUrl');
+const TeacherSlot = require('./models/TeacherSlot');
+const { normalizeId } = require('./utils/normalizeId');
+const { applyBookingFirstSlotOverlay, padSlotTime } = require('./utils/bookingFirstSlotOverlay');
+const { resolveToCanonicalTeacherId } = require('./services/teacherSlotResolve');
 // Allow slight device clock drift during enrollment/verification.
 authenticator.options = { window: 2 };
 const path = require('path');
@@ -2768,7 +2772,58 @@ router.get('/recent-activity', async (req, res) => {
   }
 });
 
-// GET admin schedule grid data (bookings in date range)
+async function adminScheduleTeacherIdOr(rawTeacherId) {
+  const canonical = await resolveToCanonicalTeacherId(rawTeacherId);
+  const tid = normalizeId(canonical || rawTeacherId);
+  const teacherRow = await Teacher.findOne({
+    $or: [
+      { $expr: { $eq: [{ $toLower: { $ifNull: ['$teacherId', ''] } }, tid] } },
+      { $expr: { $eq: [{ $toLower: { $ifNull: ['$username', ''] } }, tid] } },
+      { $expr: { $eq: [{ $toLower: { $ifNull: ['$email', ''] } }, tid] } },
+    ],
+  })
+    .select('teacherId username email _id')
+    .lean();
+  const or = [
+    { teacherId: rawTeacherId },
+    { teacherId: tid },
+    { $expr: { $eq: [{ $toLower: { $ifNull: ['$teacherId', ''] } }, tid] } },
+  ];
+  if (teacherRow) {
+    [teacherRow.teacherId, teacherRow.username, teacherRow.email, teacherRow._id && String(teacherRow._id)]
+      .filter(Boolean)
+      .forEach((v) => {
+        or.push({ teacherId: v });
+        const n = normalizeId(v);
+        if (n && n !== tid) {
+          or.push({ $expr: { $eq: [{ $toLower: { $ifNull: ['$teacherId', ''] } }, n] } });
+        }
+      });
+  }
+  return { or, tid };
+}
+
+function adminScheduleManilaUtcWindow(start, end) {
+  const startUtc = new Date(`${start}T00:00:00+08:00`);
+  const endUtc = new Date(`${end}T23:59:59.999+08:00`);
+  return { startUtc, endUtc };
+}
+
+function serializeAdminScheduleSlot(slot) {
+  const available = slot.available !== false && String(slot.slotStatus || '').toLowerCase() !== 'booked';
+  return {
+    _id: slot._id,
+    teacherId: slot.teacherId,
+    date: String(slot.date || '').slice(0, 10),
+    time: padSlotTime(slot.time),
+    available,
+    slotStatus: slot.slotStatus || (available ? 'Open' : 'Booked'),
+    status: slot.status || (available ? 'available' : 'unavailable'),
+    dateTimeUtc: slot.dateTimeUtc || null,
+  };
+}
+
+// GET admin schedule grid data (bookings + teacher-opened slots, same source as teacher schedule)
 router.get('/schedule', async (req, res) => {
   try {
     const start = String(req.query.start || '').trim();
@@ -2778,15 +2833,48 @@ router.get('/schedule', async (req, res) => {
     if (!start || !end) {
       return res.status(400).json({ success: false, error: 'start and end query params required (YYYY-MM-DD)' });
     }
-    const filter = { date: { $gte: start, $lte: end } };
-    if (teacherId) filter.teacherId = teacherId;
-    const bookings = await Booking.find(filter)
-      .sort({ date: 1, time: 1 })
-      .lean();
-    const teachers = await Teacher.find({ username: { $exists: true, $ne: null, $ne: '' } })
-      .select('teacherId username email _id status')
-      .sort({ username: 1 })
-      .lean();
+    const { startUtc, endUtc } = adminScheduleManilaUtcWindow(start, end);
+    const dateWindow = {
+      $or: [
+        { date: { $gte: start, $lte: end } },
+        { dateTimeUtc: { $gte: startUtc, $lte: endUtc } },
+      ],
+    };
+    const bookingFilter = { $and: [dateWindow] };
+    const slotFilter = { $and: [dateWindow] };
+    if (teacherId) {
+      const { or } = await adminScheduleTeacherIdOr(teacherId);
+      bookingFilter.$and.push({ $or: or });
+      slotFilter.$and.push({ $or: or });
+    }
+    const [bookings, slotDocs, teachers] = await Promise.all([
+      Booking.find(bookingFilter).sort({ date: 1, time: 1 }).lean(),
+      TeacherSlot.find(slotFilter).lean(),
+      Teacher.find({ username: { $exists: true, $ne: null, $ne: '' } })
+        .select('teacherId username email _id status')
+        .sort({ username: 1 })
+        .lean(),
+    ]);
+    const slots = slotDocs.map((doc) => {
+      const obj = { ...doc };
+      obj.slotStatus = obj.available ? 'Open' : 'Booked';
+      obj.status = obj.available ? 'available' : 'unavailable';
+      return obj;
+    });
+    const slotsByTeacher = new Map();
+    for (const slot of slots) {
+      const tid = normalizeId(slot.teacherId);
+      if (!slotsByTeacher.has(tid)) slotsByTeacher.set(tid, []);
+      slotsByTeacher.get(tid).push(slot);
+    }
+    for (const [tid, group] of slotsByTeacher) {
+      applyBookingFirstSlotOverlay(group, bookings, tid);
+    }
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+      Pragma: 'no-cache',
+      Expires: '0',
+    });
     res.json({
       success: true,
       view,
@@ -2796,19 +2884,20 @@ router.get('/schedule', async (req, res) => {
         _id: b._id,
         teacherId: b.teacherId,
         studentId: b.studentId,
-        date: b.date,
-        time: b.time,
+        date: String(b.date || '').slice(0, 10),
+        time: padSlotTime(b.time),
         status: b.status,
         lesson: b.lesson,
-        classroomId: b.classroomId
+        classroomId: b.classroomId,
       })),
+      slots: slots.map(serializeAdminScheduleSlot),
       teachers: teachers.map((t) => ({
         mongoId: String(t._id),
-        teacherId: t.teacherId,
+        teacherId: t.teacherId || t.username,
         name: t.username,
         email: t.email,
-        status: t.status
-      }))
+        status: t.status,
+      })),
     });
   } catch (error) {
     console.error('admin schedule error:', error);
