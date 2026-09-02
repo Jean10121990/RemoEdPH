@@ -1,63 +1,289 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
-    <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Teacher Signup - RemoEdPH</title>
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="css/portal-chrome-compact.css">
+  <title>Complete Teacher Signup — RemoEdPH</title>
+  <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
+  <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
+  <style>
+    :root {
+      --remo-green: #0d9488;
+      --remo-blue: #2563eb;
+      --remo-yellow: #eab308;
+      --remo-ink: #0f172a;
+      --remo-muted: #64748b;
+    }
+    * { box-sizing: border-box; }
+    html, body { min-height: 100%; }
+    body.page-teacher-signup {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      color: #1e293b;
+      -webkit-font-smoothing: antialiased;
+      background: linear-gradient(165deg, #f0fdf4 0%, #eff6ff 45%, #fefce8 100%);
+      background-attachment: fixed;
+    }
+    .ts-wrap {
+      max-width: 52rem;
+      margin: 0 auto;
+      padding: 2.5rem 1rem 3rem;
+    }
+    .ts-card {
+      position: relative;
+      overflow: hidden;
+      border-radius: 1.5rem;
+      border: 1px solid rgba(255, 255, 255, 0.6);
+      background: rgba(255, 255, 255, 0.92);
+      padding: 1.5rem;
+      box-shadow: 0 4px 24px -4px rgba(37, 99, 235, 0.12), 0 8px 32px -8px rgba(13, 148, 136, 0.15);
+      backdrop-filter: blur(8px);
+    }
+    @media (min-width: 768px) {
+      .ts-card { padding: 2.5rem; }
+    }
+    .ts-orb {
+      pointer-events: none;
+      position: absolute;
+      border-radius: 999px;
+      filter: blur(48px);
+    }
+    .ts-orb-tr {
+      right: -5rem;
+      top: -5rem;
+      width: 16rem;
+      height: 16rem;
+      background: linear-gradient(to bottom right, rgba(13, 148, 136, 0.2), rgba(37, 99, 235, 0.15), rgba(234, 179, 8, 0.25));
+    }
+    .ts-orb-bl {
+      left: -4rem;
+      bottom: -6rem;
+      width: 14rem;
+      height: 14rem;
+      background: linear-gradient(to top right, rgba(37, 99, 235, 0.1), rgba(234, 179, 8, 0.2));
+    }
+    .ts-header {
+      position: relative;
+      margin-bottom: 1.75rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .ts-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+    .ts-brand img {
+      height: 44px;
+      width: auto;
+    }
+    .ts-kicker {
+      margin: 0;
+      font-size: 0.7rem;
+      font-weight: 800;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--remo-green);
+    }
+    .ts-title {
+      margin: 0.5rem 0 0;
+      font-size: clamp(1.75rem, 4vw, 2.25rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.15;
+      background: linear-gradient(90deg, var(--remo-ink), var(--remo-blue), var(--remo-green));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .ts-lead {
+      margin: 0.75rem 0 0;
+      max-width: 36rem;
+      font-size: 0.9rem;
+      line-height: 1.6;
+      color: var(--remo-muted);
+    }
+    .ts-badge {
+      display: inline-block;
+      margin-top: 0.85rem;
+      border-radius: 999px;
+      background: rgba(254, 240, 138, 0.8);
+      color: #78350f;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 0.2rem 0.7rem;
+    }
+    .ts-grid {
+      position: relative;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1rem;
+    }
+    @media (min-width: 768px) {
+      .ts-grid { grid-template-columns: 1fr 1fr; }
+    }
+    .ts-full { grid-column: 1 / -1; }
+    label {
+      display: block;
+      margin-bottom: 0.3rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: #334155;
+    }
+    input, textarea {
+      width: 100%;
+      border: 1px solid #e2e8f0;
+      border-radius: 0.75rem;
+      background: #fff;
+      padding: 0.65rem 0.8rem;
+      font-size: 0.9rem;
+      color: var(--remo-ink);
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    input:focus, textarea:focus {
+      outline: none;
+      border-color: var(--remo-blue);
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.18);
+    }
+    input.readonly, input[readonly] {
+      background: linear-gradient(180deg, #f8fafc, #f1f5f9);
+      color: #334155;
+      font-weight: 600;
+    }
+    textarea { min-height: 5.5rem; resize: vertical; }
+    .ts-actions {
+      position: relative;
+      margin-top: 1.5rem;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 0.6rem;
+    }
+    .btn {
+      border: none;
+      border-radius: 0.75rem;
+      padding: 0.65rem 1.35rem;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .btn-secondary {
+      border: 2px solid #e2e8f0;
+      background: #fff;
+      color: #475569;
+    }
+    .btn-secondary:hover { border-color: rgba(37, 99, 235, 0.4); color: var(--remo-blue); }
+    .btn-primary {
+      background: linear-gradient(90deg, var(--remo-green), #0f766e);
+      color: #fff;
+      box-shadow: 0 10px 18px -8px rgba(13, 148, 136, 0.45);
+    }
+    .btn-primary:hover { filter: brightness(1.05); }
+    .btn-primary:disabled {
+      cursor: not-allowed;
+      background: #cbd5e1;
+      box-shadow: none;
+    }
+    #submit-btn[hidden],
+    #login-link[hidden] {
+      display: none !important;
+    }
+    .status {
+      position: relative;
+      margin-top: 1rem;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+    .status.error {
+      color: #b91c1c;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 0.75rem;
+      padding: 0.75rem 1rem;
+    }
+    .status.success {
+      color: #166534;
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 0.75rem;
+      padding: 0.75rem 1rem;
+    }
+    .status.info {
+      color: #1e40af;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 0.75rem;
+      padding: 0.75rem 1rem;
+    }
+  </style>
 </head>
 <body class="page-teacher-signup">
-  <div class="card">
-    <div class="head">
-      <h1>Complete Teacher Signup</h1>
-      <p>Invite-only signup. This link is valid only for approved applicants.</p>
-    </div>
-    <div class="body">
+  <div class="ts-wrap">
+    <div class="ts-card">
+      <div class="ts-orb ts-orb-tr" aria-hidden="true"></div>
+      <div class="ts-orb ts-orb-bl" aria-hidden="true"></div>
+      <header class="ts-header">
+        <div class="ts-brand">
+          <img src="/images/remoed-logo-new.png" alt="RemoEdPH" onerror="this.onerror=null;this.src='/remoed-logo.png';" />
+        </div>
+        <p class="ts-kicker">RemoEd · Teacher pipeline</p>
+        <h1 class="ts-title">Complete Teacher Signup</h1>
+        <p class="ts-lead">
+          You passed screening. Create your teacher portal login with this invite-only form.
+          Your applicant email is locked to this invitation.
+        </p>
+        <span class="ts-badge">Invite-only · approved applicants</span>
+      </header>
+
       <form id="teacher-signup-form" novalidate>
-        <div class="grid">
-          <div class="full">
-            <label for="email">Applicant Email</label>
-            <input id="email" type="email" class="readonly" readonly />
+        <div class="ts-grid">
+          <div class="ts-full">
+            <label for="email">Applicant email</label>
+            <input id="email" name="email" type="email" class="readonly" readonly autocomplete="username" />
           </div>
           <div>
-            <label for="firstName">First Name</label>
-            <input id="firstName" type="text" required />
+            <label for="firstName">First name</label>
+            <input id="firstName" name="firstName" type="text" required autocomplete="given-name" />
           </div>
           <div>
-            <label for="lastName">Last Name</label>
-            <input id="lastName" type="text" required />
+            <label for="lastName">Last name</label>
+            <input id="lastName" name="lastName" type="text" required autocomplete="family-name" />
           </div>
           <div>
-            <label for="middleName">Middle Name (optional)</label>
-            <input id="middleName" type="text" />
+            <label for="middleName">Middle name (optional)</label>
+            <input id="middleName" name="middleName" type="text" autocomplete="additional-name" />
           </div>
           <div>
             <label for="username">Username</label>
-            <input id="username" type="text" required />
+            <input id="username" name="username" type="text" required autocomplete="off" />
           </div>
           <div>
             <label for="password">Password</label>
-            <input id="password" type="password" minlength="6" required />
+            <input id="password" name="password" type="password" minlength="6" required autocomplete="new-password" />
           </div>
           <div>
-            <label for="confirmPassword">Confirm Password</label>
-            <input id="confirmPassword" type="password" minlength="6" required />
+            <label for="confirmPassword">Confirm password</label>
+            <input id="confirmPassword" name="confirmPassword" type="password" minlength="6" required autocomplete="new-password" />
           </div>
           <div>
-            <label for="contact">Contact Number</label>
-            <input id="contact" type="text" />
+            <label for="contact">Contact number</label>
+            <input id="contact" name="contact" type="tel" autocomplete="tel" placeholder="e.g. +63 9xx xxx xxxx" />
           </div>
-          <div class="full">
+          <div class="ts-full">
             <label for="address">Address</label>
-            <textarea id="address"></textarea>
+            <textarea id="address" name="address" autocomplete="street-address"></textarea>
           </div>
         </div>
-        <div class="actions">
+        <div class="ts-actions">
           <button type="button" class="btn btn-secondary" id="cancel-btn">Cancel</button>
-          <button type="submit" class="btn btn-primary" id="submit-btn">Activate Teacher Account</button>
+          <a class="btn btn-primary" id="login-link" href="/teacher-login.html" hidden>Go to teacher login</a>
+          <button type="submit" class="btn btn-primary" id="submit-btn">Activate teacher account</button>
         </div>
         <div id="status" class="status"></div>
       </form>
@@ -65,14 +291,56 @@
   </div>
 
   <script>
+    window.__TEACHER_SIGNUP_APPLICANT__ = __TEACHER_SIGNUP_BOOTSTRAP__;
+  </script>
+  <script>
     const params = new URLSearchParams(window.location.search);
     const invitation = params.get('invitation');
     const statusEl = document.getElementById('status');
     const submitBtn = document.getElementById('submit-btn');
+    const loginLink = document.getElementById('login-link');
 
     function setStatus(message, type) {
       statusEl.textContent = message || '';
       statusEl.className = `status ${type || ''}`.trim();
+    }
+
+    function applyApplicant(applicant) {
+      if (!applicant) return;
+      const emailEl = document.getElementById('email');
+      if (applicant.email && !emailEl.value) emailEl.value = applicant.email;
+      else if (applicant.email) emailEl.value = applicant.email;
+
+      const firstEl = document.getElementById('firstName');
+      const lastEl = document.getElementById('lastName');
+      const middleEl = document.getElementById('middleName');
+      const parts = String(applicant.fullName || '').trim().split(/\s+/).filter(Boolean);
+      if (parts.length === 1 && !firstEl.value) firstEl.value = parts[0];
+      if (parts.length >= 2) {
+        if (!firstEl.value) firstEl.value = parts[0];
+        if (!lastEl.value) lastEl.value = parts[parts.length - 1];
+        const middle = parts.slice(1, -1).join(' ');
+        if (middle && !middleEl.value) middleEl.value = middle;
+      }
+
+      const contactEl = document.getElementById('contact');
+      if (applicant.contactNo && !contactEl.value) contactEl.value = applicant.contactNo;
+    }
+
+    function lockAsAlreadyUsed(message) {
+      setStatus(message || 'This invitation was already used. Please log in with your teacher account.', 'info');
+      submitBtn.hidden = true;
+      submitBtn.disabled = true;
+      loginLink.hidden = false;
+    }
+
+    const boot = window.__TEACHER_SIGNUP_APPLICANT__;
+    if (boot && boot.applicant) applyApplicant(boot.applicant);
+    if (boot && boot.alreadyUsed) {
+      lockAsAlreadyUsed();
+    } else if (boot && boot.expired) {
+      setStatus('This invitation has expired. Ask admin to resend your sign-up email.', 'error');
+      submitBtn.disabled = true;
     }
 
     async function validateToken() {
@@ -82,8 +350,13 @@
         return null;
       }
       try {
-        const res = await fetch(`/api/auth/teacher-signup/validate?token=${encodeURIComponent(invitation)}`);
-        const data = await res.json().catch(() => ({}));
+        const res = await fetch('/api/auth/teacher-signup/validate?token=' + encodeURIComponent(invitation));
+        const data = await res.json().catch(function () { return {}; });
+        if (data.applicant) applyApplicant(data.applicant);
+        if (data.code === 'already_used' || (boot && boot.alreadyUsed)) {
+          lockAsAlreadyUsed(data.message);
+          return null;
+        }
         if (!res.ok || !data.success) {
           setStatus(data.message || 'This invitation is invalid or expired.', 'error');
           submitBtn.disabled = true;
@@ -91,18 +364,22 @@
         }
         return data.applicant;
       } catch (e) {
+        if (boot && boot.applicant && boot.applicant.email) {
+          return boot.applicant;
+        }
         setStatus('Could not verify this invitation. Please try again or ask admin to resend your email.', 'error');
         submitBtn.disabled = true;
         return null;
       }
     }
 
-    document.getElementById('cancel-btn').addEventListener('click', () => {
+    document.getElementById('cancel-btn').addEventListener('click', function () {
       window.location.href = '/';
     });
 
-    document.getElementById('teacher-signup-form').addEventListener('submit', async (e) => {
+    document.getElementById('teacher-signup-form').addEventListener('submit', async function (e) {
       e.preventDefault();
+      if (submitBtn.disabled || submitBtn.hidden) return;
       setStatus('');
 
       const firstName = document.getElementById('firstName').value.trim();
@@ -135,41 +412,39 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             token: invitation,
-            firstName,
-            middleName,
-            lastName,
-            username,
-            password,
-            contact,
-            address
+            firstName: firstName,
+            middleName: middleName,
+            lastName: lastName,
+            username: username,
+            password: password,
+            contact: contact,
+            address: address
           })
         });
         const data = await res.json();
+        if (data.code === 'already_used') {
+          if (data.applicant) applyApplicant(data.applicant);
+          lockAsAlreadyUsed(data.message);
+          return;
+        }
         if (!res.ok || !data.success) {
           setStatus(data.message || 'Failed to activate teacher account.', 'error');
           submitBtn.disabled = false;
-          submitBtn.textContent = 'Activate Teacher Account';
+          submitBtn.textContent = 'Activate teacher account';
           return;
         }
         setStatus('Account activated successfully. Redirecting to teacher login...', 'success');
-        setTimeout(() => { window.location.href = '/teacher-login.html'; }, 1200);
+        setTimeout(function () { window.location.href = '/teacher-login.html'; }, 1200);
       } catch (error) {
         setStatus('Server error. Please try again.', 'error');
         submitBtn.disabled = false;
-        submitBtn.textContent = 'Activate Teacher Account';
+        submitBtn.textContent = 'Activate teacher account';
       }
     });
 
     (async function init() {
-      const applicant = await validateToken();
-      if (!applicant) return;
-      document.getElementById('email').value = applicant.email || '';
-      const parts = String(applicant.fullName || '').trim().split(/\s+/).filter(Boolean);
-      if (parts.length >= 1) document.getElementById('firstName').value = parts[0];
-      if (parts.length >= 2) document.getElementById('lastName').value = parts.slice(1).join(' ');
+      await validateToken();
     })();
   </script>
 </body>
 </html>
-
-

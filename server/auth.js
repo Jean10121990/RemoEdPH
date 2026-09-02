@@ -27,7 +27,7 @@ const {
 const crypto = require('crypto');
 const mongoose = require('mongoose');
 const { sendPasswordResetEmail } = require('./emailService');
-const { findActivePassedInvitation, inviteErrorMessage } = require('./utils/teacherInvitation');
+const { findActivePassedInvitation, inviteErrorMessage, applicantPayload } = require('./utils/teacherInvitation');
 const { recordAdminLoginActivity, getAdminSessionVersion } = require('./services/adminLoginActivity');
 const {
   ADMIN_2FA_ENROLLMENT_PURPOSE,
@@ -127,7 +127,7 @@ router.get(
       return res.json({
         success: true,
         invitation: inv.token,
-        applicant: { email: application.email || '', fullName: application.fullName || '' },
+        applicant: { email: application.email || '', fullName: application.fullName || '', contactNo: application.contactNo || '' },
       });
     } catch (e) {
       console.error('GET /api/auth/teacher-signup/invitation-by-application:', e);
@@ -142,18 +142,27 @@ router.get(
   async (req, res) => {
     try {
       const found = await findActivePassedInvitation(req.query.token);
+      if (found.reason === 'used' && found.application) {
+        return res.status(409).json({
+          success: false,
+          code: 'already_used',
+          message: inviteErrorMessage('used'),
+          loginUrl: '/teacher-login.html',
+          applicant: applicantPayload(found.application, found.invitation),
+        });
+      }
       if (!found.ok) {
         return res.status(404).json({
           success: false,
           message: inviteErrorMessage(found.reason),
+          applicant: found.application
+            ? applicantPayload(found.application, found.invitation)
+            : undefined,
         });
       }
       return res.json({
         success: true,
-        applicant: {
-          email: found.application.email || '',
-          fullName: found.application.fullName || '',
-        },
+        applicant: applicantPayload(found.application, found.invitation),
       });
     } catch (e) {
       console.error('GET /api/auth/teacher-signup/validate:', e);
@@ -181,6 +190,15 @@ router.post('/teacher-signup/complete', authRegisterLimiter, async (req, res) =>
     }
 
     const found = await findActivePassedInvitation(token);
+    if (found.reason === 'used') {
+      return res.status(409).json({
+        success: false,
+        code: 'already_used',
+        message: inviteErrorMessage('used'),
+        loginUrl: '/teacher-login.html',
+        applicant: applicantPayload(found.application, found.invitation),
+      });
+    }
     if (!found.ok) {
       return res.status(404).json({
         success: false,
@@ -189,7 +207,11 @@ router.post('/teacher-signup/complete', authRegisterLimiter, async (req, res) =>
     }
 
     const { invitation, application } = found;
-    const email = String(application.email || invitation.email || '').trim().toLowerCase();
+    const email = String(
+      (application && application.email) || (invitation && invitation.email) || ''
+    )
+      .trim()
+      .toLowerCase();
     if (!email) {
       return res.status(400).json({
         success: false,

@@ -425,7 +425,7 @@ app.get('/api/rtc-config', (req, res) => {
   res.json({ iceServers });
 });
 
-const { findActivePassedInvitation, inviteErrorMessage } = require('./utils/teacherInvitation');
+const { findActivePassedInvitation, inviteErrorMessage, applicantPayload, canShowSignupPage } = require('./utils/teacherInvitation');
 
 function sendInviteErrorPage(res, reason, customMessage) {
   const message = customMessage || inviteErrorMessage(reason);
@@ -456,14 +456,27 @@ function sendInviteErrorPage(res, reason, customMessage) {
 </html>`);
 }
 
+function sendTeacherSignupPage(res, bootstrap) {
+  const filePath = path.join(__dirname, '../public/teacher-signup.html');
+  let html = fs.readFileSync(filePath, 'utf8');
+  const payload = bootstrap && typeof bootstrap === 'object' ? bootstrap : null;
+  const json = JSON.stringify(payload).replace(/</g, '\\u003c');
+  html = html.replace('__TEACHER_SIGNUP_BOOTSTRAP__', json);
+  res.type('html').send(html);
+}
+
 // Protected teacher signup route: requires a valid invitation token in URL.
 app.get('/teacher-signup', async (req, res) => {
   try {
     const found = await findActivePassedInvitation(req.query.invitation);
-    if (!found.ok) {
+    if (!canShowSignupPage(found)) {
       return sendInviteErrorPage(res, found.reason);
     }
-    return res.sendFile(path.join(__dirname, '../public/teacher-signup.html'));
+    return sendTeacherSignupPage(res, {
+      alreadyUsed: found.reason === 'used',
+      expired: found.reason === 'expired',
+      applicant: applicantPayload(found.application, found.invitation),
+    });
   } catch (error) {
     console.error('Protected /teacher-signup route failed:', error);
     return sendInviteErrorPage(res, 'invalid');
@@ -496,10 +509,10 @@ app.get('/register.html', async (req, res) => {
     }
     if (token) {
       const found = await findActivePassedInvitation(token);
-      if (!found.ok) {
+      if (!canShowSignupPage(found)) {
         return sendInviteErrorPage(res, found.reason);
       }
-      if (appIdFromQuery && String(found.application._id) !== appIdFromQuery) {
+      if (appIdFromQuery && found.application && String(found.application._id) !== appIdFromQuery) {
         return sendInviteErrorPage(res, 'invalid');
       }
     }
