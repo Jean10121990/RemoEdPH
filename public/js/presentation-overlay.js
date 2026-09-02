@@ -2,7 +2,7 @@
  * Stacked presentation viewer: responsive iframe (bottom) + annotation canvas (top).
  * - Default: Interact (canvas pointer-events: none) so clicks/audio reach the PPT iframe.
  * - Draw toggles ON/OFF for teacher and student; strokes sync via Socket.io annotation-sync.
- * - Native PowerPoint/Office chrome handles slide navigation (no custom Prev/Next).
+ * - Teacher Prev/Next in the RemoEd toolbar sync the student (Office iframe Next cannot).
  */
 (function (global) {
   'use strict';
@@ -72,18 +72,18 @@
     if (isOfficeHosted(src)) {
       try {
         var ou = new URL(src);
-        if (idx > 0) ou.searchParams.set('wdStartOn', String(idx + 1));
-        else ou.searchParams.delete('wdStartOn');
+        ou.searchParams.set('wdStartOn', String(idx + 1));
+        ou.searchParams.set('wdSlideIndex', String(idx + 1));
         return ou.toString();
       } catch (_e) {
         return src;
       }
     }
     if (isPptFileUrl(src)) {
-      // Native PPT/PPTX via Microsoft Office Online embed (absolute origin + encodeURIComponent).
       var embed = buildSecureOfficeEmbedUrl(src);
       if (!embed) return src;
-      if (idx > 0) embed += (embed.indexOf('?') >= 0 ? '&' : '?') + 'wdStartOn=' + encodeURIComponent(String(idx + 1));
+      embed += (embed.indexOf('?') >= 0 ? '&' : '?') + 'wdStartOn=' + encodeURIComponent(String(idx + 1));
+      embed += '&wdSlideIndex=' + encodeURIComponent(String(idx + 1));
       return embed;
     }
     if (idx > 0) {
@@ -249,6 +249,40 @@
     clearBtn.textContent = 'Clear';
     clearBtn.style.cssText = btnStyle('border-color:#fecaca;background:#fef2f2;color:#b91c1c;');
 
+    var prevSlideBtn = null;
+    var nextSlideBtn = null;
+    var slideLabel = null;
+    if (isTeacher) {
+      prevSlideBtn = document.createElement('button');
+      prevSlideBtn.type = 'button';
+      prevSlideBtn.textContent = '◀';
+      prevSlideBtn.title = 'Previous slide (syncs student)';
+      prevSlideBtn.style.cssText = btnStyle(
+        'min-width:36px;font-weight:700;background:#1ca7e7;color:#fff;border-color:#1ca7e7;'
+      );
+
+      slideLabel = document.createElement('span');
+      slideLabel.style.cssText =
+        'font-size:0.8rem;font-weight:700;color:#0f172a;min-width:72px;text-align:center;padding:4px 8px;background:#f1f5f9;border-radius:6px;';
+
+      nextSlideBtn = document.createElement('button');
+      nextSlideBtn.type = 'button';
+      nextSlideBtn.textContent = '▶';
+      nextSlideBtn.title = 'Next slide (syncs student)';
+      nextSlideBtn.style.cssText = btnStyle(
+        'min-width:36px;font-weight:700;background:#1ca7e7;color:#fff;border-color:#1ca7e7;'
+      );
+
+      toolbar.appendChild(prevSlideBtn);
+      toolbar.appendChild(slideLabel);
+      toolbar.appendChild(nextSlideBtn);
+
+      var syncHint = document.createElement('span');
+      syncHint.style.cssText = 'font-size:0.72rem;color:#0369a1;max-width:220px;line-height:1.25;';
+      syncHint.textContent = 'Use these arrows to sync slides (Office Next does not).';
+      toolbar.appendChild(syncHint);
+    }
+
     toolbar.appendChild(toggleDraw);
     toolbar.appendChild(colorInput);
     toolbar.appendChild(clearBtn);
@@ -371,6 +405,13 @@
       );
     }
 
+    function updateSlideLabel() {
+      if (slideLabel) slideLabel.textContent = 'Slide ' + (state.slideIndex + 1);
+      if (prevSlideBtn) prevSlideBtn.disabled = state.slideIndex <= 0;
+      var headerInfo = document.getElementById('pdf-page-info');
+      if (headerInfo) headerInfo.textContent = 'Slide ' + (state.slideIndex + 1);
+    }
+
     function emitSlideChanged(index, slideUrl) {
       if (!socket || !socket.connected || !isTeacher) return;
       var payload = {
@@ -381,6 +422,12 @@
       };
       socket.emit('presentation-slide-changed', payload);
       socket.emit('slide-changed', payload);
+      socket.emit('presenter-sync-update', {
+        room: room,
+        materialId: materialId,
+        page: index + 1,
+        slideIndex: index
+      });
     }
 
     function loadIframeAt(index, opts) {
@@ -401,8 +448,8 @@
       if (opts.forceReload && src.indexOf('view.officeapps.live.com') !== -1) {
         src += (src.indexOf('?') >= 0 ? '&' : '?') + '_remoedSlide=' + (i + 1) + '&_t=' + Date.now();
       }
-      if (iframe.src !== src) iframe.src = src;
-      else if (opts.forceReload) iframe.src = src;
+      iframe.src = src;
+      updateSlideLabel();
       redrawAnnotations(state);
       if (opts.broadcast) emitSlideChanged(i, src);
     }
@@ -428,6 +475,7 @@
       var nextIdx = parseSlideIndexFromMessage(evt && evt.data);
       if (nextIdx == null || nextIdx === state.slideIndex) return;
       state.slideIndex = nextIdx;
+      updateSlideLabel();
       redrawAnnotations(state);
       emitSlideChanged(nextIdx, iframe.src || null);
     }
@@ -510,15 +558,35 @@
     canvas.addEventListener('pointerleave', finishStroke);
 
     function goToSlide(index, broadcast) {
+      var i = Math.max(0, Number(index) || 0);
+      if (!broadcast && i === state.slideIndex) return;
       state._applyingRemoteSlide = !broadcast;
-      loadIframeAt(index, { broadcast: !!broadcast, forceReload: true, keepDraw: false });
+      loadIframeAt(i, { broadcast: !!broadcast, forceReload: true, keepDraw: false });
       state._applyingRemoteSlide = false;
     }
     state.goToSlide = goToSlide;
 
+    function stepSlide(delta) {
+      goToSlide(Math.max(0, state.slideIndex + (Number(delta) || 0)), true);
+    }
+    state.stepSlide = stepSlide;
+
+    if (prevSlideBtn) {
+      prevSlideBtn.addEventListener('click', function () {
+        stepSlide(-1);
+      });
+    }
+    if (nextSlideBtn) {
+      nextSlideBtn.addEventListener('click', function () {
+        stepSlide(1);
+      });
+    }
+    updateSlideLabel();
+
     return {
       materialId: materialId,
       goToSlide: goToSlide,
+      stepSlide: stepSlide,
       setMode: function (mode) {
         setDrawMode(state, mode === 'draw');
       },
@@ -563,14 +631,18 @@
   }
 
   function handlePresentationSlideChanged(data) {
-    if (!data || data.currentSlideIndex == null) return;
+    if (!data) return;
+    var idx = data.currentSlideIndex;
+    if (idx == null && data.slideIndex != null) idx = data.slideIndex;
+    if (idx == null && data.page != null) idx = Number(data.page) - 1;
+    if (idx == null || !isFinite(Number(idx))) return;
     var state = data.materialId ? pptOverlayState[data.materialId] : null;
     if (!state) {
       var keys = Object.keys(pptOverlayState);
       if (keys.length === 1) state = pptOverlayState[keys[0]];
     }
     if (!state || typeof state.goToSlide !== 'function') return;
-    state.goToSlide(Number(data.currentSlideIndex));
+    state.goToSlide(Number(idx));
   }
 
   global.RemoedPresentationOverlay = {
