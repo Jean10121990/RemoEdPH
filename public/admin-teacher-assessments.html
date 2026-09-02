@@ -22,7 +22,10 @@
         <script>if (!window.__ADMIN_EMBED__) { AdminSidebar.render('admin-sidebar-root', 'teacher-assessments'); }</script>
         <div class="remoed-content">
             <div class="remoed-section">
-                <div class="remoed-section-title">Teacher Assessment Submissions</div>
+                <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; margin-bottom:8px;">
+                    <div class="remoed-section-title" style="margin:0;">Teacher Assessment Submissions</div>
+                    <a href="admin-assessment-answer-key.html" class="btn btn-secondary" target="_blank" rel="noopener" id="open-answer-key-link">Answer Key (trainer reference)</a>
+                </div>
 
                 <div class="rubric-card">
                     <h3>RemoEd Teacher Skills Assessment Rubric 1 (Skills)</h3>
@@ -400,6 +403,7 @@
         </div>
     </div>
 
+    <script src="js/assessment-answer-key-data.js"></script>
     <script>
         // Check authentication
         const userType = localStorage.getItem('userType');
@@ -794,8 +798,12 @@
                     `;
                 }
 
-                const grammarCorrectIndices = [1, 1, 1, 2, 1];
-                const vocabularyCorrectIndices = [1, 0, 1, 1, 0];
+                const grammarCorrectIndices = (window.AssessmentAnswerKey && AssessmentAnswerKey.getGrammarCorrectIndices)
+                    ? AssessmentAnswerKey.getGrammarCorrectIndices()
+                    : [1, 1, 1, 2, 1];
+                const vocabularyCorrectIndices = (window.AssessmentAnswerKey && AssessmentAnswerKey.getVocabularyCorrectIndices)
+                    ? AssessmentAnswerKey.getVocabularyCorrectIndices()
+                    : [1, 0, 1, 1, 0];
                 const computeScoreFromAnswers = (answers, correctIndices) => {
                     if (!answers) return null;
                     const values = Array.isArray(answers) ? answers : Object.values(answers);
@@ -821,6 +829,14 @@
                 // Grammar Test
                 const grammarResolved = resolveScoreTotal(data.tests.grammar, grammarCorrectIndices);
                 if (data.tests.grammar && (grammarResolved.score !== null && grammarResolved.score !== undefined)) {
+                    const grammarWrongHtml = (window.AssessmentAnswerKey && AssessmentAnswerKey.renderMcqWrongSection)
+                        ? AssessmentAnswerKey.renderMcqWrongSection(
+                            AssessmentAnswerKey.GRAMMAR_QUESTIONS,
+                            data.tests.grammar.answers,
+                            'Incorrect grammar answers',
+                            'grammar'
+                        )
+                        : '';
                     html += `
                         <div class="test-detail-card">
                             <h3>🧠 Grammar Test</h3>
@@ -834,6 +850,7 @@
                                     <div class="info-value">${data.tests.grammar.completedAt ? new Date(data.tests.grammar.completedAt).toLocaleString() : 'N/A'}</div>
                                 </div>
                             </div>
+                            ${grammarWrongHtml}
                         </div>
                     `;
                 }
@@ -841,6 +858,14 @@
                 // Vocabulary Test
                 const vocabularyResolved = resolveScoreTotal(data.tests.vocabulary, vocabularyCorrectIndices);
                 if (data.tests.vocabulary && (vocabularyResolved.score !== null && vocabularyResolved.score !== undefined)) {
+                    const vocabularyWrongHtml = (window.AssessmentAnswerKey && AssessmentAnswerKey.renderMcqWrongSection)
+                        ? AssessmentAnswerKey.renderMcqWrongSection(
+                            AssessmentAnswerKey.VOCABULARY_QUESTIONS,
+                            data.tests.vocabulary.answers,
+                            'Incorrect vocabulary answers',
+                            'vocabulary'
+                        )
+                        : '';
                     html += `
                         <div class="test-detail-card">
                             <h3>📚 Vocabulary Test</h3>
@@ -854,6 +879,31 @@
                                     <div class="info-value">${data.tests.vocabulary.completedAt ? new Date(data.tests.vocabulary.completedAt).toLocaleString() : 'N/A'}</div>
                                 </div>
                             </div>
+                            ${vocabularyWrongHtml}
+                        </div>
+                    `;
+                }
+
+                if (data.tests.personality && (data.tests.personality.answers || data.tests.personality.categoryScores)) {
+                    const personalityWrongHtml = (window.AssessmentAnswerKey && AssessmentAnswerKey.renderPersonalityWrongSection)
+                        ? AssessmentAnswerKey.renderPersonalityWrongSection(data.tests.personality.answers)
+                        : '';
+                    const personalityScore = data.tests.personality.score;
+                    const personalityTotal = data.tests.personality.total;
+                    html += `
+                        <div class="test-detail-card">
+                            <h3>💬 Personality Assessment</h3>
+                            <div class="test-info-grid">
+                                <div class="info-item">
+                                    <div class="info-label">Score</div>
+                                    <div class="info-value">${personalityScore !== undefined && personalityScore !== null ? personalityScore : '—'} / ${personalityTotal || 25}</div>
+                                </div>
+                                <div class="info-item">
+                                    <div class="info-label">Completed At</div>
+                                    <div class="info-value">${data.tests.personality.completedAt ? new Date(data.tests.personality.completedAt).toLocaleString() : 'N/A'}</div>
+                                </div>
+                            </div>
+                            ${personalityWrongHtml}
                         </div>
                     `;
                 }

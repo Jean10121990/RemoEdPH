@@ -100,15 +100,18 @@
             if(!byKey[k]) byKey[k]=[];
             byKey[k].push(b);
         });
-        const hours = [];
-        for(let h=6; h<24; h++) hours.push(String(h).padStart(2,'0')+':00');
+        const slots = [];
+        for (let h = 6; h < 24; h++) {
+            slots.push(String(h).padStart(2, '0') + ':00');
+            slots.push(String(h).padStart(2, '0') + ':30');
+        }
         let html = '<table><thead><tr><th>Time</th>';
         days.forEach(day=>{ html += '<th>'+day.toFormat('EEE M/d')+'</th>'; });
         html += '</tr></thead><tbody>';
-        hours.forEach(hour=>{
-            html += '<tr><th>'+hour+'</th>';
+        slots.forEach(slot=>{
+            html += '<tr><th>'+slot+'</th>';
             days.forEach(day=>{
-                const key = day.toISODate() + '|' + hour;
+                const key = day.toISODate() + '|' + slot;
                 html += '<td>';
                 (byKey[key]||[]).forEach(b=>{
                     html += '<div class="as-slot" data-id="'+b._id+'">'+esc(b.studentId)+'<br><small>'+esc(b.status)+'</small></div>';

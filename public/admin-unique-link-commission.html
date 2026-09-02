@@ -50,7 +50,7 @@
           <div class="card">
             <h3>Total Commission</h3>
             <div class="big" id="total-commission">₱0</div>
-            <div class="muted">25 pesos per successful enrollee</div>
+            <div class="muted">₱1,000.00 per successful enrollee or subscription</div>
           </div>
           <div class="card">
             <h3>Successful Enrollees</h3>
@@ -162,7 +162,7 @@
           <td>${r.studentContact || '—'}</td>
           <td>${r.subscriptionPlan || '—'}</td>
           <td>${fmtPeso(r.amountPaid || 0)}</td>
-          <td>${fmtPeso(r.commissionAmount || 500)}</td>
+          <td>${fmtPeso(r.commissionAmount || 1000)}</td>
           <td>${r.createdAt ? new Date(r.createdAt).toLocaleString() : ''}</td>
         </tr>
       `).join('');

@@ -60,7 +60,7 @@ function founderGrowthSnapshot() {
     hasProfessionalLetLicense: true,
     hasMastersDegree: true,
     hasDoctorateDegree: true,
-    loyaltyPoints: 35,
+    loyaltyPoints: 30,
     loyaltyYears: 25,
     allHeartCommitments: true,
     allHonorCommitments: true,
@@ -97,7 +97,7 @@ function loyaltyPointsFromHireDate(hireDateValue) {
   if (!hireDate) return { loyaltyYears: 0, loyaltyPoints: 0 };
   const loyaltyYears = wholeYearsBetween(hireDate, new Date());
   let loyaltyPoints = 0;
-  if (loyaltyYears >= 25) loyaltyPoints = 35;
+  if (loyaltyYears >= 25) loyaltyPoints = 30;
   else if (loyaltyYears >= 20) loyaltyPoints = 30;
   else if (loyaltyYears >= 15) loyaltyPoints = 25;
   else if (loyaltyYears >= 10) loyaltyPoints = 20;

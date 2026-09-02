@@ -189,28 +189,28 @@
                             <input type="radio" name="resolution-type" value="system-issue" onchange="toggleResolutionDetails()">
                             <span class="option-text">
                                 <strong>System Issue</strong><br>
-                                <small>Teacher gets 10% of rate for effort, student can reschedule</small>
+                                <small>Teacher gets 100% of rate; student can reschedule</small>
                             </span>
                         </label>
                         <label class="resolution-option">
                             <input type="radio" name="resolution-type" value="teacher-fault" onchange="toggleResolutionDetails()">
                             <span class="option-text">
-                                <strong>Teacher Fault</strong><br>
-                                <small>No payment to teacher, specify reason</small>
+                                <strong>Teacher Issue</strong><br>
+                                <small>Teacher gets 20% of rate (no internet, no camera, device failure)</small>
                             </span>
                         </label>
                         <label class="resolution-option">
                             <input type="radio" name="resolution-type" value="student-issue" onchange="toggleResolutionDetails()">
                             <span class="option-text">
                                 <strong>Student Issue</strong><br>
-                                <small>Pay teacher 50% of rate</small>
+                                <small>Teacher gets 100% of rate</small>
                             </span>
                         </label>
                     </div>
                 </div>
                 <div class="form-group" id="teacher-fault-reason" style="display: none;">
-                    <label>Reason for Teacher Fault</label>
-                    <textarea id="teacher-fault-reason-text" placeholder="Specify the reason why this is considered teacher fault..."></textarea>
+                    <label>Reason for Teacher Issue</label>
+                    <textarea id="teacher-fault-reason-text" placeholder="e.g. no internet, no camera, device failure..."></textarea>
                 </div>
                 <div class="form-group">
                     <label>Resolution Notes</label>

@@ -261,26 +261,36 @@
             </div>
             
             <div class="service-row" style="background: #f8f9fa; padding: 8px; border-radius: 6px; margin-bottom: 8px; border: 1px solid #e9ecef;">
-              <div class="service-label" style="color: #495057; font-size: 0.85rem;">System issue classes (10% of rate)</div>
+              <div class="service-label" style="color: #495057; font-size: 0.85rem;">System issue classes (100% of rate)</div>
               <div class="service-value" id="system-issue-classes" style="color: #333; font-weight: 600; font-size: 0.9rem;">0</div>
             </div>
             
             <div class="service-row" style="background: #f3e5f5; padding: 8px; border-radius: 6px; margin-bottom: 8px; border: 2px solid #ce93d8;">
-              <div class="service-label" style="color: #7b1fa2; font-weight: 600; font-size: 0.85rem;">System issue payment (10% Rate × System issue class)</div>
+              <div class="service-label" style="color: #7b1fa2; font-weight: 600; font-size: 0.85rem;">System issue payment (100% Rate × System issue class)</div>
               <div class="service-sum" id="system-issue-sum" style="color: #7b1fa2; font-size: 1rem; font-weight: 700;">₱0.00</div>
             </div>
             
             <div class="service-row" style="background: #f8f9fa; padding: 8px; border-radius: 6px; margin-bottom: 8px; border: 1px solid #e9ecef;">
-              <div class="service-label" style="color: #495057; font-size: 0.85rem;">Student issue classes (20% of rate)</div>
+              <div class="service-label" style="color: #495057; font-size: 0.85rem;">Student issue classes (100% of rate)</div>
               <div class="service-value" id="student-issue-classes" style="color: #333; font-weight: 600; font-size: 0.9rem;">0</div>
             </div>
             
-            <div class="service-row" style="background: #e8f5e8; padding: 8px; border-radius: 6px; border: 2px solid #a5d6a7;">
-              <div class="service-label" style="color: #2e7d32; font-weight: 600; font-size: 0.85rem;">Student issue payment (20% Rate × Student issue class)</div>
+            <div class="service-row" style="background: #e8f5e8; padding: 8px; border-radius: 6px; margin-bottom: 8px; border: 2px solid #a5d6a7;">
+              <div class="service-label" style="color: #2e7d32; font-weight: 600; font-size: 0.85rem;">Student issue payment (100% Rate × Student issue class)</div>
               <div class="service-sum" id="student-issue-sum" style="color: #2e7d32; font-size: 1rem; font-weight: 700;">₱0.00</div>
             </div>
+
+            <div class="service-row" style="background: #f8f9fa; padding: 8px; border-radius: 6px; margin-bottom: 8px; border: 1px solid #e9ecef;">
+              <div class="service-label" style="color: #495057; font-size: 0.85rem;">Teacher issue classes (20% of rate)<br><span style="font-size:0.75rem;color:#6c757d;">No internet, no camera, device failure</span></div>
+              <div class="service-value" id="teacher-issue-classes" style="color: #333; font-weight: 600; font-size: 0.9rem;">0</div>
+            </div>
             
-            <div class="service-row" style="background: #fff3e0; padding: 8px; border-radius: 6px; border: 2px solid #ffcc02; margin-top: 8px;">
+            <div class="service-row" style="background: #fff3e0; padding: 8px; border-radius: 6px; margin-bottom: 8px; border: 2px solid #ffb74d;">
+              <div class="service-label" style="color: #e65100; font-weight: 600; font-size: 0.85rem;">Teacher issue payment (20% Rate × Teacher issue class)</div>
+              <div class="service-sum" id="teacher-issue-sum" style="color: #e65100; font-size: 1rem; font-weight: 700;">₱0.00</div>
+            </div>
+            
+            <div class="service-row" style="background: #fff8e1; padding: 8px; border-radius: 6px; border: 2px solid #ffcc02; margin-top: 8px;">
               <div class="service-label" style="color: #f57c00; font-weight: 600; font-size: 0.85rem;">Total Issue Payments</div>
               <div class="service-sum" id="total-issue-sum" style="color: #f57c00; font-size: 1.1rem; font-weight: 700;">₱0.00</div>
             </div>
@@ -965,20 +975,26 @@
           const ratePer25Minutes = parseFloat(document.getElementById('hourly-rate').value) || 0;
           
           // Calculate payments
-          const systemIssuePayment = data.systemIssueCount * (ratePer25Minutes * 0.1); // 10% of rate
-          const studentIssuePayment = data.studentIssueCount * (ratePer25Minutes * 0.2); // 20% of rate
-          const totalIssuePayment = systemIssuePayment + studentIssuePayment;
+          const systemIssuePayment = data.systemIssueCount * ratePer25Minutes;
+          const studentIssuePayment = data.studentIssueCount * ratePer25Minutes;
+          const teacherIssuePayment = (data.teacherFaultCount || 0) * (ratePer25Minutes * 0.2);
+          const totalIssuePayment = systemIssuePayment + studentIssuePayment + teacherIssuePayment;
           
           // Update display
           document.getElementById('system-issue-classes').textContent = data.systemIssueCount;
           document.getElementById('system-issue-sum').textContent = systemIssuePayment.toFixed(2);
           document.getElementById('student-issue-classes').textContent = data.studentIssueCount;
           document.getElementById('student-issue-sum').textContent = studentIssuePayment.toFixed(2);
+          const teacherIssueEl = document.getElementById('teacher-issue-classes');
+          const teacherIssueSumEl = document.getElementById('teacher-issue-sum');
+          if (teacherIssueEl) teacherIssueEl.textContent = data.teacherFaultCount || 0;
+          if (teacherIssueSumEl) teacherIssueSumEl.textContent = teacherIssuePayment.toFixed(2);
           document.getElementById('total-issue-sum').textContent = totalIssuePayment.toFixed(2);
           
           console.log(`📊 RESOLVED ISSUE PAYMENTS:`);
-          console.log(`   System issue classes: ${data.systemIssueCount} × ₱${(ratePer25Minutes * 0.1).toFixed(2)} = ₱${systemIssuePayment.toFixed(2)}`);
-          console.log(`   Student issue classes: ${data.studentIssueCount} × ₱${(ratePer25Minutes * 0.2).toFixed(2)} = ₱${studentIssuePayment.toFixed(2)}`);
+          console.log(`   System issue classes: ${data.systemIssueCount} × ₱${ratePer25Minutes.toFixed(2)} = ₱${systemIssuePayment.toFixed(2)}`);
+          console.log(`   Student issue classes: ${data.studentIssueCount} × ₱${ratePer25Minutes.toFixed(2)} = ₱${studentIssuePayment.toFixed(2)}`);
+          console.log(`   Teacher issue classes: ${data.teacherFaultCount || 0} × ₱${(ratePer25Minutes * 0.2).toFixed(2)} = ₱${teacherIssuePayment.toFixed(2)}`);
           console.log(`   Total issue payments: ₱${totalIssuePayment.toFixed(2)}`);
           
           return totalIssuePayment;
@@ -1034,8 +1050,10 @@
       console.log(`💰 NET AMOUNT CALCULATION:`);
       console.log(`   Base sum (completed classes): ₱${baseSum.toFixed(2)}`);
       console.log(`   Student absent payment (0% - disabled): ₱${studentAbsentPayment.toFixed(2)}`);
-      console.log(`   System issue payment (10%): ₱${systemIssuePayment.toFixed(2)}`);
-      console.log(`   Student issue payment (20%): ₱${studentIssuePayment.toFixed(2)}`);
+      console.log(`   System issue payment (100%): ₱${systemIssuePayment.toFixed(2)}`);
+      console.log(`   Student issue payment (100%): ₱${studentIssuePayment.toFixed(2)}`);
+      const teacherIssuePayment = parseFloat(document.getElementById('teacher-issue-sum')?.textContent) || 0;
+      console.log(`   Teacher issue payment (20%): ₱${teacherIssuePayment.toFixed(2)}`);
       console.log(`   Total issue payments: ₱${totalIssuePayment.toFixed(2)}`);
       console.log(`   Total deductions: ₱${totalDeductions.toFixed(2)}`);
       console.log(`   Net amount: ₱${netAmount.toFixed(2)}`);

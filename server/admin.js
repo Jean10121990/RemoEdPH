@@ -45,11 +45,12 @@ const { encryptTotpSecret, decryptTotpSecret } = require('./utils/twoFactorSecre
 const { ADMIN_2FA_ENROLLMENT_PURPOSE } = require('./utils/adminForce2fa');
 const { recordAdminLoginActivity, getAdminSessionVersion } = require('./services/adminLoginActivity');
 const { generateReferralCode } = require('./utils/referralCode');
+const { resolveFrontendBaseUrl } = require('./utils/frontendBaseUrl');
 // Allow slight device clock drift during enrollment/verification.
 authenticator.options = { window: 2 };
 const path = require('path');
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
-const { JWT_EXPIRES_IN } = require('./config/authTokens');
+const { ADMIN_JWT_EXPIRES_IN } = require('./config/authTokens');
 const multer = require('multer');
 
 /** Safe substring match for Mongo $regex user search */
@@ -277,7 +278,7 @@ router.post('/verify-2fa', async (req, res) => {
         sessionVersion,
       },
       JWT_SECRET,
-      { expiresIn: JWT_EXPIRES_IN }
+      { expiresIn: ADMIN_JWT_EXPIRES_IN }
     );
 
     req.session.regenerate((regenErr) => {
@@ -667,7 +668,7 @@ router.post('/2fa-verify', async (req, res) => {
         sessionVersion,
       },
       JWT_SECRET,
-      { expiresIn: JWT_EXPIRES_IN }
+      { expiresIn: ADMIN_JWT_EXPIRES_IN }
     );
     res.json({
       success: true,
@@ -728,7 +729,7 @@ router.post('/security/logout-other-sessions', async (req, res) => {
         sessionVersion: sv,
       },
       JWT_SECRET,
-      { expiresIn: JWT_EXPIRES_IN }
+      { expiresIn: ADMIN_JWT_EXPIRES_IN }
     );
     res.json({ success: true, token, adminRole, message: 'Other sessions were signed out.' });
   } catch (err) {
@@ -1247,10 +1248,6 @@ router.post('/teacher-pipeline/applicants/:id/pass', verifyAdminApiAuth, require
     }
 
     const applicantData = applicant;
-    const applicantPlain =
-      typeof applicantData.toObject === 'function' ? applicantData.toObject() : { ...applicantData };
-    if (applicantPlain.password != null) applicantPlain.password = '[redacted]';
-    console.log('Full Applicant Data for Email:', JSON.stringify(applicantPlain, null, 2));
 
     // Applicant is not a User yet — always use the email stored on the Application document (not req.user).
     let recipientEmail = String(applicantData.email ?? '').trim().toLowerCase();
@@ -1297,7 +1294,7 @@ router.post('/teacher-pipeline/applicants/:id/pass', verifyAdminApiAuth, require
       });
     }
 
-    const frontendBase = (process.env.FRONTEND_URL || 'http://localhost:5000').replace(/\/$/, '');
+    const frontendBase = resolveFrontendBaseUrl(req);
     const appIdStr = applicant._id.toString();
     const signupLink = `${frontendBase}/register.html?appId=${encodeURIComponent(appIdStr)}&invitation=${encodeURIComponent(invitation.token)}`;
 
@@ -1308,9 +1305,12 @@ router.post('/teacher-pipeline/applicants/:id/pass', verifyAdminApiAuth, require
       applicant.firstName
     );
 
+    const emailSent = !!(emailResult && emailResult.success);
     res.json({
       success: true,
-      message: 'Applicant passed and invitation email processed',
+      message: emailSent
+        ? 'Applicant passed and invitation email sent.'
+        : 'Applicant passed. Invitation email failed — copy signupLink and send manually.',
       invitationToken: invitation.token,
       signupLink,
       emailResult
@@ -1318,6 +1318,99 @@ router.post('/teacher-pipeline/applicants/:id/pass', verifyAdminApiAuth, require
   } catch (error) {
     console.error('❌ Failed to pass applicant:', error);
     res.status(500).json({ success: false, error: 'Failed to pass applicant' });
+  }
+});
+
+function resolveApplicantRecipientEmail(applicantData) {
+  let recipientEmail = String(applicantData.email ?? '').trim().toLowerCase();
+  if (!recipientEmail && applicantData.applicantEmail) {
+    recipientEmail = String(applicantData.applicantEmail).trim().toLowerCase();
+  }
+  if (!recipientEmail && applicantData.contactEmail) {
+    recipientEmail = String(applicantData.contactEmail).trim().toLowerCase();
+  }
+  return recipientEmail;
+}
+
+async function getOrCreatePipelineInvitation(applicantId, recipientEmail) {
+  const now = new Date();
+  let invitation = await InvitationToken.findOne({
+    applicationId: applicantId,
+    isUsed: false,
+    expiresAt: { $gt: now },
+  }).sort({ createdAt: -1 });
+
+  if (!invitation) {
+    invitation = await InvitationToken.create({
+      applicationId: applicantId,
+      email: recipientEmail,
+      token: crypto.randomBytes(24).toString('hex'),
+      isUsed: false,
+      expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7),
+    });
+  }
+
+  return invitation;
+}
+
+router.post('/teacher-pipeline/applicants/:id/resend-invitation', verifyAdminApiAuth, requireAdmin, async (req, res) => {
+  try {
+    const applicant = await Application.findById(req.params.id);
+    if (!applicant) {
+      return res.status(404).json({ success: false, error: 'Applicant not found' });
+    }
+
+    if (String(applicant.currentStage || '').toLowerCase() === 'failed') {
+      return res.status(400).json({
+        success: false,
+        error: 'Failed applicants cannot receive an invitation email.',
+      });
+    }
+
+    const stage = String(applicant.currentStage || '').toLowerCase();
+    if (stage !== 'passed') {
+      applicant.currentStage = 'passed';
+      applicant.status = true;
+      applicant.passedAt = new Date();
+      applicant.failedAt = null;
+      applicant.reapplyEligibleAt = null;
+      await applicant.save();
+    }
+
+    const recipientEmail = resolveApplicantRecipientEmail(applicant);
+    if (!recipientEmail) {
+      return res.status(400).json({
+        success: false,
+        error: 'Applicant has no email address on file.',
+      });
+    }
+
+    const invitation = await getOrCreatePipelineInvitation(applicant._id, recipientEmail);
+    const frontendBase = resolveFrontendBaseUrl(req);
+    const appIdStr = applicant._id.toString();
+    const signupLink = `${frontendBase}/register.html?appId=${encodeURIComponent(appIdStr)}&invitation=${encodeURIComponent(invitation.token)}`;
+
+    console.log('Resending pipeline invitation to:', recipientEmail);
+
+    const emailResult = await sendTeacherPipelineWelcomeEmail(
+      recipientEmail,
+      applicant.fullName,
+      signupLink,
+      applicant.firstName
+    );
+
+    const emailSent = !!(emailResult && emailResult.success);
+    res.json({
+      success: true,
+      message: emailSent
+        ? 'Invitation email resent successfully.'
+        : 'Invitation email failed — copy signupLink and send manually.',
+      signupLink,
+      emailResult,
+    });
+  } catch (error) {
+    console.error('❌ Failed to resend pipeline invitation:', error);
+    res.status(500).json({ success: false, error: 'Failed to resend invitation email' });
   }
 });
 
@@ -2035,7 +2128,8 @@ router.get('/settings/security', async (req, res) => {
       success: true,
       data: {
         sessionTimeout: 30,
-        passwordPolicy: 'medium'
+        passwordPolicy: 'medium',
+        note: 'Admin idle timeout is 30 minutes (activity resets the timer).'
       }
     });
   } catch (error) {
@@ -4555,14 +4649,14 @@ router.post('/issues/resolve', verifyAdminApiAuth, requireAdmin, async (req, res
     
     // Set payment impact based on resolution type
     if (resolutionType === 'system-issue') {
-      issue.teacherPaymentImpact = 'partial_payment_10'; // 10% of rate
+      issue.teacherPaymentImpact = 'partial_payment_100';
       issue.studentPaymentImpact = 'reschedule_available';
     } else if (resolutionType === 'teacher-fault') {
-      issue.teacherPaymentImpact = 'no_payment';
+      issue.teacherPaymentImpact = 'partial_payment_20';
       issue.studentPaymentImpact = 'normal';
       issue.teacherFaultReason = teacherFaultReason;
     } else if (resolutionType === 'student-issue') {
-      issue.teacherPaymentImpact = 'partial_payment_50'; // 50% of rate
+      issue.teacherPaymentImpact = 'partial_payment_100';
       issue.studentPaymentImpact = 'normal';
     }
     
@@ -4636,11 +4730,11 @@ router.post('/issues/resolve', verifyAdminApiAuth, requireAdmin, async (req, res
     let notificationMessage = `Your issue report has been marked as resolved.`;
     
     if (resolutionType === 'system-issue') {
-      notificationMessage += ` You will receive 10% of the class rate for your effort. Student can reschedule.`;
+      notificationMessage += ` You will receive 100% of the class rate. Student can reschedule.`;
     } else if (resolutionType === 'teacher-fault') {
-      notificationMessage += ` No payment will be made due to: ${teacherFaultReason}`;
+      notificationMessage += ` You will receive 20% of the class rate due to: ${teacherFaultReason}`;
     } else if (resolutionType === 'student-issue') {
-      notificationMessage += ` You will receive 50% of the class rate.`;
+      notificationMessage += ` You will receive 100% of the class rate.`;
     }
     
     await createNotification(issue.teacherId, 'issue-resolved', notificationMessage);
@@ -4957,34 +5051,19 @@ router.post('/teacher-assessments/:teacherId/recompute-scores', verifyAdminApiAu
     }
 
     if (teacher.assessmentTests.personality && teacher.assessmentTests.personality.answers) {
+      const { scorePersonalityAnswers } = require('./config/personalityAssessmentRubric');
       const answers = teacher.assessmentTests.personality.answers || {};
-      const categoryScores = {};
-      let total = 0;
-      let score = 0;
+      const scored = scorePersonalityAnswers(answers);
 
-      Object.keys(answers).forEach((category) => {
-        const items = Array.isArray(answers[category]) ? answers[category] : [];
-        const totalForCategory = items.length;
-        let correct = 0;
-        items.forEach((val) => {
-          if (val === category) {
-            correct += 1;
-          }
-        });
-        categoryScores[category] = { correct, total: totalForCategory };
-        total += totalForCategory;
-        score += correct;
-      });
-
-      if (total > 0) {
-        teacher.assessmentTests.personality.total = total;
-        teacher.assessmentTests.personality.score = score;
-        teacher.assessmentTests.personality.percent = Math.round((score / total) * 100);
-        teacher.assessmentTests.personality.categoryScores = categoryScores;
+      if (scored.total > 0) {
+        teacher.assessmentTests.personality.total = scored.total;
+        teacher.assessmentTests.personality.score = scored.score;
+        teacher.assessmentTests.personality.percent = Math.round((scored.score / scored.total) * 100);
+        teacher.assessmentTests.personality.categoryScores = scored.categoryScores;
         updated.personality = true;
       }
 
-      if (!teacher.assessmentTests.personality.completedAt && total > 0) {
+      if (!teacher.assessmentTests.personality.completedAt && scored.total > 0) {
         teacher.assessmentTests.personality.completedAt = new Date();
         updated.personality = true;
       }

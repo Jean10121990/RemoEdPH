@@ -1341,11 +1341,20 @@
     function showPastBookingFeedback(booking) {
         currentFeedbackBooking = booking;
         
-        // Format date
-        const date = new Date(booking.date);
-        const formattedDate = date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        const timeInfo = bookingDisplayDateTime(booking);
+        let formattedDate = timeInfo.date || booking.date;
+        const Lux = window.luxon && window.luxon.DateTime;
+        if (Lux && timeInfo.date) {
+          const d = Lux.fromISO(timeInfo.date);
+          if (d.isValid) {
+            formattedDate = d.toFormat('cccc, LLLL d, yyyy');
+          }
+        } else {
+          const date = new Date(booking.date);
+          formattedDate = date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        }
         document.getElementById('feedback-class-date').textContent = formattedDate;
-        document.getElementById('feedback-class-time').textContent = formatTime24Hour(booking.time);
+        document.getElementById('feedback-class-time').textContent = formatTime24Hour(timeInfo.slot || booking.time);
         
         // Handle teacher name
         let teacherName = 'Unknown Teacher';
@@ -2361,7 +2370,7 @@
         alert('No classroom ID set for this booking.');
         return;
       }
-      const slotTime = booking.time || '';
+      const slotTime = (bookingDisplayDateTime(booking).slot) || booking.time || '';
       const roomUrl =
         'live-classroom.html?room=' +
         encodeURIComponent(classroomId) +
@@ -2406,10 +2415,20 @@
     function showBookingInfo(booking) {
       currentBookingInfo = booking;
       hideEmergencyCancelPanel();
-      const date = new Date(booking.date);
-      const formattedDate = date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      const timeInfo = bookingDisplayDateTime(booking);
+      let formattedDate = timeInfo.date || booking.date;
+      const Lux = window.luxon && window.luxon.DateTime;
+      if (Lux && timeInfo.date) {
+        const d = Lux.fromISO(timeInfo.date);
+        if (d.isValid) {
+          formattedDate = d.toFormat('cccc, LLLL d, yyyy');
+        }
+      } else {
+        const date = new Date(booking.date);
+        formattedDate = date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      }
       document.getElementById('info-class-date').textContent = formattedDate;
-      document.getElementById('info-class-time').textContent = formatTime24Hour(booking.time);
+      document.getElementById('info-class-time').textContent = formatTime24Hour(timeInfo.slot || booking.time);
       let teacherName = 'Unknown Teacher';
       if (booking.teacherId) {
         if (typeof booking.teacherId === 'string') {
@@ -2676,16 +2695,17 @@
     function showCancellationModal() {
       if (!currentBookingInfo) return;
       
-      // Check if class has already started
-      const classDateTime = new Date(`${currentBookingInfo.date}T${currentBookingInfo.time}:00`);
+      const timeInfo = bookingDisplayDateTime(currentBookingInfo);
+      const start = getBookingStartDate(currentBookingInfo);
       const now = new Date();
       
-      if (classDateTime <= now) {
+      if (start && start.getTime() <= now.getTime()) {
         alert('Cannot cancel a class that has already started.');
         return;
       }
       
-              document.getElementById('cancel-class-info').textContent = `${currentBookingInfo.date} at ${formatTime24Hour(currentBookingInfo.time)}`;
+      document.getElementById('cancel-class-info').textContent =
+        `${timeInfo.date || currentBookingInfo.date} at ${formatTime24Hour(timeInfo.slot || currentBookingInfo.time)}`;
       // Handle both old and new teacher data structures for cancellation modal
       let cancelTeacherName = 'Unknown Teacher';
       if (currentBookingInfo.teacherId) {

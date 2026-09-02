@@ -113,45 +113,48 @@
         var timeOutBtn = document.getElementById('time-out-btn');
         var sessionTimeDiv = document.getElementById('session-time');
         var statusMessage = document.getElementById('time-status-message');
-        if (!statusSpan || !timeInBtn || !timeOutBtn || !sessionTimeDiv || !statusMessage) return;
+        var hasCard = statusSpan && timeInBtn && timeOutBtn && sessionTimeDiv && statusMessage;
 
-        var status = window.adminTimeTrackingStatus || {};
+        if (hasCard) {
+            var status = window.adminTimeTrackingStatus || {};
 
-        if (isClockedIn) {
-            statusSpan.textContent = 'Clocked In';
-            statusSpan.style.color = '#4CAF50';
-            timeInBtn.style.display = 'none';
-            timeOutBtn.style.display = 'inline-block';
-            timeOutBtn.disabled = !status.canTimeOut;
-            sessionTimeDiv.style.display = 'block';
-            statusMessage.style.display = 'none';
-        } else if (status.dailyCompleted) {
-            statusSpan.textContent = 'Daily Time Log Completed';
-            statusSpan.style.color = '#f44336';
-            timeInBtn.style.display = 'inline-block';
-            timeInBtn.disabled = true;
-            timeInBtn.textContent = 'Time In (Daily Completed)';
-            timeInBtn.style.background = 'rgba(158, 158, 158, 0.6)';
-            timeInBtn.style.cursor = 'not-allowed';
-            timeOutBtn.style.display = 'none';
-            sessionTimeDiv.style.display = 'none';
-            statusMessage.innerHTML = '<strong>You have already completed your time log for today.</strong> New time logs will be available tomorrow at 7 AM Philippine time.';
-            statusMessage.style.display = 'block';
-            statusMessage.style.color = '#f44336';
-            statusMessage.style.background = '#ffebee';
-            statusMessage.style.border = '1px solid #fecaca';
-        } else {
-            statusSpan.textContent = 'Not Clocked In';
-            statusSpan.style.color = '#FF5722';
-            timeInBtn.style.display = 'inline-block';
-            timeInBtn.disabled = !status.canTimeIn;
-            timeInBtn.textContent = 'Time In';
-            timeInBtn.style.background = '#28a745';
-            timeInBtn.style.cursor = 'pointer';
-            timeOutBtn.style.display = 'none';
-            sessionTimeDiv.style.display = 'none';
-            statusMessage.style.display = 'none';
+            if (isClockedIn) {
+                statusSpan.textContent = 'Clocked In';
+                statusSpan.style.color = '#4CAF50';
+                timeInBtn.style.display = 'none';
+                timeOutBtn.style.display = 'inline-block';
+                timeOutBtn.disabled = !status.canTimeOut;
+                sessionTimeDiv.style.display = 'block';
+                statusMessage.style.display = 'none';
+            } else if (status.dailyCompleted) {
+                statusSpan.textContent = 'Daily Time Log Completed';
+                statusSpan.style.color = '#f44336';
+                timeInBtn.style.display = 'inline-block';
+                timeInBtn.disabled = true;
+                timeInBtn.textContent = 'Time In (Daily Completed)';
+                timeInBtn.style.background = 'rgba(158, 158, 158, 0.6)';
+                timeInBtn.style.cursor = 'not-allowed';
+                timeOutBtn.style.display = 'none';
+                sessionTimeDiv.style.display = 'none';
+                statusMessage.innerHTML = '<strong>You have already completed your time log for today.</strong> New time logs will be available tomorrow at 7 AM Philippine time.';
+                statusMessage.style.display = 'block';
+                statusMessage.style.color = '#f44336';
+                statusMessage.style.background = '#ffebee';
+                statusMessage.style.border = '1px solid #fecaca';
+            } else {
+                statusSpan.textContent = 'Not Clocked In';
+                statusSpan.style.color = '#FF5722';
+                timeInBtn.style.display = 'inline-block';
+                timeInBtn.disabled = !status.canTimeIn;
+                timeInBtn.textContent = 'Time In';
+                timeInBtn.style.background = '#28a745';
+                timeInBtn.style.cursor = 'pointer';
+                timeOutBtn.style.display = 'none';
+                sessionTimeDiv.style.display = 'none';
+                statusMessage.style.display = 'none';
+            }
         }
+
         updateAdminTimeTrackingMini();
     }
 
@@ -311,52 +314,52 @@
     };
 
     window.initAdminTimeTracking = function () {
-        if (!document.getElementById('admin-time-tracking-card')) return;
-        updateCurrentTimeDisplay();
-        setInterval(updateCurrentTimeDisplay, 5000);
+        if (document.body.getAttribute('data-admin-tt-init') === '1') return;
+        var hasCard = !!document.getElementById('admin-time-tracking-card');
+        var hasMini = !!document.getElementById('time-btn-mini');
+        if (!hasCard && !hasMini) return;
+        document.body.setAttribute('data-admin-tt-init', '1');
+
+        if (hasCard) {
+            updateCurrentTimeDisplay();
+            setInterval(updateCurrentTimeDisplay, 5000);
+
+            var timeInBtn = document.getElementById('time-in-btn');
+            var timeOutBtn = document.getElementById('time-out-btn');
+            var viewBtn = document.getElementById('view-log-btn');
+            if (timeInBtn) timeInBtn.addEventListener('click', function () { window.adminTimeIn(); });
+            if (timeOutBtn) timeOutBtn.addEventListener('click', function () { window.adminTimeOut(); });
+            if (viewBtn) viewBtn.addEventListener('click', function () { window.showAdminTimeLogModal(); });
+
+            var closeBtn = document.getElementById('admin-close-time-log');
+            if (closeBtn) closeBtn.addEventListener('click', window.hideAdminTimeLogModal);
+
+            var applyBtn = document.getElementById('admin-apply-filter');
+            if (applyBtn) applyBtn.addEventListener('click', loadAdminTimeLogsWithFilter);
+
+            var modal = document.getElementById('admin-time-log-modal');
+            if (modal) {
+                window.hideAdminTimeLogModal();
+                modal.addEventListener('click', function (e) {
+                    if (e.target === modal) window.hideAdminTimeLogModal();
+                });
+                var panel = document.getElementById('admin-time-log-modal-panel');
+                if (panel) {
+                    panel.addEventListener('click', function (e) {
+                        e.stopPropagation();
+                    });
+                }
+            }
+
+            document.addEventListener('keydown', function (ev) {
+                if (ev.key !== 'Escape') return;
+                var m = document.getElementById('admin-time-log-modal');
+                if (adminTimeLogModalIsOpen(m)) window.hideAdminTimeLogModal();
+            });
+        }
+
         loadAdminTimeTrackingStatus();
         setInterval(loadAdminTimeTrackingStatus, 5 * 60 * 1000);
-
-        var timeInBtn = document.getElementById('time-in-btn');
-        var timeOutBtn = document.getElementById('time-out-btn');
-        var viewBtn = document.getElementById('view-log-btn');
-        if (timeInBtn) timeInBtn.addEventListener('click', function () { window.adminTimeIn(); });
-        if (timeOutBtn) timeOutBtn.addEventListener('click', function () { window.adminTimeOut(); });
-        if (viewBtn) viewBtn.addEventListener('click', function () { window.showAdminTimeLogModal(); });
-
-        var mini = document.getElementById('time-btn-mini');
-        if (mini) {
-            mini.addEventListener('click', function () {
-                if (isClockedIn) window.adminTimeOut();
-                else window.adminTimeIn();
-            });
-        }
-
-        var closeBtn = document.getElementById('admin-close-time-log');
-        if (closeBtn) closeBtn.addEventListener('click', window.hideAdminTimeLogModal);
-
-        var applyBtn = document.getElementById('admin-apply-filter');
-        if (applyBtn) applyBtn.addEventListener('click', loadAdminTimeLogsWithFilter);
-
-        var modal = document.getElementById('admin-time-log-modal');
-        if (modal) {
-            window.hideAdminTimeLogModal();
-            modal.addEventListener('click', function (e) {
-                if (e.target === modal) window.hideAdminTimeLogModal();
-            });
-            var panel = document.getElementById('admin-time-log-modal-panel');
-            if (panel) {
-                panel.addEventListener('click', function (e) {
-                    e.stopPropagation();
-                });
-            }
-        }
-
-        document.addEventListener('keydown', function (ev) {
-            if (ev.key !== 'Escape') return;
-            var m = document.getElementById('admin-time-log-modal');
-            if (adminTimeLogModalIsOpen(m)) window.hideAdminTimeLogModal();
-        });
     };
 
     document.addEventListener('DOMContentLoaded', function () {
@@ -364,4 +367,7 @@
             window.initAdminTimeTracking();
         }
     });
+    if (document.readyState !== 'loading' && typeof window.initAdminTimeTracking === 'function') {
+        window.initAdminTimeTracking();
+    }
 })();

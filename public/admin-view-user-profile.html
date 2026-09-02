@@ -26,6 +26,21 @@
         .actions a { display: inline-flex; align-items: center; padding: 8px 14px; border-radius: 8px; font-size: 0.88rem; font-weight: 600; text-decoration: none; }
         .actions a.primary { background: #1ca7e7; color: #fff; }
         .actions a.secondary { background: #f1f5f9; color: #334155; }
+        .personality-block { margin-top: 18px; padding-top: 14px; border-top: 1px solid #e2e8f0; }
+        .personality-block h2 { margin: 0 0 4px; font-size: 1rem; color: #0f172a; font-weight: 700; }
+        .personality-block .sub { font-size: 0.8rem; color: #64748b; margin: 0 0 12px; }
+        .personality-overall { font-weight: 700; color: #0f172a; margin-bottom: 14px; font-size: 0.95rem; }
+        .meter-section { margin-top: 12px; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; background: #f8fafc; }
+        .meter-section-title { font-weight: 700; color: #334155; margin-bottom: 10px; font-size: 0.9rem; }
+        .meter-grid { display: grid; gap: 10px; }
+        .commitment-meter-header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 6px; font-weight: 600; color: #334155; font-size: 0.88rem; }
+        .commitment-pct { font-variant-numeric: tabular-nums; font-weight: 700; color: #475569; white-space: nowrap; }
+        .commitment-bar { height: 10px; background: #e2e8f0; border-radius: 999px; overflow: hidden; }
+        .commitment-bar-fill { height: 100%; width: 0%; border-radius: 999px; background: linear-gradient(90deg, #6366f1 0%, #4f46e5 100%); }
+        .commitment-meter.is-pass .commitment-bar-fill { background: linear-gradient(90deg, #34d399 0%, #10b981 100%); }
+        .commitment-meter.is-pass .commitment-pct { color: #047857; }
+        .commitment-meter.is-empty .commitment-pct { color: #94a3b8; font-weight: 600; }
+        .empty-personality { color: #64748b; font-size: 0.9rem; padding: 8px 0; }
     </style>
 </head>
 <body>
@@ -36,6 +51,7 @@
         </div>
     </div>
     <script src="js/admin-session.js"></script>
+    <script src="js/assessment-answer-key-data.js"></script>
     <script>
         function adminApiFetchInit(init) {
             var o = init && typeof init === 'object' ? Object.assign({}, init) : {};
@@ -49,6 +65,119 @@
 
         function esc(s) {
             return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
+        var COMMITMENT_PASS_PERCENT = 60;
+        var HEART_METERS = [
+            { label: 'H - Hospitality', category: 'Interpersonal Communication' },
+            { label: 'E - Excellence', category: 'Professionalism' },
+            { label: 'A - Affection', category: 'Student Engagement' },
+            { label: 'R - Respect', category: 'Cultural Awareness' },
+            { label: 'T - Togetherness', category: 'Technology Use' }
+        ];
+        var HONOR_METERS = [
+            { label: 'Avoid False Witness (Honesty)', category: 'Professionalism' },
+            { label: 'No Gossip or Politics', category: 'Cultural Awareness' },
+            { label: 'Integrity & Speech', category: 'Interpersonal Communication' },
+            { label: 'Good Attitude (Anti-Greed)', category: 'Student Engagement' },
+            { label: 'Financial Stewardship', category: 'Technology Use' }
+        ];
+
+        function deriveCategoryScoresFromAnswers(answers) {
+            if (!answers || typeof answers !== 'object') return null;
+            if (window.AssessmentAnswerKey && typeof AssessmentAnswerKey.computePersonalityCategoryScores === 'function') {
+                var categoryScores = AssessmentAnswerKey.computePersonalityCategoryScores(answers);
+                var anyNew = Object.keys(categoryScores).some(function (category) {
+                    return categoryScores[category].total > 0;
+                });
+                return anyNew ? categoryScores : null;
+            }
+            var categoryScores = {};
+            var any = false;
+            Object.keys(answers).forEach(function (category) {
+                var items = Array.isArray(answers[category]) ? answers[category] : [];
+                if (!items.length) return;
+                any = true;
+                var correct = 0;
+                items.forEach(function (val) {
+                    if (val === category) correct += 1;
+                });
+                categoryScores[category] = { correct: correct, total: items.length };
+            });
+            return any ? categoryScores : null;
+        }
+
+        function resolvePersonalityCategoryScores(personality) {
+            if (!personality) return null;
+            if (personality.categoryScores && Object.keys(personality.categoryScores).length) {
+                return personality.categoryScores;
+            }
+            return deriveCategoryScoresFromAnswers(personality.answers);
+        }
+
+        function categoryPercent(categoryScores, category) {
+            if (!categoryScores || !category) return null;
+            var score = categoryScores[category];
+            if (!score || !score.total) return null;
+            return Math.round((Number(score.correct || 0) / Number(score.total)) * 100);
+        }
+
+        function renderMeterRow(label, pct) {
+            var hasScore = pct !== null && pct !== undefined && !isNaN(Number(pct));
+            var value = hasScore ? Math.max(0, Math.min(100, Math.round(Number(pct)))) : 0;
+            var cls = 'commitment-meter' + (hasScore && value >= COMMITMENT_PASS_PERCENT ? ' is-pass' : '') + (!hasScore ? ' is-empty' : '');
+            return '<div class="' + cls + '">' +
+                '<div class="commitment-meter-header"><span>' + esc(label) + '</span><span class="commitment-pct">' +
+                (hasScore ? (value + '%') : 'Not assessed') + '</span></div>' +
+                '<div class="commitment-bar"><div class="commitment-bar-fill" style="width:' + (hasScore ? value : 0) + '%;"></div></div>' +
+                '</div>';
+        }
+
+        function renderPersonalitySection(teacher) {
+            var personality = teacher && teacher.assessmentTests && teacher.assessmentTests.personality
+                ? teacher.assessmentTests.personality
+                : null;
+            var html = '<div class="personality-block">';
+            html += '<h2>Personality assessment</h2>';
+            html += '<p class="sub">From Career Growth · H.E.A.R.T. &amp; Code of Honor (60%+ highlighted)</p>';
+
+            if (!personality || (personality.score == null && personality.total == null && !personality.answers && !personality.categoryScores)) {
+                html += '<div class="empty-personality">No personality assessment results yet.</div></div>';
+                return html;
+            }
+
+            var categoryScores = resolvePersonalityCategoryScores(personality) || {};
+            var percent = personality.percent;
+            if (percent == null && personality.score != null && personality.total) {
+                percent = Math.round((Number(personality.score) / Number(personality.total)) * 100);
+            }
+            if (percent == null && Object.keys(categoryScores).length) {
+                var correctSum = 0;
+                var totalSum = 0;
+                Object.keys(categoryScores).forEach(function (k) {
+                    correctSum += Number(categoryScores[k].correct || 0);
+                    totalSum += Number(categoryScores[k].total || 0);
+                });
+                if (totalSum) percent = Math.round((correctSum / totalSum) * 100);
+            }
+
+            var scoreLabel = (personality.score != null && personality.total != null)
+                ? ('Score: ' + personality.score + ' / ' + personality.total + (percent != null ? ' (' + percent + '%)' : ''))
+                : (percent != null ? ('Score: ' + percent + '%') : 'Score unavailable');
+            html += '<div class="personality-overall">' + esc(scoreLabel) + '</div>';
+
+            html += '<div class="meter-section"><div class="meter-section-title">The H.E.A.R.T. Framework</div><div class="meter-grid">';
+            HEART_METERS.forEach(function (item) {
+                html += renderMeterRow(item.label, categoryPercent(categoryScores, item.category));
+            });
+            html += '</div></div>';
+
+            html += '<div class="meter-section"><div class="meter-section-title">RemoEd Code of Honor</div><div class="meter-grid">';
+            HONOR_METERS.forEach(function (item) {
+                html += renderMeterRow(item.label, categoryPercent(categoryScores, item.category));
+            });
+            html += '</div></div></div>';
+            return html;
         }
 
         if (localStorage.getItem('userType') !== 'admin') {
@@ -116,10 +245,13 @@
                         rows.forEach(function (pair) {
                             html += '<div class="row"><span class="k">' + esc(pair[0]) + '</span><span class="v">' + esc(pair[1]) + '</span></div>';
                         });
+                        if (type === 'teacher') {
+                            html += renderPersonalitySection(u);
+                        }
                         if (type === 'teacher' && u.teacherId) {
                             html += '<div class="actions">';
                             html += '<a class="primary" href="admin-teacher-schedule.html?teacherId=' + encodeURIComponent(u.teacherId) + '">View schedule</a>';
-                            html += '<a class="secondary" href="/teacher-view-profile.html?teacherId=' + encodeURIComponent(u.teacherId) + '" target="_blank" rel="noopener noreferrer">Public profile</a>';
+                            html += '<a class="secondary" href="/teachers?teacherId=' + encodeURIComponent(u.teacherId) + '" target="_blank" rel="noopener noreferrer">Public profile</a>';
                             html += '</div>';
                         }
                         html += '<p class="muted">Read-only summary for administrators. Sensitive fields may be omitted or encrypted at rest.</p>';

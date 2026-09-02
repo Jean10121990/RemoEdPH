@@ -131,26 +131,19 @@
     }
 
     function wireNotifications(header) {
-        var icon = header.querySelector('#admin-notifications-icon');
-        if (!icon || icon.getAttribute('data-wired')) return;
-        icon.setAttribute('data-wired', '1');
-        icon.addEventListener('click', function (e) {
-            e.stopPropagation();
-            var dd = document.getElementById('admin-notifications-dropdown');
-            if (!dd) return;
-            dd.classList.toggle('show');
-            if (typeof global.loadAdminNotifications === 'function') {
-                global.loadAdminNotifications();
+        ensureScript('js/admin-notifications.js', function () {
+            if (global.AdminNotifications && typeof global.AdminNotifications.init === 'function') {
+                global.AdminNotifications.init();
             }
-        });
-        document.addEventListener('click', function () {
-            var dd = document.getElementById('admin-notifications-dropdown');
-            if (dd) dd.classList.remove('show');
         });
     }
 
     function ensureTimeTracking() {
-        ensureScript('js/admin-time-tracking.js');
+        ensureScript('js/admin-time-tracking.js', function () {
+            if (typeof global.initAdminTimeTracking === 'function') {
+                global.initAdminTimeTracking();
+            }
+        });
     }
 
     function pageIdFromPath(fallback) {

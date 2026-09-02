@@ -1,36 +1,59 @@
 # Email Setup Guide for RemoEdPH
 
-## Production Email Configuration
+## Email Configuration (local and production)
 
-To enable email functionality for password resets, you need to configure the following environment variables:
+RemoEdPH defaults to **Gmail SMTP** everywhere. With `SMTP_CONNECTION_MODE=auto` (the default), it tries Gmail first and falls back to **Hostinger** on auth failure if both are configured.
 
 ### 1. Create a .env file in the root directory:
 
+**Gmail (default — local and online):**
+
 ```env
-# Email Configuration
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=your-email@gmail.com
-SMTP_PASS=your-app-password
-
-# Frontend URL
+EMAIL_SERVICE_TYPE=smtp
+SMTP_GMAIL_USER=your-workspace-or-gmail@gmail.com
+SMTP_GMAIL_PASS=your-16-char-app-password
 FRONTEND_URL=https://your-domain.com
-
-# JWT Secret
-JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
-
-# MongoDB Connection
-MONGODB_URI=mongodb://localhost:27017/online-distance-learning
 ```
 
-### 2. Gmail Setup (Recommended for testing):
+Or use `EMAIL_USER` / `EMAIL_PASS` when `EMAIL_USER` is a `@gmail.com` address:
 
-1. **Enable 2-Factor Authentication** on your Gmail account
+```env
+EMAIL_USER=your@gmail.com
+EMAIL_PASS=your-16-char-app-password
+```
+
+**Auto mode (default):** Gmail first; on `535` / `EAUTH`, retries Hostinger if `EMAIL_USER`/`EMAIL_PASS` point at the Hostinger mailbox.
+
+```env
+SMTP_CONNECTION_MODE=auto
+SMTP_GMAIL_USER=your-gmail@gmail.com
+SMTP_GMAIL_PASS=your-16-char-app-password
+EMAIL_USER=support@remoedph.com
+EMAIL_PASS=your-hostinger-mailbox-password
+```
+
+**Hostinger only** (force production mailbox, no Gmail):
+
+```env
+SMTP_CONNECTION_MODE=hostinger
+SMTP_HOST=smtp.hostinger.com
+SMTP_PORT=465
+EMAIL_USER=support@remoedph.com
+EMAIL_PASS=your-hostinger-mailbox-password
+FRONTEND_URL=https://your-domain.com
+```
+
+> **Important:** Never pair a Gmail user/password with `smtp.hostinger.com` (or Hostinger password with `smtp.gmail.com`). Mismatched host + credentials cause `535 5.7.8 authentication failed`.
+
+Applicant invitation links use the **incoming request origin** (Dev Tunnels / reverse proxy) when available, then `FRONTEND_URL`, then `http://localhost:8080`.
+
+### 2. Gmail App Password setup:
+
+1. **Enable 2-Factor Authentication** on your Google account
 2. **Generate an App Password**:
-   - Go to Google Account settings
-   - Security → 2-Step Verification → App passwords
+   - Google Account → Security → 2-Step Verification → App passwords
    - Generate a new app password for "Mail"
-   - Use this password as `SMTP_PASS`
+   - Use the 16-character password as `SMTP_GMAIL_PASS` (not `EMAIL_PASS`)
 
 ### 3. Alternative Email Providers:
 
@@ -71,7 +94,7 @@ SMTP_PASS=your-password
 
 ### 6. Production Deployment:
 
-- Production mail uses **Hostinger SMTP** by default (`EMAIL_USER` / `EMAIL_PASS`); optional **Mailgun** if `EMAIL_SERVICE_TYPE=mailgun`.
+- Default mail is **Gmail SMTP** (`SMTP_GMAIL_*` or `EMAIL_USER`/`EMAIL_PASS` with a Gmail address); optional **Hostinger** fallback or `SMTP_CONNECTION_MODE=hostinger`; optional **Mailgun** if `EMAIL_SERVICE_TYPE=mailgun`.
 - Set up proper DNS records (SPF, DKIM, DMARC)
 - Monitor email deliverability
 - Implement rate limiting for password reset requests
