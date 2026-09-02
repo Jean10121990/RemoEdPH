@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="js/security-guard.js?v=2"></script>
+    <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
+    <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="js/admin-standalone-redirect.js"></script>
+    <script src="js/admin-embed-init.js"></script>
+    <title>Student Subscriptions - RemoEdPH Admin</title>
+    <link rel="stylesheet" href="modern-styles.css">
+    <link rel="stylesheet" href="css/teacher-sidebar.css">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .ss-toolbar { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:14px; }
+        .ss-toolbar input, .ss-toolbar select { padding:8px 12px; border:1px solid #cbd5e1; border-radius:8px; background:#fff; font-size:0.9rem; }
+        .ss-toolbar input[type="search"] { min-width:220px; flex:1; }
+        .ss-cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin-bottom:16px; }
+        .ss-card { background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; }
+        .ss-card h3 { margin:0 0 4px; font-size:0.75rem; color:#64748b; font-weight:600; text-transform:uppercase; letter-spacing:.03em; }
+        .ss-card .big { font-size:1.35rem; font-weight:700; color:#0f172a; }
+        .ss-table-wrap { overflow:auto; max-height:calc(100vh - 280px); border:1px solid #e2e8f0; border-radius:10px; }
+        .ss-table { width:100%; border-collapse:collapse; font-size:0.82rem; }
+        .ss-table th, .ss-table td { padding:8px 10px; text-align:left; border-bottom:1px solid #e2e8f0; white-space:nowrap; }
+        .ss-table th { background:#f8fafc; color:#1ca7e7; font-weight:700; position:sticky; top:0; z-index:1; }
+        .ss-table tr:hover { background:#f6fbff; }
+        .ss-badge { display:inline-block; padding:3px 8px; border-radius:999px; font-size:0.72rem; font-weight:700; text-transform:capitalize; }
+        .ss-active { background:#dcfce7; color:#166534; }
+        .ss-pending { background:#fef9c3; color:#854d0e; }
+        .ss-expired { background:#fee2e2; color:#991b1b; }
+        .ss-cancelled { background:#e2e8f0; color:#475569; }
+        .ss-paid { background:#dbeafe; color:#1e40af; }
+        .ss-unpaid { background:#f1f5f9; color:#64748b; }
+        .ss-status { color:#64748b; font-weight:600; margin:8px 0; }
+        .ss-view-toggle { display:flex; gap:6px; }
+        .ss-view-toggle button { padding:8px 12px; border:1px solid #cbd5e1; background:#fff; border-radius:8px; cursor:pointer; font-weight:600; }
+        .ss-view-toggle button.active { background:#1ca7e7; color:#fff; border-color:#1ca7e7; }
+        .ss-empty { padding:28px; text-align:center; color:#64748b; }
+    </style>
+</head>
+<body class="page-admin-student-subscriptions">
+    <div class="remoed-main">
+        <div id="admin-sidebar-root"></div>
+        <script src="js/admin-session.js"></script>
+        <script src="js/admin-sidebar.js"></script>
+        <script>if (!window.__ADMIN_EMBED__) { AdminSidebar.render('admin-sidebar-root', 'accounting-hub'); }</script>
+        <div class="remoed-content">
+            <div class="remoed-section">
+                <div class="remoed-section-title">Student Subscriptions</div>
+                <p class="muted" style="margin-top:0;">Every student subscription and PayMongo purchase across the platform.</p>
+
+                <div class="ss-cards" id="ss-cards"></div>
+
+                <div class="ss-toolbar">
+                    <input type="search" id="ss-search" placeholder="Search name, email, username, reference…">
+                    <select id="ss-status">
+                        <option value="">All statuses</option>
+                        <option value="active">Active</option>
+                        <option value="pending">Pending</option>
+                        <option value="expired">Expired</option>
+                        <option value="cancelled">Cancelled</option>
+                    </select>
+                    <select id="ss-plan">
+                        <option value="">All plans</option>
+                        <option value="spark">RemoSpark</option>
+                        <option value="steady">RemoSteady</option>
+                        <option value="scholar">RemoScholar</option>
+                        <option value="summit">RemoSummit</option>
+                    </select>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:0.85rem;color:#334155;">
+                        <input type="checkbox" id="ss-include-all"> Include students with no subscription
+                    </label>
+                    <div class="ss-view-toggle" role="tablist">
+                        <button type="button" id="ss-view-current" class="active">Current subscriptions</button>
+                        <button type="button" id="ss-view-purchases">Purchase history</button>
+                    </div>
+                    <button type="button" class="btn btn-primary" id="ss-refresh">Refresh</button>
+                    <button type="button" class="btn btn-success" id="ss-export">Export CSV</button>
+                </div>
+                <div class="ss-status" id="ss-status-line">Loading…</div>
+                <div class="ss-table-wrap" id="ss-table-wrap"></div>
+            </div>
+        </div>
+    </div>
+    <script>
+    (function () {
+        var userType = localStorage.getItem('userType');
+        if (userType !== 'admin') {
+            alert('Access denied. This page is for administrators only.');
+            window.location.href = 'index.html';
+            return;
+        }
+
+        var payload = { subscriptions: [], purchases: [], summary: {} };
+        var view = 'current';
+
+        function adminApiFetch(url, init) {
+            init = init || {};
+            var headers = new Headers(init.headers || {});
+            var token = (window.RemoedAdminSession && RemoedAdminSession.getAuthToken
+                ? RemoedAdminSession.getAuthToken()
+                : (localStorage.getItem('remoed_admin_token') || localStorage.getItem('remoed_admin_auth') || localStorage.getItem('adminToken') || ''));
+            if (token) headers.set('Authorization', 'Bearer ' + token);
+            return fetch(url, Object.assign({}, init, { credentials: 'include', headers: headers }));
+        }
+
+        function escapeHtml(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function formatPhp(n) {
+            var v = Number(n) || 0;
+            return '₱' + v.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function formatDate(d) {
+            if (!d) return '—';
+            try {
+                return new Date(d).toLocaleString('en-PH', { timeZone: 'Asia/Manila', dateStyle: 'medium' });
+            } catch (e) {
+                return '—';
+            }
+        }
+
+        function badge(kind, text) {
+            return '<span class="ss-badge ss-' + escapeHtml(kind) + '">' + escapeHtml(text || kind) + '</span>';
+        }
+
+        function statusBadge(status) {
+            var s = String(status || 'pending').toLowerCase();
+            var map = { active: 'active', pending: 'pending', expired: 'expired', cancelled: 'cancelled' };
+            return badge(map[s] || 'pending', s);
+        }
+
+        function payBadge(status) {
+            var s = String(status || 'unpaid').toLowerCase();
+            return badge(s === 'paid' ? 'paid' : 'unpaid', s);
+        }
+
+        function renderCards(summary) {
+            var s = summary || {};
+            var cards = [
+                { label: 'Listed', value: s.listed || 0 },
+                { label: 'Active', value: s.active || 0 },
+                { label: 'Pending', value: s.pending || 0 },
+                { label: 'Expired', value: s.expired || 0 },
+                { label: 'Paid', value: s.paid || 0 },
+                { label: 'Amount collected', value: formatPhp(s.amountPaidTotal) }
+            ];
+            document.getElementById('ss-cards').innerHTML = cards.map(function (c) {
+                return '<div class="ss-card"><h3>' + escapeHtml(c.label) + '</h3><div class="big">' + escapeHtml(String(c.value)) + '</div></div>';
+            }).join('');
+        }
+
+        function matchesFilters(row) {
+            var q = String(document.getElementById('ss-search').value || '').trim().toLowerCase();
+            var status = document.getElementById('ss-status').value;
+            var plan = document.getElementById('ss-plan').value;
+            if (status && String(row.subscriptionStatus || '').toLowerCase() !== status) return false;
+            if (plan && String(row.planId || '').toLowerCase() !== plan) return false;
+            if (!q) return true;
+            var hay = [row.name, row.email, row.username, row.studentCode, row.paymentReference, row.planLabel, row.plan]
+                .join(' ').toLowerCase();
+            return hay.indexOf(q) !== -1;
+        }
+
+        function purchaseMatches(row) {
+            var q = String(document.getElementById('ss-search').value || '').trim().toLowerCase();
+            var plan = document.getElementById('ss-plan').value;
+            if (plan && String(row.planId || '').toLowerCase() !== plan) return false;
+            if (!q) return true;
+            var hay = [row.name, row.email, row.username, row.studentCode, row.paymentId, row.planLabel, row.plan]
+                .join(' ').toLowerCase();
+            return hay.indexOf(q) !== -1;
+        }
+
+        function renderTable() {
+            var wrap = document.getElementById('ss-table-wrap');
+            if (view === 'purchases') {
+                var buys = (payload.purchases || []).filter(purchaseMatches);
+                document.getElementById('ss-status-line').textContent =
+                    buys.length + ' purchase' + (buys.length === 1 ? '' : 's');
+                if (!buys.length) {
+                    wrap.innerHTML = '<div class="ss-empty">No purchases match these filters.</div>';
+                    return;
+                }
+                wrap.innerHTML =
+                    '<table class="ss-table"><thead><tr>' +
+                    '<th>Date</th><th>Student</th><th>Email</th><th>Username</th><th>Plan</th><th>Credits</th><th>Amount</th><th>Payment ID</th>' +
+                    '</tr></thead><tbody>' +
+                    buys.map(function (r) {
+                        return '<tr>' +
+                            '<td>' + escapeHtml(formatDate(r.date)) + '</td>' +
+                            '<td>' + escapeHtml(r.name) + '</td>' +
+                            '<td>' + escapeHtml(r.email) + '</td>' +
+                            '<td>' + escapeHtml(r.username) + '</td>' +
+                            '<td>' + escapeHtml(r.planLabel || r.plan || '—') + '</td>' +
+                            '<td>' + escapeHtml(String(r.credits || 0)) + '</td>' +
+                            '<td>' + escapeHtml(formatPhp(r.amountPaid)) + '</td>' +
+                            '<td>' + escapeHtml(r.paymentId || '—') + '</td>' +
+                            '</tr>';
+                    }).join('') +
+                    '</tbody></table>';
+                return;
+            }
+
+            var rows = (payload.subscriptions || []).filter(matchesFilters);
+            document.getElementById('ss-status-line').textContent =
+                rows.length + ' subscription' + (rows.length === 1 ? '' : 's');
+            if (!rows.length) {
+                wrap.innerHTML = '<div class="ss-empty">No subscriptions match these filters.</div>';
+                return;
+            }
+            wrap.innerHTML =
+                '<table class="ss-table"><thead><tr>' +
+                '<th>Student</th><th>Email</th><th>Username</th><th>Plan</th><th>Status</th><th>Payment</th>' +
+                '<th>Start</th><th>End</th><th>Paid at</th><th>Amount</th><th>Credits</th><th>Purchases</th><th>Method</th><th>Reference</th>' +
+                '</tr></thead><tbody>' +
+                rows.map(function (r) {
+                    return '<tr>' +
+                        '<td>' + escapeHtml(r.name) + '</td>' +
+                        '<td>' + escapeHtml(r.email) + '</td>' +
+                        '<td>' + escapeHtml(r.username) + '</td>' +
+                        '<td>' + escapeHtml(r.planLabel) + '</td>' +
+                        '<td>' + statusBadge(r.subscriptionStatus) + '</td>' +
+                        '<td>' + payBadge(r.paymentStatus) + '</td>' +
+                        '<td>' + escapeHtml(formatDate(r.subscriptionStartDate)) + '</td>' +
+                        '<td>' + escapeHtml(formatDate(r.subscriptionEndDate)) + '</td>' +
+                        '<td>' + escapeHtml(formatDate(r.paymentPaidAt)) + '</td>' +
+                        '<td>' + escapeHtml(formatPhp(r.amountPaidTotal)) + '</td>' +
+                        '<td>' + escapeHtml(String(r.availableCredits || 0)) + ' / ' + escapeHtml(String(r.totalCreditsEarned || 0)) + '</td>' +
+                        '<td>' + escapeHtml(String(r.purchaseCount || 0)) + '</td>' +
+                        '<td>' + escapeHtml(r.paymentMethod || '—') + '</td>' +
+                        '<td>' + escapeHtml(r.paymentReference || '—') + '</td>' +
+                        '</tr>';
+                }).join('') +
+                '</tbody></table>';
+        }
+
+        function csvEscape(v) {
+            var s = String(v == null ? '' : v);
+            if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+            return s;
+        }
+
+        function exportCsv() {
+            var lines;
+            if (view === 'purchases') {
+                var buys = (payload.purchases || []).filter(purchaseMatches);
+                lines = [['Date', 'Student', 'Email', 'Username', 'Plan', 'Credits', 'Amount PHP', 'Payment ID']];
+                buys.forEach(function (r) {
+                    lines.push([formatDate(r.date), r.name, r.email, r.username, r.planLabel || r.plan, r.credits, r.amountPaid, r.paymentId]);
+                });
+            } else {
+                var rows = (payload.subscriptions || []).filter(matchesFilters);
+                lines = [['Student', 'Email', 'Username', 'Plan', 'Status', 'Payment', 'Start', 'End', 'Paid at', 'Amount PHP', 'Available credits', 'Total credits', 'Purchases', 'Method', 'Reference']];
+                rows.forEach(function (r) {
+                    lines.push([
+                        r.name, r.email, r.username, r.planLabel, r.subscriptionStatus, r.paymentStatus,
+                        formatDate(r.subscriptionStartDate), formatDate(r.subscriptionEndDate), formatDate(r.paymentPaidAt),
+                        r.amountPaidTotal, r.availableCredits, r.totalCreditsEarned, r.purchaseCount, r.paymentMethod, r.paymentReference
+                    ]);
+                });
+            }
+            var csv = lines.map(function (row) { return row.map(csvEscape).join(','); }).join('\n');
+            var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            var a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = view === 'purchases' ? 'student-subscription-purchases.csv' : 'student-subscriptions.csv';
+            a.click();
+            URL.revokeObjectURL(a.href);
+        }
+
+        function load() {
+            document.getElementById('ss-status-line').textContent = 'Loading…';
+            var includeAll = document.getElementById('ss-include-all').checked ? '1' : '0';
+            adminApiFetch('/api/admin/student-subscriptions?includeAll=' + includeAll)
+                .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
+                .then(function (out) {
+                    if (!out.ok || !out.data || out.data.success === false) {
+                        document.getElementById('ss-status-line').textContent = (out.data && (out.data.error || out.data.message)) || 'Failed to load subscriptions.';
+                        return;
+                    }
+                    payload = out.data;
+                    renderCards(payload.summary);
+                    renderTable();
+                })
+                .catch(function () {
+                    document.getElementById('ss-status-line').textContent = 'Failed to load subscriptions.';
+                });
+        }
+
+        document.getElementById('ss-search').addEventListener('input', renderTable);
+        document.getElementById('ss-status').addEventListener('change', renderTable);
+        document.getElementById('ss-plan').addEventListener('change', renderTable);
+        document.getElementById('ss-include-all').addEventListener('change', load);
+        document.getElementById('ss-refresh').addEventListener('click', load);
+        document.getElementById('ss-export').addEventListener('click', exportCsv);
+        document.getElementById('ss-view-current').addEventListener('click', function () {
+            view = 'current';
+            this.classList.add('active');
+            document.getElementById('ss-view-purchases').classList.remove('active');
+            renderTable();
+        });
+        document.getElementById('ss-view-purchases').addEventListener('click', function () {
+            view = 'purchases';
+            this.classList.add('active');
+            document.getElementById('ss-view-current').classList.remove('active');
+            renderTable();
+        });
+
+        if (window.AdminSidebar && typeof AdminSidebar.applyGreetingFromStorage === 'function') {
+            AdminSidebar.applyGreetingFromStorage();
+        }
+        load();
+    })();
+    </script>
+</body>
+</html>

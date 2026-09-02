@@ -43,6 +43,7 @@
         if (path.indexOf('admin-teacher-pipeline') !== -1) return 'hr-hub';
         if (path.indexOf('admin-accounting-hub') !== -1) return 'accounting-hub';
         if (path.indexOf('admin-unique-link-commission') !== -1) return 'accounting-hub';
+        if (path.indexOf('admin-student-subscriptions') !== -1) return 'accounting-hub';
         if (path.indexOf('admin-payroll') !== -1) return 'accounting-hub';
         if (path.indexOf('admin-announcements') !== -1) return 'announcements';
         if (path.indexOf('admin-videos') !== -1) return 'videos';

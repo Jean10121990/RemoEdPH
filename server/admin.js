@@ -45,6 +45,7 @@ const { encryptTotpSecret, decryptTotpSecret } = require('./utils/twoFactorSecre
 const { ADMIN_2FA_ENROLLMENT_PURPOSE } = require('./utils/adminForce2fa');
 const { recordAdminLoginActivity, getAdminSessionVersion } = require('./services/adminLoginActivity');
 const { generateReferralCode } = require('./utils/referralCode');
+const { creditsForPlan, normalizePlanId, PLAN_CREDITS } = require('./config/planCredits');
 const { buildTeacherInvitationSignupUrl } = require('./utils/frontendBaseUrl');
 const TeacherSlot = require('./models/TeacherSlot');
 const { normalizeId } = require('./utils/normalizeId');
@@ -2929,6 +2930,193 @@ router.get('/students-list', async (req, res) => {
   } catch (error) {
     console.error('Error getting students list:', error);
     res.status(500).json({ error: 'Error getting students list' });
+  }
+});
+
+function resolvePlanId(planRaw) {
+  const n = normalizePlanId(planRaw);
+  if (n && PLAN_CREDITS[n]) return n;
+  const lower = String(planRaw || '').toLowerCase();
+  const ids = Object.keys(PLAN_CREDITS);
+  for (let i = 0; i < ids.length; i++) {
+    const id = ids[i];
+    const def = PLAN_CREDITS[id];
+    if (lower.includes(id) || lower.includes(String(def.label || '').toLowerCase())) return id;
+  }
+  return n || '';
+}
+
+function subscriptionPlanLabel(planRaw) {
+  const info = creditsForPlan(resolvePlanId(planRaw) || planRaw);
+  if (info) return `${info.label} — ${info.bundleName}`;
+  const raw = String(planRaw || '').trim();
+  return raw || '—';
+}
+
+function studentDisplayName(s) {
+  return (`${s.firstName || ''} ${s.lastName || ''}`.trim() || s.username || 'Student').trim();
+}
+
+function collectSubscriptionPurchases(student) {
+  const hist = Array.isArray(student.creditHistory) ? student.creditHistory : [];
+  const rows = [];
+  hist.forEach((h) => {
+    if (!h) return;
+    const type = String(h.entryType || 'purchase').toLowerCase();
+    if (type !== 'purchase') return;
+    rows.push({
+      date: h.date || null,
+      plan: h.plan || student.subscriptionPlan || '',
+      planId: resolvePlanId(h.plan || student.subscriptionPlan),
+      planLabel: subscriptionPlanLabel(h.plan || student.subscriptionPlan),
+      credits: Number(h.credits) || 0,
+      amountPaid: Number(h.amountPaid) || 0,
+      paymentId: h.paymentId || '',
+    });
+  });
+  rows.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+  return rows;
+}
+
+function studentHasSubscriptionRecord(s, purchases) {
+  if (s.isSubscribed) return true;
+  if (String(s.subscriptionPlan || '').trim()) return true;
+  if (['paid', 'pending'].includes(String(s.paymentStatus || ''))) return true;
+  if (['active', 'expired', 'cancelled'].includes(String(s.subscriptionStatus || ''))) return true;
+  if ((Number(s.totalCreditsEarned) || 0) > 0) return true;
+  if (purchases && purchases.length) return true;
+  return false;
+}
+
+// Accounting Hub: all student subscriptions (current plan + purchase history).
+router.get('/student-subscriptions', async (req, res) => {
+  try {
+    const includeAll = String(req.query.includeAll || '') === '1';
+    const students = await Student.find({})
+      .select(
+        'username email firstName lastName studentCode status createdAt ' +
+          'subscriptionPlan subscriptionStartDate subscriptionEndDate subscriptionStatus ' +
+          'paymentStatus paymentMethod paymentReference paymentPaidAt ' +
+          'isSubscribed accountStatus creditBalance reservedCredits totalCreditsEarned usedCredits ' +
+          'creditHistory referredByOwnerType referredByOwnerId referralCode'
+      )
+      .lean();
+
+    const byPlan = {};
+    Object.keys(PLAN_CREDITS).forEach((id) => {
+      byPlan[id] = 0;
+    });
+
+    const summary = {
+      totalStudents: students.length,
+      listed: 0,
+      active: 0,
+      pending: 0,
+      expired: 0,
+      cancelled: 0,
+      unpaid: 0,
+      paid: 0,
+      amountPaidTotal: 0,
+      byPlan,
+    };
+
+    const subscriptions = [];
+    const purchasesOut = [];
+
+    students.forEach((s) => {
+      const purchases = collectSubscriptionPurchases(s);
+      if (!includeAll && !studentHasSubscriptionRecord(s, purchases)) return;
+
+      const planId = normalizePlanId(s.subscriptionPlan);
+      const reserved = Number(s.reservedCredits) || 0;
+      const balance = Number(s.creditBalance) || 0;
+      const amountPaidTotal = purchases.reduce((sum, p) => sum + (Number(p.amountPaid) || 0), 0);
+      const last = purchases[0] || null;
+      const status = String(s.subscriptionStatus || 'pending');
+      const payStatus = String(s.paymentStatus || 'unpaid');
+
+      summary.listed += 1;
+      if (status === 'active') summary.active += 1;
+      else if (status === 'expired') summary.expired += 1;
+      else if (status === 'cancelled') summary.cancelled += 1;
+      else summary.pending += 1;
+      if (payStatus === 'paid') summary.paid += 1;
+      else summary.unpaid += 1;
+      summary.amountPaidTotal += amountPaidTotal;
+      if (planId && Object.prototype.hasOwnProperty.call(summary.byPlan, planId)) {
+        summary.byPlan[planId] += 1;
+      }
+
+      const row = {
+        studentId: String(s._id),
+        studentCode: s.studentCode || '',
+        username: s.username || '',
+        name: studentDisplayName(s),
+        email: s.email || '',
+        accountStatus: s.status || 'active',
+        funnelStatus: s.accountStatus || 'standard',
+        subscriptionPlan: s.subscriptionPlan || '',
+        planId: planId || '',
+        planLabel: subscriptionPlanLabel(s.subscriptionPlan),
+        subscriptionStatus: status,
+        subscriptionStartDate: s.subscriptionStartDate || null,
+        subscriptionEndDate: s.subscriptionEndDate || null,
+        paymentStatus: payStatus,
+        paymentMethod: s.paymentMethod || '',
+        paymentReference: s.paymentReference || '',
+        paymentPaidAt: s.paymentPaidAt || null,
+        isSubscribed: !!s.isSubscribed,
+        creditBalance: balance,
+        reservedCredits: reserved,
+        availableCredits: Math.max(0, balance - reserved),
+        totalCreditsEarned: Number(s.totalCreditsEarned) || 0,
+        usedCredits: Number(s.usedCredits) || 0,
+        amountPaidTotal,
+        purchaseCount: purchases.length,
+        lastPurchaseAt: last ? last.date : null,
+        lastPurchaseAmount: last ? last.amountPaid : 0,
+        referredBy: s.referredByOwnerType && s.referredByOwnerId
+          ? `${s.referredByOwnerType}:${s.referredByOwnerId}`
+          : (s.referralCode || ''),
+        createdAt: s.createdAt || null,
+      };
+      subscriptions.push(row);
+
+      purchases.forEach((p) => {
+        purchasesOut.push({
+          studentId: row.studentId,
+          studentCode: row.studentCode,
+          username: row.username,
+          name: row.name,
+          email: row.email,
+          date: p.date,
+          plan: p.plan,
+          planId: p.planId || '',
+          planLabel: p.planLabel,
+          credits: p.credits,
+          amountPaid: p.amountPaid,
+          paymentId: p.paymentId,
+        });
+      });
+    });
+
+    subscriptions.sort((a, b) => {
+      const da = new Date(a.paymentPaidAt || a.subscriptionStartDate || a.createdAt || 0);
+      const db = new Date(b.paymentPaidAt || b.subscriptionStartDate || b.createdAt || 0);
+      return db - da;
+    });
+    purchasesOut.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+
+    res.json({
+      success: true,
+      generatedAt: new Date().toISOString(),
+      summary,
+      subscriptions,
+      purchases: purchasesOut,
+    });
+  } catch (error) {
+    console.error('Error getting student subscriptions:', error);
+    res.status(500).json({ success: false, error: 'Error getting student subscriptions' });
   }
 });
 
