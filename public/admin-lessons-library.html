@@ -457,9 +457,9 @@
             position: fixed;
             top: 0;
             right: -100%;
-            width: 60%;
-            max-width: 800px;
-            height: 100vh;
+            width: 100%;
+            max-width: none;
+            height: 100%;
             background: white;
             box-shadow: -4px 0 20px rgba(0, 0, 0, 0.15);
             z-index: 1000;
@@ -474,12 +474,13 @@
         }
         
         .preview-header {
-            padding: 1.5rem;
+            padding: 0.7rem 1rem;
             border-bottom: 1px solid #e5e7eb;
             display: flex;
             justify-content: space-between;
             align-items: center;
             background: #f8fafc;
+            flex-shrink: 0;
         }
         
         .preview-header h3 {
@@ -516,56 +517,61 @@
         
         .preview-content {
             flex: 1;
-            overflow: auto;
-            padding: 1.5rem;
+            min-height: 0;
+            overflow: hidden;
+            padding: 0;
             display: flex;
-            align-items: center;
-            justify-content: center;
-            background: #f8fafc;
-            min-height: 500px;
+            flex-direction: column;
+            align-items: stretch;
+            justify-content: stretch;
+            background: #0f172a;
             position: relative;
         }
         
         .preview-content > * {
-            max-width: 100%;
-            max-height: 100%;
+            max-width: none;
         }
         
-        .preview-content iframe {
-            width: 100%;
-            height: 100%;
-            min-height: 600px;
-            border: none;
-            background: white;
-        }
-        
+        .preview-content iframe,
         .preview-content embed {
+            flex: 1 1 auto;
             width: 100%;
             height: 100%;
-            min-height: 600px;
+            min-height: 0;
             border: none;
-            background: white;
+            background: #0f172a;
+            display: block;
         }
         
         .preview-content img {
             max-width: 100%;
             max-height: 100%;
             object-fit: contain;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            margin: auto;
+            border-radius: 0;
+            box-shadow: none;
         }
         
         .preview-content video {
             max-width: 100%;
             max-height: 100%;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            margin: auto;
+            border-radius: 0;
+            box-shadow: none;
         }
         
         .preview-unsupported {
             text-align: center;
             padding: 3rem;
             color: #64748b;
+            margin: auto;
+            background: #f8fafc;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
         }
         
         .preview-unsupported-icon {
@@ -591,27 +597,34 @@
         .ppt-eye-preview-btn:hover { background: #1691d1; }
         .ppt-eye-preview-btn:disabled { opacity: 0.65; cursor: wait; }
         .secure-ppt-frame-wrap {
+            flex: 1 1 auto;
             width: 100%;
-            height: min(70vh, 720px);
-            min-height: 420px;
-            border-radius: 8px;
+            min-height: 0;
+            height: auto;
+            border-radius: 0;
             overflow: hidden;
             background: #0f172a;
-            border: 1px solid #e2e8f0;
+            border: none;
+            display: flex;
+            flex-direction: column;
         }
         .secure-ppt-frame-wrap iframe {
+            flex: 1 1 auto;
             width: 100%;
             height: 100%;
-            min-height: 420px;
+            min-height: 0;
             border: none;
-            background: #fff;
+            background: #0f172a;
         }
         .secure-ppt-hint {
-            margin-top: 10px;
-            font-size: 0.85rem;
+            flex-shrink: 0;
+            margin: 0;
+            font-size: 0.78rem;
             color: #64748b;
             text-align: center;
-            padding: 0 12px;
+            padding: 6px 12px;
+            background: #f8fafc;
+            border-top: 1px solid #e5e7eb;
         }
         
         .preview-overlay {
@@ -1459,7 +1472,7 @@
                 }
                 try {
                     if (presentationType === 'office_embed' && embedUrl) {
-                        showFrame(embedUrl, 'Read-only Office embed.');
+                        showFrame(embedUrl, 'Read-only PowerPoint preview.');
                         return;
                     }
                     if (presentationType === 'html5_zip' && fallbackUrl) {
@@ -1469,24 +1482,19 @@
                     if (!fileId || !token) {
                         throw new Error('Sign in again to preview this lesson.');
                     }
-                    const res = await fetch('/api/lessons/presentation/' + encodeURIComponent(fileId) + '/local-preview', {
+                    const res = await fetch('/api/lessons/presentation/' + encodeURIComponent(fileId) + '/secure-embed', {
                         headers: { Authorization: 'Bearer ' + token },
                         credentials: 'include'
                     });
                     const data = await res.json().catch(() => ({}));
                     if (!res.ok) {
-                        throw new Error(data.error || 'Could not prepare the lesson preview.');
+                        throw new Error(data.error || 'Could not open the lesson preview.');
                     }
-                    if (data.mode === 'html5_zip' && data.previewUrl) {
-                        showFrame(absUrl(data.previewUrl), 'Read-only lesson package.');
-                        return;
+                    const src = data.embedUrl || data.previewUrl || '';
+                    if (!src) {
+                        throw new Error('This PowerPoint is not available for preview yet.');
                     }
-                    if (data.mode === 'office_embed' && data.previewUrl) {
-                        showFrame(data.previewUrl, 'Read-only Office embed.');
-                        return;
-                    }
-                    const pdfSrc = '/api/lessons/presentation/' + encodeURIComponent(fileId) + '/preview.pdf?token=' + encodeURIComponent(token) + '&t=' + Date.now();
-                    showFrame(pdfSrc, 'Read-only PDF preview — use this to review slides before class.');
+                    showFrame(src, data.hint || 'Read-only PowerPoint preview.');
                 } catch (err) {
                     mountEl.innerHTML = `
                         <div class="preview-unsupported">

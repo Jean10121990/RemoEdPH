@@ -35,11 +35,12 @@
         }
         .page-teacher-lessons-library .pdf-full-iframe {
             width: 100%;
-            min-height: 600px;
-            height: 70vh;
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-            background: white;
+            flex: 1 1 auto;
+            min-height: 0;
+            height: 100%;
+            border: none;
+            border-radius: 0;
+            background: #0f172a;
             display: block;
         }
         .page-teacher-lessons-library .ppt-eye-preview-btn {
@@ -58,27 +59,34 @@
         }
         .page-teacher-lessons-library .ppt-eye-preview-btn:hover { background: #1691d1; }
         .page-teacher-lessons-library .secure-ppt-frame-wrap {
+            flex: 1 1 auto;
             width: 100%;
-            height: min(70vh, 720px);
-            min-height: 420px;
-            border-radius: 8px;
+            min-height: 0;
+            height: auto;
+            border-radius: 0;
             overflow: hidden;
             background: #0f172a;
-            border: 1px solid #e2e8f0;
+            border: none;
+            display: flex;
+            flex-direction: column;
         }
         .page-teacher-lessons-library .secure-ppt-frame-wrap iframe {
+            flex: 1 1 auto;
             width: 100%;
             height: 100%;
-            min-height: 420px;
+            min-height: 0;
             border: none;
-            background: #fff;
+            background: #0f172a;
         }
         .page-teacher-lessons-library .secure-ppt-hint {
-            margin-top: 10px;
-            font-size: 0.85rem;
+            flex-shrink: 0;
+            margin: 0;
+            font-size: 0.78rem;
             color: #64748b;
             text-align: center;
-            padding: 0 12px;
+            padding: 6px 12px;
+            background: #f8fafc;
+            border-top: 1px solid #e5e7eb;
         }
         .page-teacher-lessons-library .pdf-stream-loading {
             display: flex;
@@ -1240,24 +1248,19 @@
                     if (!fileId || !tok) {
                         throw new Error('Sign in again to preview this lesson.');
                     }
-                    const res = await fetch('/api/lessons/presentation/' + encodeURIComponent(fileId) + '/local-preview', {
+                    const res = await fetch('/api/lessons/presentation/' + encodeURIComponent(fileId) + '/secure-embed', {
                         headers: { Authorization: 'Bearer ' + tok },
                         credentials: 'include'
                     });
                     const data = await res.json().catch(() => ({}));
                     if (!res.ok) {
-                        throw new Error(data.error || 'Could not prepare the lesson preview.');
+                        throw new Error(data.error || 'Could not open the lesson preview.');
                     }
-                    if (data.mode === 'html5_zip' && data.previewUrl) {
-                        showFrame(absUrl(data.previewUrl), 'Read-only lesson package.');
-                        return;
+                    const src = data.embedUrl || data.previewUrl || '';
+                    if (!src) {
+                        throw new Error('This PowerPoint is not available for preview yet.');
                     }
-                    if (data.mode === 'office_embed' && data.previewUrl) {
-                        showFrame(data.previewUrl, 'Read-only Office embed.');
-                        return;
-                    }
-                    const pdfSrc = '/api/lessons/presentation/' + encodeURIComponent(fileId) + '/preview.pdf?token=' + encodeURIComponent(tok) + '&t=' + Date.now();
-                    showFrame(pdfSrc, 'Read-only PDF preview — use this to review slides before class.');
+                    showFrame(src, data.hint || 'Read-only PowerPoint preview.');
                 } catch (err) {
                     mountEl.innerHTML = `
                         <div class="preview-unsupported">

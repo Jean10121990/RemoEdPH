@@ -1130,9 +1130,9 @@ body.page-admin-lessons-library{
             position: fixed;
             top: 0;
             right: -100%;
-            width: 60%;
-            max-width: 800px;
-            height: 100vh;
+            width: 100%;
+            max-width: none;
+            height: 100%;
             background: white;
             box-shadow: -4px 0 20px rgba(0, 0, 0, 0.15);
             z-index: 1000;
@@ -1143,12 +1143,13 @@ body.page-admin-lessons-library{
         }.page-admin-lessons-library .preview-panel.open{
             right: 0;
         }.page-admin-lessons-library .preview-header{
-            padding: 1.5rem;
+            padding: 0.7rem 1rem;
             border-bottom: 1px solid #e5e7eb;
             display: flex;
             justify-content: space-between;
             align-items: center;
             background: #f8fafc;
+            flex-shrink: 0;
         }.page-admin-lessons-library .preview-header h3{
             margin: 0;
             color: #667eea;
@@ -1177,29 +1178,33 @@ body.page-admin-lessons-library{
             color: #1a202c;
         }.page-admin-lessons-library .preview-content{
             flex: 1;
-            overflow: auto;
-            padding: 1.5rem;
+            min-height: 0;
+            overflow: hidden;
+            padding: 0;
             display: flex;
-            align-items: center;
-            justify-content: center;
-            background: #f8fafc;
-            min-height: 500px;
+            flex-direction: column;
+            align-items: stretch;
+            justify-content: stretch;
+            background: #0f172a;
             position: relative;
         }.page-admin-lessons-library .preview-content > *{
-            max-width: 100%;
-            max-height: 100%;
+            max-width: none;
         }.page-admin-lessons-library .preview-content iframe{
+            flex: 1 1 auto;
             width: 100%;
             height: 100%;
-            min-height: 600px;
+            min-height: 0;
             border: none;
-            background: white;
+            background: #0f172a;
+            display: block;
         }.page-admin-lessons-library .preview-content embed{
+            flex: 1 1 auto;
             width: 100%;
             height: 100%;
-            min-height: 600px;
+            min-height: 0;
             border: none;
-            background: white;
+            background: #0f172a;
+            display: block;
         }.page-admin-lessons-library .preview-content img{
             max-width: 100%;
             max-height: 100%;
@@ -11838,9 +11843,9 @@ body.page-teacher-lessons-library{
             position: fixed;
             top: 0;
             right: -100%;
-            width: 60%;
-            max-width: 800px;
-            height: 100vh;
+            width: 100%;
+            max-width: none;
+            height: 100%;
             background: white;
             box-shadow: -4px 0 20px rgba(0, 0, 0, 0.15);
             z-index: 1000;
@@ -11851,12 +11856,13 @@ body.page-teacher-lessons-library{
         }.page-teacher-lessons-library .preview-panel.open{
             right: 0;
         }.page-teacher-lessons-library .preview-header{
-            padding: 1.5rem;
+            padding: 0.7rem 1rem;
             border-bottom: 1px solid #e5e7eb;
             display: flex;
             justify-content: space-between;
             align-items: center;
             background: #f8fafc;
+            flex-shrink: 0;
         }.page-teacher-lessons-library .preview-header h3{
             margin: 0;
             color: #667eea;
@@ -11885,29 +11891,33 @@ body.page-teacher-lessons-library{
             color: #1a202c;
         }.page-teacher-lessons-library .preview-content{
             flex: 1;
-            overflow: auto;
-            padding: 1.5rem;
+            min-height: 0;
+            overflow: hidden;
+            padding: 0;
             display: flex;
-            align-items: center;
-            justify-content: center;
-            background: #f8fafc;
-            min-height: 500px;
+            flex-direction: column;
+            align-items: stretch;
+            justify-content: stretch;
+            background: #0f172a;
             position: relative;
         }.page-teacher-lessons-library .preview-content > *{
-            max-width: 100%;
-            max-height: 100%;
+            max-width: none;
         }.page-teacher-lessons-library .preview-content iframe{
+            flex: 1 1 auto;
             width: 100%;
             height: 100%;
-            min-height: 600px;
+            min-height: 0;
             border: none;
-            background: white;
+            background: #0f172a;
+            display: block;
         }.page-teacher-lessons-library .preview-content embed{
+            flex: 1 1 auto;
             width: 100%;
             height: 100%;
-            min-height: 600px;
+            min-height: 0;
             border: none;
-            background: white;
+            background: #0f172a;
+            display: block;
         }.page-teacher-lessons-library .preview-content img{
             max-width: 100%;
             max-height: 100%;

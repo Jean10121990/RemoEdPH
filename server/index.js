@@ -3025,16 +3025,6 @@ const startServer = () => {
       // Redis: connect in background — never block listen; cache paths use getRedis() with fast timeouts.
       primeRedisConnection();
       
-      // Now that server is listening, do other initialization
-      // Verify Cloudmersive API key configuration
-      const cloudmersiveKey = process.env.CLOUDMERSIVE_API_KEY;
-      if (cloudmersiveKey && cloudmersiveKey.trim() && cloudmersiveKey !== 'your-api-key-here') {
-        const cleanKey = cloudmersiveKey.trim().replace(/^["']|["']$/g, '');
-        console.log(`✅ Cloudmersive API key configured (${cleanKey.length} chars, starts with: ${cleanKey.substring(0, 8)}...)`);
-      } else {
-        console.warn(`⚠️  Cloudmersive API key not configured. PPTX conversion will fail. Set CLOUDMERSIVE_API_KEY in .env file.`);
-      }
-      
       // Connect to database in background (non-blocking)
       connectDB().then((connected) => {
         if (connected) {
