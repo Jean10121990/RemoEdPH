@@ -527,7 +527,7 @@ app.get('/register.html', async (req, res) => {
 const applicationFormDist = path.join(__dirname, '../application-form/dist');
 const applicationFormAssets = path.join(applicationFormDist, 'assets');
 app.use('/assets', express.static(applicationFormAssets));
-app.get('/application-form', (req, res) => {
+app.get('/application-form', noStoreProtectedResponse, (req, res) => {
   return res.sendFile(path.join(applicationFormDist, 'index.html'));
 });
 

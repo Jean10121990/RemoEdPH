@@ -1155,9 +1155,15 @@ router.get('/notifications', verifyAdminApiAuth, requireAdmin, async (req, res) 
 // -----------------------------
 // Teacher Pipeline (Applications)
 // -----------------------------
+function isActivatedPipelineApplicant(applicant) {
+  return String(applicant && applicant.teacherActivationStatus ? applicant.teacherActivationStatus : '') === 'Active Teacher';
+}
+
 router.get('/teacher-pipeline/applicants', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
-    const applicants = await Application.find({})
+    const applicants = await Application.find({
+      teacherActivationStatus: { $ne: 'Active Teacher' },
+    })
       .sort({ updatedAt: -1 })
       .lean();
 
@@ -1189,6 +1195,9 @@ router.get('/teacher-pipeline/applicants/:id', verifyAdminApiAuth, requireAdmin,
     if (!applicant) {
       return res.status(404).json({ success: false, error: 'Applicant not found' });
     }
+    if (isActivatedPipelineApplicant(applicant)) {
+      return res.status(404).json({ success: false, error: 'Applicant not found' });
+    }
     const safe = { ...applicant };
     delete safe.password;
     res.json({ success: true, applicant: safe });
@@ -1203,6 +1212,12 @@ router.post('/teacher-pipeline/applicants/:id/fail', verifyAdminApiAuth, require
     const applicant = await Application.findById(req.params.id);
     if (!applicant) {
       return res.status(404).json({ success: false, error: 'Applicant not found' });
+    }
+    if (isActivatedPipelineApplicant(applicant)) {
+      return res.status(400).json({
+        success: false,
+        error: 'This applicant already has a teacher account in User Management.',
+      });
     }
 
     const now = new Date();
@@ -1245,6 +1260,12 @@ router.post('/teacher-pipeline/applicants/:id/pass', verifyAdminApiAuth, require
     const applicant = await Application.findById(req.params.id);
     if (!applicant) {
       return res.status(404).json({ success: false, error: 'Applicant not found' });
+    }
+    if (isActivatedPipelineApplicant(applicant)) {
+      return res.status(400).json({
+        success: false,
+        error: 'This applicant already has a teacher account in User Management.',
+      });
     }
 
     const applicantData = applicant;
@@ -1357,6 +1378,12 @@ router.post('/teacher-pipeline/applicants/:id/resend-invitation', verifyAdminApi
     if (!applicant) {
       return res.status(404).json({ success: false, error: 'Applicant not found' });
     }
+    if (isActivatedPipelineApplicant(applicant)) {
+      return res.status(400).json({
+        success: false,
+        error: 'This applicant already has a teacher account in User Management.',
+      });
+    }
 
     if (String(applicant.currentStage || '').toLowerCase() === 'failed') {
       return res.status(400).json({
@@ -1415,6 +1442,12 @@ async function deleteTeacherPipelineApplicant(req, res) {
     const applicant = await Application.findById(req.params.id);
     if (!applicant) {
       return res.status(404).json({ success: false, error: 'Applicant not found' });
+    }
+    if (isActivatedPipelineApplicant(applicant)) {
+      return res.status(400).json({
+        success: false,
+        error: 'This applicant already has a teacher account in User Management.',
+      });
     }
     const stage = String(applicant.currentStage || '').toLowerCase();
     if (stage !== 'passed' && stage !== 'failed') {
