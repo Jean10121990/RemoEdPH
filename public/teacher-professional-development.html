@@ -15,8 +15,47 @@
 <!-- Remo AI Chatbot Styles -->
     <link rel="stylesheet" href="style.css?v=training-cards-1">
     <link rel="stylesheet" href="css/portal-chrome-compact.css">
+    <style>
+        .commitment-meter { min-width: 0; }
+        .commitment-meter-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 8px;
+            margin-bottom: 6px;
+            font-weight: 600;
+            color: #334155;
+            font-size: 0.92rem;
+        }
+        .commitment-pct {
+            font-variant-numeric: tabular-nums;
+            font-weight: 700;
+            color: #475569;
+            white-space: nowrap;
+        }
+        .commitment-bar {
+            height: 10px;
+            background: #e2e8f0;
+            border-radius: 999px;
+            overflow: hidden;
+        }
+        .commitment-bar-fill {
+            height: 100%;
+            width: 0%;
+            border-radius: 999px;
+            background: linear-gradient(90deg, #6366f1 0%, #4f46e5 100%);
+            transition: width 0.35s ease, background 0.2s ease;
+        }
+        .commitment-meter.is-pass .commitment-bar-fill {
+            background: linear-gradient(90deg, #34d399 0%, #10b981 100%);
+        }
+        .commitment-meter.is-pass .commitment-pct { color: #047857; }
+        .commitment-meter.is-empty .commitment-pct { color: #94a3b8; font-weight: 600; }
+        .personality-category-meters { display: grid; gap: 10px; }
+    </style>
     <script src="js/user-session.js"></script>
     <script src="js/teacher-payout-settings.js"></script>
+    <script src="js/assessment-answer-key-data.js"></script>
 </head>
 <body class="page-teacher-professional-development">
     <div class="remoed-main">
@@ -139,10 +178,6 @@
                             <span>Assessed by:</span>
                             <span class="assessment-source-badge" id="listening-source">Pending</span>
                         </div>
-                        <div class="teacher-description">
-                            <label>Your Teaching Approach (Optional)</label>
-                            <textarea class="form-textarea" id="listening-description" rows="3" placeholder="Describe your approach to teaching listening skills..." disabled></textarea>
-                        </div>
                     </div>
                     <div class="skill-assessment-card">
                         <div class="skill-header">
@@ -155,10 +190,6 @@
                         <div class="assessment-source">
                             <span>Assessed by:</span>
                             <span class="assessment-source-badge" id="reading-source">Pending</span>
-                        </div>
-                        <div class="teacher-description">
-                            <label>Your Teaching Approach (Optional)</label>
-                            <textarea class="form-textarea" id="reading-description" rows="3" placeholder="Describe your approach to teaching reading skills..." disabled></textarea>
                         </div>
                     </div>
                     <div class="skill-assessment-card">
@@ -173,10 +204,6 @@
                             <span>Assessed by:</span>
                             <span class="assessment-source-badge" id="speaking-source">Pending</span>
                         </div>
-                        <div class="teacher-description">
-                            <label>Your Teaching Approach (Optional)</label>
-                            <textarea class="form-textarea" id="speaking-description" rows="3" placeholder="Describe your approach to teaching speaking skills..." disabled></textarea>
-                        </div>
                     </div>
                     <div class="skill-assessment-card">
                         <div class="skill-header">
@@ -190,10 +217,6 @@
                             <span>Assessed by:</span>
                             <span class="assessment-source-badge" id="writing-source">Pending</span>
                         </div>
-                        <div class="teacher-description">
-                            <label>Your Teaching Approach (Optional)</label>
-                            <textarea class="form-textarea" id="writing-description" rows="3" placeholder="Describe your approach to teaching writing skills..." disabled></textarea>
-                        </div>
                     </div>
                     <div class="skill-assessment-card">
                         <div class="skill-header">
@@ -206,8 +229,8 @@
                         </div>
                     </div>
                     <div style="display: flex; gap: 8px; margin-top: 20px;">
-                        <button type="button" class="edit-btn" id="edit-teaching-abilities-btn" onclick="enableTeachingAbilitiesCareerEditing()">Edit Descriptions</button>
-                        <button type="button" class="save-btn" id="save-teaching-abilities-btn" onclick="saveTeachingAbilitiesCareer()" style="display: none;">Save Descriptions</button>
+                        <button type="button" class="edit-btn" id="edit-teaching-abilities-btn" onclick="enableTeachingAbilitiesCareerEditing()">Edit Interests</button>
+                        <button type="button" class="save-btn" id="save-teaching-abilities-btn" onclick="saveTeachingAbilitiesCareer()" style="display: none;">Save Interests</button>
                         <button type="button" class="cancel-btn" id="cancel-teaching-abilities-btn" onclick="cancelTeachingAbilitiesCareerEditing()" style="display: none;">Cancel</button>
                     </div>
                 </div>
@@ -256,7 +279,7 @@
                         <div style="margin-top:12px;">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; font-size:0.8rem; color:#64748b;">
                                 <span>Growth Meter</span>
-                                <span id="growth-meter-label">0 / 105</span>
+                                <span id="growth-meter-label">0 / 100</span>
                             </div>
                             <div style="height:12px; border-radius:999px; background:#e2e8f0; overflow:hidden;">
                                 <div id="growth-meter-fill" style="height:100%; width:0%; background:linear-gradient(90deg, #A8E6CF 0%, #FFD700 100%); box-shadow:0 0 12px rgba(255, 215, 0, 0.45); transition:width 220ms ease;"></div>
@@ -344,24 +367,56 @@
                     </div>
 
                     <div style="margin-top:16px; border:1px solid #e2e8f0; border-radius:10px; padding:12px; background:#f8fafc;">
-                        <div style="font-weight:700; color:#334155; margin-bottom:8px;">The H.E.A.R.T. Framework</div>
-                        <div style="display:grid; grid-template-columns:repeat(2, minmax(260px, 1fr)); gap:6px 12px;">
-                            <label title="Hospitality: Welcome students and teammates with warmth, kindness, and generosity." style="display:flex; align-items:center; gap:8px; font-weight:600; color:#334155;"><input type="checkbox" id="heart-hospitality"> H - Hospitality</label>
-                            <label title="Excellence: Deliver consistent quality, discipline, and continuous improvement." style="display:flex; align-items:center; gap:8px; font-weight:600; color:#334155;"><input type="checkbox" id="heart-excellence"> E - Excellence</label>
-                            <label title="Affection: Show genuine care, patience, empathy, and support for learners." style="display:flex; align-items:center; gap:8px; font-weight:600; color:#334155;"><input type="checkbox" id="heart-affection"> A - Affection</label>
-                            <label title="Respect: Practice humility, honor differences, and communicate with dignity." style="display:flex; align-items:center; gap:8px; font-weight:600; color:#334155;"><input type="checkbox" id="heart-respect"> R - Respect</label>
-                            <label title="Togetherness: Collaborate as one team, uplifting one another toward shared goals." style="display:flex; align-items:center; gap:8px; font-weight:600; color:#334155;"><input type="checkbox" id="heart-togetherness"> T - Togetherness</label>
+                        <div style="font-weight:700; color:#334155; margin-bottom:4px;">The H.E.A.R.T. Framework</div>
+                        <div style="font-size:0.82rem; color:#64748b; margin-bottom:10px;">Scores come from your personality assessment (60%+ unlocks each value).</div>
+                        <div id="heart-framework-meters" style="display:grid; grid-template-columns:repeat(2, minmax(260px, 1fr)); gap:10px 14px;">
+                            <div class="commitment-meter" data-commitment="heart-hospitality" data-category="Interpersonal Communication" title="Hospitality: Welcome students and teammates with warmth, kindness, and generosity.">
+                                <div class="commitment-meter-header"><span>H - Hospitality</span><span class="commitment-pct" id="heart-hospitality-pct">—</span></div>
+                                <div class="commitment-bar"><div class="commitment-bar-fill" id="heart-hospitality-fill"></div></div>
+                            </div>
+                            <div class="commitment-meter" data-commitment="heart-excellence" data-category="Professionalism" title="Excellence: Deliver consistent quality, discipline, and continuous improvement.">
+                                <div class="commitment-meter-header"><span>E - Excellence</span><span class="commitment-pct" id="heart-excellence-pct">—</span></div>
+                                <div class="commitment-bar"><div class="commitment-bar-fill" id="heart-excellence-fill"></div></div>
+                            </div>
+                            <div class="commitment-meter" data-commitment="heart-affection" data-category="Student Engagement" title="Affection: Show genuine care, patience, empathy, and support for learners.">
+                                <div class="commitment-meter-header"><span>A - Affection</span><span class="commitment-pct" id="heart-affection-pct">—</span></div>
+                                <div class="commitment-bar"><div class="commitment-bar-fill" id="heart-affection-fill"></div></div>
+                            </div>
+                            <div class="commitment-meter" data-commitment="heart-respect" data-category="Cultural Awareness" title="Respect: Practice humility, honor differences, and communicate with dignity.">
+                                <div class="commitment-meter-header"><span>R - Respect</span><span class="commitment-pct" id="heart-respect-pct">—</span></div>
+                                <div class="commitment-bar"><div class="commitment-bar-fill" id="heart-respect-fill"></div></div>
+                            </div>
+                            <div class="commitment-meter" data-commitment="heart-togetherness" data-category="Technology Use" title="Togetherness: Collaborate as one team, uplifting one another toward shared goals.">
+                                <div class="commitment-meter-header"><span>T - Togetherness</span><span class="commitment-pct" id="heart-togetherness-pct">—</span></div>
+                                <div class="commitment-bar"><div class="commitment-bar-fill" id="heart-togetherness-fill"></div></div>
+                            </div>
                         </div>
                     </div>
 
                     <div style="margin-top:12px; border:1px solid #e2e8f0; border-radius:10px; padding:12px; background:#f8fafc;">
-                        <div style="font-weight:700; color:#334155; margin-bottom:8px;">RemoEd Code of Honor</div>
-                        <div style="display:grid; grid-template-columns:repeat(2, minmax(260px, 1fr)); gap:6px 12px;">
-                            <label title="Commit to absolute truth; no rumors or exaggerated claims." style="display:flex; align-items:center; gap:8px; font-weight:600; color:#334155;"><input type="checkbox" id="honor-false-witness"> Avoid False Witness</label>
-                            <label title="Refuse office politics or back-stabbing in all interactions." style="display:flex; align-items:center; gap:8px; font-weight:600; color:#334155;"><input type="checkbox" id="honor-no-gossip"> No Gossip or Politics</label>
-                            <label title="No bad-mouthing, foul language, or fake news; speak with integrity." style="display:flex; align-items:center; gap:8px; font-weight:600; color:#334155;"><input type="checkbox" id="honor-integrity-speech"> Integrity &amp; Speech</label>
-                            <label title="Reject entitlement and greed; maintain gratitude and teachable humility." style="display:flex; align-items:center; gap:8px; font-weight:600; color:#334155;"><input type="checkbox" id="honor-good-attitude"> Good Attitude (Anti-Greed)</label>
-                            <label title="Encourage wise stewardship and a life free from unhealthy debt." style="display:flex; align-items:center; gap:8px; font-weight:600; color:#334155;"><input type="checkbox" id="honor-financial"> Financial Stewardship</label>
+                        <div style="font-weight:700; color:#334155; margin-bottom:4px;">RemoEd Code of Honor</div>
+                        <div style="font-size:0.82rem; color:#64748b; margin-bottom:10px;">Scores come from your personality assessment (60%+ unlocks each commitment).</div>
+                        <div id="code-of-honor-meters" style="display:grid; grid-template-columns:repeat(2, minmax(260px, 1fr)); gap:10px 14px;">
+                            <div class="commitment-meter" data-commitment="honor-false-witness" data-category="Professionalism" title="Commit to absolute truth; no rumors or exaggerated claims.">
+                                <div class="commitment-meter-header"><span>Avoid False Witness (Honesty)</span><span class="commitment-pct" id="honor-false-witness-pct">—</span></div>
+                                <div class="commitment-bar"><div class="commitment-bar-fill" id="honor-false-witness-fill"></div></div>
+                            </div>
+                            <div class="commitment-meter" data-commitment="honor-no-gossip" data-category="Cultural Awareness" title="Refuse office politics or back-stabbing in all interactions.">
+                                <div class="commitment-meter-header"><span>No Gossip or Politics</span><span class="commitment-pct" id="honor-no-gossip-pct">—</span></div>
+                                <div class="commitment-bar"><div class="commitment-bar-fill" id="honor-no-gossip-fill"></div></div>
+                            </div>
+                            <div class="commitment-meter" data-commitment="honor-integrity-speech" data-category="Interpersonal Communication" title="No bad-mouthing, foul language, or fake news; speak with integrity.">
+                                <div class="commitment-meter-header"><span>Integrity &amp; Speech</span><span class="commitment-pct" id="honor-integrity-speech-pct">—</span></div>
+                                <div class="commitment-bar"><div class="commitment-bar-fill" id="honor-integrity-speech-fill"></div></div>
+                            </div>
+                            <div class="commitment-meter" data-commitment="honor-good-attitude" data-category="Student Engagement" title="Reject entitlement and greed; maintain gratitude and teachable humility.">
+                                <div class="commitment-meter-header"><span>Good Attitude (Anti-Greed)</span><span class="commitment-pct" id="honor-good-attitude-pct">—</span></div>
+                                <div class="commitment-bar"><div class="commitment-bar-fill" id="honor-good-attitude-fill"></div></div>
+                            </div>
+                            <div class="commitment-meter" data-commitment="honor-financial" data-category="Technology Use" title="Encourage wise stewardship and a life free from unhealthy debt.">
+                                <div class="commitment-meter-header"><span>Financial Stewardship</span><span class="commitment-pct" id="honor-financial-pct">—</span></div>
+                                <div class="commitment-bar"><div class="commitment-bar-fill" id="honor-financial-fill"></div></div>
+                            </div>
                         </div>
                     </div>
 
@@ -382,13 +437,13 @@
                             <div id="badge-values-steward" style="background:rgba(255,255,255,0.24); border:1px solid rgba(255,255,255,0.25); border-radius:12px; padding:12px; text-align:center; filter:grayscale(100%);">
                                 <div style="font-size:2rem;">🍃</div>
                                 <div style="font-size:1.1rem; font-weight:700;">Values Aligned Steward</div>
-                                <div style="opacity:0.9; margin-top:4px;">Complete all H.E.A.R.T. commitments</div>
+                                <div style="opacity:0.9; margin-top:4px;">Score 60%+ on all H.E.A.R.T. values</div>
                                 <div class="badge-state" style="margin-top:6px; font-weight:700; opacity:0.9;">Locked</div>
                             </div>
                             <div id="badge-shield-truth" style="background:rgba(255,255,255,0.24); border:1px solid rgba(255,255,255,0.25); border-radius:12px; padding:12px; text-align:center; filter:grayscale(100%);">
                                 <div style="font-size:2rem;">🛡️</div>
                                 <div style="font-size:1.1rem; font-weight:700;">Shield of Truth</div>
-                                <div style="opacity:0.9; margin-top:4px;">Complete all Code of Honor commitments</div>
+                                <div style="opacity:0.9; margin-top:4px;">Score 60%+ on all Code of Honor values</div>
                                 <div class="badge-state" style="margin-top:6px; font-weight:700; opacity:0.9;">Locked</div>
                             </div>
                             <div id="badge-legacy-leaf" style="background:rgba(255,255,255,0.24); border:1px solid rgba(255,255,255,0.25); border-radius:12px; padding:12px; text-align:center; filter:grayscale(100%);">
@@ -501,8 +556,8 @@
             return cachedGrowthQualifications || DEFAULT_GROWTH_QUALIFICATIONS;
         }
 
-        /** Growth meter max: tier (40) + 3× credentials (30) + loyalty (35) */
-        const CAREER_GROWTH_MAX_POINTS = 105;
+        /** Growth meter max: tier (40) + 3× credentials (30) + loyalty (30) */
+        const CAREER_GROWTH_MAX_POINTS = 100;
 
         function growthPointsFromPayoutTierBase(tierBase) {
             const t = parseInt(tierBase, 10);
@@ -679,7 +734,7 @@
             if (monthDelta < 0 || (monthDelta === 0 && now.getDate() < hireDate.getDate())) loyaltyYears -= 1;
             loyaltyYears = Math.max(0, loyaltyYears);
             let loyaltyPoints = 0;
-            if (loyaltyYears >= 25) loyaltyPoints = 35;
+            if (loyaltyYears >= 25) loyaltyPoints = 30;
             else if (loyaltyYears >= 20) loyaltyPoints = 30;
             else if (loyaltyYears >= 15) loyaltyPoints = 25;
             else if (loyaltyYears >= 10) loyaltyPoints = 20;
@@ -687,6 +742,94 @@
             else if (loyaltyYears >= 3) loyaltyPoints = 10;
             else if (loyaltyYears >= 1) loyaltyPoints = 5;
             return { loyaltyYears, loyaltyPoints };
+        }
+
+        const COMMITMENT_PASS_PERCENT = 60;
+
+        function deriveCategoryScoresFromAnswers(answers) {
+            if (!answers || typeof answers !== 'object') return null;
+            if (window.AssessmentAnswerKey && typeof AssessmentAnswerKey.computePersonalityCategoryScores === 'function') {
+                const categoryScores = AssessmentAnswerKey.computePersonalityCategoryScores(answers);
+                const any = Object.keys(categoryScores).some((category) => categoryScores[category].total > 0);
+                return any ? categoryScores : null;
+            }
+            const categoryScores = {};
+            let any = false;
+            Object.keys(answers).forEach((category) => {
+                const items = Array.isArray(answers[category]) ? answers[category] : [];
+                if (!items.length) return;
+                any = true;
+                let correct = 0;
+                items.forEach((val) => {
+                    if (val === category) correct += 1;
+                });
+                categoryScores[category] = { correct, total: items.length };
+            });
+            return any ? categoryScores : null;
+        }
+
+        function resolvePersonalityCategoryScores(personality) {
+            if (!personality) return null;
+            if (personality.categoryScores && Object.keys(personality.categoryScores).length) {
+                return personality.categoryScores;
+            }
+            return deriveCategoryScoresFromAnswers(personality.answers);
+        }
+
+        function categoryPercentFromScores(categoryScores, category) {
+            if (!categoryScores || !category) return null;
+            const score = categoryScores[category];
+            if (!score || !score.total) return null;
+            return Math.round((Number(score.correct || 0) / Number(score.total)) * 100);
+        }
+
+        function setCommitmentMeter(commitmentId, percent) {
+            const meter = document.querySelector(`.commitment-meter[data-commitment="${commitmentId}"]`);
+            const pctEl = document.getElementById(commitmentId + '-pct');
+            const fillEl = document.getElementById(commitmentId + '-fill');
+            const hasScore = percent !== null && percent !== undefined && !Number.isNaN(Number(percent));
+            const value = hasScore ? Math.max(0, Math.min(100, Math.round(Number(percent)))) : 0;
+            if (meter) {
+                meter.dataset.percent = hasScore ? String(value) : '';
+                meter.classList.toggle('is-pass', hasScore && value >= COMMITMENT_PASS_PERCENT);
+                meter.classList.toggle('is-empty', !hasScore);
+            }
+            if (pctEl) pctEl.textContent = hasScore ? (value + '%') : 'Not assessed';
+            if (fillEl) fillEl.style.width = hasScore ? (value + '%') : '0%';
+        }
+
+        function isCommitmentMet(commitmentId) {
+            const meter = document.querySelector(`.commitment-meter[data-commitment="${commitmentId}"]`);
+            if (!meter) return false;
+            const raw = meter.dataset.percent;
+            if (raw === undefined || raw === null || raw === '') return false;
+            return Number(raw) >= COMMITMENT_PASS_PERCENT;
+        }
+
+        function applyPersonalityCategoryScoresToMeters(categoryScores) {
+            document.querySelectorAll('.commitment-meter[data-commitment]').forEach((meter) => {
+                const id = meter.getAttribute('data-commitment');
+                const category = meter.getAttribute('data-category');
+                setCommitmentMeter(id, categoryPercentFromScores(categoryScores, category));
+            });
+        }
+
+        async function loadPersonalityCommitmentMeters() {
+            try {
+                const response = await fetch('/api/teacher/assessment-results', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const data = response.ok ? await response.json() : null;
+                const categoryScores = resolvePersonalityCategoryScores(data?.tests?.personality);
+                applyPersonalityCategoryScoresToMeters(categoryScores);
+            } catch (error) {
+                console.error('Error loading personality commitment scores:', error);
+                applyPersonalityCategoryScoresToMeters(null);
+            }
         }
 
         function calculateCareerGrowthClient() {
@@ -699,20 +842,20 @@
                     allHonorCommitments: true,
                     allCommitmentsComplete: true,
                     loyaltyYears: 25,
-                    loyaltyPoints: 35
+                    loyaltyPoints: 30
                 };
             }
             const q = getGrowthQualifications();
-            const heartHospitality = !!document.getElementById('heart-hospitality')?.checked;
-            const heartExcellence = !!document.getElementById('heart-excellence')?.checked;
-            const heartAffection = !!document.getElementById('heart-affection')?.checked;
-            const heartRespect = !!document.getElementById('heart-respect')?.checked;
-            const heartTogetherness = !!document.getElementById('heart-togetherness')?.checked;
-            const honorAvoidFalseWitness = !!document.getElementById('honor-false-witness')?.checked;
-            const honorNoGossipPolitics = !!document.getElementById('honor-no-gossip')?.checked;
-            const honorIntegritySpeech = !!document.getElementById('honor-integrity-speech')?.checked;
-            const honorGoodAttitudeAntiGreed = !!document.getElementById('honor-good-attitude')?.checked;
-            const honorFinancialStewardship = !!document.getElementById('honor-financial')?.checked;
+            const heartHospitality = isCommitmentMet('heart-hospitality');
+            const heartExcellence = isCommitmentMet('heart-excellence');
+            const heartAffection = isCommitmentMet('heart-affection');
+            const heartRespect = isCommitmentMet('heart-respect');
+            const heartTogetherness = isCommitmentMet('heart-togetherness');
+            const honorAvoidFalseWitness = isCommitmentMet('honor-false-witness');
+            const honorNoGossipPolitics = isCommitmentMet('honor-no-gossip');
+            const honorIntegritySpeech = isCommitmentMet('honor-integrity-speech');
+            const honorGoodAttitudeAntiGreed = isCommitmentMet('honor-good-attitude');
+            const honorFinancialStewardship = isCommitmentMet('honor-financial');
             const hireDate = q.hireDate || '';
             const { loyaltyYears, loyaltyPoints } = calculateLoyaltyPointsFromHireDate(hireDate);
 
@@ -741,11 +884,12 @@
             const legacyLeafBadgeEl = document.getElementById('legacy-leaf-badge');
             const loyaltyInfoEl = document.getElementById('growth-loyalty-info');
             const maxPoints = CAREER_GROWTH_MAX_POINTS;
-            const fillPercent = Math.max(0, Math.min(100, (points / maxPoints) * 100));
-            if (pointsEl) pointsEl.textContent = String(points);
+            const displayPoints = Math.min(points, maxPoints);
+            const fillPercent = Math.max(0, Math.min(100, (displayPoints / maxPoints) * 100));
+            if (pointsEl) pointsEl.textContent = String(displayPoints);
             if (tierEl) tierEl.textContent = founderLadder ? 'Legacy Guide · Founder' : tier;
             if (meterFillEl) meterFillEl.style.width = `${fillPercent}%`;
-            if (meterLabelEl) meterLabelEl.textContent = `${points} / ${maxPoints}`;
+            if (meterLabelEl) meterLabelEl.textContent = `${displayPoints} / ${maxPoints}`;
             if (loyaltyInfoEl) loyaltyInfoEl.textContent = `Loyalty: ${loyaltyYears} yrs (+${loyaltyPoints})`;
             if (stewardshipBadgeEl) {
                 stewardshipBadgeEl.textContent = allHeartCommitments ? '🍃 Values Aligned Steward' : '🍃 Locked';
@@ -838,37 +982,8 @@
                         hireDate: profile.hireDate ? String(profile.hireDate).split('T')[0] : '',
                         teachingExperienceBand: profile.teachingExperienceBand || 'none'
                     };
-                    const setChecked = (id, value) => {
-                        const el = document.getElementById(id);
-                        if (el) el.checked = !!value;
-                    };
-                    setChecked('heart-hospitality', profile.heartHospitality);
-                    setChecked('heart-excellence', profile.heartExcellence);
-                    setChecked('heart-affection', profile.heartAffection);
-                    setChecked('heart-respect', profile.heartRespect);
-                    setChecked('heart-togetherness', profile.heartTogetherness);
-                    setChecked('honor-false-witness', profile.honorAvoidFalseWitness);
-                    setChecked('honor-no-gossip', profile.honorNoGossipPolitics);
-                    setChecked('honor-integrity-speech', profile.honorIntegritySpeech);
-                    setChecked('honor-good-attitude', profile.honorGoodAttitudeAntiGreed);
-                    setChecked('honor-financial', profile.honorFinancialStewardship);
-                    const commitmentIds = [
-                        'heart-hospitality',
-                        'heart-excellence',
-                        'heart-affection',
-                        'heart-respect',
-                        'heart-togetherness',
-                        'honor-false-witness',
-                        'honor-no-gossip',
-                        'honor-integrity-speech',
-                        'honor-good-attitude',
-                        'honor-financial'
-                    ];
-                    const hasAnyCommitment = commitmentIds.some((id) => !!document.getElementById(id)?.checked);
-                    if (profile.hasValuesAlignment && !hasAnyCommitment) {
-                        commitmentIds.forEach((id) => setChecked(id, true));
-                    }
                 }
+                await loadPersonalityCommitmentMeters();
             } catch (error) {
                 console.error('Error loading career growth data:', error);
             } finally {
@@ -928,16 +1043,16 @@
                     hasProfessionalLetLicense: !!gq.hasProfessionalLetLicense,
                     hasMastersDegree: !!gq.hasMastersDegree,
                     hasDoctorateDegree: !!gq.hasDoctorateDegree,
-                    heartHospitality: !!document.getElementById('heart-hospitality')?.checked,
-                    heartExcellence: !!document.getElementById('heart-excellence')?.checked,
-                    heartAffection: !!document.getElementById('heart-affection')?.checked,
-                    heartRespect: !!document.getElementById('heart-respect')?.checked,
-                    heartTogetherness: !!document.getElementById('heart-togetherness')?.checked,
-                    honorAvoidFalseWitness: !!document.getElementById('honor-false-witness')?.checked,
-                    honorNoGossipPolitics: !!document.getElementById('honor-no-gossip')?.checked,
-                    honorIntegritySpeech: !!document.getElementById('honor-integrity-speech')?.checked,
-                    honorGoodAttitudeAntiGreed: !!document.getElementById('honor-good-attitude')?.checked,
-                    honorFinancialStewardship: !!document.getElementById('honor-financial')?.checked,
+                    heartHospitality: isCommitmentMet('heart-hospitality'),
+                    heartExcellence: isCommitmentMet('heart-excellence'),
+                    heartAffection: isCommitmentMet('heart-affection'),
+                    heartRespect: isCommitmentMet('heart-respect'),
+                    heartTogetherness: isCommitmentMet('heart-togetherness'),
+                    honorAvoidFalseWitness: isCommitmentMet('honor-false-witness'),
+                    honorNoGossipPolitics: isCommitmentMet('honor-no-gossip'),
+                    honorIntegritySpeech: isCommitmentMet('honor-integrity-speech'),
+                    honorGoodAttitudeAntiGreed: isCommitmentMet('honor-good-attitude'),
+                    honorFinancialStewardship: isCommitmentMet('honor-financial'),
                     hasValuesAlignment: !!growthState.allCommitmentsComplete,
                     teachingExperienceBand: gq.teachingExperienceBand || 'none'
                 };
@@ -1394,7 +1509,10 @@
                         ? personality.percent
                         : Math.round((Number(personality.score) / Number(personality.total || 1)) * 100);
 
-                    const categoryScores = personality.categoryScores || {};
+                    const categoryScores = resolvePersonalityCategoryScores(personality) || {};
+                    applyPersonalityCategoryScoresToMeters(categoryScores);
+                    renderCareerGrowth();
+
                     const categoryItems = Object.keys(categoryScores).map(key => {
                         const score = categoryScores[key];
                         const pct = score && score.total ? Math.round((Number(score.correct || 0) / score.total) * 100) : 0;
@@ -1410,15 +1528,19 @@
                             <div style="margin-bottom: 16px; font-weight: 600; color: #1e293b;">
                                 Score: ${personality.score} / ${personality.total} (${percent}%)
                             </div>
-                            <div class="skill-levels">
+                            <div class="personality-category-meters">
                                 ${categoryItems.map(item => `
-                                    <div class="skill-level-item">
-                                        <div class="skill-name">${item.label}</div>
-                                        <span class="level-badge level-${item.pct >= 75 ? 'expert' : item.pct >= 60 ? 'advanced' : item.pct >= 40 ? 'intermediate' : 'basic'}">
-                                            ${item.pct}%
-                                        </span>
+                                    <div class="commitment-meter ${item.pct >= COMMITMENT_PASS_PERCENT ? 'is-pass' : ''}">
+                                        <div class="commitment-meter-header">
+                                            <span>${item.label}</span>
+                                            <span class="commitment-pct">${item.pct}%</span>
+                                        </div>
+                                        <div class="commitment-bar"><div class="commitment-bar-fill" style="width:${item.pct}%;"></div></div>
                                     </div>
                                 `).join('')}
+                            </div>
+                            <div style="margin-top: 12px; color: #64748b; font-size: 0.9rem;">
+                                These scores also power H.E.A.R.T. and Code of Honor bars on the Growth Path tab.
                             </div>
                         </div>
                     `;
@@ -1558,10 +1680,8 @@
         }
 
         function enableTeachingAbilitiesCareerEditing() {
-            ['listening-description', 'reading-description', 'speaking-description', 'writing-description', 'creativity-hobbies'].forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.disabled = false;
-            });
+            const el = document.getElementById('creativity-hobbies');
+            if (el) el.disabled = false;
             const e = document.getElementById('edit-teaching-abilities-btn');
             const s = document.getElementById('save-teaching-abilities-btn');
             const c = document.getElementById('cancel-teaching-abilities-btn');
@@ -1571,10 +1691,8 @@
         }
 
         function cancelTeachingAbilitiesCareerEditing() {
-            ['listening-description', 'reading-description', 'speaking-description', 'writing-description', 'creativity-hobbies'].forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.disabled = true;
-            });
+            const el = document.getElementById('creativity-hobbies');
+            if (el) el.disabled = true;
             const e = document.getElementById('edit-teaching-abilities-btn');
             const s = document.getElementById('save-teaching-abilities-btn');
             const c = document.getElementById('cancel-teaching-abilities-btn');
@@ -1591,10 +1709,6 @@
                 return;
             }
             const teachingAbilities = {
-                listening: { description: (document.getElementById('listening-description') || {}).value || '' },
-                reading: { description: (document.getElementById('reading-description') || {}).value || '' },
-                speaking: { description: (document.getElementById('speaking-description') || {}).value || '' },
-                writing: { description: (document.getElementById('writing-description') || {}).value || '' },
                 creativityHobbies: (document.getElementById('creativity-hobbies') || {}).value || ''
             };
             fetch('/api/teacher/profile', {
@@ -1605,7 +1719,7 @@
                 .then(r => r.json())
                 .then(data => {
                     if (data.success) {
-                        alert('Teaching descriptions saved successfully.');
+                        alert('Interests saved successfully.');
                         cancelTeachingAbilitiesCareerEditing();
                     } else {
                         alert('Failed to save: ' + (data.error || data.message || 'Unknown error'));
@@ -1617,18 +1731,6 @@
         function applyCareerTeachingDescriptions(profile) {
             if (!profile || !profile.teachingAbilities) return;
             const ta = profile.teachingAbilities;
-            if (ta.listening && ta.listening.description && document.getElementById('listening-description')) {
-                document.getElementById('listening-description').value = ta.listening.description;
-            }
-            if (ta.reading && ta.reading.description && document.getElementById('reading-description')) {
-                document.getElementById('reading-description').value = ta.reading.description;
-            }
-            if (ta.speaking && ta.speaking.description && document.getElementById('speaking-description')) {
-                document.getElementById('speaking-description').value = ta.speaking.description;
-            }
-            if (ta.writing && ta.writing.description && document.getElementById('writing-description')) {
-                document.getElementById('writing-description').value = ta.writing.description;
-            }
             if (ta.creativityHobbies && document.getElementById('creativity-hobbies')) {
                 document.getElementById('creativity-hobbies').value = ta.creativityHobbies;
             }
@@ -2043,10 +2145,6 @@
             loadPersonalityAssessment();
             loadPeerTeachers();
             loadCareerGrowth();
-            ['heart-hospitality','heart-excellence','heart-affection','heart-respect','heart-togetherness','honor-false-witness','honor-no-gossip','honor-integrity-speech','honor-good-attitude','honor-financial'].forEach((id) => {
-                const el = document.getElementById(id);
-                if (el) el.addEventListener('change', renderCareerGrowth);
-            });
             
             // Handle hash navigation after a short delay to ensure DOM is ready
             setTimeout(handleHashNavigation, 200);

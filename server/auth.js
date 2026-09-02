@@ -16,7 +16,7 @@ const AssessmentTrial = require('./models/AssessmentTrial');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret'; // Use a strong secret in production
-const { JWT_EXPIRES_IN } = require('./config/authTokens');
+const { JWT_EXPIRES_IN, ADMIN_JWT_EXPIRES_IN } = require('./config/authTokens');
 const { blacklistToken, isTokenBlacklisted } = require('./services/jwtBlacklist');
 const {
   isAccountLocked,
@@ -316,7 +316,7 @@ router.post('/admin-login', adminLoginLimiterExtra, async (req, res) => {
         sessionVersion,
       },
       JWT_SECRET,
-      { expiresIn: JWT_EXPIRES_IN }
+      { expiresIn: ADMIN_JWT_EXPIRES_IN }
     );
 
     req.session.regenerate((regenErr) => {
@@ -403,7 +403,7 @@ router.post('/verify-2fa', adminLoginLimiterExtra, async (req, res) => {
         sessionVersion,
       },
       JWT_SECRET,
-      { expiresIn: JWT_EXPIRES_IN }
+      { expiresIn: ADMIN_JWT_EXPIRES_IN }
     );
 
     req.session.regenerate((regenErr) => {

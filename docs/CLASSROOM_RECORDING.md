@@ -6,10 +6,12 @@ Low-quality **lesson monitoring** clips (~25 min max) so QA/admin can review tea
 
 ## How it works
 
-1. **Client-side `MediaRecorder`** encodes the **remote** peer’s `MediaStream` (what you see/hear from the other person) as **WebM (VP8 + Opus)** at a **low bitrate** — not server-side SFU recording.
-2. The browser uploads **chunks** (~20s) via `PUT` so memory stays bounded.
-3. The server appends chunks to one file under `uploads/classroom-recordings/`.
-4. Each row has **`expiresAt`** based on **`CLASSROOM_RECORDING_RETENTION_DAYS`** (default **7** = one week; set **`3`** for three days). An **automated purge** (default **every 7 days**, not daily) deletes rows/files whose `expiresAt` has passed. Admins can still **Purge expired** anytime from the admin UI.
+1. **Teacher Start** is gated until the **student remote video/audio is live**.
+2. **Client-side `MediaRecorder`** encodes a **full classroom tab** capture (`getDisplayMedia`) as **WebM (VP8 + Opus)** at a **low bitrate** — not server-side SFU recording.
+3. A **cloned, region-cropped** track is still published to the student for the **slide/presentation share** (prev/next sync unchanged). The QA file keeps the **uncropped** full tab.
+4. The browser uploads **chunks** (~20s) via `PUT` so memory stays bounded.
+5. The server appends chunks to one file under `uploads/classroom-recordings/`.
+6. Each row has **`expiresAt`** based on **`CLASSROOM_RECORDING_RETENTION_DAYS`** (default **7** = one week; set **`3`** for three days). An **automated purge** (default **every 7 days**, not daily) deletes rows/files whose `expiresAt` has passed. Admins can still **Purge expired** anytime from the admin UI.
 
 ## Performance impact on live class
 
@@ -40,5 +42,5 @@ Low-quality **lesson monitoring** clips (~25 min max) so QA/admin can review tea
 
 ## Future (optional)
 
-- Composite **slides + camera** (higher CPU — phase 2).
+- Canvas composite of tiles if tab capture is unavailable (higher CPU).
 - Dedicated **worker** tab for recording to isolate main thread (if profiling shows jank).

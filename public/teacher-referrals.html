@@ -27,7 +27,7 @@
     <div class="remoed-content">
       <div class="page-head">
         
-        <p>Track students who subscribed using <strong>your</strong> referral link. Each enrollee gets a unique reference number. Totals show subscription amounts and your commission.</p>
+        <p>Track students who subscribed using <strong>your</strong> referral link. Each enrollee gets a unique reference number. Totals show your commission and successful enrollee count.</p>
       </div>
 
       <div class="banner-info">
@@ -51,17 +51,12 @@
         <div class="stat-card">
           <h3>Total commission (your link)</h3>
           <div class="big" id="total-commission">₱0</div>
-          <div class="muted">Per successful paid subscription (₱500 each)</div>
+          <div class="muted">Per successful paid subscription (₱1,000.00 each)</div>
         </div>
         <div class="stat-card">
           <h3>Successful enrollees</h3>
           <div class="big" id="total-count">0</div>
           <div class="muted">Students who paid via your referral</div>
-        </div>
-        <div class="stat-card">
-          <h3>Total subscription amount</h3>
-          <div class="big" id="total-amount">₱0</div>
-          <div class="muted">Sum of plan amounts attributed to you</div>
         </div>
       </div>
       </div>
@@ -162,7 +157,6 @@
         const t = data.totals || {};
         document.getElementById('total-commission').textContent = fmtPeso(t.totalCommission);
         document.getElementById('total-count').textContent = String(t.count || 0);
-        document.getElementById('total-amount').textContent = fmtPeso(t.totalAmountPaid);
 
         const tbody = document.getElementById('tbody');
         const empty = document.getElementById('empty');

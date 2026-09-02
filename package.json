@@ -4,9 +4,10 @@
   "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js",
+    "prestart:backend": "node scripts/kill-port.js",
     "start:backend": "node server/index.js",
     "start:frontend": "echo Run: npm run client:dev then open http://localhost:5173/app/  (or npm run client:build and use /app on the API server)",
-    "start:all": "npm run start:backend",
+    "start:all": "node scripts/kill-port.js && node server/index.js",
     "client:install": "npm install --prefix client",
     "client:dev": "npm run dev --prefix client",
     "client:build": "npm run build --prefix client",

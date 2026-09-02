@@ -39,6 +39,7 @@
         if (path.indexOf('admin-hr-hub') !== -1) return 'hr-hub';
         if (path.indexOf('admin-users') !== -1) return 'hr-hub';
         if (path.indexOf('admin-teacher-assessments') !== -1) return 'hr-hub';
+        if (path.indexOf('admin-assessment-answer-key') !== -1) return 'hr-hub';
         if (path.indexOf('admin-teacher-pipeline') !== -1) return 'hr-hub';
         if (path.indexOf('admin-accounting-hub') !== -1) return 'accounting-hub';
         if (path.indexOf('admin-unique-link-commission') !== -1) return 'accounting-hub';

@@ -838,6 +838,7 @@
         <div id="admin-sidebar-root"></div>
         <script src="js/admin-session.js"></script>
         <script src="js/admin-page-header.js"></script>
+        <script src="js/admin-notifications.js"></script>
         <script src="js/admin-sidebar.js"></script>
         <script>AdminSidebar.render('admin-sidebar-root', 'dashboard');</script>
         <div class="remoed-content" style="margin-top:60px;">
@@ -1056,7 +1057,7 @@
                         <div style="background:#ffffff;border:1px solid #e5e7eb;border-radius:10px;padding:10px;margin-bottom:10px;">
                             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
                                 <div style="font-weight:800;color:#0f172a;">🔗 Your Unique Referral Link</div>
-                                <div style="font-size:0.8rem;color:#64748b;">Earn <strong>₱500</strong> per successful subscription</div>
+                                <div style="font-size:0.8rem;color:#64748b;">Earn <strong>₱1,000.00</strong> per successful subscription</div>
                             </div>
                             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
                                 <div style="flex:1;min-width:220px;">
@@ -1313,9 +1314,6 @@
                 loadRecentActivity();
             }, 30000);
 
-            // Setup admin notifications
-            setupAdminNotifications();
-
             // Referral links
             loadAdminReferralLinks();
         });
@@ -1341,123 +1339,6 @@
             el.select();
             el.setSelectionRange(0, 99999);
             try { document.execCommand('copy'); } catch (e) {}
-        }
-
-        function setupAdminNotifications() {
-            const icon = document.getElementById('admin-notifications-icon');
-            const dropdown = document.getElementById('admin-notifications-dropdown');
-
-            if (!icon || !dropdown) return;
-
-            icon.addEventListener('click', function(event) {
-                event.stopPropagation();
-                dropdown.classList.toggle('show');
-                if (dropdown.classList.contains('show')) {
-                    loadAdminNotifications();
-                }
-            });
-
-            document.addEventListener('click', function() {
-                dropdown.classList.remove('show');
-            });
-
-            const markAllBtn = document.getElementById('admin-notifications-mark-read');
-            if (markAllBtn) {
-                markAllBtn.addEventListener('click', async function (e) {
-                    e.stopPropagation();
-                    const token = getAdminToken();
-                    if (!token) return;
-                    try {
-                        const r = await fetch('/api/admin/notifications/mark-all-read', {
-                            method: 'PATCH',
-                            headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }
-                        });
-                        if (r.ok) await loadAdminNotifications();
-                    } catch (err) {
-                        console.error('Mark all read failed:', err);
-                    }
-                });
-            }
-
-            document.addEventListener('admin-refresh-notifications', function () {
-                loadAdminNotifications();
-            });
-
-            // Initial load
-            loadAdminNotifications();
-
-            // Refresh periodically
-            setInterval(loadAdminNotifications, 60000);
-        }
-
-        async function loadAdminNotifications() {
-            try {
-                const token = getAdminToken();
-                const badge = document.getElementById('admin-notifications-badge');
-                const container = document.getElementById('admin-notifications-dropdown-content');
-                if (!badge || !container) return;
-
-                if (!token) {
-                    badge.style.display = 'none';
-                    container.innerHTML = '<div class="nav-dropdown-item">Sign in to see notifications</div>';
-                    return;
-                }
-
-                const response = await fetch('/api/admin/notifications', {
-                    headers: { Authorization: 'Bearer ' + token }
-                });
-                const data = response.ok ? await response.json() : null;
-
-                if (!response.ok || !data || !data.success) {
-                    badge.style.display = 'none';
-                    container.innerHTML = '<div class="nav-dropdown-item">Could not load notifications</div>';
-                    return;
-                }
-
-                const unread = typeof data.unreadCount === 'number' ? data.unreadCount : (data.notifications || []).filter(n => !n.read).length;
-                badge.textContent = unread > 99 ? '99+' : String(unread);
-                badge.style.display = unread > 0 ? 'flex' : 'none';
-
-                const list = (data.notifications || []).slice(0, 15);
-                if (list.length === 0) {
-                    container.innerHTML = '<div class="nav-dropdown-item">No notifications yet</div>';
-                    return;
-                }
-
-                container.innerHTML = list.map(n => {
-                    const time = n.createdAt ? new Date(n.createdAt).toLocaleString() : '';
-                    const type = (n.type || 'info').replace(/-/g, ' ');
-                    const unreadStyle = !n.read ? 'font-weight:600;background:#f0f9ff;' : '';
-                    const esc = (s) => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
-                    return `
-                        <div class="nav-dropdown-item admin-notif-item" data-id="${n._id}" data-read="${n.read ? '1' : '0'}" style="${unreadStyle}cursor:pointer;padding:10px 12px;border-bottom:1px solid #f1f5f9;">
-                            <div style="font-size: 0.85rem;">${esc(n.message)}</div>
-                            <div style="font-size: 0.7rem; color: #64748b; margin-top: 4px; text-transform: capitalize;">
-                                ${esc(type)} • ${esc(time)}
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-
-                container.querySelectorAll('.admin-notif-item').forEach(function (el) {
-                    el.addEventListener('click', async function (e) {
-                        e.stopPropagation();
-                        const id = el.getAttribute('data-id');
-                        if (!id || el.getAttribute('data-read') === '1') return;
-                        try {
-                            await fetch('/api/admin/notifications/' + id + '/read', {
-                                method: 'PATCH',
-                                headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }
-                            });
-                            await loadAdminNotifications();
-                        } catch (err) {
-                            console.error(err);
-                        }
-                    });
-                });
-            } catch (error) {
-                console.error('Error loading admin notifications:', error);
-            }
         }
 
         async function loadDashboardData() {

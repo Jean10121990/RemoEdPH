@@ -241,6 +241,7 @@
         </div>
     </div>
     
+    <script src="js/assessment-answer-key-data.js"></script>
     <script>
         // Check if user is a teacher
         const userType = localStorage.getItem('userType');
@@ -328,141 +329,8 @@
             }
         ];
 
-        const personalityCategories = [
-            'Interpersonal Communication',
-            'Professionalism',
-            'Cultural Awareness',
-            'Technology Use',
-            'Student Engagement'
-        ];
-
-        const personalityRubric = [
-            {
-                category: 'Interpersonal Communication',
-                items: [
-                    {
-                        text: 'A young learner is shy and avoids speaking. I use gentle encouragement and simple prompts to build their confidence.',
-                        correct: 'Interpersonal Communication'
-                    },
-                    {
-                        text: 'A student seems confused by my instructions. I rephrase clearly and check understanding without frustration.',
-                        correct: 'Interpersonal Communication'
-                    },
-                    {
-                        text: 'A learner asks a personal question. I redirect politely back to the lesson topic.',
-                        correct: 'Interpersonal Communication'
-                    },
-                    {
-                        text: 'A student makes repeated mistakes. I give supportive feedback and model the correct answer calmly.',
-                        correct: 'Interpersonal Communication'
-                    },
-                    {
-                        text: 'I use age-appropriate language and tone so children can follow the lesson.',
-                        correct: 'Interpersonal Communication'
-                    }
-                ]
-            },
-            {
-                category: 'Professionalism',
-                items: [
-                    {
-                        text: 'I arrive on time and have my materials ready before class begins.',
-                        correct: 'Professionalism'
-                    },
-                    {
-                        text: 'A technical issue happens mid-class. I follow RemoEd procedures and keep students calm while fixing it.',
-                        correct: 'Professionalism'
-                    },
-                    {
-                        text: 'A schedule change is announced. I respond promptly and confirm my availability professionally.',
-                        correct: 'Professionalism'
-                    },
-                    {
-                        text: 'I follow RemoEd guidelines consistently, even when no one is watching.',
-                        correct: 'Professionalism'
-                    },
-                    {
-                        text: 'When I need help, I contact support or use approved tools to resolve the issue quickly.',
-                        correct: 'Professionalism'
-                    }
-                ]
-            },
-            {
-                category: 'Cultural Awareness',
-                items: [
-                    {
-                        text: 'A student shares a cultural holiday. I respond respectfully and invite them to share briefly.',
-                        correct: 'Cultural Awareness'
-                    },
-                    {
-                        text: 'I choose examples and topics that feel inclusive for learners from different backgrounds.',
-                        correct: 'Cultural Awareness'
-                    },
-                    {
-                        text: 'I adjust greetings and classroom routines to be culturally sensitive.',
-                        correct: 'Cultural Awareness'
-                    },
-                    {
-                        text: 'A student uses a term that might be offensive. I correct it gently and explain why.',
-                        correct: 'Cultural Awareness'
-                    },
-                    {
-                        text: 'I avoid stereotypes and model respectful, inclusive language at all times.',
-                        correct: 'Cultural Awareness'
-                    }
-                ]
-            },
-            {
-                category: 'Technology Use',
-                items: [
-                    {
-                        text: 'I can confidently use RemoEd’s online platform without delays.',
-                        correct: 'Technology Use'
-                    },
-                    {
-                        text: 'I use tools like annotations or breakout rooms smoothly to support learning.',
-                        correct: 'Technology Use'
-                    },
-                    {
-                        text: 'If a tool fails, I troubleshoot basic issues calmly and continue the lesson.',
-                        correct: 'Technology Use'
-                    },
-                    {
-                        text: 'I use technology to make activities interactive and engaging.',
-                        correct: 'Technology Use'
-                    },
-                    {
-                        text: 'When needed, I ask for technical support using approved channels.',
-                        correct: 'Technology Use'
-                    }
-                ]
-            },
-            {
-                category: 'Student Engagement',
-                items: [
-                    {
-                        text: 'A student loses focus during class. I use a quick interactive task to re-engage them.',
-                        correct: 'Student Engagement'
-                    },
-                    {
-                        text: 'I maintain a calm and respectful tone even when students are noisy or distracted.',
-                        correct: 'Student Engagement'
-                    },
-                    {
-                        text: 'I use games or interactive activities to keep learners motivated.',
-                        correct: 'Student Engagement'
-                    },
-                    {
-                        text: 'I encourage participation with gentle guidance instead of pressuring students.',
-                        correct: 'Student Engagement'
-                    },
-                    {
-                        text: 'I build confidence by praising effort and progress, not just correct answers.',
-                        correct: 'Student Engagement'
-                    }
-                ]
-            }
-        ];
+        const personalityCategories = AssessmentAnswerKey.PERSONALITY_CATEGORIES;
+        const personalityRubric = AssessmentAnswerKey.PERSONALITY_RUBRIC;
         
         // Listening test sentences
         const listeningSentences = [
@@ -814,9 +682,10 @@
             personalityRubric.forEach((section, sectionIndex) => {
                 const sectionEl = document.createElement('div');
                 sectionEl.style.marginBottom = '20px';
+                const sectionTitle = section.title || `Section ${sectionIndex + 1}`;
                 sectionEl.innerHTML = `
                     <div class="question-title" style="font-size: 1.05rem; margin-bottom: 10px;">
-                        Section ${sectionIndex + 1}
+                        ${sectionTitle}
                     </div>
                 `;
 
@@ -1266,33 +1135,32 @@
         }
 
         function getPersonalitySubmission() {
-            let score = 0;
-            let total = 0;
-            const answers = {};
-            const categoryScores = {};
             let allAnswered = true;
+            const answers = {};
 
             personalityRubric.forEach((section, sectionIndex) => {
-                answers[section.category] = [];
-                categoryScores[section.category] = { correct: 0, total: section.items.length };
+                const storageKey = section.storageKey || `section-${sectionIndex}`;
+                answers[storageKey] = [];
                 section.items.forEach((statement, qIndex) => {
-                    total += 1;
                     const selected = document.querySelector(`input[name="personality-${sectionIndex}-${qIndex}"]:checked`);
                     if (!selected) {
                         allAnswered = false;
                         return;
                     }
-                    const val = selected.value;
-                    answers[section.category][qIndex] = val;
-                    if (val === statement.correct) {
-                        score += 1;
-                        categoryScores[section.category].correct += 1;
-                    }
+                    answers[storageKey][qIndex] = selected.value;
                 });
             });
 
-            const percent = total ? Math.round((score / total) * 100) : 0;
-            return { score, total, percent, answers, categoryScores, allAnswered };
+            const scored = AssessmentAnswerKey.scorePersonalityAnswers(answers);
+            const percent = scored.total ? Math.round((scored.score / scored.total) * 100) : 0;
+            return {
+                score: scored.score,
+                total: scored.total,
+                percent,
+                answers,
+                categoryScores: scored.categoryScores,
+                allAnswered
+            };
         }
 
         async function submitGrammarTest() {

@@ -25,6 +25,12 @@
       cursor: pointer;
     }
     .page-admin-teacher-pipeline .btn-delete:hover { background: #fee2e2; color: #991b1b; }
+    .page-admin-teacher-pipeline .btn-resend {
+      background: #eff6ff;
+      color: #1d4ed8;
+      border: 1px solid #bfdbfe;
+    }
+    .page-admin-teacher-pipeline .btn-resend:hover { background: #dbeafe; color: #1e40af; }
   </style>
 </head>
 <body class="page-admin-teacher-pipeline">
@@ -82,6 +88,7 @@
       <div class="actions">
         <button class="btn btn-fail" id="modal-fail">Fail</button>
         <button class="btn btn-pass" id="modal-pass">Pass</button>
+        <button class="btn btn-resend" id="modal-resend">Resend email</button>
       </div>
     </div>
   </div>
@@ -106,6 +113,7 @@
     const applicantContact = document.getElementById('applicant-contact');
     const passBtn = document.getElementById('modal-pass');
     const failBtn = document.getElementById('modal-fail');
+    const resendBtn = document.getElementById('modal-resend');
 
     let selectedApplicantId = null;
 
@@ -180,6 +188,10 @@
             String(st).toLowerCase() === 'failed' && a.reapplyEligibleAt
               ? `<div class="muted" style="margin-top:4px;font-size:11px;">Re-apply after: ${new Date(a.reapplyEligibleAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</div>`
               : '';
+          const resend =
+            String(st).toLowerCase() !== 'failed'
+              ? `<button type="button" class="btn btn-resend" data-resend="${a._id}" title="Resend invitation email">Resend email</button>`
+              : '';
           return `
           <tr>
             <td>${a.fullName || '-'}</td>
@@ -194,6 +206,7 @@
             <td class="action-btns">
               <button class="btn btn-review" data-review="${a._id}">Review</button>
               ${pf}
+              ${resend}
               ${del}
             </td>
           </tr>`;
@@ -216,6 +229,14 @@
             const row = rows.find((r) => String(r._id) === String(id));
             const name = row ? (row.fullName || row.email || id) : id;
             failApplicantById(id, name);
+          });
+        });
+        Array.from(document.querySelectorAll('[data-resend]')).forEach((btn) => {
+          btn.addEventListener('click', () => {
+            const id = btn.getAttribute('data-resend');
+            const row = rows.find((r) => String(r._id) === String(id));
+            const name = row ? (row.fullName || row.email || id) : id;
+            resendInvitationById(id, name);
           });
         });
         Array.from(document.querySelectorAll('[data-delete]')).forEach((btn) => {
@@ -249,13 +270,39 @@
         answerText.textContent = txt || 'No text answers.';
 
         const stModal = String(applicant.currentStage || '').toLowerCase();
-        const terminal = stModal === 'passed' || stModal === 'failed';
-        passBtn.style.display = terminal ? 'none' : '';
-        failBtn.style.display = terminal ? 'none' : '';
+        const isFailed = stModal === 'failed';
+        const isPassed = stModal === 'passed';
+        passBtn.style.display = isFailed || isPassed ? 'none' : '';
+        failBtn.style.display = isFailed || isPassed ? 'none' : '';
+        resendBtn.style.display = isFailed ? 'none' : '';
+        passBtn.textContent = 'Pass';
 
         modal.style.display = 'block';
       } catch (error) {
         alert(error.message);
+      }
+    }
+
+    async function resendInvitationById(applicantId, displayName, options = {}) {
+      const label = displayName && displayName !== applicantId ? displayName : 'this applicant';
+      if (!options.skipConfirm && !confirm(`Resend invitation email to ${label}?`)) return false;
+      try {
+        const result = await api(`/api/admin/teacher-pipeline/applicants/${applicantId}/resend-invitation`, { method: 'POST' });
+        let info;
+        if (result.emailResult?.success) {
+          info = 'Invitation email sent.';
+        } else {
+          const err = result.emailResult?.error || 'unknown';
+          const linkNote = result.signupLink
+            ? `\n\nCopy sign-up link and send manually:\n${result.signupLink}`
+            : '';
+          info = `Email failed (${err}).${linkNote}`;
+        }
+        alert(info);
+        return true;
+      } catch (error) {
+        alert(error.message);
+        return false;
       }
     }
 
@@ -264,7 +311,16 @@
       if (!options.skipConfirm && !confirm(`Pass ${label}? An onboarding email with the sign-up link will be sent.`)) return false;
       try {
         const result = await api(`/api/admin/teacher-pipeline/applicants/${applicantId}/pass`, { method: 'POST' });
-        const info = result.emailResult?.success ? 'Invitation email sent.' : `Email issue: ${result.emailResult?.error || 'unknown'}`;
+        let info;
+        if (result.emailResult?.success) {
+          info = 'Invitation email sent.';
+        } else {
+          const err = result.emailResult?.error || 'unknown';
+          const linkNote = result.signupLink
+            ? `\n\nCopy sign-up link and send manually:\n${result.signupLink}`
+            : '';
+          info = `Email failed (${err}). Applicant was still marked passed.${linkNote}`;
+        }
         alert(`Applicant passed. ${info}`);
         await loadApplicants();
         return true;
@@ -300,6 +356,20 @@
       }
     }
 
+    async function resendApplicant() {
+      if (!selectedApplicantId) return;
+      resendBtn.disabled = true;
+      try {
+        const ok = await resendInvitationById(
+          selectedApplicantId,
+          modalName.textContent.replace(/^Review:\s*/, '')
+        );
+        if (ok) closeModal();
+      } finally {
+        resendBtn.disabled = false;
+      }
+    }
+
     async function failApplicant() {
       if (!selectedApplicantId) return;
       failBtn.disabled = true;
@@ -319,12 +389,14 @@
       answerText.textContent = '';
       passBtn.style.display = '';
       failBtn.style.display = '';
+      resendBtn.style.display = '';
     }
 
     document.getElementById('close-modal').addEventListener('click', closeModal);
     modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
     passBtn.addEventListener('click', passApplicant);
     failBtn.addEventListener('click', failApplicant);
+    resendBtn.addEventListener('click', resendApplicant);
 
     loadApplicants();
   </script>

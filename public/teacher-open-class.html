@@ -126,7 +126,42 @@
   const OPEN_CLASS_FIRST_HOUR = OpenClassTZ.REMOED_OPERATING_START_HOUR != null ? OpenClassTZ.REMOED_OPERATING_START_HOUR : 6;
   const OPEN_CLASS_END_HOUR_EXC = OpenClassTZ.REMOED_OPERATING_END_HOUR_EXCLUSIVE != null ? OpenClassTZ.REMOED_OPERATING_END_HOUR_EXCLUSIVE : 24;
 
-    const teacherTimezone = OpenClassTZ.REMOED_ANCHOR_ZONE || OpenClassTZ.REMOED_DISPLAY_ZONE || 'Asia/Manila';
+    const teacherTimezone =
+      (OpenClassTZ.getDetectedZone && OpenClassTZ.getDetectedZone()) ||
+      Intl.DateTimeFormat().resolvedOptions().timeZone ||
+      'UTC';
+
+    let openClassLoadSeq = 0;
+
+    function clearSlotCellContents(slotElement) {
+      if (!slotElement) return;
+      slotElement.innerHTML = '';
+      slotElement.textContent = '';
+      slotElement.onclick = null;
+    }
+
+    /** UTC instant → local grid date/time in teacherTimezone */
+    function resolveLocalSlotParts(record) {
+      if (!record) return null;
+      const { DateTime } = luxon;
+      const utcRaw = record.dateTimeUtc || record.utc || record.startTime;
+      if (utcRaw && DateTime) {
+        try {
+          const raw = utcRaw instanceof Date ? utcRaw.toISOString() : String(utcRaw);
+          const dt = DateTime.fromISO(raw, { zone: 'utc' }).setZone(teacherTimezone);
+          if (dt.isValid) {
+            return { date: dt.toFormat('yyyy-LL-dd'), time: normalizeTimeString(dt.toFormat('HH:mm')) };
+          }
+        } catch (_e) { /* fall through */ }
+      }
+      if (record.localDate && record.localTime != null) {
+        return { date: String(record.localDate), time: normalizeTimeString(record.localTime) };
+      }
+      if (record.date && record.time != null) {
+        return { date: String(record.date), time: normalizeTimeString(record.time) };
+      }
+      return null;
+    }
 
     function initOpenClassPhilippineTimeNote() {
       if (document.getElementById('open-class-pht-note')) return;
@@ -135,22 +170,20 @@
       const p = document.createElement('p');
       p.id = 'open-class-pht-note';
       p.style.cssText = 'margin:10px 0 0;font-size:0.78rem;color:#475569;font-weight:600;width:100%;';
-      p.textContent = 'All times are Philippine Time (PHT, Asia/Manila, UTC+8). Slots: 6:00 AM – midnight.';
+      p.textContent = `All times shown in your local timezone (${teacherTimezone}). Slots: 6:00 AM – midnight.`;
       host.appendChild(p);
     }
 
     function getLocalDateString(date) {
       const { DateTime } = luxon;
-      return DateTime.fromJSDate(date, { zone: teacherTimezone }).toFormat('yyyy-LL-dd');
+      return DateTime.fromJSDate(date instanceof Date ? date : new Date(date), { zone: teacherTimezone }).toFormat('yyyy-LL-dd');
     }
     
     function getWeekStartDate(date) {
-      // Get Monday of the week containing the given date
-      const dayOfWeek = date.getDay();
-      const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Sunday = 0, Monday = 1, etc.
-      const monday = new Date(date);
-      monday.setDate(date.getDate() - daysToMonday);
-      return monday;
+      const { DateTime } = luxon;
+      return DateTime.fromJSDate(date instanceof Date ? date : new Date(date), { zone: teacherTimezone })
+        .startOf('week')
+        .toJSDate();
     }
     
     // Role-based access control
@@ -204,8 +237,7 @@
     };
 
     let selectedSlots = new Set();
-    // Use current date instead of hardcoded date
-    let currentWeek = new Date();
+    let currentWeek = luxon.DateTime.now().setZone(teacherTimezone).startOf('week').toJSDate();
 
     // Count available slots (only slots marked as "Open")
     function updateAvailableSlotsCount() {
@@ -232,10 +264,9 @@
       }, 100);
     }
 
-    // Generate day headers for the current week
+    // Generate day headers for the current week (viewer local zone)
     function generateDayHeaders() {
       const { DateTime } = luxon;
-      const timeZone = teacherTimezone;
       const dayHeadersRow = document.getElementById('day-headers-row');
       
       // Clear existing day headers, but keep the 'Time' th
@@ -243,8 +274,7 @@
         dayHeadersRow.removeChild(dayHeadersRow.lastChild);
       }
       
-      const baseWeek = DateTime.fromJSDate(currentWeek, { zone: timeZone });
-      const monday = baseWeek.minus({ days: baseWeek.weekday - 1 }); // ISO weekday 1=Monday, 7=Sunday
+      const monday = DateTime.fromJSDate(currentWeek, { zone: teacherTimezone }).startOf('week');
       
       for (let i = 0; i < 7; i++) {
         const day = monday.plus({ days: i });
@@ -258,7 +288,7 @@
       }
     }
 
-    // Generate time slots: 06:00–23:30 in teacherTimezone (Philippines-aligned)
+    // Generate time slots: 06:00–23:30 in viewer local timezone
     function generateTimeSlots() {
       console.log('Generating time slots...');
       console.log('Current week for time slots:', currentWeek.toISOString());
@@ -270,8 +300,7 @@
       gridBody.innerHTML = '';
 
       const { DateTime } = luxon;
-      const baseWeek = DateTime.fromJSDate(currentWeek, { zone: teacherTimezone });
-      const monday = baseWeek.minus({ days: baseWeek.weekday - 1 });
+      const monday = DateTime.fromJSDate(currentWeek, { zone: teacherTimezone }).startOf('week');
       const weekDates = [];
       for (let i = 0; i < 7; i++) {
         weekDates.push(monday.plus({ days: i }).toISODate());
@@ -315,6 +344,7 @@
             const slotId = `${dateString}-${timeString}`;
             if (window.bookedSlots && window.bookedSlots.has(slotId)) {
               // Check if the booked slot's time has passed
+              clearSlotCellContents(slot);
               if (isTimePassed) {
                 // If time has passed, show as "Past" instead of "BOOKED"
                 slot.innerHTML = 'Past';
@@ -337,17 +367,18 @@
                 slot.onclick = null;
               }
             } else {
-              // Check if slot is strictly in the past (before PH today) or time has passed today (PH)
+              // Check if slot is strictly in the past or time has passed today (local zone)
               const isPastDay = slotDateTime < todayStart;
               
               if (isPastDay || isTimePassed) {
                 // Mark as unavailable if the slot is strictly in the past or time has passed today
+                clearSlotCellContents(slot);
                 slot.classList.add('unavailable');
                 slot.style.background = '#d3d3d3';
                 slot.style.color = 'white';
                 slot.style.fontWeight = 'bold';
                 slot.style.fontSize = '0.8rem';
-                slot.title = isTimePassed ? 'Past slot - time has passed (PH)' : 'Past slot - not available (PH)';
+                slot.title = isTimePassed ? 'Past slot - time has passed' : 'Past slot - not available';
                 slot.style.cursor = 'not-allowed';
                 slot.onclick = null; // Make past slots non-clickable
               }
@@ -356,6 +387,7 @@
             // Check if there's a past class (finished/absent/resolved) to show - regardless of time
             if (window.pastClasses && window.pastClasses.has(slotId)) {
               const pastClass = window.pastClasses.get(slotId);
+              clearSlotCellContents(slot);
               
               // Check for resolved issue first (highest priority)
               if (pastClass.hasResolvedIssue) {
@@ -576,6 +608,7 @@
         const newTitle = 'Class Finished';
         
         // Update the display immediately
+        clearSlotCellContents(slot);
         slot.innerHTML = newDisplay;
         slot.title = newTitle;
         
@@ -643,13 +676,14 @@
       }
       teacherId = window.RemoedTeacherSlots.getTeacherIdRobust();
 
+      const loadSeq = ++openClassLoadSeq;
+
       try {
-        const weekStart = getWeekStartDate(currentWeek);
-        const weekString = getLocalDateString(weekStart);
+        const { DateTime } = luxon;
+        const weekString = DateTime.fromJSDate(currentWeek, { zone: teacherTimezone }).startOf('week').toISODate();
+        const timezoneOffset = new Date().getTimezoneOffset();
         
-        console.log('🔄 Loading FRESH slots for week:', weekString, 'teacherId:', teacherId);
-        console.log('🔄 Current week object:', currentWeek.toISOString());
-        console.log('🔄 Week start date:', weekStart.toISOString());
+        console.log('🔄 Loading FRESH slots for week:', weekString, 'teacherId:', teacherId, 'tz:', teacherTimezone);
         
         const timestamp = Date.now();
         const random = Math.random();
@@ -663,7 +697,9 @@
           update: String(Date.now()),
           refresh: String(Math.random()),
           buster: String(Math.random()),
-          time: String(Date.now())
+          time: String(Date.now()),
+          tz: teacherTimezone,
+          timezoneOffset: String(timezoneOffset),
         };
         
         console.log('🔄 Loading slots for week:', weekString);
@@ -684,6 +720,11 @@
           }
         });
         console.log('🔄 Slots response status:', response.status);
+
+        if (loadSeq !== openClassLoadSeq) {
+          console.log('⏭ Stale open-class load skipped (seq)', loadSeq);
+          return;
+        }
         
         if (!response.ok) {
           console.error('❌ Fetch request failed with status:', response.status);
@@ -703,8 +744,14 @@
         
         const data = await response.json();
         console.log('🔄 Loaded FRESH slots data:', data);
+
+        if (loadSeq !== openClassLoadSeq) {
+          console.log('⏭ Stale open-class load skipped after JSON (seq)', loadSeq);
+          return;
+        }
         
         // Store existing slots for later application - SEPARATE AVAILABLE AND UNAVAILABLE
+        // Keys are local date|time in teacherTimezone
         window.existingSlots = new Set();
         window.availableSlots = new Set();
         window.unavailableSlots = new Set();
@@ -712,11 +759,15 @@
 
         if (data.slots) {
           console.log('🔄 Found', data.slots.length, 'existing slots from database');
+          const seenKeys = new Set();
           data.slots.forEach(slot => {
-            const normalizedTime = normalizeTimeString(slot.time);
-            const slotKey = `${slot.date}-${normalizedTime}`;
-            // keep normalized time for downstream usage
-            slot.time = normalizedTime;
+            const parts = resolveLocalSlotParts(slot);
+            if (!parts || !parts.date || !parts.time) return;
+            const slotKey = `${parts.date}-${parts.time}`;
+            if (seenKeys.has(slotKey)) return;
+            seenKeys.add(slotKey);
+            slot.date = parts.date;
+            slot.time = parts.time;
             window.existingSlots.add(slotKey);
 
             const st = String(slot.status || '').toLowerCase();
@@ -743,7 +794,7 @@
           return handleMissingAuth();
         }
         // Load booked slots (stable teacherId in query) with ULTRA AGGRESSIVE cache-busting
-        const cacheBuster = `t=${timestamp}&v=${random}&fresh=true&nocache=${timestamp}&force=${timestamp}&clear=${random}&update=${Date.now()}&refresh=${Math.random()}&buster=${Math.random()}&time=${Date.now()}`;
+        const cacheBuster = `t=${timestamp}&v=${random}&fresh=true&nocache=${timestamp}&force=${timestamp}&clear=${random}&update=${Date.now()}&refresh=${Math.random()}&buster=${Math.random()}&time=${Date.now()}&tz=${encodeURIComponent(teacherTimezone)}&timezoneOffset=${timezoneOffset}`;
         const classesQueryPath = `/api/teacher/classes?teacherId=${encodeURIComponent(teacherId)}&week=${weekString}&${cacheBuster}`;
         const classesFullUrl = new URL(classesQueryPath, window.location.origin).href;
         console.log('[Teacher booking] Full URL (GET classes):', classesFullUrl);
@@ -759,6 +810,11 @@
           }
         });
         console.log('🔄 Bookings response status:', bookingsResponse.status);
+
+        if (loadSeq !== openClassLoadSeq) {
+          console.log('⏭ Stale open-class load skipped before bookings (seq)', loadSeq);
+          return;
+        }
         
         if (!bookingsResponse.ok) {
           console.error('❌ Fetch bookings request failed with status:', bookingsResponse.status);
@@ -772,6 +828,11 @@
         
         const bookingsData = await bookingsResponse.json();
 
+        if (loadSeq !== openClassLoadSeq) {
+          console.log('⏭ Stale open-class load skipped after bookings JSON (seq)', loadSeq);
+          return;
+        }
+
         // Store past classes; merge class list into booked keys from slots API
         window.pastClasses = new Map();
         
@@ -779,23 +840,25 @@
         const bookings = bookingsData.bookings || bookingsData.classes || [];
         
         if (bookings && bookings.length > 0) {
+          const nowZ = DateTime.now().setZone(teacherTimezone);
           bookings.forEach(booking => {
-            const normalizedTime = normalizeTimeString(booking.time);
-            const slotId = `${booking.date}-${normalizedTime}`;
-            // Keep normalized time for downstream lookups
-            booking.time = normalizedTime;
+            const parts = resolveLocalSlotParts(booking);
+            if (!parts || !parts.date || !parts.time) return;
+            const slotId = `${parts.date}-${parts.time}`;
+            booking.date = parts.date;
+            booking.time = parts.time;
             
-            // Check if this is a past class (finished or absent)
-            const bookingDateTime = new Date(`${booking.date}T${normalizedTime}:00`);
-            const now = new Date();
+            const bookingDateTime = DateTime.fromISO(`${parts.date}T${parts.time}`, { zone: teacherTimezone });
             
-            if (bookingDateTime <= now && (booking.status === 'completed' || booking.status === 'absent')) {
-              // Store past class information
-              window.pastClasses.set(slotId, {
-                status: booking.status,
-                studentName: booking.studentName || booking.studentId?.firstName || booking.studentId?.username || 'Unknown',
-                hasResolvedIssue: booking.hasResolvedIssue || false
-              });
+            if (bookingDateTime.isValid && bookingDateTime <= nowZ && (booking.status === 'completed' || booking.status === 'absent')) {
+              // Store past class information (one per cell)
+              if (!window.pastClasses.has(slotId)) {
+                window.pastClasses.set(slotId, {
+                  status: booking.status,
+                  studentName: booking.studentName || booking.studentId?.firstName || booking.studentId?.username || 'Unknown',
+                  hasResolvedIssue: booking.hasResolvedIssue || false
+                });
+              }
             } else {
               const st = String(booking.status || '').toLowerCase();
               if (st === 'confirmed' || st === 'pending' || st === 'booked') {
@@ -860,25 +923,15 @@
           }
               
           if (slotElement) {
-            // Check if this slot is in the past (strictly past dates, not current day)
-            const slotDate = new Date(date);
-            const today = new Date();
-            today.setHours(0, 0, 0, 0); // Start of today
+            clearSlotCellContents(slotElement);
+            const { DateTime } = luxon;
+            const nowZ = DateTime.now().setZone(teacherTimezone);
+            const slotDt = DateTime.fromISO(`${date}T${time}`, { zone: teacherTimezone });
+            const todayStart = nowZ.startOf('day');
+            const isTimePassed = slotDt.isValid && slotDt <= nowZ;
+            const isPastDay = slotDt.isValid && slotDt < todayStart;
             
-            console.log(`🔍 Date comparison for ${date}: slotDate=${slotDate.toISOString()}, today=${today.toISOString()}, isPast=${slotDate < today}`);
-            
-            // Check if the specific time has passed today
-            const now = new Date();
-            const currentDate = now.toISOString().split('T')[0];
-            const currentTime = now.toTimeString().split(' ')[0].substring(0, 5); // HH:MM format
-            
-            let isTimePassed = false;
-            if (date === currentDate) {
-                // If it's today, check if the time has passed
-                isTimePassed = time <= currentTime;
-            }
-            
-            if (slotDate < today || isTimePassed) {
+            if (isPastDay || isTimePassed) {
               // Mark past open slots as "Unbooked" instead of "Open"
               slotElement.classList.add('unbooked');
               slotElement.style.background = '#f8f9fa';
@@ -926,6 +979,7 @@
           }
           
           if (slotElement) {
+            clearSlotCellContents(slotElement);
             // Mark as closed (white background) - available to open
             slotElement.classList.add('closed-slot');
             slotElement.style.background = '#ffffff';
@@ -957,15 +1011,14 @@
       console.log('🔍 Ensuring all future slots have click handlers...');
       
       const allSlots = document.querySelectorAll('td[data-date][data-time]');
-      const now = new Date();
+      const { DateTime } = luxon;
+      const nowZ = DateTime.now().setZone(teacherTimezone);
       
       allSlots.forEach(slot => {
-        const slotDateTime = new Date(`${slot.dataset.date}T${slot.dataset.time}:00`);
+        const slotDateTime = DateTime.fromISO(`${slot.dataset.date}T${slot.dataset.time}`, { zone: teacherTimezone });
         
         // Add click handlers to future slots that don't already have them
-        // Allow current day slots too (within 24 hours)
-        const isCurrentOrFuture = slotDateTime >= new Date(now.getTime() - 24 * 60 * 60 * 1000);
-        if (isCurrentOrFuture && !slot.onclick && !slot.hasAttribute('data-click-handler')) {
+        if (slotDateTime.isValid && slotDateTime > nowZ && !slot.onclick && !slot.hasAttribute('data-click-handler')) {
           // Check if slot is not booked, not past class, and not unavailable
           const slotKey = `${slot.dataset.date}-${slot.dataset.time}`;
           const isBooked = window.bookedSlots && window.bookedSlots.has(slotKey);
@@ -992,7 +1045,7 @@
         window.bookedSlots.forEach(slotKey => {
           const lastDashIndex = slotKey.lastIndexOf('-');
           const date = slotKey.substring(0, lastDashIndex);
-          const time = slotKey.substring(lastDashIndex + 1);
+          const time = normalizeTimeString(slotKey.substring(lastDashIndex + 1));
           
           // Use a more direct approach to find the slot element
           const slotElement = document.querySelector(`td[data-date="${date}"][data-time="${time}"]`);
@@ -1004,17 +1057,12 @@
           
           if (slotElement) {
             console.log('Found booked slot element:', date, time);
+            clearSlotCellContents(slotElement);
             
-            // Check if the specific time has passed today
-            const now = new Date();
-            const currentDate = now.toISOString().split('T')[0];
-            const currentTime = now.toTimeString().split(' ')[0].substring(0, 5); // HH:MM format
-            
-            let isTimePassed = false;
-            if (date === currentDate) {
-                // If it's today, check if the time has passed
-                isTimePassed = time <= currentTime;
-            }
+            const { DateTime } = luxon;
+            const nowZ = DateTime.now().setZone(teacherTimezone);
+            const slotDt = DateTime.fromISO(`${date}T${time}`, { zone: teacherTimezone });
+            const isTimePassed = slotDt.isValid && slotDt <= nowZ;
             
             if (isTimePassed) {
               // If time has passed, show as "Past" instead of "BOOKED"
@@ -1047,7 +1095,7 @@
         window.pastClasses.forEach((pastClass, slotKey) => {
           const lastDashIndex = slotKey.lastIndexOf('-');
           const date = slotKey.substring(0, lastDashIndex);
-          const time = slotKey.substring(lastDashIndex + 1);
+          const time = normalizeTimeString(slotKey.substring(lastDashIndex + 1));
           
           // Use a more direct approach to find the slot element
           const slotElement = document.querySelector(`td[data-date="${date}"][data-time="${time}"]`);
@@ -1059,6 +1107,7 @@
           
           if (slotElement) {
             console.log('Found past class element:', date, time, pastClass.status, 'hasResolvedIssue:', pastClass.hasResolvedIssue);
+            clearSlotCellContents(slotElement);
             
             // Check for resolved issue first (highest priority)
             if (pastClass.hasResolvedIssue) {
@@ -1151,7 +1200,8 @@
           refresh: String(Math.random()),
           clear: String(Math.random()),
           force: String(Date.now()),
-          tz: teacherTimezone
+          tz: teacherTimezone,
+          timezoneOffset: String(new Date().getTimezoneOffset()),
         };
         const existingSlotsPath = window.RemoedTeacherSlots.buildSlotsUrl(weekString, cacheExtraOpen);
         console.log('[Teacher booking] Full URL (prefetch slots before save):', new URL(existingSlotsPath, window.location.origin).href);
@@ -1168,13 +1218,18 @@
         const existingData = await existingResponse.json();
         const existingSlots = existingData.slots || [];
         
-        // Combine existing slots with new selected slots
-        const normalizedExisting = existingSlots.map(s => ({ ...s, time: normalizeTimeString(s.time) }));
+        // Combine existing slots with new selected slots (local date/time keys)
+        const normalizedExisting = existingSlots.map((s) => {
+          const parts = resolveLocalSlotParts(s);
+          return parts
+            ? { date: parts.date, time: parts.time }
+            : { date: s.date, time: normalizeTimeString(s.time) };
+        });
         const allSlotsToKeep = [...normalizedExisting, ...selectedSlotsArray];
         
         // Remove duplicates
         const uniqueSlots = allSlotsToKeep.filter((slot, index, self) => 
-          index === self.findIndex(s => s.date === slot.date && s.time === slot.time)
+          index === self.findIndex((s) => s.date === slot.date && s.time === slot.time)
         );
         
         console.log('All slots to keep (existing + new):', uniqueSlots);
@@ -1256,7 +1311,8 @@
           refresh: String(Math.random()),
           clear: String(Math.random()),
           force: String(Date.now()),
-          tz: teacherTimezone
+          tz: teacherTimezone,
+          timezoneOffset: String(new Date().getTimezoneOffset()),
         };
         const closePrefetchPath = window.RemoedTeacherSlots.buildSlotsUrl(weekString, cacheExtraClose);
         console.log('[Teacher booking] Full URL (prefetch slots before close):', new URL(closePrefetchPath, window.location.origin).href);
@@ -1273,8 +1329,16 @@
         const existingData = await existingResponse.json();
         const existingSlots = existingData.slots || [];
         
+        // Normalize to local keys for selection matching
+        const normalizedExisting = existingSlots.map((existing) => {
+          const parts = resolveLocalSlotParts(existing);
+          return parts
+            ? { ...existing, date: parts.date, time: parts.time }
+            : { ...existing, time: normalizeTimeString(existing.time) };
+        });
+        
         // Find slots to close (existing slots that are selected)
-        const slotsToClose = existingSlots.filter(existing => {
+        const slotsToClose = normalizedExisting.filter(existing => {
           const slotKey = `${existing.date}-${existing.time}`;
           const isSelected = selectedSlots.has(slotKey);
           console.log(`Checking slot ${existing.date} ${existing.time}: selected = ${isSelected}, slotKey = ${slotKey}`);
@@ -1295,7 +1359,7 @@
         console.log('Teacher ID:', teacherId);
         
         // Find slots to keep (existing slots that are NOT selected)
-        const slotsToKeep = existingSlots.filter(existing => {
+        const slotsToKeep = normalizedExisting.filter(existing => {
           const slotKey = `${existing.date}-${existing.time}`;
           return !selectedSlots.has(slotKey);
         });
@@ -1385,45 +1449,40 @@
 
     // Week navigation functionality
     document.getElementById('prev-week').addEventListener('click', async () => {
-      currentWeek.setDate(currentWeek.getDate() - 7);
+      currentWeek = luxon.DateTime.fromJSDate(currentWeek, { zone: teacherTimezone })
+        .minus({ weeks: 1 })
+        .startOf('week')
+        .toJSDate();
       updateWeekDisplay();
       await initializeWeeklyGrid();
     });
 
     document.getElementById('next-week').addEventListener('click', async () => {
-      currentWeek.setDate(currentWeek.getDate() + 7);
+      currentWeek = luxon.DateTime.fromJSDate(currentWeek, { zone: teacherTimezone })
+        .plus({ weeks: 1 })
+        .startOf('week')
+        .toJSDate();
       updateWeekDisplay();
       await initializeWeeklyGrid();
     });
 
     document.getElementById('current-week').addEventListener('click', async () => {
-      currentWeek = new Date();
+      currentWeek = luxon.DateTime.now().setZone(teacherTimezone).startOf('week').toJSDate();
       updateWeekDisplay();
       await initializeWeeklyGrid();
     });
 
-    // Update week display (week boundaries in Philippine Time)
+    // Update week display (viewer local zone)
     function updateWeekDisplay() {
       const weekDisplay = document.getElementById('week-display');
       const { DateTime } = luxon;
-      let weekStart;
-      if (DateTime) {
-        const base = DateTime.fromJSDate(currentWeek, { zone: teacherTimezone });
-        const mon = base.minus({ days: base.weekday - 1 });
-        const sun = mon.plus({ days: 6 });
-        weekDisplay.textContent = `${mon.toFormat('MMM d')} - ${sun.toFormat('MMM d, yyyy')} (Philippine Time, PHT)`;
-        weekStart = mon.toJSDate();
-      } else {
-        weekStart = getWeekStartDate(currentWeek);
-        const weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekStart.getDate() + 6);
-        const pht = { timeZone: teacherTimezone };
-        weekDisplay.textContent = `${weekStart.toLocaleDateString('en-US', Object.assign({ month: 'short', day: 'numeric' }, pht))} - ${weekEnd.toLocaleDateString('en-US', Object.assign({ month: 'short', day: 'numeric', year: 'numeric' }, pht))} (Philippine Time, PHT)`;
-      }
+      const mon = DateTime.fromJSDate(currentWeek, { zone: teacherTimezone }).startOf('week');
+      const sun = mon.plus({ days: 6 });
+      const zoneName = DateTime.local().zoneName || teacherTimezone;
+      weekDisplay.textContent = `${mon.toFormat('MMM d')} - ${sun.toFormat('MMM d, yyyy')} (${zoneName})`;
       const prevBtn = document.getElementById('prev-week');
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      prevBtn.disabled = weekStart <= today;
+      const thisWeekStart = DateTime.now().setZone(teacherTimezone).startOf('week');
+      prevBtn.disabled = mon <= thisWeekStart;
     }
 
 

@@ -1,6 +1,8 @@
 /**
  * QA recording for live classroom: low-bitrate WebM, chunked upload.
- * - When server flag is on (or ?qaRecord=1), teachers auto-start when a stream is available.
+ * - Teacher records the full classroom tab (for QA); a cropped clone is published
+ *   to the student for slide/presentation share (sync behavior unchanged).
+ * - Start is gated until the student remote video is live.
  * - live-classroom "Finish" calls ClassroomQaRecording.stopAndFinalize() before closing WebRTC.
  * See docs/CLASSROOM_RECORDING.md
  */
@@ -12,6 +14,7 @@
     mediaRecorder: null,
     stopTimer: null,
     tickTimer: null,
+    studentWaitTimer: null,
     startedAt: 0,
     chunkChain: Promise.resolve(),
     autoStartTried: false,
@@ -24,7 +27,10 @@
     bookingId: '',
     maxMs: 25 * 60 * 1000,
     chunkMs: 20000,
+    /** Full classroom tab stream used by MediaRecorder (not cropped). */
     screenStream: null,
+    /** Cropped clone published to student for slides only. */
+    studentShareStream: null,
     /** Web Audio context used to mix tab audio + teacher mic into one track */
     recordingAudioContext: null,
     /** Extra getUserMedia({audio}) stream we own — stop on teardown */
@@ -89,6 +95,48 @@
       }
     }
     return null;
+  }
+
+  /** Student is present when remote video has a live track (teacher view). */
+  function isStudentPresent() {
+    if (liveUserType() !== 'teacher') return true;
+    var remoteV = document.getElementById('remote-video');
+    if (!remoteV || !remoteV.srcObject) return false;
+    var tracks = remoteV.srcObject.getTracks ? remoteV.srcObject.getTracks() : [];
+    return tracks.some(function (t) {
+      return t && t.readyState === 'live' && (t.kind === 'video' || t.kind === 'audio');
+    });
+  }
+
+  function setStartEnabled(enabled) {
+    if (!state.btnStart) return;
+    if (isRecording()) return;
+    state.btnStart.disabled = !enabled;
+    state.btnStart.style.opacity = enabled ? '1' : '0.55';
+    state.btnStart.style.cursor = enabled ? 'pointer' : 'not-allowed';
+  }
+
+  function updateStudentGateUi() {
+    if (liveUserType() !== 'teacher') return;
+    if (isRecording()) return;
+    if (isStudentPresent()) {
+      setStartEnabled(true);
+      setStatus('Student is in class. Click Start, choose \"This tab\", then continue.');
+    } else {
+      setStartEnabled(false);
+      setStatus('Waiting for student to join before QA recording can start…');
+    }
+  }
+
+  function startStudentPresenceWatcher() {
+    if (state.studentWaitTimer) {
+      clearInterval(state.studentWaitTimer);
+      state.studentWaitTimer = null;
+    }
+    updateStudentGateUi();
+    state.studentWaitTimer = setInterval(function () {
+      updateStudentGateUi();
+    }, 1500);
   }
 
   /** Live mic from the same WebRTC stream as #local-video (teacher). */
@@ -221,8 +269,8 @@
   }
 
   /**
-   * Region Capture: crop the display track to the PowerPoint surface so sidebars/chat
-   * (and the infinite mirror of the share UI) are excluded from the outgoing stream.
+   * Region Capture for STUDENT slide share only: crop a cloned track to the PowerPoint
+   * surface. The QA recording stream itself stays full-tab (uncropped).
    */
   function applyRegionCropToDisplayStream(stream) {
     if (!stream) return Promise.resolve(stream);
@@ -230,32 +278,89 @@
     if (!track) return Promise.resolve(stream);
 
     if (typeof track.cropTo !== 'function') {
-      console.warn('[QA] Region Capture unsupported (no MediaStreamTrack.cropTo). Full tab will be shared.');
+      console.warn('[QA] Region Capture unsupported (no MediaStreamTrack.cropTo). Student share uses full tab.');
       return Promise.resolve(stream);
     }
     if (typeof window.CropTarget === 'undefined' || typeof window.CropTarget.fromElement !== 'function') {
-      console.warn('[QA] CropTarget API unsupported in this browser. Full tab will be shared.');
+      console.warn('[QA] CropTarget API unsupported in this browser. Student share uses full tab.');
       return Promise.resolve(stream);
     }
 
     var el = resolvePresentationCropElement();
     if (!el) {
-      console.warn('[QA] No #presentation-container found for CropTarget; full tab will be shared.');
+      console.warn('[QA] No #presentation-container found for CropTarget; student share uses full tab.');
       return Promise.resolve(stream);
     }
 
     return window.CropTarget.fromElement(el)
       .then(function (cropTarget) {
         return track.cropTo(cropTarget).then(function () {
-          console.log('[QA] Region Capture applied to presentation container');
-          setStatus('Region capture active — sharing presentation area only.');
+          console.log('[QA] Region Capture applied to student slide-share clone');
           return stream;
         });
       })
       .catch(function (err) {
-        console.warn('[QA] CropTarget failed; continuing with full tab capture:', err);
+        console.warn('[QA] CropTarget failed; student share continues without crop:', err);
         return stream;
       });
+  }
+
+  /**
+   * Clone video (+ optional audio) from the full-tab capture, crop to slides, publish to student.
+   * Does not mutate the original recording stream.
+   */
+  function publishCroppedSlideShareFromFullTab(fullStream) {
+    if (!fullStream) return Promise.resolve(false);
+    stopStudentShareStream();
+
+    var fullVideo = fullStream.getVideoTracks && fullStream.getVideoTracks()[0];
+    if (!fullVideo) return Promise.resolve(false);
+
+    var clonedVideo;
+    try {
+      clonedVideo = fullVideo.clone();
+    } catch (e) {
+      console.warn('[QA] Could not clone video for student slide share:', e);
+      return Promise.resolve(false);
+    }
+
+    var shareTracks = [clonedVideo];
+    var fullAudio = fullStream.getAudioTracks && fullStream.getAudioTracks()[0];
+    if (fullAudio) {
+      try {
+        shareTracks.push(fullAudio.clone());
+      } catch (_a) {}
+    }
+
+    var shareStream = new MediaStream(shareTracks);
+    state.studentShareStream = shareStream;
+
+    return applyRegionCropToDisplayStream(shareStream).then(function (cropped) {
+      state.studentShareStream = cropped;
+      try {
+        if (window.RemoedLiveClassroomWebrtc && typeof window.RemoedLiveClassroomWebrtc.publishScreenShare === 'function') {
+          return window.RemoedLiveClassroomWebrtc.publishScreenShare(cropped).then(function () {
+            return true;
+          });
+        }
+      } catch (pubErr) {
+        console.warn('QA tab-share publish error:', pubErr);
+      }
+      return false;
+    });
+  }
+
+  function stopStudentShareStream() {
+    if (state.studentShareStream) {
+      try {
+        state.studentShareStream.getTracks().forEach(function (t) {
+          try {
+            t.stop();
+          } catch (_e) {}
+        });
+      } catch (e) {}
+      state.studentShareStream = null;
+    }
   }
 
   function getScreenRecordableStream() {
@@ -272,20 +377,18 @@
       selfBrowserSurface: 'include',
       surfaceSwitching: 'exclude'
     }).then(function (stream) {
+      // Keep FULL tab for QA recording — do not crop this stream.
       state.screenStream = stream;
       try {
         var vTrack = stream.getVideoTracks && stream.getVideoTracks()[0];
         var label = vTrack && vTrack.label ? String(vTrack.label) : '';
         if (label) {
-          setStatus('Captured source: ' + label + '. Cropping to presentation…');
+          setStatus('Captured source: ' + label + '. Recording full classroom; slides stay cropped for student.');
         } else {
-          setStatus('Screen capture started. Cropping to presentation…');
+          setStatus('Screen capture started. Recording full classroom…');
         }
       } catch (e) {}
-      return applyRegionCropToDisplayStream(stream).then(function (cropped) {
-        state.screenStream = cropped;
-        return { stream: cropped, mode: 'screen_tab' };
-      });
+      return { stream: stream, mode: 'screen_tab' };
     });
   }
 
@@ -404,6 +507,7 @@
     } catch (e) {
       console.warn('QA unpublish screen share:', e);
     }
+    stopStudentShareStream();
     if (state.btnStart) {
       state.btnStart.disabled = false;
       state.btnStart.textContent = 'Start';
@@ -424,6 +528,7 @@
       state.screenStream = null;
     }
     teardownRecordingExtras();
+    updateStudentGateUi();
   }
 
   /**
@@ -439,12 +544,18 @@
       return Promise.reject(new Error('no_mediarecorder'));
     }
 
+    if (liveUserType() === 'teacher' && !isStudentPresent()) {
+      setStatus('Waiting for student to join before QA recording can start…');
+      setStartEnabled(false);
+      return Promise.reject(new Error('no_student'));
+    }
+
     if (state.btnStart) state.btnStart.disabled = true;
     setStatus('Starting…');
     state.chunkChain = Promise.resolve();
 
     var chooseStream = function () {
-      // Teacher manual start uses screen/tab capture for whole-class view.
+      // Teacher manual start: full-tab capture for QA archive (+ cropped clone for student slides).
       if (liveUserType() === 'teacher' && !silent) {
         setStatus('Pick \"This tab\" to record the full classroom screen...');
         return getScreenRecordableStream().catch(function (e) {
@@ -466,7 +577,7 @@
         if (got.mode === 'local_fallback') {
           setStatus('Recording local camera (no remote stream available yet).');
         } else if (got.mode === 'screen_tab') {
-          setStatus('Recording whole classroom screen…');
+          setStatus('Recording full classroom screen…');
           var vTrack = got.stream.getVideoTracks && got.stream.getVideoTracks()[0];
           try {
             var maybeLabel = vTrack && vTrack.label ? String(vTrack.label) : '';
@@ -481,6 +592,7 @@
                   window.RemoedLiveClassroomWebrtc.unpublishScreenShare();
                 }
               } catch (_u) {}
+              stopStudentShareStream();
               if (state.mediaRecorder && state.mediaRecorder.state === 'recording') {
                 setStatus('Screen share stopped — finishing recording…');
                 state.mediaRecorder.stop();
@@ -503,13 +615,13 @@
               'Tab capture only — microphone not added. Turn on mic in the classroom first, then Stop and Start again.'
             );
           } else if (got.stream.getAudioTracks().length) {
-            setStatus('Recording: tab sound + your microphone (mixed).');
+            setStatus('Recording full classroom: tab sound + your microphone (mixed).');
           } else {
             setStatus(
-              'Recording: your microphone. Enable “Share tab audio” when prompted to also capture lesson video sound.'
+              'Recording full classroom + mic. Enable “Share tab audio” when prompted to also capture lesson video sound.'
             );
           }
-          return { stream: composed.stream, mode: got.mode };
+          return { stream: composed.stream, mode: got.mode, rawDisplayStream: got.stream };
         });
       })
       .then(function (finalGot) {
@@ -532,6 +644,7 @@
             mr = mimeType ? new MediaRecorder(ctx.got.stream, { mimeType: mimeType }) : new MediaRecorder(ctx.got.stream);
           } catch (e2) {
             teardownRecordingExtras();
+            stopStudentShareStream();
             if (state.screenStream) {
               try {
                 state.screenStream.getTracks().forEach(function (t) { t.stop(); });
@@ -572,7 +685,7 @@
         };
 
         mr.start(state.chunkMs);
-        // Phase 3: lock Start only after stream init (+ optional crop) succeeded
+        // Phase 3: lock Start only after stream init succeeded
         if (state.btnStart) {
           state.btnStart.disabled = true;
           state.btnStart.textContent = 'Recording Active';
@@ -584,25 +697,26 @@
           state.btnStop.disabled = false;
           state.btnStop.style.opacity = '1';
         }
-        setStatus('Recording… ' + formatTime(0));
+        setStatus('Recording full classroom… ' + formatTime(0));
 
-        // Broadcast the same tab-capture tracks to the student (webcam stays on its own senders).
+        // Student slide share: cropped clone of the same tab (sync path unchanged).
+        // QA archive keeps the uncropped full-tab stream above.
         if (ctx.got.mode === 'screen_tab' && state.screenStream) {
-          try {
-            if (window.RemoedLiveClassroomWebrtc && typeof window.RemoedLiveClassroomWebrtc.publishScreenShare === 'function') {
-              window.RemoedLiveClassroomWebrtc.publishScreenShare(state.screenStream).catch(function (err) {
-                console.warn('QA tab-share publish failed:', err);
-              });
-            }
-          } catch (pubErr) {
-            console.warn('QA tab-share publish error:', pubErr);
-          }
+          publishCroppedSlideShareFromFullTab(state.screenStream)
+            .then(function (ok) {
+              if (ok) {
+                setStatus('Recording full classroom… Student still receives cropped slides.');
+              }
+            })
+            .catch(function (err) {
+              console.warn('QA cropped slide-share publish failed:', err);
+            });
         }
 
         state.tickTimer = setInterval(function () {
           if (!state.startedAt) return;
           var elapsed = (Date.now() - state.startedAt) / 1000;
-          setStatus('Recording… ' + formatTime(elapsed));
+          setStatus('Recording full classroom… ' + formatTime(elapsed));
         }, 1000);
 
         state.stopTimer = setTimeout(function () {
@@ -613,7 +727,10 @@
         }, state.maxMs);
       })
       .catch(function (e) {
-        if (String(e && e.message || '').indexOf('no_stream') >= 0 && !silent) {
+        var msg = String((e && e.message) || e || '');
+        if (msg.indexOf('no_student') >= 0) {
+          setStatus('Waiting for student to join before QA recording can start…');
+        } else if (msg.indexOf('no_stream') >= 0 && !silent) {
           setStatus('No classroom stream yet. Start after video is connected.');
         } else {
           setStatus('Start failed: ' + (e.message || e));
@@ -627,12 +744,14 @@
         state.recordingId = null;
         state.mediaRecorder = null;
         teardownRecordingExtras();
+        stopStudentShareStream();
         if (state.screenStream) {
           try {
             state.screenStream.getTracks().forEach(function (t) { t.stop(); });
           } catch (e2) {}
           state.screenStream = null;
         }
+        updateStudentGateUi();
         throw e;
       });
   }
@@ -768,15 +887,19 @@
       var hint = state.panel.querySelector('#qa-rec-hint');
       if (hint) {
         hint.textContent =
-          'Choose “This tab” and enable “Share tab audio” for class sound. Your microphone is mixed in automatically from the live classroom (same as “Teacher (You)” preview).';
+          'Starts only after the student joins. Choose “This tab” + “Share tab audio”. QA saves the full classroom; the student still gets the cropped slide view (sync unchanged).';
       }
       setStatus(
         cfg.enabled
-          ? 'Ready. Teacher Start will capture the full classroom screen.'
+          ? 'Waiting for student… then Start to record the full classroom.'
           : 'QA URL flag on — set CLASSROOM_QA_RECORDING_ENABLED=false on server to disable.'
       );
 
       state.btnStart.addEventListener('click', function () {
+        if (!isStudentPresent()) {
+          setStatus('Waiting for student to join before QA recording can start…');
+          return;
+        }
         startRecording({ silent: false }).catch(function () {});
       });
       if (state.btnStop) {
@@ -787,13 +910,13 @@
         stopAndFinalize: stopAndFinalize,
         isRecording: isRecording,
         isEnabled: true,
+        isStudentPresent: isStudentPresent,
         startRecording: function () {
           return startRecording({ silent: false });
         }
       };
 
-      // Teachers should choose the tab/window explicitly for screen recording.
-      setStatus('Click Start, choose \"This tab\", then continue class.');
+      startStudentPresenceWatcher();
     });
   }
 

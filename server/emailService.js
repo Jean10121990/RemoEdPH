@@ -6,15 +6,124 @@ const HOSTINGER_MAILBOX = 'support@remoedph.com';
 
 const EMAIL_SERVICE_TYPE = process.env.EMAIL_SERVICE_TYPE;
 
-const smtpAuthUser = String(process.env.EMAIL_USER || process.env.SMTP_USER || HOSTINGER_MAILBOX).trim();
-const smtpAuthPass = String(process.env.EMAIL_PASS || process.env.SMTP_PASS || '').trim();
+function trimEnv(value) {
+  return String(value == null ? '' : value).trim();
+}
+
+function isPlaceholderSecret(value) {
+  const v = trimEnv(value).toLowerCase();
+  return (
+    !v ||
+    v === 'your-app-password' ||
+    v === 'your-email@gmail.com' ||
+    v === 'replace-with-hostinger-mailbox-password'
+  );
+}
+
+function isGmailLikeAddress(email) {
+  const e = trimEnv(email).toLowerCase();
+  return /@(gmail|googlemail)\.com$/i.test(e);
+}
+
+function resolveSmtpConnectionMode() {
+  const raw = trimEnv(process.env.SMTP_CONNECTION_MODE).toLowerCase();
+  if (raw === 'auto' || raw === 'hostinger' || raw === 'gmail') return raw;
+  return 'auto';
+}
+
+function normalizeSmtpPassword(value) {
+  return trimEnv(value).replace(/\s+/g, '');
+}
+
+function resolveGmailUser() {
+  if (trimEnv(process.env.SMTP_GMAIL_USER)) return trimEnv(process.env.SMTP_GMAIL_USER);
+  const smtpUser = trimEnv(process.env.SMTP_USER);
+  const smtpHost = trimEnv(process.env.SMTP_HOST).toLowerCase();
+  if (smtpHost === 'smtp.gmail.com' && isGmailLikeAddress(smtpUser)) return smtpUser;
+  if (isGmailLikeAddress(hostingerUser)) return hostingerUser;
+  return '';
+}
+
+function resolveGmailPass(gmailUserResolved) {
+  if (trimEnv(process.env.SMTP_GMAIL_PASS)) {
+    return normalizeSmtpPassword(process.env.SMTP_GMAIL_PASS);
+  }
+  const smtpHost = trimEnv(process.env.SMTP_HOST).toLowerCase();
+  const smtpUser = trimEnv(process.env.SMTP_USER);
+  if (smtpHost === 'smtp.gmail.com' && gmailUserResolved && smtpUser === gmailUserResolved) {
+    return normalizeSmtpPassword(process.env.SMTP_PASS);
+  }
+  if (gmailUserResolved && gmailUserResolved === hostingerUser) {
+    return normalizeSmtpPassword(hostingerPass);
+  }
+  return '';
+}
+
+const hostingerUser = trimEnv(process.env.EMAIL_USER || process.env.SMTP_USER || HOSTINGER_MAILBOX);
+const hostingerPass = normalizeSmtpPassword(process.env.EMAIL_PASS || process.env.SMTP_PASS);
+const smtpConnectionMode = resolveSmtpConnectionMode();
+
+const gmailUser = resolveGmailUser();
+const gmailPass = resolveGmailPass(gmailUser);
+
+function buildHostingerProfile() {
+  const smtpHost = trimEnv(process.env.SMTP_HOST).toLowerCase();
+  if (smtpHost === 'smtp.gmail.com') return null;
+  if (isGmailLikeAddress(hostingerUser) && smtpConnectionMode !== 'hostinger') return null;
+  if (!hostingerUser || isPlaceholderSecret(hostingerPass)) return null;
+  const port = parseInt(process.env.SMTP_PORT || '465', 10);
+  const secure =
+    process.env.SMTP_SECURE === 'false' || process.env.SMTP_SECURE === '0' ? false : port === 465;
+  return {
+    id: 'hostinger',
+    host: trimEnv(process.env.SMTP_HOST) || 'smtp.hostinger.com',
+    port,
+    secure,
+    requireTLS: !secure,
+    auth: { user: hostingerUser, pass: hostingerPass },
+    from: SMTP_FROM_LITERAL,
+  };
+}
+
+function buildGmailProfile() {
+  if (!gmailUser || isPlaceholderSecret(gmailPass)) return null;
+  return {
+    id: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false,
+    requireTLS: true,
+    auth: { user: gmailUser, pass: gmailPass },
+    from: `RemoEd Support <${gmailUser}>`,
+  };
+}
+
+const hostingerProfile = buildHostingerProfile();
+const gmailProfile = buildGmailProfile();
+
+function selectInitialSmtpProfile() {
+  if (smtpConnectionMode === 'hostinger') return hostingerProfile;
+  if (smtpConnectionMode === 'gmail') return gmailProfile;
+  return gmailProfile || hostingerProfile;
+}
+
+function getAlternateSmtpProfile(currentId) {
+  if (smtpConnectionMode !== 'auto') return null;
+  if (currentId === 'hostinger' && gmailProfile) return gmailProfile;
+  if (currentId === 'gmail' && hostingerProfile) return hostingerProfile;
+  return null;
+}
 
 const isMailgunConfigured = !!(process.env.MAILGUN_API_KEY && process.env.MAILGUN_DOMAIN);
-const isSMTPConfigured =
-  smtpAuthUser &&
-  smtpAuthPass &&
-  smtpAuthUser !== 'your-email@gmail.com' &&
-  smtpAuthPass !== 'your-app-password';
+
+let isSMTPConfigured = false;
+if (smtpConnectionMode === 'hostinger') {
+  isSMTPConfigured = !!hostingerProfile;
+} else if (smtpConnectionMode === 'gmail') {
+  isSMTPConfigured = !!gmailProfile;
+} else {
+  isSMTPConfigured = !!(hostingerProfile || gmailProfile);
+}
 
 let activeEmailService = 'none';
 if (isMailgunConfigured && EMAIL_SERVICE_TYPE === 'mailgun') {
@@ -27,68 +136,128 @@ if (isMailgunConfigured && EMAIL_SERVICE_TYPE === 'mailgun') {
 
 const isEmailConfigured = activeEmailService !== 'none';
 
-const smtpPort = parseInt(process.env.SMTP_PORT || '465', 10);
-const smtpSecure =
-  process.env.SMTP_SECURE === 'false' || process.env.SMTP_SECURE === '0' ? false : smtpPort === 465;
-
-const emailConfig = {
-  host: process.env.SMTP_HOST || 'smtp.hostinger.com',
-  port: smtpPort,
-  secure: smtpSecure,
-  requireTLS: !smtpSecure,
-  tls: {
-    rejectUnauthorized: false,
-  },
-  connectionTimeout: 10000,
-  greetingTimeout: 10000,
-  auth: {
-    user: smtpAuthUser,
-    pass: smtpAuthPass || 'your-app-password',
-  },
-};
-
-if (isSMTPConfigured && smtpAuthUser.toLowerCase() !== HOSTINGER_MAILBOX) {
-  console.warn(
-    `⚠️ EMAIL_USER/SMTP_USER (${smtpAuthUser}) should be ${HOSTINGER_MAILBOX} to match From "${SMTP_FROM_LITERAL}" or Hostinger may reject the sender.`
-  );
-}
-
+let activeSmtpProfile = selectInitialSmtpProfile();
+let activeSmtpProfileId = activeSmtpProfile ? activeSmtpProfile.id : null;
 let transporter = null;
 let transporterVerified = false;
 
-console.log('📧 Email (Hostinger SMTP default; optional Mailgun if EMAIL_SERVICE_TYPE=mailgun):');
+function createTransporterForProfile(profile) {
+  if (profile.id === 'gmail') {
+    return nodemailer.createTransport({
+      service: 'gmail',
+      auth: profile.auth,
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+    });
+  }
+  return nodemailer.createTransport({
+    host: profile.host,
+    port: profile.port,
+    secure: profile.secure,
+    requireTLS: profile.requireTLS,
+    tls: {
+      rejectUnauthorized: false,
+    },
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    auth: profile.auth,
+  });
+}
+
+function isSmtpAuthError(error) {
+  const code = error && error.code;
+  const msg = String((error && error.message) || error || '');
+  return code === 'EAUTH' || /535|authentication failed/i.test(msg);
+}
+
+async function sendViaSmtp(mailOptions) {
+  if (!activeSmtpProfile || !transporter) {
+    throw new Error('SMTP not configured');
+  }
+
+  async function attemptSend() {
+    const from = activeSmtpProfile.from;
+    console.log('Attempting to send as:', from);
+    const info = await transporter.sendMail({
+      ...mailOptions,
+      from,
+    });
+    return { success: true, messageId: info.messageId, provider: activeSmtpProfileId };
+  }
+
+  try {
+    if (!transporterVerified) {
+      await transporter.verify();
+      transporterVerified = true;
+    }
+    return await attemptSend();
+  } catch (error) {
+    const alternate = getAlternateSmtpProfile(activeSmtpProfileId);
+    if (!isSmtpAuthError(error) || !alternate) {
+      throw error;
+    }
+    console.warn(
+      `⚠️ SMTP auth failed on ${activeSmtpProfileId}; retrying with ${alternate.id}...`
+    );
+    activeSmtpProfile = alternate;
+    activeSmtpProfileId = alternate.id;
+    transporter = createTransporterForProfile(alternate);
+    transporterVerified = false;
+    await transporter.verify();
+    transporterVerified = true;
+    const result = await attemptSend();
+    console.log(`✅ Email sent via fallback SMTP provider: ${alternate.id}`);
+    return result;
+  }
+}
+
+async function smtpSendMail(mailOptions) {
+  const result = await sendViaSmtp(mailOptions);
+  return { messageId: result.messageId, provider: result.provider };
+}
+
+console.log('📧 Email (Gmail SMTP default; optional Hostinger fallback + Mailgun):');
 console.log(`   Active: ${activeEmailService.toUpperCase()}`);
-console.log(`   SMTP ${emailConfig.host}:${emailConfig.port} secure=${emailConfig.secure}`);
-console.log(`   Auth user: ${smtpAuthUser || '(none)'}`);
-console.log(`   From: ${SMTP_FROM_LITERAL}`);
+console.log(`   SMTP mode: ${smtpConnectionMode}`);
+if (activeSmtpProfile) {
+  console.log(
+    `   SMTP ${activeSmtpProfile.host}:${activeSmtpProfile.port} secure=${activeSmtpProfile.secure} provider=${activeSmtpProfileId}`
+  );
+  console.log(`   Auth user: ${activeSmtpProfile.auth.user || '(none)'}`);
+  console.log(`   Has password: ${!!activeSmtpProfile.auth.pass}`);
+  console.log(`   From: ${activeSmtpProfile.from}`);
+} else if (activeEmailService === 'smtp') {
+  console.log('   SMTP profile missing — check EMAIL_USER/EMAIL_PASS or SMTP_GMAIL_*');
+}
+if (hostingerProfile && gmailProfile && smtpConnectionMode === 'auto') {
+  console.log('   Hostinger fallback available if Gmail auth fails');
+}
 if (isMailgunConfigured) {
   console.log(`   Mailgun available (${process.env.MAILGUN_DOMAIN}); set EMAIL_SERVICE_TYPE=mailgun to use it`);
 }
 
-async function smtpSendMail(mailOptions) {
-  console.log('Attempting to send as:', SMTP_FROM_LITERAL);
-  return transporter.sendMail({
-    ...mailOptions,
-    from: SMTP_FROM_LITERAL,
-  });
-}
-
-if (activeEmailService === 'smtp') {
-  transporter = nodemailer.createTransport(emailConfig);
+if (activeEmailService === 'smtp' && activeSmtpProfile) {
+  transporter = createTransporterForProfile(activeSmtpProfile);
   transporter.verify((error, _success) => {
     if (error) {
       const safeError = String(error).replace(/(password|pass|pwd)=[^\s&"']*/gi, '$1=***');
-      console.error('❌ SMTP connection verification failed:', safeError);
+      console.error(`❌ SMTP connection verification failed (${activeSmtpProfileId}):`, safeError);
       transporterVerified = false;
+      const alternate = getAlternateSmtpProfile(activeSmtpProfileId);
+      if (alternate) {
+        console.warn(`   Will retry sends via ${alternate.id} if auth fails`);
+      }
     } else {
-      console.log('✅ SMTP connection verified successfully');
+      console.log(`✅ SMTP connection verified successfully (${activeSmtpProfileId})`);
       transporterVerified = true;
     }
   });
 } else if (activeEmailService === 'mailgun') {
   console.log(`✅ Mailgun configured (domain: ${process.env.MAILGUN_DOMAIN})`);
 } else {
-  console.log('⚠️  Email not configured — set EMAIL_USER + EMAIL_PASS (Hostinger) or Mailgun env vars');
+  console.log(
+    '⚠️  Email not configured — set SMTP_GMAIL_* or EMAIL_USER/EMAIL_PASS (Gmail), or Hostinger EMAIL_* / Mailgun env vars'
+  );
 }
 
 // Email templates
@@ -792,17 +961,13 @@ async function sendTeacherPipelineWelcomeEmail(email, fullName, signupLink, firs
     if (activeEmailService === 'mailgun') {
       result = await sendEmailViaMailgun(targetEmail, template.subject, template.html, template.text);
     } else if (activeEmailService === 'smtp') {
-      if (!transporterVerified) {
-        await transporter.verify();
-        transporterVerified = true;
-      }
       const info = await smtpSendMail({
         to: targetEmail,
         subject: template.subject,
         html: template.html,
         text: template.text
       });
-      result = { success: true, messageId: info.messageId };
+      result = { success: true, messageId: info.messageId, provider: info.provider };
     } else {
       result = { success: false, error: 'No email service configured' };
     }
@@ -838,17 +1003,13 @@ async function sendTeacherPipelineFailEmail(email, fullName, reapplyEligibleAt, 
     if (activeEmailService === 'mailgun') {
       result = await sendEmailViaMailgun(targetEmail, template.subject, template.html, template.text);
     } else if (activeEmailService === 'smtp') {
-      if (!transporterVerified) {
-        await transporter.verify();
-        transporterVerified = true;
-      }
       const info = await smtpSendMail({
         to: targetEmail,
         subject: template.subject,
         html: template.html,
         text: template.text
       });
-      result = { success: true, messageId: info.messageId };
+      result = { success: true, messageId: info.messageId, provider: info.provider };
     } else {
       result = { success: false, error: 'No email service configured' };
     }
@@ -876,12 +1037,19 @@ function getEmailConfigStatus() {
     status.mailgunConfigured = isMailgunConfigured;
     status.domain = process.env.MAILGUN_DOMAIN || 'not set';
   } else if (activeEmailService === 'smtp') {
-    status.host = emailConfig.host;
-    status.port = emailConfig.port;
-    status.secure = emailConfig.secure;
-    status.user = emailConfig.auth.user;
-    status.hasPassword = !!emailConfig.auth.pass && emailConfig.auth.pass !== 'your-app-password';
-    status.requireTLS = emailConfig.requireTLS;
+    status.smtpMode = smtpConnectionMode;
+    status.provider = activeSmtpProfileId;
+    status.hasHostingerProfile = !!hostingerProfile;
+    status.hasGmailProfile = !!gmailProfile;
+    if (activeSmtpProfile) {
+      status.host = activeSmtpProfile.host;
+      status.port = activeSmtpProfile.port;
+      status.secure = activeSmtpProfile.secure;
+      status.user = activeSmtpProfile.auth.user;
+      status.hasPassword = !!activeSmtpProfile.auth.pass;
+      status.requireTLS = activeSmtpProfile.requireTLS;
+      status.fromHeader = activeSmtpProfile.from;
+    }
   }
 
   return status;

@@ -42,6 +42,7 @@
                 
                 <div class="success-message" id="success-message" style="display: none;"></div>
                 <div class="error-message" id="error-message" style="display: none;">Error updating profile. Please try again.</div>
+                <div id="profile-save-toast" class="profile-save-toast" style="display: none;" role="status" aria-live="polite"></div>
                 
                 <!-- Profile Content Grid -->
                 <div class="profile-content-grid">
@@ -85,7 +86,7 @@
                                 </video>
                                 <div class="video-info">
                                     <span id="video-name">No video selected</span>
-                                    <button type="button" class="remove-video-btn" onclick="removeVideo()">Remove</button>
+                                    <button type="button" class="remove-video-btn" onclick="removeVideo()" aria-label="Remove video" title="Remove video">×</button>
                                 </div>
                             </div>
                         </div>
@@ -113,7 +114,10 @@
                             <span id="completion-details" style="font-size: 0.8rem; color: #666;"></span>
                         </div>
                         <div id="missing-fields-list" style="margin-top: 12px; font-size: 0.85rem; color: #666; display: none;">
-                            <strong style="color: #e74c3c;">Missing:</strong> <span id="missing-fields-text"></span>
+                            <strong style="color: #e74c3c;">Missing required:</strong> <span id="missing-fields-text"></span>
+                        </div>
+                        <div id="missing-optional-list" style="margin-top: 8px; font-size: 0.85rem; color: #666; display: none;">
+                            <strong style="color: #667eea;">Optional for 100%:</strong> <span id="missing-optional-text"></span>
                         </div>
                     </div>
                     
@@ -222,13 +226,13 @@
                         <div id="education-container">
                             <!-- Education items will be added here -->
                         </div>
-                        <button type="button" class="add-btn" id="add-education-btn" onclick="addEducationItem()" disabled>+ Add Education</button>
+                        <button type="button" class="add-btn" id="add-education-btn" onclick="addEducationItem()">+ Add Education</button>
                         
                         <div class="section-title" style="margin-top: 30px;">Work Experience</div>
                         <div id="work-experience-container">
                             <!-- Work experience items will be added here -->
                         </div>
-                        <button type="button" class="add-btn" id="add-work-experience-btn" onclick="addWorkExperienceItem()" disabled>+ Add Work Experience</button>
+                        <button type="button" class="add-btn" id="add-work-experience-btn" onclick="addWorkExperienceItem()">+ Add Work Experience</button>
                         
                         <div class="profile-footer-actions" style="margin-top: 24px;">
                             <button class="edit-btn" id="edit-education-btn" onclick="enableEditing()">Edit</button>
@@ -1204,6 +1208,9 @@
         }
 
         function addEducationItem(data = null) {
+            if (!isEditingProfile && data === null) {
+                enableEditing();
+            }
             const container = document.getElementById('education-container');
             const itemId = `education-${educationCounter++}`;
             const disabledAttr = isEditingProfile ? '' : 'disabled';
@@ -1239,16 +1246,21 @@
             `;
             
             container.appendChild(educationItem);
+            updateProfileCompletion();
         }
 
         function removeEducationItem(itemId) {
             const item = document.getElementById(itemId);
             if (item) {
                 item.remove();
+                updateProfileCompletion();
             }
         }
 
         function addWorkExperienceItem(data = null) {
+            if (!isEditingProfile && data === null) {
+                enableEditing();
+            }
             const container = document.getElementById('work-experience-container');
             const itemId = `work-experience-${workExperienceCounter++}`;
             const disabledAttr = isEditingProfile ? '' : 'disabled';
@@ -1289,12 +1301,14 @@
             `;
             
             container.appendChild(workExperienceItem);
+            updateProfileCompletion();
         }
 
         function removeWorkExperienceItem(itemId) {
             const item = document.getElementById(itemId);
             if (item) {
                 item.remove();
+                updateProfileCompletion();
             }
         }
         
@@ -1535,6 +1549,71 @@
             }
         }
 
+        function getVideoIntroductionPayload() {
+            const videoPlayer = document.getElementById('video-player');
+            const source = videoPlayer ? videoPlayer.querySelector('source') : null;
+            const rawSrc = source ? (source.getAttribute('src') || source.src || '') : '';
+            const hasVideo = rawSrc && rawSrc.trim() && !rawSrc.endsWith('/') && rawSrc !== window.location.href;
+            const videoNameEl = document.getElementById('video-name');
+            const fileName = videoNameEl && videoNameEl.textContent && videoNameEl.textContent !== 'No video selected'
+                ? videoNameEl.textContent
+                : null;
+            return {
+                videoIntroduction: hasVideo ? rawSrc : null,
+                videoIntroductionFileName: hasVideo ? fileName : null
+            };
+        }
+
+        function buildProfilePayload() {
+            const firstName = document.getElementById('firstname').value;
+            const middleName = document.getElementById('middlename').value;
+            const lastName = document.getElementById('lastname').value;
+            const fullname = `${firstName} ${middleName} ${lastName}`.trim();
+            const videoPayload = getVideoIntroductionPayload();
+            const avatarImg = document.getElementById('profile-avatar-img');
+
+            return {
+                firstName: firstName,
+                middleName: middleName,
+                lastName: lastName,
+                fullname: fullname,
+                birthday: document.getElementById('birthday').value,
+                hireDate: document.getElementById('hire-date-input')?.value || null,
+                gender: document.getElementById('gender').value,
+                language: document.getElementById('language').value,
+                hobbies: document.getElementById('hobbies').value,
+                address: document.getElementById('address').value,
+                contact: document.getElementById('contact').value,
+                email: document.getElementById('email').value,
+                username: document.getElementById('username').value,
+                emergencyContact: document.getElementById('emergency-contact').value,
+                introduction: document.getElementById('introduction').value,
+                experience: document.getElementById('experience').value,
+                education: collectEducationData(),
+                workExperience: collectWorkExperienceData(),
+                profilePicture: avatarImg?.src || null,
+                videoIntroduction: videoPayload.videoIntroduction,
+                videoIntroductionFileName: videoPayload.videoIntroductionFileName,
+                hasEnglishDegree4Year: document.getElementById('qual-english-degree')?.checked || false,
+                hasTesolTeylTefl: document.getElementById('qual-tesol')?.checked || false,
+                eslExperienceLevel: document.getElementById('qual-esl-experience')?.value || 'none',
+                hasProfessionalLetLicense: document.getElementById('qual-let')?.checked || false,
+                hasMastersDegree: document.getElementById('qual-masters')?.checked || false,
+                hasDoctorateDegree: document.getElementById('qual-doctorate')?.checked || false,
+                hasValuesAlignment: document.getElementById('qual-values-alignment')?.checked || false,
+                documents: (function() {
+                    const diplomas = collectDiplomasData();
+                    const certificates = collectCertificatesData();
+                    const validIds = collectValidIdsData();
+                    return {
+                        diplomas: diplomas,
+                        certificates: certificates,
+                        validIds: validIds
+                    };
+                })()
+            };
+        }
+
         function saveProfile() {
             console.log('🔍 saveProfile function called');
             const saveIds = ['save-profile-btn', 'save-education-btn', 'save-documents-btn'];
@@ -1553,58 +1632,17 @@
                 saveBtns.forEach(btn => { btn.disabled = false; btn.textContent = 'Save Changes'; });
                 return;
             }
-            
-            // Collect form data BEFORE disabling fields
-            console.log('🔍 Collecting form data...');
-            // Since we no longer have a form, collect data directly from input elements
-             const firstName = document.getElementById('firstname').value;
-             const middleName = document.getElementById('middlename').value;
-             const lastName = document.getElementById('lastname').value;
-             const fullname = `${firstName} ${middleName} ${lastName}`.trim();
-             
-             const profileData = {
-                 firstName: firstName,
-                 middleName: middleName,
-                 lastName: lastName,
-                 fullname: fullname,
-                birthday: document.getElementById('birthday').value,
-                hireDate: document.getElementById('hire-date-input').value || null,
-                gender: document.getElementById('gender').value,
-                language: document.getElementById('language').value,
-                hobbies: document.getElementById('hobbies').value,
-                address: document.getElementById('address').value,
-                contact: document.getElementById('contact').value,
-                email: document.getElementById('email').value,
-                username: document.getElementById('username').value,
-                emergencyContact: document.getElementById('emergency-contact').value,
-                introduction: document.getElementById('introduction').value,
-                experience: document.getElementById('experience').value,
-                                 education: collectEducationData(),
-                 workExperience: collectWorkExperienceData(),
-                 profilePicture: document.getElementById('profile-avatar-img')?.src || null,
-                 videoIntroduction: document.getElementById('video-player').querySelector('source').src || null,
-                 videoIntroductionFileName: document.getElementById('video-name').textContent !== 'No video selected' ? document.getElementById('video-name').textContent : null,
-                hasEnglishDegree4Year: document.getElementById('qual-english-degree')?.checked || false,
-                hasTesolTeylTefl: document.getElementById('qual-tesol')?.checked || false,
-                eslExperienceLevel: document.getElementById('qual-esl-experience')?.value || 'none',
-                hasProfessionalLetLicense: document.getElementById('qual-let')?.checked || false,
-                hasMastersDegree: document.getElementById('qual-masters')?.checked || false,
-                hasDoctorateDegree: document.getElementById('qual-doctorate')?.checked || false,
-                hasValuesAlignment: document.getElementById('qual-values-alignment')?.checked || false,
-                documents: (function() {
-                    console.log('=== COLLECTING DOCUMENTS ===');
-                    const diplomas = collectDiplomasData();
-                    const certificates = collectCertificatesData();
-                    const validIds = collectValidIdsData();
-                    console.log('=== FINAL DOCUMENTS SUMMARY ===');
-                    console.log('Diplomas:', diplomas.length, 'Certificates:', certificates.length, 'Valid IDs:', validIds.length);
-                    return {
-                        diplomas: diplomas,
-                        certificates: certificates,
-                        validIds: validIds
-                    };
-                })()
-            };
+
+            let profileData;
+            try {
+                console.log('🔍 Collecting form data...');
+                profileData = buildProfilePayload();
+            } catch (error) {
+                console.error('Failed to collect profile data:', error);
+                showMessage('Could not prepare profile data. Please refresh and try again.', 'error');
+                saveBtns.forEach(btn => { btn.disabled = false; btn.textContent = 'Save Changes'; });
+                return;
+            }
             
             console.log('Saving profile data:', profileData);
             console.log('Documents being saved:', JSON.stringify(profileData.documents, null, 2));
@@ -1660,7 +1698,7 @@
             
             // Save to database
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout for profile save
+            const timeoutId = setTimeout(() => controller.abort(), 60000);
             
             fetch('/api/teacher/profile', {
                 method: 'POST',
@@ -1771,9 +1809,6 @@
                     const fileInputs = document.querySelectorAll('input[type="file"]');
                     fileInputs.forEach(input => input.disabled = true);
                     
-                    document.getElementById('add-education-btn').disabled = true;
-                    document.getElementById('add-work-experience-btn').disabled = true;
-                    
                     // Show/hide buttons in all tabs
                     const editIds = ['edit-profile-btn', 'edit-education-btn', 'edit-documents-btn'];
                     const cancelIds = ['cancel-edit-btn', 'cancel-education-btn', 'cancel-documents-btn'];
@@ -1783,7 +1818,8 @@
                     saveIds.forEach(id => { const el = document.getElementById(id); if (el) { el.style.display = 'none'; el.disabled = false; el.textContent = (id === 'save-profile-btn' ? 'Save Changes' : (id === 'save-education-btn' ? 'Save Changes' : 'Save Changes')); } });
                     
                     // Show success message
-                    showMessage('Profile updated successfully!', 'success');
+                    showMessage('Changes saved successfully!', 'success');
+                    updateProfileCompletion();
                     
                     // If response includes profile data, use it directly; otherwise reload
                     if (data.profile) {
@@ -2118,10 +2154,6 @@
             const fileInputs = document.querySelectorAll('input[type="file"]');
             fileInputs.forEach(input => input.disabled = false);
             
-            // Enable education and work experience buttons
-            document.getElementById('add-education-btn').disabled = false;
-            document.getElementById('add-work-experience-btn').disabled = false;
-            
             // Diploma and certificate buttons are always enabled (they auto-enable editing when clicked)
             // No need to disable/enable them
             
@@ -2166,10 +2198,6 @@
             // Disable file uploads
             const fileInputs = document.querySelectorAll('input[type="file"]');
             fileInputs.forEach(input => input.disabled = true);
-            
-            // Disable education and work experience buttons
-            document.getElementById('add-education-btn').disabled = true;
-            document.getElementById('add-work-experience-btn').disabled = true;
             
             // Diploma and certificate buttons remain enabled (they auto-enable editing when clicked)
             // No need to disable them
@@ -2342,21 +2370,38 @@
          function showMessage(message, type) {
              const successMsg = document.getElementById('success-message');
              const errorMsg = document.getElementById('error-message');
+             const toast = document.getElementById('profile-save-toast');
              
              if (type === 'success') {
-                 successMsg.textContent = message;
-                 successMsg.style.display = 'block';
-                 errorMsg.style.display = 'none';
+                 if (successMsg) {
+                     successMsg.textContent = message;
+                     successMsg.style.display = 'block';
+                     successMsg.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                 }
+                 if (errorMsg) errorMsg.style.display = 'none';
              } else {
-                 errorMsg.textContent = message;
-                 errorMsg.style.display = 'block';
-                 successMsg.style.display = 'none';
+                 if (errorMsg) {
+                     errorMsg.textContent = message;
+                     errorMsg.style.display = 'block';
+                     errorMsg.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                 }
+                 if (successMsg) successMsg.style.display = 'none';
+             }
+
+             if (toast) {
+                 toast.textContent = message;
+                 toast.className = 'profile-save-toast profile-save-toast--' + (type === 'success' ? 'success' : 'error');
+                 toast.style.display = 'block';
+                 clearTimeout(window.__profileSaveToastTimer);
+                 window.__profileSaveToastTimer = setTimeout(() => {
+                     toast.style.display = 'none';
+                 }, 5000);
              }
              
              setTimeout(() => {
-                 successMsg.style.display = 'none';
-                 errorMsg.style.display = 'none';
-             }, 5000);
+                 if (successMsg) successMsg.style.display = 'none';
+                 if (errorMsg) errorMsg.style.display = 'none';
+             }, 8000);
          }
          
          // Function to update sidebar first name in real-time
@@ -2738,6 +2783,7 @@
             let completedRequired = 0;
             let completedOptional = 0;
             const missingFields = [];
+            const missingOptionalFields = [];
             
             // Check required fields
             Object.keys(requiredFields).forEach(fieldId => {
@@ -2761,31 +2807,27 @@
             
             // Check optional fields
             Object.keys(optionalFields).forEach(fieldId => {
+                let isComplete = false;
                 if (fieldId === 'diplomas' || fieldId === 'certificates') {
                     const container = document.getElementById(fieldId === 'diplomas' ? 'diplomas-container' : 'certificates-container');
-                    if (container && container.children.length > 0) {
-                        completedOptional++;
-                    }
+                    isComplete = !!(container && container.children.length > 0);
                 } else if (fieldId === 'validId') {
                     const container = document.getElementById('valid-ids-container');
-                    if (container && container.children.length > 0) {
-                        completedOptional++;
-                    }
+                    isComplete = !!(container && container.children.length > 0);
                 } else if (fieldId === 'education' || fieldId === 'workExperience') {
                     const container = document.getElementById(fieldId === 'education' ? 'education-container' : 'work-experience-container');
-                    if (container && container.children.length > 0) {
-                        completedOptional++;
-                    }
+                    isComplete = !!(container && container.children.length > 0);
                 } else if (fieldId === 'videoIntroduction') {
-                    const video = document.getElementById('video-player');
-                    if (video && video.querySelector('source') && video.querySelector('source').src) {
-                        completedOptional++;
-                    }
+                    const videoPayload = getVideoIntroductionPayload();
+                    isComplete = !!videoPayload.videoIntroduction;
                 } else {
                     const field = document.getElementById(fieldId);
-                    if (field && field.value && field.value.trim()) {
-                        completedOptional++;
-                    }
+                    isComplete = !!(field && field.value && field.value.trim());
+                }
+                if (isComplete) {
+                    completedOptional++;
+                } else {
+                    missingOptionalFields.push(optionalFields[fieldId]);
                 }
             });
             
@@ -2804,6 +2846,8 @@
             const messageEl = document.getElementById('completion-message');
             const missingListEl = document.getElementById('missing-fields-list');
             const missingTextEl = document.getElementById('missing-fields-text');
+            const missingOptionalListEl = document.getElementById('missing-optional-list');
+            const missingOptionalTextEl = document.getElementById('missing-optional-text');
             
             if (progressBar) {
                 progressBar.style.width = percentage + '%';
@@ -2838,6 +2882,12 @@
                 missingListEl.style.display = 'block';
             } else if (missingListEl) {
                 missingListEl.style.display = 'none';
+            }
+            if (missingOptionalFields.length > 0 && missingOptionalListEl && missingOptionalTextEl) {
+                missingOptionalTextEl.textContent = missingOptionalFields.join(', ');
+                missingOptionalListEl.style.display = 'block';
+            } else if (missingOptionalListEl) {
+                missingOptionalListEl.style.display = 'none';
             }
         }
         

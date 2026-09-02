@@ -78,7 +78,7 @@ const issueReportSchema = new mongoose.Schema({
     teacherPaymentImpact: {
         type: String,
         required: true,
-        enum: ['normal', 'no_payment', 'partial_payment_10', 'partial_payment_50'],
+        enum: ['normal', 'no_payment', 'partial_payment_10', 'partial_payment_20', 'partial_payment_50', 'partial_payment_100'],
         default: 'normal'
     },
     studentPaymentImpact: {
