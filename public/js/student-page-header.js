@@ -107,6 +107,7 @@
                 h1.innerHTML = iconHtml + '<span class="nav-title-text">' + escapeHtml(title) + '</span>';
             }
             document.body.classList.add('has-student-page-header');
+            bindNotificationBell(existing);
             return existing;
         }
 
@@ -124,8 +125,15 @@
             '  <div class="nav-icon" onclick="window.location.href=\'student-profile.html\'" title="My Profile">' +
             ACTION.person +
             '  </div>' +
-            '  <div class="nav-icon primary" onclick="window.location.href=\'student-dashboard.html\'" title="Notifications">' +
+            '  <div class="nav-icon primary" id="notifications-icon" title="Notifications">' +
             ACTION.bell +
+            '    <div class="nav-badge" id="notifications-badge" style="display:none;">0</div>' +
+            '    <div class="nav-dropdown" id="notifications-dropdown">' +
+            '      <div class="nav-dropdown-header"><span>Notifications</span></div>' +
+            '      <div class="nav-dropdown-content" id="notifications-dropdown-content">' +
+            '        <div class="nav-dropdown-item">Loading…</div>' +
+            '      </div>' +
+            '    </div>' +
             '  </div>' +
             '  <div class="nav-icon" onclick="window.location.href=\'student-class-table.html\'" title="My Schedule">' +
             ACTION.calendar +
@@ -140,6 +148,7 @@
         }
 
         document.body.classList.add('has-student-page-header');
+        bindNotificationBell(header);
         return header;
     }
 
@@ -157,7 +166,105 @@
             h1.innerHTML = iconHtml + '<span class="nav-title-text">' + escapeHtml(title) + '</span>';
         }
         document.body.classList.add('has-student-page-header');
+        if (!header.querySelector('#upcoming-classes-icon')) {
+            bindNotificationBell(header);
+        }
         return header;
+    }
+
+    function studentAuthToken() {
+        try {
+            if (global.RemoedSecurityGuard && typeof global.RemoedSecurityGuard.getToken === 'function') {
+                var g = global.RemoedSecurityGuard.getToken();
+                if (g) return g;
+            }
+        } catch (_e) {}
+        try {
+            return (
+                localStorage.getItem('remoed_student_token') ||
+                sessionStorage.getItem('remoed_student_token') ||
+                localStorage.getItem('remoed_student_auth') ||
+                sessionStorage.getItem('remoed_student_auth') ||
+                localStorage.getItem('remoed_user_token') ||
+                sessionStorage.getItem('remoed_user_token') ||
+                localStorage.getItem('token') ||
+                ''
+            );
+        } catch (_e2) {
+            return '';
+        }
+    }
+
+    function bindNotificationBell(header) {
+        if (!header || header.getAttribute('data-notif-bound') === '1') return;
+        var icon = header.querySelector('#notifications-icon');
+        var dropdown = header.querySelector('#notifications-dropdown');
+        var content = header.querySelector('#notifications-dropdown-content');
+        var badge = header.querySelector('#notifications-badge');
+        if (!icon || !dropdown) return;
+        header.setAttribute('data-notif-bound', '1');
+
+        icon.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var open = dropdown.classList.toggle('show');
+            if (open) loadStudentNotifications(content, badge);
+        });
+        dropdown.addEventListener('click', function (e) {
+            e.stopPropagation();
+        });
+        document.addEventListener('click', function () {
+            dropdown.classList.remove('show');
+        });
+        loadStudentNotifications(content, badge);
+    }
+
+    function loadStudentNotifications(content, badge) {
+        var token = studentAuthToken();
+        if (!token || !content) return;
+        fetch('/api/student/notifications', {
+            headers: { Authorization: 'Bearer ' + token }
+        })
+            .then(function (r) {
+                return r.json();
+            })
+            .then(function (data) {
+                var list = (data && data.notifications) || [];
+                var unread = list.filter(function (n) {
+                    return !n.read;
+                }).length;
+                if (badge) {
+                    badge.textContent = String(unread);
+                    badge.style.display = unread > 0 ? 'flex' : 'none';
+                }
+                if (!list.length) {
+                    content.innerHTML = '<div class="nav-dropdown-item">No notifications</div>';
+                    return;
+                }
+                content.innerHTML = list
+                    .slice(0, 10)
+                    .map(function (n) {
+                        var msg = String(n.message || 'Notification')
+                            .replace(/&/g, '&amp;')
+                            .replace(/</g, '&lt;');
+                        var time = n.createdAt
+                            ? new Date(n.createdAt).toLocaleString('en-PH', { hour: '2-digit', minute: '2-digit' })
+                            : '';
+                        return (
+                            '<div class="nav-dropdown-item' +
+                            (n.read ? ' read' : '') +
+                            '"><div style="font-size:0.9rem;">' +
+                            msg +
+                            '</div><div style="font-size:0.78rem;color:#64748b;">' +
+                            time +
+                            '</div></div>'
+                        );
+                    })
+                    .join('');
+            })
+            .catch(function () {
+                content.innerHTML = '<div class="nav-dropdown-item">Could not load notifications</div>';
+            });
     }
 
     global.StudentPageHeader = {

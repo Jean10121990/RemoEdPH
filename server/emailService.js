@@ -464,6 +464,84 @@ This is an automated message from RemoEdPH. Please do not reply.
       `.trim()
     };
   },
+  assessmentResults: (childName, cefrLevel, score, registerUrl) => {
+    const safeChild = escapeHtml(childName || 'your child');
+    const safeLevel = escapeHtml(cefrLevel || 'A1');
+    const safeScore = escapeHtml(String(score == null ? 0 : score));
+    const safeUrl = escapeHtml(registerUrl || '#');
+    const subjectChild = String(childName || 'your child').trim() || 'your child';
+
+    return {
+      subject: `RemoEdPH — ${subjectChild}'s English Level Assessment Results`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Assessment Results - RemoEdPH</title>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: #1ca7e7; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
+            .box { background: #fff; border: 2px solid #1ca7e7; border-radius: 8px; padding: 16px; margin: 18px 0; }
+            .label { color: #64748b; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; }
+            .value { font-weight: 800; font-size: 18px; color: #0f172a; margin-top: 4px; }
+            .btn { display: inline-block; background: #1ca7e7; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 800; }
+            .footer { text-align: center; margin-top: 26px; color: #666; font-size: 14px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>🌟 Assessment Results</h1>
+              <p>RemoEdPH Level Assessment</p>
+            </div>
+            <div class="content">
+              <p>Hello!</p>
+              <p>Thank you for completing the RemoEdPH English level assessment for <strong>${safeChild}</strong>.</p>
+
+              <div class="box">
+                <div class="label">CEFR Level</div>
+                <div class="value">${safeLevel}</div>
+              </div>
+              <div class="box">
+                <div class="label">Score</div>
+                <div class="value">${safeScore}</div>
+              </div>
+
+              <p>Your child is eligible for <strong>one free trial class</strong>. Create an account with the same email you used for the assessment to claim it.</p>
+              <div style="text-align:center; margin: 22px 0;">
+                <a class="btn" href="${safeUrl}">Claim Free Trial Class</a>
+              </div>
+
+              <p>If the button does not work, copy and paste this link into your browser:<br>
+              <a href="${safeUrl}">${safeUrl}</a></p>
+            </div>
+            <div class="footer">
+              <p>This is an automated message from RemoEdPH. Please do not reply.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+      text: `
+RemoEdPH — Assessment Results
+
+Thank you for completing the RemoEdPH English level assessment for ${subjectChild}.
+
+CEFR Level: ${cefrLevel || 'A1'}
+Score: ${score == null ? 0 : score}
+
+Your child is eligible for one free trial class. Create an account with the same email you used for the assessment:
+
+${registerUrl || ''}
+
+This is an automated message from RemoEdPH. Please do not reply.
+      `.trim()
+    };
+  },
   passwordReset: (username, newPassword, userType) => ({
     subject: `RemoEdPH - New Password Generated`,
     html: `
@@ -948,6 +1026,65 @@ async function sendSubscriptionEmail(email, username, plan, planPrice) {
   }
 }
 
+// Send level-assessment results + free-trial registration link
+async function sendAssessmentEmail(email, childName, cefrLevel, score, registerUrl) {
+  const targetEmail = String(email || '').trim().toLowerCase();
+  if (!targetEmail) {
+    return { success: false, error: 'Missing recipient email' };
+  }
+  try {
+    if (!isEmailConfigured) {
+      console.log('⚠️  Email not configured - assessment email not sent');
+      return {
+        success: false,
+        fallback: true,
+        error: 'Email service not configured',
+      };
+    }
+
+    const template = emailTemplates.assessmentResults(childName, cefrLevel, score, registerUrl);
+    console.log(`📧 Attempting to send assessment email to: ${targetEmail} via ${activeEmailService.toUpperCase()}`);
+
+    let result;
+    if (activeEmailService === 'mailgun') {
+      result = await sendEmailViaMailgun(targetEmail, template.subject, template.html, template.text);
+    } else if (activeEmailService === 'smtp') {
+      if (!transporterVerified) {
+        console.log('🔍 Verifying SMTP connection before sending assessment email...');
+        try {
+          await transporter.verify();
+          transporterVerified = true;
+          console.log('✅ SMTP connection verified');
+        } catch (verifyError) {
+          const safeError = String(verifyError).replace(/(password|pass|pwd)=[^\s&"']*/gi, '$1=***');
+          console.error('❌ SMTP verification failed:', safeError);
+          return { success: false, error: `SMTP connection failed: ${verifyError.message || 'Connection verification failed'}` };
+        }
+      }
+
+      const info = await smtpSendMail({
+        to: targetEmail,
+        subject: template.subject,
+        html: template.html,
+        text: template.text,
+      });
+      result = { success: true, messageId: info.messageId };
+    } else {
+      return { success: false, error: 'No email service configured' };
+    }
+
+    console.log('✅ Assessment email sent successfully:', result.messageId);
+    return result;
+  } catch (error) {
+    const errorMessage = error.message || String(error);
+    const safeErrorMessage = errorMessage
+      .replace(/(password|pass|pwd|api[_-]?key)=[^\s&"']*/gi, '$1=***')
+      .replace(/auth[^}]*pass[^}]*}/gi, 'auth:{...}');
+    console.error(`❌ Error sending assessment email via ${activeEmailService}:`, safeErrorMessage);
+    return { success: false, error: errorMessage };
+  }
+}
+
 // Send password reset email
 async function sendPasswordResetEmail(email, username, newPassword, userType) {
   return await sendEmail(email, 'passwordReset', {
@@ -1105,6 +1242,7 @@ module.exports = {
   sendPasswordResetEmail,
   sendTeacherRegistrationEmail,
   sendSubscriptionEmail,
+  sendAssessmentEmail,
   sendTeacherPipelineWelcomeEmail,
   sendTeacherPipelineFailEmail,
   sendEmail,

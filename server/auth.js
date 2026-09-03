@@ -811,7 +811,13 @@ router.post('/student-login', authLoginLimiter, async (req, res) => {
     if (passwordMatch) {
       await resetLoginAttempts(student);
       const token = jwt.sign(
-        { username: student.username, studentId: student._id },
+        {
+          username: student.username,
+          studentId: student._id,
+          userRole: 'student',
+          userType: 'student',
+          role: 'student',
+        },
         JWT_SECRET,
         { expiresIn: JWT_EXPIRES_IN }
       );
@@ -1032,7 +1038,13 @@ router.post('/unified-login', authLoginLimiter, async (req, res) => {
 
     await resetLoginAttempts(student);
     const token = jwt.sign(
-      { userRole: 'student', username: student.username, studentId: student._id },
+      {
+        userRole: 'student',
+        username: student.username,
+        studentId: student._id,
+        userType: 'student',
+        role: 'student',
+      },
       JWT_SECRET,
       { expiresIn }
     );
