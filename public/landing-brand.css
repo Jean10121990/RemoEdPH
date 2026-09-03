@@ -816,38 +816,39 @@ body.page-index .plans-register-note {
 
 body.page-index #plans .plan-headline {
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
   width: 100%;
   margin: 0 0 4px;
   min-width: 0;
+  text-align: center;
 }
 
 body.page-index #plans .plan-headline .plan-name,
 body.page-index #plans .plan-name {
-  font-size: 1rem !important;
-  line-height: 1.2 !important;
+  font-size: 1.05rem !important;
+  line-height: 1.25 !important;
   font-weight: 800;
   margin: 0 !important;
-  flex: 1 1 auto;
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  width: 100%;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  text-align: center;
   text-shadow: none;
 }
 
 body.page-index #plans .plan-headline .plan-price,
 body.page-index #plans .plan-price {
-  font-size: 1.05rem !important;
-  line-height: 1.2 !important;
+  font-size: 1.15rem !important;
+  line-height: 1.25 !important;
   font-weight: 800 !important;
   margin: 0 !important;
+  width: 100%;
   white-space: nowrap;
-  flex: 0 0 auto;
+  text-align: center;
   text-shadow: none;
 }
 
@@ -856,11 +857,14 @@ body.page-index #plans .plan-bundle {
   font-weight: 700;
   color: #4a6fa5;
   margin: 0 0 8px;
+  text-align: center;
+  width: 100%;
 }
 
 body.page-index #plans .plan-price-local {
   font-size: 0.82rem;
   margin-bottom: 6px;
+  text-align: center;
 }
 
 body.page-index .home-teachers-grid {
