@@ -2406,7 +2406,7 @@ body.page-forgot-password{
         }.page-index /* Subscription Plans */
         .plans-grid{
             display: grid;
-            grid-template-columns: repeat(4, minmax(220px, 1fr));
+            grid-template-columns: repeat(4, minmax(0, 1fr));
             gap: 24px;
             margin-top: 40px;
             align-items: stretch; /* ensure equal-height cards per row */
@@ -2497,12 +2497,12 @@ body.page-forgot-password{
             margin: 0 auto 12px auto;
             width: fit-content;
         }.page-index .plan-name{
-            font-size: 1.8rem;
+            font-size: 1.05rem;
             font-weight: 800;
             color: var(--plan-title, #1CA7E7);
             margin-bottom: 10px;
         }.page-index .plan-price{
-            font-size: 3rem;
+            font-size: 1.15rem;
             font-weight: 800;
             color: var(--plan-title, #1CA7E7);
             margin-bottom: 4px;
@@ -2580,7 +2580,7 @@ body.page-forgot-password{
             transform: translateY(-2px);
             box-shadow: 0 6px 20px rgba(28, 167, 231, 0.4);
         }@media (max-width: 1100px){.page-index .plans-grid{
-                grid-template-columns: repeat(2, minmax(220px, 1fr));
+                grid-template-columns: repeat(2, minmax(0, 1fr));
             }
         }@media (max-width: 560px){.page-index .plans-grid{
                 grid-template-columns: 1fr;
