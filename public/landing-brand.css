@@ -619,77 +619,71 @@ body.page-index #plans .plans-grid {
 body.page-index #plans .plan-card {
   min-width: 0;
   overflow: visible;
-  padding: 32px 16px 22px;
+  padding: 40px 16px 22px;
   box-sizing: border-box;
   background: #ffffff !important;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 /* Plan cards — RemoEd character art (PNGs with alpha; tray stays transparent) */
 body.page-index #plans .plan-icon.plan-icon--character {
   width: 100%;
   max-width: 120px;
-  height: 112px;
-  min-height: 112px;
-  margin-bottom: 10px;
-  padding: 2px 4px 0;
+  height: 120px;
+  min-height: 120px;
+  margin: 0 auto 12px;
+  padding: 0;
   overflow: visible;
   background: transparent !important;
   border: none !important;
   box-shadow: none;
   border-radius: 0;
+  flex: 0 0 120px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
 }
 
 body.page-index #plans .plan-icon.plan-icon--character img {
   width: 100%;
   height: 100%;
+  max-height: 120px;
   object-fit: contain;
   object-position: center bottom;
   display: block;
 }
 
-/* Scholar: gold ribbon + save badge stacked (badge under ribbon) */
-body.page-index #plans .plan-recommended-stack {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  z-index: 6;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  width: max-content;
-  max-width: calc(100% - 24px);
-  transform: translate(-50%, -32%);
-  pointer-events: none;
+/* Scholar: Recommended top-left; Save badge top-right — must not overlap */
+body.page-index #plans .plan-badge {
+  z-index: 7;
 }
 
-body.page-index #plans .plan-recommended-stack .plan-recommended-ribbon {
-  position: relative;
-  top: auto;
-  left: auto;
-  transform: none;
-}
-
-body.page-index #plans .plan-recommended-stack .plan-badge {
-  position: relative !important;
-  top: auto !important;
-  right: auto !important;
+body.page-index #plans .plan-card.plan-recommended > .plan-badge {
+  top: -15px !important;
+  right: 10px !important;
+  left: auto !important;
+  z-index: 7;
 }
 
 body.page-index #plans .plan-recommended-ribbon {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  z-index: 5;
-  transform: translate(-50%, -46%);
-  padding: 8px 22px 10px;
+  position: absolute !important;
+  top: 10px !important;
+  left: 10px !important;
+  right: auto !important;
+  bottom: auto !important;
+  z-index: 6;
+  transform: none !important;
+  margin: 0 !important;
+  padding: 6px 12px !important;
   border-radius: 999px;
   font-family: "Quicksand", "Fredoka", "Segoe UI", sans-serif;
-  font-size: 0.78rem;
+  font-size: 0.65rem !important;
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: #1f1608;
   background: linear-gradient(
@@ -707,6 +701,11 @@ body.page-index #plans .plan-recommended-ribbon {
     inset 0 1px 0 rgba(255, 255, 255, 0.65);
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
   pointer-events: none;
+  max-width: 46%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -727,7 +726,7 @@ body.page-index #plans .plan-recommended-ribbon {
 
 body.page-index #plans .plan-card.plan-scholar.plan-recommended {
   z-index: 3;
-  padding-top: 58px;
+  padding-top: 40px;
   border-color: rgba(179, 135, 40, 0.55) !important;
   box-shadow:
     0 16px 40px rgba(36, 49, 66, 0.12),
@@ -751,7 +750,7 @@ body.page-index #plans .plan-card.plan-scholar.plan-recommended:hover {
 @media (max-width: 1100px) {
   body.page-index #plans .plan-card.plan-scholar.plan-recommended {
     transform: none;
-    padding-top: 52px;
+    padding-top: 40px;
   }
 
   body.page-index #plans .plan-card.plan-scholar.plan-recommended:hover {
