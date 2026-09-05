@@ -856,8 +856,8 @@ body.page-admin-lessons-library{
             font-size: 0.875rem;
         }.page-admin-lessons-library .library-container{
             display: grid;
-            grid-template-columns: 1fr 2fr;
-            gap: 2rem;
+            grid-template-columns: minmax(0, 1.85fr) minmax(260px, 1fr);
+            gap: 1.5rem;
             flex: 1;
             min-height: 0;
             overflow: hidden;
@@ -11611,8 +11611,8 @@ body.page-teacher-lessons-library{
             font-size: 0.875rem;
         }.page-teacher-lessons-library .library-container{
             display: grid;
-            grid-template-columns: 1fr 2fr;
-            gap: 2rem;
+            grid-template-columns: minmax(0, 1.85fr) minmax(260px, 1fr);
+            gap: 1.5rem;
         }@media (max-width: 1200px){.page-teacher-lessons-library .library-container{
                 grid-template-columns: 1fr;
             }
