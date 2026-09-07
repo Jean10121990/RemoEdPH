@@ -411,11 +411,32 @@ router.get('/system-stats', requireAdminApiChain, requireSuperAdminDb, async (re
   }
 });
 
-const PM2_PROCESS_NAME_RAW = String(process.env.SUPER_MONITOR_PM2_PROCESS || 'remoed-1').trim() || 'remoed-1';
-const PM2_PROCESS_NAME = /^[a-zA-Z0-9_.-]+$/.test(PM2_PROCESS_NAME_RAW) ? PM2_PROCESS_NAME_RAW : 'remoed-1';
+const PM2_PROCESS_NAME_RAW = String(process.env.SUPER_MONITOR_PM2_PROCESS || 'remoed-api').trim() || 'remoed-api';
+const PM2_PROCESS_NAME = /^[a-zA-Z0-9_.-]+$/.test(PM2_PROCESS_NAME_RAW) ? PM2_PROCESS_NAME_RAW : 'remoed-api';
 const PM2_RESTART_DISABLED =
   process.env.SUPER_MONITOR_PM2_RESTART_ENABLED === '0' ||
   String(process.env.SUPER_MONITOR_PM2_RESTART_ENABLED || '').toLowerCase() === 'false';
+
+function stripAnsi(s) {
+  return String(s || '').replace(/\u001b\[[0-9;]*m/g, '').trim();
+}
+
+async function listPm2ProcessNames() {
+  try {
+    const { stdout } = await execFileAsync('pm2', ['jlist'], {
+      timeout: 15000,
+      windowsHide: true,
+      maxBuffer: 4 * 1024 * 1024,
+    });
+    const list = JSON.parse(String(stdout || '[]'));
+    if (!Array.isArray(list)) return [];
+    return list
+      .map((p) => (p && p.name ? String(p.name) : ''))
+      .filter(Boolean);
+  } catch (_) {
+    return [];
+  }
+}
 
 router.post('/system-emergency-pm2-restart', requireAdminApiChain, requireSuperAdminDb, async (req, res) => {
   if (PM2_RESTART_DISABLED) {
@@ -447,14 +468,24 @@ router.post('/system-emergency-pm2-restart', requireAdminApiChain, requireSuperA
     return res.json({
       success: true,
       message: `PM2 restart completed for "${PM2_PROCESS_NAME}".`,
-      output: String(stdout || '').slice(0, 8000),
-      stderr: String(stderr || '').slice(0, 2000),
+      output: stripAnsi(stdout).slice(0, 8000),
+      stderr: stripAnsi(stderr).slice(0, 2000),
     });
   } catch (err) {
     console.error('POST /system-emergency-pm2-restart:', err);
+    const raw = stripAnsi((err && err.stderr) || (err && err.message) || 'PM2 restart failed');
+    let message = raw || 'PM2 restart failed. Ensure PM2 is installed and on PATH.';
+    if (/not found/i.test(raw)) {
+      const names = await listPm2ProcessNames();
+      message =
+        `PM2 process "${PM2_PROCESS_NAME}" not found.` +
+        (names.length
+          ? ` Running processes: ${names.join(', ')}. Set SUPER_MONITOR_PM2_PROCESS to the correct name.`
+          : ' Set SUPER_MONITOR_PM2_PROCESS in .env to your PM2 app name (e.g. remoed-api).');
+    }
     return res.status(500).json({
       success: false,
-      message: err.message || 'PM2 restart failed. Ensure PM2 is installed and on PATH.',
+      message,
     });
   }
 });

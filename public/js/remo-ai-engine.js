@@ -30,13 +30,13 @@
       answer: function (ctx) {
         return {
           text:
-            "Hello! I'm Remo AI Assistant 👋 I help with the teacher portal — schedule, classes, lessons, teaching fee/payslips, profile privacy, and troubleshooting.\n\n" +
+            "Hello! I'm Remo AI Assistant 👋 I help with the teacher portal — schedule, classes, lessons, teaching fee/payslips, profile privacy, RemoEd FAQ, and troubleshooting.\n\n" +
             (ctx.pageHint ? '**You are on:** ' + ctx.pageHint + '\n\n' : '') +
             'Ask me anything, or tap a quick action below.',
           buttons: [
             btn('Troubleshooting', '🔧', 'troubleshooting'),
             btn('Teaching Fee / Payslip', '💰', 'payslip'),
-            btn('Schedule Help', '📅', 'schedule'),
+            btn('RemoEd FAQ', '❓', 'faq'),
             btn('Start Tour', '🎯', 'tour'),
           ],
         };
@@ -66,12 +66,13 @@
             "📅 **Schedule** — open slots, bookings, cut-offs\n" +
             "💰 **Pay** — teaching fee, payslip, payout dates\n" +
             "👤 **Profile** — nickname, TOS, privacy, documents\n" +
+            "❓ **RemoEd FAQ** — HEART, curriculum, plans, mascots\n" +
             "📊 **Performance** — attendance, PD, KPIs\n\n" +
             (ctx.pageHint ? 'Tip: since you are on **' + ctx.pageHint + '**, ask about that page specifically.\n\n' : '') +
             'What do you need?',
           buttons: [
             btn('Troubleshooting', '🔧', 'troubleshooting'),
-            btn('Lessons', '📚', 'lesson support'),
+            btn('RemoEd FAQ', '❓', 'faq'),
             btn('Payslip', '🧾', 'payslip'),
             btn('Nickname privacy', '🛡️', 'nickname'),
           ],
@@ -580,6 +581,74 @@
     },
   ];
 
+  function buildFaqIntents() {
+    var data = global.RemoedFaqData;
+    if (!data || !data.sections || !data.sections.length) return [];
+
+    var out = [];
+    out.push({
+      id: 'company_faq',
+      keywords: [
+        'faq',
+        'frequently asked',
+        'company faq',
+        'remoed faq',
+        'questions about remoed',
+      ],
+      weight: 3.5,
+      answer: function () {
+        var lines = [
+          '**RemoEd FAQ** — I can answer company, culture, curriculum, and plan questions.\n',
+        ];
+        (data.sections || []).forEach(function (sec) {
+          lines.push('**' + sec.title + '**');
+          (sec.items || []).forEach(function (item) {
+            lines.push('• ' + item.q);
+          });
+          lines.push('');
+        });
+        lines.push('Ask any question above, or open the full FAQ page.');
+        return {
+          text: lines.join('\n'),
+          buttons: [
+            btn('What is RemoEd?', '📘', 'what is remoed'),
+            btn('HEART framework', '❤️', 'heart framework'),
+            btn('Curriculum levels', '🌱', 'curriculum levels'),
+            btn('Plans / pricing', '💳', 'subscription plans'),
+            btn('Open full FAQ', '📄', { action: go('faq.html') }),
+          ],
+        };
+      },
+    });
+
+    (data.sections || []).forEach(function (sec) {
+      (sec.items || []).forEach(function (item) {
+        if (!item || !item.id) return;
+        out.push({
+          id: 'faq_' + item.id,
+          keywords: item.keywords || [],
+          weight: item.weight || 3.5,
+          followUps: ['company_faq'],
+          answer: function () {
+            return {
+              text: '**' + item.q + '**\n\n' + item.a,
+              buttons: [
+                btn('More FAQ topics', '❓', 'faq'),
+                btn('Full FAQ page', '📄', { action: go('faq.html') }),
+              ],
+            };
+          },
+        });
+      });
+    });
+
+    return out;
+  }
+
+  function allIntents() {
+    return INTENTS.concat(buildFaqIntents());
+  }
+
   var PAGE_HINTS = [
     { test: /teacher-dashboard/, hint: 'Dashboard', key: 'dashboard' },
     { test: /teacher-service-fee/, hint: 'Teaching Fee', key: 'service-fee' },
@@ -646,10 +715,10 @@
       text:
         "I'm not fully sure what you mean yet, but I can still help.\n\n" +
         (ctx.pageHint ? 'You are on **' + ctx.pageHint + '**. ' : '') +
-        'Try asking about troubleshooting, lessons, schedule, payslip, nickname, or TOS — or pick a topic:',
+        'Try asking about troubleshooting, lessons, schedule, payslip, RemoEd FAQ, nickname, or TOS — or pick a topic:',
       buttons: [
         btn('Troubleshooting', '🔧', 'troubleshooting'),
-        btn('Lesson Support', '📚', 'lesson support'),
+        btn('RemoEd FAQ', '❓', 'faq'),
         btn('Payslip / Fee', '💰', 'payslip'),
         btn('Schedule', '📅', 'schedule'),
       ],
@@ -671,8 +740,9 @@
 
     var best = null;
     var bestScore = 0;
-    for (var i = 0; i < INTENTS.length; i++) {
-      var intent = INTENTS[i];
+    var intents = allIntents();
+    for (var i = 0; i < intents.length; i++) {
+      var intent = intents[i];
       var s = scoreIntent(intent, message, page.key, options.lastIntent);
       if (s > bestScore) {
         bestScore = s;
@@ -698,7 +768,7 @@
   function contextualGreeting() {
     var page = detectPage(global.location && global.location.pathname);
     var base =
-      "Hello! I'm Remo AI Assistant 👋 I can help with troubleshooting, lessons, schedule, teaching fee/payslips, and profile privacy.";
+      "Hello! I'm Remo AI Assistant 👋 I can help with troubleshooting, lessons, schedule, teaching fee/payslips, RemoEd FAQ, and profile privacy.";
     if (page.hint) {
       base += "\n\nYou're on **" + page.hint + "** — ask me about this page, or choose a quick action.";
     } else {
@@ -712,5 +782,6 @@
     contextualGreeting: contextualGreeting,
     detectPage: detectPage,
     intents: INTENTS,
+    faqIntents: buildFaqIntents,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

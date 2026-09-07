@@ -1,9 +1,29 @@
 /**
  * Enhances existing Remo AI chatbot instances with RemoAIEngine (zero-token).
  * Load after remo-ai-engine.js. Patches window.chatbot.processMessage when ready.
+ * Also ensures remoed-faq-data.js is available for company FAQ answers.
  */
 (function () {
   'use strict';
+
+  function loadFaqData(done) {
+    if (window.RemoedFaqData) {
+      done();
+      return;
+    }
+    var existing = document.querySelector('script[data-remoed-faq]');
+    if (existing) {
+      existing.addEventListener('load', done);
+      existing.addEventListener('error', done);
+      return;
+    }
+    var s = document.createElement('script');
+    s.src = 'js/remoed-faq-data.js?v=1';
+    s.setAttribute('data-remoed-faq', '1');
+    s.onload = done;
+    s.onerror = done;
+    document.head.appendChild(s);
+  }
 
   function startTourSoon() {
     setTimeout(function () {
@@ -72,18 +92,20 @@
 
   function tryEnhance() {
     var bot = window.chatbot;
-    if (bot) return enhanceBot(bot);
-    return false;
+    if (!bot || !window.RemoAIEngine) return false;
+    return enhanceBot(bot);
   }
 
-  var tries = 0;
-  var timer = setInterval(function () {
-    if (tryEnhance() || ++tries > 50) clearInterval(timer);
-  }, 100);
+  loadFaqData(function () {
+    var tries = 0;
+    var timer = setInterval(function () {
+      if (tryEnhance() || ++tries > 50) clearInterval(timer);
+    }, 100);
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', tryEnhance);
-  } else {
-    tryEnhance();
-  }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', tryEnhance);
+    } else {
+      tryEnhance();
+    }
+  });
 })();
