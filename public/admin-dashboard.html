@@ -846,8 +846,9 @@
 
                         <!-- Main Dashboard Content -->
             <div class="dashboard-main">
-                <!-- Admin time tracking (same flow as teacher) -->
-                <div class="remoed-section" id="admin-time-tracking-card" style="margin-bottom: 12px;">
+                <!-- Top row: Time Log | Announcements (same layout as teacher dashboard) -->
+                <div class="dashboard-top-row">
+                <div class="remoed-section dashboard-top-row__time" id="admin-time-tracking-card">
                     <div class="remoed-section-title" style="display: flex; align-items: center; gap: 10px; color: #1ca7e7; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px;">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"/><path d="M12.5 7H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
                         Time Tracking
@@ -878,6 +879,22 @@
                         </div>
                         <div id="time-status-message" style="margin-top: 10px; font-size: 0.8rem; display: none; padding: 8px; border-radius: 4px;"></div>
                     </div>
+                </div>
+
+                <div class="remoed-section dashboard-top-row__announcements">
+                    <div class="remoed-section-title" style="display: flex; align-items: center; justify-content: space-between; gap: 10px; color: #1ca7e7; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px;">
+                        <span style="display:flex;align-items:center;gap:10px;">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                            </svg>
+                            Announcements
+                        </span>
+                        <a href="admin-announcements.html" style="font-size:0.8rem;font-weight:600;color:#667eea;text-decoration:none;">Manage →</a>
+                    </div>
+                    <div id="admin-announcement-content" style="background: #fafdff; border-radius: 8px; padding: 10px; margin-bottom: 0; max-height: 280px; overflow-y: auto;">
+                        <div style="color:#888;">Loading announcements…</div>
+                    </div>
+                </div>
                 </div>
                 <!-- First Row - Main Metrics -->
                 <div class="metrics-row">
@@ -1305,6 +1322,7 @@
             loadQuickStats();
             loadRecentActivity();
             createCharts();
+            loadAdminAnnouncements();
             
             // Auto-refresh dashboard data every 30 seconds
             setInterval(() => {
@@ -1317,6 +1335,42 @@
             // Referral links
             loadAdminReferralLinks();
         });
+
+        async function loadAdminAnnouncements() {
+            const listDiv = document.getElementById('admin-announcement-content');
+            if (!listDiv) return;
+            try {
+                const response = await fetch('/api/announcement');
+                const list = await response.json();
+                if (!Array.isArray(list) || !list.length) {
+                    listDiv.innerHTML = '<div style="color:#888;">No announcements at this time.</div>';
+                    return;
+                }
+                listDiv.innerHTML = list.map(function (a) {
+                    var audienceLabel = a.audience === 'all' ? 'All users'
+                        : a.audience === 'teachers' ? 'Teachers'
+                        : a.audience === 'students' ? 'Students'
+                        : (a.role || 'All');
+                    var when = a.updatedAt && window.TimezoneUtils && window.TimezoneUtils.formatDateTimePhilippines
+                        ? window.TimezoneUtils.formatDateTimePhilippines(new Date(a.updatedAt))
+                        : (a.updatedAt ? new Date(a.updatedAt).toLocaleString() : '');
+                    var content = String(a.content || '')
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;');
+                    return '<div style="background:#fff;border:1px solid #e9ecef;border-radius:8px;padding:12px 14px;margin-bottom:10px;">'
+                        + '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">'
+                        + '<span style="font-size:0.75rem;font-weight:600;color:#667eea;background:#eef2ff;padding:2px 8px;border-radius:999px;">' + audienceLabel + '</span>'
+                        + '<span style="font-size:0.8rem;color:#888;">' + when + '</span>'
+                        + '</div>'
+                        + '<div style="font-weight:500;white-space:pre-line;color:#333;">' + content + '</div>'
+                        + '</div>';
+                }).join('');
+            } catch (error) {
+                console.error('Error loading announcements:', error);
+                listDiv.innerHTML = '<div style="color:#888;">Unable to load announcements</div>';
+            }
+        }
 
         async function loadAdminReferralLinks() {
             try {
