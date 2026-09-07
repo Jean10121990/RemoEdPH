@@ -10,16 +10,20 @@ router.get('/announcement', async (req, res) => {
     const role = req.query.role;
     let filter = {};
     if (role === 'teacher') {
+      // Teachers see all-users + teachers-only (not students-only or admins-only)
       filter = { $or: [ { role: 'admin' }, { role: 'teacher' } ] };
     } else if (role === 'student') {
       filter = { $or: [ { role: 'admin' }, { role: 'student' } ] };
+    } else if (role === 'admin') {
+      // Admins see all-users + admins-only (and may also see scoped posts when managing)
+      filter = { $or: [ { role: 'admin' }, { role: 'admins' }, { role: 'teacher' }, { role: 'student' } ] };
     }
     const anns = await Announcement.find(filter).sort({ updatedAt: -1 });
     
     // Transform the data to include audience field for frontend compatibility
     const transformedAnns = anns.map(ann => ({
       ...ann.toObject(),
-      audience: ann.role === 'admin' ? 'all' : ann.role + 's' // 'admin' -> 'all', 'teacher' -> 'teachers', 'student' -> 'students'
+      audience: audienceFromRole(ann.role)
     }));
     
     res.json(transformedAnns);
@@ -28,6 +32,22 @@ router.get('/announcement', async (req, res) => {
     res.status(500).json({ success: false, message: 'Error fetching announcements' });
   }
 });
+
+function audienceFromRole(role) {
+  if (role === 'admin') return 'all'; // legacy: admin role meant all users
+  if (role === 'admins') return 'admins';
+  if (role === 'teacher') return 'teachers';
+  if (role === 'student') return 'students';
+  return role;
+}
+
+function roleFromAudience(audience) {
+  if (audience === 'teachers') return 'teacher';
+  if (audience === 'students') return 'student';
+  if (audience === 'all') return 'admin'; // legacy mapping
+  if (audience === 'admins') return 'admins';
+  return null;
+}
 
 // Post new announcement (admin only)
 router.post('/announcement', async (req, res) => {
@@ -38,15 +58,8 @@ router.post('/announcement', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Content and audience required' });
     }
     
-    // Map audience to role for the database
-    let role;
-    if (audience === 'teachers') {
-      role = 'teacher';
-    } else if (audience === 'students') {
-      role = 'student';
-    } else if (audience === 'all') {
-      role = 'admin'; // For all users, we'll use admin role
-    } else {
+    const role = roleFromAudience(audience);
+    if (!role) {
       return res.status(400).json({ success: false, message: 'Invalid audience' });
     }
     
@@ -73,7 +86,7 @@ router.post('/announcement', async (req, res) => {
       }
     }
     
-    res.json({ success: true, announcement: ann });
+    res.json({ success: true, announcement: { ...ann.toObject(), audience: audienceFromRole(ann.role) } });
   } catch (error) {
     console.error('Error creating announcement:', error);
     res.status(500).json({ success: false, message: 'Error creating announcement' });
@@ -90,15 +103,8 @@ router.put('/announcement/:id', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Content and audience required' });
     }
 
-    // Map audience back to role
-    let role;
-    if (audience === 'teachers') {
-      role = 'teacher';
-    } else if (audience === 'students') {
-      role = 'student';
-    } else if (audience === 'all') {
-      role = 'admin';
-    } else {
+    const role = roleFromAudience(audience);
+    if (!role) {
       return res.status(400).json({ success: false, message: 'Invalid audience' });
     }
 
@@ -112,7 +118,7 @@ router.put('/announcement/:id', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Announcement not found' });
     }
 
-    res.json({ success: true, announcement: updated });
+    res.json({ success: true, announcement: { ...updated.toObject(), audience: audienceFromRole(updated.role) } });
   } catch (error) {
     console.error('Error updating announcement:', error);
     res.status(500).json({ success: false, message: 'Error updating announcement' });

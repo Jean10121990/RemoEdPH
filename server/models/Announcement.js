@@ -7,7 +7,8 @@ const announcementSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['teacher', 'student', 'admin'],
+    /** `admin` = all users (legacy); `admins` = admins only */
+    enum: ['teacher', 'student', 'admin', 'admins'],
     required: true
   },
   createdAt: {

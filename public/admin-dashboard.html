@@ -1350,6 +1350,7 @@
                     var audienceLabel = a.audience === 'all' ? 'All users'
                         : a.audience === 'teachers' ? 'Teachers'
                         : a.audience === 'students' ? 'Students'
+                        : a.audience === 'admins' ? 'Admins'
                         : (a.role || 'All');
                     var when = a.updatedAt && window.TimezoneUtils && window.TimezoneUtils.formatDateTimePhilippines
                         ? window.TimezoneUtils.formatDateTimePhilippines(new Date(a.updatedAt))

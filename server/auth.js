@@ -1555,32 +1555,193 @@ router.get('/users', async (req, res) => {
   }
 });
 
-// Change user role (move between collections)
+// Change user role (move between Teacher / Student / Admin collections)
 router.post('/user-role', async (req, res) => {
-  const { username, fromRole, toRole } = req.body;
-  if (!username || !fromRole || !toRole || fromRole === toRole) {
-    return res.status(400).json({ success: false, message: 'Invalid request' });
+  try {
+    const { username, fromRole, toRole, userId } = req.body;
+    const allowed = ['teacher', 'student', 'admin'];
+    if (!fromRole || !toRole || fromRole === toRole || !allowed.includes(fromRole) || !allowed.includes(toRole)) {
+      return res.status(400).json({ success: false, message: 'Invalid request' });
+    }
+    if (!username && !userId) {
+      return res.status(400).json({ success: false, message: 'Username or user id is required' });
+    }
+
+    const escapeRegex = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const modelFor = (role) => {
+      if (role === 'teacher') return Teacher;
+      if (role === 'student') return Student;
+      return Admin;
+    };
+
+    async function findAccount(Model, { id, uname, email }) {
+      if (id && mongoose.Types.ObjectId.isValid(String(id))) {
+        const byId = await Model.findById(id);
+        if (byId) return byId;
+      }
+      const candidates = [];
+      if (uname && String(uname).trim()) candidates.push(String(uname).trim());
+      if (email && String(email).trim()) candidates.push(String(email).trim());
+      for (const c of candidates) {
+        let doc = await Model.findOne({ username: c });
+        if (doc) return doc;
+        doc = await Model.findOne({ username: new RegExp('^' + escapeRegex(c) + '$', 'i') });
+        if (doc) return doc;
+        if (Model === Teacher) {
+          doc = await Model.findOne({
+            $or: [
+              { teacherId: c },
+              { teacherId: new RegExp('^' + escapeRegex(c) + '$', 'i') },
+              { email: c },
+              { email: new RegExp('^' + escapeRegex(c) + '$', 'i') },
+            ],
+          });
+          if (doc) return doc;
+        }
+        if (Model === Admin || Model === Student) {
+          doc = await Model.findOne({
+            $or: [
+              { email: c },
+              { email: new RegExp('^' + escapeRegex(c) + '$', 'i') },
+            ],
+          });
+          if (doc) return doc;
+        }
+      }
+      return null;
+    }
+
+    const Source = modelFor(fromRole);
+    const Target = modelFor(toRole);
+    const userDoc = await findAccount(Source, { id: userId, uname: username });
+    if (!userDoc) {
+      return res.status(404).json({
+        success: false,
+        message: `User not found in ${fromRole} accounts. They may already have been moved, or the username does not match.`,
+      });
+    }
+
+    const uname = String(userDoc.username || username || '').trim();
+    const email = (userDoc.email && String(userDoc.email).trim()) || '';
+    const passwordHash = userDoc.passwordHash || userDoc.password || null;
+    if (!uname) {
+      return res.status(400).json({ success: false, message: 'Source account has no username' });
+    }
+    if (!passwordHash && (toRole === 'teacher' || toRole === 'student')) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot convert to teacher/student: source account has no password hash. Set a password first.',
+      });
+    }
+
+    // Dual accounts (same person as teacher AND admin) are common for staff.
+    // Never auto-delete the source when the target already exists — that is how
+    // TeacherJean was orphaned (teacher removed, then admin→teacher failed).
+    const existingTarget = await findAccount(Target, { uname, email: email || uname });
+    if (existingTarget) {
+      return res.status(409).json({
+        success: false,
+        message:
+          `${uname} already has a ${toRole} account. ` +
+          `Role change was cancelled to avoid deleting the ${fromRole} login. ` +
+          `Use Suspend/Delete on the account you want to remove, or keep both roles.`,
+      });
+    }
+
+    // Snapshot source before any write so we can restore if delete fails after create.
+    const archivePayload = {
+      fromRole,
+      toRole,
+      archivedAt: new Date(),
+      source: userDoc.toObject ? userDoc.toObject() : userDoc,
+    };
+    try {
+      await mongoose.connection.db.collection('rolechangearchives').insertOne(archivePayload);
+    } catch (archErr) {
+      console.warn('rolechangearchives insert failed (continuing):', archErr && archErr.message);
+    }
+
+    // Create target first, then delete source — avoids orphaning if create fails.
+    const sharedName = {
+      firstName: userDoc.firstName || '',
+      lastName: userDoc.lastName || '',
+      status: userDoc.status === 'suspended' ? 'suspended' : 'active',
+    };
+
+    let createdId = null;
+    if (toRole === 'teacher') {
+      const teacherId =
+        (userDoc.teacherId && String(userDoc.teacherId).trim()) ||
+        email ||
+        uname;
+      const created = await Teacher.create({
+        teacherId,
+        username: uname,
+        password: passwordHash,
+        email: email || '',
+        firstName: sharedName.firstName,
+        lastName: sharedName.lastName,
+        nickname: userDoc.nickname || sharedName.firstName || uname,
+        status: sharedName.status,
+        hasGeneratedPassword: !!userDoc.hasGeneratedPassword,
+      });
+      createdId = created._id;
+    } else if (toRole === 'student') {
+      const studentPayload = {
+        username: uname,
+        password: passwordHash,
+        firstName: sharedName.firstName || userDoc.studentFirstName || '',
+        lastName: sharedName.lastName || userDoc.studentLastName || '',
+        status: sharedName.status,
+        hasGeneratedPassword: !!userDoc.hasGeneratedPassword,
+      };
+      if (email) studentPayload.email = email;
+      const created = await Student.create(studentPayload);
+      createdId = created._id;
+    } else if (toRole === 'admin') {
+      const created = await Admin.create({
+        username: uname,
+        email: email || null,
+        passwordHash: passwordHash,
+        password: userDoc.password || null,
+        firstName: sharedName.firstName,
+        lastName: sharedName.lastName,
+        status: sharedName.status,
+        adminRole: 'admin_hr',
+        hasGeneratedPassword: !!userDoc.hasGeneratedPassword,
+      });
+      createdId = created._id;
+    }
+
+    try {
+      await Source.findByIdAndDelete(userDoc._id);
+    } catch (delErr) {
+      // Roll back the newly created target so we never leave a half-migrated user.
+      console.error('Role change: failed to delete source after create; rolling back target', delErr);
+      if (createdId) {
+        await Target.findByIdAndDelete(createdId).catch(() => {});
+      }
+      return res.status(500).json({
+        success: false,
+        message: 'Role change failed while removing the old account. No changes were kept.',
+      });
+    }
+
+    res.json({
+      success: true,
+      message: `${uname} is now a ${toRole}`,
+    });
+  } catch (err) {
+    console.error('Error changing user role:', err);
+    const msg = err && err.message ? String(err.message) : 'Failed to change user role';
+    if (err && err.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: 'A user with this username or email already exists in the target role.',
+      });
+    }
+    res.status(500).json({ success: false, message: msg });
   }
-  let userDoc = null;
-  if (fromRole === 'teacher') {
-    userDoc = await Teacher.findOneAndDelete({ username });
-  } else if (fromRole === 'student') {
-    userDoc = await Student.findOneAndDelete({ username });
-  } else if (fromRole === 'admin') {
-    userDoc = await Admin.findOneAndDelete({ username });
-  }
-  if (!userDoc) {
-    return res.status(404).json({ success: false, message: 'User not found' });
-  }
-  // Move to new collection
-  if (toRole === 'teacher') {
-    await Teacher.create({ username, password: userDoc.password });
-  } else if (toRole === 'student') {
-    await Student.create({ username, password: userDoc.password });
-  } else if (toRole === 'admin') {
-    await Admin.create({ username, password: userDoc.password });
-  }
-  res.json({ success: true });
 });
 
 // Migration endpoint to add hasGeneratedPassword field to all users

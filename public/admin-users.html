@@ -490,7 +490,7 @@
                                     <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"/>
                                 </svg>
                             </button>
-                            <button class="action-btn btn-role" onclick="changeUserRole('${teacher.username}', 'teacher')" title="Change Role">
+                            <button class="action-btn btn-role" onclick="changeUserRole(decodeURIComponent('${encodeURIComponent(String(teacher.username || ''))}'), 'teacher', decodeURIComponent('${encodeURIComponent(String(teacher._id))}'))" title="Change Role">
                                 <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                     <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
                                 </svg>
@@ -571,7 +571,7 @@
                                     <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"/>
                                 </svg>
                             </button>
-                            <button class="action-btn btn-role" onclick="changeUserRole('${student.username}', 'student')" title="Change Role">
+                            <button class="action-btn btn-role" onclick="changeUserRole(decodeURIComponent('${encodeURIComponent(String(student.username || ''))}'), 'student', decodeURIComponent('${encodeURIComponent(String(student._id))}'))" title="Change Role">
                                 <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                     <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
                                 </svg>
@@ -637,7 +637,7 @@
                                     <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"/>
                                 </svg>
                             </button>
-                            <button class="action-btn btn-role" onclick="changeUserRole('${admin.username}', 'admin')" title="Change Role">
+                            <button class="action-btn btn-role" onclick="changeUserRole(decodeURIComponent('${encodeURIComponent(String(admin.username || ''))}'), 'admin', decodeURIComponent('${encodeURIComponent(String(admin._id))}'))" title="Change Role">
                                 <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                     <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
                                 </svg>
@@ -924,14 +924,14 @@
         // Role change functionality
         let currentRoleChangeData = {};
 
-        function changeUserRole(username, currentRole) {
-            currentRoleChangeData = { username, currentRole };
+        function changeUserRole(username, currentRole, userId) {
+            currentRoleChangeData = { username, currentRole, userId: userId || '' };
             document.getElementById('role-change-username').textContent = username;
             document.getElementById('current-role').textContent = currentRole.charAt(0).toUpperCase() + currentRole.slice(1);
             
             // Set the new role dropdown to a different role
             const newRoleSelect = document.getElementById('new-role');
-            newRoleSelect.value = currentRole === 'teacher' ? 'student' : currentRole === 'student' ? 'admin' : 'teacher';
+            newRoleSelect.value = currentRole === 'teacher' ? 'admin' : currentRole === 'student' ? 'teacher' : 'teacher';
             
             document.getElementById('role-modal').style.display = 'block';
         }
@@ -943,7 +943,7 @@
 
         async function confirmRoleChange() {
             const newRole = document.getElementById('new-role').value;
-            const { username, currentRole } = currentRoleChangeData;
+            const { username, currentRole, userId } = currentRoleChangeData;
             
             if (currentRole === newRole) {
                 alert('Please select a different role');
@@ -952,27 +952,27 @@
             
             if (confirm(`Are you sure you want to change ${username} from ${currentRole} to ${newRole}?`)) {
                 try {
-                    // Use the correct API route mounted under /api/auth
-                    const response = await fetch('/api/auth/user-role', {
+                    const response = await fetch('/api/auth/user-role', adminApiFetchInit({
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
                         },
                         body: JSON.stringify({
                             username: username,
+                            userId: userId || undefined,
                             fromRole: currentRole,
                             toRole: newRole
                         })
-                    });
+                    }));
                     
-                    const data = await response.json();
+                    const data = await response.json().catch(function () { return {}; });
                     
                     if (data.success) {
-                        alert(`User role changed successfully! ${username} is now a ${newRole}`);
+                        alert(data.message || `User role changed successfully! ${username} is now a ${newRole}`);
                         closeRoleModal();
                         loadUsers(); // Reload the current tab
                     } else {
-                        alert(`Error: ${data.message || 'Failed to change user role'}`);
+                        alert(`Error: ${data.message || data.error || 'Failed to change user role'}`);
                     }
                 } catch (error) {
                     console.error('Error changing user role:', error);
