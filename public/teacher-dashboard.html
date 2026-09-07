@@ -2648,7 +2648,7 @@
             </div>
             <div class="message-content">
                 <strong>Hello! I'm Remo AI Assistant 👋</strong><br>
-                I'm here to help you with troubleshooting, lesson support, and any questions about the platform. How can I assist you today?
+                Ask in plain English about troubleshooting, lessons, schedule, teaching fee/payslips, nickname privacy, or legal docs — I'll guide you with clear steps (no wait for a cloud AI).
             </div>
         </div>
     </div>
@@ -2751,7 +2751,7 @@
 
 <script>
     // Remo AI Chatbot Functionality
-    const chatbot = {
+    window.chatbot = {
         isOpen: false,
         messages: [],
         
@@ -3276,6 +3276,8 @@
         chatbot.init();
     });
 </script>
+<script src="js/remo-ai-engine.js?v=smart-1"></script>
+<script src="js/remo-ai-enhance.js?v=smart-1"></script>
 </body>
 </html>
  

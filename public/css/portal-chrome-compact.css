@@ -146,7 +146,13 @@ body.student-portal .header h1 {
   filter: none !important;
 }
 
-body.page-device-check .device-title,
+body.page-device-check .device-title {
+  color: #111827 !important;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  text-shadow: none !important;
+}
 body[class*="page-teacher-"] .device-title,
 body[class*="page-student-"] .device-title {
   color: #111827 !important;

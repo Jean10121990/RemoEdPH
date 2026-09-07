@@ -580,6 +580,79 @@ router.get('/me', async (req, res) => {
   }
 });
 
+const LEGAL_ADMIN_TOS_VERSION = 'admin-ica-2026-09';
+const LEGAL_ADMIN_PRIVACY_VERSION = 'admin-privacy-2026-09';
+
+function parseAdminLegalEffectiveDate(raw) {
+  if (raw == null || String(raw).trim() === '') return null;
+  const d = new Date(String(raw).trim());
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+async function acceptAdminLegalDocument(req, res, fieldKey, version, { requireAssignedRole = false } = {}) {
+  try {
+    const admin = await resolveAdminDoc(req);
+    if (!admin) {
+      return res.status(401).json({ success: false, error: 'Could not resolve your admin account.' });
+    }
+
+    const legalName = typeof req.body.legalName === 'string' ? req.body.legalName.trim() : '';
+    const effectiveDate = parseAdminLegalEffectiveDate(req.body.effectiveDate);
+    const assignedRole =
+      typeof req.body.assignedRole === 'string' ? req.body.assignedRole.trim() : '';
+
+    if (!legalName) {
+      return res.status(400).json({ success: false, error: 'Full legal name is required.' });
+    }
+    if (!effectiveDate) {
+      return res.status(400).json({ success: false, error: 'Effective date is required.' });
+    }
+    if (requireAssignedRole && !assignedRole) {
+      return res.status(400).json({ success: false, error: 'Assigned role / title is required.' });
+    }
+
+    const existing = admin[fieldKey] || {};
+    if (existing.accepted && existing.version === version) {
+      return res.status(409).json({
+        success: false,
+        error: 'This document has already been signed for the current version.',
+        [fieldKey]: existing,
+      });
+    }
+
+    const payload = {
+      accepted: true,
+      acceptedAt: new Date(),
+      effectiveDate,
+      legalName,
+      version,
+    };
+    if (requireAssignedRole) payload.assignedRole = assignedRole;
+
+    admin.set(fieldKey, payload);
+    await admin.save();
+
+    res.json({
+      success: true,
+      message: 'Agreement accepted and saved.',
+      [fieldKey]: payload,
+    });
+  } catch (err) {
+    console.error(`Error accepting admin legal document (${fieldKey}):`, err);
+    res.status(500).json({ success: false, error: 'Failed to save agreement acceptance.' });
+  }
+}
+
+router.post('/legal/tos/accept', (req, res) =>
+  acceptAdminLegalDocument(req, res, 'tosAgreement', LEGAL_ADMIN_TOS_VERSION, {
+    requireAssignedRole: true,
+  })
+);
+
+router.post('/legal/privacy/accept', (req, res) =>
+  acceptAdminLegalDocument(req, res, 'privacyPolicy', LEGAL_ADMIN_PRIVACY_VERSION)
+);
+
 /** Some clients request GET on the upload URL; redirect to the static file. */
 router.get('/me/profile-picture', async (req, res) => {
   try {

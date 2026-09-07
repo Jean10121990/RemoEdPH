@@ -21,21 +21,43 @@
             <div class="video-section">
                 <div class="device-title">Check Your Camera & Microphone</div>
                 <video id="video-preview" autoplay playsinline muted></video>
+                <div class="device-sysinfo" id="device-sysinfo" aria-label="System information">
+                    <div class="device-sysinfo-title">System Information</div>
+                    <dl class="device-sysinfo-list">
+                        <div class="device-sysinfo-row">
+                            <dt>Date/Time</dt>
+                            <dd id="sysinfo-datetime">Detecting…</dd>
+                        </div>
+                        <div class="device-sysinfo-row">
+                            <dt>OS</dt>
+                            <dd id="sysinfo-os">Detecting…</dd>
+                        </div>
+                        <div class="device-sysinfo-row">
+                            <dt>Processor</dt>
+                            <dd id="sysinfo-processor">Detecting…</dd>
+                        </div>
+                        <div class="device-sysinfo-row">
+                            <dt>Memory</dt>
+                            <dd id="sysinfo-memory">Detecting…</dd>
+                        </div>
+                    </dl>
+                    <p class="device-sysinfo-note">Browser-reported readiness info (exact CPU model is private).</p>
+                </div>
             </div>
             
             <div class="controls-section">
-                <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
-                  <label for="brightness-slider" style="font-size:0.98rem; color:#333; min-width:80px;">Brightness</label>
+                <div class="dc-control-row">
+                  <label for="brightness-slider">Brightness</label>
                   <input type="range" id="brightness-slider" min="0.5" max="2" step="0.01" value="1" style="flex:1;">
                 </div>
-                <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
-                  <label for="whiteness-slider" style="font-size:0.98rem; color:#333; min-width:80px;">Whiteness</label>
+                <div class="dc-control-row">
+                  <label for="whiteness-slider">Whiteness</label>
                   <input type="range" id="whiteness-slider" min="0.5" max="2" step="0.01" value="1" style="flex:1;">
                 </div>
-                <div style="display:flex; align-items:center; gap:10px; margin-bottom:18px;">
-                  <label for="beautify-slider" style="font-size:0.98rem; color:#333; min-width:80px;">Beautify</label>
+                <div class="dc-control-row">
+                  <label for="beautify-slider">Beautify</label>
                   <input type="range" id="beautify-slider" min="0" max="100" step="1" value="0" style="flex:1;">
-                  <span id="beautify-value" style="font-size:0.9rem; color:#666; min-width:30px;">0%</span>
+                  <span id="beautify-value" style="font-size:0.8rem; color:#666; min-width:28px;">0%</span>
                 </div>
                 
                 <!-- Audio Controls -->
@@ -43,7 +65,7 @@
                   <div class="control-row">
                     <label class="control-label">Volume</label>
                     <input type="range" id="volume-slider" class="volume-slider" min="0" max="100" step="1" value="50">
-                    <span id="volume-value" style="font-size:0.9rem; color:#666; min-width:30px;">50%</span>
+                    <span id="volume-value" style="font-size:0.8rem; color:#666; min-width:28px;">50%</span>
                   </div>
                   <div class="control-row">
                     <label class="control-label">Microphone</label>
@@ -55,10 +77,8 @@
                   </div>
                 </div>
                 <div id="mic-level"><div id="mic-bar"></div></div>
-                <div id="status-message" style="color:#333; margin-bottom:10px;">Checking devices...</div>
-                <div style="font-size:0.9rem; color:#666; margin-bottom:15px; line-height:1.4;">
-                    💡 <strong>Tip:</strong> Enable "Audio Feedback" to hear yourself speak and test your microphone quality
-                </div>
+                <div id="status-message">Checking devices...</div>
+                <div class="dc-tip">💡 Tip: Turn on Audio Feedback to hear yourself and test the mic.</div>
                 <button class="proceed-btn" id="proceed-btn">Proceed to Practice Room</button>
                 <button class="back-btn" id="back-dashboard-btn">Back to Dashboard</button>
             </div>
@@ -70,6 +90,161 @@
         <script src="avatar-helper.js"></script>
         <script>
         // Sidebar (avatar, username, logout) is handled by TeacherSidebar component
+
+        // --- System information under camera (browser-detectable fields) ---
+        function formatSysDateTime(d) {
+            try {
+                return d.toLocaleString('en-PH', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: true,
+                    timeZone: 'Asia/Manila',
+                }) + ' (PH)';
+            } catch (e) {
+                return d.toString();
+            }
+        }
+
+        function detectOsFromUa(ua) {
+            ua = String(ua || '');
+            if (/Windows NT 10\.0/.test(ua)) {
+                // Win10 and Win11 both report NT 10.0 in many UAs
+                return 'Windows 10/11 (64-bit likely)';
+            }
+            if (/Windows NT 6\.3/.test(ua)) return 'Windows 8.1';
+            if (/Windows NT 6\.1/.test(ua)) return 'Windows 7';
+            if (/Mac OS X/.test(ua)) {
+                var m = ua.match(/Mac OS X ([0-9_]+)/);
+                return m ? 'macOS ' + m[1].replace(/_/g, '.') : 'macOS';
+            }
+            if (/Android/.test(ua)) {
+                var a = ua.match(/Android ([0-9.]+)/);
+                return a ? 'Android ' + a[1] : 'Android';
+            }
+            if (/iPhone|iPad|iPod/.test(ua)) return 'iOS / iPadOS';
+            if (/CrOS/.test(ua)) return 'Chrome OS';
+            if (/Linux/.test(ua)) return 'Linux';
+            return navigator.platform || 'Unknown OS';
+        }
+
+        function detectBrowserLabel() {
+            var ua = navigator.userAgent || '';
+            if (/Edg\//.test(ua)) {
+                var e = ua.match(/Edg\/([0-9.]+)/);
+                return e ? 'Microsoft Edge ' + e[1] : 'Microsoft Edge';
+            }
+            if (/Chrome\//.test(ua) && !/Edg\//.test(ua)) {
+                var c = ua.match(/Chrome\/([0-9.]+)/);
+                return c ? 'Chrome ' + c[1] : 'Chrome';
+            }
+            if (/Firefox\//.test(ua)) {
+                var f = ua.match(/Firefox\/([0-9.]+)/);
+                return f ? 'Firefox ' + f[1] : 'Firefox';
+            }
+            if (/Safari\//.test(ua) && !/Chrome\//.test(ua)) return 'Safari';
+            return 'Browser';
+        }
+
+        async function collectSystemInfo() {
+            var osLabel = detectOsFromUa(navigator.userAgent);
+            var arch = '';
+            var bitness = '';
+            var platformVersion = '';
+
+            try {
+                if (navigator.userAgentData && navigator.userAgentData.getHighEntropyValues) {
+                    var hints = await navigator.userAgentData.getHighEntropyValues([
+                        'architecture',
+                        'bitness',
+                        'platform',
+                        'platformVersion',
+                        'model',
+                    ]);
+                    if (hints.platform) {
+                        osLabel = hints.platform;
+                        if (hints.platformVersion) {
+                            platformVersion = String(hints.platformVersion);
+                            // Windows 11 often reports platformVersion >= 13.0.0
+                            if (/Windows/i.test(hints.platform) && platformVersion) {
+                                var major = parseInt(platformVersion.split('.')[0], 10);
+                                if (!isNaN(major) && major >= 13) {
+                                    osLabel = 'Windows 11';
+                                } else if (!isNaN(major)) {
+                                    osLabel = 'Windows 10';
+                                }
+                                osLabel += ' (' + platformVersion + ')';
+                            } else {
+                                osLabel += ' ' + platformVersion;
+                            }
+                        }
+                    }
+                    if (hints.architecture) arch = hints.architecture;
+                    if (hints.bitness) bitness = hints.bitness + '-bit';
+                    if (hints.model) {
+                        // Mobile device model when present
+                        osLabel += osLabel.indexOf(hints.model) === -1 ? ' · ' + hints.model : '';
+                    }
+                } else if (navigator.userAgentData && navigator.userAgentData.platform) {
+                    osLabel = navigator.userAgentData.platform;
+                }
+            } catch (e) {
+                /* Client Hints may be denied */
+            }
+
+            if (bitness && osLabel.indexOf('bit') === -1) {
+                osLabel += ' · ' + bitness;
+            }
+
+            var cores = navigator.hardwareConcurrency || 0;
+            var processorParts = [];
+            if (cores) processorParts.push(cores + ' logical CPU' + (cores === 1 ? '' : 's'));
+            if (arch) processorParts.push(arch);
+            var processorLabel = processorParts.length
+                ? processorParts.join(', ')
+                : 'Not reported';
+
+            var memoryLabel = 'Not reported';
+            if (typeof navigator.deviceMemory === 'number' && navigator.deviceMemory > 0) {
+                var gb = navigator.deviceMemory;
+                memoryLabel = '~' + gb + ' GB RAM';
+            }
+
+            return {
+                os: osLabel + ' · ' + detectBrowserLabel(),
+                processor: processorLabel,
+                memory: memoryLabel,
+            };
+        }
+
+        function startSystemInfoPanel() {
+            var dtEl = document.getElementById('sysinfo-datetime');
+            var osEl = document.getElementById('sysinfo-os');
+            var cpuEl = document.getElementById('sysinfo-processor');
+            var memEl = document.getElementById('sysinfo-memory');
+            if (!dtEl) return;
+
+            function tickClock() {
+                dtEl.textContent = formatSysDateTime(new Date());
+            }
+            tickClock();
+            setInterval(tickClock, 1000);
+
+            collectSystemInfo().then(function (info) {
+                if (osEl) osEl.textContent = info.os;
+                if (cpuEl) cpuEl.textContent = info.processor;
+                if (memEl) memEl.textContent = info.memory;
+            }).catch(function () {
+                if (osEl) osEl.textContent = detectOsFromUa(navigator.userAgent);
+                if (cpuEl) cpuEl.textContent = (navigator.hardwareConcurrency || '?') + ' logical CPUs';
+                if (memEl) memEl.textContent = 'Not available';
+            });
+        }
+        startSystemInfoPanel();
         
         // Back to dashboard button
         document.getElementById('back-dashboard-btn').onclick = function() {
