@@ -71,14 +71,14 @@
                         <!-- Video Introduction Upload -->
                         <div class="video-upload-section">
                             <h4 class="info-section-title" style="font-size: 1rem; margin-bottom: 12px;">Video Introduction</h4>
-                            <div class="video-upload-btn" onclick="document.getElementById('video-introduction').click()">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <label class="video-upload-btn" for="video-introduction" id="video-upload-label">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                     <path d="M23 7l-7 4 7 4V7z"/>
                                     <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
                                 </svg>
                                 <span>Upload Video Introduction</span>
-                            </div>
-                            <input type="file" id="video-introduction" accept="video/*" style="display: none;">
+                            </label>
+                            <input type="file" id="video-introduction" accept="video/*" style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;">
                             <div id="video-preview" class="video-preview" style="display: none; margin-top: 12px;">
                                 <video id="video-player" controls style="width: 100%; border-radius: 8px; aspect-ratio: 1 / 1; object-fit: cover;">
                                     <source src="" type="video/mp4">
@@ -147,6 +147,13 @@
                                  <label class="form-label">Last Name *</label>
                                  <input type="text" class="form-input" id="lastname" name="lastname" required disabled>
                              </div>
+                            <div class="form-group" style="grid-column: 1 / -1;">
+                                <label class="form-label">Teacher Nickname *</label>
+                                <input type="text" class="form-input" id="nickname" name="nickname" maxlength="40" placeholder="e.g. Teacher Grace" disabled>
+                                <small style="display:block; margin-top:6px; color:#64748b; font-size:0.8rem; line-height:1.4;">
+                                  This is the name students and visitors see (dashboard, booking, Our Teachers). Your legal name stays private.
+                                </small>
+                            </div>
                             <div class="form-group">
                                 <label class="form-label">Birthday</label>
                                 <input type="date" class="form-input" id="birthday" name="birthday" disabled>
@@ -518,8 +525,11 @@
                                 🔒 Privacy Policy
                             </a>
                         </div>
-                        <p style="color: #666; font-size: 0.85rem; margin-top: 10px;">
-                            As a freelance tutor, you are an independent contractor. Please review our terms and privacy policy to understand your rights and responsibilities.
+                        <p id="legal-policies-status" style="color: #475569; font-size: 0.85rem; margin-top: 10px; font-weight: 600;">
+                            TOS: … · Privacy: …
+                        </p>
+                        <p style="color: #666; font-size: 0.85rem; margin-top: 6px;">
+                            As a freelance tutor, you are an independent contractor. Open each document to review, sign electronically, and print your contract.
                         </p>
                     </div>
                     
@@ -545,6 +555,30 @@
         let certificateCounter = 0;
         let validIdCounter = 0;
         let isEditingProfile = false;
+
+        /** Name shown publicly (students, landing). Prefer nickname for privacy. */
+        function teacherPublicDisplayName(profile) {
+            if (!profile) return 'Teacher';
+            const nick = (profile.nickname || '').trim();
+            if (nick) return nick;
+            return (
+                (profile.fullname && String(profile.fullname).trim()) ||
+                `${profile.firstName || ''} ${profile.lastName || ''}`.trim() ||
+                profile.username ||
+                'Teacher'
+            );
+        }
+
+        function updateLegalPoliciesStatus(profile) {
+            const el = document.getElementById('legal-policies-status');
+            if (!el) return;
+            const tos = profile && profile.tosAgreement;
+            const privacy = profile && profile.privacyPolicy;
+            const tosLabel = tos && tos.accepted ? 'Signed' : 'Unsigned';
+            const privacyLabel = privacy && privacy.accepted ? 'Signed' : 'Unsigned';
+            el.textContent = `TOS: ${tosLabel} · Privacy: ${privacyLabel}`;
+            el.style.color = (tos && tos.accepted && privacy && privacy.accepted) ? '#059669' : '#b45309';
+        }
 
         const REMOED_FOUNDER_TEACHER_EMAILS = [];
         function getTeacherProfileEmailForFounderCheck() {
@@ -652,9 +686,12 @@
                         if (response.ok) {
                             const data = await response.json();
                             if (data.profile) {
-                                const firstName = data.profile.firstName || username;
+                                const firstName =
+                                    (data.profile.nickname && String(data.profile.nickname).trim()) ||
+                                    data.profile.firstName ||
+                                    username;
                                 
-                                // Update username with "Hi, [FirstName]" format
+                                // Update username with "Hi, [Nickname]" format
                                 if (usernameEl) {
                                     usernameEl.textContent = `Hi, ${firstName}`;
                                 }
@@ -799,7 +836,7 @@
                     window.__lastLoadedProfileTeachingAbilities = profile.teachingAbilities || null;
                     
                      // Set display values
-                     const displayName = profile.fullname || `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || profile.username || 'Teacher';
+                     const displayName = teacherPublicDisplayName(profile);
                      document.getElementById('profile-name-large').textContent = displayName;
                      document.getElementById('profile-email-large').textContent = profile.email || '';
                      
@@ -814,11 +851,14 @@
                             ? `Hire date: ${(window.TimezoneUtils && window.TimezoneUtils.formatDateLongPhilippines) ? window.TimezoneUtils.formatDateLongPhilippines(new Date(profile.hireDate)) : new Date(profile.hireDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: '2-digit' })}`
                             : 'Hire date: -';
                     }
+                    updateLegalPoliciesStatus(profile);
                      
                      // Populate form fields
                      document.getElementById('firstname').value = profile.firstName || '';
                      document.getElementById('middlename').value = profile.middleName || '';
                      document.getElementById('lastname').value = profile.lastName || '';
+                     const nickEl = document.getElementById('nickname');
+                     if (nickEl) nickEl.value = profile.nickname || '';
                     document.getElementById('birthday').value = profile.birthday ? profile.birthday.split('T')[0] : '';
                     document.getElementById('hire-date-input').value = profile.hireDate ? profile.hireDate.split('T')[0] : '';
                     document.getElementById('gender').value = profile.gender || '';
@@ -1576,6 +1616,7 @@
                 firstName: firstName,
                 middleName: middleName,
                 lastName: lastName,
+                nickname: (document.getElementById('nickname')?.value || '').trim(),
                 fullname: fullname,
                 birthday: document.getElementById('birthday').value,
                 hireDate: document.getElementById('hire-date-input')?.value || null,
@@ -1768,7 +1809,7 @@
                         console.error('Full response:', JSON.stringify(data, null, 2));
                     }
                     // Update display
-                    const displayName = profileData.fullname || `${profileData.firstName || ''} ${profileData.lastName || ''}`.trim() || profileData.username || 'Teacher';
+                    const displayName = teacherPublicDisplayName(profileData);
                     document.getElementById('profile-name-large').textContent = displayName;
                     document.getElementById('profile-email-large').textContent = profileData.email || '';
                     const hireDateLabel = document.getElementById('profile-hire-date');
@@ -1801,13 +1842,12 @@
                         console.log('❌ No firstName found in profileData:', profileData);
                     }
                     
-                    // Disable editing after successful save
+                    // Disable form fields after successful save (keep video/profile photo uploadable)
                     isEditingProfile = false;
                     const inputs = document.querySelectorAll('.form-input, .form-textarea');
                     inputs.forEach(input => input.disabled = true);
                     
-                    const fileInputs = document.querySelectorAll('input[type="file"]');
-                    fileInputs.forEach(input => input.disabled = true);
+                    setDocumentFileInputsDisabled(true);
                     
                     // Show/hide buttons in all tabs
                     const editIds = ['edit-profile-btn', 'edit-education-btn', 'edit-documents-btn'];
@@ -2144,15 +2184,43 @@
             return validIds;
         }
 
+        function setDocumentFileInputsDisabled(disabled) {
+            // Keep profile picture + video introduction uploadable without entering Edit mode
+            const keepEnabled = new Set(['profile-picture', 'video-introduction', 'bulk-upload-input']);
+            document.querySelectorAll('input[type="file"]').forEach((input) => {
+                if (keepEnabled.has(input.id)) {
+                    input.disabled = false;
+                    return;
+                }
+                input.disabled = disabled;
+            });
+        }
+
+        function getTeacherAuthToken() {
+            try {
+                if (window.RemoedUserSession && typeof window.RemoedUserSession.getUserToken === 'function') {
+                    const t = window.RemoedUserSession.getUserToken();
+                    if (t) return t;
+                }
+            } catch (_e) {}
+            return (
+                localStorage.getItem('remoed_teacher_token') ||
+                localStorage.getItem('remoed_teacher_auth') ||
+                localStorage.getItem('remoed_user_token') ||
+                localStorage.getItem('token') ||
+                sessionStorage.getItem('token') ||
+                ''
+            );
+        }
+
         function enableEditing() {
             isEditingProfile = true;
             // Enable all form inputs
             const inputs = document.querySelectorAll('.form-input, .form-textarea');
             inputs.forEach(input => input.disabled = false);
             
-            // Enable file uploads
-            const fileInputs = document.querySelectorAll('input[type="file"]');
-            fileInputs.forEach(input => input.disabled = false);
+            // Enable document file uploads (video + profile picture stay always on)
+            setDocumentFileInputsDisabled(false);
             
             // Diploma and certificate buttons are always enabled (they auto-enable editing when clicked)
             // No need to disable/enable them
@@ -2195,9 +2263,8 @@
             const inputs = document.querySelectorAll('.form-input, .form-textarea');
             inputs.forEach(input => input.disabled = true);
             
-            // Disable file uploads
-            const fileInputs = document.querySelectorAll('input[type="file"]');
-            fileInputs.forEach(input => input.disabled = true);
+            // Disable file uploads (documents only — video + avatar stay enabled)
+            setDocumentFileInputsDisabled(true);
             
             // Diploma and certificate buttons remain enabled (they auto-enable editing when clicked)
             // No need to disable them
@@ -2221,12 +2288,20 @@
         }
         
         function setupVideoUpload() {
-             document.getElementById('video-introduction').addEventListener('change', function(e) {
+             const videoInput = document.getElementById('video-introduction');
+             if (!videoInput) {
+                 console.error('Video introduction input not found');
+                 return;
+             }
+             // Always allow picking a video, even when other profile fields are locked
+             videoInput.disabled = false;
+
+             videoInput.addEventListener('change', function(e) {
                  const file = e.target.files[0];
                  console.log('File selected:', file);
                  
                  if (file) {
-                     const token = localStorage.getItem('token');
+                     const token = getTeacherAuthToken();
                      if (!token) {
                          showMessage('Authentication required. Please login again.', 'error');
                          return;
@@ -2238,18 +2313,25 @@
                      // Check file size (limit to 50MB)
                      if (file.size > 50 * 1024 * 1024) {
                          showMessage('Video file size must be less than 50MB', 'error');
+                         e.target.value = '';
                          return;
                      }
                      
                      // Check file type
                      if (!file.type.startsWith('video/')) {
                          showMessage('Please select a valid video file. Selected file type: ' + file.type, 'error');
+                         e.target.value = '';
                          return;
                      }
+
+                     showMessage('Uploading video introduction…', 'success');
                      
                      const reader = new FileReader();
-                     reader.onload = function(e) {
-                         const videoData = e.target.result;
+                     reader.onerror = function() {
+                         showMessage('Could not read the video file. Please try another file.', 'error');
+                     };
+                     reader.onload = function(ev) {
+                         const videoData = ev.target.result;
                          
                          // Show preview immediately
                          const videoPlayer = document.getElementById('video-player');
@@ -2275,12 +2357,11 @@
                          })
                          .then(response => {
                              console.log('Video upload response status:', response.status);
-                             console.log('Video upload response headers:', response.headers);
-                             
                              if (!response.ok) {
-                                 throw new Error(`HTTP error! status: ${response.status}`);
+                                 return response.json().catch(() => ({})).then((data) => {
+                                     throw new Error(data.error || (`HTTP error! status: ${response.status}`));
+                                 });
                              }
-                             
                              return response.json();
                          })
                          .then(data => {
@@ -2288,6 +2369,7 @@
                              if (data.success) {
                                  console.log('Video introduction updated successfully');
                                  showMessage('Video introduction updated successfully!', 'success');
+                                 updateProfileCompletion();
                              } else {
                                  console.error('Video upload failed:', data.error);
                                  showMessage('Failed to upload video: ' + (data.error || 'Unknown error'), 'error');
@@ -2734,12 +2816,15 @@
         
         // Handle profile picture click — open file picker anytime; upload saves via change handler
         function handleProfilePictureClick() {
-            document.getElementById('profile-picture').click();
+            const input = document.getElementById('profile-picture');
+            if (!input) return;
+            input.disabled = false;
+            input.click();
         }
         
         // Update profile avatar
         function updateProfileAvatar(profile) {
-            const displayName = profile.fullname || `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || profile.username || 'Teacher';
+            const displayName = teacherPublicDisplayName(profile);
             const avatarImg = document.getElementById('profile-avatar-img');
             const avatarText = document.getElementById('profile-avatar-text');
             
@@ -2750,7 +2835,7 @@
             } else {
                 avatarImg.style.display = 'none';
                 avatarText.style.display = 'inline-block';
-                avatarText.textContent = displayName[0].toUpperCase();
+                avatarText.textContent = (displayName[0] || 'T').toUpperCase();
             }
         }
         
@@ -2759,6 +2844,7 @@
             const requiredFields = {
                 'firstname': 'First Name',
                 'lastname': 'Last Name',
+                'nickname': 'Teacher Nickname',
                 'email': 'Email',
                 'username': 'Username',
                 'introduction': 'Introduction',
@@ -3347,7 +3433,12 @@
             }
             
             return {
-                name: (document.getElementById('firstname')?.value || '') + ' ' + (document.getElementById('lastname')?.value || ''),
+                name: teacherPublicDisplayName({
+                    nickname: document.getElementById('nickname')?.value || '',
+                    firstName: document.getElementById('firstname')?.value || '',
+                    lastName: document.getElementById('lastname')?.value || '',
+                    username: document.getElementById('username')?.value || ''
+                }),
                 email: document.getElementById('email')?.value || '',
                 contact: document.getElementById('contact')?.value || '',
                 introduction: document.getElementById('introduction')?.value || '',

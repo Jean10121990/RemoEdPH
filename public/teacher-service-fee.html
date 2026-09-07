@@ -309,6 +309,14 @@
               <div class="label" style="color: #2e7d32; font-size: 0.85rem; margin-bottom: 6px;">Net Payable Amount:</div>
               <div class="value" id="net-amount" style="color: #2e7d32; font-size: 1.5rem; font-weight: 700;">₱0.00</div>
             </div>
+
+            <div style="text-align:center; margin-bottom: 10px;">
+              <button type="button" id="open-payslip-btn" onclick="openCurrentPayslip()"
+                style="background:#1e3a5f;color:#fff;border:none;border-radius:8px;padding:10px 16px;font-weight:600;cursor:pointer;font-size:0.9rem;">
+                Print Payslip
+              </button>
+              <div style="font-size:0.75rem;color:#64748b;margin-top:6px;">Official cut-off statement for bank / legal use (Save as PDF)</div>
+            </div>
             
             <div class="service-remark" style="background: #f8f9fa; padding: 10px; border-radius: 8px; text-align: center; border: 1px solid #e9ecef;">
               <div class="label" style="color: #495057; font-size: 0.8rem; margin-bottom: 4px;">Payment Status:</div>
@@ -424,6 +432,7 @@
                   <th>Issue Date</th>
                   <th>Amount</th>
                   <th>Status</th>
+                  <th>Payslip</th>
                 </tr>
               </thead>
               <tbody id="payment-history-tbody">
@@ -479,6 +488,32 @@
     let currentWeekData = null;
     let previousWeekData = null;
     let weekHistoryData = [];
+    let activePayslipStartDate = null;
+    let activePayslipEndDate = null;
+
+    function openPayslipForPeriod(startDate, endDate) {
+      if (!startDate || !endDate) {
+        alert('Pay period is not available yet. Load Current or Previous cut-off first.');
+        return;
+      }
+      window.open(
+        'teacher-payslip.html?startDate=' + encodeURIComponent(startDate) + '&endDate=' + encodeURIComponent(endDate),
+        '_blank'
+      );
+    }
+    function openCurrentPayslip() {
+      openPayslipForPeriod(activePayslipStartDate, activePayslipEndDate);
+    }
+    function openPayslipByPaymentId(paymentId) {
+      if (!paymentId) return;
+      window.open('teacher-payslip.html?paymentId=' + encodeURIComponent(paymentId), '_blank');
+    }
+    function parseDurationToDates(duration) {
+      if (!duration) return null;
+      var m = String(duration).match(/(\d{4}-\d{2}-\d{2})\s*-\s*(\d{4}-\d{2}-\d{2})/);
+      if (!m) return null;
+      return { startDate: m[1], endDate: m[2] };
+    }
 
     /** Philippine calendar date parts (YYYY-MM-DD) for bi-monthly cut-offs. */
     function getManilaYmdParts(d) {
@@ -564,6 +599,8 @@
         startDate = b0.startDate;
         endDate = b0.endDate;
         weekLabel = b0.periodLabel;
+        activePayslipStartDate = startDate;
+        activePayslipEndDate = endDate;
         console.log('🔍 Bi-monthly pay period (PH):', { weekType, periodKey, startDate, endDate, weekLabel });
         
         const periodText = TU.formatDateShortPhilippines
@@ -1275,7 +1312,7 @@
         const tbody = document.getElementById('payment-history-tbody');
         
         // Show loading state
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #666; padding: 20px;">Loading payment history...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #666; padding: 20px;">Loading payment history...</td></tr>';
         
         // Fetch payment history based on filter type
         let url = '/api/teacher/payment-history';
@@ -1376,7 +1413,7 @@
         const tbody = document.getElementById('payment-history-tbody');
         tbody.innerHTML = `
           <tr>
-            <td colspan="4" style="text-align: center; color: #dc3545; padding: 20px;">
+            <td colspan="5" style="text-align: center; color: #dc3545; padding: 20px;">
               Error loading payment history: ${error.message}
             </td>
             </tr>
@@ -1390,7 +1427,7 @@
       const tbody = document.getElementById('payment-history-tbody');
       
       if (payments.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #888; padding: 20px;">No payment records found for the selected period.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #888; padding: 20px;">No payment records found for the selected period.</td></tr>';
         return;
       }
       
@@ -1436,12 +1473,25 @@
       
       tbody.innerHTML = `
         <tr style="background: #f8f9fa; font-weight: bold;">
-          <td colspan="3" style="text-align: right; color: #1ca7e7;">Total Records: ${payments.length}</td>
+          <td colspan="2" style="text-align: right; color: #1ca7e7;">Total Records: ${payments.length}</td>
           <td style="color: #28a745; font-weight: bold;">₱${totalAmount.toFixed(2)}</td>
+          <td colspan="2"></td>
         </tr>
-        ${payments.map(payment => `
+        ${payments.map(payment => {
+          const periodLabel = payment.period || payment.duration || 'N/A';
+          const parsed = parseDurationToDates(payment.duration || payment.period);
+          const pid = payment._id ? String(payment._id) : '';
+          const payslipHref = pid
+            ? `teacher-payslip.html?paymentId=${encodeURIComponent(pid)}`
+            : (parsed
+                ? `teacher-payslip.html?startDate=${encodeURIComponent(parsed.startDate)}&endDate=${encodeURIComponent(parsed.endDate)}`
+                : '');
+          const payslipCell = payslipHref
+            ? `<a href="${payslipHref}" target="_blank" style="color:#1e3a5f;font-weight:600;text-decoration:underline;">Payslip</a>`
+            : '—';
+          return `
           <tr>
-            <td style="font-weight: 500;">${payment.period || payment.duration || 'N/A'}</td>
+            <td style="font-weight: 500;">${periodLabel}</td>
             <td>${payment.issueDate && TU.formatDateShortPhilippines ? TU.formatDateShortPhilippines(new Date(payment.issueDate)) : (payment.issueDate ? new Date(payment.issueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A')}</td>
             <td style="font-weight: 600; color: #1ca7e7;">₱${(payment.amount || 0).toFixed(2)}</td>
             <td>
@@ -1449,8 +1499,9 @@
                 ${formatStatus(payment.status)}
               </span>
             </td>
-          </tr>
-        `).join('')}
+            <td>${payslipCell}</td>
+          </tr>`;
+        }).join('')}
       `;
     }
     
@@ -1881,12 +1932,16 @@
             if (response.ok) {
                 const data = await response.json();
                 
-                // Update sidebar with first name
-                if (data.profile && data.profile.firstName) {
+                // Update sidebar with public nickname (privacy)
+                const greetName =
+                    (data.profile && data.profile.nickname && String(data.profile.nickname).trim()) ||
+                    (data.profile && data.profile.firstName) ||
+                    null;
+                if (greetName) {
                     const usernameElement = document.getElementById('remoed-username');
                     if (usernameElement) {
-                        usernameElement.textContent = `Hi, ${data.profile.firstName}`;
-                        console.log('✅ Sidebar updated with first name:', data.profile.firstName);
+                        usernameElement.textContent = `Hi, ${greetName}`;
+                        console.log('✅ Sidebar updated with display name:', greetName);
                     }
                 } else {
                     // Fallback if no firstName

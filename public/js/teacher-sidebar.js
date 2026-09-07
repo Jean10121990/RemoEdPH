@@ -274,9 +274,13 @@
             headers: { 'Authorization': 'Bearer ' + token }
         }).then(function (r) { return r.ok ? r.json() : null; }).then(function (data) {
             if (!data || !data.profile) return;
-            var firstName = data.profile.firstName || raw.replace(/^Hi,\s*/i, '') || 'Teacher';
-            if (usernameEl) usernameEl.textContent = 'Hi, ' + firstName;
-            if (avatarTextEl) avatarTextEl.textContent = firstName[0].toUpperCase();
+            var greet =
+                (data.profile.nickname && String(data.profile.nickname).trim()) ||
+                data.profile.firstName ||
+                raw.replace(/^Hi,\s*/i, '') ||
+                'Teacher';
+            if (usernameEl) usernameEl.textContent = 'Hi, ' + greet;
+            if (avatarTextEl) avatarTextEl.textContent = greet[0].toUpperCase();
             if (data.profile.profilePicture && profileImageEl) {
                 profileImageEl.src = data.profile.profilePicture;
                 profileImageEl.style.display = 'block';

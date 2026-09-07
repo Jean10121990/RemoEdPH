@@ -2645,7 +2645,20 @@ router.post('/dispense-salaries', async (req, res) => {
               remark: 0,
               paymentMethod: 'HSBC_PayPal',
               account: teacher.username,
-              status: 'Success'
+              status: 'Success',
+              breakdown: {
+                completedClasses: row.completedClasses,
+                studentAbsentClasses: row.studentAbsentClasses,
+                teacherAbsentClasses: row.teacherAbsentClasses,
+                lateMinutes: row.lateMinutes,
+                ratePerClass: row.rate,
+                baseFee: row.baseWeeklyFee,
+                studentAbsentPayment: row.studentAbsentPayment,
+                lateDeductions: row.lateDeductions,
+                cancellationDeductions: 0,
+                absentDeductions: row.teacherAbsentDeductions,
+                netAmount: weeklySalary,
+              },
             }
           }
         });

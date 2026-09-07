@@ -1981,10 +1981,14 @@
       }
 
       const data = await response.json();
-      if (data.profile && data.profile.firstName) {
+      const greetName =
+        (data.profile && data.profile.nickname && String(data.profile.nickname).trim()) ||
+        (data.profile && data.profile.firstName) ||
+        null;
+      if (greetName) {
         const usernameElement = document.getElementById('remoed-username');
         if (usernameElement) {
-          usernameElement.textContent = `Hi, ${data.profile.firstName}`;
+          usernameElement.textContent = `Hi, ${greetName}`;
         }
       } else {
         // Fallback if no firstName
@@ -1997,7 +2001,7 @@
 
       const profilePic = data.profile && data.profile.profilePicture ? data.profile.profilePicture : '';
       try {
-        setAvatar({ imageUrl: profilePic, displayName: data.profile && data.profile.firstName ? data.profile.firstName : (localStorage.getItem('remoedUsername') || 'T'), imgSelector: '#profile-image', textSelector: '#avatar-text' });
+        setAvatar({ imageUrl: profilePic, displayName: greetName || (localStorage.getItem('remoedUsername') || 'T'), imgSelector: '#profile-image', textSelector: '#avatar-text' });
       } catch (e) {
         console.error('setAvatar error', e);
       }

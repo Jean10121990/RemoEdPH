@@ -2217,12 +2217,16 @@
             if (response.ok) {
                 const data = await response.json();
                 
-                // Update sidebar with first name
-                if (data.profile && data.profile.firstName) {
+                // Update sidebar with public nickname (privacy)
+                const greetName =
+                    (data.profile && data.profile.nickname && String(data.profile.nickname).trim()) ||
+                    (data.profile && data.profile.firstName) ||
+                    null;
+                if (greetName) {
                     const sidebarElement = document.getElementById('remoed-username');
                     if (sidebarElement) {
-                        sidebarElement.textContent = `Hi, ${data.profile.firstName}`;
-                        console.log('✅ Sidebar updated with first name:', data.profile.firstName);
+                        sidebarElement.textContent = `Hi, ${greetName}`;
+                        console.log('✅ Sidebar updated with display name:', greetName);
                     }
                 }
                 

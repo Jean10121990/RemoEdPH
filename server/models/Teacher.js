@@ -12,6 +12,8 @@ const teacherSchema = new mongoose.Schema({
    firstName: { type: String, default: '' },
    middleName: { type: String, default: '' },
    lastName: { type: String, default: '' },
+   /** Public-facing name shown to students / landing (privacy). Not the legal name. */
+   nickname: { type: String, default: '' },
    
    // Personal Information
    fullname: { type: String, default: '' },
@@ -254,6 +256,8 @@ const teacherSchema = new mongoose.Schema({
     paymentStatus: { type: String },
     /** Short label for statements (optional) */
     studentName: { type: String },
+    /** Snapshot of class counts / deductions at dispense (for stable payslips) */
+    breakdown: { type: mongoose.Schema.Types.Mixed, default: null },
   }],
   
   // Original fields
@@ -318,6 +322,24 @@ const teacherSchema = new mongoose.Schema({
       categoryScores: { type: mongoose.Schema.Types.Mixed, default: null },
       completedAt: { type: Date, default: null }
     }
+  },
+
+  /** Terms of Service & Independent Contractor Agreement acceptance */
+  tosAgreement: {
+    accepted: { type: Boolean, default: false },
+    acceptedAt: { type: Date, default: null },
+    effectiveDate: { type: Date, default: null },
+    legalName: { type: String, default: '' },
+    version: { type: String, default: '' }
+  },
+
+  /** Privacy Policy acceptance */
+  privacyPolicy: {
+    accepted: { type: Boolean, default: false },
+    acceptedAt: { type: Date, default: null },
+    effectiveDate: { type: Date, default: null },
+    legalName: { type: String, default: '' },
+    version: { type: String, default: '' }
   }
 }, {
   timestamps: true,

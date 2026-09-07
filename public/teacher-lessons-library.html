@@ -832,10 +832,15 @@
                     
                     if (response.ok) {
                         const data = await response.json();
-                        if (data.profile && data.profile.firstName) {
+                        if (data.profile) {
+                            const greetName =
+                                (data.profile.nickname && String(data.profile.nickname).trim()) ||
+                                data.profile.firstName ||
+                                null;
+                            if (greetName) {
                             const usernameElement = document.getElementById('remoed-username');
                             if (usernameElement) {
-                                usernameElement.textContent = `Hi, ${data.profile.firstName}`;
+                                usernameElement.textContent = `Hi, ${greetName}`;
                             }
                             
                             // Update avatar
@@ -844,10 +849,11 @@
                                 document.getElementById('profile-image').src = data.profile.profilePicture;
                                 document.getElementById('profile-image').style.display = 'block';
                                 avatarText.style.display = 'none';
-                            } else {
-                                avatarText.textContent = data.profile.firstName.charAt(0).toUpperCase();
+                            } else if (avatarText) {
+                                avatarText.textContent = greetName.charAt(0).toUpperCase();
                             }
                             return; // Successfully loaded from API
+                            }
                         }
                     }
                 }

@@ -146,7 +146,14 @@
             document.getElementById('booking-id').textContent = issueData.bookingId;
             document.getElementById('original-date').textContent = new Date(issueData.booking?.date).toLocaleDateString();
             document.getElementById('original-time').textContent = issueData.booking?.time;
-            document.getElementById('teacher-name').textContent = issueData.teacher?.firstName + ' ' + issueData.teacher?.lastName;
+            const teacherRef = issueData.teacher || issueData.teacherId || {};
+            document.getElementById('teacher-name').textContent =
+                issueData.teacherName ||
+                teacherRef.nickname ||
+                teacherRef.displayName ||
+                teacherRef.name ||
+                `${teacherRef.firstName || ''} ${teacherRef.lastName || ''}`.trim() ||
+                'Teacher';
             document.getElementById('issue-type').textContent = issueData.issueType;
             document.getElementById('admin-review').textContent = issueData.adminReviewNotes || 'No additional notes';
             

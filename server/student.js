@@ -18,6 +18,42 @@ const PortalVideo = require('./models/PortalVideo');
 const Lesson = require('./models/Lesson');
 const Curriculum = require('./models/Curriculum');
 const { verifyToken, requireStudent } = require('./authMiddleware');
+
+/** Public teacher label for students — prefers nickname over legal name. */
+function publicTeacherLabel(t, fallback = 'Unknown Teacher') {
+  if (!t) return fallback;
+  const nick = t.nickname && String(t.nickname).trim();
+  if (nick) return nick;
+  return (
+    (t.fullname && String(t.fullname).trim()) ||
+    [t.firstName, t.lastName].filter(Boolean).join(' ').trim() ||
+    t.username ||
+    t.email ||
+    fallback
+  );
+}
+
+/** Shape teacher fields for student UIs that still concatenate firstName/lastName. */
+function studentFacingTeacherFields(teacher) {
+  if (!teacher) return null;
+  const label = publicTeacherLabel(teacher);
+  const nick = teacher.nickname && String(teacher.nickname).trim();
+  return {
+    _id: teacher._id,
+    teacherId: teacher.teacherId,
+    username: teacher.username,
+    nickname: nick || '',
+    displayName: label,
+    name: label,
+    // Put the public label in firstName so legacy `${firstName} ${lastName}` UIs stay private
+    firstName: label,
+    lastName: '',
+    photo: teacher.photo,
+    intro: teacher.intro,
+    profilePicture: teacher.profilePicture,
+    email: teacher.email,
+  };
+}
 const {
   buildStudentCreditApiResponse,
   reconcileStudentCreditBalanceIfDrifted,
@@ -657,7 +693,11 @@ async function enrichStudentBookingsWithTeachersAndFeedback(bookings, uniqueIden
 
   let teacherQuery = Teacher.find({ teacherId: { $in: logicalTeacherIds } });
   if (lightTeacher) {
-    teacherQuery = teacherQuery.select('teacherId username firstName lastName');
+    teacherQuery = teacherQuery.select('teacherId username firstName lastName nickname');
+  } else {
+    teacherQuery = teacherQuery.select(
+      'teacherId username firstName lastName nickname photo intro profilePicture'
+    );
   }
   const teachers =
     logicalTeacherIds.length > 0 ? await teacherQuery.lean() : [];
@@ -696,25 +736,7 @@ async function enrichStudentBookingsWithTeachersAndFeedback(bookings, uniqueIden
       };
     }
 
-    const teacherPayload = teacher
-      ? lightTeacher
-        ? {
-            _id: teacher._id,
-            teacherId: teacher.teacherId,
-            username: teacher.username,
-            firstName: teacher.firstName,
-            lastName: teacher.lastName,
-          }
-        : {
-            _id: teacher._id,
-            teacherId: teacher.teacherId,
-            username: teacher.username,
-            firstName: teacher.firstName,
-            lastName: teacher.lastName,
-            photo: teacher.photo,
-            intro: teacher.intro,
-          }
-      : null;
+    const teacherPayload = studentFacingTeacherFields(teacher);
 
     return {
       ...bookingObj,
@@ -1058,7 +1080,7 @@ router.get('/upcoming-classes', verifyToken, requireStudent, async (req, res) =>
       date: { $gte: today },
       status: { $in: ['booked', 'confirmed'] }
     })
-    .populate('teacherId', 'firstName lastName email')
+    .populate('teacherId', 'firstName lastName nickname email')
     .sort({ date: 1, time: 1 })
     .limit(5); // Limit to 5 upcoming classes
     
@@ -1066,7 +1088,7 @@ router.get('/upcoming-classes', verifyToken, requireStudent, async (req, res) =>
       id: booking._id,
       date: booking.date,
       time: booking.time,
-      teacherName: booking.teacherId?.firstName || booking.teacherId?.email || 'Unknown Teacher',
+      teacherName: publicTeacherLabel(booking.teacherId, booking.teacherId?.email || 'Unknown Teacher'),
       lesson: booking.lesson,
       studentLevel: booking.studentLevel
     }));
@@ -2172,16 +2194,20 @@ router.get('/reschedule-issues', verifyToken, requireStudent, async (req, res) =
       rescheduleRequested: { $ne: true },
       rescheduleDeadline: { $gt: new Date() }
     })
-    .populate('teacherId', 'firstName lastName')
+    .populate('teacherId', 'firstName lastName nickname')
     .populate('studentId', 'firstName lastName')
     .sort({ rescheduleDeadline: 1 });
     
     // Get booking details for each issue
     const issuesWithBookings = await Promise.all(issues.map(async (issue) => {
       const booking = await Booking.findById(issue.bookingId);
+      const obj = issue.toObject();
+      const teacherPublic = studentFacingTeacherFields(obj.teacherId);
       return {
-        ...issue.toObject(),
-        teacherName: `${issue.teacherId.firstName} ${issue.teacherId.lastName}`,
+        ...obj,
+        teacherId: teacherPublic,
+        teacher: teacherPublic,
+        teacherName: publicTeacherLabel(obj.teacherId),
         booking: booking
       };
     }));
@@ -2207,7 +2233,7 @@ router.get('/issues/:issueId', verifyToken, requireStudent, async (req, res) => 
     
     const IssueReport = require('./models/IssueReport');
     const issue = await IssueReport.findById(issueId)
-      .populate('teacherId', 'firstName lastName')
+      .populate('teacherId', 'firstName lastName nickname')
       .populate('studentId', 'firstName lastName');
     
     if (!issue) {
@@ -2227,11 +2253,16 @@ router.get('/issues/:issueId', verifyToken, requireStudent, async (req, res) => 
     
     // Get booking details
     const booking = await Booking.findById(issue.bookingId);
-    
+    const obj = issue.toObject();
+    const teacherPublic = studentFacingTeacherFields(obj.teacherId);
+
     res.json({
       success: true,
       issue: {
-        ...issue.toObject(),
+        ...obj,
+        teacherId: teacherPublic,
+        teacher: teacherPublic,
+        teacherName: publicTeacherLabel(obj.teacherId),
         booking: booking
       }
     });
@@ -2408,14 +2439,13 @@ router.get('/peer-chats', verifyToken, requireStudent, async (req, res) => {
     const peerIds = rows.map((r) => r.peerId);
 
     const teachers = await Teacher.find({ teacherId: { $in: peerIds } })
-      .select('teacherId fullname firstName lastName profilePicture')
+      .select('teacherId fullname firstName lastName nickname profilePicture')
       .lean();
     const teacherMap = new Map(teachers.map((t) => [t.teacherId, t]));
 
     const chats = rows.map((c) => {
       const t = teacherMap.get(c.peerId);
-      const name =
-        t?.fullname || `${t?.firstName || ''} ${t?.lastName || ''}`.trim() || c.peerId;
+      const name = publicTeacherLabel(t, c.peerId);
       return {
         peerId: c.peerId,
         name,

@@ -309,18 +309,29 @@ async function findLeanTeacherForPublicProfile(rawKey) {
   }
   return Teacher.findOne({ ...PUBLIC_TEACHER_FILTER, $or: or })
     .select(
-      'teacherId username firstName middleName lastName fullname profilePicture introduction intro videoIntroduction language professionalCertifications documents.certifications'
+      'teacherId username firstName middleName lastName nickname fullname profilePicture introduction intro videoIntroduction language professionalCertifications documents.certifications'
     )
     .lean();
 }
 
 function displayNameFromTeacherRow(t) {
+  if (!t) return 'Teacher';
   return (
+    (t.nickname && String(t.nickname).trim()) ||
     (t.fullname && String(t.fullname).trim()) ||
     [t.firstName, t.middleName, t.lastName].filter(Boolean).join(' ').trim() ||
     t.username ||
-    t.teacherId
+    t.teacherId ||
+    'Teacher'
   );
+}
+
+/** Prefer nickname for any student/public-facing label (falls back to legal name if unset). */
+function publicTeacherLabel(t, fallback = 'Teacher') {
+  if (!t) return fallback;
+  const nick = t.nickname && String(t.nickname).trim();
+  if (nick) return nick;
+  return displayNameFromTeacherRow(t) || fallback;
 }
 
 /** Full public card shape (directory + modal) from a lean Teacher doc */
@@ -382,8 +393,8 @@ async function handlePublicLanding(req, res) {
     // One query only: fetch limit+1 rows to derive hasMore (avoids countDocuments scan on large collections).
     const fetchLimit = Math.min(limit + 1, 501);
     const rows = await Teacher.find(filter)
-      .select('teacherId firstName middleName lastName fullname username profilePicture language')
-      .sort({ fullname: 1, teacherId: 1 })
+      .select('teacherId firstName middleName lastName nickname fullname username profilePicture language')
+      .sort({ nickname: 1, fullname: 1, teacherId: 1 })
       .skip(offset)
       .limit(fetchLimit)
       .lean();
@@ -446,7 +457,7 @@ router.get('/public/directory', async (req, res) => {
   try {
     const rows = await Teacher.find(PUBLIC_TEACHER_FILTER)
       .select(
-        'teacherId username firstName middleName lastName fullname profilePicture introduction intro videoIntroduction language professionalCertifications documents.certifications'
+        'teacherId username firstName middleName lastName nickname fullname profilePicture introduction intro videoIntroduction language professionalCertifications documents.certifications'
       )
       .lean()
       .limit(300);
@@ -487,7 +498,7 @@ router.post('/peer-message', verifyToken, requireTeacher, async (req, res) => {
         : rid;
 
     const sender = await Teacher.findOne({ teacherId: senderId });
-    const senderName = sender?.fullname || `${sender?.firstName || ''} ${sender?.lastName || ''}`.trim() || 'A teacher';
+    const senderName = publicTeacherLabel(sender, 'A teacher');
     const savedMessage = await PeerMessage.create({
       senderId,
       recipientId: canonicalRecipient,
@@ -533,14 +544,14 @@ router.get('/peer-chats', verifyToken, requireTeacher, async (req, res) => {
 
     const peerIds = rows.map((r) => r.peerId);
     const peers = await Teacher.find({ teacherId: { $in: peerIds } })
-      .select('teacherId fullname firstName lastName profilePicture')
+      .select('teacherId fullname firstName lastName nickname profilePicture')
       .lean();
     const peerMap = new Map(peers.map((t) => [t.teacherId, t]));
 
     const chats = rows.map((c) => {
       const t = peerMap.get(c.peerId);
       const name =
-        t?.fullname || `${t?.firstName || ''} ${t?.lastName || ''}`.trim() || c.peerId;
+        publicTeacherLabel(t, c.peerId);
       return {
         peerId: c.peerId,
         name,
@@ -578,7 +589,7 @@ router.get('/peer-chats/user-search', verifyToken, requireTeacher, async (req, r
         { email: { $regex: esc, $options: 'i' } },
       ],
     })
-      .select('teacherId fullname firstName lastName profilePicture username')
+      .select('teacherId fullname firstName lastName nickname profilePicture username')
       .limit(20)
       .lean();
 
@@ -1541,7 +1552,7 @@ router.get('/slots', async (req, res) => {
         if (!student) {
           student = await Student.findOne({
             $or: [{ username: booking.studentId }, { email: booking.studentId }],
-          }).select('username email firstName lastName profilePicture photo');
+          }).select('username email firstName lastName nickname profilePicture photo');
         }
         
         // Check for resolved issues for this booking
@@ -1618,13 +1629,10 @@ router.get('/available-teachers', async (req, res) => {
       const candidates = await getCandidateTeachersForSlotUtc(dateTimeUtc);
       const teachers = await Promise.all(
         candidates.map(async (tid) => {
-          const t = await Teacher.findOne({ teacherId: tid });
-          const displayName =
-            (t && t.fullname && String(t.fullname).trim()) ||
-            (t &&
-              [t.firstName, t.middleName, t.lastName].filter(Boolean).join(' ').trim()) ||
-            (t && t.username) ||
-            tid;
+          const t = await Teacher.findOne({ teacherId: tid }).select(
+            'teacherId username firstName middleName lastName nickname fullname profilePicture professionalCertifications documents.certifications language'
+          );
+          const displayName = publicTeacherLabel(t, tid);
           const certNames = [];
           if (t?.professionalCertifications?.length) {
             t.professionalCertifications.forEach((c) => {
@@ -1868,7 +1876,7 @@ router.get('/booking/:bookingId', verifyToken, requireTeacher, async (req, res) 
     let student = await Student.findOne({
       $or: [{ username: booking.studentId }, { email: booking.studentId }],
     })
-      .select('firstName lastName username profilePicture photo')
+      .select('firstName lastName nickname username profilePicture photo')
       .lean();
     if (
       !student &&
@@ -1877,7 +1885,7 @@ router.get('/booking/:bookingId', verifyToken, requireTeacher, async (req, res) 
       mongoose.Types.ObjectId.isValid(booking.studentId)
     ) {
       student = await Student.findById(booking.studentId)
-        .select('firstName lastName username profilePicture photo')
+        .select('firstName lastName nickname username profilePicture photo')
         .lean();
     }
     console.log('🔍 Student found:', student ? 'YES' : 'NO');
@@ -1915,11 +1923,7 @@ router.get('/booking/:bookingId', verifyToken, requireTeacher, async (req, res) 
     
     let teacherName = 'Unknown Teacher';
     if (teacher) {
-      if (teacher.firstName) {
-        teacherName = teacher.firstName;
-      } else if (teacher.username) {
-        teacherName = teacher.username;
-      }
+      teacherName = publicTeacherLabel(teacher, teacher.username || 'Unknown Teacher');
     }
     
     console.log('🔍 Final names - Student:', studentName, 'Teacher:', teacherName);
@@ -2230,6 +2234,71 @@ router.get('/profile', verifyToken, requireTeacher, async (req, res) => {
   }
 });
 
+const LEGAL_TOS_VERSION = 'ica-2026-09';
+const LEGAL_PRIVACY_VERSION = 'privacy-2026-09';
+
+function parseLegalEffectiveDate(raw) {
+  if (raw == null || String(raw).trim() === '') return null;
+  const d = new Date(String(raw).trim());
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+async function acceptTeacherLegalDocument(req, res, fieldKey, version) {
+  try {
+    const teacherId = req.user.teacherId;
+    const legalName = typeof req.body.legalName === 'string' ? req.body.legalName.trim() : '';
+    const effectiveDate = parseLegalEffectiveDate(req.body.effectiveDate);
+
+    if (!legalName) {
+      return res.status(400).json({ success: false, error: 'Tutor full legal name is required.' });
+    }
+    if (!effectiveDate) {
+      return res.status(400).json({ success: false, error: 'Effective date is required.' });
+    }
+
+    const teacher = await Teacher.findOne({ teacherId }).select(`teacherId ${fieldKey}`);
+    if (!teacher) {
+      return res.status(404).json({ success: false, error: 'Teacher not found' });
+    }
+
+    const existing = teacher[fieldKey] || {};
+    if (existing.accepted && existing.version === version) {
+      return res.status(409).json({
+        success: false,
+        error: 'This document has already been signed for the current version.',
+        [fieldKey]: existing,
+      });
+    }
+
+    const payload = {
+      accepted: true,
+      acceptedAt: new Date(),
+      effectiveDate,
+      legalName,
+      version,
+    };
+
+    await Teacher.updateOne({ teacherId }, { $set: { [fieldKey]: payload } });
+
+    res.json({
+      success: true,
+      message: 'Agreement accepted and saved.',
+      [fieldKey]: payload,
+    });
+  } catch (err) {
+    console.error(`Error accepting legal document (${fieldKey}):`, err);
+    res.status(500).json({ success: false, error: 'Failed to save agreement acceptance.' });
+  }
+}
+
+router.post('/legal/tos/accept', verifyToken, requireTeacher, (req, res) =>
+  acceptTeacherLegalDocument(req, res, 'tosAgreement', LEGAL_TOS_VERSION)
+);
+
+router.post('/legal/privacy/accept', verifyToken, requireTeacher, (req, res) =>
+  acceptTeacherLegalDocument(req, res, 'privacyPolicy', LEGAL_PRIVACY_VERSION)
+);
+
 // Save teacher profile data
 router.post('/profile', verifyToken, requireTeacher, async (req, res) => {
   try {
@@ -2330,6 +2399,7 @@ router.post('/profile', verifyToken, requireTeacher, async (req, res) => {
         firstName: profileData.firstName,
         middleName: profileData.middleName,
         lastName: profileData.lastName,
+        nickname: typeof profileData.nickname === 'string' ? profileData.nickname.trim() : profileData.nickname,
         birthday: profileData.birthday,
         gender: profileData.gender,
         language: profileData.language,
@@ -3536,7 +3606,7 @@ async function buildStudentLookupForBookingIds(studentIdValues) {
   }
 
   const students = await Student.find({ $or })
-    .select('username email firstName lastName profilePicture photo')
+    .select('username email firstName lastName nickname profilePicture photo')
     .lean();
 
   const byKey = new Map();
@@ -3582,10 +3652,10 @@ router.get('/classes/history', verifyToken, requireTeacher, async (req, res) => 
     const { lookup } = await buildStudentLookupForBookingIds(bookings.map((b) => b.studentId));
 
     const teacherDoc = await Teacher.findOne({ teacherId })
-      .select('firstName lastName email fullname')
+      .select('firstName lastName nickname email fullname')
       .lean();
     const teacherDisplayName =
-      teacherDoc?.firstName || teacherDoc?.fullname || teacherDoc?.email || 'Unknown';
+      publicTeacherLabel(teacherDoc, teacherDoc?.email || 'Unknown');
 
     const bookingIds = bookings.map((b) => String(b._id));
     const cancellationRequests =
@@ -3697,10 +3767,10 @@ router.get('/classes', async (req, res) => {
 
       const { lookup } = await buildStudentLookupForBookingIds(bookings.map((b) => b.studentId));
       const teacherDoc = await Teacher.findOne({ teacherId: authenticatedTeacherId })
-        .select('firstName lastName email fullname')
+        .select('firstName lastName nickname email fullname')
         .lean();
       const teacherDisplayName =
-        teacherDoc?.firstName || teacherDoc?.fullname || teacherDoc?.email || 'Unknown';
+        publicTeacherLabel(teacherDoc, teacherDoc?.email || 'Unknown');
 
       const bookingIds = bookings.map((booking) => booking._id.toString());
       const cancellationRequests =
@@ -4083,186 +4153,277 @@ router.get('/weekly-payment-summary', verifyToken, requireTeacher, async (req, r
       });
     }
 
-    console.log(`Fetching weekly payment summary for teacher ${teacherId} from ${startDate} to ${endDate}`);
-
-    const bookings = await Booking.find({
-      teacherId,
-      date: { $gte: startDate, $lte: endDate },
-    })
-      .select('_id date time status attendance finishedAt lateMinutes')
-      .lean();
-
-    // Fetch all cancellation requests related to these bookings
-    const bookingIds = bookings.map(b => b._id);
-    const cancellationRequests = await CancellationRequest.find({
-      bookingId: { $in: bookingIds }
-    });
-
-    const GlobalSettings = require('./models/GlobalSettings');
-    const globalSettings = await GlobalSettings.findOne();
-    const globalRate = globalSettings ? globalSettings.globalRate : 100;
-    const teacherRow = await Teacher.findOne({ teacherId }).select('hourlyRate').lean();
-    const ratePerClass =
-      teacherRow && teacherRow.hourlyRate != null && teacherRow.hourlyRate >= 0
-        ? teacherRow.hourlyRate
-        : globalRate;
-
-    let totalClasses = bookings.length;
-    let completedClasses = 0;
-    let cancelledClasses = 0;
-    let absentClasses = 0;
-    let studentAbsentClasses = 0;
-    let lateDeductions = 0;
-    let cancellationDeductions = 0;
-    let absentDeductions = 0;
-
-    bookings.forEach(booking => {
-      if (booking.status === 'completed') {
-        // Check if completed class meets duration requirement (15-25 minutes)
-        // If not, count as teacher absence (less than 15 minutes)
-        let meetsDurationRequirement = false;
-        
-        if (booking.attendance && typeof booking.attendance.classCompleted === 'boolean') {
-          meetsDurationRequirement = booking.attendance.classCompleted === true;
-          console.log(`Using attendance.classCompleted flag: ${meetsDurationRequirement}`);
-        } else if (booking.finishedAt && booking.date && booking.time) {
-          const classDate = new Date(booking.date);
-          const [hours, minutes] = booking.time.split(':').map(Number);
-          const classStartTime = new Date(classDate);
-          classStartTime.setHours(hours, minutes, 0, 0);
-          const classFinishTime = new Date(booking.finishedAt);
-          const durationMinutes = (classFinishTime - classStartTime) / (1000 * 60);
-          meetsDurationRequirement = durationMinutes >= 15 && durationMinutes <= 25;
-          console.log(`Calculated duration: ${durationMinutes.toFixed(2)} minutes, meets requirement: ${meetsDurationRequirement}`);
-        } else {
-          // If we can't determine duration, assume it meets requirement (be conservative)
-          meetsDurationRequirement = true;
-          console.log(`Cannot determine duration for ${booking.date} ${booking.time}, assuming meets requirement`);
-        }
-        
-        // Completed classes should be counted as completed regardless of duration
-        // The 15-minute rule is for student entry, not class duration
-        completedClasses++;
-        console.log(`✅ Completed class: ${booking.date} ${booking.time} - counting as completed`);
-      } else if (booking.status === 'cancelled') {
-        cancelledClasses++;
-        
-        // Calculate cancellation deduction based on timing
-        const cancellationRequest = cancellationRequests.find(req => 
-          req.bookingId.toString() === booking._id.toString()
-        );
-        
-        if (cancellationRequest && cancellationRequest.createdAt) {
-          const classDateTime = new Date(`${booking.date}T${booking.time}:00`);
-          const cancellationTime = new Date(cancellationRequest.createdAt);
-          const timeDiffHours = (classDateTime.getTime() - cancellationTime.getTime()) / (1000 * 60 * 60);
-
-          console.log(`Cancelled class: ${booking.date} ${booking.time}, cancelled at: ${cancellationTime}, hours difference: ${timeDiffHours}`);
-
-          const deduction = tutorCancellationDeductionPeso(timeDiffHours, ratePerClass);
-          cancellationDeductions += deduction;
-          console.log(`Final cancellation deduction: ₱${deduction.toFixed(2)} (25-min rate × tier; ${timeDiffHours.toFixed(2)}h before class)`);
-        }
-      } else if (booking.status === 'absent') {
-        // Only count as absent if the TEACHER was absent, not the student
-        // Check if teacher entered the classroom
-        const teacherEntered = booking.attendance?.teacherEntered || false;
-        if (!teacherEntered) {
-          // Teacher was absent - count for deduction
-          absentClasses++;
-          console.log(`Teacher absent for class ${booking.date} ${booking.time} - counting for deduction`);
-        } else {
-          // Student was absent but teacher was present - no payment (no-class, no-pay policy)
-          studentAbsentClasses++;
-          console.log(`Student absent but teacher present for class ${booking.date} ${booking.time} - counting for no payment`);
-        }
-      } else if (booking.status === 'pending') {
-        // Check if pending class should be counted as teacher absent
-        // If neither teacher nor student entered and class time has passed, count as teacher absent
-        const teacherEntered = booking.attendance?.teacherEntered || false;
-        const studentEntered = booking.attendance?.studentEntered || false;
-        
-        // Check if class time has passed (more than 15 minutes past scheduled time)
-        const classDateTime = new Date(`${booking.date}T${booking.time}:00`);
-        const now = new Date();
-        const timeDiffMinutes = (now - classDateTime) / (1000 * 60);
-        
-        if (timeDiffMinutes > 15 && !teacherEntered) {
-          // Class is more than 15 minutes past scheduled time and teacher didn't enter
-          // Count as teacher absent
-          absentClasses++;
-          console.log(`Teacher absent for pending class ${booking.date} ${booking.time} - teacher didn't enter (${timeDiffMinutes.toFixed(1)} minutes past)`);
-        } else if (timeDiffMinutes > 15 && teacherEntered && !studentEntered) {
-          // Class is more than 15 minutes past scheduled time, teacher entered but student didn't
-          // This is student absent, not teacher absent (15-minute rule for student entry)
-          studentAbsentClasses++;
-          console.log(`Student absent for pending class ${booking.date} ${booking.time} - teacher entered but student didn't enter within 15 minutes (${timeDiffMinutes.toFixed(1)} minutes past) - counting for no payment`);
-        } else {
-          console.log(`Pending class ${booking.date} ${booking.time} - ${timeDiffMinutes.toFixed(1)} minutes past, teacher: ${teacherEntered}, student: ${studentEntered}`);
-        }
-      }
-
-      // Late arrival deduction (1% of class rate per minute)
-      if (booking.lateMinutes && booking.lateMinutes > 0) {
-        const lateDeductionPerMinute = ratePerClass * 0.01; // 1% of class rate
-        lateDeductions += booking.lateMinutes * lateDeductionPerMinute;
-        console.log(`Late deduction: ${booking.lateMinutes} minutes × ${lateDeductionPerMinute.toFixed(2)} = ${(booking.lateMinutes * lateDeductionPerMinute).toFixed(2)}`);
-      }
-    });
-
-    // Calculate absent deductions: absent count × rate
-    absentDeductions = absentClasses * ratePerClass;
-
-    // Calculate student absent payments: no-class, no-pay => 0 payment
-    const studentAbsentPayment = 0;
-
-    const weeklyFee = completedClasses * ratePerClass;
-    const totalDeductions = lateDeductions + cancellationDeductions + absentDeductions;
-    const netAmount = weeklyFee + studentAbsentPayment - totalDeductions;
-
-    // Check if this week has been dispersed by admin
-    // For now, we'll use a simple logic: if net amount > 0, consider it as "success" (dispersed)
-    // In a real system, this would come from an admin payment record
-    const status = netAmount > 0 ? 'success' : 'pending';
-
-    const salaryDateRange = `${new Date(startDate).toLocaleDateString()} - ${new Date(endDate).toLocaleDateString()}`;
-
-    console.log(`Weekly payment summary calculated:`, {
-      totalClasses,
-      completedClasses,
-      cancelledClasses,
-      absentClasses,
-      studentAbsentClasses,
-      weeklyFee,
-      studentAbsentPayment,
-      lateDeductions,
-      cancellationDeductions,
-      absentDeductions,
-      netAmount,
-      status
-    });
-
-    res.json({
-      success: true,
-      weeklyFee,
-      salaryDateRange,
-      status,
-      totalClasses,
-      completedClasses,
-      cancelledClasses,
-      absentClasses,
-      studentAbsentClasses,
-      studentAbsentPayment,
-      lateDeductions,
-      cancellationDeductions,
-      absentDeductions,
-      netAmount,
-      ratePerClass
-    });
-
+    const summary = await computeTeacherPeriodFeeSummary(teacherId, startDate, endDate);
+    res.json({ success: true, ...summary });
   } catch (error) {
     console.error('Error fetching weekly payment summary:', error);
     res.status(500).json({ success: false, error: 'Failed to fetch weekly payment summary' });
+  }
+});
+
+function parsePayslipDuration(duration) {
+  if (!duration || typeof duration !== 'string') return null;
+  const m = String(duration).match(/(\d{4}-\d{2}-\d{2})\s*-\s*(\d{4}-\d{2}-\d{2})/);
+  if (!m) return null;
+  return { startDate: m[1], endDate: m[2] };
+}
+
+function teacherLegalDisplayName(t) {
+  if (!t) return 'Teacher';
+  return (
+    (t.fullname && String(t.fullname).trim()) ||
+    [t.firstName, t.middleName, t.lastName].filter(Boolean).join(' ').trim() ||
+    t.username ||
+    t.teacherId ||
+    'Teacher'
+  );
+}
+
+/** Bi-monthly teaching fee summary (shared by Teaching Fee UI + payslips). */
+async function computeTeacherPeriodFeeSummary(teacherId, startDate, endDate) {
+  const bookings = await Booking.find({
+    teacherId,
+    date: { $gte: startDate, $lte: endDate },
+  })
+    .select('_id date time status attendance finishedAt lateMinutes')
+    .lean();
+
+  const bookingIds = bookings.map((b) => b._id);
+  const cancellationRequests = await CancellationRequest.find({
+    bookingId: { $in: bookingIds },
+  });
+
+  const GlobalSettings = require('./models/GlobalSettings');
+  const globalSettings = await GlobalSettings.findOne();
+  const globalRate = globalSettings ? globalSettings.globalRate : 100;
+  const teacherRow = await Teacher.findOne({ teacherId }).select('hourlyRate').lean();
+  const ratePerClass =
+    teacherRow && teacherRow.hourlyRate != null && teacherRow.hourlyRate >= 0
+      ? teacherRow.hourlyRate
+      : globalRate;
+
+  let totalClasses = bookings.length;
+  let completedClasses = 0;
+  let cancelledClasses = 0;
+  let absentClasses = 0;
+  let studentAbsentClasses = 0;
+  let lateDeductions = 0;
+  let cancellationDeductions = 0;
+  let absentDeductions = 0;
+
+  bookings.forEach((booking) => {
+    if (booking.status === 'completed') {
+      completedClasses++;
+    } else if (booking.status === 'cancelled') {
+      cancelledClasses++;
+      const cancellationRequest = cancellationRequests.find(
+        (req) => req.bookingId.toString() === booking._id.toString()
+      );
+      if (cancellationRequest && cancellationRequest.createdAt) {
+        const classDateTime = new Date(`${booking.date}T${booking.time}:00`);
+        const cancellationTime = new Date(cancellationRequest.createdAt);
+        const timeDiffHours =
+          (classDateTime.getTime() - cancellationTime.getTime()) / (1000 * 60 * 60);
+        cancellationDeductions += tutorCancellationDeductionPeso(timeDiffHours, ratePerClass);
+      }
+    } else if (booking.status === 'absent') {
+      const teacherEntered = booking.attendance?.teacherEntered || false;
+      if (!teacherEntered) {
+        absentClasses++;
+      } else {
+        studentAbsentClasses++;
+      }
+    } else if (booking.status === 'pending') {
+      const teacherEntered = booking.attendance?.teacherEntered || false;
+      const studentEntered = booking.attendance?.studentEntered || false;
+      const classDateTime = new Date(`${booking.date}T${booking.time}:00`);
+      const now = new Date();
+      const timeDiffMinutes = (now - classDateTime) / (1000 * 60);
+      if (timeDiffMinutes > 15 && !teacherEntered) {
+        absentClasses++;
+      } else if (timeDiffMinutes > 15 && teacherEntered && !studentEntered) {
+        studentAbsentClasses++;
+      }
+    }
+
+    if (booking.lateMinutes && booking.lateMinutes > 0) {
+      const lateDeductionPerMinute = ratePerClass * 0.01;
+      lateDeductions += booking.lateMinutes * lateDeductionPerMinute;
+    }
+  });
+
+  absentDeductions = absentClasses * ratePerClass;
+  const studentAbsentPayment = 0;
+  const weeklyFee = completedClasses * ratePerClass;
+  const totalDeductions = lateDeductions + cancellationDeductions + absentDeductions;
+  const netAmount = weeklyFee + studentAbsentPayment - totalDeductions;
+  const status = netAmount > 0 ? 'success' : 'pending';
+  const salaryDateRange = `${new Date(startDate).toLocaleDateString()} - ${new Date(endDate).toLocaleDateString()}`;
+
+  return {
+    weeklyFee,
+    salaryDateRange,
+    status,
+    totalClasses,
+    completedClasses,
+    cancelledClasses,
+    absentClasses,
+    studentAbsentClasses,
+    studentAbsentPayment,
+    lateDeductions,
+    cancellationDeductions,
+    absentDeductions,
+    netAmount,
+    ratePerClass,
+    startDate,
+    endDate,
+    minutesTaught: completedClasses * 25,
+  };
+}
+
+router.get('/payslip', verifyToken, requireTeacher, async (req, res) => {
+  try {
+    const teacherId = req.user.teacherId;
+    let startDate = req.query.startDate ? String(req.query.startDate).trim() : '';
+    let endDate = req.query.endDate ? String(req.query.endDate).trim() : '';
+    const paymentId = req.query.paymentId ? String(req.query.paymentId).trim() : '';
+
+    const teacher = await Teacher.findOne({ teacherId })
+      .select(
+        'teacherId username email firstName middleName lastName fullname nickname hireDate hourlyRate paymentHistory'
+      )
+      .lean();
+    if (!teacher) {
+      return res.status(404).json({ success: false, error: 'Teacher not found' });
+    }
+
+    let paymentRecord = null;
+    if (paymentId) {
+      paymentRecord = (teacher.paymentHistory || []).find(
+        (p) => p && String(p._id) === paymentId
+      );
+      if (!paymentRecord) {
+        return res.status(404).json({ success: false, error: 'Payment record not found' });
+      }
+      const parsed = parsePayslipDuration(paymentRecord.duration);
+      if (!parsed) {
+        return res.status(400).json({
+          success: false,
+          error: 'Payment record has an invalid period (duration).',
+        });
+      }
+      startDate = parsed.startDate;
+      endDate = parsed.endDate;
+    }
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({
+        success: false,
+        error: 'Provide startDate and endDate, or paymentId',
+      });
+    }
+
+    if (!paymentRecord) {
+      const durationKey = `${startDate} - ${endDate}`;
+      paymentRecord =
+        (teacher.paymentHistory || []).find((p) => p && p.duration === durationKey) || null;
+    }
+
+    const live = await computeTeacherPeriodFeeSummary(teacherId, startDate, endDate);
+    const snap = paymentRecord && paymentRecord.breakdown ? paymentRecord.breakdown : null;
+
+    const baseFee = snap ? Number(snap.baseFee) : live.weeklyFee;
+    const lateDeductions = snap ? Number(snap.lateDeductions) : live.lateDeductions;
+    const cancellationDeductions = snap
+      ? Number(snap.cancellationDeductions || 0)
+      : live.cancellationDeductions;
+    const absentDeductions = snap ? Number(snap.absentDeductions) : live.absentDeductions;
+    const completedClasses = snap ? Number(snap.completedClasses) : live.completedClasses;
+    const ratePerClass = snap ? Number(snap.ratePerClass) : live.ratePerClass;
+    const netFromLedger =
+      paymentRecord && paymentRecord.amount != null ? Number(paymentRecord.amount) : null;
+    const netAmount = netFromLedger != null ? netFromLedger : live.netAmount;
+    const totalDeductions = lateDeductions + cancellationDeductions + absentDeductions;
+
+    const paidStatuses = ['success', 'paid'];
+    const statusRaw = (paymentRecord && paymentRecord.status) || (live.netAmount > 0 ? 'Pending' : 'Pending');
+    const isPaid = paidStatuses.includes(String(statusRaw).toLowerCase());
+
+    const issueDate =
+      (paymentRecord && paymentRecord.issueDate) ||
+      (() => {
+        const d = new Date(endDate + 'T12:00:00+08:00');
+        d.setDate(d.getDate() + 1);
+        return d;
+      })();
+
+    res.json({
+      success: true,
+      payslip: {
+        documentTitle: 'Teacher Payslip / Earnings Statement',
+        company: {
+          name: 'RemoEd',
+          description: 'Filipino ESL & Online Education Platform',
+        },
+        teacher: {
+          teacherId: teacher.teacherId,
+          username: teacher.username,
+          email: teacher.email || '',
+          legalName: teacherLegalDisplayName(teacher),
+          nickname: (teacher.nickname && String(teacher.nickname).trim()) || '',
+          hireDate: teacher.hireDate || null,
+        },
+        period: {
+          startDate,
+          endDate,
+          label: `${startDate} to ${endDate}`,
+          cutOff:
+            Number(String(startDate).slice(8, 10)) <= 15
+              ? '1st–15th of the month'
+              : '16th–end of the month',
+        },
+        issueDate,
+        paymentMethod:
+          (paymentRecord && paymentRecord.paymentMethod) || 'Approved digital channel',
+        account: (paymentRecord && paymentRecord.account) || teacher.username,
+        status: isPaid ? 'Paid' : 'Pending / Accrued',
+        paymentId: paymentRecord ? String(paymentRecord._id) : null,
+        earnings: {
+          ratePerClass,
+          completedClasses,
+          minutesTaught: completedClasses * 25,
+          baseFee,
+          studentAbsentClasses: snap
+            ? Number(snap.studentAbsentClasses || 0)
+            : live.studentAbsentClasses,
+          studentAbsentPayment: snap
+            ? Number(snap.studentAbsentPayment || 0)
+            : live.studentAbsentPayment,
+          cancelledClasses: live.cancelledClasses,
+          absentClasses: snap
+            ? Number(snap.teacherAbsentClasses != null ? snap.teacherAbsentClasses : snap.absentClasses || 0)
+            : live.absentClasses,
+          lateDeductions,
+          cancellationDeductions,
+          absentDeductions,
+          totalDeductions,
+          netAmount,
+          currency: 'PHP',
+        },
+        notes: [
+          'This statement reflects RemoEd bi-monthly cut-off earnings (1st–15th and 16th–end of month, Asia/Manila).',
+          'Rate is per completed 25-minute class session.',
+          isPaid
+            ? 'Status Paid means this cut-off was dispensed by RemoEd administration.'
+            : 'Status Pending means this cut-off has not yet been dispensed; amounts are estimated from class records.',
+          'For bank or legal use, print or save as PDF after verifying the Net Amount.',
+        ],
+        generatedAt: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    console.error('Error building payslip:', error);
+    res.status(500).json({ success: false, error: 'Failed to build payslip' });
   }
 });
 
@@ -6336,7 +6497,7 @@ router.get('/peers', teacherPeerSearchLimiter, verifyToken, requireTeacher, asyn
     }
     
     const peers = await Teacher.find(query)
-      .select('teacherId firstName lastName fullname experience teachingAbilities profilePicture')
+      .select('teacherId firstName lastName nickname fullname experience teachingAbilities profilePicture')
       .limit(20);
     
     // Format peer data
@@ -6349,7 +6510,7 @@ router.get('/peers', teacherPeerSearchLimiter, verifyToken, requireTeacher, asyn
       
       return {
         id: peer.teacherId,
-        name: peer.fullname || `${peer.firstName || ''} ${peer.lastName || ''}`.trim() || 'Teacher',
+        name: publicTeacherLabel(peer),
         expertise: expertise.length > 0 ? expertise : ['General English'],
         experience: peer.experience || 'Not specified',
         rating: 4.5, // In production, calculate from feedback
@@ -6384,7 +6545,7 @@ router.get('/public-profile/:teacherId', async (req, res) => {
       return res.status(404).json({ error: 'Teacher not found' });
     }
     const teacher = await Teacher.findOne({ teacherId: row.teacherId })
-      .select('teacherId fullname firstName lastName profilePicture introduction experience education workExperience teachingAbilities');
+      .select('teacherId fullname firstName lastName nickname profilePicture introduction experience education workExperience teachingAbilities');
     if (!teacher) {
       return res.status(404).json({ error: 'Teacher not found' });
     }
@@ -6393,10 +6554,17 @@ router.get('/public-profile/:teacherId', async (req, res) => {
     if (teacher.teachingAbilities?.reading?.level) expertise.push('Reading');
     if (teacher.teachingAbilities?.speaking?.level) expertise.push('Speaking');
     if (teacher.teachingAbilities?.writing?.level) expertise.push('Writing');
+    const publicProfile = teacher.toObject();
+    publicProfile.displayName = publicTeacherLabel(teacher);
+    // Do not expose legal name fields on public profile — nickname is the public identity
+    publicProfile.fullname = publicProfile.displayName;
+    publicProfile.firstName = publicProfile.displayName;
+    publicProfile.lastName = '';
+    publicProfile.middleName = '';
     res.json({
       success: true,
       profile: {
-        ...teacher.toObject(),
+        ...publicProfile,
         expertise: expertise.length > 0 ? expertise : ['General English']
       }
     });
@@ -6500,7 +6668,7 @@ router.get('/connections', verifyToken, requireTeacher, async (req, res) => {
       return {
         id: teacher.teacherId,
         connectionId: conn._id.toString(),
-        name: teacher.fullname || `${teacher.firstName || ''} ${teacher.lastName || ''}`.trim() || 'Teacher',
+        name: publicTeacherLabel(teacher),
         email: teacher.email || '',
         expertise: expertise.length > 0 ? expertise : ['General English'],
         experience: teacher.experience || 'Not specified',
@@ -6548,7 +6716,7 @@ router.get('/connection-requests/pending', verifyToken, requireTeacher, async (r
       return {
         id: req._id.toString(),
         teacherId: req.requesterId,
-        name: teacher.fullname || `${teacher.firstName || ''} ${teacher.lastName || ''}`.trim() || 'Teacher',
+        name: publicTeacherLabel(teacher),
         expertise: expertise.length > 0 ? expertise : ['General English'],
         experience: teacher.experience || 'Not specified',
         rating: 4.5,
@@ -6596,7 +6764,7 @@ router.get('/connection-requests/sent', verifyToken, requireTeacher, async (req,
       return {
         id: req._id.toString(),
         teacherId: req.recipientId,
-        name: teacher.fullname || `${teacher.firstName || ''} ${teacher.lastName || ''}`.trim() || 'Teacher',
+        name: publicTeacherLabel(teacher),
         expertise: expertise.length > 0 ? expertise : ['General English'],
         experience: teacher.experience || 'Not specified',
         rating: 4.5,

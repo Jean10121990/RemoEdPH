@@ -1661,17 +1661,20 @@
                 const data = await response.json();
 
                 if (data.profile) {
+                  const name =
+                    (data.profile.nickname && String(data.profile.nickname).trim()) ||
+                    data.profile.firstName ||
+                    username;
                   const usernameElement = document.getElementById('remoed-username');
                   if (usernameElement) {
-                    const name = data.profile.firstName || username;
                     usernameElement.textContent = `Hi, ${name}`;
-                    console.log('✅ Sidebar updated with first name:', name);
+                    console.log('✅ Sidebar updated with display name:', name);
                   }
 
                   // Use centralized avatar helper to set image or fallback
                   setAvatar({
                     imageUrl: data.profile.profilePicture || '',
-                    displayName: data.profile.firstName || username,
+                    displayName: name,
                     imgSelector: '#profile-image',
                     textSelector: '#avatar-text'
                   });
