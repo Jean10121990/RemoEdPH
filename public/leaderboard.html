@@ -12,10 +12,13 @@
       var role = 'student';
       try {
         var ut = (localStorage.getItem('userType') || localStorage.getItem('userRole') || '').toLowerCase();
-        if (ut === 'teacher' || ut === 'admin') role = 'teacher';
+        if (ut === 'admin') role = 'admin';
+        else if (ut === 'teacher') role = 'teacher';
       } catch (e) {}
       window.__LB_ROLE__ = role;
-      document.documentElement.classList.add(role === 'teacher' ? 'lb-role-teacher' : 'lb-role-student');
+      document.documentElement.classList.add(
+        role === 'admin' ? 'lb-role-admin' : role === 'teacher' ? 'lb-role-teacher' : 'lb-role-student'
+      );
     })();
   </script>
   <title>Leaderboard - RemoEdPH</title>
@@ -40,6 +43,9 @@
       overflow-x: hidden;
       box-sizing: border-box;
     }
+    body.page-leaderboard.admin-portal {
+      --remoed-brand-blue: #1ca7e7;
+    }
   </style>
   <script>
     (function () {
@@ -47,10 +53,10 @@
       var studentLayout = document.getElementById('student-layout-css');
       var studentSide = document.getElementById('student-sidebar-css');
       var teacherBrand = document.getElementById('teacher-brand-css');
-      if (role === 'teacher') {
+      if (role === 'teacher' || role === 'admin') {
         if (studentLayout) studentLayout.disabled = true;
         if (studentSide) studentSide.disabled = true;
-        if (teacherBrand) teacherBrand.disabled = false;
+        if (teacherBrand) teacherBrand.disabled = role !== 'teacher';
       } else {
         if (studentLayout) studentLayout.disabled = false;
         if (studentSide) studentSide.disabled = false;
@@ -135,6 +141,8 @@
       }
     } catch (e) {}
     return (
+      localStorage.getItem('remoed_admin_token') ||
+      localStorage.getItem('remoed_admin_auth') ||
       localStorage.getItem('remoed_teacher_token') ||
       localStorage.getItem('remoed_student_token') ||
       localStorage.getItem('remoed_user_token') ||
@@ -351,9 +359,25 @@
     state.role = detectRole();
     var body = document.body;
     var root = document.getElementById('portal-sidebar-root');
-    if (state.role === 'teacher') {
-      body.classList.add('teacher-portal');
+    if (state.role === 'admin') {
+      body.classList.add('admin-portal', 'teacher-portal');
       body.classList.remove('student-portal');
+      root.id = 'admin-sidebar-root';
+      var as = document.createElement('script');
+      as.src = 'js/admin-sidebar.js?v=lb-admin-1';
+      as.onload = function () {
+        AdminSidebar.render('admin-sidebar-root', 'leaderboard');
+        var h = document.createElement('script');
+        h.src = 'js/admin-page-header.js?v=lb-admin-1';
+        h.onload = function () {
+          if (window.AdminPageHeader) AdminPageHeader.render('leaderboard');
+        };
+        document.head.appendChild(h);
+      };
+      document.head.appendChild(as);
+    } else if (state.role === 'teacher') {
+      body.classList.add('teacher-portal');
+      body.classList.remove('student-portal', 'admin-portal');
       root.id = 'teacher-sidebar-root';
       var ts = document.createElement('script');
       ts.src = 'js/teacher-sidebar.js?v=lb-nav-2';
@@ -369,7 +393,7 @@
       document.head.appendChild(ts);
     } else {
       body.classList.add('student-portal');
-      body.classList.remove('teacher-portal');
+      body.classList.remove('teacher-portal', 'admin-portal');
       root.id = 'student-sidebar-root';
       var ss = document.createElement('script');
       ss.src = 'js/student-sidebar.js?v=lb-nav-2';

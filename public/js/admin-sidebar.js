@@ -23,6 +23,7 @@
         { id: 'hr-hub', label: 'HR Hub', href: 'admin-hr-hub.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>' },
         { id: 'qa-hub', label: 'QA Hub', href: 'admin-qa-hub.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>' },
         { id: 'accounting-hub', label: 'Accounting Hub', href: 'admin-accounting-hub.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>' },
+        { id: 'leaderboard', label: 'Leaderboard', href: 'leaderboard.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 01-10 0V4z"/><path d="M5 8H3a2 2 0 000 4h2M19 8h2a2 2 0 010 4h-2"/></svg>' },
         { id: 'announcements', label: 'Announcements', href: 'admin-announcements.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg>' },
         { id: 'videos', label: 'Videos', href: 'admin-videos.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><rect x="3" y="5" width="14" height="12" rx="2"/><path d="M17 9l4-2v10l-4-2"/></svg>' },
         { id: 'reports', label: 'Reports', href: 'admin-reports.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>' },
@@ -43,6 +44,7 @@
         if (path.indexOf('admin-assessment-answer-key') !== -1) return 'hr-hub';
         if (path.indexOf('admin-teacher-pipeline') !== -1) return 'hr-hub';
         if (path.indexOf('admin-accounting-hub') !== -1) return 'accounting-hub';
+        if (path.indexOf('leaderboard') !== -1) return 'leaderboard';
         if (path.indexOf('admin-unique-link-commission') !== -1) return 'accounting-hub';
         if (path.indexOf('admin-student-subscriptions') !== -1) return 'accounting-hub';
         if (path.indexOf('admin-payroll') !== -1) return 'accounting-hub';

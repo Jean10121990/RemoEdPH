@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="css/student-portal-layout.css?v=slide-match-1">
     <link rel="stylesheet" href="css/student-sidebar.css?v=slide-match-1">
+    <link rel="stylesheet" href="css/student-learning-journey.css?v=path-char-1">
     <script src="js/user-session.js"></script>
 </head>
 <body class="student-portal page-student-learning-journey">
@@ -27,7 +28,24 @@
         <div class="remoed-content">
             <div class="lj-page">
                 <header class="lj-hero">
-                    <p>Follow your path through RemoEd English. Each dot is one lesson; glowing dots are lessons you finished. Earn a trophy when you complete all 22 lessons in a batch.</p>
+                    <div class="lj-hero-top">
+                        <div>
+                            <h1>My Learning Journey</h1>
+                            <p>Walk the path with Remo. Each stop is one lesson. Remo stands on your next lesson — finished stops glow green. Fill the water drop as you grow!</p>
+                        </div>
+                        <div class="lj-drop-meter" id="lj-level-drop" aria-live="polite">
+                            <div class="lj-drop" aria-hidden="true">
+                                <div class="lj-drop__shape">
+                                    <div class="lj-drop__fill" style="height: 0%"></div>
+                                    <div class="lj-drop__shine"></div>
+                                </div>
+                            </div>
+                            <div class="lj-drop-meta">
+                                <strong id="lj-level-drop-count">0 / 220</strong>
+                                <span id="lj-level-drop-label">Level progress</span>
+                            </div>
+                        </div>
+                    </div>
                     <button type="button" class="lj-back" onclick="window.location.href='student-dashboard.html'">← Back to dashboard</button>
                 </header>
                 <div class="lj-level-tabs" role="tablist" aria-label="Level">
@@ -49,6 +67,12 @@
                 return;
             }
 
+            var LESSONS_PER_BATCH = 22;
+            var BATCH_COUNT = 10;
+            var LEVEL_TOTAL = BATCH_COUNT * LESSONS_PER_BATCH;
+            var PATH_COLS = 6;
+            var CHAR_SRC = 'images/remo-green.png';
+
             var LEVEL_META = {
                 'Little Seeds (Age 3)': 'Little Seeds (Age 3)',
                 'Sprouts (Age 4)': 'Sprouts (Age 4)',
@@ -58,6 +82,14 @@
 
             var completedSet = null;
             var unlockCache = {};
+            var activeBatchByLevel = {};
+            var currentLevelKey = 'Little Seeds (Age 3)';
+
+            var LOCK_SVG =
+                '<svg class="lj-lock-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+                '<path d="M12 17a2 2 0 100-4 2 2 0 000 4z" fill="currentColor"/>' +
+                '<path d="M18 9h-1V7a5 5 0 00-10 0v2H6a2 2 0 00-2 2v9a2 2 0 002 2h12a2 2 0 002-2v-9a2 2 0 00-2-2zm-8-2a3 3 0 016 0v2H10V7z" fill="currentColor"/>' +
+                '</svg>';
 
             function getPortalToken() {
                 if (window.RemoedUserSession && typeof window.RemoedUserSession.getUserToken === 'function') {
@@ -74,6 +106,14 @@
                 } catch (e) {
                     return '';
                 }
+            }
+
+            function esc(s) {
+                return String(s)
+                    .replace(/&/g, '&amp;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/</g, '&lt;')
+                    .replace(/'/g, '&#39;');
             }
 
             function fetchUnlockBatches(levelKey) {
@@ -108,84 +148,203 @@
                 return !!(row && row.locked);
             }
 
-            var LOCK_SVG =
-                '<svg class="lj-lock-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
-                '<path d="M12 17a2 2 0 100-4 2 2 0 000 4z" fill="currentColor"/>' +
-                '<path d="M18 9h-1V7a5 5 0 00-10 0v2H6a2 2 0 00-2 2v9a2 2 0 002 2h12a2 2 0 002-2v-9a2 2 0 00-2-2zm-8-2a3 3 0 016 0v2H10V7z" fill="currentColor"/>' +
-                '</svg>';
+            function batchProgress(levelKey, batchNum) {
+                var done = 0;
+                for (var le = 1; le <= LESSONS_PER_BATCH; le++) {
+                    if (completedSet.has(levelKey + ':' + batchNum + ':' + le)) done++;
+                }
+                return done;
+            }
 
-            var REGION_LOCK_OVERLAY =
-                '<div class="lj-region-lock-overlay" role="region" aria-label="These lessons are locked">' +
-                '<div class="lj-region-lock-inner">' +
-                LOCK_SVG +
-                '<p>Purchase a plan to unlock more lessons</p>' +
-                '<a class="lj-batch-buy-btn" href="student-credits.html">Buy Now</a>' +
-                '</div></div>';
+            function levelProgress(levelKey) {
+                var done = 0;
+                for (var b = 1; b <= BATCH_COUNT; b++) {
+                    done += batchProgress(levelKey, b);
+                }
+                return done;
+            }
+
+            function pickDefaultBatch(levelKey, batches) {
+                var firstIncompleteUnlocked = null;
+                var firstUnlocked = null;
+                for (var b = 1; b <= BATCH_COUNT; b++) {
+                    var locked = isBatchLocked(batches, b);
+                    if (locked) continue;
+                    if (firstUnlocked == null) firstUnlocked = b;
+                    var done = batchProgress(levelKey, b);
+                    if (done < LESSONS_PER_BATCH && firstIncompleteUnlocked == null) {
+                        firstIncompleteUnlocked = b;
+                    }
+                }
+                return firstIncompleteUnlocked || firstUnlocked || 1;
+            }
+
+            function hereLessonIndex(levelKey, batchNum) {
+                for (var le = 1; le <= LESSONS_PER_BATCH; le++) {
+                    if (!completedSet.has(levelKey + ':' + batchNum + ':' + le)) return le;
+                }
+                return LESSONS_PER_BATCH;
+            }
+
+            function renderDropHtml(fillPct, countText, labelText, extraClass) {
+                return (
+                    '<div class="lj-drop-meter' + (extraClass ? ' ' + extraClass : '') + '">' +
+                    '<div class="lj-drop" aria-hidden="true">' +
+                    '<div class="lj-drop__shape">' +
+                    '<div class="lj-drop__fill" style="height: ' + Math.max(0, Math.min(100, fillPct)) + '%"></div>' +
+                    '<div class="lj-drop__shine"></div>' +
+                    '</div></div>' +
+                    '<div class="lj-drop-meta">' +
+                    '<strong>' + esc(countText) + '</strong>' +
+                    '<span>' + esc(labelText) + '</span>' +
+                    '</div></div>'
+                );
+            }
+
+            function updateLevelDrop(levelKey) {
+                var done = levelProgress(levelKey);
+                var pct = LEVEL_TOTAL ? Math.round((done / LEVEL_TOTAL) * 100) : 0;
+                var fill = document.querySelector('#lj-level-drop .lj-drop__fill');
+                var countEl = document.getElementById('lj-level-drop-count');
+                var labelEl = document.getElementById('lj-level-drop-label');
+                if (fill) fill.style.height = pct + '%';
+                if (countEl) countEl.textContent = done + ' / ' + LEVEL_TOTAL;
+                if (labelEl) labelEl.textContent = (LEVEL_META[levelKey] || levelKey) + ' progress';
+            }
+
+            function buildPathRows(levelKey, batchNum, hereIdx) {
+                var label = LEVEL_META[levelKey] || levelKey;
+                var lessons = [];
+                for (var le = 1; le <= LESSONS_PER_BATCH; le++) {
+                    lessons.push(le);
+                }
+                var rowsHtml = '';
+                var rowIndex = 0;
+                for (var i = 0; i < lessons.length; i += PATH_COLS) {
+                    var slice = lessons.slice(i, i + PATH_COLS);
+                    var rtl = rowIndex % 2 === 1;
+                    var nodes = '';
+                    for (var s = 0; s < slice.length; s++) {
+                        var n = slice[s];
+                        var ok = completedSet.has(levelKey + ':' + batchNum + ':' + n);
+                        var isHere = n === hereIdx;
+                        var tip =
+                            'RemoEd ' + label + ' English — Batch ' + batchNum + ' — Lesson ' + n +
+                            (ok ? ' (done)' : isHere ? ' (you are here)' : '');
+                        var cls = 'lj-node';
+                        if (ok) cls += ' lj-node--done';
+                        if (isHere) cls += ' lj-node--here';
+                        nodes +=
+                            '<div class="' + cls + '" role="img" aria-label="' + esc(tip) + '" title="' + esc(tip) + '">' +
+                            '<span>' + n + '</span>';
+                        if (isHere) {
+                            nodes +=
+                                '<div class="lj-char" aria-hidden="true">' +
+                                '<span class="lj-char__bubble">' + (ok && hereIdx === LESSONS_PER_BATCH ? 'Done!' : 'Next') + '</span>' +
+                                '<img src="' + CHAR_SRC + '" alt="" width="56" height="56" decoding="async">' +
+                                '</div>';
+                        }
+                        nodes += '</div>';
+                    }
+                    rowsHtml +=
+                        '<div class="lj-path-row' + (rtl ? ' lj-path-row--rtl' : '') + '">' + nodes + '</div>';
+                    rowIndex++;
+                }
+                return rowsHtml;
+            }
 
             function renderLevel(levelKey, batches) {
                 var root = document.getElementById('lj-trail-root');
                 if (!root || !completedSet) return;
-                var label = LEVEL_META[levelKey] || levelKey;
-                var html = '';
-                var lockedRunOpen = false;
 
-                function closeLockedRun() {
-                    if (!lockedRunOpen) return;
-                    html += '</div>';
-                    html += REGION_LOCK_OVERLAY;
-                    html += '</div>';
-                    lockedRunOpen = false;
+                updateLevelDrop(levelKey);
+
+                if (!activeBatchByLevel[levelKey]) {
+                    activeBatchByLevel[levelKey] = pickDefaultBatch(levelKey, batches);
                 }
+                var activeBatch = activeBatchByLevel[levelKey];
+                if (activeBatch < 1 || activeBatch > BATCH_COUNT) activeBatch = 1;
 
-                for (var b = 1; b <= 10; b++) {
-                    var doneInBatch = 0;
-                    var nodes = '';
-                    for (var le = 1; le <= 22; le++) {
-                        var key = levelKey + ':' + b + ':' + le;
-                        var ok = completedSet.has(key);
-                        if (ok) doneInBatch++;
-                        var tip = 'RemoEd ' + label + ' English — Batch ' + b + ' — Lesson ' + le + (ok ? ' (done)' : '');
-                        var safe = String(tip).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
-                        nodes += '<div class="lj-node' + (ok ? ' lj-node--done' : '') + '" role="img" aria-label="' + safe + '" title="' + safe + '"></div>';
-                    }
-                    var batchComplete = doneInBatch === 22;
+                var chapters = '<div class="lj-chapters" role="tablist" aria-label="Batches">';
+                for (var b = 1; b <= BATCH_COUNT; b++) {
+                    var done = batchProgress(levelKey, b);
                     var locked = isBatchLocked(batches, b);
-
-                    if (!locked) {
-                        closeLockedRun();
-                    } else if (!lockedRunOpen) {
-                        html += '<div class="lj-locked-region"><div class="lj-locked-region-stack">';
-                        lockedRunOpen = true;
-                    }
-
-                    html += '<div class="lj-batch-wrap">';
-                    html +=
-                        '<section class="lj-batch' +
-                        (locked ? ' lj-batch--locked' : '') +
-                        '" aria-labelledby="lj-batch-' +
-                        levelKey +
-                        '-' +
-                        b +
-                        '">';
-                    html += '<div class="lj-batch-body">';
-                    html += '<h2 class="lj-batch-head" id="lj-batch-' + levelKey + '-' + b + '">';
-                    if (batchComplete) {
-                        html += '<span class="lj-trophy" aria-hidden="true" title="Batch complete">🏆</span> ';
-                    }
-                    html += 'Batch ' + b;
-                    html += ' <span class="lj-batch-count">' + doneInBatch + '/22</span>';
-                    if (batchComplete) {
-                        html += ' <span class="lj-badge">Batch completed</span>';
-                    }
-                    html += '</h2>';
-                    html += '<div class="lj-trail" aria-hidden="false">' + nodes + '</div>';
-                    html += '</div>';
-                    html += '</section>';
-                    html += '</div>';
+                    var complete = done === LESSONS_PER_BATCH;
+                    var cls = 'lj-chapter';
+                    if (b === activeBatch) cls += ' is-active';
+                    if (complete) cls += ' is-complete';
+                    if (locked) cls += ' is-locked';
+                    var stat = locked ? 'Locked' : done + '/' + LESSONS_PER_BATCH;
+                    chapters +=
+                        '<button type="button" class="' + cls + '" data-batch="' + b + '" role="tab" aria-selected="' +
+                        (b === activeBatch ? 'true' : 'false') + '">' +
+                        '<span class="lj-chapter__label">Batch</span>' +
+                        '<span class="lj-chapter__num">' + b + (complete ? ' ✓' : '') + '</span>' +
+                        '<span class="lj-chapter__stat">' + esc(stat) + '</span>' +
+                        '</button>';
                 }
-                closeLockedRun();
+                chapters += '</div>';
+
+                var doneActive = batchProgress(levelKey, activeBatch);
+                var lockedActive = isBatchLocked(batches, activeBatch);
+                var completeActive = doneActive === LESSONS_PER_BATCH;
+                var fillPct = Math.round((doneActive / LESSONS_PER_BATCH) * 100);
+                var hereIdx = hereLessonIndex(levelKey, activeBatch);
+
+                var stageCls = 'lj-stage' + (lockedActive ? ' lj-stage--locked' : '');
+                var html = chapters;
+                html += '<section class="' + stageCls + '" aria-labelledby="lj-stage-title">';
+                html += '<div class="lj-stage-head">';
+                html += '<h2 class="lj-stage-title" id="lj-stage-title">';
+                if (completeActive) html += '<span class="lj-trophy" aria-hidden="true">🏆</span> ';
+                html += 'Batch ' + activeBatch;
+                if (completeActive) html += ' <span class="lj-badge">Batch completed</span>';
+                html += '</h2>';
+                html += renderDropHtml(fillPct, doneActive + ' / ' + LESSONS_PER_BATCH, 'Batch water drop', 'lj-stage-drop');
+                html += '</div>';
+
+                html += '<div class="lj-path" aria-label="Lesson path for batch ' + activeBatch + '">';
+                html += buildPathRows(levelKey, activeBatch, hereIdx);
+                html += '</div>';
+
+                if (lockedActive) {
+                    html +=
+                        '<div class="lj-lock-panel" role="region" aria-label="These lessons are locked">' +
+                        '<div class="lj-lock-inner">' +
+                        LOCK_SVG +
+                        '<p>Purchase a plan to unlock more lessons</p>' +
+                        '<a class="lj-batch-buy-btn" href="student-credits.html">Buy Now</a>' +
+                        '</div></div>';
+                }
+
+                html +=
+                    '<div class="lj-legend" aria-hidden="true">' +
+                    '<span><i class="done"></i> Finished</span>' +
+                    '<span><i class="here"></i> Remo is here</span>' +
+                    '<span><i></i> Upcoming</span>' +
+                    '</div>';
+                html += '</section>';
+
                 root.innerHTML = html;
                 root.setAttribute('aria-busy', 'false');
+
+                root.querySelectorAll('.lj-chapter').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        var n = parseInt(btn.getAttribute('data-batch'), 10);
+                        if (!Number.isFinite(n)) return;
+                        activeBatchByLevel[levelKey] = n;
+                        renderLevel(levelKey, batches);
+                        var stage = root.querySelector('.lj-stage');
+                        if (stage && stage.scrollIntoView) {
+                            stage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                        }
+                    });
+                });
+
+                var activeChap = root.querySelector('.lj-chapter.is-active');
+                if (activeChap && activeChap.scrollIntoView) {
+                    activeChap.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                }
             }
 
             function activateTabUi(levelKey) {
@@ -199,7 +358,9 @@
             function loadAndRender(levelKey) {
                 var root = document.getElementById('lj-trail-root');
                 if (!root || !completedSet) return;
+                currentLevelKey = levelKey;
                 root.setAttribute('aria-busy', 'true');
+                root.textContent = 'Loading your journey…';
                 fetchUnlockBatches(levelKey).then(function (batches) {
                     renderLevel(levelKey, batches);
                 });
@@ -214,8 +375,8 @@
                 RemoEdLessonProgress.loadCompletedKeys()
                     .then(function (set) {
                         completedSet = set;
-                        activateTabUi('Little Seeds (Age 3)');
-                        loadAndRender('Little Seeds (Age 3)');
+                        activateTabUi(currentLevelKey);
+                        loadAndRender(currentLevelKey);
                     })
                     .catch(function (e) {
                         if (root) {

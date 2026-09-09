@@ -28,9 +28,9 @@ const studentSchema = new mongoose.Schema({
   aboutMe: { type: String },
   photo: { type: String },
   profilePicture: { type: String },
-  level: { type: String, default: 'Beginner' }, // Beginner, Intermediate, Advanced
-  cefrLevel: { type: String }, // A1, A2, B1, B2, C1, C2
-  leveling: { type: String }, // For custom leveling system (temporary, will be replaced)
+  level: { type: String, default: 'Little Seeds (Age 3)' }, // RemoEdKids: Little Seeds / Sprouts / Saplings / Young Stewards
+  cefrLevel: { type: String }, // A1, A2, B1, B2, C1, C2 (assessment)
+  leveling: { type: String }, // Curriculum or assessment label
   assessmentScore: { type: Number },
   assessmentDate: { type: Date },
   education: [{

@@ -180,6 +180,56 @@
             return html;
         }
 
+        /** RemoEdKids: Level 1–4 (not CEFR Beginner/Intermediate/Advanced). */
+        function formatRemoEdKidsLevel(u) {
+            var order = {
+                'Little Seeds (Age 3)': { n: 1, name: 'Little Seeds' },
+                'Sprouts (Age 4)': { n: 2, name: 'Sprouts' },
+                'Saplings (Age 5)': { n: 3, name: 'Saplings' },
+                'Young Stewards (Age 6)': { n: 4, name: 'Young Stewards' }
+            };
+            function normalize(raw) {
+                var s = String(raw || '').toLowerCase().trim();
+                if (!s) return null;
+                if (/^(beginner|intermediate|advanced|a1|a2|b1|b2|c1|c2)$/i.test(s) || s.indexOf('cefr') !== -1) {
+                    return null;
+                }
+                if (s.indexOf('little seeds') !== -1 || s === 'nursery' || s.indexOf('age 3') !== -1 || s === 'level 1') {
+                    return 'Little Seeds (Age 3)';
+                }
+                if (s.indexOf('sprouts') !== -1 || s === 'kinder' || s.indexOf('kindergarten') !== -1 || s.indexOf('age 4') !== -1 || s === 'level 2') {
+                    return 'Sprouts (Age 4)';
+                }
+                if (s.indexOf('saplings') !== -1 || s === 'prep' || s.indexOf('preparatory') !== -1 || s.indexOf('age 5') !== -1 || s === 'level 3') {
+                    return 'Saplings (Age 5)';
+                }
+                if (s.indexOf('young stewards') !== -1 || s.indexOf('steward') !== -1 || s.indexOf('age 6') !== -1 || s === 'level 4') {
+                    return 'Young Stewards (Age 6)';
+                }
+                return null;
+            }
+            var candidates = [];
+            if (u && Array.isArray(u.education)) {
+                u.education.forEach(function (edu) {
+                    if (edu && edu.level) candidates.push(edu.level);
+                });
+            }
+            if (u && u.leveling) candidates.push(u.leveling);
+            if (u && u.level) candidates.push(u.level);
+            var canonical = null;
+            for (var i = 0; i < candidates.length; i++) {
+                canonical = normalize(candidates[i]);
+                if (canonical) break;
+            }
+            // Legacy "Beginner" default → Level 1 for RemoEdKids
+            if (!canonical && u && String(u.level || '').toLowerCase() === 'beginner') {
+                canonical = 'Little Seeds (Age 3)';
+            }
+            if (!canonical) return '—';
+            var meta = order[canonical];
+            return 'Level ' + meta.n + ' - ' + meta.name;
+        }
+
         if (localStorage.getItem('userType') !== 'admin') {
             document.getElementById('root').innerHTML = '<div class="err">Access denied.</div>';
         } else {
@@ -233,7 +283,7 @@
                             rows.push(['Emergency contact person', emergencyPerson || '—']);
                             rows.push(['Emergency contact number', emergencyNumber || '—']);
                             rows.push(['Student code', u.studentCode || '—']);
-                            rows.push(['Level', u.level || u.cefrLevel || '—']);
+                            rows.push(['Level', formatRemoEdKidsLevel(u)]);
                             rows.push(['Status', u.status || '—']);
                             rows.push(['Account status', u.accountStatus || '—']);
                             rows.push(['Joined', u.createdAt ? new Date(u.createdAt).toLocaleString() : '—']);

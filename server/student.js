@@ -221,6 +221,14 @@ router.get('/profile', verifyToken, requireStudent, async (req, res) => {
       lastName: student.lastName
     });
 
+    const {
+      resolveStudentCurriculumLevel,
+      formatCurriculumLevelDisplay,
+      DEFAULT_CURRICULUM_LEVEL,
+    } = require('./config/curriculumLevels');
+    const curriculumLevel =
+      resolveStudentCurriculumLevel(student) || DEFAULT_CURRICULUM_LEVEL;
+
     const body = {
       profile: {
         username: student.username,
@@ -247,6 +255,11 @@ router.get('/profile', verifyToken, requireStudent, async (req, res) => {
         documents: student.documents,
         cefrLevel: student.cefrLevel,
         leveling: student.leveling,
+        level: student.level,
+        curriculumLevel,
+        curriculumLevelDisplay:
+          formatCurriculumLevelDisplay(curriculumLevel, { fallbackDefault: true }) ||
+          'Level 1 - Little Seeds',
         assessmentScore: student.assessmentScore,
         assessmentDate: student.assessmentDate,
         accountStatus: student.accountStatus || 'standard',
@@ -1250,26 +1263,25 @@ router.post('/save-assessment', verifyToken, requireStudent, saveAssessmentValid
       return res.status(404).json({ error: 'Student not found' });
     }
     
-    // Update assessment data
+    // Update assessment data (CEFR stays on cefrLevel — do not overwrite RemoEdKids curriculum `level`)
     student.cefrLevel = cefrLevel;
-    student.leveling = cefrLevel; // Save to leveling field for custom leveling system
     student.assessmentScore = score;
     student.assessmentDate = date ? new Date(date) : new Date();
-    
-    // Also update the legacy level field for backward compatibility
-    if (cefrLevel === 'A1' || cefrLevel === 'A2' || cefrLevel === 'A3') {
-      student.level = 'Beginner';
-    } else if (cefrLevel === 'B1' || cefrLevel === 'B2') {
-      student.level = 'Intermediate';
-    } else if (cefrLevel === 'C1' || cefrLevel === 'C2') {
-      student.level = 'Advanced';
+
+    const { normalizeCurriculumLevel, DEFAULT_CURRICULUM_LEVEL } = require('./config/curriculumLevels');
+    // Keep RemoEdKids track on `level` (Little Seeds / Sprouts / …). Migrate legacy ESL labels once.
+    if (!normalizeCurriculumLevel(student.level)) {
+      const fromEducation =
+        Array.isArray(student.education) &&
+        student.education.map((e) => e && e.level).find((l) => normalizeCurriculumLevel(l));
+      student.level = normalizeCurriculumLevel(fromEducation) || DEFAULT_CURRICULUM_LEVEL;
     }
     
     await student.save();
     
     console.log('✅ Assessment result saved successfully:', {
       cefrLevel: student.cefrLevel,
-      leveling: student.leveling,
+      level: student.level,
       score: student.assessmentScore,
       date: student.assessmentDate
     });
@@ -1280,11 +1292,12 @@ router.post('/save-assessment', verifyToken, requireStudent, saveAssessmentValid
       assessment: {
         cefrLevel: student.cefrLevel,
         leveling: student.leveling,
+        level: student.level,
         score: student.assessmentScore,
         date: student.assessmentDate
       }
     });
-  } catch (error) {
+      } catch (error) {
     console.error('❌ Error saving assessment result:', error);
     res.status(500).json({
       error:
@@ -2109,88 +2122,114 @@ router.post('/booking/:bookingId/mark-absent', verifyToken, requireStudent, asyn
 router.get('/dashboard-stats', verifyToken, requireStudent, async (req, res) => {
   try {
     const studentUsername = req.user.username;
+    const studentMongoId = req.user.studentId != null ? String(req.user.studentId) : '';
     
     console.log('🔍 Dashboard stats request for student:', studentUsername);
-    console.log('🔍 User object:', req.user);
     
-    // Get all bookings for this student
-    const allBookings = await Booking.find({ studentId: studentUsername });
+    const studentIdCandidates = [...new Set([studentUsername, studentMongoId].filter(Boolean))];
+
+    // Bookings store studentId as username/email (sometimes mongo id in older rows)
+    const allBookings = await Booking.find({
+      studentId: { $in: studentIdCandidates },
+    });
     console.log('📚 Found bookings:', allBookings.length);
     
-    // Get all feedback submitted by this student
     const Feedback = require('./models/Feedback');
-    // Use the studentId from the token (MongoDB ObjectId) since that's what's stored in feedback
-    const allFeedback = await Feedback.find({ studentId: req.user.studentId });
-    console.log('⭐ Found feedback entries:', allFeedback.length);
-    console.log('⭐ Feedback details:', allFeedback.map(f => ({ studentId: f.studentId, rating: f.rating, bookingId: f.bookingId })));
+    // Stars given = student → teacher feedback only
+    const givenFeedback = await Feedback.find({
+      feedbackRole: 'student_to_teacher',
+      studentId: { $in: studentIdCandidates },
+    });
     
-    // Also try searching by username as fallback
-    const feedbackByUsername = await Feedback.find({ studentId: req.user.username });
-    console.log('🔍 Alternative feedback search by username:', feedbackByUsername.length);
-    
-    // Use the feedback with the most results
-    const finalFeedback = allFeedback.length > 0 ? allFeedback : feedbackByUsername;
-    
-    console.log('✅ Using feedback with most results:', finalFeedback.length, 'entries');
-    
-    // Calculate total classes booked
+    function isCompletedBooking(booking) {
+      const st = String(booking.status || '').toLowerCase();
+      return (
+        st === 'completed' ||
+        st === 'pending_feedback' ||
+        !!(booking.attendance && booking.attendance.classCompleted) ||
+        !!booking.sessionEndedAt ||
+        !!booking.finishedAt
+      );
+    }
+
+    function isCancelledBooking(booking) {
+      const st = String(booking.status || '').toLowerCase();
+      return st === 'cancelled' || st === 'canceled' || st.indexOf('cancelled') === 0;
+    }
+
+    function isUpcomingBooking(booking, today) {
+      const st = String(booking.status || '').toLowerCase();
+      if (isCompletedBooking(booking) || isCancelledBooking(booking) || st === 'absent') return false;
+      return booking.date >= today && ['booked', 'confirmed', 'pending'].includes(st);
+    }
+
     const totalClasses = allBookings.length;
+    const completedClasses = allBookings.filter(isCompletedBooking).length;
+    const totalCancellations = allBookings.filter(isCancelledBooking).length;
     
-    // Calculate completed classes
-    const completedClasses = allBookings.filter(booking => booking.status === 'completed').length;
+    const totalStars = givenFeedback.reduce((sum, feedback) => sum + (Number(feedback.rating) || 0), 0);
+    const averageRating =
+      givenFeedback.length > 0
+        ? Math.round((totalStars / givenFeedback.length) * 10) / 10
+        : 0;
     
-    // Calculate cancellations
-    const totalCancellations = allBookings.filter(booking => booking.status === 'cancelled').length;
-    
-    // Calculate total stars given (from feedback submissions)
-    const totalStars = finalFeedback.reduce((sum, feedback) => sum + (feedback.rating || 0), 0);
-    
-    // Calculate average rating from feedback
-    const averageRating = finalFeedback.length > 0 ? 
-      Math.round((totalStars / finalFeedback.length) * 10) / 10 : 0;
-    
-    // Calculate upcoming classes
     const today = new Date().toISOString().split('T')[0];
-    const upcomingClasses = allBookings.filter(booking => 
-      booking.date >= today && 
-      ['booked', 'confirmed'].includes(booking.status)
-    ).length;
+    const upcomingClasses = allBookings.filter((booking) => isUpcomingBooking(booking, today)).length;
     
-    // Calculate monthly changes (current month vs last month)
     const now = new Date();
     const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     
-    const currentMonthBookings = allBookings.filter(booking => 
-      new Date(booking.date) >= currentMonth
+    const currentMonthBookings = allBookings.filter(
+      (booking) => booking.date && new Date(booking.date + 'T12:00:00') >= currentMonth
     );
-    const lastMonthBookings = allBookings.filter(booking => 
-      new Date(booking.date) >= lastMonth && new Date(booking.date) < currentMonth
+    const lastMonthBookings = allBookings.filter((booking) => {
+      if (!booking.date) return false;
+      const d = new Date(booking.date + 'T12:00:00');
+      return d >= lastMonth && d < currentMonth;
+    });
+    
+    const classesChange =
+      lastMonthBookings.length > 0
+        ? Math.round(
+            ((currentMonthBookings.length - lastMonthBookings.length) / lastMonthBookings.length) * 100
+          )
+        : 0;
+    
+    const lastCompleted = lastMonthBookings.filter(isCompletedBooking).length;
+    const completedChange =
+      lastCompleted > 0
+        ? Math.round(
+            ((currentMonthBookings.filter(isCompletedBooking).length - lastCompleted) / lastCompleted) *
+              100
+          )
+        : 0;
+    
+    const lastCancelled = lastMonthBookings.filter(isCancelledBooking).length;
+    const cancellationsChange =
+      lastCancelled > 0
+        ? Math.round(
+            ((currentMonthBookings.filter(isCancelledBooking).length - lastCancelled) / lastCancelled) *
+              100
+          )
+        : 0;
+    
+    const currentMonthFeedback = givenFeedback.filter(
+      (feedback) => feedback.submittedAt && new Date(feedback.submittedAt) >= currentMonth
     );
+    const lastMonthFeedback = givenFeedback.filter((feedback) => {
+      if (!feedback.submittedAt) return false;
+      const d = new Date(feedback.submittedAt);
+      return d >= lastMonth && d < currentMonth;
+    });
     
-    // Calculate percentage changes
-    const classesChange = lastMonthBookings.length > 0 ? 
-      Math.round(((currentMonthBookings.length - lastMonthBookings.length) / lastMonthBookings.length) * 100) : 0;
+    const currentMonthStars = currentMonthFeedback.reduce((sum, f) => sum + (Number(f.rating) || 0), 0);
+    const lastMonthStars = lastMonthFeedback.reduce((sum, f) => sum + (Number(f.rating) || 0), 0);
     
-    const completedChange = lastMonthBookings.filter(b => b.status === 'completed').length > 0 ? 
-      Math.round(((currentMonthBookings.filter(b => b.status === 'completed').length - lastMonthBookings.filter(b => b.status === 'completed').length) / lastMonthBookings.filter(b => b.status === 'completed').length) * 100) : 0;
-    
-    const cancellationsChange = lastMonthBookings.filter(b => b.status === 'cancelled').length > 0 ? 
-      Math.round(((currentMonthBookings.filter(b => b.status === 'cancelled').length - lastMonthBookings.filter(b => b.status === 'cancelled').length) / lastMonthBookings.filter(b => b.status === 'cancelled').length) * 100) : 0;
-    
-    // Calculate stars change based on feedback submissions
-    const currentMonthFeedback = finalFeedback.filter(feedback => 
-      new Date(feedback.submittedAt) >= currentMonth
-    );
-    const lastMonthFeedback = finalFeedback.filter(feedback => 
-      new Date(feedback.submittedAt) >= lastMonth && new Date(feedback.submittedAt) < currentMonth
-    );
-    
-    const currentMonthStars = currentMonthFeedback.reduce((sum, f) => sum + (f.rating || 0), 0);
-    const lastMonthStars = lastMonthFeedback.reduce((sum, f) => sum + (f.rating || 0), 0);
-    
-    const starsChange = lastMonthStars > 0 ? 
-      Math.round(((currentMonthStars - lastMonthStars) / lastMonthStars) * 100) : 0;
+    const starsChange =
+      lastMonthStars > 0
+        ? Math.round(((currentMonthStars - lastMonthStars) / lastMonthStars) * 100)
+        : 0;
     
     const responseData = {
       totalClasses,
@@ -2202,17 +2241,10 @@ router.get('/dashboard-stats', verifyToken, requireStudent, async (req, res) => 
       classesChange,
       completedChange,
       cancellationsChange,
-      starsChange
+      starsChange,
     };
     
     console.log('📊 Student Dashboard Stats:', responseData);
-    console.log('⭐ Feedback Data:', {
-      totalFeedback: allFeedback.length,
-      feedbackRatings: allFeedback.map(f => f.rating),
-      totalStars,
-      averageRating
-    });
-    
     res.json(responseData);
     
   } catch (error) {

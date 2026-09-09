@@ -1,0 +1,627 @@
+/**
+ * Student Learning Journey — path map, Remo character, eco-drop meters.
+ */
+.page-student-learning-journey {
+  --lj-ink: #0f172a;
+  --lj-muted: #64748b;
+  --lj-line: #dbeafe;
+  --lj-surface: #ffffff;
+  --lj-sky: #e8f7fd;
+  --lj-path: #93c5fd;
+  --lj-done: #00a82d;
+  --lj-done-soft: rgba(0, 168, 45, 0.18);
+  --lj-here: #00aeef;
+  --lj-drop: #00aeef;
+  --lj-drop-deep: #008fc4;
+}
+
+.page-student-learning-journey .lj-page {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 12px 16px 56px;
+}
+
+.page-student-learning-journey .lj-hero {
+  margin-bottom: 1rem;
+  padding: 1.2rem 1.35rem;
+  border-radius: 18px;
+  background:
+    radial-gradient(ellipse 80% 120% at 100% 0%, rgba(0, 174, 239, 0.12), transparent 55%),
+    radial-gradient(ellipse 60% 80% at 0% 100%, rgba(0, 168, 45, 0.08), transparent 50%),
+    var(--lj-surface);
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 14px rgba(15, 23, 42, 0.06);
+}
+
+.page-student-learning-journey .lj-hero-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.page-student-learning-journey .lj-hero h1 {
+  margin: 0 0 0.35rem;
+  font-size: clamp(1.35rem, 2.5vw, 1.75rem);
+  font-weight: 800;
+  color: var(--lj-ink);
+  letter-spacing: -0.02em;
+}
+
+.page-student-learning-journey .lj-hero p {
+  margin: 0;
+  color: var(--lj-muted);
+  line-height: 1.55;
+  font-size: 0.95rem;
+  max-width: 40rem;
+}
+
+.page-student-learning-journey .lj-back {
+  margin-top: 0.85rem;
+  padding: 8px 16px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: var(--lj-ink);
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.page-student-learning-journey .lj-back:hover {
+  border-color: var(--lj-here);
+  color: var(--lj-drop-deep);
+}
+
+/* Eco water-drop meter */
+.page-student-learning-journey .lj-drop-meter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 160px;
+}
+
+.page-student-learning-journey .lj-drop {
+  position: relative;
+  width: 52px;
+  height: 68px;
+  flex-shrink: 0;
+}
+
+.page-student-learning-journey .lj-drop__shape {
+  position: absolute;
+  inset: 8px 6px 2px;
+  background: linear-gradient(160deg, #e0f7ff 0%, #7dd3fc 35%, var(--lj-drop) 70%, var(--lj-drop-deep) 100%);
+  border-radius: 70% 70% 60% 60% / 55% 55% 70% 70%;
+  box-shadow: 0 8px 18px rgba(0, 143, 196, 0.28);
+  overflow: hidden;
+  transform: rotate(180deg);
+}
+
+.page-student-learning-journey .lj-drop__fill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 0%;
+  background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%);
+  transition: height 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.page-student-learning-journey .lj-drop__shine {
+  position: absolute;
+  top: 22%;
+  left: 28%;
+  width: 10px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  transform: rotate(-18deg);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.page-student-learning-journey .lj-drop-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.page-student-learning-journey .lj-drop-meta strong {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--lj-ink);
+}
+
+.page-student-learning-journey .lj-drop-meta span {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--lj-muted);
+}
+
+.page-student-learning-journey .lj-level-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.page-student-learning-journey .lj-tab {
+  padding: 10px 16px;
+  border-radius: 999px;
+  border: 2px solid #e2e8f0;
+  background: #fff;
+  font-weight: 800;
+  color: var(--lj-muted);
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+
+.page-student-learning-journey .lj-tab:hover {
+  border-color: #bae6fd;
+  color: var(--lj-drop-deep);
+}
+
+.page-student-learning-journey .lj-tab.active {
+  border-color: var(--remoed-brand-blue, #00aeef);
+  background: linear-gradient(90deg, var(--remoed-sidebar-active-start, #008fc4) 0%, var(--remoed-sidebar-active-end, #00aeef) 100%);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(0, 143, 196, 0.25);
+}
+
+.page-student-learning-journey .lj-trail-root {
+  min-height: 180px;
+}
+
+.page-student-learning-journey .lj-trail-root[aria-busy='true'] {
+  color: var(--lj-muted);
+  font-weight: 600;
+  padding: 1.5rem 0;
+}
+
+/* Batch chapter rail */
+.page-student-learning-journey .lj-chapters {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 2px 12px;
+  margin-bottom: 8px;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+}
+
+.page-student-learning-journey .lj-chapter {
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+  min-width: 76px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 2px solid #e2e8f0;
+  background: #fff;
+  cursor: pointer;
+  text-align: center;
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.page-student-learning-journey .lj-chapter:hover {
+  transform: translateY(-2px);
+  border-color: #bae6fd;
+}
+
+.page-student-learning-journey .lj-chapter.is-active {
+  border-color: var(--lj-here);
+  box-shadow: 0 0 0 3px rgba(0, 174, 239, 0.2);
+  background: linear-gradient(180deg, #f0fbff, #fff);
+}
+
+.page-student-learning-journey .lj-chapter.is-complete {
+  border-color: rgba(0, 168, 45, 0.45);
+}
+
+.page-student-learning-journey .lj-chapter.is-locked {
+  opacity: 0.72;
+}
+
+.page-student-learning-journey .lj-chapter__label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--lj-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.page-student-learning-journey .lj-chapter__num {
+  display: block;
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: var(--lj-ink);
+  line-height: 1.2;
+}
+
+.page-student-learning-journey .lj-chapter__stat {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--lj-muted);
+  margin-top: 2px;
+}
+
+.page-student-learning-journey .lj-chapter.is-complete .lj-chapter__num {
+  color: var(--lj-done);
+}
+
+/* Active batch stage */
+.page-student-learning-journey .lj-stage {
+  position: relative;
+  border-radius: 20px;
+  border: 1px solid #e2e8f0;
+  background:
+    linear-gradient(180deg, rgba(232, 247, 253, 0.9) 0%, #fff 42%),
+    var(--lj-surface);
+  box-shadow: 0 8px 28px rgba(15, 23, 42, 0.08);
+  overflow: visible;
+  padding: 1.1rem 1.15rem 1.35rem;
+}
+
+.page-student-learning-journey .lj-stage--locked {
+  overflow: hidden;
+}
+
+.page-student-learning-journey .lj-stage::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 12% 18%, rgba(0, 168, 45, 0.06) 0 18%, transparent 19%),
+    radial-gradient(circle at 88% 22%, rgba(0, 174, 239, 0.08) 0 14%, transparent 15%),
+    radial-gradient(circle at 70% 80%, rgba(253, 216, 53, 0.1) 0 12%, transparent 13%);
+  pointer-events: none;
+}
+
+.page-student-learning-journey .lj-stage-head {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 1rem;
+}
+
+.page-student-learning-journey .lj-stage-title {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 900;
+  color: var(--lj-ink);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.page-student-learning-journey .lj-trophy {
+  font-size: 1.35rem;
+  line-height: 1;
+  filter: drop-shadow(0 2px 4px rgba(234, 179, 8, 0.5));
+  animation: lj-trophy-pop 0.6s ease both;
+}
+
+.page-student-learning-journey .lj-badge {
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: #422006;
+}
+
+.page-student-learning-journey .lj-stage-drop .lj-drop {
+  width: 40px;
+  height: 52px;
+}
+
+.page-student-learning-journey .lj-stage-drop .lj-drop-meta strong {
+  font-size: 0.95rem;
+}
+
+/* Snake path */
+.page-student-learning-journey .lj-path {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+  padding: 52px 8px 8px;
+}
+
+.page-student-learning-journey .lj-path-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  position: relative;
+}
+
+.page-student-learning-journey .lj-path-row--rtl {
+  flex-direction: row-reverse;
+}
+
+.page-student-learning-journey .lj-path-row::before {
+  content: '';
+  position: absolute;
+  left: 4%;
+  right: 4%;
+  top: 50%;
+  height: 6px;
+  margin-top: -3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #bfdbfe, #93c5fd 40%, #bae6fd);
+  z-index: 0;
+  opacity: 0.85;
+}
+
+.page-student-learning-journey .lj-node {
+  position: relative;
+  z-index: 1;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 3px solid #cbd5e1;
+  background: #f8fafc;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #94a3b8;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.page-student-learning-journey .lj-node:hover {
+  transform: scale(1.08);
+}
+
+.page-student-learning-journey .lj-node--done {
+  background: linear-gradient(145deg, #34d399, #00a82d);
+  border-color: #008a24;
+  color: #fff;
+  box-shadow:
+    0 0 0 4px var(--lj-done-soft),
+    0 4px 12px rgba(0, 168, 45, 0.35);
+  animation: lj-node-done 0.45s ease both;
+}
+
+.page-student-learning-journey .lj-node--here {
+  border-color: var(--lj-here);
+  background: linear-gradient(145deg, #e0f7ff, #fff);
+  color: var(--lj-drop-deep);
+  box-shadow:
+    0 0 0 5px rgba(0, 174, 239, 0.22),
+    0 6px 16px rgba(0, 143, 196, 0.28);
+  transform: scale(1.12);
+  z-index: 3;
+}
+
+.page-student-learning-journey .lj-node--here.lj-node--done {
+  background: linear-gradient(145deg, #34d399, #00a82d);
+  color: #fff;
+}
+
+.page-student-learning-journey .lj-char {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 2px);
+  width: 56px;
+  height: 56px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 4;
+  filter: drop-shadow(0 6px 10px rgba(15, 23, 42, 0.25));
+  animation: lj-char-bob 1.8s ease-in-out infinite;
+}
+
+.page-student-learning-journey .lj-char img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.page-student-learning-journey .lj-char__bubble {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% - 2px);
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: var(--lj-drop-deep);
+  background: #fff;
+  border: 1px solid #bae6fd;
+  border-radius: 999px;
+  padding: 2px 8px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.1);
+}
+
+/* Locked stage */
+.page-student-learning-journey .lj-stage--locked .lj-path {
+  filter: grayscale(0.25);
+  opacity: 0.55;
+  pointer-events: none;
+  user-select: none;
+}
+
+.page-student-learning-journey .lj-lock-panel {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.page-student-learning-journey .lj-lock-inner {
+  text-align: center;
+  max-width: 260px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 1.1rem 1.2rem;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
+}
+
+.page-student-learning-journey .lj-lock-icon {
+  width: 36px;
+  height: 36px;
+  color: #64748b;
+  margin: 0 auto 8px;
+  display: block;
+}
+
+.page-student-learning-journey .lj-lock-inner p {
+  margin: 0 0 12px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #334155;
+  line-height: 1.35;
+}
+
+.page-student-learning-journey .lj-batch-buy-btn {
+  display: inline-block;
+  padding: 0.5rem 1.1rem;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 0.85rem;
+  text-decoration: none;
+  color: #fff;
+  background: linear-gradient(135deg, var(--remoed-brand-blue-deep, #008fc4), var(--remoed-brand-blue, #00aeef));
+  box-shadow: 0 4px 14px rgba(0, 143, 196, 0.35);
+}
+
+.page-student-learning-journey .lj-batch-buy-btn:hover {
+  filter: brightness(1.05);
+}
+
+.page-student-learning-journey .lj-legend {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 18px;
+  margin-top: 1rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid #e2e8f0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--lj-muted);
+}
+
+.page-student-learning-journey .lj-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.page-student-learning-journey .lj-legend i {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+  border: 2px solid #cbd5e1;
+  background: #f8fafc;
+}
+
+.page-student-learning-journey .lj-legend i.done {
+  background: var(--lj-done);
+  border-color: #008a24;
+}
+
+.page-student-learning-journey .lj-legend i.here {
+  background: #e0f7ff;
+  border-color: var(--lj-here);
+  box-shadow: 0 0 0 3px rgba(0, 174, 239, 0.25);
+}
+
+@keyframes lj-char-bob {
+  0%,
+  100% {
+    transform: translateX(-50%) translateY(0);
+  }
+  50% {
+    transform: translateX(-50%) translateY(-6px);
+  }
+}
+
+@keyframes lj-node-done {
+  0% {
+    transform: scale(0.7);
+    opacity: 0.5;
+  }
+  70% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes lj-trophy-pop {
+  0% {
+    transform: scale(0.4) rotate(-12deg);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1) rotate(0);
+    opacity: 1;
+  }
+}
+
+@media (max-width: 720px) {
+  .page-student-learning-journey .lj-node {
+    width: 34px;
+    height: 34px;
+    font-size: 0.62rem;
+    border-width: 2px;
+  }
+
+  .page-student-learning-journey .lj-char {
+    width: 44px;
+    height: 44px;
+  }
+
+  .page-student-learning-journey .lj-path {
+    gap: 40px;
+    padding-top: 44px;
+  }
+
+  .page-student-learning-journey .lj-path-row {
+    gap: 4px;
+  }
+
+  .page-student-learning-journey .lj-hero-top {
+    flex-direction: column;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-student-learning-journey .lj-char,
+  .page-student-learning-journey .lj-node--done,
+  .page-student-learning-journey .lj-trophy,
+  .page-student-learning-journey .lj-drop__fill {
+    animation: none !important;
+    transition: none !important;
+  }
+}

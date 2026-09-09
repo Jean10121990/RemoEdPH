@@ -880,70 +880,72 @@
             const studentId = localStorage.getItem('studentId');
             
             if (username) {
-                document.getElementById('remoed-username').textContent = 'Hi, ' + username + '!';
-                document.getElementById('avatar-text').textContent = username[0].toUpperCase();
+                const nameEl = document.getElementById('remoed-username');
+                const avatarEl = document.getElementById('avatar-text');
+                if (nameEl) nameEl.textContent = 'Hi, ' + username + '!';
+                if (avatarEl) avatarEl.textContent = username[0].toUpperCase();
             }
       
-      // Load profile picture if available
-      if (studentId) {
-        loadProfilePicture(studentId);
-      }
-      
-      // Logout: handled by js/student-sidebar.js?v=lb-nav-2'/api/announcement?role=student')
-        .then(r => r.json())
-        .then(list => {
-          const listDivs = [document.getElementById('student-announcement-list-right')].filter(Boolean);
-          if (!listDivs.length) return;
-          if (!list.length) {
-            listDivs.forEach((listDiv) => {
-              listDiv.innerHTML = '<div style="color:#888;">No announcements at this time.</div>';
-            });
-            return;
-          }
-          const html = list.map(a => `
-            <div style='background:#fff;border:1px solid #e0e6ed;border-radius:8px;padding:8px 10px;margin-bottom:6px;'>
-              <div style='font-weight:500;white-space:pre-line;font-size:0.9rem;'>${a.content}</div>
-              <div style='font-size:0.8rem;color:#888;margin-top:4px;'>${a.updatedAt ? new Date(a.updatedAt).toLocaleString() : ''}</div>
-            </div>
-          `).join('');
-          listDivs.forEach((listDiv) => { listDiv.innerHTML = html; });
-        });
+            // Always load profile (level + avatar) when authenticated — studentId optional
+            loadProfilePicture(studentId);
+            loadChartData();
+            if (typeof loadUpcomingClasses === 'function') loadUpcomingClasses();
+            if (typeof loadUpcomingClassesDropdown === 'function') loadUpcomingClassesDropdown();
+
+            fetch('/api/announcement?role=student')
+              .then(function (r) { return r.json(); })
+              .then(function (list) {
+                const listDivs = [document.getElementById('student-announcement-list-right')].filter(Boolean);
+                if (!listDivs.length) return;
+                if (!Array.isArray(list) || !list.length) {
+                  listDivs.forEach(function (listDiv) {
+                    listDiv.innerHTML = '<div style="color:#888;">No announcements at this time.</div>';
+                  });
+                  return;
+                }
+                const html = list.map(function (a) {
+                  return (
+                    "<div style='background:#fff;border:1px solid #e0e6ed;border-radius:8px;padding:8px 10px;margin-bottom:6px;'>" +
+                    "<div style='font-weight:500;white-space:pre-line;font-size:0.9rem;'>" + (a.content || '') + "</div>" +
+                    "<div style='font-size:0.8rem;color:#888;margin-top:4px;'>" +
+                    (a.updatedAt ? new Date(a.updatedAt).toLocaleString() : '') +
+                    "</div></div>"
+                  );
+                }).join('');
+                listDivs.forEach(function (listDiv) { listDiv.innerHTML = html; });
+              })
+              .catch(function () { /* non-blocking */ });
         
-      // Set up dropdown functionality
-      setupDropdowns();
-    });
+            setupDropdowns();
+        });
     
     // Dropdown functionality
     function setupDropdowns() {
-      // Notifications dropdown
       const notificationsIcon = document.getElementById('notifications-icon');
       const notificationsDropdown = document.getElementById('notifications-dropdown');
+      const upcomingClassesIcon = document.getElementById('upcoming-classes-icon');
+      const upcomingClassesDropdown = document.getElementById('upcoming-classes-dropdown');
+      if (!notificationsIcon || !notificationsDropdown || !upcomingClassesIcon || !upcomingClassesDropdown) {
+        return;
+      }
       
       notificationsIcon.addEventListener('click', function(e) {
         e.stopPropagation();
         notificationsDropdown.classList.toggle('show');
-        // Hide other dropdowns
-        document.getElementById('upcoming-classes-dropdown').classList.remove('show');
+        upcomingClassesDropdown.classList.remove('show');
       });
-      
-      // Upcoming classes dropdown
-      const upcomingClassesIcon = document.getElementById('upcoming-classes-icon');
-      const upcomingClassesDropdown = document.getElementById('upcoming-classes-dropdown');
       
       upcomingClassesIcon.addEventListener('click', function(e) {
         e.stopPropagation();
         upcomingClassesDropdown.classList.toggle('show');
-        // Hide other dropdowns
-        document.getElementById('notifications-dropdown').classList.remove('show');
+        notificationsDropdown.classList.remove('show');
       });
       
-      // Close dropdowns when clicking outside
       document.addEventListener('click', function() {
         notificationsDropdown.classList.remove('show');
         upcomingClassesDropdown.classList.remove('show');
       });
       
-      // Prevent dropdown from closing when clicking inside
       notificationsDropdown.addEventListener('click', function(e) {
         e.stopPropagation();
       });
@@ -1419,20 +1421,66 @@
       C2: 'Proficiency'
     };
 
+    const REMOED_KIDS_LEVELS = {
+      'Little Seeds (Age 3)': 'Level 1 - Little Seeds',
+      'Sprouts (Age 4)': 'Level 2 - Sprouts',
+      'Saplings (Age 5)': 'Level 3 - Saplings',
+      'Young Stewards (Age 6)': 'Level 4 - Young Stewards'
+    };
+
+    function normalizeRemoEdKidsLevel(raw) {
+      const s = String(raw || '').toLowerCase().trim();
+      if (!s) return null;
+      if (/^(beginner|intermediate|advanced|a1|a2|b1|b2|c1|c2)$/i.test(s)) return null;
+      if (s.indexOf('little seeds') !== -1 || s === 'nursery' || s.indexOf('age 3') !== -1) return 'Little Seeds (Age 3)';
+      if (s.indexOf('sprouts') !== -1 || s === 'kinder' || s.indexOf('age 4') !== -1) return 'Sprouts (Age 4)';
+      if (s.indexOf('saplings') !== -1 || s === 'prep' || s.indexOf('age 5') !== -1) return 'Saplings (Age 5)';
+      if (s.indexOf('young stewards') !== -1 || s.indexOf('steward') !== -1 || s.indexOf('age 6') !== -1) {
+        return 'Young Stewards (Age 6)';
+      }
+      return null;
+    }
+
     function updateStudentCurrentLevel(profile) {
       const valueEl = document.getElementById('student-current-level-value');
       if (!valueEl) return;
-      const raw = (profile && (profile.cefrLevel || profile.leveling || profile.level)) || '';
-      const level = String(raw).trim().toUpperCase();
-      if (level && CEFR_LEVEL_LABELS[level]) {
-        valueEl.textContent = level + ' · ' + CEFR_LEVEL_LABELS[level];
+
+      if (profile && profile.curriculumLevelDisplay) {
+        valueEl.textContent = profile.curriculumLevelDisplay;
         return;
       }
-      if (level) {
-        valueEl.textContent = level;
+
+      const candidates = [];
+      if (profile && Array.isArray(profile.education)) {
+        profile.education.forEach(function (edu) {
+          if (edu && edu.level) candidates.push(edu.level);
+        });
+      }
+      if (profile && profile.level) candidates.push(profile.level);
+      if (profile && profile.leveling) candidates.push(profile.leveling);
+
+      for (var i = 0; i < candidates.length; i++) {
+        var kids = normalizeRemoEdKidsLevel(candidates[i]);
+        if (kids && REMOED_KIDS_LEVELS[kids]) {
+          valueEl.textContent = REMOED_KIDS_LEVELS[kids];
+          return;
+        }
+      }
+
+      // Legacy Beginner default → Level 1
+      if (profile && String(profile.level || '').toLowerCase() === 'beginner') {
+        valueEl.textContent = REMOED_KIDS_LEVELS['Little Seeds (Age 3)'];
         return;
       }
-      valueEl.innerHTML = '<a href="student-assessment.html">Take Assessment to unlock level</a>';
+
+      const cefrRaw = (profile && profile.cefrLevel) || '';
+      const cefr = String(cefrRaw).trim().toUpperCase();
+      if (cefr && CEFR_LEVEL_LABELS[cefr]) {
+        valueEl.textContent = cefr + ' · ' + CEFR_LEVEL_LABELS[cefr];
+        return;
+      }
+
+      valueEl.textContent = REMOED_KIDS_LEVELS['Little Seeds (Age 3)'];
     }
     
 
