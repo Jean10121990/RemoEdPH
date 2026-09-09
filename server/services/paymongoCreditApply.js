@@ -169,6 +169,29 @@ async function applyExistingStudentPurchase({
     });
   }
 
+  try {
+    // Prefer live student referral fields; fall back to pending.referralCode from checkout.
+    let studentForRef = await Student.findById(student._id);
+    if (studentForRef && !studentForRef.referralCode && pending.referralCode) {
+      const {
+        resolveReferralOwner,
+        applyReferralFields,
+      } = require('../utils/awardReferralCommission');
+      const owner = await resolveReferralOwner(pending.referralCode);
+      if (owner) {
+        applyReferralFields(studentForRef, owner);
+        await studentForRef.save();
+      }
+    }
+    const { awardReferralCommissionOnPayment } = require('../utils/awardReferralCommission');
+    await awardReferralCommissionOnPayment(studentForRef || student, {
+      amountPaid,
+      plan: normalizedPlanId || student.subscriptionPlan || pending.plan || '',
+    });
+  } catch (refErr) {
+    console.warn('[paymongoCreditApply] Referral commission award failed:', refErr.message);
+  }
+
   const availableBalance = balanceAfterPurchase;
   return {
     ok: true,

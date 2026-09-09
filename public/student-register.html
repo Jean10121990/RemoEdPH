@@ -1,104 +1,401 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
-    <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
+  <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
+  <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
   <title>Student Registration - RemoEdPH</title>
-  <link rel="stylesheet" href="modern-styles.css">
   <script src="js/referral-tracking.js"></script>
-  <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="css/student-portal-layout.css?v=slide-match-1">
   <script src="js/user-session.js"></script>
+  <style>
+    :root {
+      --primary: #00aeef;
+      --primary-dark: #008fc4;
+      --accent: #fdd835;
+      --green: #00a82d;
+      --surface: #ffffff;
+      --text: #1a3a4a;
+      --muted: #4a6575;
+      --stroke: #dcebf5;
+      --bg: #f5f9fc;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 24px;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(ellipse 70% 50% at 0% 0%, rgba(0, 174, 239, 0.14), transparent 55%),
+        radial-gradient(ellipse 50% 40% at 100% 100%, rgba(0, 168, 45, 0.08), transparent 50%),
+        var(--bg);
+    }
+    .register-card {
+      width: min(980px, 100%);
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      background: var(--surface);
+      border-radius: 22px;
+      box-shadow: 0 20px 48px rgba(0, 100, 140, 0.12);
+      border: 1px solid rgba(0, 174, 239, 0.16);
+      overflow: hidden;
+    }
+    .panel {
+      padding: 40px 44px;
+    }
+    .visual {
+      background: linear-gradient(160deg, #008fc4 0%, #00aeef 48%, #007db0 100%);
+      color: #f8fafc;
+      padding: 44px 40px;
+      display: flex;
+      align-items: center;
+      position: relative;
+    }
+    .visual::after {
+      content: '';
+      position: absolute;
+      inset: auto 24px 24px auto;
+      width: 72px;
+      height: 6px;
+      border-radius: 999px;
+      background: var(--accent);
+      opacity: 0.95;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .brand img { height: 44px; }
+    .brand-name {
+      font-weight: 800;
+      color: var(--primary-dark);
+      font-size: 1.4rem;
+      letter-spacing: 0.02em;
+    }
+    .brand-subtitle {
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+    .login-title {
+      margin: 0 0 8px;
+      font-size: 1.55rem;
+      font-weight: 800;
+      color: var(--primary-dark);
+    }
+    .subtitle {
+      margin: 0 0 20px;
+      color: var(--muted);
+      font-size: 0.98rem;
+      line-height: 1.55;
+    }
+    .trial-hint {
+      display: none;
+      margin: -8px 0 18px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(0, 168, 45, 0.28);
+      background: rgba(0, 168, 45, 0.08);
+      color: #0f5c2e;
+      font-size: 0.92rem;
+      line-height: 1.5;
+      font-weight: 600;
+    }
+    .referral-chip {
+      display: none;
+      margin: 0 0 16px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: rgba(0, 174, 239, 0.08);
+      border: 1px solid rgba(0, 174, 239, 0.22);
+      color: var(--primary-dark);
+      font-size: 0.88rem;
+      font-weight: 700;
+    }
+    .field { margin-bottom: 16px; }
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 700;
+      color: var(--text);
+      font-size: 0.95rem;
+    }
+    input[type="text"],
+    input[type="email"],
+    input[type="password"] {
+      width: 100%;
+      border: 2px solid var(--stroke);
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-size: 1rem;
+      background: #fff;
+    }
+    input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px rgba(0, 174, 239, 0.14);
+    }
+    .password-input-container {
+      position: relative;
+    }
+    .password-input-container input {
+      padding-right: 48px;
+    }
+    .password-toggle {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      font-size: 1.05rem;
+      line-height: 1;
+      padding: 6px;
+      color: var(--muted);
+    }
+    .password-requirements {
+      margin-top: 10px;
+      display: grid;
+      gap: 6px;
+    }
+    .requirement {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.86rem;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .requirement.met { color: var(--green); }
+    .requirement-icon { width: 1.1em; text-align: center; }
+    .btn {
+      width: 100%;
+      border: 2px solid var(--accent);
+      border-radius: 999px;
+      padding: 12px 16px;
+      font-weight: 800;
+      font-size: 1rem;
+      color: #fff;
+      background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+      box-shadow: 0 8px 20px rgba(0, 143, 196, 0.28);
+      cursor: pointer;
+      margin-top: 4px;
+    }
+    .btn:hover { box-shadow: 0 10px 24px rgba(0, 143, 196, 0.36); }
+    .btn:disabled { opacity: 0.7; cursor: not-allowed; }
+    .register-error {
+      display: none;
+      margin-top: 14px;
+      border-radius: 12px;
+      padding: 12px;
+      font-weight: 600;
+      border: 1px solid #fecaca;
+      background: #fff1f2;
+      color: #b91c1c;
+      line-height: 1.45;
+    }
+    .register-error.register-success {
+      border-color: rgba(0, 168, 45, 0.35);
+      background: rgba(0, 168, 45, 0.08);
+      color: #0f5c2e;
+    }
+    .links {
+      margin-top: 18px;
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .links a {
+      color: var(--primary-dark);
+      font-weight: 700;
+      text-decoration: none;
+    }
+    .links a:hover { text-decoration: underline; }
+    .visual h3 {
+      margin: 0 0 12px;
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: #ffffff;
+    }
+    .visual p {
+      margin: 0 0 16px;
+      color: rgba(255, 255, 255, 0.92);
+      line-height: 1.65;
+    }
+    .visual ul {
+      margin: 0;
+      padding-left: 1.15rem;
+      color: rgba(255, 255, 255, 0.95);
+      line-height: 1.7;
+      font-weight: 600;
+    }
+    /* Plan modal (post-register checkout path) */
+    .plan-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(10, 40, 55, 0.45);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 1000;
+    }
+    .plan-modal-content {
+      background: #fff;
+      border-radius: 18px;
+      max-width: 960px;
+      width: 100%;
+      max-height: 90vh;
+      overflow: auto;
+      padding: 28px 24px;
+      border: 1px solid rgba(0, 174, 239, 0.16);
+      box-shadow: 0 24px 48px rgba(0, 100, 140, 0.2);
+    }
+    .plans-grid-modal {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 14px;
+    }
+    .plan-card-modal {
+      border: 2px solid var(--stroke);
+      border-radius: 14px;
+      padding: 16px;
+      position: relative;
+      background: #fff;
+    }
+    .plan-card-modal.featured-modal {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(0, 174, 239, 0.12);
+    }
+    .plan-badge-modal {
+      position: absolute;
+      top: -10px;
+      right: 12px;
+      background: var(--accent);
+      color: #1a3a4a;
+      font-size: 0.75rem;
+      font-weight: 800;
+      padding: 4px 10px;
+      border-radius: 999px;
+    }
+    .plan-name-modal { font-weight: 800; color: var(--primary-dark); margin-bottom: 6px; }
+    .plan-price-modal { color: var(--muted); margin-bottom: 4px; }
+    .plan-period-modal { font-size: 0.9rem; margin-bottom: 10px; }
+    .plan-features-modal {
+      margin: 0 0 14px;
+      padding-left: 1.1rem;
+      color: var(--muted);
+      font-size: 0.88rem;
+      line-height: 1.55;
+    }
+    .plan-btn-modal {
+      width: 100%;
+      border: 2px solid var(--accent);
+      border-radius: 999px;
+      padding: 10px 12px;
+      font-weight: 800;
+      color: #fff;
+      background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+      cursor: pointer;
+    }
+    .plan-btn-modal:disabled { opacity: 0.7; cursor: not-allowed; }
+    @media (max-width: 900px) {
+      .register-card { grid-template-columns: 1fr; }
+      .visual { display: none; }
+      .panel { padding: 34px 24px; }
+    }
+  </style>
 </head>
-<body  class="student-no-motion page-student-register">
-  <div class="login-shell">
-    <div class="login-card">
-      <div class="login-panel">
-        <div class="brand">
-          <img src="images/remoed-logo-new.png" onerror="this.src='images/remoed-logo.png'" alt="RemoEdPH Logo">
-          <div>
-            <div class="brand-name">RemoEdPH</div>
-            <div class="brand-subtitle">Student Portal</div>
-          </div>
-        </div>
-
-        <h1 class="login-title">Student Registration</h1>
-        <p class="login-subtitle">Create your account and start learning with RemoEdPH.</p>
-        <p class="login-subtitle" id="assessment-trial-hint" style="display:none; color:#0f766e; font-weight:600;">
-          You’re claiming your <strong>free trial class</strong> from the level assessment. Use the <strong>same email</strong> you used on the assessment, then log in and book your lesson.
-        </p>
-
-        <form class="register-form" id="student-register-form">
-          <div class="form-group">
-            <label for="student-register-username">Username</label>
-            <input type="text" id="student-register-username" placeholder="Enter your username" required autocomplete="on">
-          </div>
-          <div class="form-group">
-            <label for="student-register-email">Email Address</label>
-            <input type="email" id="student-register-email" placeholder="Enter your email address" required autocomplete="on">
-          </div>
-          <div class="form-group">
-            <label for="student-register-password">Password</label>
-            <div class="password-input-container">
-              <input type="password" id="student-register-password" placeholder="Enter your password" required autocomplete="on">
-              <button type="button" class="password-toggle" id="password-toggle" onclick="togglePassword()" aria-label="Show password">
-                <span class="eye-icon">👁️</span>
-              </button>
-            </div>
-            <div class="password-requirements" id="password-requirements">
-              <div class="requirement" id="req-length">
-                <span class="requirement-icon">❌</span>
-                <span>At least 8 characters</span>
-              </div>
-              <div class="requirement" id="req-uppercase">
-                <span class="requirement-icon">❌</span>
-                <span>One uppercase letter</span>
-              </div>
-              <div class="requirement" id="req-lowercase">
-                <span class="requirement-icon">❌</span>
-                <span>One lowercase letter</span>
-              </div>
-              <div class="requirement" id="req-number">
-                <span class="requirement-icon">❌</span>
-                <span>One number</span>
-              </div>
-            </div>
-          </div>
-          <button type="submit" class="register-btn" id="register-btn">
-            Create Account
-          </button>
-        </form>
-        <div class="register-error" id="student-register-error"></div>
-        
-        <div class="links-container">
-          <a href="/login/">Back to Login</a>
-          <a href="forgot-password.html">Forgot Password?</a>
-          <a href="index.html">Back to Home</a>
+<body class="page-student-register">
+  <div class="register-card">
+    <div class="panel">
+      <div class="brand">
+        <img src="images/remoed-logo-new.png" onerror="this.src='images/remoed-logo.png'" alt="RemoEdPH Logo">
+        <div>
+          <div class="brand-name">RemoEdPH</div>
+          <div class="brand-subtitle">Student Portal</div>
         </div>
       </div>
 
-      <div class="login-visual">
-        <div class="intro-card">
-          <h3>Welcome to RemoEdPH</h3>
-          <p>Your learning hub for classes, games, and progress tracking.</p>
-          <ul>
-            <li>Join live classes and activities.</li>
-            <li>Track your achievements.</li>
-            <li>Practice with interactive tools.</li>
-          </ul>
+      <h1 class="login-title">Create your student account</h1>
+      <p class="subtitle">Register once, claim your free trial Lesson 1, then continue with a learning plan when you’re ready.</p>
+      <div class="trial-hint" id="assessment-trial-hint">
+        You’re claiming your free trial class from the level assessment. Use the same email you used on the assessment, then log in and book Lesson 1.
+      </div>
+      <div class="referral-chip" id="referral-chip"></div>
+
+      <form id="student-register-form" autocomplete="on">
+        <div class="field">
+          <label for="student-register-username">Username</label>
+          <input type="text" id="student-register-username" placeholder="Choose a username" required autocomplete="username">
         </div>
+        <div class="field">
+          <label for="student-register-email">Email Address</label>
+          <input type="email" id="student-register-email" placeholder="you@example.com" required autocomplete="email">
+        </div>
+        <div class="field">
+          <label for="student-register-password">Password</label>
+          <div class="password-input-container">
+            <input type="password" id="student-register-password" placeholder="Create a strong password" required autocomplete="new-password">
+            <button type="button" class="password-toggle" id="password-toggle" onclick="togglePassword()" aria-label="Show password">
+              <span class="eye-icon">Show</span>
+            </button>
+          </div>
+          <div class="password-requirements" id="password-requirements">
+            <div class="requirement" id="req-length">
+              <span class="requirement-icon">○</span>
+              <span>At least 8 characters</span>
+            </div>
+            <div class="requirement" id="req-uppercase">
+              <span class="requirement-icon">○</span>
+              <span>One uppercase letter</span>
+            </div>
+            <div class="requirement" id="req-lowercase">
+              <span class="requirement-icon">○</span>
+              <span>One lowercase letter</span>
+            </div>
+            <div class="requirement" id="req-number">
+              <span class="requirement-icon">○</span>
+              <span>One number</span>
+            </div>
+          </div>
+        </div>
+        <button type="submit" class="btn" id="register-btn">Create Account</button>
+      </form>
+      <div class="register-error" id="student-register-error"></div>
+
+      <div class="links">
+        <a href="/login/">Back to Login</a>
+        <a href="forgot-password.html">Forgot Password?</a>
+        <a href="index.html">Back to Home</a>
+      </div>
+    </div>
+
+    <div class="visual">
+      <div>
+        <h3>Welcome to RemoEdPH</h3>
+        <p>Live classes, games, and progress tracking — built for young English learners in the Philippines.</p>
+        <ul>
+          <li>Book your free Lesson 1 trial</li>
+          <li>Learn with certified teachers</li>
+          <li>Track badges and progress</li>
+        </ul>
       </div>
     </div>
   </div>
 
-  <!-- Plan Selection Modal -->
   <div id="plan-selection-modal" class="plan-modal" style="display: none;">
     <div class="plan-modal-content">
-      <h2 style="color: #00aeef; margin-bottom: 24px; text-align: center;">📚 Choose Your Learning Plan 📚</h2>
+      <h2 style="color: #00aeef; margin-bottom: 16px; text-align: center;">Choose Your Learning Plan</h2>
       <p style="text-align: center; color: #666; margin-bottom: 20px; line-height: 1.45;">Select a plan. You’ll pay in PHP at checkout (estimates use <strong>1 USD = ₱60.03</strong>).</p>
-      
+
       <div class="plans-grid-modal">
         <div class="plan-card-modal">
           <div class="plan-name-modal">RemoSpark — Starter</div>
@@ -112,7 +409,7 @@
           </ul>
           <button type="button" class="plan-btn-modal" onclick="selectSubscriptionPlan('spark')">Choose Plan</button>
         </div>
-        
+
         <div class="plan-card-modal featured-modal">
           <div class="plan-badge-modal">Save $63</div>
           <div class="plan-name-modal">RemoSteady — Progress</div>
@@ -126,7 +423,7 @@
           </ul>
           <button type="button" class="plan-btn-modal" onclick="selectSubscriptionPlan('steady')">Choose Plan</button>
         </div>
-        
+
         <div class="plan-card-modal">
           <div class="plan-badge-modal">Save $126</div>
           <div class="plan-name-modal">RemoScholar — Mastery</div>
@@ -140,7 +437,7 @@
           </ul>
           <button type="button" class="plan-btn-modal" onclick="selectSubscriptionPlan('scholar')">Choose Plan</button>
         </div>
-        
+
         <div class="plan-card-modal">
           <div class="plan-badge-modal">Save $252</div>
           <div class="plan-name-modal">RemoSummit — Ultimate</div>
@@ -157,7 +454,7 @@
       </div>
     </div>
   </div>
-  
+
   <script>
     const urlParamsReg = new URLSearchParams(window.location.search);
     const urlTrialToken = urlParamsReg.get('trial');
@@ -171,26 +468,34 @@
         const hint = document.getElementById('assessment-trial-hint');
         if (hint) hint.style.display = 'block';
       }
+      try {
+        const ref = localStorage.getItem('referralCode');
+        if (ref) {
+          const chip = document.getElementById('referral-chip');
+          if (chip) {
+            chip.style.display = 'block';
+            chip.textContent = 'Teacher referral applied: ' + ref;
+          }
+        }
+      } catch (e) { /* ignore */ }
     })();
 
-    // Password toggle functionality
     function togglePassword() {
       const passwordInput = document.getElementById('student-register-password');
       const toggleBtn = document.getElementById('password-toggle');
       const eyeIcon = toggleBtn.querySelector('.eye-icon');
-      
+
       if (passwordInput.type === 'password') {
         passwordInput.type = 'text';
         toggleBtn.classList.add('show-password');
-        eyeIcon.textContent = '🙈';
+        eyeIcon.textContent = 'Hide';
       } else {
         passwordInput.type = 'password';
         toggleBtn.classList.remove('show-password');
-        eyeIcon.textContent = '👁️';
+        eyeIcon.textContent = 'Show';
       }
     }
-    
-    // Password validation
+
     function validatePassword(password) {
       const requirements = {
         length: password.length >= 8,
@@ -198,51 +503,44 @@
         lowercase: /[a-z]/.test(password),
         number: /\d/.test(password)
       };
-      
-      // Update requirement indicators
+
       document.getElementById('req-length').classList.toggle('met', requirements.length);
       document.getElementById('req-uppercase').classList.toggle('met', requirements.uppercase);
       document.getElementById('req-lowercase').classList.toggle('met', requirements.lowercase);
       document.getElementById('req-number').classList.toggle('met', requirements.number);
-      
-      // Update icons
-      document.getElementById('req-length').querySelector('.requirement-icon').textContent = requirements.length ? '✅' : '❌';
-      document.getElementById('req-uppercase').querySelector('.requirement-icon').textContent = requirements.uppercase ? '✅' : '❌';
-      document.getElementById('req-lowercase').querySelector('.requirement-icon').textContent = requirements.lowercase ? '✅' : '❌';
-      document.getElementById('req-number').querySelector('.requirement-icon').textContent = requirements.number ? '✅' : '❌';
-      
-      return Object.values(requirements).every(req => req);
+
+      document.getElementById('req-length').querySelector('.requirement-icon').textContent = requirements.length ? '✓' : '○';
+      document.getElementById('req-uppercase').querySelector('.requirement-icon').textContent = requirements.uppercase ? '✓' : '○';
+      document.getElementById('req-lowercase').querySelector('.requirement-icon').textContent = requirements.lowercase ? '✓' : '○';
+      document.getElementById('req-number').querySelector('.requirement-icon').textContent = requirements.number ? '✓' : '○';
+
+      return Object.values(requirements).every(Boolean);
     }
-    
-    // Add password input event listener
-    document.getElementById('student-register-password').addEventListener('input', function(e) {
+
+    document.getElementById('student-register-password').addEventListener('input', function (e) {
       validatePassword(e.target.value);
     });
-    
-    document.getElementById('student-register-form').onsubmit = async function(e) {
+
+    document.getElementById('student-register-form').onsubmit = async function (e) {
       e.preventDefault();
       const username = document.getElementById('student-register-username').value.trim();
       const email = document.getElementById('student-register-email').value.trim();
       const password = document.getElementById('student-register-password').value.trim();
       const errorDiv = document.getElementById('student-register-error');
       const submitBtn = document.getElementById('register-btn');
-      
-      // Clear previous messages
+
       errorDiv.style.display = 'none';
-      
-      // Validate password requirements
-      const isPasswordValid = validatePassword(password);
-      if (!isPasswordValid) {
+
+      if (!validatePassword(password)) {
         errorDiv.textContent = 'Please ensure your password meets all requirements.';
         errorDiv.className = 'register-error';
         errorDiv.style.display = 'block';
         return;
       }
-      
-      // Show loading state
-      submitBtn.textContent = '🔄 Creating Account...';
+
+      submitBtn.textContent = 'Creating Account...';
       submitBtn.disabled = true;
-      
+
       try {
         const response = await fetch('/api/auth/student-register', {
           method: 'POST',
@@ -255,27 +553,20 @@
             assessmentTrialToken: urlTrialToken || undefined
           })
         });
-        
+
         const data = await response.json();
-        
+
         if (data.success) {
           if (data.assessmentTrialActivated) {
             errorDiv.textContent =
-              '✅ Account created! You have 1 free trial class — log in and book your lesson from your student dashboard. After your trial, you can pick a plan to continue.';
-            errorDiv.className = 'register-error register-success';
-            errorDiv.style.display = 'block';
-            submitBtn.textContent = '✅ Success!';
-            setTimeout(() => {
-              window.location.href = '/login/';
-            }, 2200);
-            return;
+              'Account created! You have 1 free trial class — log in and book Lesson 1 from your student dashboard. After your trial, you can pick a plan to continue.';
+          } else {
+            errorDiv.textContent =
+              "Account created! Log in to open your dashboard — start with free trial Lesson 1 when you're ready, then pick a plan after your first lesson.";
           }
-
-          errorDiv.textContent =
-            '✅ Account created! Log in to open your dashboard — start with a free trial class when you\'re ready, then pick a plan after your first lesson.';
           errorDiv.className = 'register-error register-success';
           errorDiv.style.display = 'block';
-          submitBtn.textContent = '✅ Success!';
+          submitBtn.textContent = 'Success!';
           setTimeout(() => {
             window.location.href = '/login/';
           }, 2200);
@@ -283,7 +574,7 @@
           errorDiv.textContent = data.message || 'Registration failed. Please try again.';
           errorDiv.className = 'register-error';
           errorDiv.style.display = 'block';
-          submitBtn.textContent = '📝 Create Account';
+          submitBtn.textContent = 'Create Account';
           submitBtn.disabled = false;
         }
       } catch (error) {
@@ -291,32 +582,30 @@
         errorDiv.textContent = 'An error occurred. Please try again.';
         errorDiv.className = 'register-error';
         errorDiv.style.display = 'block';
-        submitBtn.textContent = '📝 Create Account';
+        submitBtn.textContent = 'Create Account';
         submitBtn.disabled = false;
       }
     };
-    
-    // Plan selection function
+
     async function selectSubscriptionPlan(planId) {
       const email = localStorage.getItem('newStudentEmail');
       const username = localStorage.getItem('newStudentUsername');
       const studentId = localStorage.getItem('newStudentId');
-      
+
       if (!email || !studentId) {
         alert('Error: Registration data not found. Please register again.');
         return;
       }
-      
-      // Show loading state
+
       const planCards = document.querySelectorAll('.plan-card-modal');
-      planCards.forEach(card => {
+      planCards.forEach((card) => {
         const btn = card.querySelector('.plan-btn-modal');
         if (btn) {
           btn.disabled = true;
-          btn.textContent = '⏳ Processing...';
+          btn.textContent = 'Processing...';
         }
       });
-      
+
       try {
         const origin = window.location.origin || '';
         const payRes = await fetch('/api/payments/create-link', {
@@ -343,7 +632,7 @@
       } catch (error) {
         console.error('Subscription error:', error);
         alert('Error starting checkout: ' + error.message);
-        planCards.forEach(card => {
+        planCards.forEach((card) => {
           const btn = card.querySelector('.plan-btn-modal');
           if (btn) {
             btn.disabled = false;
@@ -352,17 +641,13 @@
         });
       }
     }
-    
+
     function goToLogin() {
-      // Clear temporary data
       localStorage.removeItem('newStudentEmail');
       localStorage.removeItem('newStudentUsername');
       localStorage.removeItem('newStudentId');
-      
-      // Redirect to login
       window.location.href = '/login/';
     }
   </script>
 </body>
-</html> 
-
+</html>

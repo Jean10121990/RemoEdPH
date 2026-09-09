@@ -1,6 +1,9 @@
 const Curriculum = require('./models/Curriculum');
 const Lesson = require('./models/Lesson');
-const { normalizeCurriculumLevel } = require('./config/curriculumLevels');
+const {
+  normalizeCurriculumLevel,
+  curriculumLevelQueryValues,
+} = require('./config/curriculumLevels');
 
 function normalizeCurriculumLevelFromStudentLevel(raw) {
   return normalizeCurriculumLevel(raw);
@@ -43,7 +46,13 @@ async function resolveLessonIdFromBooking(booking) {
   const level = normalizeCurriculumLevelFromStudentLevel(booking.studentLevel);
   if (!level) return null;
 
-  const curricula = await Curriculum.find({ level, isActive: true }).select('_id').lean();
+  const levelValues = curriculumLevelQueryValues(level);
+  const curricula = await Curriculum.find({
+    level: levelValues.length ? { $in: levelValues } : level,
+    isActive: true,
+  })
+    .select('_id')
+    .lean();
   if (!curricula.length) return null;
   const curIds = curricula.map((c) => c._id);
 

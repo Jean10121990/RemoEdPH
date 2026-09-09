@@ -3350,6 +3350,58 @@
         
 
         // Load lessons for selected level
+        let studentTrialBookingActive = false;
+
+        function curriculumLevelsMatch(a, b) {
+            const normalize = (raw) => {
+                const s = String(raw || '').toLowerCase().trim();
+                if (!s) return '';
+                if (s.includes('little seeds') || s === 'nursery' || s === 'level 1') return 'little seeds';
+                if (s.includes('sprouts') || s.includes('kindergarten') || s === 'level 2') return 'sprouts';
+                if (s.includes('saplings') || s.includes('preparatory') || s === 'level 3') return 'saplings';
+                if (s.includes('young stewards') || s.includes('steward') || s === 'level 4') return 'young stewards';
+                return s;
+            };
+            return normalize(a) === normalize(b);
+        }
+
+        function isLessonOne(lesson) {
+            const n = Number(lesson && lesson.lessonNumber);
+            if (n === 1) return true;
+            const title = String((lesson && (lesson.title || lesson.name)) || '');
+            return /\blesson\s*1\b/i.test(title) && !/\blesson\s*1\d/i.test(title);
+        }
+
+        async function refreshTrialBookingFlag() {
+            try {
+                const token = localStorage.getItem('token');
+                if (!token) return;
+                const res = await fetch('/api/student/profile', {
+                    headers: { Authorization: `Bearer ${token}`, 'Cache-Control': 'no-cache' }
+                });
+                if (!res.ok) return;
+                const data = await res.json();
+                const p = data.profile || data;
+                const hasTrial =
+                    p.assessmentTrialCreditActive === true ||
+                    (p.hasFreeTrial === true && p.isSubscribed !== true);
+                studentTrialBookingActive = hasTrial;
+                if (p.hasFreeTrial != null) {
+                    localStorage.setItem('studentHasFreeTrial', p.hasFreeTrial ? '1' : '0');
+                }
+                if (p.assessmentTrialCreditActive != null) {
+                    localStorage.setItem(
+                        'studentAssessmentTrialActive',
+                        p.assessmentTrialCreditActive ? '1' : '0'
+                    );
+                }
+            } catch (e) {
+                studentTrialBookingActive =
+                    localStorage.getItem('studentHasFreeTrial') === '1' ||
+                    localStorage.getItem('studentAssessmentTrialActive') === '1';
+            }
+        }
+
         async function loadLessonsForLevel() {
             const levelSelect = document.getElementById('student-level');
             const lessonSelect = document.getElementById('lesson');
@@ -3369,6 +3421,8 @@
                 if (!token) {
                     throw new Error('Not authenticated');
                 }
+
+                await refreshTrialBookingFlag();
                 
                 // Get curricula for the selected level
                 const curriculaRes = await fetch(`/api/lessons/curricula?token=${encodeURIComponent(token)}`, {
@@ -3384,9 +3438,9 @@
                 
                 const curricula = await curriculaRes.json();
                 
-                // Filter curricula by level
-                const relevantCurricula = curricula.filter(c => 
-                    c.level === selectedLevel || c.level === 'all'
+                // Filter curricula by level (canonical + legacy age labels)
+                const relevantCurricula = curricula.filter(c =>
+                    c.level === 'all' || curriculumLevelsMatch(c.level, selectedLevel)
                 );
                 
                 if (relevantCurricula.length === 0) {
@@ -3412,12 +3466,31 @@
                         console.error('Error loading lessons for curriculum:', e);
                     }
                 }
+
+                // Free trial: only Lesson 1 is bookable for each level
+                if (studentTrialBookingActive) {
+                    allLessons = allLessons.filter(isLessonOne);
+                }
+
+                // De-dupe by lessonNumber + title
+                const seen = new Set();
+                allLessons = allLessons.filter((lesson) => {
+                    const key = `${lesson.lessonNumber || ''}|${lesson.title || ''}|${lesson._id || ''}`;
+                    if (seen.has(key)) return false;
+                    seen.add(key);
+                    return true;
+                });
+                allLessons.sort((a, b) => Number(a.lessonNumber || 0) - Number(b.lessonNumber || 0));
                 
                 // Populate lesson dropdown
                 if (allLessons.length === 0) {
-                    lessonSelect.innerHTML = '<option value="">No lessons available for this level</option>';
+                    lessonSelect.innerHTML = studentTrialBookingActive
+                        ? '<option value="">No Lesson 1 found for this level</option>'
+                        : '<option value="">No lessons available for this level</option>';
                 } else {
-                    lessonSelect.innerHTML = '<option value="">Select a lesson</option>';
+                    lessonSelect.innerHTML = studentTrialBookingActive
+                        ? '<option value="">Select Lesson 1 (free trial)</option>'
+                        : '<option value="">Select a lesson</option>';
                     allLessons.forEach(lesson => {
                         const option = document.createElement('option');
                         
@@ -3431,19 +3504,13 @@
                         option.textContent = `Lesson ${lesson.lessonNumber || '?'}: ${lesson.title || 'Untitled'}`;
                         option.title = lesson.description || lesson.title || '';
                         
-                        console.log('📚 Created lesson option:', {
-                            value: option.value,
-                            text: option.textContent,
-                            lessonId: lesson._id,
-                            lessonNumber: lesson.lessonNumber,
-                            title: lesson.title
-                        });
-                        
                         lessonSelect.appendChild(option);
                     });
                     lessonSelect.disabled = false;
                     
-                    console.log('✅ Populated lesson dropdown with', allLessons.length, 'lessons');
+                    if (studentTrialBookingActive && allLessons.length === 1) {
+                        lessonSelect.value = allLessons[0]._id.toString();
+                    }
                 }
             } catch (error) {
                 console.error('Error loading lessons:', error);

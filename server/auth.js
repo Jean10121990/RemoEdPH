@@ -1141,20 +1141,12 @@ router.post('/student-register', authRegisterLimiter, async (req, res) => {
     if (referralCode && String(referralCode).trim()) {
       const code = String(referralCode).trim();
       try {
-        const teacher = await Teacher.findOne({ referralCode: code }).lean();
-        if (teacher) {
-          student.referralCode = code;
-          student.referredByTeacherId = teacher.teacherId; // legacy
-          student.referredByOwnerType = 'teacher';
-          student.referredByOwnerId = teacher.teacherId;
-        } else {
-          const admin = await Admin.findOne({ referralCode: code }).lean();
-          if (admin) {
-            student.referralCode = code;
-            student.referredByOwnerType = 'admin';
-            student.referredByOwnerId = admin.username;
-          }
-        }
+        const {
+          resolveReferralOwner,
+          applyReferralFields,
+        } = require('./utils/awardReferralCommission');
+        const owner = await resolveReferralOwner(code);
+        if (owner) applyReferralFields(student, owner);
       } catch (e) {
         // Don't fail registration if referral lookup fails
         console.warn('Referral lookup failed during student registration:', e.message);
@@ -1162,6 +1154,13 @@ router.post('/student-register', authRegisterLimiter, async (req, res) => {
     }
 
     await student.save();
+
+    try {
+      const { recordReferralSignup } = require('./utils/awardReferralCommission');
+      await recordReferralSignup(student);
+    } catch (refSignupErr) {
+      console.warn('Referral signup tracking failed:', refSignupErr.message);
+    }
 
     // Always grant 1 welcome free-trial lesson on successful registration (never double-credit).
     const now = new Date();

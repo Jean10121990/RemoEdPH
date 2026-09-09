@@ -3574,22 +3574,70 @@ router.post('/review-cancellation', async (req, res) => {
   }
 });
 
-// GET booking details by ID
+// GET booking details by ID (enriched for admin schedule drawer)
 router.get('/booking/:bookingId', async (req, res) => {
   try {
     const { bookingId } = req.params;
     
-    const booking = await Booking.findById(bookingId);
+    const booking = await Booking.findById(bookingId).lean();
     if (!booking) {
       return res.status(404).json({ 
         success: false, 
         error: 'Booking not found' 
       });
     }
+
+    let studentName = '';
+    let studentMongoId = '';
+    const sid = String(booking.studentId || '').trim();
+    if (sid) {
+      const studentOr = [{ username: sid }, { email: sid }];
+      if (mongoose.Types.ObjectId.isValid(sid)) {
+        studentOr.push({ _id: sid });
+      }
+      const student = await Student.findOne({ $or: studentOr })
+        .select('firstName lastName username email _id')
+        .lean();
+      if (student) {
+        studentMongoId = String(student._id);
+        studentName =
+          [student.firstName, student.lastName].filter(Boolean).join(' ').trim() ||
+          student.username ||
+          student.email ||
+          '';
+      }
+    }
+
+    let teacherName = '';
+    let teacherMongoId = '';
+    const tid = String(booking.teacherId || '').trim();
+    if (tid) {
+      const teacher = await Teacher.findOne({
+        $or: [{ teacherId: tid }, { username: tid }, { email: tid }],
+      })
+        .select('firstName lastName nickname teacherId username _id')
+        .lean();
+      if (teacher) {
+        teacherMongoId = String(teacher._id);
+        teacherName =
+          (teacher.nickname && String(teacher.nickname).trim()) ||
+          [teacher.firstName, teacher.lastName].filter(Boolean).join(' ').trim() ||
+          teacher.teacherId ||
+          teacher.username ||
+          '';
+      }
+    }
     
     res.json({
       success: true,
-      booking
+      booking: {
+        ...booking,
+        date: booking.date ? String(booking.date).slice(0, 10) : '',
+        studentName: studentName || booking.studentId || '',
+        teacherName: teacherName || booking.teacherId || '',
+        studentMongoId,
+        teacherMongoId,
+      },
     });
   } catch (err) {
     console.error('Error fetching booking details:', err);

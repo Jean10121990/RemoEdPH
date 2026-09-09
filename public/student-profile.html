@@ -754,7 +754,8 @@
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">Age</label>
-                                    <input type="number" class="form-input" id="age" placeholder="Age" min="1" max="100" disabled>
+                                    <input type="number" class="form-input form-input--computed" id="age" placeholder="From birthday" min="0" max="120" disabled readonly title="Calculated automatically from birthday">
+                                    <small class="form-hint-age" style="display:block;margin-top:4px;color:#64748b;font-size:0.75rem;">Updates automatically from your birthday each year</small>
                                 </div>
                             </div>
                         </div>
@@ -925,6 +926,7 @@
         </div>
 
     <script src="avatar-helper.js"></script>
+    <script src="js/age-from-birthday.js?v=1"></script>
     <script src="js/student-badges.js?v=1"></script>
     <script>
         /** Bearer for /api/student/* — aligns with remoed_student_auth / remoed_student_token from login. */
@@ -983,6 +985,11 @@
             loadProfile();
             loadSettingsData();
             setupProfilePictureUpload();
+            const birthdayInput = document.getElementById('birthday');
+            if (birthdayInput) {
+                birthdayInput.addEventListener('change', syncAgeFromBirthday);
+                birthdayInput.addEventListener('input', syncAgeFromBirthday);
+            }
         });
         
     // Load profile picture from backend (uses shared setAvatar)
@@ -1537,8 +1544,7 @@
                 birthdayValue = birthdayValue.split('T')[0];
             }
             document.getElementById('birthday').value = birthdayValue;
-            
-            document.getElementById('age').value = profile.age || '';
+            syncAgeFromBirthday();
             document.getElementById('contact').value = profile.contact || '';
             
             // Use profile email if available, otherwise use login email from localStorage
@@ -1890,12 +1896,29 @@
             }, 5000);
         }
 
+        function syncAgeFromBirthday() {
+            const ageEl = document.getElementById('age');
+            const bdayEl = document.getElementById('birthday');
+            if (!ageEl) return;
+            const raw = bdayEl ? bdayEl.value : '';
+            const age =
+                window.RemoedAge && RemoedAge.ageFromBirthday
+                    ? RemoedAge.ageFromBirthday(raw)
+                    : null;
+            ageEl.value = age != null ? age : '';
+        }
+
         function enableEditing() {
             console.log('Enabling editing...');
             
-            // Enable all form inputs
+            // Enable all form inputs except computed age
             const inputs = document.querySelectorAll('.form-input, .form-textarea');
             inputs.forEach(input => {
+                if (input.id === 'age' || input.classList.contains('form-input--computed')) {
+                    input.disabled = true;
+                    input.readOnly = true;
+                    return;
+                }
                 input.disabled = false;
                 console.log('Enabled input:', input.id || input.name);
             });

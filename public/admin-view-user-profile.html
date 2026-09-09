@@ -7,6 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="js/admin-standalone-redirect.js"></script>
     <script src="js/admin-embed-init.js"></script>
+    <script src="js/age-from-birthday.js?v=1"></script>
     <title>User profile (admin) - RemoEdPH</title>
     <link rel="stylesheet" href="modern-styles.css">
     <style>
@@ -277,6 +278,14 @@
                             rows.push(['Username', u.username || '—']);
                             rows.push(['Account email', u.email || '—']);
                             rows.push(['Birthday', birthdayStr]);
+                            var ageVal = null;
+                            if (window.RemoedAge && RemoedAge.ageFromBirthday) {
+                                ageVal = RemoedAge.ageFromBirthday(u.birthday);
+                            }
+                            if (ageVal == null && u.age != null && u.age !== '') ageVal = Number(u.age);
+                            if (ageVal != null && Number.isFinite(ageVal)) {
+                                rows.push(['Age', String(ageVal) + ' (from birthday)']);
+                            }
                             rows.push(['Parent/Guardian name', u.parentName || '—']);
                             rows.push(['Parent/Guardian contact', u.parentContact || '—']);
                             rows.push(['Parent/Guardian email', u.parentEmail || u.email || '—']);
@@ -299,6 +308,24 @@
                             rows.push(['Email', u.email || '—']);
                             rows.push(['Teacher ID', u.teacherId || '—']);
                             rows.push(['Nickname', (u.nickname && String(u.nickname).trim()) || '—']);
+                            var tBirthdayStr = '—';
+                            if (u.birthday) {
+                                try {
+                                    tBirthdayStr = new Date(u.birthday).toLocaleDateString('en-US', {
+                                        month: 'short', day: 'numeric', year: 'numeric'
+                                    });
+                                    if (tBirthdayStr === 'Invalid Date') tBirthdayStr = String(u.birthday);
+                                } catch (e2) {
+                                    tBirthdayStr = String(u.birthday);
+                                }
+                            }
+                            rows.push(['Birthday', tBirthdayStr]);
+                            var tAge = window.RemoedAge && RemoedAge.ageFromBirthday
+                                ? RemoedAge.ageFromBirthday(u.birthday)
+                                : null;
+                            if (tAge != null && Number.isFinite(tAge)) {
+                                rows.push(['Age', String(tAge) + ' (from birthday)']);
+                            }
                             rows.push(['Status', u.status || '—']);
                             rows.push(['Payout tier', tierLabel]);
                             rows.push(['Rate (25 min)', u.hourlyRate != null ? ('₱' + Number(u.hourlyRate).toFixed(2)) : '—']);

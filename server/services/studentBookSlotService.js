@@ -143,7 +143,11 @@ async function runBookSlot(req, res) {
       (student.paymentStatus === 'paid' && student.subscriptionStatus === 'active');
     const studentId = student.username;
     const availableCredits = getAvailableBookingCredits(student);
-    const canUseTrial = !!student.assessmentTrialCreditActive;
+    const canUseTrial =
+      !effectiveSubscribed &&
+      (!!student.assessmentTrialCreditActive || !!student.hasFreeTrial);
+    // Welcome trial adds 1 credit; still restrict to Lesson 1 while trial flags are active.
+    const trialOnlyBooking = canUseTrial;
     if (!effectiveSubscribed && availableCredits <= 0 && !canUseTrial) {
       return res.status(403).json({
         error: 'Subscription required to book your next lesson.',
@@ -152,6 +156,26 @@ async function runBookSlot(req, res) {
     }
     if (availableCredits <= 0 && !canUseTrial) {
       return res.status(400).json({ error: 'Insufficient credits. Please top up your plan.' });
+    }
+
+    // Free trial: only Lesson 1 (any curriculum level) may be booked.
+    if (trialOnlyBooking) {
+      const Lesson = require('../models/Lesson');
+      let lessonNum = null;
+      if (lessonId && mongoose.Types.ObjectId.isValid(String(lessonId))) {
+        const lessonDoc = await Lesson.findById(String(lessonId)).select('lessonNumber title').lean();
+        if (lessonDoc) lessonNum = Number(lessonDoc.lessonNumber);
+      }
+      if (lessonNum == null || Number.isNaN(lessonNum)) {
+        const m = String(lesson || '').match(/lesson\s*(\d+)/i);
+        if (m) lessonNum = parseInt(m[1], 10);
+      }
+      if (lessonNum !== 1) {
+        return res.status(400).json({
+          error: 'Free trial booking is limited to Lesson 1 for each level.',
+          code: 'TRIAL_LESSON_1_ONLY',
+        });
+      }
     }
 
     const missingFields = [];
@@ -305,7 +329,11 @@ async function runBookSlot(req, res) {
       // Gate: live balance > 0 (no reserve-on-book). Allow active free-trial booking.
       let creditGateQ = Student.findOne({
         _id: req.user.studentId,
-        $or: [{ creditBalance: { $gt: 0 } }, { assessmentTrialCreditActive: true }],
+        $or: [
+          { creditBalance: { $gt: 0 } },
+          { assessmentTrialCreditActive: true },
+          { hasFreeTrial: true },
+        ],
       });
       if (session) creditGateQ = creditGateQ.session(session);
       const creditGate = await creditGateQ;
@@ -357,7 +385,7 @@ async function runBookSlot(req, res) {
         studentLevel: canonicalStudentLevel,
         classroomId,
         status: 'Booked',
-        isAssessmentFreeTrialBooking: !!student.assessmentTrialCreditActive,
+        isAssessmentFreeTrialBooking: trialOnlyBooking,
       });
       try {
         if (session) {

@@ -190,10 +190,15 @@ router.get('/referrals', verifyToken, requireTeacher, async (req, res) => {
       (acc, r) => {
         acc.count += 1;
         acc.totalAmountPaid += Number(r.amountPaid || 0) || 0;
-        acc.totalCommission += Number(r.commissionAmount || 0) || 0;
+        if (String(r.status || '') === 'successful') {
+          acc.totalCommission += Number(r.commissionAmount || 0) || 0;
+          acc.successfulCount += 1;
+        } else if (String(r.status || '') === 'pending') {
+          acc.pendingCount += 1;
+        }
         return acc;
       },
-      { count: 0, totalAmountPaid: 0, totalCommission: 0 }
+      { count: 0, successfulCount: 0, pendingCount: 0, totalAmountPaid: 0, totalCommission: 0 }
     );
 
     const referrals = list.map((r) => {

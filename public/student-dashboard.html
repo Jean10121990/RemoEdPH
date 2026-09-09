@@ -782,6 +782,87 @@
         <div class="remoed-content" style="position: relative; z-index: 2; overflow-y: auto; overflow-x: visible;">
             <ul id="upcoming-classes-list" class="notification-list upcoming-classes-list" hidden></ul>
 
+            <style>
+                @keyframes paywallPulseDash { 0%, 100% { box-shadow: 0 12px 40px rgba(0,174,239,0.12); } 50% { box-shadow: 0 18px 48px rgba(0,174,239,0.28); } }
+                .paywall--pulse .subscription-paywall-card { animation: paywallPulseDash 1s ease-in-out 2; }
+                .dash-free-trial-toast {
+                    display: none;
+                    margin: 0 0 14px;
+                    padding: 14px 18px;
+                    border-radius: 14px;
+                    background: rgba(0, 174, 239, 0.08);
+                    border: 1px solid rgba(0, 174, 239, 0.28);
+                    color: #0c4a6e;
+                    font-size: 0.95rem;
+                    line-height: 1.55;
+                    box-shadow: 0 4px 14px rgba(0, 174, 239, 0.08);
+                }
+                .dash-free-trial-cta {
+                    display: none;
+                    margin: 0 0 16px;
+                }
+                .dash-free-trial-cta a {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 10px;
+                    padding: 16px 24px;
+                    background: linear-gradient(135deg, #e0f7ff 0%, #ecfeff 100%);
+                    border: 1px solid rgba(0, 174, 239, 0.4);
+                    border-radius: 16px;
+                    text-decoration: none;
+                    color: #0369a1;
+                    font-weight: 800;
+                    font-size: 1.05rem;
+                    box-shadow: 0 4px 18px rgba(0, 174, 239, 0.14);
+                }
+                .dash-free-trial-cta a:hover {
+                    filter: brightness(0.98);
+                }
+            </style>
+
+            <div id="welcome-trial-toast" class="dash-free-trial-toast">
+                <strong>Welcome to RemoEd!</strong> You have <strong>1 free trial class</strong> available. Let’s schedule it now!
+            </div>
+
+            <div id="subscription-paywall-overlay" style="display: none; position: absolute; inset: 0; z-index: 100; align-items: center; justify-content: center; padding: 24px; background: rgba(248,250,252,0.97); box-sizing: border-box;">
+                <div class="subscription-paywall-card" style="max-width: 440px; width: 100%; padding: 36px 32px; background: #fff; border: 1px solid #e2e8f0; border-radius: 20px; box-shadow: 0 12px 40px rgba(15,23,42,0.08); text-align: center;">
+                    <p style="margin: 0 0 8px; font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase; color: #64748b;">Trial complete</p>
+                    <h2 style="margin: 0 0 16px; font-size: 1.45rem; font-weight: 700; color: #0f172a; letter-spacing: -0.02em;">Continue your journey</h2>
+                    <p style="margin: 0 0 20px; line-height: 1.65; color: #475569; font-size: 0.98rem;">You’ve completed your first lesson! Read your teacher’s feedback and enroll in a plan to continue to Lesson&nbsp;2.</p>
+                    <div id="paywall-lesson2-teaser" style="margin: 0 0 24px; padding: 14px 16px; background: rgba(0,174,239,0.06); border-radius: 12px; border: 1px solid rgba(0,174,239,0.2); text-align: left; font-size: 0.9rem; color: #334155; line-height: 1.55;"></div>
+                    <div style="display: flex; flex-direction: column; gap: 12px; align-items: center;">
+                        <a href="student-booking-history.html" style="display: inline-block; width: 100%; max-width: 280px; padding: 12px 24px; background: #f8fafc; color: #0f172a; font-weight: 700; border-radius: 999px; text-decoration: none; border: 1px solid #e2e8f0;">View feedback &amp; classes</a>
+                        <a href="index.html#plans" style="display: inline-block; width: 100%; max-width: 280px; padding: 14px 32px; background: linear-gradient(135deg, #008fc4, #00aeef); color: #fff; font-weight: 700; border-radius: 999px; text-decoration: none;">Choose learning plan</a>
+                    </div>
+                </div>
+            </div>
+
+            <div id="free-lesson-cta" class="dash-free-trial-cta">
+                <a href="student-book.html">Book My Free Trial Class</a>
+            </div>
+
+            <div id="trial-completed-banner" style="display: none; margin: 0 0 16px 0; padding: 14px 18px; border-radius: 12px; background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%); border: 1px solid #a5b4fc; color: #312e81; box-shadow: 0 2px 8px rgba(99,102,241,0.12);">
+                <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;">
+                    <p style="margin: 0; flex: 1; min-width: 220px; line-height: 1.5; font-size: 0.95rem;">
+                        You’ve finished your free trial! Ready to keep learning? <strong>Subscribe now</strong> to enroll in a full plan and book your next session.
+                    </p>
+                    <div style="display: flex; align-items: center; gap: 10px; flex-shrink: 0;">
+                        <a id="trial-banner-plans-btn" href="index.html#plans" style="display: inline-block; padding: 10px 20px; background: #00aeef; color: #fff; font-weight: 700; border-radius: 10px; text-decoration: none;">View Plans</a>
+                        <button type="button" id="trial-banner-dismiss" style="padding: 8px 12px; background: transparent; border: 1px solid #00aeef; color: #0369a1; border-radius: 8px; cursor: pointer; font-size: 0.85rem;">Dismiss</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="post-assessment-enroll-banner" style="display: none; margin: 0 0 16px 0; padding: 14px 18px; border-radius: 16px; background: linear-gradient(135deg, #f0f9ff 0%, #ecfeff 100%); border: 1px solid rgba(0, 174, 239, 0.35); color: #0c4a6e; box-shadow: 0 2px 10px rgba(0, 174, 239, 0.12);">
+                <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;">
+                    <p id="post-assessment-enroll-text" style="margin: 0; flex: 1; min-width: 220px; line-height: 1.55; font-size: 0.95rem;">
+                        Great job on your assessment! You’re ready to start. <strong>Enroll in a plan today</strong> to book your first tutor session.
+                    </p>
+                    <a id="post-assessment-enroll-cta" href="index.html#plans" style="display: inline-block; padding: 10px 22px; background: linear-gradient(135deg, #008fc4, #00aeef); color: #fff; font-weight: 700; border-radius: 999px; text-decoration: none; flex-shrink: 0;">View Learning Plans</a>
+                </div>
+            </div>
+
             <!-- Next class (primary) -->
             <section class="dash-next-class" aria-labelledby="dash-next-heading">
                 <p class="dash-next-class__label" id="dash-next-heading">Next up</p>
@@ -878,12 +959,156 @@
         document.addEventListener('DOMContentLoaded', function() {
             const username = localStorage.getItem('remoedUsername');
             const studentId = localStorage.getItem('studentId');
+            const token =
+                localStorage.getItem('token') ||
+                localStorage.getItem('remoed_student_token') ||
+                localStorage.getItem('remoed_student_auth') ||
+                '';
             
             if (username) {
                 const nameEl = document.getElementById('remoed-username');
                 const avatarEl = document.getElementById('avatar-text');
                 if (nameEl) nameEl.textContent = 'Hi, ' + username + '!';
                 if (avatarEl) avatarEl.textContent = username[0].toUpperCase();
+            }
+
+            function profileIsSubscribed(p) {
+                if (!p) return false;
+                return (
+                    p.isSubscribed === true ||
+                    (p.paymentStatus === 'paid' && p.subscriptionStatus === 'active')
+                );
+            }
+
+            function lesson2TeaserText(profile) {
+                var level =
+                    (profile && (profile.curriculumLevelDisplay || profile.level || profile.cefrLevel)) ||
+                    'your level';
+                return (
+                    'Your next sessions unlock with a learning plan. You’re currently at <strong>' +
+                    String(level).replace(/</g, '&lt;') +
+                    '</strong> — keep the momentum going!'
+                );
+            }
+
+            function applyFreeTrialDashboard(profile) {
+                if (!profile) return;
+                var acct = profile.accountStatus || 'standard';
+                var sub = profileIsSubscribed(profile);
+                var hasTrial = profile.hasFreeTrial === true;
+                try {
+                    localStorage.setItem('studentAccountStatus', acct);
+                    localStorage.setItem('studentHasFreeTrial', hasTrial ? '1' : '0');
+                    localStorage.setItem('studentIsSubscribed', sub ? '1' : '0');
+                    localStorage.setItem('studentPaymentStatus', profile.paymentStatus || 'unpaid');
+                    localStorage.setItem('studentSubscriptionStatus', profile.subscriptionStatus || 'pending');
+                } catch (_e) {}
+
+                var paywall = document.getElementById('subscription-paywall-overlay');
+                var freeCta = document.getElementById('free-lesson-cta');
+                var toastEl = document.getElementById('welcome-trial-toast');
+                var trialBanner = document.getElementById('trial-completed-banner');
+                var teaserEl = document.getElementById('paywall-lesson2-teaser');
+                var enrollBanner = document.getElementById('post-assessment-enroll-banner');
+                var enrollText = document.getElementById('post-assessment-enroll-text');
+                var enrollCta = document.getElementById('post-assessment-enroll-cta');
+
+                if (acct === 'trial_completed' && !sub) {
+                    if (trialBanner) trialBanner.style.display = 'none';
+                    if (freeCta) freeCta.style.display = 'none';
+                    if (toastEl) toastEl.style.display = 'none';
+                    if (enrollBanner) enrollBanner.style.display = 'none';
+                    if (paywall) {
+                        if (teaserEl) teaserEl.innerHTML = lesson2TeaserText(profile);
+                        paywall.style.display = 'flex';
+                        try {
+                            if (sessionStorage.getItem('remoedTrialPaywallGate') === '1') {
+                                paywall.classList.add('paywall--pulse');
+                                sessionStorage.removeItem('remoedTrialPaywallGate');
+                                setTimeout(function () {
+                                    paywall.classList.remove('paywall--pulse');
+                                }, 2200);
+                            }
+                        } catch (_e2) {}
+                    }
+                    try {
+                        var sroot = document.getElementById('student-sidebar-root');
+                        if (
+                            window.StudentSidebar &&
+                            typeof window.StudentSidebar.refreshBookNavItem === 'function' &&
+                            sroot
+                        ) {
+                            window.StudentSidebar.refreshBookNavItem(sroot);
+                        }
+                    } catch (_e3) {}
+                    return;
+                }
+
+                if (paywall) paywall.style.display = 'none';
+
+                if (freeCta && hasTrial && acct !== 'trial_completed' && !sub) {
+                    freeCta.style.display = 'block';
+                    if (toastEl) toastEl.style.display = 'block';
+                    window.__studentHasFreeTrial = true;
+                } else {
+                    if (freeCta) freeCta.style.display = 'none';
+                    if (toastEl) toastEl.style.display = 'none';
+                    window.__studentHasFreeTrial = false;
+                }
+                // Refresh empty next-class hero once we know trial status
+                try {
+                    var titleNow = document.getElementById('dash-next-title');
+                    if (titleNow && titleNow.textContent === 'No class scheduled' && typeof renderNextClassHero === 'function') {
+                        renderNextClassHero([]);
+                    }
+                } catch (_hero) {}
+                try {
+                    var sroot2 = document.getElementById('student-sidebar-root');
+                    if (
+                        window.StudentSidebar &&
+                        typeof window.StudentSidebar.refreshBookNavItem === 'function' &&
+                        sroot2
+                    ) {
+                        window.StudentSidebar.refreshBookNavItem(sroot2);
+                    }
+                } catch (_nav) {}
+
+                if (enrollBanner && enrollText && enrollCta && acct !== 'trial_completed') {
+                    var hasAsm = !!(profile.cefrLevel || profile.assessmentScore != null);
+                    if (hasAsm && !sub && hasTrial) {
+                        enrollBanner.style.display = 'none';
+                    } else if (hasAsm && !sub && !hasTrial) {
+                        enrollBanner.style.display = 'block';
+                        enrollText.innerHTML =
+                            'Great job on your assessment! You’re ready to start. <strong>Enroll in a plan today</strong> to book your first tutor session.';
+                        enrollCta.href = 'index.html#plans';
+                        enrollCta.textContent = 'View Learning Plans';
+                    }
+                }
+            }
+
+            if (token) {
+                fetch('/api/student/profile', {
+                    headers: { Authorization: 'Bearer ' + token },
+                })
+                    .then(function (r) {
+                        return r.ok ? r.json() : null;
+                    })
+                    .then(function (data) {
+                        if (data && data.profile) applyFreeTrialDashboard(data.profile);
+                    })
+                    .catch(function () {});
+
+                var dismissBtn = document.getElementById('trial-banner-dismiss');
+                if (dismissBtn) {
+                    dismissBtn.addEventListener('click', function () {
+                        var trialBanner = document.getElementById('trial-completed-banner');
+                        if (trialBanner) trialBanner.style.display = 'none';
+                        try {
+                            sessionStorage.setItem('trialBannerDismissed', '1');
+                        } catch (_e) {}
+                    });
+                }
             }
       
             // Always load profile (level + avatar) when authenticated — studentId optional
@@ -1515,10 +1740,17 @@
 
       if (!classes || !classes.length) {
         titleEl.textContent = 'No class scheduled';
-        metaEl.textContent = 'Book a live English class to get started.';
-        actionsEl.innerHTML =
-          '<a class="dash-btn dash-btn--primary" href="student-book.html">Book a Class</a>' +
-          '<a class="dash-btn dash-btn--secondary" href="student-class-table.html">My Schedule</a>';
+        if (window.__studentHasFreeTrial) {
+          metaEl.textContent = 'You have 1 free trial class — book it to meet your teacher.';
+          actionsEl.innerHTML =
+            '<a class="dash-btn dash-btn--primary" href="student-book.html">Book My Free Trial</a>' +
+            '<a class="dash-btn dash-btn--secondary" href="student-class-table.html">My Schedule</a>';
+        } else {
+          metaEl.textContent = 'Book a live English class to get started.';
+          actionsEl.innerHTML =
+            '<a class="dash-btn dash-btn--primary" href="student-book.html">Book a Class</a>' +
+            '<a class="dash-btn dash-btn--secondary" href="student-class-table.html">My Schedule</a>';
+        }
         return;
       }
 

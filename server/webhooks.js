@@ -414,6 +414,20 @@ async function handlePaymongoWebhook(req, res) {
     });
 
     try {
+      const {
+        resolveReferralOwner,
+        applyReferralFields,
+      } = require('./utils/awardReferralCommission');
+      const pendingRef = String(pending.referralCode || metadata.referralCode || '').trim();
+      if (pendingRef) {
+        const owner = await resolveReferralOwner(pendingRef);
+        if (owner) applyReferralFields(student, owner);
+      }
+    } catch (refAttachErr) {
+      console.warn('[PAYMONGO WEBHOOK] Referral attach failed:', refAttachErr.message);
+    }
+
+    try {
       await student.save();
       console.log('✅ [PAYMONGO WEBHOOK] Student saved successfully', {
         studentId: student._id?.toString?.(),
@@ -471,6 +485,16 @@ async function handlePaymongoWebhook(req, res) {
           { _id: student._id, ...paymongoNotYetProcessedFilter(guardKeys) },
           { $push: { processedPaymentIds: idempotencyKey } }
         );
+      }
+
+      try {
+        const { awardReferralCommissionOnPayment } = require('./utils/awardReferralCommission');
+        await awardReferralCommissionOnPayment(student, {
+          amountPaid,
+          plan: student.subscriptionPlan || normalizedPlanId || pending.plan || '',
+        });
+      } catch (refAwardErr) {
+        console.warn('[PAYMONGO WEBHOOK] Referral commission award failed:', refAwardErr.message);
       }
     } catch (saveError) {
       const isDup = saveError.code === 11000;

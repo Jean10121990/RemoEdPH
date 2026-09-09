@@ -31,8 +31,33 @@
         .as-slot--unbooked { background:#f8f9fa; color:#6c757d; font-weight:500; }
         .as-slot--closed { background:#fff; color:#94a3b8; border:1px dashed #cbd5e1; font-weight:500; }
         .as-slot--cancelled { background:#f1f5f9; color:#64748b; font-weight:500; }
-        .as-drawer { position:fixed; right:0; top:0; bottom:0; width:min(360px,92vw); background:#fff; box-shadow:-4px 0 24px rgba(0,0,0,.12); padding:20px; z-index:9000; transform:translateX(110%); transition:transform .2s; overflow:auto; }
+        .as-drawer { position:fixed; right:0; top:0; bottom:0; width:min(400px,94vw); background:linear-gradient(180deg,#f8fbff 0%,#fff 120px); box-shadow:-8px 0 32px rgba(15,23,42,.14); padding:0; z-index:9000; transform:translateX(110%); transition:transform .22s ease; overflow:auto; border-left:1px solid #e2e8f0; }
         .as-drawer.open { transform:translateX(0); }
+        .as-drawer-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding:18px 18px 14px; border-bottom:1px solid #e8f4fd; background:#fff; position:sticky; top:0; z-index:2; }
+        .as-drawer-head h3 { margin:0; font-size:1.1rem; color:#0f172a; font-weight:800; }
+        .as-drawer-head p { margin:4px 0 0; font-size:0.8rem; color:#64748b; }
+        .as-drawer-close { border:none; background:#f1f5f9; width:36px; height:36px; border-radius:10px; font-size:1.25rem; line-height:1; cursor:pointer; color:#334155; flex-shrink:0; }
+        .as-drawer-close:hover { background:#e2e8f0; }
+        .as-drawer-body { padding:16px 18px 28px; }
+        .as-status-pill { display:inline-flex; align-items:center; padding:4px 10px; border-radius:999px; font-size:0.72rem; font-weight:800; text-transform:capitalize; letter-spacing:0.02em; }
+        .as-status-pill--booked, .as-status-pill--pending, .as-status-pill--confirmed { background:#fef9c3; color:#854d0e; }
+        .as-status-pill--completed { background:#dcfce7; color:#166534; }
+        .as-status-pill--cancelled, .as-status-pill--cancelled_by_student_emergency { background:#fee2e2; color:#991b1b; }
+        .as-status-pill--open { background:#dcfce7; color:#14532d; }
+        .as-status-pill--unbooked { background:#f1f5f9; color:#64748b; }
+        .as-status-pill--closed { background:#f8fafc; color:#94a3b8; border:1px dashed #cbd5e1; }
+        .as-detail-card { background:#fff; border:1px solid #e2e8f0; border-radius:14px; padding:14px; margin-bottom:12px; box-shadow:0 2px 8px rgba(15,23,42,.04); }
+        .as-detail-row { display:grid; grid-template-columns:92px 1fr; gap:8px 12px; align-items:start; padding:8px 0; border-bottom:1px solid #f1f5f9; font-size:0.88rem; }
+        .as-detail-row:last-child { border-bottom:none; padding-bottom:0; }
+        .as-detail-row:first-child { padding-top:0; }
+        .as-detail-k { color:#64748b; font-weight:700; font-size:0.78rem; text-transform:uppercase; letter-spacing:0.03em; padding-top:2px; }
+        .as-detail-v { color:#0f172a; font-weight:600; word-break:break-word; }
+        .as-detail-v small { display:block; margin-top:2px; font-weight:500; color:#94a3b8; font-size:0.75rem; }
+        .as-drawer-actions { display:flex; flex-direction:column; gap:8px; margin-top:4px; }
+        .as-drawer-actions a { display:inline-flex; align-items:center; justify-content:center; padding:10px 14px; border-radius:10px; font-size:0.85rem; font-weight:700; text-decoration:none; }
+        .as-drawer-actions a.primary { background:linear-gradient(90deg,#008fc4,#1ca7e7); color:#fff; }
+        .as-drawer-actions a.secondary { background:#f1f5f9; color:#334155; }
+        .as-drawer-empty { color:#b91c1c; font-size:0.9rem; margin:0; }
     </style>
 </head>
 <body class="page-admin-schedule">
@@ -68,9 +93,15 @@
         </div>
     </div>
 </div>
-<div class="as-drawer" id="as-drawer">
-    <button type="button" id="as-drawer-close" style="float:right;border:none;background:none;font-size:1.4rem;cursor:pointer;">×</button>
-    <div id="as-drawer-body"></div>
+<div class="as-drawer" id="as-drawer" aria-hidden="true">
+    <div class="as-drawer-head">
+        <div>
+            <h3 id="as-drawer-title">Details</h3>
+            <p id="as-drawer-subtitle">Teacher schedule</p>
+        </div>
+        <button type="button" class="as-drawer-close" id="as-drawer-close" aria-label="Close">×</button>
+    </div>
+    <div class="as-drawer-body" id="as-drawer-body"></div>
 </div>
 <script>
 (function(){
@@ -198,6 +229,30 @@
             });
         });
     }
+    function statusPillClass(status){
+        const s = String(status || '').toLowerCase().replace(/\s+/g, '_');
+        if (s.startsWith('cancelled')) return 'as-status-pill as-status-pill--cancelled';
+        if (s === 'completed') return 'as-status-pill as-status-pill--completed';
+        if (s === 'open') return 'as-status-pill as-status-pill--open';
+        if (s === 'unbooked') return 'as-status-pill as-status-pill--unbooked';
+        if (s === 'closed') return 'as-status-pill as-status-pill--closed';
+        return 'as-status-pill as-status-pill--booked';
+    }
+    function formatScheduleDate(dateStr, timeStr){
+        const datePart = String(dateStr || '').slice(0, 10);
+        const timePart = padTime(timeStr || '');
+        try {
+            const dt = DateTime.fromISO(datePart + 'T' + timePart, { zone: ZONE });
+            if (dt.isValid) return dt.toFormat("ccc, LLL d, yyyy · h:mm a");
+        } catch (_e) {}
+        return (datePart + (timePart ? ' ' + timePart : '')).trim() || '—';
+    }
+    function openDrawerShell(title, subtitle){
+        document.getElementById('as-drawer-title').textContent = title || 'Details';
+        document.getElementById('as-drawer-subtitle').textContent = subtitle || 'Teacher schedule';
+        document.getElementById('as-drawer').classList.add('open');
+        document.getElementById('as-drawer').setAttribute('aria-hidden', 'false');
+    }
     function openSlotDrawer(id){
         const s = slots.find(x => String(x._id) === String(id));
         if (!s) return;
@@ -206,40 +261,73 @@
         const state = (s.available === false || String(s.slotStatus||'').toLowerCase() === 'booked')
             ? 'Closed'
             : (past ? 'Unbooked' : 'Open');
+        openDrawerShell(state + ' slot', 'Availability details');
         document.getElementById('as-drawer-body').innerHTML =
-            '<h3 style="margin-top:0">'+esc(state)+' slot</h3>'+
-            '<p><strong>Teacher:</strong> '+esc(teacherLabel(s.teacherId))+'</p>'+
-            '<p><strong>Date:</strong> '+esc(s.date)+' '+esc(s.time)+'</p>'+
-            '<p><strong>Availability:</strong> '+esc(state)+'</p>'+
+            '<div class="as-detail-card">'+
+            '<div style="margin-bottom:12px;"><span class="'+statusPillClass(state)+'">'+esc(state)+'</span></div>'+
+            '<div class="as-detail-row"><span class="as-detail-k">Teacher</span><span class="as-detail-v">'+esc(teacherLabel(s.teacherId))+'</span></div>'+
+            '<div class="as-detail-row"><span class="as-detail-k">When</span><span class="as-detail-v">'+esc(formatScheduleDate(s.date, s.time))+'</span></div>'+
+            '<div class="as-detail-row"><span class="as-detail-k">State</span><span class="as-detail-v">'+esc(state)+'</span></div>'+
+            '</div>'+
+            '<div class="as-drawer-actions">'+
             (t && t.mongoId
-                ? '<p><a href="/admin/admin-view-user-profile.html?type=teacher&id='+encodeURIComponent(t.mongoId)+'" target="_blank" rel="noopener">View teacher profile</a></p>'
-                : (s.teacherId ? '<p><a href="admin-teacher-schedule.html?teacherId='+encodeURIComponent(s.teacherId)+'">Filter by this teacher</a></p>' : ''));
-        document.getElementById('as-drawer').classList.add('open');
+                ? '<a class="primary" href="/admin/admin-view-user-profile.html?type=teacher&id='+encodeURIComponent(t.mongoId)+'" target="_blank" rel="noopener">View teacher profile</a>'
+                : '')+
+            (s.teacherId
+                ? '<a class="secondary" href="admin-teacher-schedule.html?teacherId='+encodeURIComponent(s.teacherId)+'">Filter schedule by teacher</a>'
+                : '')+
+            '</div>';
     }
     async function openDrawer(id){
+        openDrawerShell('Booking', 'Loading class details…');
+        document.getElementById('as-drawer-body').innerHTML = '<p class="as-hint" style="margin:0;">Loading…</p>';
         const res = await fetch('/api/admin/booking/'+id, { headers:{ Authorization:'Bearer '+token() } });
         const data = await res.json().catch(()=>({}));
         if (!res.ok) {
+            document.getElementById('as-drawer-subtitle').textContent = 'Could not load';
             document.getElementById('as-drawer-body').innerHTML =
-                '<h3 style="margin-top:0">Booking</h3><p style="color:#b91c1c">'+(esc(data.error)||'Could not load booking')+'</p>';
-            document.getElementById('as-drawer').classList.add('open');
+                '<p class="as-drawer-empty">'+(esc(data.error)||'Could not load booking')+'</p>';
             return;
         }
         const b = data.booking || data;
         const dateStr = String(b.date || '').slice(0, 10);
         const timeStr = String(b.time || '');
+        const status = String(b.status || 'Booked');
+        const studentLabel = b.studentName || b.studentId || '—';
+        const teacherDisplay = b.teacherName || teacherLabel(b.teacherId) || b.teacherId || '—';
         const t = teachers.find(x=>normId(x.teacherId)===normId(b.teacherId));
+        const teacherProfileId = b.teacherMongoId || (t && t.mongoId) || '';
+        const studentProfileId = b.studentMongoId || '';
+        document.getElementById('as-drawer-subtitle').textContent = formatScheduleDate(dateStr, timeStr);
         document.getElementById('as-drawer-body').innerHTML =
-            '<h3 style="margin-top:0">Booking</h3>'+
-            '<p><strong>Student:</strong> '+esc(b.studentId)+'</p>'+
-            '<p><strong>Teacher:</strong> '+esc(teacherLabel(b.teacherId) || b.teacherId)+'</p>'+
-            '<p><strong>Date:</strong> '+esc(dateStr)+(timeStr ? ' '+esc(timeStr) : '')+'</p>'+
-            '<p><strong>Status:</strong> '+esc(b.status)+'</p>'+
-            '<p><strong>Lesson:</strong> '+esc(b.lesson)+'</p>'+
-            (t && t.mongoId
-                ? '<p><a href="/admin/admin-view-user-profile.html?type=teacher&id='+encodeURIComponent(t.mongoId)+'" target="_blank" rel="noopener">View teacher profile</a></p>'
-                : (b.teacherId ? '<p><a href="admin-teacher-schedule.html?teacherId='+encodeURIComponent(b.teacherId)+'">Filter by this teacher</a></p>' : ''));
-        document.getElementById('as-drawer').classList.add('open');
+            '<div class="as-detail-card">'+
+            '<div style="margin-bottom:12px;"><span class="'+statusPillClass(status)+'">'+esc(status)+'</span></div>'+
+            '<div class="as-detail-row"><span class="as-detail-k">Student</span><span class="as-detail-v">'+esc(studentLabel)+
+            (b.studentId && b.studentName && String(b.studentName) !== String(b.studentId)
+                ? '<small>'+esc(b.studentId)+'</small>' : '')+
+            '</span></div>'+
+            '<div class="as-detail-row"><span class="as-detail-k">Teacher</span><span class="as-detail-v">'+esc(teacherDisplay)+
+            (b.teacherId ? '<small>'+esc(b.teacherId)+'</small>' : '')+
+            '</span></div>'+
+            '<div class="as-detail-row"><span class="as-detail-k">When</span><span class="as-detail-v">'+esc(formatScheduleDate(dateStr, timeStr))+'</span></div>'+
+            '<div class="as-detail-row"><span class="as-detail-k">Lesson</span><span class="as-detail-v">'+esc(b.lesson || '—')+'</span></div>'+
+            (b.studentLevel
+                ? '<div class="as-detail-row"><span class="as-detail-k">Level</span><span class="as-detail-v">'+esc(b.studentLevel)+'</span></div>'
+                : '')+
+            (b.classroomId
+                ? '<div class="as-detail-row"><span class="as-detail-k">Room</span><span class="as-detail-v">'+esc(b.classroomId)+'</span></div>'
+                : '')+
+            '</div>'+
+            '<div class="as-drawer-actions">'+
+            (studentProfileId
+                ? '<a class="primary" href="/admin/admin-view-user-profile.html?type=student&id='+encodeURIComponent(studentProfileId)+'" target="_blank" rel="noopener">View student profile</a>'
+                : '')+
+            (teacherProfileId
+                ? '<a class="'+(studentProfileId ? 'secondary' : 'primary')+'" href="/admin/admin-view-user-profile.html?type=teacher&id='+encodeURIComponent(teacherProfileId)+'" target="_blank" rel="noopener">View teacher profile</a>'
+                : (b.teacherId
+                    ? '<a class="secondary" href="admin-teacher-schedule.html?teacherId='+encodeURIComponent(b.teacherId)+'">Filter by this teacher</a>'
+                    : ''))+
+            '</div>';
     }
     document.getElementById('as-view').onchange = e=>{ view=e.target.value; load().catch(console.error); };
     document.getElementById('as-teacher').onchange = ()=> load().catch(console.error);
@@ -247,7 +335,10 @@
     document.getElementById('as-next').onclick = ()=>{ anchor = anchor.plus(view==='month'?{months:1}:view==='week'?{weeks:1}:{days:1}); load().catch(console.error); };
     document.getElementById('as-today').onclick = ()=>{ anchor = DateTime.now().setZone(ZONE).startOf('day'); load().catch(console.error); };
     document.getElementById('as-refresh').onclick = ()=> load().catch(console.error);
-    document.getElementById('as-drawer-close').onclick = ()=> document.getElementById('as-drawer').classList.remove('open');
+    document.getElementById('as-drawer-close').onclick = ()=> {
+        document.getElementById('as-drawer').classList.remove('open');
+        document.getElementById('as-drawer').setAttribute('aria-hidden', 'true');
+    };
     setInterval(()=>{
         if (document.hidden) return;
         if (document.getElementById('as-drawer').classList.contains('open')) return;

@@ -237,7 +237,11 @@ router.get('/profile', verifyToken, requireStudent, async (req, res) => {
         lastName: student.lastName,
         gender: student.gender,
         birthday: student.birthday,
-        age: student.age,
+        age: (() => {
+          const { ageFromBirthday } = require('./utils/ageFromBirthday');
+          const computed = ageFromBirthday(student.birthday);
+          return computed != null ? computed : student.age;
+        })(),
         contact: student.contact,
         email: student.email,
         address: student.address,
@@ -267,6 +271,7 @@ router.get('/profile', verifyToken, requireStudent, async (req, res) => {
         subscriptionStatus: student.subscriptionStatus || 'pending',
         paymentStatus: student.paymentStatus || 'unpaid',
         hasFreeTrial: student.hasFreeTrial === true,
+        assessmentTrialCreditActive: student.assessmentTrialCreditActive === true,
         hasSeenWelcomeTour: student.hasSeenWelcomeTour === true,
         isSubscribed:
           student.isSubscribed === true ||
@@ -335,13 +340,16 @@ router.post('/profile', verifyToken, requireStudent, async (req, res) => {
         ? [person, number].filter(Boolean).join(' · ')
         : legacyEmergency;
 
+    const { ageFromBirthday } = require('./utils/ageFromBirthday');
+    const computedAge = ageFromBirthday(birthday);
+
     const updateData = {
       firstName: firstName || '',
       middleName: middleName || '',
       lastName: lastName || '',
       gender: gender || '',
       birthday: birthday || null,
-      age: age || null,
+      age: computedAge != null ? computedAge : (age != null && age !== '' ? Number(age) : null),
       // Raw updates skip Mongoose setters — encrypt here when PII_ENCRYPTION_KEY is set
       contact: encryptPiiString(contact || ''),
       email: email || req.user.username, // Use username as fallback for email
@@ -1556,48 +1564,11 @@ router.post('/confirm-payment', async (req, res) => {
 
     // Referral commission: credit only after paid
     try {
-      const referralCode = student.referralCode;
-      const ownerType = student.referredByOwnerType || (student.referredByTeacherId ? 'teacher' : null);
-      const ownerId = student.referredByOwnerId || student.referredByTeacherId || null;
-      if (referralCode && ownerType && ownerId) {
-        let refOk = false;
-        if (ownerType === 'teacher') {
-          const teacher = await Teacher.findOne({ teacherId: ownerId, referralCode }).lean();
-          refOk = !!teacher;
-        } else if (ownerType === 'admin') {
-          const admin = await require('./models/Admin').findOne({ username: ownerId, referralCode }).lean();
-          refOk = !!admin;
-        }
-
-        if (refOk) {
-          const studentName =
-            [student.firstName, student.lastName].filter(Boolean).join(' ').trim() ||
-            student.username ||
-            '';
-          const paid = Number(planPrice || 0) || 0;
-
-          await Referral.updateOne(
-            { ownerType, ownerId: String(ownerId), studentId: String(student._id) },
-            {
-              $setOnInsert: {
-                referralCode,
-                ownerType,
-                ownerId: String(ownerId),
-                teacherId: String(ownerId), // legacy mirror
-                studentId: String(student._id),
-                studentName,
-                studentEmail: student.email || '',
-                studentContact: encryptPiiString(student.contact || ''),
-                subscriptionPlan: student.subscriptionPlan || '',
-                amountPaid: paid,
-                commissionAmount: 1000,
-                status: 'successful'
-              }
-            },
-            { upsert: true }
-          );
-        }
-      }
+      const { awardReferralCommissionOnPayment } = require('./utils/awardReferralCommission');
+      await awardReferralCommissionOnPayment(student, {
+        amountPaid: Number(planPrice || 0) || 0,
+        plan: student.subscriptionPlan || '',
+      });
     } catch (refErr) {
       console.warn('Referral commission tracking failed:', refErr.message);
     }

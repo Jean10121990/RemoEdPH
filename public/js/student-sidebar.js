@@ -111,11 +111,16 @@
 
     function getBookNavSpec() {
         var acct = 'standard';
+        var hasTrial = false;
         try {
             acct = localStorage.getItem('studentAccountStatus') || 'standard';
+            hasTrial = localStorage.getItem('studentHasFreeTrial') === '1';
         } catch (e) {}
         if (acct === 'trial_completed' && !readStoredSubscribed()) {
             return { label: 'Subscribe to Book', href: 'index.html#plans' };
+        }
+        if (hasTrial && acct !== 'trial_completed' && !readStoredSubscribed()) {
+            return { label: 'Book Free Trial', href: 'student-book.html' };
         }
         return { label: 'Book Class', href: 'student-book.html' };
     }
