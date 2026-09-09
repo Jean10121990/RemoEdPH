@@ -208,6 +208,22 @@
                         <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid #e2e8f0;">
                             <button type="button" class="back-btn" id="save-profile" style="background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;font-weight:600;">Save changes</button>
                         </div>
+
+                        <div class="section-title" style="margin-top: 28px;">Legal &amp; Policies</div>
+                        <div class="legal-links">
+                            <a href="admin-terms-of-service.html" target="_blank" class="legal-link">
+                                📄 Terms of Service
+                            </a>
+                            <a href="admin-privacy-policy.html" target="_blank" class="legal-link">
+                                🔒 Privacy Policy
+                            </a>
+                        </div>
+                        <p id="admin-legal-policies-status" style="color: #475569; font-size: 0.85rem; margin-top: 10px; font-weight: 600;">
+                            TOS: … · Privacy: …
+                        </p>
+                        <p style="color: #666; font-size: 0.85rem; margin-top: 6px;">
+                            Open each document to review, sign electronically (effective date, full legal name, and role for TOS), and print your agreement.
+                        </p>
                     </div>
                 </div>
             </div>
@@ -370,6 +386,19 @@
             if (tw) {
                 tw.textContent = p.isTwoFactorEnabled ? 'Enabled' : 'Not enabled';
             }
+
+            updateAdminLegalPoliciesStatus(p);
+        }
+
+        function updateAdminLegalPoliciesStatus(profile) {
+            var el = document.getElementById('admin-legal-policies-status');
+            if (!el) return;
+            var tos = profile && profile.tosAgreement;
+            var privacy = profile && profile.privacyPolicy;
+            var tosLabel = tos && tos.accepted ? 'Signed' : 'Unsigned';
+            var privacyLabel = privacy && privacy.accepted ? 'Signed' : 'Unsigned';
+            el.textContent = 'TOS: ' + tosLabel + ' · Privacy: ' + privacyLabel;
+            el.style.color = (tos && tos.accepted && privacy && privacy.accepted) ? '#059669' : '#b45309';
         }
 
         async function loadProfile() {

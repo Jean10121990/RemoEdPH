@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
+  <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="js/security-guard.js?v=1"></script>
+  <title>Teacher Payslip - RemoEdPH</title>
+  <link rel="stylesheet" href="modern-styles.css">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body.page-teacher-payslip {
+      margin: 0;
+      background: #eef2f7;
+      color: #0f172a;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      line-height: 1.5;
+    }
+    .payslip-shell {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 24px 16px 48px;
+    }
+    .payslip-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .payslip-toolbar h1 {
+      margin: 0;
+      font-size: 1.25rem;
+      color: #1e3a5f;
+    }
+    .payslip-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .payslip-btn {
+      border: none;
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      font-size: 0.9rem;
+    }
+    .payslip-btn--primary {
+      background: #1e3a5f;
+      color: #fff;
+    }
+    .payslip-btn--secondary {
+      background: #fff;
+      color: #1e3a5f;
+      border: 1px solid #cbd5e1;
+    }
+    .payslip-msg {
+      padding: 12px 14px;
+      border-radius: 8px;
+      margin-bottom: 14px;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+    }
+    .payslip-msg--error {
+      background: #fef2f2;
+      border-color: #fecaca;
+      color: #b91c1c;
+    }
+    .payslip-doc {
+      background: #fff;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      padding: 36px 40px;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+    }
+    .payslip-brand {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      border-bottom: 2px solid #1e3a5f;
+      padding-bottom: 16px;
+      margin-bottom: 20px;
+    }
+    .payslip-brand h2 {
+      margin: 0 0 4px;
+      font-size: 1.5rem;
+      color: #1e3a5f;
+      letter-spacing: 0.02em;
+    }
+    .payslip-brand p {
+      margin: 0;
+      color: #64748b;
+      font-size: 0.9rem;
+    }
+    .payslip-stamp {
+      text-align: right;
+      font-size: 0.85rem;
+      color: #334155;
+    }
+    .payslip-stamp .status {
+      display: inline-block;
+      margin-top: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 0.8rem;
+    }
+    .payslip-stamp .status--paid {
+      background: #dcfce7;
+      color: #166534;
+    }
+    .payslip-stamp .status--pending {
+      background: #fef3c7;
+      color: #92400e;
+    }
+    .payslip-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-bottom: 22px;
+    }
+    .payslip-block h3 {
+      margin: 0 0 8px;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #64748b;
+    }
+    .payslip-block dl {
+      margin: 0;
+    }
+    .payslip-block dt {
+      float: left;
+      clear: left;
+      width: 42%;
+      color: #64748b;
+      font-size: 0.88rem;
+    }
+    .payslip-block dd {
+      margin: 0 0 6px 42%;
+      font-weight: 600;
+      font-size: 0.92rem;
+    }
+    .payslip-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 8px 0 18px;
+      font-size: 0.92rem;
+    }
+    .payslip-table th,
+    .payslip-table td {
+      border: 1px solid #cbd5e1;
+      padding: 10px 12px;
+      text-align: left;
+    }
+    .payslip-table th {
+      background: #f8fafc;
+      color: #1e3a5f;
+    }
+    .payslip-table td.num,
+    .payslip-table th.num {
+      text-align: right;
+      white-space: nowrap;
+    }
+    .payslip-net {
+      margin-top: 8px;
+      padding: 14px 16px;
+      border: 2px solid #1e3a5f;
+      border-radius: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+    .payslip-net .label {
+      font-weight: 700;
+      color: #1e3a5f;
+      font-size: 1rem;
+    }
+    .payslip-net .value {
+      font-size: 1.45rem;
+      font-weight: 800;
+      color: #0f172a;
+    }
+    .payslip-notes {
+      margin-top: 22px;
+      font-size: 0.82rem;
+      color: #475569;
+    }
+    .payslip-notes ul {
+      margin: 6px 0 0;
+      padding-left: 18px;
+    }
+    .payslip-footer {
+      margin-top: 28px;
+      padding-top: 14px;
+      border-top: 1px solid #e2e8f0;
+      font-size: 0.78rem;
+      color: #94a3b8;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    @media (max-width: 700px) {
+      .payslip-doc { padding: 22px 16px; }
+      .payslip-grid { grid-template-columns: 1fr; }
+      .payslip-brand { flex-direction: column; }
+      .payslip-stamp { text-align: left; }
+    }
+    @media print {
+      body.page-teacher-payslip { background: #fff; }
+      .no-print { display: none !important; }
+      .payslip-shell { padding: 0; max-width: none; }
+      .payslip-doc {
+        box-shadow: none;
+        border: none;
+        border-radius: 0;
+        padding: 0;
+      }
+    }
+  </style>
+</head>
+<body class="page-teacher-payslip">
+  <div class="payslip-shell">
+    <div class="payslip-toolbar no-print">
+      <h1>Payslip / Earnings Statement</h1>
+      <div class="payslip-actions">
+        <a class="payslip-btn payslip-btn--secondary" href="teacher-service-fee.html">← Teaching Fee</a>
+        <button type="button" class="payslip-btn payslip-btn--primary" id="payslip-print-btn">Print / Save as PDF</button>
+      </div>
+    </div>
+    <div id="payslip-message" class="payslip-msg no-print">Loading payslip…</div>
+    <article class="payslip-doc" id="payslip-doc" hidden>
+      <header class="payslip-brand">
+        <div>
+          <h2>RemoEd</h2>
+          <p id="payslip-company-desc">Filipino ESL &amp; Online Education Platform</p>
+          <p id="payslip-doc-title" style="margin-top:8px;font-weight:700;color:#0f172a;"></p>
+        </div>
+        <div class="payslip-stamp">
+          <div><strong>Issue date:</strong> <span id="payslip-issue-date">—</span></div>
+          <div><strong>Cut-off:</strong> <span id="payslip-cutoff">—</span></div>
+          <div class="status status--pending" id="payslip-status">—</div>
+        </div>
+      </header>
+
+      <div class="payslip-grid">
+        <div class="payslip-block">
+          <h3>Tutor</h3>
+          <dl>
+            <dt>Legal name</dt><dd id="payslip-legal-name">—</dd>
+            <dt>Nickname</dt><dd id="payslip-nickname">—</dd>
+            <dt>Teacher ID</dt><dd id="payslip-teacher-id">—</dd>
+            <dt>Account</dt><dd id="payslip-account">—</dd>
+            <dt>Email</dt><dd id="payslip-email">—</dd>
+          </dl>
+        </div>
+        <div class="payslip-block">
+          <h3>Pay period</h3>
+          <dl>
+            <dt>Period</dt><dd id="payslip-period">—</dd>
+            <dt>Payment method</dt><dd id="payslip-method">—</dd>
+            <dt>Currency</dt><dd>PHP (Philippine Peso)</dd>
+          </dl>
+        </div>
+      </div>
+
+      <table class="payslip-table">
+        <thead>
+          <tr>
+            <th>Description</th>
+            <th class="num">Qty / Detail</th>
+            <th class="num">Amount (₱)</th>
+          </tr>
+        </thead>
+        <tbody id="payslip-lines"></tbody>
+      </table>
+
+      <div class="payslip-net">
+        <div class="label">Net salary for this cut-off</div>
+        <div class="value" id="payslip-net">₱0.00</div>
+      </div>
+
+      <div class="payslip-notes">
+        <strong>Notes</strong>
+        <ul id="payslip-notes-list"></ul>
+      </div>
+
+      <footer class="payslip-footer">
+        <span>Generated by RemoEdPH Teacher Portal</span>
+        <span id="payslip-generated-at"></span>
+      </footer>
+    </article>
+  </div>
+
+  <script>
+    function peso(n) {
+      var v = Number(n) || 0;
+      return '₱' + v.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    function formatDate(v) {
+      if (!v) return '—';
+      var d = new Date(v);
+      if (isNaN(d.getTime())) return String(v);
+      return d.toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Manila' });
+    }
+    function getToken() {
+      return localStorage.getItem('token') || localStorage.getItem('remoedToken') || '';
+    }
+    function qs(name) {
+      return new URLSearchParams(window.location.search).get(name);
+    }
+    function setText(id, text) {
+      var el = document.getElementById(id);
+      if (el) el.textContent = text == null || text === '' ? '—' : String(text);
+    }
+    function lineRow(desc, detail, amount) {
+      return '<tr><td>' + desc + '</td><td class="num">' + detail + '</td><td class="num">' + peso(amount) + '</td></tr>';
+    }
+
+    async function loadPayslip() {
+      var msg = document.getElementById('payslip-message');
+      var doc = document.getElementById('payslip-doc');
+      var token = getToken();
+      if (!token || localStorage.getItem('userType') !== 'teacher') {
+        msg.className = 'payslip-msg payslip-msg--error no-print';
+        msg.textContent = 'Please log in as a teacher to view your payslip.';
+        return;
+      }
+
+      var paymentId = qs('paymentId');
+      var startDate = qs('startDate');
+      var endDate = qs('endDate');
+      var url = '/api/teacher/payslip?';
+      if (paymentId) url += 'paymentId=' + encodeURIComponent(paymentId);
+      else if (startDate && endDate) {
+        url += 'startDate=' + encodeURIComponent(startDate) + '&endDate=' + encodeURIComponent(endDate);
+      } else {
+        msg.className = 'payslip-msg payslip-msg--error no-print';
+        msg.textContent = 'Missing payslip period. Open this page from Teaching Fee → Print Payslip.';
+        return;
+      }
+
+      try {
+        var res = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
+        var data = await res.json().catch(function () { return {}; });
+        if (!res.ok || !data.success || !data.payslip) {
+          throw new Error(data.error || 'Failed to load payslip');
+        }
+        var p = data.payslip;
+        var e = p.earnings || {};
+
+        setText('payslip-doc-title', p.documentTitle || 'Teacher Payslip');
+        setText('payslip-company-desc', (p.company && p.company.description) || '');
+        setText('payslip-issue-date', formatDate(p.issueDate));
+        setText('payslip-cutoff', (p.period && p.period.cutOff) || '—');
+        setText('payslip-legal-name', p.teacher && p.teacher.legalName);
+        setText('payslip-nickname', (p.teacher && p.teacher.nickname) || '—');
+        setText('payslip-teacher-id', p.teacher && p.teacher.teacherId);
+        setText('payslip-account', p.account || (p.teacher && p.teacher.username));
+        setText('payslip-email', p.teacher && p.teacher.email);
+        setText('payslip-period', p.period && p.period.label);
+        setText('payslip-method', p.paymentMethod);
+        setText('payslip-net', peso(e.netAmount));
+        setText('payslip-generated-at', formatDate(p.generatedAt) + ' (generated)');
+
+        var statusEl = document.getElementById('payslip-status');
+        if (statusEl) {
+          statusEl.textContent = p.status || '—';
+          statusEl.className = 'status ' + (String(p.status).toLowerCase().indexOf('paid') !== -1 ? 'status--paid' : 'status--pending');
+        }
+
+        var lines = [];
+        lines.push(lineRow(
+          'Teaching fee (completed classes)',
+          (e.completedClasses || 0) + ' × ₱' + Number(e.ratePerClass || 0).toFixed(2) + ' (' + (e.minutesTaught || 0) + ' min)',
+          e.baseFee
+        ));
+        if ((e.studentAbsentPayment || 0) !== 0) {
+          lines.push(lineRow('Student-absent payment', String(e.studentAbsentClasses || 0) + ' class(es)', e.studentAbsentPayment));
+        }
+        if ((e.lateDeductions || 0) > 0) {
+          lines.push(lineRow('Late arrival deductions', '—', -Math.abs(e.lateDeductions)));
+        }
+        if ((e.cancellationDeductions || 0) > 0) {
+          lines.push(lineRow('Cancellation deductions', String(e.cancelledClasses || 0) + ' cancel(s)', -Math.abs(e.cancellationDeductions)));
+        }
+        if ((e.absentDeductions || 0) > 0) {
+          lines.push(lineRow('Teacher absence deductions', String(e.absentClasses || 0) + ' absence(s)', -Math.abs(e.absentDeductions)));
+        }
+        lines.push(lineRow('Total deductions', '—', -Math.abs(e.totalDeductions || 0)));
+        document.getElementById('payslip-lines').innerHTML = lines.join('');
+
+        var notes = document.getElementById('payslip-notes-list');
+        notes.innerHTML = (p.notes || []).map(function (n) { return '<li>' + n + '</li>'; }).join('');
+
+        msg.style.display = 'none';
+        doc.hidden = false;
+      } catch (err) {
+        console.error(err);
+        msg.className = 'payslip-msg payslip-msg--error no-print';
+        msg.textContent = err.message || 'Failed to load payslip';
+      }
+    }
+
+    document.getElementById('payslip-print-btn').addEventListener('click', function () {
+      window.print();
+    });
+    loadPayslip();
+  </script>
+</body>
+</html>

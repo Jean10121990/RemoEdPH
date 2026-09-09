@@ -35,11 +35,12 @@
         }
         .page-teacher-lessons-library .pdf-full-iframe {
             width: 100%;
-            min-height: 600px;
-            height: 70vh;
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-            background: white;
+            flex: 1 1 auto;
+            min-height: 0;
+            height: 100%;
+            border: none;
+            border-radius: 0;
+            background: #0f172a;
             display: block;
         }
         .page-teacher-lessons-library .ppt-eye-preview-btn {
@@ -58,27 +59,34 @@
         }
         .page-teacher-lessons-library .ppt-eye-preview-btn:hover { background: #1691d1; }
         .page-teacher-lessons-library .secure-ppt-frame-wrap {
+            flex: 1 1 auto;
             width: 100%;
-            height: min(70vh, 720px);
-            min-height: 420px;
-            border-radius: 8px;
+            min-height: 0;
+            height: auto;
+            border-radius: 0;
             overflow: hidden;
             background: #0f172a;
-            border: 1px solid #e2e8f0;
+            border: none;
+            display: flex;
+            flex-direction: column;
         }
         .page-teacher-lessons-library .secure-ppt-frame-wrap iframe {
+            flex: 1 1 auto;
             width: 100%;
             height: 100%;
-            min-height: 420px;
+            min-height: 0;
             border: none;
-            background: #fff;
+            background: #0f172a;
         }
         .page-teacher-lessons-library .secure-ppt-hint {
-            margin-top: 10px;
-            font-size: 0.85rem;
+            flex-shrink: 0;
+            margin: 0;
+            font-size: 0.78rem;
             color: #64748b;
             text-align: center;
-            padding: 0 12px;
+            padding: 6px 12px;
+            background: #f8fafc;
+            border-top: 1px solid #e5e7eb;
         }
         .page-teacher-lessons-library .pdf-stream-loading {
             display: flex;
@@ -824,10 +832,15 @@
                     
                     if (response.ok) {
                         const data = await response.json();
-                        if (data.profile && data.profile.firstName) {
+                        if (data.profile) {
+                            const greetName =
+                                (data.profile.nickname && String(data.profile.nickname).trim()) ||
+                                data.profile.firstName ||
+                                null;
+                            if (greetName) {
                             const usernameElement = document.getElementById('remoed-username');
                             if (usernameElement) {
-                                usernameElement.textContent = `Hi, ${data.profile.firstName}`;
+                                usernameElement.textContent = `Hi, ${greetName}`;
                             }
                             
                             // Update avatar
@@ -836,10 +849,11 @@
                                 document.getElementById('profile-image').src = data.profile.profilePicture;
                                 document.getElementById('profile-image').style.display = 'block';
                                 avatarText.style.display = 'none';
-                            } else {
-                                avatarText.textContent = data.profile.firstName.charAt(0).toUpperCase();
+                            } else if (avatarText) {
+                                avatarText.textContent = greetName.charAt(0).toUpperCase();
                             }
                             return; // Successfully loaded from API
+                            }
                         }
                     }
                 }
@@ -1208,59 +1222,61 @@
                 mountEl.innerHTML = `
                     <div class="preview-unsupported">
                         <div class="preview-unsupported-icon">⏳</div>
-                        <h3>Loading secure preview…</h3>
+                        <h3>Preparing lesson preview…</h3>
+                        <p>This can take a moment the first time.</p>
                     </div>
                 `;
                 const tok = localStorage.getItem('token') || '';
-                let src = '';
-                let hint = '';
+                function absUrl(u) {
+                    if (!u) return '';
+                    return String(u).startsWith('http') ? String(u) : (window.location.origin + (String(u).startsWith('/') ? u : '/' + u));
+                }
+                function showFrame(src, hint) {
+                    mountEl.innerHTML = `
+                        <iframe
+                            class="pdf-full-iframe"
+                            title="${escapeHtml(name)} (read-only preview)"
+                            src="${String(src).replace(/"/g, '&quot;')}"
+                            allowfullscreen
+                        ></iframe>
+                        <p class="secure-ppt-hint">${escapeHtml(hint || 'Read-only preview for class prep.')}</p>
+                    `;
+                }
                 try {
-                    if (fileId && tok) {
-                        const res = await fetch('/api/lessons/presentation/' + encodeURIComponent(fileId) + '/secure-embed', {
-                            headers: { Authorization: 'Bearer ' + tok },
-                            credentials: 'include'
-                        });
-                        const data = await res.json().catch(() => ({}));
-                        if (res.ok && data.embedUrl) {
-                            src = data.embedUrl;
-                            hint = data.hint || '';
-                        }
+                    if (presentationType === 'office_embed' && embedUrl) {
+                        showFrame(embedUrl, 'Read-only Office embed.');
+                        return;
                     }
-                } catch (_e) {}
-                if (!src && embedUrl) src = embedUrl;
-                if (!src && presentationType === 'html5_zip' && fallbackUrl) {
-                    src = fallbackUrl.startsWith('http') ? fallbackUrl : (window.location.origin + fallbackUrl);
-                }
-                if (!src && fallbackUrl && /\.(ppt|pptx)(\?|#|$)/i.test(fallbackUrl)) {
-                    const abs = fallbackUrl.startsWith('http') ? fallbackUrl : (window.location.origin + fallbackUrl);
-                    src = 'https://view.officeapps.live.com/op/embed.aspx?src=' + encodeURIComponent(abs);
-                    if (/localhost|127\.0\.0\.1/i.test(window.location.hostname)) {
-                        hint = 'Microsoft Office Online cannot reach localhost files. Preview works on a public HTTPS deploy; use Live Classroom locally. Direct downloads stay disabled.';
+                    if (presentationType === 'html5_zip' && fallbackUrl) {
+                        showFrame(absUrl(fallbackUrl), 'Read-only lesson package.');
+                        return;
                     }
-                }
-                if (!src) {
+                    if (!fileId || !tok) {
+                        throw new Error('Sign in again to preview this lesson.');
+                    }
+                    const res = await fetch('/api/lessons/presentation/' + encodeURIComponent(fileId) + '/secure-embed', {
+                        headers: { Authorization: 'Bearer ' + tok },
+                        credentials: 'include'
+                    });
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok) {
+                        throw new Error(data.error || 'Could not open the lesson preview.');
+                    }
+                    const src = data.embedUrl || data.previewUrl || '';
+                    if (!src) {
+                        throw new Error('This PowerPoint is not available for preview yet.');
+                    }
+                    showFrame(src, data.hint || 'Read-only PowerPoint preview.');
+                } catch (err) {
                     mountEl.innerHTML = `
                         <div class="preview-unsupported">
-                            <div class="preview-unsupported-icon">🔒</div>
+                            <div class="preview-unsupported-icon">📄</div>
                             <h3>Preview unavailable</h3>
-                            <p>Direct downloads are disabled. Open this lesson in Live Classroom to present.</p>
+                            <p>${escapeHtml(err && err.message ? err.message : 'Could not open this presentation.')}</p>
                             <p style="margin-top:1rem;font-size:0.9rem;color:#64748b;">File: ${escapeHtml(name)}</p>
                         </div>
                     `;
-                    return;
                 }
-                mountEl.innerHTML = `
-                    <div class="secure-ppt-frame-wrap">
-                        <iframe
-                            title="${escapeHtml(name)} (read-only preview)"
-                            src="${src.replace(/"/g, '&quot;')}"
-                            sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-presentation"
-                            allowfullscreen
-                            referrerpolicy="no-referrer"
-                        ></iframe>
-                    </div>
-                    ${hint ? `<p class="secure-ppt-hint">${escapeHtml(hint)}</p>` : '<p class="secure-ppt-hint">Read-only web preview — downloading the original .pptx from this panel is disabled.</p>'}
-                `;
             }
 
             previewTitle.textContent = file.fileName || 'Preview';
@@ -1271,6 +1287,11 @@
             const fileName = file.fileName || '';
             let fileData = file.fileData || '';
             const fileUrl = file.fileUrl || file.html5EntryUrl || '';
+            const isPpt = /\.(ppt|pptx)$/i.test(fileName) || String(fileType).includes('ppt') || String(file.presentationType || '').includes('office') || String(file.presentationType || '') === 'html5_zip';
+            if (isPpt) {
+                loadSecurePptPreview(file._id || file.id || '', fileName, fileUrl, file.embedUrl || '', file.presentationType || '', previewContent);
+                return;
+            }
 
             if (fileData && !fileData.startsWith('data:')) {
                 const mimeType = getMimeType(fileName, fileType);
@@ -1973,6 +1994,8 @@
       }
     </script>
     </div><!-- .remoed-main -->
+<script src="js/remo-ai-engine.js?v=smart-1"></script>
+<script src="js/remo-ai-enhance.js?v=smart-1"></script>
 </body>
 </html>
 

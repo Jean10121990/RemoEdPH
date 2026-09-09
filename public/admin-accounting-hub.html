@@ -24,11 +24,12 @@
         <div class="remoed-content">
             <div class="remoed-section">
                 <div class="remoed-section-title">Accounting Hub</div>
-                <p class="muted" style="margin-top:0;margin-bottom:16px;">Payroll and unique link commissions in one place.</p>
+                <p class="muted" style="margin-top:0;margin-bottom:16px;">Payroll, unique link commissions, and student subscriptions in one place.</p>
 
                 <div class="hub-tabs" role="tablist" aria-label="Accounting Hub sections">
                     <button type="button" class="hub-tab hub-tab--active" role="tab" id="acct-tab-payroll" aria-selected="true" aria-controls="acct-panel-payroll">Payroll Management</button>
                     <button type="button" class="hub-tab" role="tab" id="acct-tab-commissions" aria-selected="false" aria-controls="acct-panel-commissions">Unique Link Commissions</button>
+                    <button type="button" class="hub-tab" role="tab" id="acct-tab-subscriptions" aria-selected="false" aria-controls="acct-panel-subscriptions">Student Subscriptions</button>
                 </div>
 
                 <div id="acct-panel-payroll" class="hub-panel" role="tabpanel" aria-labelledby="acct-tab-payroll">
@@ -37,6 +38,9 @@
                 <div id="acct-panel-commissions" class="hub-panel" role="tabpanel" aria-labelledby="acct-tab-commissions" hidden>
                     <iframe id="iframe-acct-commissions" class="hub-iframe" title="Unique Link Commissions"></iframe>
                 </div>
+                <div id="acct-panel-subscriptions" class="hub-panel" role="tabpanel" aria-labelledby="acct-tab-subscriptions" hidden>
+                    <iframe id="iframe-acct-subscriptions" class="hub-iframe" title="Student Subscriptions"></iframe>
+                </div>
             </div>
         </div>
     </div>
@@ -44,7 +48,8 @@
         (function () {
             var IFRAMES = {
                 payroll: { id: 'iframe-acct-payroll', src: '/admin/admin-payroll.html?adminEmbed=1&embedVer=2' },
-                commissions: { id: 'iframe-acct-commissions', src: '/admin/admin-unique-link-commission.html?adminEmbed=1&embedVer=2' }
+                commissions: { id: 'iframe-acct-commissions', src: '/admin/admin-unique-link-commission.html?adminEmbed=1&embedVer=2' },
+                subscriptions: { id: 'iframe-acct-subscriptions', src: '/admin/admin-student-subscriptions.html?adminEmbed=1&embedVer=1' }
             };
 
             function checkAuth() {
@@ -76,7 +81,7 @@
 
             function setHash(tab) {
                 try {
-                    var h = tab === 'commissions' ? '#commissions' : '#payroll';
+                    var h = tab === 'commissions' ? '#commissions' : tab === 'subscriptions' ? '#subscriptions' : '#payroll';
                     if (window.location.hash !== h) {
                         history.replaceState(null, '', 'admin-accounting-hub.html' + h);
                     }
@@ -84,13 +89,13 @@
             }
 
             function showTab(tab) {
-                var isPay = tab === 'payroll';
                 var map = [
                     { key: 'payroll', t: 'acct-tab-payroll', p: 'acct-panel-payroll' },
-                    { key: 'commissions', t: 'acct-tab-commissions', p: 'acct-panel-commissions' }
+                    { key: 'commissions', t: 'acct-tab-commissions', p: 'acct-panel-commissions' },
+                    { key: 'subscriptions', t: 'acct-tab-subscriptions', p: 'acct-panel-subscriptions' }
                 ];
                 map.forEach(function (row) {
-                    var on = (row.key === 'payroll' && isPay) || (row.key === 'commissions' && !isPay);
+                    var on = row.key === tab;
                     var tEl = document.getElementById(row.t);
                     var pEl = document.getElementById(row.p);
                     if (tEl) {
@@ -100,15 +105,22 @@
                     if (pEl) pEl.hidden = !on;
                 });
                 setHash(tab);
-                ensureIframe(isPay ? 'payroll' : 'commissions');
+                ensureIframe(tab);
             }
 
             document.addEventListener('DOMContentLoaded', function () {
                 if (!checkAuth()) return;
-                document.getElementById('acct-tab-payroll').addEventListener('click', function () { showTab('payroll'); });
-                document.getElementById('acct-tab-commissions').addEventListener('click', function () { showTab('commissions'); });
+                function bindTab(id, key) {
+                    var el = document.getElementById(id);
+                    if (el) el.addEventListener('click', function () { showTab(key); });
+                }
+                bindTab('acct-tab-payroll', 'payroll');
+                bindTab('acct-tab-commissions', 'commissions');
+                bindTab('acct-tab-subscriptions', 'subscriptions');
                 function applyHash() {
-                    if (window.location.hash === '#commissions') showTab('commissions');
+                    var h = window.location.hash;
+                    if (h === '#commissions') showTab('commissions');
+                    else if (h === '#subscriptions') showTab('subscriptions');
                     else showTab('payroll');
                 }
                 applyHash();

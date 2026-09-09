@@ -36,6 +36,24 @@
         "Your account has been suspended. Please contact the administrator.",
       show_password_aria: "Show password",
       hide_password_aria: "Hide password",
+      nav_assessment: "Free Assessment",
+      nav_plans: "Plans",
+      nav_apply: "Apply Now",
+      nav_login: "Login",
+      nav_register: "Register",
+      hero_title: "Learn English at Home!",
+      hero_lead:
+        "Calm, engaging English lessons for children ages 3-6. Designed for modern families across Asia—starting on your laptop, with mobile and tablet support coming soon.",
+      hero_account_note:
+        "Create a student account by taking the free assessment — registration starts there.",
+      hero_cta: "Take Free Assessment",
+      teachers_title: "Our Teachers",
+      teachers_lead: "Meet the educators who make English fun for young learners.",
+      teachers_see_more: "See More",
+      plans_title: "Choose Your Learning Plan",
+      plans_register_note:
+        "You must register an account first (by taking the free assessment) before buying a plan.",
+      assessment_title: "Free Level Assessment",
     },
     zh: {
       login_title: "学生登录",
@@ -65,6 +83,21 @@
       suspended_generic: "您的账号已被暂停，请联系管理员。",
       show_password_aria: "显示密码",
       hide_password_aria: "隐藏密码",
+      nav_assessment: "免费测评",
+      nav_plans: "课程套餐",
+      nav_apply: "立即申请",
+      nav_login: "登录",
+      nav_register: "注册",
+      hero_title: "在家学英语！",
+      hero_lead: "适合 3–6 岁儿童的沉浸式英语课。先在电脑上开始学习。",
+      hero_account_note: "请先完成免费测评以创建学生账号。",
+      hero_cta: "开始免费测评",
+      teachers_title: "我们的老师",
+      teachers_lead: "认识让英语变得有趣的老师们。",
+      teachers_see_more: "查看更多",
+      plans_title: "选择学习套餐",
+      plans_register_note: "购买套餐前，请先通过免费测评注册账号。",
+      assessment_title: "免费水平测评",
     },
     ja: {
       login_title: "学生ログイン",
@@ -95,6 +128,21 @@
         "アカウントが停止されています。管理者にお問い合わせください。",
       show_password_aria: "パスワードを表示",
       hide_password_aria: "パスワードを隠す",
+      nav_assessment: "無料診断",
+      nav_plans: "プラン",
+      nav_apply: "応募する",
+      nav_login: "ログイン",
+      nav_register: "登録",
+      hero_title: "おうちで英語を学ぼう！",
+      hero_lead: "3〜6歳のお子さま向けの英語レッスンです。まずはパソコンから始められます。",
+      hero_account_note: "無料診断を受けると、学生アカウントを作成できます。",
+      hero_cta: "無料診断を受ける",
+      teachers_title: "講師紹介",
+      teachers_lead: "英語を楽しく教える先生たちです。",
+      teachers_see_more: "もっと見る",
+      plans_title: "学習プランを選ぶ",
+      plans_register_note: "プラン購入の前に、無料診断でアカウント登録が必要です。",
+      assessment_title: "無料レベル診断",
     },
     ko: {
       login_title: "학생 로그인",
@@ -125,6 +173,21 @@
         "계정이 정지되었습니다. 관리자에게 문의하세요.",
       show_password_aria: "비밀번호 표시",
       hide_password_aria: "비밀번호 숨기기",
+      nav_assessment: "무료 평가",
+      nav_plans: "플랜",
+      nav_apply: "지원하기",
+      nav_login: "로그인",
+      nav_register: "가입",
+      hero_title: "집에서 영어를 배워요!",
+      hero_lead: "3–6세 어린이를 위한 영어 수업입니다. 먼저 노트북에서 시작해 보세요.",
+      hero_account_note: "무료 평가를 통해 학생 계정을 만들 수 있습니다.",
+      hero_cta: "무료 평가 시작",
+      teachers_title: "선생님 소개",
+      teachers_lead: "영어를 재미있게 가르치는 선생님들을 만나보세요.",
+      teachers_see_more: "더 보기",
+      plans_title: "학습 플랜 선택",
+      plans_register_note: "플랜을 구매하려면 먼저 무료 평가로 계정을 등록해야 합니다.",
+      assessment_title: "무료 레벨 평가",
     },
   };
 
@@ -197,9 +260,11 @@
         '<option value="ja">日本語</option>' +
         '<option value="ko">한국어</option>';
       sel.value = currentLang;
-      sel.addEventListener("change", function () {
+  sel.addEventListener("change", function () {
         setLang(sel.value);
       });
+      sel.style.pointerEvents = "auto";
+      sel.disabled = false;
     });
   }
 
@@ -221,6 +286,12 @@
     apply(currentLang);
     mountSwitchers();
     syncSwitchers();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
   }
 
   window.SiteI18n = {

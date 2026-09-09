@@ -60,7 +60,7 @@
                         return;
                     }
                     const p = data.profile;
-                    const name = p.fullname || `${(p.firstName || '')} ${(p.lastName || '')}`.trim() || 'Teacher';
+                    const name = p.displayName || p.nickname || p.fullname || `${(p.firstName || '')} ${(p.lastName || '')}`.trim() || 'Teacher';
                     const initial = (name || 'T').charAt(0).toUpperCase();
                     const avatarHtml = p.profilePicture
                         ? `<img src="${p.profilePicture}" alt="${name}">`

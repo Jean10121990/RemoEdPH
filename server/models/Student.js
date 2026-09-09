@@ -19,7 +19,12 @@ const studentSchema = new mongoose.Schema({
   hobbies: { type: String },
   parentName: { type: String },
   parentContact: piiContactString(''),
+  /** Parent/guardian email (may differ from account email). */
+  parentEmail: { type: String, default: '' },
+  /** Legacy freeform emergency notes; prefer person + number below. */
   emergencyContact: piiContactString(''),
+  emergencyContactPerson: { type: String, default: '' },
+  emergencyContactNumber: piiContactString(''),
   aboutMe: { type: String },
   photo: { type: String },
   profilePicture: { type: String },

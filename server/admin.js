@@ -45,7 +45,12 @@ const { encryptTotpSecret, decryptTotpSecret } = require('./utils/twoFactorSecre
 const { ADMIN_2FA_ENROLLMENT_PURPOSE } = require('./utils/adminForce2fa');
 const { recordAdminLoginActivity, getAdminSessionVersion } = require('./services/adminLoginActivity');
 const { generateReferralCode } = require('./utils/referralCode');
-const { resolveFrontendBaseUrl } = require('./utils/frontendBaseUrl');
+const { creditsForPlan, normalizePlanId, PLAN_CREDITS } = require('./config/planCredits');
+const { buildTeacherInvitationSignupUrl } = require('./utils/frontendBaseUrl');
+const TeacherSlot = require('./models/TeacherSlot');
+const { normalizeId } = require('./utils/normalizeId');
+const { applyBookingFirstSlotOverlay, padSlotTime } = require('./utils/bookingFirstSlotOverlay');
+const { resolveToCanonicalTeacherId } = require('./services/teacherSlotResolve');
 // Allow slight device clock drift during enrollment/verification.
 authenticator.options = { window: 2 };
 const path = require('path');
@@ -406,11 +411,32 @@ router.get('/system-stats', requireAdminApiChain, requireSuperAdminDb, async (re
   }
 });
 
-const PM2_PROCESS_NAME_RAW = String(process.env.SUPER_MONITOR_PM2_PROCESS || 'remoed-1').trim() || 'remoed-1';
-const PM2_PROCESS_NAME = /^[a-zA-Z0-9_.-]+$/.test(PM2_PROCESS_NAME_RAW) ? PM2_PROCESS_NAME_RAW : 'remoed-1';
+const PM2_PROCESS_NAME_RAW = String(process.env.SUPER_MONITOR_PM2_PROCESS || 'remoed-api').trim() || 'remoed-api';
+const PM2_PROCESS_NAME = /^[a-zA-Z0-9_.-]+$/.test(PM2_PROCESS_NAME_RAW) ? PM2_PROCESS_NAME_RAW : 'remoed-api';
 const PM2_RESTART_DISABLED =
   process.env.SUPER_MONITOR_PM2_RESTART_ENABLED === '0' ||
   String(process.env.SUPER_MONITOR_PM2_RESTART_ENABLED || '').toLowerCase() === 'false';
+
+function stripAnsi(s) {
+  return String(s || '').replace(/\u001b\[[0-9;]*m/g, '').trim();
+}
+
+async function listPm2ProcessNames() {
+  try {
+    const { stdout } = await execFileAsync('pm2', ['jlist'], {
+      timeout: 15000,
+      windowsHide: true,
+      maxBuffer: 4 * 1024 * 1024,
+    });
+    const list = JSON.parse(String(stdout || '[]'));
+    if (!Array.isArray(list)) return [];
+    return list
+      .map((p) => (p && p.name ? String(p.name) : ''))
+      .filter(Boolean);
+  } catch (_) {
+    return [];
+  }
+}
 
 router.post('/system-emergency-pm2-restart', requireAdminApiChain, requireSuperAdminDb, async (req, res) => {
   if (PM2_RESTART_DISABLED) {
@@ -442,14 +468,24 @@ router.post('/system-emergency-pm2-restart', requireAdminApiChain, requireSuperA
     return res.json({
       success: true,
       message: `PM2 restart completed for "${PM2_PROCESS_NAME}".`,
-      output: String(stdout || '').slice(0, 8000),
-      stderr: String(stderr || '').slice(0, 2000),
+      output: stripAnsi(stdout).slice(0, 8000),
+      stderr: stripAnsi(stderr).slice(0, 2000),
     });
   } catch (err) {
     console.error('POST /system-emergency-pm2-restart:', err);
+    const raw = stripAnsi((err && err.stderr) || (err && err.message) || 'PM2 restart failed');
+    let message = raw || 'PM2 restart failed. Ensure PM2 is installed and on PATH.';
+    if (/not found/i.test(raw)) {
+      const names = await listPm2ProcessNames();
+      message =
+        `PM2 process "${PM2_PROCESS_NAME}" not found.` +
+        (names.length
+          ? ` Running processes: ${names.join(', ')}. Set SUPER_MONITOR_PM2_PROCESS to the correct name.`
+          : ' Set SUPER_MONITOR_PM2_PROCESS in .env to your PM2 app name (e.g. remoed-api).');
+    }
     return res.status(500).json({
       success: false,
-      message: err.message || 'PM2 restart failed. Ensure PM2 is installed and on PATH.',
+      message,
     });
   }
 });
@@ -574,6 +610,79 @@ router.get('/me', async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to load profile' });
   }
 });
+
+const LEGAL_ADMIN_TOS_VERSION = 'admin-ica-2026-09';
+const LEGAL_ADMIN_PRIVACY_VERSION = 'admin-privacy-2026-09';
+
+function parseAdminLegalEffectiveDate(raw) {
+  if (raw == null || String(raw).trim() === '') return null;
+  const d = new Date(String(raw).trim());
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+async function acceptAdminLegalDocument(req, res, fieldKey, version, { requireAssignedRole = false } = {}) {
+  try {
+    const admin = await resolveAdminDoc(req);
+    if (!admin) {
+      return res.status(401).json({ success: false, error: 'Could not resolve your admin account.' });
+    }
+
+    const legalName = typeof req.body.legalName === 'string' ? req.body.legalName.trim() : '';
+    const effectiveDate = parseAdminLegalEffectiveDate(req.body.effectiveDate);
+    const assignedRole =
+      typeof req.body.assignedRole === 'string' ? req.body.assignedRole.trim() : '';
+
+    if (!legalName) {
+      return res.status(400).json({ success: false, error: 'Full legal name is required.' });
+    }
+    if (!effectiveDate) {
+      return res.status(400).json({ success: false, error: 'Effective date is required.' });
+    }
+    if (requireAssignedRole && !assignedRole) {
+      return res.status(400).json({ success: false, error: 'Assigned role / title is required.' });
+    }
+
+    const existing = admin[fieldKey] || {};
+    if (existing.accepted && existing.version === version) {
+      return res.status(409).json({
+        success: false,
+        error: 'This document has already been signed for the current version.',
+        [fieldKey]: existing,
+      });
+    }
+
+    const payload = {
+      accepted: true,
+      acceptedAt: new Date(),
+      effectiveDate,
+      legalName,
+      version,
+    };
+    if (requireAssignedRole) payload.assignedRole = assignedRole;
+
+    admin.set(fieldKey, payload);
+    await admin.save();
+
+    res.json({
+      success: true,
+      message: 'Agreement accepted and saved.',
+      [fieldKey]: payload,
+    });
+  } catch (err) {
+    console.error(`Error accepting admin legal document (${fieldKey}):`, err);
+    res.status(500).json({ success: false, error: 'Failed to save agreement acceptance.' });
+  }
+}
+
+router.post('/legal/tos/accept', (req, res) =>
+  acceptAdminLegalDocument(req, res, 'tosAgreement', LEGAL_ADMIN_TOS_VERSION, {
+    requireAssignedRole: true,
+  })
+);
+
+router.post('/legal/privacy/accept', (req, res) =>
+  acceptAdminLegalDocument(req, res, 'privacyPolicy', LEGAL_ADMIN_PRIVACY_VERSION)
+);
 
 /** Some clients request GET on the upload URL; redirect to the static file. */
 router.get('/me/profile-picture', async (req, res) => {
@@ -1155,9 +1264,15 @@ router.get('/notifications', verifyAdminApiAuth, requireAdmin, async (req, res) 
 // -----------------------------
 // Teacher Pipeline (Applications)
 // -----------------------------
+function isActivatedPipelineApplicant(applicant) {
+  return String(applicant && applicant.teacherActivationStatus ? applicant.teacherActivationStatus : '') === 'Active Teacher';
+}
+
 router.get('/teacher-pipeline/applicants', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
-    const applicants = await Application.find({})
+    const applicants = await Application.find({
+      teacherActivationStatus: { $ne: 'Active Teacher' },
+    })
       .sort({ updatedAt: -1 })
       .lean();
 
@@ -1189,6 +1304,9 @@ router.get('/teacher-pipeline/applicants/:id', verifyAdminApiAuth, requireAdmin,
     if (!applicant) {
       return res.status(404).json({ success: false, error: 'Applicant not found' });
     }
+    if (isActivatedPipelineApplicant(applicant)) {
+      return res.status(404).json({ success: false, error: 'Applicant not found' });
+    }
     const safe = { ...applicant };
     delete safe.password;
     res.json({ success: true, applicant: safe });
@@ -1203,6 +1321,12 @@ router.post('/teacher-pipeline/applicants/:id/fail', verifyAdminApiAuth, require
     const applicant = await Application.findById(req.params.id);
     if (!applicant) {
       return res.status(404).json({ success: false, error: 'Applicant not found' });
+    }
+    if (isActivatedPipelineApplicant(applicant)) {
+      return res.status(400).json({
+        success: false,
+        error: 'This applicant already has a teacher account in User Management.',
+      });
     }
 
     const now = new Date();
@@ -1245,6 +1369,12 @@ router.post('/teacher-pipeline/applicants/:id/pass', verifyAdminApiAuth, require
     const applicant = await Application.findById(req.params.id);
     if (!applicant) {
       return res.status(404).json({ success: false, error: 'Applicant not found' });
+    }
+    if (isActivatedPipelineApplicant(applicant)) {
+      return res.status(400).json({
+        success: false,
+        error: 'This applicant already has a teacher account in User Management.',
+      });
     }
 
     const applicantData = applicant;
@@ -1294,9 +1424,7 @@ router.post('/teacher-pipeline/applicants/:id/pass', verifyAdminApiAuth, require
       });
     }
 
-    const frontendBase = resolveFrontendBaseUrl(req);
-    const appIdStr = applicant._id.toString();
-    const signupLink = `${frontendBase}/register.html?appId=${encodeURIComponent(appIdStr)}&invitation=${encodeURIComponent(invitation.token)}`;
+    const signupLink = buildTeacherInvitationSignupUrl(invitation.token, req);
 
     const emailResult = await sendTeacherPipelineWelcomeEmail(
       recipientEmail,
@@ -1359,6 +1487,12 @@ router.post('/teacher-pipeline/applicants/:id/resend-invitation', verifyAdminApi
     if (!applicant) {
       return res.status(404).json({ success: false, error: 'Applicant not found' });
     }
+    if (isActivatedPipelineApplicant(applicant)) {
+      return res.status(400).json({
+        success: false,
+        error: 'This applicant already has a teacher account in User Management.',
+      });
+    }
 
     if (String(applicant.currentStage || '').toLowerCase() === 'failed') {
       return res.status(400).json({
@@ -1386,9 +1520,7 @@ router.post('/teacher-pipeline/applicants/:id/resend-invitation', verifyAdminApi
     }
 
     const invitation = await getOrCreatePipelineInvitation(applicant._id, recipientEmail);
-    const frontendBase = resolveFrontendBaseUrl(req);
-    const appIdStr = applicant._id.toString();
-    const signupLink = `${frontendBase}/register.html?appId=${encodeURIComponent(appIdStr)}&invitation=${encodeURIComponent(invitation.token)}`;
+    const signupLink = buildTeacherInvitationSignupUrl(invitation.token, req);
 
     console.log('Resending pipeline invitation to:', recipientEmail);
 
@@ -1419,6 +1551,12 @@ async function deleteTeacherPipelineApplicant(req, res) {
     const applicant = await Application.findById(req.params.id);
     if (!applicant) {
       return res.status(404).json({ success: false, error: 'Applicant not found' });
+    }
+    if (isActivatedPipelineApplicant(applicant)) {
+      return res.status(400).json({
+        success: false,
+        error: 'This applicant already has a teacher account in User Management.',
+      });
     }
     const stage = String(applicant.currentStage || '').toLowerCase();
     if (stage !== 'passed' && stage !== 'failed') {
@@ -2611,7 +2749,20 @@ router.post('/dispense-salaries', async (req, res) => {
               remark: 0,
               paymentMethod: 'HSBC_PayPal',
               account: teacher.username,
-              status: 'Success'
+              status: 'Success',
+              breakdown: {
+                completedClasses: row.completedClasses,
+                studentAbsentClasses: row.studentAbsentClasses,
+                teacherAbsentClasses: row.teacherAbsentClasses,
+                lateMinutes: row.lateMinutes,
+                ratePerClass: row.rate,
+                baseFee: row.baseWeeklyFee,
+                studentAbsentPayment: row.studentAbsentPayment,
+                lateDeductions: row.lateDeductions,
+                cancellationDeductions: 0,
+                absentDeductions: row.teacherAbsentDeductions,
+                netAmount: weeklySalary,
+              },
             }
           }
         });
@@ -2739,7 +2890,58 @@ router.get('/recent-activity', async (req, res) => {
   }
 });
 
-// GET admin schedule grid data (bookings in date range)
+async function adminScheduleTeacherIdOr(rawTeacherId) {
+  const canonical = await resolveToCanonicalTeacherId(rawTeacherId);
+  const tid = normalizeId(canonical || rawTeacherId);
+  const teacherRow = await Teacher.findOne({
+    $or: [
+      { $expr: { $eq: [{ $toLower: { $ifNull: ['$teacherId', ''] } }, tid] } },
+      { $expr: { $eq: [{ $toLower: { $ifNull: ['$username', ''] } }, tid] } },
+      { $expr: { $eq: [{ $toLower: { $ifNull: ['$email', ''] } }, tid] } },
+    ],
+  })
+    .select('teacherId username email _id')
+    .lean();
+  const or = [
+    { teacherId: rawTeacherId },
+    { teacherId: tid },
+    { $expr: { $eq: [{ $toLower: { $ifNull: ['$teacherId', ''] } }, tid] } },
+  ];
+  if (teacherRow) {
+    [teacherRow.teacherId, teacherRow.username, teacherRow.email, teacherRow._id && String(teacherRow._id)]
+      .filter(Boolean)
+      .forEach((v) => {
+        or.push({ teacherId: v });
+        const n = normalizeId(v);
+        if (n && n !== tid) {
+          or.push({ $expr: { $eq: [{ $toLower: { $ifNull: ['$teacherId', ''] } }, n] } });
+        }
+      });
+  }
+  return { or, tid };
+}
+
+function adminScheduleManilaUtcWindow(start, end) {
+  const startUtc = new Date(`${start}T00:00:00+08:00`);
+  const endUtc = new Date(`${end}T23:59:59.999+08:00`);
+  return { startUtc, endUtc };
+}
+
+function serializeAdminScheduleSlot(slot) {
+  const available = slot.available !== false && String(slot.slotStatus || '').toLowerCase() !== 'booked';
+  return {
+    _id: slot._id,
+    teacherId: slot.teacherId,
+    date: String(slot.date || '').slice(0, 10),
+    time: padSlotTime(slot.time),
+    available,
+    slotStatus: slot.slotStatus || (available ? 'Open' : 'Booked'),
+    status: slot.status || (available ? 'available' : 'unavailable'),
+    dateTimeUtc: slot.dateTimeUtc || null,
+  };
+}
+
+// GET admin schedule grid data (bookings + teacher-opened slots, same source as teacher schedule)
 router.get('/schedule', async (req, res) => {
   try {
     const start = String(req.query.start || '').trim();
@@ -2749,15 +2951,48 @@ router.get('/schedule', async (req, res) => {
     if (!start || !end) {
       return res.status(400).json({ success: false, error: 'start and end query params required (YYYY-MM-DD)' });
     }
-    const filter = { date: { $gte: start, $lte: end } };
-    if (teacherId) filter.teacherId = teacherId;
-    const bookings = await Booking.find(filter)
-      .sort({ date: 1, time: 1 })
-      .lean();
-    const teachers = await Teacher.find({ username: { $exists: true, $ne: null, $ne: '' } })
-      .select('teacherId username email _id status')
-      .sort({ username: 1 })
-      .lean();
+    const { startUtc, endUtc } = adminScheduleManilaUtcWindow(start, end);
+    const dateWindow = {
+      $or: [
+        { date: { $gte: start, $lte: end } },
+        { dateTimeUtc: { $gte: startUtc, $lte: endUtc } },
+      ],
+    };
+    const bookingFilter = { $and: [dateWindow] };
+    const slotFilter = { $and: [dateWindow] };
+    if (teacherId) {
+      const { or } = await adminScheduleTeacherIdOr(teacherId);
+      bookingFilter.$and.push({ $or: or });
+      slotFilter.$and.push({ $or: or });
+    }
+    const [bookings, slotDocs, teachers] = await Promise.all([
+      Booking.find(bookingFilter).sort({ date: 1, time: 1 }).lean(),
+      TeacherSlot.find(slotFilter).lean(),
+      Teacher.find({ username: { $exists: true, $ne: null, $ne: '' } })
+        .select('teacherId username email _id status')
+        .sort({ username: 1 })
+        .lean(),
+    ]);
+    const slots = slotDocs.map((doc) => {
+      const obj = { ...doc };
+      obj.slotStatus = obj.available ? 'Open' : 'Booked';
+      obj.status = obj.available ? 'available' : 'unavailable';
+      return obj;
+    });
+    const slotsByTeacher = new Map();
+    for (const slot of slots) {
+      const tid = normalizeId(slot.teacherId);
+      if (!slotsByTeacher.has(tid)) slotsByTeacher.set(tid, []);
+      slotsByTeacher.get(tid).push(slot);
+    }
+    for (const [tid, group] of slotsByTeacher) {
+      applyBookingFirstSlotOverlay(group, bookings, tid);
+    }
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+      Pragma: 'no-cache',
+      Expires: '0',
+    });
     res.json({
       success: true,
       view,
@@ -2767,19 +3002,20 @@ router.get('/schedule', async (req, res) => {
         _id: b._id,
         teacherId: b.teacherId,
         studentId: b.studentId,
-        date: b.date,
-        time: b.time,
+        date: String(b.date || '').slice(0, 10),
+        time: padSlotTime(b.time),
         status: b.status,
         lesson: b.lesson,
-        classroomId: b.classroomId
+        classroomId: b.classroomId,
       })),
+      slots: slots.map(serializeAdminScheduleSlot),
       teachers: teachers.map((t) => ({
         mongoId: String(t._id),
-        teacherId: t.teacherId,
+        teacherId: t.teacherId || t.username,
         name: t.username,
         email: t.email,
-        status: t.status
-      }))
+        status: t.status,
+      })),
     });
   } catch (error) {
     console.error('admin schedule error:', error);
@@ -2811,6 +3047,193 @@ router.get('/students-list', async (req, res) => {
   } catch (error) {
     console.error('Error getting students list:', error);
     res.status(500).json({ error: 'Error getting students list' });
+  }
+});
+
+function resolvePlanId(planRaw) {
+  const n = normalizePlanId(planRaw);
+  if (n && PLAN_CREDITS[n]) return n;
+  const lower = String(planRaw || '').toLowerCase();
+  const ids = Object.keys(PLAN_CREDITS);
+  for (let i = 0; i < ids.length; i++) {
+    const id = ids[i];
+    const def = PLAN_CREDITS[id];
+    if (lower.includes(id) || lower.includes(String(def.label || '').toLowerCase())) return id;
+  }
+  return n || '';
+}
+
+function subscriptionPlanLabel(planRaw) {
+  const info = creditsForPlan(resolvePlanId(planRaw) || planRaw);
+  if (info) return `${info.label} — ${info.bundleName}`;
+  const raw = String(planRaw || '').trim();
+  return raw || '—';
+}
+
+function studentDisplayName(s) {
+  return (`${s.firstName || ''} ${s.lastName || ''}`.trim() || s.username || 'Student').trim();
+}
+
+function collectSubscriptionPurchases(student) {
+  const hist = Array.isArray(student.creditHistory) ? student.creditHistory : [];
+  const rows = [];
+  hist.forEach((h) => {
+    if (!h) return;
+    const type = String(h.entryType || 'purchase').toLowerCase();
+    if (type !== 'purchase') return;
+    rows.push({
+      date: h.date || null,
+      plan: h.plan || student.subscriptionPlan || '',
+      planId: resolvePlanId(h.plan || student.subscriptionPlan),
+      planLabel: subscriptionPlanLabel(h.plan || student.subscriptionPlan),
+      credits: Number(h.credits) || 0,
+      amountPaid: Number(h.amountPaid) || 0,
+      paymentId: h.paymentId || '',
+    });
+  });
+  rows.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+  return rows;
+}
+
+function studentHasSubscriptionRecord(s, purchases) {
+  if (s.isSubscribed) return true;
+  if (String(s.subscriptionPlan || '').trim()) return true;
+  if (['paid', 'pending'].includes(String(s.paymentStatus || ''))) return true;
+  if (['active', 'expired', 'cancelled'].includes(String(s.subscriptionStatus || ''))) return true;
+  if ((Number(s.totalCreditsEarned) || 0) > 0) return true;
+  if (purchases && purchases.length) return true;
+  return false;
+}
+
+// Accounting Hub: all student subscriptions (current plan + purchase history).
+router.get('/student-subscriptions', async (req, res) => {
+  try {
+    const includeAll = String(req.query.includeAll || '') === '1';
+    const students = await Student.find({})
+      .select(
+        'username email firstName lastName studentCode status createdAt ' +
+          'subscriptionPlan subscriptionStartDate subscriptionEndDate subscriptionStatus ' +
+          'paymentStatus paymentMethod paymentReference paymentPaidAt ' +
+          'isSubscribed accountStatus creditBalance reservedCredits totalCreditsEarned usedCredits ' +
+          'creditHistory referredByOwnerType referredByOwnerId referralCode'
+      )
+      .lean();
+
+    const byPlan = {};
+    Object.keys(PLAN_CREDITS).forEach((id) => {
+      byPlan[id] = 0;
+    });
+
+    const summary = {
+      totalStudents: students.length,
+      listed: 0,
+      active: 0,
+      pending: 0,
+      expired: 0,
+      cancelled: 0,
+      unpaid: 0,
+      paid: 0,
+      amountPaidTotal: 0,
+      byPlan,
+    };
+
+    const subscriptions = [];
+    const purchasesOut = [];
+
+    students.forEach((s) => {
+      const purchases = collectSubscriptionPurchases(s);
+      if (!includeAll && !studentHasSubscriptionRecord(s, purchases)) return;
+
+      const planId = normalizePlanId(s.subscriptionPlan);
+      const reserved = Number(s.reservedCredits) || 0;
+      const balance = Number(s.creditBalance) || 0;
+      const amountPaidTotal = purchases.reduce((sum, p) => sum + (Number(p.amountPaid) || 0), 0);
+      const last = purchases[0] || null;
+      const status = String(s.subscriptionStatus || 'pending');
+      const payStatus = String(s.paymentStatus || 'unpaid');
+
+      summary.listed += 1;
+      if (status === 'active') summary.active += 1;
+      else if (status === 'expired') summary.expired += 1;
+      else if (status === 'cancelled') summary.cancelled += 1;
+      else summary.pending += 1;
+      if (payStatus === 'paid') summary.paid += 1;
+      else summary.unpaid += 1;
+      summary.amountPaidTotal += amountPaidTotal;
+      if (planId && Object.prototype.hasOwnProperty.call(summary.byPlan, planId)) {
+        summary.byPlan[planId] += 1;
+      }
+
+      const row = {
+        studentId: String(s._id),
+        studentCode: s.studentCode || '',
+        username: s.username || '',
+        name: studentDisplayName(s),
+        email: s.email || '',
+        accountStatus: s.status || 'active',
+        funnelStatus: s.accountStatus || 'standard',
+        subscriptionPlan: s.subscriptionPlan || '',
+        planId: planId || '',
+        planLabel: subscriptionPlanLabel(s.subscriptionPlan),
+        subscriptionStatus: status,
+        subscriptionStartDate: s.subscriptionStartDate || null,
+        subscriptionEndDate: s.subscriptionEndDate || null,
+        paymentStatus: payStatus,
+        paymentMethod: s.paymentMethod || '',
+        paymentReference: s.paymentReference || '',
+        paymentPaidAt: s.paymentPaidAt || null,
+        isSubscribed: !!s.isSubscribed,
+        creditBalance: balance,
+        reservedCredits: reserved,
+        availableCredits: Math.max(0, balance - reserved),
+        totalCreditsEarned: Number(s.totalCreditsEarned) || 0,
+        usedCredits: Number(s.usedCredits) || 0,
+        amountPaidTotal,
+        purchaseCount: purchases.length,
+        lastPurchaseAt: last ? last.date : null,
+        lastPurchaseAmount: last ? last.amountPaid : 0,
+        referredBy: s.referredByOwnerType && s.referredByOwnerId
+          ? `${s.referredByOwnerType}:${s.referredByOwnerId}`
+          : (s.referralCode || ''),
+        createdAt: s.createdAt || null,
+      };
+      subscriptions.push(row);
+
+      purchases.forEach((p) => {
+        purchasesOut.push({
+          studentId: row.studentId,
+          studentCode: row.studentCode,
+          username: row.username,
+          name: row.name,
+          email: row.email,
+          date: p.date,
+          plan: p.plan,
+          planId: p.planId || '',
+          planLabel: p.planLabel,
+          credits: p.credits,
+          amountPaid: p.amountPaid,
+          paymentId: p.paymentId,
+        });
+      });
+    });
+
+    subscriptions.sort((a, b) => {
+      const da = new Date(a.paymentPaidAt || a.subscriptionStartDate || a.createdAt || 0);
+      const db = new Date(b.paymentPaidAt || b.subscriptionStartDate || b.createdAt || 0);
+      return db - da;
+    });
+    purchasesOut.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+
+    res.json({
+      success: true,
+      generatedAt: new Date().toISOString(),
+      summary,
+      subscriptions,
+      purchases: purchasesOut,
+    });
+  } catch (error) {
+    console.error('Error getting student subscriptions:', error);
+    res.status(500).json({ success: false, error: 'Error getting student subscriptions' });
   }
 });
 
@@ -3206,6 +3629,411 @@ router.get('/admins', async (req, res) => {
   } catch (err) {
     console.error('Error fetching admins:', err);
     res.status(500).json({ error: 'Failed to fetch admins' });
+  }
+});
+
+/** HR + Super-Admin only — staff document vault */
+function requireHrOrSuper(req, res, next) {
+  const role = (req.user && req.user.adminRole) || 'super_admin';
+  if (role === 'super_admin' || role === 'admin_hr') return next();
+  return res.status(403).json({ error: 'Only Super-Admin or HR can access staff documents.' });
+}
+
+function serializeTeacherDocEntry(entry, index, category) {
+  if (!entry) return null;
+  if (typeof entry === 'string') {
+    const s = entry.trim();
+    if (!s) return null;
+    return {
+      id: `${category}-legacy-${index}`,
+      category,
+      fileName: category === 'diploma' ? 'Diploma (legacy)' : category === 'validId' ? 'Valid ID (legacy)' : `Certificate ${index + 1}`,
+      source: 'legacy',
+      previewKind: s.startsWith('data:') || s.startsWith('http') || s.startsWith('/') ? 'url-or-data' : 'base64',
+      fileData: s,
+    };
+  }
+  if (!entry.fileData && !entry.fileName) return null;
+  return {
+    id: `${category}-${index}`,
+    category,
+    fileName: entry.fileName || `${category}-${index + 1}`,
+    source: 'file',
+    previewKind: 'base64',
+    fileData: entry.fileData || null,
+  };
+}
+
+function collectTeacherDocuments(teacher) {
+  const docs = (teacher && teacher.documents) || {};
+  const list = [];
+  (docs.diplomas || []).forEach((d, i) => {
+    const row = serializeTeacherDocEntry(d, i, 'diploma');
+    if (row) list.push(row);
+  });
+  if (docs.diploma) {
+    const row = serializeTeacherDocEntry(docs.diploma, 0, 'diploma');
+    if (row) list.push(row);
+  }
+  (docs.certificates || []).forEach((d, i) => {
+    const row = serializeTeacherDocEntry(d, i, 'certificate');
+    if (row) list.push(row);
+  });
+  (docs.certifications || []).forEach((d, i) => {
+    const row = serializeTeacherDocEntry(d, i, 'certificate');
+    if (row) list.push(row);
+  });
+  (docs.validIds || []).forEach((d, i) => {
+    const row = serializeTeacherDocEntry(d, i, 'validId');
+    if (row) list.push(row);
+  });
+  if (docs.validId) {
+    const row = serializeTeacherDocEntry(docs.validId, 0, 'validId');
+    if (row) list.push(row);
+  }
+  (docs.nbiClearances || []).forEach((d, i) => {
+    const row = serializeTeacherDocEntry(d, i, 'nbi');
+    if (row) {
+      row.label = 'NBI Clearance';
+      row.nbiClearanceStatus = teacher.nbiClearanceStatus || 'none';
+      list.push(row);
+    }
+  });
+  return list;
+}
+
+// Lightweight index of staff docs (no file payloads)
+router.get('/hr-documents', requireHrOrSuper, async (req, res) => {
+  try {
+    const type = String(req.query.type || 'all').toLowerCase();
+    const out = { teachers: [], admins: [] };
+
+    if (type === 'all' || type === 'teacher' || type === 'teachers') {
+      const teachers = await Teacher.aggregate([
+        {
+          $project: {
+            username: 1,
+            email: 1,
+            teacherId: 1,
+            firstName: 1,
+            lastName: 1,
+            nickname: 1,
+            status: 1,
+            createdAt: 1,
+            diplomaArr: { $size: { $ifNull: ['$documents.diplomas', []] } },
+            certArr: { $size: { $ifNull: ['$documents.certificates', []] } },
+            validArr: { $size: { $ifNull: ['$documents.validIds', []] } },
+            nbiArr: { $size: { $ifNull: ['$documents.nbiClearances', []] } },
+            nbiClearanceStatus: 1,
+            legacyCertArr: { $size: { $ifNull: ['$documents.certifications', []] } },
+            hasLegacyDiploma: {
+              $cond: [
+                {
+                  $and: [
+                    { $ne: [{ $ifNull: ['$documents.diploma', null] }, null] },
+                    { $ne: [{ $ifNull: ['$documents.diploma', ''] }, ''] },
+                  ],
+                },
+                1,
+                0,
+              ],
+            },
+            hasLegacyValidId: {
+              $cond: [
+                {
+                  $and: [
+                    { $ne: [{ $ifNull: ['$documents.validId', null] }, null] },
+                    { $ne: [{ $ifNull: ['$documents.validId', ''] }, ''] },
+                  ],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+        },
+      ]);
+      out.teachers = teachers.map((t) => {
+        const diplomas = Number(t.diplomaArr || 0) + Number(t.hasLegacyDiploma || 0);
+        const certificates = Number(t.certArr || 0) + Number(t.legacyCertArr || 0);
+        const validIds = Number(t.validArr || 0) + Number(t.hasLegacyValidId || 0);
+        const nbi = Number(t.nbiArr || 0);
+        const displayName =
+          [t.firstName, t.lastName].filter(Boolean).join(' ').trim() ||
+          t.nickname ||
+          t.username ||
+          '—';
+        return {
+          id: String(t._id),
+          personType: 'teacher',
+          displayName,
+          username: t.username || '',
+          email: t.email || '',
+          teacherId: t.teacherId || '',
+          status: t.status || 'active',
+          nbiClearanceStatus: t.nbiClearanceStatus || 'none',
+          createdAt: t.createdAt || null,
+          counts: {
+            diplomas,
+            certificates,
+            validIds,
+            nbi,
+            total: diplomas + certificates + validIds + nbi,
+          },
+        };
+      });
+      out.teachers.sort((a, b) => b.counts.total - a.counts.total || a.displayName.localeCompare(b.displayName));
+    }
+
+    if (type === 'all' || type === 'admin' || type === 'admins') {
+      const admins = await Admin.find({})
+        .select(
+          'username email firstName lastName adminRole status createdAt idDocumentPath nbiClearanceDocumentPath nbiClearanceStatus'
+        )
+        .lean();
+      out.admins = admins.map((a) => {
+        const hasId = !!(a.idDocumentPath && String(a.idDocumentPath).trim());
+        const hasNbi = !!(a.nbiClearanceDocumentPath && String(a.nbiClearanceDocumentPath).trim());
+        const displayName =
+          [a.firstName, a.lastName].filter(Boolean).join(' ').trim() || a.username || '—';
+        return {
+          id: String(a._id),
+          personType: 'admin',
+          displayName,
+          username: a.username || '',
+          email: a.email || '',
+          adminRole: a.adminRole || 'super_admin',
+          status: a.status || 'active',
+          nbiClearanceStatus: a.nbiClearanceStatus || 'none',
+          createdAt: a.createdAt || null,
+          counts: {
+            idDocument: hasId ? 1 : 0,
+            nbi: hasNbi ? 1 : 0,
+            total: (hasId ? 1 : 0) + (hasNbi ? 1 : 0),
+          },
+        };
+      });
+      out.admins.sort((a, b) => b.counts.total - a.counts.total || a.displayName.localeCompare(b.displayName));
+    }
+
+    res.json({ success: true, ...out });
+  } catch (err) {
+    console.error('GET /hr-documents:', err);
+    res.status(500).json({ success: false, error: 'Failed to load staff documents index' });
+  }
+});
+
+// Full document payloads for one teacher or admin
+router.get('/hr-documents/:personType/:personId', requireHrOrSuper, async (req, res) => {
+  try {
+    const personType = String(req.params.personType || '').toLowerCase();
+    const personId = String(req.params.personId || '').trim();
+    if (!mongoose.isValidObjectId(personId)) {
+      return res.status(400).json({ success: false, error: 'Invalid person id' });
+    }
+
+    if (personType === 'teacher') {
+      const teacher = await Teacher.findById(personId).select('-password').lean();
+      if (!teacher) return res.status(404).json({ success: false, error: 'Teacher not found' });
+      const files = collectTeacherDocuments(teacher);
+      return res.json({
+        success: true,
+        personType: 'teacher',
+        person: {
+          id: String(teacher._id),
+          displayName:
+            [teacher.firstName, teacher.lastName].filter(Boolean).join(' ').trim() ||
+            teacher.nickname ||
+            teacher.username ||
+            '—',
+          username: teacher.username || '',
+          email: teacher.email || '',
+          teacherId: teacher.teacherId || '',
+          status: teacher.status || 'active',
+          nbiClearanceStatus: teacher.nbiClearanceStatus || 'none',
+        },
+        files,
+      });
+    }
+
+    if (personType === 'admin') {
+      const admin = await Admin.findById(personId)
+        .select('-password -passwordHash -passwordSetupTokenHash -twoFactorSecret')
+        .lean();
+      if (!admin) return res.status(404).json({ success: false, error: 'Admin not found' });
+      const files = [];
+      if (admin.idDocumentPath) {
+        const base = path.basename(String(admin.idDocumentPath));
+        files.push({
+          id: 'admin-id',
+          category: 'idDocument',
+          label: 'Government ID',
+          fileName: base && base.includes('.') ? base : `government-id${path.extname(base) || '.jpg'}`,
+          source: 'upload',
+          previewKind: 'url',
+          url: adminPublicUploadUrl(admin.idDocumentPath),
+          storedPath: admin.idDocumentPath,
+        });
+      }
+      if (admin.nbiClearanceDocumentPath) {
+        const base = path.basename(String(admin.nbiClearanceDocumentPath));
+        files.push({
+          id: 'admin-nbi',
+          category: 'nbi',
+          label: 'NBI Clearance',
+          fileName: base && base.includes('.') ? base : `nbi-clearance${path.extname(base) || '.jpg'}`,
+          source: 'upload',
+          previewKind: 'url',
+          url: adminPublicUploadUrl(admin.nbiClearanceDocumentPath),
+          storedPath: admin.nbiClearanceDocumentPath,
+          nbiClearanceStatus: admin.nbiClearanceStatus || 'none',
+        });
+      }
+      return res.json({
+        success: true,
+        personType: 'admin',
+        person: {
+          id: String(admin._id),
+          displayName:
+            [admin.firstName, admin.lastName].filter(Boolean).join(' ').trim() ||
+            admin.username ||
+            '—',
+          username: admin.username || '',
+          email: admin.email || '',
+          adminRole: admin.adminRole || 'super_admin',
+          status: admin.status || 'active',
+          nbiClearanceStatus: admin.nbiClearanceStatus || 'none',
+        },
+        files,
+      });
+    }
+
+    return res.status(400).json({ success: false, error: 'personType must be teacher or admin' });
+  } catch (err) {
+    console.error('GET /hr-documents/:personType/:personId:', err);
+    res.status(500).json({ success: false, error: 'Failed to load documents' });
+  }
+});
+
+router.patch('/hr-documents/:personType/:personId/nbi-status', requireHrOrSuper, async (req, res) => {
+  try {
+    const personType = String(req.params.personType || '').toLowerCase();
+    const personId = String(req.params.personId || '').trim();
+    const allowed = ['none', 'pending', 'submitted', 'verified'];
+    const next = String(req.body?.nbiClearanceStatus || '').trim();
+    if (!mongoose.isValidObjectId(personId)) {
+      return res.status(400).json({ success: false, error: 'Invalid person id' });
+    }
+    if (!allowed.includes(next)) {
+      return res.status(400).json({ success: false, error: 'Invalid nbiClearanceStatus' });
+    }
+
+    if (personType === 'teacher') {
+      const teacher = await Teacher.findByIdAndUpdate(
+        personId,
+        { $set: { nbiClearanceStatus: next } },
+        { new: true }
+      ).select('nbiClearanceStatus').lean();
+      if (!teacher) return res.status(404).json({ success: false, error: 'Teacher not found' });
+      return res.json({ success: true, nbiClearanceStatus: teacher.nbiClearanceStatus || 'none' });
+    }
+
+    if (personType === 'admin') {
+      const admin = await Admin.findByIdAndUpdate(
+        personId,
+        { $set: { nbiClearanceStatus: next } },
+        { new: true }
+      ).select('nbiClearanceStatus').lean();
+      if (!admin) return res.status(404).json({ success: false, error: 'Admin not found' });
+      return res.json({ success: true, nbiClearanceStatus: admin.nbiClearanceStatus || 'none' });
+    }
+
+    return res.status(400).json({ success: false, error: 'personType must be teacher or admin' });
+  } catch (err) {
+    console.error('PATCH /hr-documents/.../nbi-status:', err);
+    res.status(500).json({ success: false, error: 'Failed to update NBI status' });
+  }
+});
+
+/** Stream a staff document with correct Content-Type (avoids .json downloads / broken previews). */
+router.get('/hr-documents/:personType/:personId/file/:fileId', requireHrOrSuper, async (req, res) => {
+  try {
+    const personType = String(req.params.personType || '').toLowerCase();
+    const personId = String(req.params.personId || '').trim();
+    const fileId = String(req.params.fileId || '').trim();
+    if (!mongoose.isValidObjectId(personId) || !fileId) {
+      return res.status(400).json({ success: false, error: 'Invalid request' });
+    }
+
+    const mimeFromName = (name) => {
+      const n = String(name || '').toLowerCase();
+      if (n.endsWith('.pdf')) return 'application/pdf';
+      if (n.endsWith('.png')) return 'image/png';
+      if (n.endsWith('.jpg') || n.endsWith('.jpeg')) return 'image/jpeg';
+      if (n.endsWith('.webp')) return 'image/webp';
+      if (n.endsWith('.gif')) return 'image/gif';
+      return 'application/octet-stream';
+    };
+
+    if (personType === 'admin') {
+      const admin = await Admin.findById(personId)
+        .select('idDocumentPath nbiClearanceDocumentPath')
+        .lean();
+      if (!admin) return res.status(404).json({ success: false, error: 'Admin not found' });
+      let stored = null;
+      let downloadName = 'document';
+      if (fileId === 'admin-id') {
+        stored = admin.idDocumentPath;
+        downloadName = path.basename(String(stored || 'government-id.jpg'));
+      } else if (fileId === 'admin-nbi') {
+        stored = admin.nbiClearanceDocumentPath;
+        downloadName = path.basename(String(stored || 'nbi-clearance.jpg'));
+      } else {
+        return res.status(404).json({ success: false, error: 'File not found' });
+      }
+      if (!stored) return res.status(404).json({ success: false, error: 'File not found' });
+      const uploadsRoot = path.resolve(path.join(__dirname, '../uploads'));
+      const abs = path.resolve(uploadsRoot, String(stored).replace(/^[/\\]+/, '').replace(/\\/g, '/'));
+      const relToRoot = path.relative(uploadsRoot, abs);
+      if (relToRoot.startsWith('..') || path.isAbsolute(relToRoot) || !require('fs').existsSync(abs)) {
+        return res.status(404).json({ success: false, error: 'File missing on server' });
+      }
+      res.setHeader('Content-Type', mimeFromName(downloadName));
+      res.setHeader('Content-Disposition', `inline; filename="${downloadName.replace(/"/g, '')}"`);
+      return res.sendFile(abs);
+    }
+
+    if (personType === 'teacher') {
+      const teacher = await Teacher.findById(personId).select('documents').lean();
+      if (!teacher) return res.status(404).json({ success: false, error: 'Teacher not found' });
+      const files = collectTeacherDocuments(teacher);
+      const file = files.find((f) => f.id === fileId);
+      if (!file || !file.fileData) {
+        return res.status(404).json({ success: false, error: 'File not found' });
+      }
+      let raw = String(file.fileData);
+      let mime = mimeFromName(file.fileName);
+      if (raw.startsWith('data:')) {
+        const m = raw.match(/^data:([^;]+);base64,([\s\S]+)$/);
+        if (!m) return res.status(400).json({ success: false, error: 'Invalid file data' });
+        mime = m[1] || mime;
+        raw = m[2];
+      } else if (raw.startsWith('http') || raw.startsWith('/')) {
+        return res.redirect(raw);
+      }
+      const buf = Buffer.from(raw, 'base64');
+      const downloadName = (file.fileName && String(file.fileName).includes('.'))
+        ? file.fileName
+        : `document.${mime.includes('pdf') ? 'pdf' : mime.includes('png') ? 'png' : 'jpg'}`;
+      res.setHeader('Content-Type', mime);
+      res.setHeader('Content-Disposition', `inline; filename="${String(downloadName).replace(/"/g, '')}"`);
+      return res.send(buf);
+    }
+
+    return res.status(400).json({ success: false, error: 'Invalid person type' });
+  } catch (err) {
+    console.error('GET /hr-documents/.../file:', err);
+    res.status(500).json({ success: false, error: 'Failed to open file' });
   }
 });
 

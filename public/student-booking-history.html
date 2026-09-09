@@ -346,18 +346,20 @@
             return '25 min';
         }
         
-        // Get teacher name
+        // Get teacher name (prefer nickname / public display name for privacy)
         function getTeacherName(booking) {
-            if (booking.teacherId) {
-                if (typeof booking.teacherId === 'object') {
-                    if (booking.teacherId.firstName && booking.teacherId.lastName) {
-                        return `${booking.teacherId.firstName} ${booking.teacherId.lastName}`;
-                    }
-                    return booking.teacherId.username || 'Unknown';
-                }
-            }
             if (booking.teacherName) return booking.teacherName;
-            if (booking.teacher && booking.teacher.name) return booking.teacher.name;
+            if (booking.teacher && (booking.teacher.name || booking.teacher.displayName || booking.teacher.nickname)) {
+                return booking.teacher.nickname || booking.teacher.displayName || booking.teacher.name;
+            }
+            if (booking.teacherId && typeof booking.teacherId === 'object') {
+                const t = booking.teacherId;
+                const nick = (t.nickname || t.displayName || t.name || '').trim();
+                if (nick) return nick;
+                const full = `${t.firstName || ''} ${t.lastName || ''}`.trim();
+                if (full) return full;
+                return t.username || 'Unknown';
+            }
             return 'Unknown Teacher';
         }
         

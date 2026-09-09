@@ -425,40 +425,75 @@ app.get('/api/rtc-config', (req, res) => {
   res.json({ iceServers });
 });
 
-const Application = require('./models/Application');
-const InvitationToken = require('./models/InvitationToken');
+const { findActivePassedInvitation, inviteErrorMessage, applicantPayload, canShowSignupPage } = require('./utils/teacherInvitation');
+
+function sendInviteErrorPage(res, reason, customMessage) {
+  const message = customMessage || inviteErrorMessage(reason);
+  const safe = String(message)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  res.status(404).type('html').send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Invitation unavailable — RemoEdPH</title>
+  <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #f4f4f5; color: #18181b; }
+    .box { background: #fff; padding: 1.5rem 2rem; border-radius: 12px; box-shadow: 0 4px 24px rgba(0,0,0,.08); max-width: 28rem; text-align: center; }
+    p { margin: 0 0 1rem; line-height: 1.5; }
+    a { color: #1ca7e7; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <p>${safe}</p>
+    <p><a href="/">Back to RemoEdPH</a></p>
+  </div>
+</body>
+</html>`);
+}
+
+function sendTeacherSignupPage(res, bootstrap) {
+  const filePath = path.join(__dirname, '../public/teacher-signup.html');
+  let html = fs.readFileSync(filePath, 'utf8');
+  const payload = bootstrap && typeof bootstrap === 'object' ? bootstrap : null;
+  const json = JSON.stringify(payload).replace(/</g, '\\u003c');
+  html = html.replace('__TEACHER_SIGNUP_BOOTSTRAP__', json);
+  res.type('html').send(html);
+}
 
 // Protected teacher signup route: requires a valid invitation token in URL.
 app.get('/teacher-signup', async (req, res) => {
   try {
-    const token = String(req.query.invitation || '').trim();
-    if (!token) {
-      return res.redirect('/');
+    const found = await findActivePassedInvitation(req.query.invitation);
+    if (!canShowSignupPage(found)) {
+      return sendInviteErrorPage(res, found.reason);
     }
-
-    const invitation = await InvitationToken.findOne({ token, isUsed: false }).lean();
-    if (!invitation) {
-      return res.redirect('/');
-    }
-
-    if (!invitation.expiresAt || new Date(invitation.expiresAt) <= new Date()) {
-      return res.redirect('/');
-    }
-
-    const application = await Application.findById(invitation.applicationId).lean();
-    if (!application || application.currentStage !== 'passed') {
-      return res.redirect('/');
-    }
-
-    return res.sendFile(path.join(__dirname, '../public/teacher-signup.html'));
+    return sendTeacherSignupPage(res, {
+      alreadyUsed: found.reason === 'used',
+      expired: found.reason === 'expired',
+      applicant: applicantPayload(found.application, found.invitation),
+    });
   } catch (error) {
     console.error('Protected /teacher-signup route failed:', error);
-    return res.redirect('/');
+    return sendInviteErrorPage(res, 'invalid');
   }
 });
 
 // Prevent bypassing invitation checks via direct file URL.
-app.get('/teacher-signup.html', (req, res) => res.redirect('/'));
+app.get('/teacher-signup.html', (req, res) => sendInviteErrorPage(res, 'missing'));
+
+// Public teacher register is closed — accounts are created only from a passed invitation.
+app.get(['/teacher-register', '/teacher-register.html'], (req, res) => {
+  return sendInviteErrorPage(
+    res,
+    'not_passed',
+    'Teacher accounts are invitation-only. Use the sign-up link from your passed-applicant email.'
+  );
+});
 
 /**
  * Entry page for passed applicants (email links with ?appId= + invitation).
@@ -473,25 +508,18 @@ app.get('/register.html', async (req, res) => {
       return res.redirect('/');
     }
     if (token) {
-      const invitation = await InvitationToken.findOne({ token, isUsed: false }).lean();
-      if (!invitation) {
-        return res.redirect('/');
+      const found = await findActivePassedInvitation(token);
+      if (!canShowSignupPage(found)) {
+        return sendInviteErrorPage(res, found.reason);
       }
-      if (!invitation.expiresAt || new Date(invitation.expiresAt) <= new Date()) {
-        return res.redirect('/');
-      }
-      const application = await Application.findById(invitation.applicationId).lean();
-      if (!application || application.currentStage !== 'passed') {
-        return res.redirect('/');
-      }
-      if (appIdFromQuery && String(application._id) !== appIdFromQuery) {
-        return res.redirect('/');
+      if (appIdFromQuery && found.application && String(found.application._id) !== appIdFromQuery) {
+        return sendInviteErrorPage(res, 'invalid');
       }
     }
     return res.sendFile(path.join(__dirname, '../public/register.html'));
   } catch (error) {
     console.error('GET /register.html failed:', error);
-    return res.redirect('/');
+    return sendInviteErrorPage(res, 'invalid');
   }
 });
 
@@ -499,7 +527,7 @@ app.get('/register.html', async (req, res) => {
 const applicationFormDist = path.join(__dirname, '../application-form/dist');
 const applicationFormAssets = path.join(applicationFormDist, 'assets');
 app.use('/assets', express.static(applicationFormAssets));
-app.get('/application-form', (req, res) => {
+app.get('/application-form', noStoreProtectedResponse, (req, res) => {
   return res.sendFile(path.join(applicationFormDist, 'index.html'));
 });
 
@@ -2996,16 +3024,6 @@ const startServer = () => {
 
       // Redis: connect in background — never block listen; cache paths use getRedis() with fast timeouts.
       primeRedisConnection();
-      
-      // Now that server is listening, do other initialization
-      // Verify Cloudmersive API key configuration
-      const cloudmersiveKey = process.env.CLOUDMERSIVE_API_KEY;
-      if (cloudmersiveKey && cloudmersiveKey.trim() && cloudmersiveKey !== 'your-api-key-here') {
-        const cleanKey = cloudmersiveKey.trim().replace(/^["']|["']$/g, '');
-        console.log(`✅ Cloudmersive API key configured (${cleanKey.length} chars, starts with: ${cleanKey.substring(0, 8)}...)`);
-      } else {
-        console.warn(`⚠️  Cloudmersive API key not configured. PPTX conversion will fail. Set CLOUDMERSIVE_API_KEY in .env file.`);
-      }
       
       // Connect to database in background (non-blocking)
       connectDB().then((connected) => {

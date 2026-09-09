@@ -379,7 +379,20 @@ body.student-portal.student-sidebar-collapsed .remoed-content {
 /* Easier-to-see scrollbars (Firefox) */
 html {
     scrollbar-width: auto;
-    scrollbar-color: #94a3b8 #e8edf5;
+    scrollbar-color: #64748b #e2e8f0;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+    width: 16px;
+    height: 16px;
+}
+
+html::-webkit-scrollbar-thumb,
+body::-webkit-scrollbar-thumb {
+    background-color: #64748b;
+    border-radius: 8px;
+    border: 3px solid #e8edf5;
 }
 
 /* Easier-to-see scrollbars (Chrome, Edge, Safari) */

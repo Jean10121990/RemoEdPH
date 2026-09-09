@@ -34,7 +34,8 @@
       }
 
       if (!appId) {
-        window.location.replace('/');
+        document.querySelector('.box p').textContent =
+          'This sign-up link is missing an invitation. Please use the link from your email.';
         return;
       }
 
@@ -44,11 +45,13 @@
           if (data && data.success && data.invitation) {
             goTeacherSignup(String(data.invitation).trim(), appId);
           } else {
-            window.location.replace('/');
+            document.querySelector('.box p').textContent =
+              (data && data.message) || 'This invitation is invalid or expired. Ask admin to resend your sign-up email.';
           }
         })
         .catch(function () {
-          window.location.replace('/');
+          document.querySelector('.box p').textContent =
+            'Could not verify this invitation. Please try again or ask admin to resend your email.';
         });
     })();
   </script>

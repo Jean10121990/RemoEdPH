@@ -30,6 +30,34 @@ function LiveVideoPreview({ stream, className = '' }) {
   );
 }
 
+function stopMediaStream(stream) {
+  if (!stream) return;
+  try {
+    stream.getTracks().forEach((track) => {
+      try {
+        track.stop();
+      } catch (_e) {
+        /* ignore */
+      }
+    });
+  } catch (_e2) {
+    /* ignore */
+  }
+}
+
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || '').trim());
+}
+
+function isValidName(name) {
+  return String(name || '').trim().length >= 2;
+}
+
+function isValidContact(phone) {
+  const digits = String(phone || '').replace(/\D/g, '');
+  return digits.length >= 10 && digits.length <= 15;
+}
+
 const PEDAGOGICAL_QUESTIONS = [
   'How do you adjust instruction for students with mixed learning levels?',
   'Describe a strategy you use to keep disengaged students involved.',
@@ -117,7 +145,7 @@ function Progress({ step }) {
   );
 }
 
-function VideoRecorderCard({ title, description, onUploaded, uploadFolder }) {
+function VideoRecorderCard({ title, description, onUploaded, uploadFolder, uploadedUrl }) {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const autoStopRef = useRef(null);
@@ -140,11 +168,14 @@ function VideoRecorderCard({ title, description, onUploaded, uploadFolder }) {
     blobPropertyBag: { type: 'video/webm' }
   });
 
+  const isRecording = status === 'recording';
+  const canUpload = useMemo(() => Boolean(mediaBlobUrl) && !uploading, [mediaBlobUrl, uploading]);
+
   useEffect(() => {
     if (status === 'recording') {
       autoStopRef.current = setTimeout(() => {
         stopRecording();
-      }, 2 * 60 * 1000); // 2 minutes
+      }, 2 * 60 * 1000);
     } else if (autoStopRef.current) {
       clearTimeout(autoStopRef.current);
       autoStopRef.current = null;
@@ -157,7 +188,21 @@ function VideoRecorderCard({ title, description, onUploaded, uploadFolder }) {
     };
   }, [status, stopRecording]);
 
-  const canUpload = useMemo(() => Boolean(mediaBlobUrl) && !uploading, [mediaBlobUrl, uploading]);
+  useEffect(() => {
+    if (status === 'stopped' || status === 'idle') {
+      stopMediaStream(previewStream);
+    }
+  }, [status, previewStream]);
+
+  const handleStop = () => {
+    stopRecording();
+    window.setTimeout(() => stopMediaStream(previewStream), 80);
+  };
+
+  const handleClear = () => {
+    stopMediaStream(previewStream);
+    clearBlobUrl();
+  };
 
   const handleUpload = async () => {
     if (!mediaBlobUrl) return;
@@ -176,6 +221,7 @@ function VideoRecorderCard({ title, description, onUploaded, uploadFolder }) {
   };
 
   const showLivePreview =
+    (status === 'recording' || status === 'acquiring_media') &&
     previewStream &&
     previewStream.getVideoTracks().some((t) => t.readyState === 'live');
 
@@ -188,30 +234,44 @@ function VideoRecorderCard({ title, description, onUploaded, uploadFolder }) {
         </div>
         <span
           className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wide ${
-            status === 'recording'
-              ? 'bg-red-100 text-red-700 ring-1 ring-red-200'
+            isRecording
+              ? 'bg-red-100 text-red-700 ring-1 ring-red-300'
               : 'bg-slate-100 text-slate-600'
           }`}
         >
-          {status === 'recording' ? '● Recording' : status.replace(/_/g, ' ')}
+          {isRecording ? 'Recording' : status.replace(/_/g, ' ')}
         </span>
       </div>
 
-      <div className="mt-4 overflow-hidden rounded-xl border-2 border-dashed border-remo-green/30 bg-gradient-to-br from-teal-50/80 via-blue-50/50 to-amber-50/60">
+      <div
+        className={`relative mt-4 overflow-hidden rounded-xl border-2 ${
+          isRecording
+            ? 'remo-rec-frame border-red-500'
+            : 'border-dashed border-remo-green/30 bg-gradient-to-br from-teal-50/80 via-blue-50/50 to-amber-50/60'
+        }`}
+      >
+        {isRecording && (
+          <div className="absolute left-3 top-3 z-10 flex items-center gap-2 rounded-full bg-red-600 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-white shadow-lg">
+            <span className="remo-rec-dot inline-block h-2.5 w-2.5 rounded-full bg-white" aria-hidden />
+            Rec
+          </div>
+        )}
         {showLivePreview ? (
           <LiveVideoPreview
             stream={previewStream}
             className="aspect-video w-full bg-slate-900 object-cover"
           />
+        ) : mediaBlobUrl ? (
+          <video controls src={mediaBlobUrl} className="aspect-video w-full bg-slate-900 object-cover" />
         ) : (
-          <div className="flex aspect-video w-full flex-col items-center justify-center gap-2 px-4 text-center">
+          <div className="flex aspect-video w-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-teal-50/80 via-blue-50/50 to-amber-50/60 px-4 text-center">
             <span className="text-3xl" aria-hidden>
               📹
             </span>
             <p className="text-sm font-medium text-remo-ink">Camera preview</p>
             <p className="max-w-sm text-xs text-remo-muted">
               Press <strong className="text-remo-blue">Start recording</strong> to open your camera and microphone.
-              Allow access when your browser asks.
+              Allow access when your browser asks. The camera turns off when you press Stop.
             </p>
           </div>
         )}
@@ -228,7 +288,7 @@ function VideoRecorderCard({ title, description, onUploaded, uploadFolder }) {
         </button>
         <button
           type="button"
-          onClick={stopRecording}
+          onClick={handleStop}
           disabled={status !== 'recording' && status !== 'paused'}
           className="rounded-lg border-2 border-remo-blue/40 bg-white px-4 py-2.5 text-sm font-semibold text-remo-blue hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40"
         >
@@ -236,14 +296,14 @@ function VideoRecorderCard({ title, description, onUploaded, uploadFolder }) {
         </button>
         <button
           type="button"
-          onClick={clearBlobUrl}
+          onClick={handleClear}
           className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
         >
           Clear clip
         </button>
       </div>
 
-      <p className="mt-2 text-xs text-remo-muted">Recording auto-stops at 2:00.</p>
+      <p className="mt-2 text-xs text-remo-muted">Recording auto-stops at 2:00. Review locally, then upload.</p>
 
       {recorderError && recorderError !== '' && (
         <p className="mt-2 text-sm font-medium text-amber-800">
@@ -251,30 +311,33 @@ function VideoRecorderCard({ title, description, onUploaded, uploadFolder }) {
         </p>
       )}
 
-      {mediaBlobUrl && (
-        <div className="mt-4">
-          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-remo-muted">Playback</p>
-          <video controls src={mediaBlobUrl} className="w-full rounded-lg border border-slate-200 shadow-sm" />
-        </div>
-      )}
-
       <div className="mt-4">
         <button
           type="button"
           onClick={handleUpload}
           disabled={!canUpload}
-          className="rounded-lg bg-gradient-to-r from-remo-blue to-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-blue-500/20 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
+          className={`rounded-lg px-4 py-2.5 text-sm font-semibold ${
+            canUpload
+              ? 'bg-gradient-to-r from-remo-blue to-blue-600 text-white shadow-md shadow-blue-500/20'
+              : 'cursor-not-allowed bg-slate-300 text-slate-500 shadow-none'
+          }`}
         >
-          {uploading ? 'Uploading...' : 'Upload to storage'}
+          {uploading ? 'Uploading...' : 'Upload video lesson'}
         </button>
+        {!mediaBlobUrl && (
+          <p className="mt-2 text-xs text-remo-muted">Record a clip first. Upload stays gray until a local file is ready.</p>
+        )}
       </div>
 
+      {uploadedUrl && (
+        <p className="mt-2 text-xs font-medium text-teal-700">Video lesson uploaded.</p>
+      )}
       {uploadError && <p className="mt-2 text-sm text-red-600">{uploadError}</p>}
     </div>
   );
 }
 
-function AudioRecorderCard({ title, description, onUploaded, uploadFolder }) {
+function AudioRecorderCard({ title, description, onUploaded, uploadFolder, uploadedUrl }) {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
 
@@ -334,7 +397,9 @@ function AudioRecorderCard({ title, description, onUploaded, uploadFolder }) {
         </button>
       </div>
 
-      <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-remo-muted">Status: {status.replace(/_/g, ' ')}</p>
+      <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-remo-muted">
+        Status: {status.replace(/_/g, ' ')}
+      </p>
 
       {audioRecorderError && (
         <p className="mt-2 text-sm font-medium text-amber-800">Microphone: {audioRecorderError}</p>
@@ -349,12 +414,20 @@ function AudioRecorderCard({ title, description, onUploaded, uploadFolder }) {
           type="button"
           onClick={handleUpload}
           disabled={!canUpload}
-          className="rounded-lg bg-gradient-to-r from-remo-yellow to-amber-500 px-4 py-2.5 text-sm font-semibold text-amber-950 shadow-md shadow-amber-500/25 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
+          className={`rounded-lg px-4 py-2.5 text-sm font-semibold ${
+            canUpload
+              ? 'bg-gradient-to-r from-remo-yellow to-amber-500 text-amber-950 shadow-md shadow-amber-500/25'
+              : 'cursor-not-allowed bg-slate-300 text-slate-500 shadow-none'
+          }`}
         >
           {uploading ? 'Uploading...' : 'Upload voice answer'}
         </button>
+        {!mediaBlobUrl && (
+          <p className="mt-2 text-xs text-remo-muted">Record first. This button stays gray until a local clip exists.</p>
+        )}
       </div>
 
+      {uploadedUrl && <p className="mt-2 text-xs font-medium text-teal-700">Voice answer uploaded.</p>}
       {uploadError && <p className="mt-2 text-sm text-red-600">{uploadError}</p>}
     </div>
   );
@@ -364,6 +437,8 @@ export default function App() {
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState(initialForm);
+  const [touched, setTouched] = useState({ fullName: false, email: false, contactNo: false });
+  const [docFiles, setDocFiles] = useState({ nationalId: null, nbi: null });
 
   const setField = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
 
@@ -381,24 +456,61 @@ export default function App() {
       return { ...prev, testVideos: clone };
     });
 
-  const uploadDocument = async (field, file) => {
-    if (!file) return;
-    const url = await uploadToBucket(file, 'application-documents');
-    setForm((prev) => ({
-      ...prev,
-      documents: {
-        ...prev.documents,
-        [field]: url
-      }
-    }));
+  const nameError = touched.fullName && !isValidName(form.fullName) ? 'Enter your full name (at least 2 characters).' : '';
+  const emailError = touched.email && !isValidEmail(form.email) ? 'Enter a valid email address.' : '';
+  const contactError =
+    touched.contactNo && !isValidContact(form.contactNo) ? 'Enter a valid contact number (at least 10 digits).' : '';
+
+  const step1Valid = isValidName(form.fullName) && isValidEmail(form.email) && isValidContact(form.contactNo);
+  const step2Valid = form.testVideos.every(Boolean);
+  const step3Valid = Boolean(form.demoVideoUrl);
+  const step4Valid = Boolean(docFiles.nationalId && docFiles.nbi);
+
+  const canContinue =
+    (step === 1 && step1Valid) || (step === 2 && step2Valid) || (step === 3 && step3Valid);
+
+  const continueHint =
+    step === 1 && !step1Valid
+      ? 'Complete name, email, and contact number to continue.'
+      : step === 2 && !step2Valid
+        ? 'Record and upload all three voice answers to continue.'
+        : step === 3 && !step3Valid
+          ? 'Record and upload your 2-minute video lesson to continue.'
+          : '';
+
+  const markStep1Touched = () => setTouched({ fullName: true, email: true, contactNo: true });
+
+  const goBack = () => {
+    if (step === 1) {
+      window.location.assign('/');
+      return;
+    }
+    setStep((s) => Math.max(1, s - 1));
+  };
+
+  const goContinue = () => {
+    if (step === 1) {
+      markStep1Touched();
+      if (!step1Valid) return;
+    }
+    if (step === 2 && !step2Valid) return;
+    if (step === 3 && !step3Valid) return;
+    setStep((s) => Math.min(4, s + 1));
   };
 
   const submitApplication = async () => {
+    markStep1Touched();
+    if (!step1Valid || !step2Valid || !step3Valid || !step4Valid) {
+      alert('Please complete all required fields and uploads before submitting.');
+      return;
+    }
     setSubmitting(true);
     try {
+      const nationalIdUrl = await uploadToBucket(docFiles.nationalId, 'application-documents');
+      const nbiUrl = await uploadToBucket(docFiles.nbi, 'application-documents');
       const payload = {
-        fullName: form.fullName,
-        email: form.email,
+        fullName: String(form.fullName).trim(),
+        email: String(form.email).trim(),
         contactNo: String(form.contactNo || '').trim(),
         currentStage: 'applied',
         status: true,
@@ -408,8 +520,8 @@ export default function App() {
         },
         demoVideoUrl: form.demoVideoUrl,
         uploadedDocuments: {
-          nationalId: form.documents.nationalId,
-          nbi: form.documents.nbi
+          nationalId: nationalIdUrl,
+          nbi: nbiUrl
         }
       };
 
@@ -448,6 +560,7 @@ export default function App() {
 
   const inputClass =
     'w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm shadow-sm transition focus:border-remo-blue focus:outline-none focus:ring-2 focus:ring-remo-blue/20';
+  const inputErrorClass = 'border-red-400 focus:border-red-500 focus:ring-red-200';
 
   return (
     <form
@@ -455,6 +568,7 @@ export default function App() {
       onSubmit={(e) => {
         e.preventDefault();
       }}
+      noValidate
     >
     <div className="mx-auto min-h-screen max-w-5xl px-4 py-10">
       <div className="relative overflow-hidden rounded-3xl border border-white/60 bg-white/90 p-6 shadow-remo backdrop-blur-sm md:p-10">
@@ -475,6 +589,7 @@ export default function App() {
           <p className="mt-3 max-w-2xl text-sm leading-relaxed text-remo-muted">
             Complete all four steps. Keep your responses clear, concise, and professional. You’ll use your microphone in
             step 2 and your <span className="font-semibold text-remo-blue">camera</span> for the short demo in step 3.
+            Recordings stay on this device until you upload them.
           </p>
         </header>
 
@@ -489,24 +604,38 @@ export default function App() {
             </h2>
             <div className="grid gap-4 md:grid-cols-2">
               <div className="md:col-span-2">
-                <label className="mb-1 block text-sm font-semibold text-slate-700">Full Name</label>
+                <label className="mb-1 block text-sm font-semibold text-slate-700">
+                  Full Name <span className="text-red-500">*</span>
+                </label>
                 <input
                   value={form.fullName}
                   onChange={(e) => setField('fullName', e.target.value)}
-                  className={inputClass}
+                  onBlur={() => setTouched((t) => ({ ...t, fullName: true }))}
+                  className={`${inputClass} ${nameError ? inputErrorClass : ''}`}
+                  autoComplete="name"
+                  required
                 />
+                {nameError && <p className="mt-1 text-xs font-medium text-red-600">{nameError}</p>}
               </div>
               <div>
-                <label className="mb-1 block text-sm font-semibold text-slate-700">Email</label>
+                <label className="mb-1 block text-sm font-semibold text-slate-700">
+                  Email <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="email"
                   value={form.email}
                   onChange={(e) => setField('email', e.target.value)}
-                  className={inputClass}
+                  onBlur={() => setTouched((t) => ({ ...t, email: true }))}
+                  className={`${inputClass} ${emailError ? inputErrorClass : ''}`}
+                  autoComplete="email"
+                  required
                 />
+                {emailError && <p className="mt-1 text-xs font-medium text-red-600">{emailError}</p>}
               </div>
               <div>
-                <label className="mb-1 block text-sm font-semibold text-slate-700">Contact no.</label>
+                <label className="mb-1 block text-sm font-semibold text-slate-700">
+                  Contact no. <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="tel"
                   inputMode="tel"
@@ -514,8 +643,11 @@ export default function App() {
                   placeholder="e.g. +63 9xx xxx xxxx"
                   value={form.contactNo}
                   onChange={(e) => setField('contactNo', e.target.value)}
-                  className={inputClass}
+                  onBlur={() => setTouched((t) => ({ ...t, contactNo: true }))}
+                  className={`${inputClass} ${contactError ? inputErrorClass : ''}`}
+                  required
                 />
+                {contactError && <p className="mt-1 text-xs font-medium text-red-600">{contactError}</p>}
               </div>
             </div>
           </section>
@@ -527,7 +659,7 @@ export default function App() {
               Step 2: <span className="text-remo-green">Pedagogical</span> voice answers
             </h2>
             <p className="text-sm text-remo-muted">
-              Record one voice answer per question, then upload each recording to your bucket.
+              Record each answer on this device first, then upload. Continue stays disabled until all three are uploaded.
             </p>
             <div className="space-y-4">
               {PEDAGOGICAL_QUESTIONS.map((question, idx) => (
@@ -548,14 +680,12 @@ export default function App() {
                   <div className="mt-4">
                     <AudioRecorderCard
                       title={`Record Voice Answer ${idx + 1}`}
-                      description="Use microphone only and upload when done."
+                      description="Use microphone only. The clip stays on your device until you upload."
                       uploadFolder={`application-question-${idx + 1}`}
+                      uploadedUrl={form.testVideos[idx]}
                       onUploaded={(url) => setQuestionVideo(idx, url)}
                     />
                   </div>
-                  {form.testVideos[idx] && (
-                    <p className="mt-2 text-xs font-medium text-teal-700">Uploaded URL: {form.testVideos[idx]}</p>
-                  )}
                 </div>
               ))}
             </div>
@@ -586,13 +716,11 @@ export default function App() {
               <div className="md:col-span-2">
                 <VideoRecorderCard
                   title="Record Demo Lesson (Up to 2 minutes)"
-                  description="After recording, upload the demo video to your storage bucket."
+                  description="Record locally first. The camera turns off when you press Stop. Then upload your video lesson."
                   uploadFolder="application-demo"
+                  uploadedUrl={form.demoVideoUrl}
                   onUploaded={(url) => setField('demoVideoUrl', url)}
                 />
-                {form.demoVideoUrl && (
-                  <p className="mt-2 text-xs font-medium text-teal-700">Uploaded URL: {form.demoVideoUrl}</p>
-                )}
               </div>
             </div>
           </section>
@@ -603,29 +731,38 @@ export default function App() {
             <h2 className="text-lg font-bold text-remo-ink">
               Step 4: <span className="text-remo-blue">Document</span> upload
             </h2>
+            <p className="text-sm text-remo-muted">
+              Choose files on this device. They upload to storage only when you submit the application.
+            </p>
             <div className="grid gap-4 md:grid-cols-2">
               <div className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-sm">
-                <label className="mb-2 block text-sm font-semibold text-slate-700">National ID</label>
+                <label className="mb-2 block text-sm font-semibold text-slate-700">
+                  National ID <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="file"
                   accept="image/*,.pdf"
-                  onChange={(e) => uploadDocument('nationalId', e.target.files?.[0])}
+                  onChange={(e) =>
+                    setDocFiles((prev) => ({ ...prev, nationalId: e.target.files?.[0] || null }))
+                  }
                   className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-xl file:border-0 file:bg-gradient-to-r file:from-remo-green file:to-teal-600 file:px-4 file:py-2.5 file:text-sm file:font-semibold file:text-white"
                 />
-                {form.documents.nationalId && (
-                  <p className="mt-2 text-xs font-medium text-teal-700">Uploaded URL: {form.documents.nationalId}</p>
+                {docFiles.nationalId && (
+                  <p className="mt-2 text-xs font-medium text-teal-700">Ready on this device: {docFiles.nationalId.name}</p>
                 )}
               </div>
               <div className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-sm">
-                <label className="mb-2 block text-sm font-semibold text-slate-700">NBI Clearance</label>
+                <label className="mb-2 block text-sm font-semibold text-slate-700">
+                  NBI Clearance <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="file"
                   accept="image/*,.pdf"
-                  onChange={(e) => uploadDocument('nbi', e.target.files?.[0])}
+                  onChange={(e) => setDocFiles((prev) => ({ ...prev, nbi: e.target.files?.[0] || null }))}
                   className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-xl file:border-0 file:bg-gradient-to-r file:from-remo-blue file:to-blue-600 file:px-4 file:py-2.5 file:text-sm file:font-semibold file:text-white"
                 />
-                {form.documents.nbi && (
-                  <p className="mt-2 text-xs font-medium text-teal-700">Uploaded URL: {form.documents.nbi}</p>
+                {docFiles.nbi && (
+                  <p className="mt-2 text-xs font-medium text-teal-700">Ready on this device: {docFiles.nbi.name}</p>
                 )}
               </div>
             </div>
@@ -635,31 +772,41 @@ export default function App() {
         <footer className="relative mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-6">
           <button
             type="button"
-            onClick={() => setStep((s) => Math.max(1, s - 1))}
-            disabled={step === 1}
-            className="rounded-xl border-2 border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-600 transition hover:border-remo-blue/40 hover:text-remo-blue disabled:cursor-not-allowed disabled:opacity-40"
+            onClick={goBack}
+            className="rounded-xl border-2 border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-600 transition hover:border-remo-blue/40 hover:text-remo-blue"
           >
             Back
           </button>
 
-          <div className="flex gap-2">
+          <div className="flex flex-col items-end gap-2">
             {step < 4 ? (
-              <button
-                type="button"
-                onClick={() => setStep((s) => Math.min(4, s + 1))}
-                className="rounded-xl bg-gradient-to-r from-remo-ink via-slate-800 to-remo-blue px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-blue-900/20 transition hover:brightness-110"
-              >
-                Continue
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={goContinue}
+                  disabled={!canContinue}
+                  className="rounded-xl bg-gradient-to-r from-remo-ink via-slate-800 to-remo-blue px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-blue-900/20 transition hover:brightness-110 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
+                >
+                  Continue
+                </button>
+                {continueHint && <p className="max-w-xs text-right text-xs text-remo-muted">{continueHint}</p>}
+              </>
             ) : (
-              <button
-                type="button"
-                onClick={submitApplication}
-                disabled={submitting}
-                className="rounded-xl bg-gradient-to-r from-remo-green to-teal-600 px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-teal-600/25 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
-              >
-                {submitting ? 'Submitting...' : 'Submit application'}
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={submitApplication}
+                  disabled={submitting || !step4Valid}
+                  className="rounded-xl bg-gradient-to-r from-remo-green to-teal-600 px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-teal-600/25 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
+                >
+                  {submitting ? 'Submitting...' : 'Submit application'}
+                </button>
+                {!step4Valid && (
+                  <p className="max-w-xs text-right text-xs text-remo-muted">
+                    Attach National ID and NBI Clearance to submit.
+                  </p>
+                )}
+              </>
             )}
           </div>
         </footer>

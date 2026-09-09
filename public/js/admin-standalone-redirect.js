@@ -13,6 +13,7 @@
             'admin-teacher-pipeline.html': 'admin-hr-hub.html#pipeline',
             'admin-payroll.html': 'admin-accounting-hub.html#payroll',
             'admin-unique-link-commission.html': 'admin-accounting-hub.html#commissions',
+            'admin-student-subscriptions.html': 'admin-accounting-hub.html#subscriptions',
             'admin-lessons-library.html': 'admin-qa-hub.html#library'
         };
         var t = targets[file];

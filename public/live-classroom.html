@@ -313,7 +313,7 @@
   </div>
     <script src="js/classroom-entry.js"></script>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-    <script src="js/presentation-overlay.js"></script>
+    <script src="js/presentation-overlay.js?v=slide-sync-2"></script>
     <script src="js/virtual-background.js"></script>
     <script src="js/classroom-qa-recording.js" defer></script>
     <script>
@@ -609,6 +609,26 @@
         presenterModeControls.style.display = 'flex';
         presenterModeControls.style.alignItems = 'center';
         presenterModeControls.style.gap = '8px';
+      }
+
+      const pdfNavControls = document.getElementById('pdf-navigation-controls');
+      const pdfPrevBtn = document.getElementById('pdf-prev-btn');
+      const pdfNextBtn = document.getElementById('pdf-next-btn');
+
+      if (!window.__remoedHeaderSlideNavBound) {
+        window.__remoedHeaderSlideNavBound = true;
+        const stepClassroomSlide = (delta) => {
+          if (window.currentPptOverlay && typeof window.currentPptOverlay.stepSlide === 'function') {
+            window.currentPptOverlay.stepSlide(delta);
+            return;
+          }
+          const vs = window.pdfViewerState || {};
+          if (typeof vs.goToPage === 'function') {
+            vs.goToPage((vs.pageNum || 1) + delta, true);
+          }
+        };
+        if (pdfPrevBtn) pdfPrevBtn.addEventListener('click', () => stepClassroomSlide(-1));
+        if (pdfNextBtn) pdfNextBtn.addEventListener('click', () => stepClassroomSlide(1));
       }
 
       function escapeHtml(str = '') {
@@ -2239,6 +2259,13 @@
         });
         
         lessonFileViewer.innerHTML = '';
+        if (pdfNavControls) pdfNavControls.style.display = 'none';
+        if (window.currentPptOverlay && window.currentPptOverlay.destroy) {
+          try {
+            window.currentPptOverlay.destroy();
+          } catch (_pptDestroyErr) {}
+        }
+        window.currentPptOverlay = null;
         
         // Check file type - support both MIME type and file extension
         const fileType = (material.type || '').toLowerCase();
@@ -3240,6 +3267,17 @@
               }
             });
           }
+          if (userType === 'teacher' && pdfNavControls) {
+            pdfNavControls.style.display = 'flex';
+            const headerInfo = document.getElementById('pdf-page-info');
+            if (headerInfo) headerInfo.textContent = 'Slide 1';
+            if (pdfPrevBtn) {
+              pdfPrevBtn.title = 'Previous slide (syncs student)';
+            }
+            if (pdfNextBtn) {
+              pdfNextBtn.title = 'Next slide (syncs student)';
+            }
+          }
           if (userType === 'teacher') {
             if (!presenterModeActive) {
               presenterModeActive = true;
@@ -3904,7 +3942,7 @@
         console.log('📺 [STUDENT] Presenter mode activated - following teacher\'s view');
         
         // Find current PDF elements
-        studentPdfIframe = document.querySelector('#lesson-file-viewer iframe');
+        studentPdfIframe = document.querySelector('#lesson-file-viewer iframe:not([id^="ppt-iframe-"])');
         studentPdfContainer = document.querySelector('#lesson-file-viewer [id^="pdf-"]');
         
         // Add visual indicator
@@ -3938,13 +3976,22 @@
           console.log('📺 [STUDENT] Presenter sync enabled (from sync update)');
         }
 
-        console.log('📄 [STUDENT] presenter-sync-update received', { page, scrollTop, scrollLeft, materialId });
-        
+        console.log('📄 [STUDENT] presenter-sync-update received', { page, scrollTop, scrollLeft, materialId, slideIndex });
+
+        if (window.currentPptOverlay) {
+          const pptIdx = slideIndex != null ? slideIndex : (page != null ? page - 1 : null);
+          if (pptIdx != null && typeof RemoedPresentationOverlay !== 'undefined') {
+            RemoedPresentationOverlay.handlePresentationSlideChanged({
+              currentSlideIndex: pptIdx,
+              materialId: materialId,
+              slideIndex: pptIdx,
+              page: page
+            });
+            return;
+          }
+        }
+
         const viewerState = window.pdfViewerState || {};
-        
-        // Legacy converted slides support removed - files are now displayed directly
-        // PPTX files loaded directly in iframes cannot be synced via slide index
-        // Students will see the PPTX file in the iframe but won't have slide-by-slide sync
 
         // PDF fallback
         const iframe = studentPdfIframe || document.getElementById('pdf-iframe-' + (materialId || window.currentPdfMaterialId));
@@ -3988,8 +4035,9 @@
           }
         }
 
-        // Iframe fallback (kept for compatibility)
-        if (iframe && page !== undefined && page > 0) {
+        // Iframe fallback (kept for compatibility with PDF iframe viewers only)
+        const iframeLooksLikeOffice = iframe && /officeapps\.live\.com|\.ppt|\.pptx/i.test(String(iframe.src || iframe.id || ''));
+        if (iframe && !iframeLooksLikeOffice && page !== undefined && page > 0) {
           let baseUrl = iframe._pdfBaseUrl;
           if (!baseUrl) {
             const currentSrc = iframe.src;

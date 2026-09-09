@@ -13,14 +13,24 @@
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/luxon@3/build/global/luxon.min.js"></script>
     <style>
-        .as-toolbar { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:16px; }
-        .as-toolbar select, .as-toolbar button { padding:8px 12px; border-radius:8px; border:1px solid #cbd5e1; }
+        .as-toolbar { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:12px; }
+        .as-toolbar select, .as-toolbar button { padding:8px 12px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; cursor:pointer; }
+        .as-hint { font-size:0.82rem; color:#64748b; margin:0 0 12px; }
+        .as-legend { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:14px; font-size:0.8rem; color:#475569; }
+        .as-legend span { display:inline-flex; align-items:center; gap:6px; }
+        .as-swatch { width:16px; height:16px; border-radius:4px; border:1px solid #cbd5e1; display:inline-block; }
         .as-grid { overflow:auto; border:1px solid #e2e8f0; border-radius:12px; background:#fff; }
         .as-grid table { border-collapse:collapse; min-width:100%; font-size:0.82rem; }
         .as-grid th, .as-grid td { border:1px solid #e2e8f0; padding:6px 8px; vertical-align:top; min-width:90px; }
         .as-grid th { background:#f8fafc; position:sticky; top:0; z-index:1; }
-        .as-slot { background:#eef2ff; border-radius:6px; padding:4px 6px; margin-bottom:4px; cursor:pointer; font-size:0.75rem; }
-        .as-slot:hover { background:#c7d2fe; }
+        .as-slot { border-radius:6px; padding:4px 6px; margin-bottom:4px; cursor:pointer; font-size:0.75rem; font-weight:600; }
+        .as-slot--booked { background:#ffe85a; color:#4338ca; }
+        .as-slot--booked:hover { background:#facc15; }
+        .as-slot--open { background:#90EE90; color:#14532d; }
+        .as-slot--open:hover { background:#86efac; }
+        .as-slot--unbooked { background:#f8f9fa; color:#6c757d; font-weight:500; }
+        .as-slot--closed { background:#fff; color:#94a3b8; border:1px dashed #cbd5e1; font-weight:500; }
+        .as-slot--cancelled { background:#f1f5f9; color:#64748b; font-weight:500; }
         .as-drawer { position:fixed; right:0; top:0; bottom:0; width:min(360px,92vw); background:#fff; box-shadow:-4px 0 24px rgba(0,0,0,.12); padding:20px; z-index:9000; transform:translateX(110%); transition:transform .2s; overflow:auto; }
         .as-drawer.open { transform:translateX(0); }
     </style>
@@ -44,7 +54,15 @@
                 <button type="button" id="as-prev">←</button>
                 <button type="button" id="as-today">Today</button>
                 <button type="button" id="as-next">→</button>
+                <button type="button" id="as-refresh">Refresh</button>
                 <span id="as-range-label" style="font-weight:600;margin-left:8px;"></span>
+            </div>
+            <p class="as-hint">Same Open / Booked / Unbooked slots as the teacher schedule. Empty cells are closed (not opened). This grid refreshes automatically when teachers change availability.</p>
+            <div class="as-legend" aria-label="Slot legend">
+                <span><i class="as-swatch" style="background:#90EE90"></i> Open</span>
+                <span><i class="as-swatch" style="background:#ffe85a"></i> Booked</span>
+                <span><i class="as-swatch" style="background:#f8f9fa"></i> Unbooked</span>
+                <span><i class="as-swatch" style="background:#fff;border-style:dashed"></i> Closed / not opened</span>
             </div>
             <div class="as-grid" id="as-grid"><p class="muted" style="padding:16px;">Loading…</p></div>
         </div>
@@ -58,63 +76,114 @@
 (function(){
     const DateTime = luxon.DateTime;
     const ZONE = 'Asia/Manila';
+    const REFRESH_MS = 30000;
     let anchor = DateTime.now().setZone(ZONE).startOf('day');
     let view = 'week';
     let teachers = [];
     let bookings = [];
+    let slots = [];
+    let selectedTeacher = '';
     function token(){ return (window.RemoedAdminSession && RemoedAdminSession.getAuthToken()) || localStorage.getItem('remoed_admin_token') || localStorage.getItem('adminToken') || ''; }
     function rangeForView(){
         if(view==='day') return { start: anchor, end: anchor };
         if(view==='month') return { start: anchor.startOf('month'), end: anchor.endOf('month') };
         return { start: anchor.startOf('week'), end: anchor.endOf('week') };
     }
+    function padTime(t){
+        const parts = String(t || '').split(':');
+        const h = parseInt(parts[0], 10);
+        const m = parts[1] != null ? parseInt(parts[1], 10) : 0;
+        const hh = Number.isFinite(h) ? h : 0;
+        const mm = Number.isFinite(m) ? m : 0;
+        return String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0');
+    }
+    function normId(id){ return String(id || '').trim().toLowerCase(); }
+    function teacherLabel(tid){
+        const n = normId(tid);
+        const t = teachers.find(x => normId(x.teacherId) === n || normId(x.name) === n || normId(x.email) === n);
+        return (t && (t.name || t.teacherId)) || tid || '';
+    }
+    function isCancelled(status){ return String(status || '').toLowerCase().startsWith('cancelled'); }
+    function isPastSlot(dateStr, timeStr){
+        const slot = DateTime.fromISO(String(dateStr).slice(0, 10) + 'T' + padTime(timeStr), { zone: ZONE });
+        if (!slot.isValid) return false;
+        return slot < DateTime.now().setZone(ZONE);
+    }
+    function showAllTeachers(){ return !selectedTeacher; }
     async function load(){
         const r = rangeForView();
         document.getElementById('as-range-label').textContent = r.start.toFormat('MMM d') + ' – ' + r.end.toFormat('MMM d, yyyy');
-        const teacherId = document.getElementById('as-teacher').value;
-        const qs = new URLSearchParams({ start: r.start.toISODate(), end: r.end.toISODate(), view });
-        if(teacherId) qs.set('teacherId', teacherId);
+        selectedTeacher = document.getElementById('as-teacher').value;
+        const qs = new URLSearchParams({ start: r.start.toISODate(), end: r.end.toISODate(), view, t: String(Date.now()) });
+        if(selectedTeacher) qs.set('teacherId', selectedTeacher);
         const res = await fetch('/api/admin/schedule?' + qs, { headers:{ Authorization:'Bearer '+token() }, credentials:'include' });
         const data = await res.json();
         if(!res.ok) throw new Error(data.error || 'Load failed');
         bookings = data.bookings || [];
+        slots = data.slots || [];
         if(!teachers.length && data.teachers){
             teachers = data.teachers;
             const sel = document.getElementById('as-teacher');
             const cur = sel.value;
-            sel.innerHTML = '<option value="">All teachers</option>' + teachers.map(t=>'<option value="'+t.teacherId+'">'+esc(t.name||t.teacherId)+'</option>').join('');
+            sel.innerHTML = '<option value="">All teachers</option>' + teachers.map(t=>'<option value="'+esc(t.teacherId)+'">'+esc(t.name||t.teacherId)+'</option>').join('');
             if(cur) sel.value = cur;
             const urlT = new URLSearchParams(location.search).get('teacherId');
             if(urlT) sel.value = urlT;
+            selectedTeacher = sel.value;
         }
         renderGrid(r);
     }
     function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+    function cellKey(date, time){ return String(date).slice(0, 10) + '|' + padTime(time); }
+    function teacherSlotKey(date, time, teacherId){ return cellKey(date, time) + '|' + normId(teacherId); }
     function renderGrid(r){
         const days = [];
         let d = r.start;
         while(d <= r.end){ days.push(d); d = d.plus({ days:1 }); }
-        const byKey = {};
+        const bookingsByCell = {};
+        const activeBookedKeys = new Set();
         bookings.forEach(b=>{
-            const k = b.date + '|' + (b.time||'').slice(0,5);
-            if(!byKey[k]) byKey[k]=[];
-            byKey[k].push(b);
+            const k = cellKey(b.date, b.time);
+            if(!bookingsByCell[k]) bookingsByCell[k]=[];
+            bookingsByCell[k].push(b);
+            if (!isCancelled(b.status)) activeBookedKeys.add(teacherSlotKey(b.date, b.time, b.teacherId));
         });
-        const slots = [];
+        const slotsByCell = {};
+        slots.forEach(s=>{
+            const k = cellKey(s.date, s.time);
+            if(!slotsByCell[k]) slotsByCell[k]=[];
+            slotsByCell[k].push(s);
+        });
+        const times = [];
         for (let h = 6; h < 24; h++) {
-            slots.push(String(h).padStart(2, '0') + ':00');
-            slots.push(String(h).padStart(2, '0') + ':30');
+            times.push(String(h).padStart(2, '0') + ':00');
+            times.push(String(h).padStart(2, '0') + ':30');
         }
         let html = '<table><thead><tr><th>Time</th>';
         days.forEach(day=>{ html += '<th>'+day.toFormat('EEE M/d')+'</th>'; });
         html += '</tr></thead><tbody>';
-        slots.forEach(slot=>{
+        times.forEach(slot=>{
             html += '<tr><th>'+slot+'</th>';
             days.forEach(day=>{
                 const key = day.toISODate() + '|' + slot;
                 html += '<td>';
-                (byKey[key]||[]).forEach(b=>{
-                    html += '<div class="as-slot" data-id="'+b._id+'">'+esc(b.studentId)+'<br><small>'+esc(b.status)+'</small></div>';
+                (bookingsByCell[key]||[]).forEach(b=>{
+                    const cls = isCancelled(b.status) ? 'as-slot as-slot--cancelled' : 'as-slot as-slot--booked';
+                    const who = showAllTeachers() ? esc(teacherLabel(b.teacherId)) + '<br>' : '';
+                    html += '<div class="'+cls+'" data-kind="booking" data-id="'+esc(b._id)+'">'+who+esc(b.studentId)+'<br><small>'+esc(b.status)+'</small></div>';
+                });
+                (slotsByCell[key]||[]).forEach(s=>{
+                    if (activeBookedKeys.has(teacherSlotKey(s.date, s.time, s.teacherId))) return;
+                    const who = showAllTeachers() ? '<br><small>'+esc(teacherLabel(s.teacherId))+'</small>' : '';
+                    if (s.available === false || String(s.slotStatus||'').toLowerCase() === 'booked') {
+                        html += '<div class="as-slot as-slot--closed" data-kind="slot" data-id="'+esc(s._id)+'">Closed'+who+'</div>';
+                        return;
+                    }
+                    if (isPastSlot(s.date, s.time)) {
+                        html += '<div class="as-slot as-slot--unbooked" data-kind="slot" data-id="'+esc(s._id)+'">Unbooked'+who+'</div>';
+                        return;
+                    }
+                    html += '<div class="as-slot as-slot--open" data-kind="slot" data-id="'+esc(s._id)+'">Open'+who+'</div>';
                 });
                 html += '</td>';
             });
@@ -122,16 +191,39 @@
         });
         html += '</tbody></table>';
         document.getElementById('as-grid').innerHTML = html;
-        document.querySelectorAll('.as-slot').forEach(el=>el.addEventListener('click',()=>openDrawer(el.dataset.id)));
+        document.querySelectorAll('.as-slot').forEach(el=>{
+            el.addEventListener('click', ()=>{
+                if (el.dataset.kind === 'slot') openSlotDrawer(el.dataset.id);
+                else openDrawer(el.dataset.id);
+            });
+        });
+    }
+    function openSlotDrawer(id){
+        const s = slots.find(x => String(x._id) === String(id));
+        if (!s) return;
+        const t = teachers.find(x => normId(x.teacherId) === normId(s.teacherId));
+        const past = isPastSlot(s.date, s.time);
+        const state = (s.available === false || String(s.slotStatus||'').toLowerCase() === 'booked')
+            ? 'Closed'
+            : (past ? 'Unbooked' : 'Open');
+        document.getElementById('as-drawer-body').innerHTML =
+            '<h3 style="margin-top:0">'+esc(state)+' slot</h3>'+
+            '<p><strong>Teacher:</strong> '+esc(teacherLabel(s.teacherId))+'</p>'+
+            '<p><strong>Date:</strong> '+esc(s.date)+' '+esc(s.time)+'</p>'+
+            '<p><strong>Availability:</strong> '+esc(state)+'</p>'+
+            (t && t.mongoId
+                ? '<p><a href="/admin/admin-view-user-profile.html?type=teacher&id='+encodeURIComponent(t.mongoId)+'" target="_blank" rel="noopener">View teacher profile</a></p>'
+                : (s.teacherId ? '<p><a href="admin-teacher-schedule.html?teacherId='+encodeURIComponent(s.teacherId)+'">Filter by this teacher</a></p>' : ''));
+        document.getElementById('as-drawer').classList.add('open');
     }
     async function openDrawer(id){
         const res = await fetch('/api/admin/booking/'+id, { headers:{ Authorization:'Bearer '+token() } });
         const b = await res.json();
-        const t = teachers.find(x=>x.teacherId===b.teacherId);
+        const t = teachers.find(x=>normId(x.teacherId)===normId(b.teacherId));
         document.getElementById('as-drawer-body').innerHTML =
             '<h3 style="margin-top:0">Booking</h3>'+
             '<p><strong>Student:</strong> '+esc(b.studentId)+'</p>'+
-            '<p><strong>Teacher:</strong> '+esc(b.teacherId)+'</p>'+
+            '<p><strong>Teacher:</strong> '+esc(teacherLabel(b.teacherId) || b.teacherId)+'</p>'+
             '<p><strong>Date:</strong> '+esc(b.date)+' '+esc(b.time)+'</p>'+
             '<p><strong>Status:</strong> '+esc(b.status)+'</p>'+
             '<p><strong>Lesson:</strong> '+esc(b.lesson)+'</p>'+
@@ -145,7 +237,13 @@
     document.getElementById('as-prev').onclick = ()=>{ anchor = anchor.minus(view==='month'?{months:1}:view==='week'?{weeks:1}:{days:1}); load().catch(console.error); };
     document.getElementById('as-next').onclick = ()=>{ anchor = anchor.plus(view==='month'?{months:1}:view==='week'?{weeks:1}:{days:1}); load().catch(console.error); };
     document.getElementById('as-today').onclick = ()=>{ anchor = DateTime.now().setZone(ZONE).startOf('day'); load().catch(console.error); };
+    document.getElementById('as-refresh').onclick = ()=> load().catch(console.error);
     document.getElementById('as-drawer-close').onclick = ()=> document.getElementById('as-drawer').classList.remove('open');
+    setInterval(()=>{
+        if (document.hidden) return;
+        if (document.getElementById('as-drawer').classList.contains('open')) return;
+        load().catch(console.error);
+    }, REFRESH_MS);
     load().catch(e=>{ document.getElementById('as-grid').innerHTML='<p style="color:#b91c1c;padding:16px;">'+e.message+'</p>'; });
 })();
 </script>

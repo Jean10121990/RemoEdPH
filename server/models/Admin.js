@@ -68,6 +68,25 @@ const adminSchema = new mongoose.Schema({
     enum: ['none', 'pending', 'submitted', 'verified'],
     default: 'none',
   },
+
+  /** Admin & Back-Office Terms of Service acceptance */
+  tosAgreement: {
+    accepted: { type: Boolean, default: false },
+    acceptedAt: { type: Date, default: null },
+    effectiveDate: { type: Date, default: null },
+    legalName: { type: String, default: '' },
+    assignedRole: { type: String, default: '' },
+    version: { type: String, default: '' },
+  },
+
+  /** Admin & Back-Office Privacy Policy acceptance */
+  privacyPolicy: {
+    accepted: { type: Boolean, default: false },
+    acceptedAt: { type: Date, default: null },
+    effectiveDate: { type: Date, default: null },
+    legalName: { type: String, default: '' },
+    version: { type: String, default: '' },
+  },
 });
 
 module.exports = mongoose.model('Admin', adminSchema); 

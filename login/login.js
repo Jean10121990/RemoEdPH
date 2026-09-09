@@ -22,27 +22,24 @@ function isJwtValid(token) {
   return Number(p.exp) > now;
 }
 
-function getStoredUserToken() {
-  return (
-    localStorage.getItem('remoed_teacher_token') ||
-    sessionStorage.getItem('remoed_teacher_token') ||
-    localStorage.getItem('remoed_teacher_auth') ||
-    sessionStorage.getItem('remoed_teacher_auth') ||
-    localStorage.getItem('remoed_student_token') ||
-    sessionStorage.getItem('remoed_student_token') ||
-    localStorage.getItem('remoed_student_auth') ||
-    sessionStorage.getItem('remoed_student_auth') ||
-    localStorage.getItem('remoed_user_token') ||
-    sessionStorage.getItem('remoed_user_token') ||
-    localStorage.getItem('token') ||
-    sessionStorage.getItem('token') ||
-    ''
-  );
+function firstStored(keys) {
+  for (let i = 0; i < keys.length; i++) {
+    try {
+      const v = localStorage.getItem(keys[i]) || sessionStorage.getItem(keys[i]);
+      if (v) return v;
+    } catch (_e) {}
+  }
+  return '';
+}
+
+function jwtRole(token) {
+  const p = parseJwtPayload(token);
+  if (!p) return '';
+  return String(p.userRole || p.userType || p.role || '').toLowerCase();
 }
 
 function redirectFromToken(token) {
-  const p = parseJwtPayload(token);
-  const role = p && p.userRole ? String(p.userRole) : '';
+  const role = jwtRole(token);
   if (role === 'teacher') {
     window.location.replace('/teacher-dashboard.html');
     return true;
@@ -54,22 +51,40 @@ function redirectFromToken(token) {
   return false;
 }
 
-// Auto-login: if a valid token exists, go straight to dashboard.
+// Auto-login: student tokens first so a leftover teacher session cannot block students.
 (function () {
-  const tok = getStoredUserToken();
-  if (tok && isJwtValid(tok)) {
-    redirectFromToken(tok);
+  const studentTok = firstStored([
+    'remoed_student_token',
+    'remoed_student_auth',
+  ]);
+  if (studentTok && isJwtValid(studentTok) && jwtRole(studentTok) === 'student') {
+    window.location.replace('/student-dashboard.html');
+    return;
+  }
+  const teacherTok = firstStored([
+    'remoed_teacher_token',
+    'remoed_teacher_auth',
+  ]);
+  if (teacherTok && isJwtValid(teacherTok) && jwtRole(teacherTok) === 'teacher') {
+    window.location.replace('/teacher-dashboard.html');
+    return;
+  }
+  const legacy = firstStored(['remoed_user_token', 'token']);
+  if (legacy && isJwtValid(legacy)) {
+    redirectFromToken(legacy);
   }
 })();
 
 document.getElementById('unified-login-form').addEventListener('submit', async function (e) {
   e.preventDefault();
 
+  const loginBtn = document.getElementById('login-btn');
+  if (loginBtn.disabled || loginBtn.dataset.busy === '1') return;
+
   const email = String(document.getElementById('email').value || '').trim();
   const password = String(document.getElementById('password').value || '').trim();
   const rememberMe = !!(document.getElementById('remember-me') && document.getElementById('remember-me').checked);
   const errorDiv = document.getElementById('login-error');
-  const loginBtn = document.getElementById('login-btn');
 
   errorDiv.style.display = 'none';
   errorDiv.textContent = '';
@@ -80,6 +95,7 @@ document.getElementById('unified-login-form').addEventListener('submit', async f
     return;
   }
 
+  loginBtn.dataset.busy = '1';
   loginBtn.disabled = true;
   loginBtn.textContent = 'Logging in...';
 
@@ -96,6 +112,9 @@ document.getElementById('unified-login-form').addEventListener('submit', async f
     if (!response.ok) {
       errorDiv.textContent = (data && data.message) || 'Invalid email or password';
       errorDiv.style.display = 'block';
+      loginBtn.disabled = false;
+      loginBtn.textContent = 'Login';
+      loginBtn.dataset.busy = '';
       return;
     }
 
@@ -163,13 +182,16 @@ document.getElementById('unified-login-form').addEventListener('submit', async f
 
     errorDiv.textContent = 'Login failed. Please try again.';
     errorDiv.style.display = 'block';
+    loginBtn.disabled = false;
+    loginBtn.textContent = 'Login';
+    loginBtn.dataset.busy = '';
   } catch (err) {
     console.error('Unified login error:', err);
     errorDiv.textContent = 'Network error. Please try again.';
     errorDiv.style.display = 'block';
-  } finally {
     loginBtn.disabled = false;
     loginBtn.textContent = 'Login';
+    loginBtn.dataset.busy = '';
   }
 });
 

@@ -34,6 +34,7 @@
                             <option value="all">All Users</option>
                             <option value="teachers">Teachers Only</option>
                             <option value="students">Students Only</option>
+                            <option value="admins">Admins Only</option>
                         </select>
                     </div>
                     
@@ -59,6 +60,16 @@
         }
 
         let editingAnnouncementId = null;
+
+        function formatAudienceLabel(audience) {
+            const map = {
+                all: 'All Users',
+                teachers: 'Teachers Only',
+                students: 'Students Only',
+                admins: 'Admins Only'
+            };
+            return map[audience] || (audience ? audience.charAt(0).toUpperCase() + audience.slice(1) : '—');
+        }
 
         document.addEventListener('DOMContentLoaded', function() {
             if (window.AdminSidebar && typeof AdminSidebar.applyGreetingFromStorage === 'function') {
@@ -127,7 +138,7 @@
                     <div class="announcement-item">
                         <div class="announcement-content">${announcement.content}</div>
                         <div class="announcement-meta">
-                            <strong>Audience:</strong> ${announcement.audience.charAt(0).toUpperCase() + announcement.audience.slice(1)} | 
+                            <strong>Audience:</strong> ${formatAudienceLabel(announcement.audience)} | 
                             <strong>Posted:</strong> ${new Date(announcement.updatedAt).toLocaleString()}
                         </div>
                         <div style="margin-top: 10px; display: flex; gap: 8px;">

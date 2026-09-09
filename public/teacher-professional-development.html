@@ -10,11 +10,11 @@
     <script src="js/security-guard.js?v=1"></script>
     <title>Career Growth - RemoEdPH</title>
     <link rel="stylesheet" href="modern-styles.css">
-    <link rel="stylesheet" href="css/teacher-sidebar.css">
+    <link rel="stylesheet" href="css/teacher-sidebar.css?v=6">
     <link rel="stylesheet" href="css/global-portal.css">
 <!-- Remo AI Chatbot Styles -->
     <link rel="stylesheet" href="style.css?v=training-cards-1">
-    <link rel="stylesheet" href="css/portal-chrome-compact.css">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css?v=6">
     <style>
         .commitment-meter { min-width: 0; }
         .commitment-meter-header {
@@ -60,7 +60,7 @@
 <body class="page-teacher-professional-development">
     <div class="remoed-main">
         <div id="teacher-sidebar-root"></div>
-        <script src="js/teacher-sidebar.js"></script>
+        <script src="js/teacher-sidebar.js?v=6"></script>
         <script src="js/teacher-page-header.js"></script>
         <script>
             TeacherSidebar.render('teacher-sidebar-root', 'professional-development');
@@ -132,9 +132,6 @@
                     </div>
                     <div id="assessments-container">
                         <!-- Assessments will be loaded here -->
-                    </div>
-                    <div style="text-align: center; margin-top: 32px;">
-                        <button type="button" class="btn-primary" onclick="requestAssessment()">Request New Assessment</button>
                     </div>
                 </div>
                 <div class="section-card" style="margin-top: 24px;">
@@ -218,21 +215,9 @@
                             <span class="assessment-source-badge" id="writing-source">Pending</span>
                         </div>
                     </div>
-                    <div class="skill-assessment-card">
-                        <div class="skill-header">
-                            <span class="skill-name">Creativity &amp; Hobbies</span>
-                        </div>
-                        <div class="teacher-description">
-                            <label>Share Your Interests</label>
-                            <textarea class="form-textarea" id="creativity-hobbies" rows="4" placeholder="Share your creative pursuits and hobbies..." disabled></textarea>
-                            <small class="form-help" style="display: block; margin-top: 8px; color: #666; font-size: 0.85rem;">Your hobbies help build rapport with students.</small>
-                        </div>
-                    </div>
-                    <div style="display: flex; gap: 8px; margin-top: 20px;">
-                        <button type="button" class="edit-btn" id="edit-teaching-abilities-btn" onclick="enableTeachingAbilitiesCareerEditing()">Edit Interests</button>
-                        <button type="button" class="save-btn" id="save-teaching-abilities-btn" onclick="saveTeachingAbilitiesCareer()" style="display: none;">Save Interests</button>
-                        <button type="button" class="cancel-btn" id="cancel-teaching-abilities-btn" onclick="cancelTeachingAbilitiesCareerEditing()" style="display: none;">Cancel</button>
-                    </div>
+                    <p style="color:#64748b;font-size:0.9rem;margin:16px 0 0;">
+                        For a short bio students see on your profile, edit <strong>Introduction</strong> under Teacher Profile → Personal Information.
+                    </p>
                 </div>
             </div>
             
@@ -1679,62 +1664,10 @@
             }
         }
 
-        function enableTeachingAbilitiesCareerEditing() {
-            const el = document.getElementById('creativity-hobbies');
-            if (el) el.disabled = false;
-            const e = document.getElementById('edit-teaching-abilities-btn');
-            const s = document.getElementById('save-teaching-abilities-btn');
-            const c = document.getElementById('cancel-teaching-abilities-btn');
-            if (e) e.style.display = 'none';
-            if (s) s.style.display = 'inline-block';
-            if (c) c.style.display = 'inline-block';
-        }
-
-        function cancelTeachingAbilitiesCareerEditing() {
-            const el = document.getElementById('creativity-hobbies');
-            if (el) el.disabled = true;
-            const e = document.getElementById('edit-teaching-abilities-btn');
-            const s = document.getElementById('save-teaching-abilities-btn');
-            const c = document.getElementById('cancel-teaching-abilities-btn');
-            if (e) e.style.display = 'inline-block';
-            if (s) s.style.display = 'none';
-            if (c) c.style.display = 'none';
-            loadTeachingAbilitiesCareer();
-        }
-
-        function saveTeachingAbilitiesCareer() {
-            const t = localStorage.getItem('token');
-            if (!t) {
-                alert('Please log in again.');
-                return;
-            }
-            const teachingAbilities = {
-                creativityHobbies: (document.getElementById('creativity-hobbies') || {}).value || ''
-            };
-            fetch('/api/teacher/profile', {
-                method: 'POST',
-                headers: { 'Authorization': 'Bearer ' + t, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ teachingAbilities })
-            })
-                .then(r => r.json())
-                .then(data => {
-                    if (data.success) {
-                        alert('Interests saved successfully.');
-                        cancelTeachingAbilitiesCareerEditing();
-                    } else {
-                        alert('Failed to save: ' + (data.error || data.message || 'Unknown error'));
-                    }
-                })
-                .catch(err => alert('Error saving: ' + err.message));
-        }
-
-        function applyCareerTeachingDescriptions(profile) {
-            if (!profile || !profile.teachingAbilities) return;
-            const ta = profile.teachingAbilities;
-            if (ta.creativityHobbies && document.getElementById('creativity-hobbies')) {
-                document.getElementById('creativity-hobbies').value = ta.creativityHobbies;
-            }
-        }
+        function enableTeachingAbilitiesCareerEditing() { /* removed: hobbies / intro card */ }
+        function cancelTeachingAbilitiesCareerEditing() { /* removed */ }
+        function saveTeachingAbilitiesCareer() { /* removed */ }
+        function applyCareerTeachingDescriptions() { /* removed */ }
 
         function generateCareerAssessmentCriteria(profile, skill) {
             const criteria = [];
@@ -1890,7 +1823,7 @@
                 container.innerHTML = `
                     <div class="empty-state">
                         <div class="empty-state-icon">📊</div>
-                        <p>No assessments yet. Request an assessment to get started.</p>
+                        <p>No assessments yet. An admin or trainer will update your skill levels when you are assessed.</p>
                     </div>
                 `;
                 return;
@@ -1916,31 +1849,6 @@
                     </div>
                 </div>
             `;
-        }
-        
-        async function requestAssessment() {
-            if (confirm('Request a new skill assessment? An admin or trainer will review your profile and schedule an assessment.')) {
-                try {
-                    const response = await fetch('/api/teacher/assessments/request', {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'Content-Type': 'application/json'
-                        }
-                    });
-                    
-                    if (response.ok) {
-                        const data = await response.json();
-                        alert(data.message || 'Assessment request submitted! You will be notified when it\'s scheduled.');
-                    } else {
-                        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-                        alert(`Failed to request assessment: ${errorData.error || 'Please try again.'}`);
-                    }
-                } catch (error) {
-                    console.error('Error requesting assessment:', error);
-                    alert(`Error requesting assessment: ${error.message || 'Please try again.'}`);
-                }
-            }
         }
         
         // Peer Learning
@@ -2635,6 +2543,8 @@
         });
       }
     </script>
+<script src="js/remo-ai-engine.js?v=smart-1"></script>
+<script src="js/remo-ai-enhance.js?v=smart-1"></script>
 </body>
 </html>
 

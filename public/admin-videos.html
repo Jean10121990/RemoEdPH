@@ -870,6 +870,12 @@
                         try {
                             data = text ? JSON.parse(text) : {};
                         } catch (e2) {
+                            if (xhr.status === 413) {
+                                return reject(new Error(
+                                    'Upload blocked by the web server (HTTP 413 — file too large for the proxy). ' +
+                                    'Your video is fine; on the VPS set Nginx client_max_body_size to at least 64M (see deploy/nginx-increase-body-size.conf), then reload Nginx.'
+                                ));
+                            }
                             return reject(new Error('Server returned non-JSON (HTTP ' + xhr.status + '). Check proxy/body size limits.'));
                         }
                         resolve({ status: xhr.status, data: data });
@@ -1009,8 +1015,10 @@
                                 showMsg(msgEl, 'ok', 'Upload complete. The video is now available in the live classroom (Videos tab).');
                                 refreshPortalVideos();
                             } else {
-                                var m = (res.data && (res.data.message || res.data.error)) || ('HTTP ' + res.status);
-                                if (res.status === 401 || res.status === 403) {
+                                var m = (res.data && (res.data.message || res.data.error || res.data.hint)) || ('HTTP ' + res.status);
+                                if (res.status === 413) {
+                                    m = 'Upload blocked (HTTP 413). The web server in front of Node limits request size (often 1 MB). Ask your host to raise Nginx client_max_body_size to 64M or higher.';
+                                } else if (res.status === 401 || res.status === 403) {
                                     m += ' Log in again as admin if your session expired.';
                                 }
                                 showMsg(msgEl, 'err', m);

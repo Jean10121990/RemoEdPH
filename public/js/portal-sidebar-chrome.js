@@ -163,7 +163,11 @@
           }
         } else {
           closeAllMobile();
-          document.body.classList.add('remoed-desktop-sidebar-collapsed');
+          if (document.body.classList.contains('student-portal')) {
+            document.body.classList.remove('remoed-desktop-sidebar-collapsed');
+          } else {
+            document.body.classList.add('remoed-desktop-sidebar-collapsed');
+          }
         }
         syncAriaFromBody();
         dispatchResize();

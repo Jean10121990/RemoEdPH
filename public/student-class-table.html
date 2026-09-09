@@ -1301,6 +1301,20 @@
   </div>
 
   <script>
+    // Prefer nickname / public display name so legal names stay private
+    function publicTeacherNameFromBooking(booking) {
+      if (!booking) return 'Unknown Teacher';
+      if (booking.teacherName) return booking.teacherName;
+      const t = booking.teacherId;
+      if (!t) return 'Unknown Teacher';
+      if (typeof t === 'string') return t;
+      const nick = (t.nickname || t.displayName || t.name || '').trim();
+      if (nick) return nick;
+      const full = `${t.firstName || ''} ${t.lastName || ''}`.trim();
+      if (full) return full;
+      return t.username || 'Unknown Teacher';
+    }
+
     // Prevent external script errors from interfering with our functionality
     window.addEventListener('error', function(e) {
       // Ignore errors from external scripts like QuillBot
@@ -1356,18 +1370,7 @@
         document.getElementById('feedback-class-date').textContent = formattedDate;
         document.getElementById('feedback-class-time').textContent = formatTime24Hour(timeInfo.slot || booking.time);
         
-        // Handle teacher name
-        let teacherName = 'Unknown Teacher';
-        if (booking.teacherId) {
-            if (typeof booking.teacherId === 'string') {
-                teacherName = booking.teacherId;
-            } else if (booking.teacherId.username) {
-                teacherName = booking.teacherId.username;
-            } else if (booking.teacherId.firstName) {
-                teacherName = `${booking.teacherId.firstName} ${booking.teacherId.lastName || ''}`.trim();
-            }
-        }
-        document.getElementById('feedback-class-teacher').textContent = teacherName;
+        document.getElementById('feedback-class-teacher').textContent = publicTeacherNameFromBooking(booking);
         document.getElementById('feedback-class-level').textContent = booking.studentLevel || 'Not specified';
         document.getElementById('feedback-class-lesson').textContent = booking.lesson || 'Not specified';
         
@@ -2297,10 +2300,12 @@
           } else {
             // If class duration hasn't passed, show embossed "Enter Class" CTA
             slotElement.classList.add('booked');
-            const teacherFirst =
-              (booking.teacherId && (booking.teacherId.firstName || booking.teacherId.username)) || '';
+            const teacherLabel = publicTeacherNameFromBooking(booking);
+            const teacherFirst = teacherLabel && teacherLabel !== 'Unknown Teacher'
+              ? String(teacherLabel).split(' ')[0]
+              : '';
             const labelText = teacherFirst
-              ? ('Enter · ' + String(teacherFirst).split(' ')[0])
+              ? ('Enter · ' + teacherFirst)
               : 'Enter Class';
             setEmbossedSlotLabel(slotElement, labelText);
             slotElement.title = 'Click for class information';
@@ -2429,17 +2434,7 @@
       }
       document.getElementById('info-class-date').textContent = formattedDate;
       document.getElementById('info-class-time').textContent = formatTime24Hour(timeInfo.slot || booking.time);
-      let teacherName = 'Unknown Teacher';
-      if (booking.teacherId) {
-        if (typeof booking.teacherId === 'string') {
-          teacherName = booking.teacherId;
-        } else if (booking.teacherId.firstName || booking.teacherId.lastName) {
-          teacherName = `${booking.teacherId.firstName || ''} ${booking.teacherId.lastName || ''}`.trim();
-        } else if (booking.teacherId.username) {
-          teacherName = booking.teacherId.username;
-        }
-      }
-      document.getElementById('info-class-teacher').textContent = teacherName;
+      document.getElementById('info-class-teacher').textContent = publicTeacherNameFromBooking(booking);
       document.getElementById('info-class-lesson').textContent = booking.lesson || 'Not specified';
       document.getElementById('info-classroom-id').textContent = booking.classroomId || 'Not set';
 
@@ -2706,18 +2701,7 @@
       
       document.getElementById('cancel-class-info').textContent =
         `${timeInfo.date || currentBookingInfo.date} at ${formatTime24Hour(timeInfo.slot || currentBookingInfo.time)}`;
-      // Handle both old and new teacher data structures for cancellation modal
-      let cancelTeacherName = 'Unknown Teacher';
-      if (currentBookingInfo.teacherId) {
-        if (typeof currentBookingInfo.teacherId === 'string') {
-          cancelTeacherName = currentBookingInfo.teacherId;
-        } else if (currentBookingInfo.teacherId.username) {
-          cancelTeacherName = currentBookingInfo.teacherId.username;
-        } else if (currentBookingInfo.teacherId.firstName) {
-          cancelTeacherName = `${currentBookingInfo.teacherId.firstName} ${currentBookingInfo.teacherId.lastName || ''}`.trim();
-        }
-      }
-      document.getElementById('cancel-teacher-info').textContent = cancelTeacherName;
+      document.getElementById('cancel-teacher-info').textContent = publicTeacherNameFromBooking(currentBookingInfo);
       document.getElementById('cancellation-modal').style.display = 'block';
       document.getElementById('cancellation-reason').value = '';
       document.getElementById('char-count').textContent = '0';

@@ -38,7 +38,7 @@
         element: '[data-nav="accounting-hub"]',
         title: 'Accounting Hub',
         content:
-          'Payroll Management and Unique Link Commissions in one place — use tabs for pay settings and referral payouts.',
+          'Payroll, Unique Link Commissions, and Student Subscriptions in one place — use tabs for pay, referrals, and every student plan.',
         position: 'right',
       },
       {

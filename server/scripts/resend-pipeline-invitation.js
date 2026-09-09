@@ -12,7 +12,7 @@ async function main() {
   const Application = require('../models/Application');
   const InvitationToken = require('../models/InvitationToken');
   const { sendTeacherPipelineWelcomeEmail } = require('../emailService');
-  const { resolveFrontendBaseUrl } = require('../utils/frontendBaseUrl');
+  const { buildTeacherInvitationSignupUrl } = require('../utils/frontendBaseUrl');
 
   const emailFilter = process.argv[2] ? String(process.argv[2]).trim().toLowerCase() : '';
   const query = { currentStage: 'passed' };
@@ -59,8 +59,7 @@ async function main() {
     console.log('Reusing existing invitation token');
   }
 
-  const frontendBase = resolveFrontendBaseUrl(null);
-  const signupLink = `${frontendBase}/register.html?appId=${encodeURIComponent(applicant._id.toString())}&invitation=${encodeURIComponent(invitation.token)}`;
+  const signupLink = buildTeacherInvitationSignupUrl(invitation.token, null);
 
   console.log('Sending to:', recipientEmail);
   console.log('Signup link:', signupLink);

@@ -146,7 +146,13 @@ body.student-portal .header h1 {
   filter: none !important;
 }
 
-body.page-device-check .device-title,
+body.page-device-check .device-title {
+  color: #111827 !important;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  text-shadow: none !important;
+}
 body[class*="page-teacher-"] .device-title,
 body[class*="page-student-"] .device-title {
   color: #111827 !important;
@@ -1050,8 +1056,9 @@ body.page-teacher-referrals .referral-link-stats-row .grid-stats {
   }
 }
 
-/* —— Teacher Dashboard: Time Log | Announcements —— */
-body.page-teacher-dashboard .dashboard-top-row {
+/* —— Teacher / Admin Dashboard: Time Log | Announcements —— */
+body.page-teacher-dashboard .dashboard-top-row,
+body.page-admin-dashboard .dashboard-top-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 20px;
@@ -1059,7 +1066,8 @@ body.page-teacher-dashboard .dashboard-top-row {
   align-items: stretch;
 }
 
-body.page-teacher-dashboard .dashboard-top-row > .remoed-section {
+body.page-teacher-dashboard .dashboard-top-row > .remoed-section,
+body.page-admin-dashboard .dashboard-top-row > .remoed-section {
   margin-bottom: 0;
   height: 100%;
 }
@@ -1087,7 +1095,8 @@ body.page-teacher-dashboard .time-log-buttons {
 }
 
 @media (max-width: 992px) {
-  body.page-teacher-dashboard .dashboard-top-row {
+  body.page-teacher-dashboard .dashboard-top-row,
+  body.page-admin-dashboard .dashboard-top-row {
     grid-template-columns: 1fr;
   }
 }

@@ -27,6 +27,7 @@ const {
 const crypto = require('crypto');
 const mongoose = require('mongoose');
 const { sendPasswordResetEmail } = require('./emailService');
+const { findActivePassedInvitation, inviteErrorMessage, applicantPayload } = require('./utils/teacherInvitation');
 const { recordAdminLoginActivity, getAdminSessionVersion } = require('./services/adminLoginActivity');
 const {
   ADMIN_2FA_ENROLLMENT_PURPOSE,
@@ -126,7 +127,7 @@ router.get(
       return res.json({
         success: true,
         invitation: inv.token,
-        applicant: { email: application.email || '', fullName: application.fullName || '' },
+        applicant: { email: application.email || '', fullName: application.fullName || '', contactNo: application.contactNo || '' },
       });
     } catch (e) {
       console.error('GET /api/auth/teacher-signup/invitation-by-application:', e);
@@ -134,6 +135,170 @@ router.get(
     }
   }
 );
+
+router.get(
+  '/teacher-signup/validate',
+  teacherInviteByApplicationLimiter,
+  async (req, res) => {
+    try {
+      const found = await findActivePassedInvitation(req.query.token);
+      if (found.reason === 'used' && found.application) {
+        return res.status(409).json({
+          success: false,
+          code: 'already_used',
+          message: inviteErrorMessage('used'),
+          loginUrl: '/teacher-login.html',
+          applicant: applicantPayload(found.application, found.invitation),
+        });
+      }
+      if (!found.ok) {
+        return res.status(404).json({
+          success: false,
+          message: inviteErrorMessage(found.reason),
+          applicant: found.application
+            ? applicantPayload(found.application, found.invitation)
+            : undefined,
+        });
+      }
+      return res.json({
+        success: true,
+        applicant: applicantPayload(found.application, found.invitation),
+      });
+    } catch (e) {
+      console.error('GET /api/auth/teacher-signup/validate:', e);
+      return res.status(500).json({ success: false, message: 'Server error' });
+    }
+  }
+);
+
+router.post('/teacher-signup/complete', authRegisterLimiter, async (req, res) => {
+  try {
+    const token = String(req.body && req.body.token != null ? req.body.token : '').trim();
+    const firstName = String(req.body && req.body.firstName != null ? req.body.firstName : '').trim();
+    const middleName = String(req.body && req.body.middleName != null ? req.body.middleName : '').trim();
+    const lastName = String(req.body && req.body.lastName != null ? req.body.lastName : '').trim();
+    const username = String(req.body && req.body.username != null ? req.body.username : '').trim();
+    const password = String(req.body && req.body.password != null ? req.body.password : '');
+    const contact = String(req.body && req.body.contact != null ? req.body.contact : '').trim();
+    const address = String(req.body && req.body.address != null ? req.body.address : '').trim();
+
+    if (!username || !password || !firstName || !lastName) {
+      return res.status(400).json({ success: false, message: 'Please complete required fields.' });
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 6 characters.' });
+    }
+
+    const found = await findActivePassedInvitation(token);
+    if (found.reason === 'used') {
+      return res.status(409).json({
+        success: false,
+        code: 'already_used',
+        message: inviteErrorMessage('used'),
+        loginUrl: '/teacher-login.html',
+        applicant: applicantPayload(found.application, found.invitation),
+      });
+    }
+    if (!found.ok) {
+      return res.status(404).json({
+        success: false,
+        message: inviteErrorMessage(found.reason),
+      });
+    }
+
+    const { invitation, application } = found;
+    const email = String(
+      (application && application.email) || (invitation && invitation.email) || ''
+    )
+      .trim()
+      .toLowerCase();
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'This application has no email on file. Contact admin support.',
+      });
+    }
+
+    const teacherId = username;
+    const existingUsername = await Teacher.findOne({ username });
+    if (existingUsername) {
+      return res.status(409).json({ success: false, message: 'Username already exists.' });
+    }
+    const existingTeacherId = await Teacher.findOne({ teacherId });
+    if (existingTeacherId) {
+      return res.status(409).json({
+        success: false,
+        message: 'That teacher id is already in use. Choose a different username.',
+      });
+    }
+    const existingEmail = await Teacher.findOne({ email });
+    if (existingEmail) {
+      return res.status(409).json({ success: false, message: 'A teacher account already exists for this email.' });
+    }
+
+    const now = new Date();
+    const claimed = await InvitationToken.findOneAndUpdate(
+      {
+        _id: invitation._id,
+        isUsed: false,
+        expiresAt: { $gt: now },
+      },
+      { $set: { isUsed: true, usedAt: now } },
+      { new: true }
+    );
+    if (!claimed) {
+      return res.status(409).json({
+        success: false,
+        message: 'This invitation has already been used.',
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const fullname = [firstName, middleName, lastName].filter(Boolean).join(' ');
+    const teacher = new Teacher({
+      username,
+      password: hashedPassword,
+      teacherId,
+      firstName,
+      middleName,
+      lastName,
+      fullname,
+      email,
+      contact: contact || undefined,
+      address: address || undefined,
+      hireDate: now,
+    });
+
+    try {
+      await teacher.save();
+      application.teacherActivationStatus = 'Active Teacher';
+      application.hiredAt = now;
+      await application.save();
+    } catch (saveErr) {
+      await InvitationToken.updateOne(
+        { _id: claimed._id },
+        { $set: { isUsed: false, usedAt: null } }
+      );
+      throw saveErr;
+    }
+
+    return res.json({
+      success: true,
+      teacherId,
+      message: 'Account created successfully!',
+    });
+  } catch (err) {
+    console.error('POST /api/auth/teacher-signup/complete:', err);
+    if (err && err.code === 11000) {
+      const field = err.keyPattern ? Object.keys(err.keyPattern)[0] : 'account';
+      return res.status(409).json({ success: false, message: `${field} already exists.` });
+    }
+    return res.status(500).json({
+      success: false,
+      message: 'Server error: ' + (err.message || 'Failed to create account'),
+    });
+  }
+});
 
 // Function to generate strong password (10 characters) - NO SPECIAL CHARACTERS
 function generateStrongPassword() {
@@ -590,56 +755,10 @@ router.post('/login', authLoginLimiter, async (req, res) => {
 });
 
 router.post('/register', authRegisterLimiter, async (req, res) => {
-  const { username, password, firstName = '', middleName = '', lastName = '', email = '' } = req.body;
-  if (!username || !password) {
-    return res.status(400).json({ success: false, message: 'Username and password are required.' });
-  }
-  try {
-    // Check if username already exists
-    const existingUsername = await Teacher.findOne({ username });
-    if (existingUsername) {
-      return res.status(409).json({ success: false, message: 'Username already exists.' });
-    }
-    
-    // Check if email already exists (if provided)
-    if (email) {
-      const existingEmail = await Teacher.findOne({ email });
-      if (existingEmail) {
-        return res.status(409).json({ success: false, message: 'Email already exists.' });
-      }
-    }
-    
-    // teacherId is the same stable string as login username (unique on Teacher).
-    const teacherId = String(username).trim();
-    const teacherIdTaken = await Teacher.findOne({ teacherId });
-    if (teacherIdTaken) {
-      return res.status(409).json({
-        success: false,
-        message: 'That teacher id is already in use. Choose a different username.',
-      });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const teacher = new Teacher({ 
-      username,
-      password: hashedPassword,
-      teacherId: teacherId,
-      firstName,
-      middleName,
-      lastName,
-      email: email || undefined
-    });
-    await teacher.save();
-    res.json({ success: true, teacherId: teacherId, message: 'Account created successfully!' });
-  } catch (err) {
-    console.error('Registration error:', err);
-    if (err.code === 11000) {
-      // Duplicate key error
-      const field = Object.keys(err.keyPattern)[0];
-      return res.status(409).json({ success: false, message: `${field} already exists.` });
-    }
-    res.status(500).json({ success: false, message: 'Server error: ' + (err.message || 'Failed to create account') });
-  }
+  return res.status(403).json({
+    success: false,
+    message: 'Teacher accounts are invitation-only. Use the sign-up link from your passed-applicant email.',
+  });
 });
 
 // Student login endpoint
@@ -692,7 +811,13 @@ router.post('/student-login', authLoginLimiter, async (req, res) => {
     if (passwordMatch) {
       await resetLoginAttempts(student);
       const token = jwt.sign(
-        { username: student.username, studentId: student._id },
+        {
+          username: student.username,
+          studentId: student._id,
+          userRole: 'student',
+          userType: 'student',
+          role: 'student',
+        },
         JWT_SECRET,
         { expiresIn: JWT_EXPIRES_IN }
       );
@@ -913,7 +1038,13 @@ router.post('/unified-login', authLoginLimiter, async (req, res) => {
 
     await resetLoginAttempts(student);
     const token = jwt.sign(
-      { userRole: 'student', username: student.username, studentId: student._id },
+      {
+        userRole: 'student',
+        username: student.username,
+        studentId: student._id,
+        userType: 'student',
+        role: 'student',
+      },
       JWT_SECRET,
       { expiresIn }
     );
@@ -1001,6 +1132,7 @@ router.post('/student-register', authRegisterLimiter, async (req, res) => {
       email: email,
       password: hashedPassword,
       parentName: req.body.parentName || '',
+      parentEmail: String(req.body.parentEmail || email || '').trim(),
       contact: req.body.contact || ''
       // firstName and lastName will be set when they update their profile
     });
@@ -1424,32 +1556,193 @@ router.get('/users', async (req, res) => {
   }
 });
 
-// Change user role (move between collections)
+// Change user role (move between Teacher / Student / Admin collections)
 router.post('/user-role', async (req, res) => {
-  const { username, fromRole, toRole } = req.body;
-  if (!username || !fromRole || !toRole || fromRole === toRole) {
-    return res.status(400).json({ success: false, message: 'Invalid request' });
+  try {
+    const { username, fromRole, toRole, userId } = req.body;
+    const allowed = ['teacher', 'student', 'admin'];
+    if (!fromRole || !toRole || fromRole === toRole || !allowed.includes(fromRole) || !allowed.includes(toRole)) {
+      return res.status(400).json({ success: false, message: 'Invalid request' });
+    }
+    if (!username && !userId) {
+      return res.status(400).json({ success: false, message: 'Username or user id is required' });
+    }
+
+    const escapeRegex = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const modelFor = (role) => {
+      if (role === 'teacher') return Teacher;
+      if (role === 'student') return Student;
+      return Admin;
+    };
+
+    async function findAccount(Model, { id, uname, email }) {
+      if (id && mongoose.Types.ObjectId.isValid(String(id))) {
+        const byId = await Model.findById(id);
+        if (byId) return byId;
+      }
+      const candidates = [];
+      if (uname && String(uname).trim()) candidates.push(String(uname).trim());
+      if (email && String(email).trim()) candidates.push(String(email).trim());
+      for (const c of candidates) {
+        let doc = await Model.findOne({ username: c });
+        if (doc) return doc;
+        doc = await Model.findOne({ username: new RegExp('^' + escapeRegex(c) + '$', 'i') });
+        if (doc) return doc;
+        if (Model === Teacher) {
+          doc = await Model.findOne({
+            $or: [
+              { teacherId: c },
+              { teacherId: new RegExp('^' + escapeRegex(c) + '$', 'i') },
+              { email: c },
+              { email: new RegExp('^' + escapeRegex(c) + '$', 'i') },
+            ],
+          });
+          if (doc) return doc;
+        }
+        if (Model === Admin || Model === Student) {
+          doc = await Model.findOne({
+            $or: [
+              { email: c },
+              { email: new RegExp('^' + escapeRegex(c) + '$', 'i') },
+            ],
+          });
+          if (doc) return doc;
+        }
+      }
+      return null;
+    }
+
+    const Source = modelFor(fromRole);
+    const Target = modelFor(toRole);
+    const userDoc = await findAccount(Source, { id: userId, uname: username });
+    if (!userDoc) {
+      return res.status(404).json({
+        success: false,
+        message: `User not found in ${fromRole} accounts. They may already have been moved, or the username does not match.`,
+      });
+    }
+
+    const uname = String(userDoc.username || username || '').trim();
+    const email = (userDoc.email && String(userDoc.email).trim()) || '';
+    const passwordHash = userDoc.passwordHash || userDoc.password || null;
+    if (!uname) {
+      return res.status(400).json({ success: false, message: 'Source account has no username' });
+    }
+    if (!passwordHash && (toRole === 'teacher' || toRole === 'student')) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot convert to teacher/student: source account has no password hash. Set a password first.',
+      });
+    }
+
+    // Dual accounts (same person as teacher AND admin) are common for staff.
+    // Never auto-delete the source when the target already exists — that is how
+    // TeacherJean was orphaned (teacher removed, then admin→teacher failed).
+    const existingTarget = await findAccount(Target, { uname, email: email || uname });
+    if (existingTarget) {
+      return res.status(409).json({
+        success: false,
+        message:
+          `${uname} already has a ${toRole} account. ` +
+          `Role change was cancelled to avoid deleting the ${fromRole} login. ` +
+          `Use Suspend/Delete on the account you want to remove, or keep both roles.`,
+      });
+    }
+
+    // Snapshot source before any write so we can restore if delete fails after create.
+    const archivePayload = {
+      fromRole,
+      toRole,
+      archivedAt: new Date(),
+      source: userDoc.toObject ? userDoc.toObject() : userDoc,
+    };
+    try {
+      await mongoose.connection.db.collection('rolechangearchives').insertOne(archivePayload);
+    } catch (archErr) {
+      console.warn('rolechangearchives insert failed (continuing):', archErr && archErr.message);
+    }
+
+    // Create target first, then delete source — avoids orphaning if create fails.
+    const sharedName = {
+      firstName: userDoc.firstName || '',
+      lastName: userDoc.lastName || '',
+      status: userDoc.status === 'suspended' ? 'suspended' : 'active',
+    };
+
+    let createdId = null;
+    if (toRole === 'teacher') {
+      const teacherId =
+        (userDoc.teacherId && String(userDoc.teacherId).trim()) ||
+        email ||
+        uname;
+      const created = await Teacher.create({
+        teacherId,
+        username: uname,
+        password: passwordHash,
+        email: email || '',
+        firstName: sharedName.firstName,
+        lastName: sharedName.lastName,
+        nickname: userDoc.nickname || sharedName.firstName || uname,
+        status: sharedName.status,
+        hasGeneratedPassword: !!userDoc.hasGeneratedPassword,
+      });
+      createdId = created._id;
+    } else if (toRole === 'student') {
+      const studentPayload = {
+        username: uname,
+        password: passwordHash,
+        firstName: sharedName.firstName || userDoc.studentFirstName || '',
+        lastName: sharedName.lastName || userDoc.studentLastName || '',
+        status: sharedName.status,
+        hasGeneratedPassword: !!userDoc.hasGeneratedPassword,
+      };
+      if (email) studentPayload.email = email;
+      const created = await Student.create(studentPayload);
+      createdId = created._id;
+    } else if (toRole === 'admin') {
+      const created = await Admin.create({
+        username: uname,
+        email: email || null,
+        passwordHash: passwordHash,
+        password: userDoc.password || null,
+        firstName: sharedName.firstName,
+        lastName: sharedName.lastName,
+        status: sharedName.status,
+        adminRole: 'admin_hr',
+        hasGeneratedPassword: !!userDoc.hasGeneratedPassword,
+      });
+      createdId = created._id;
+    }
+
+    try {
+      await Source.findByIdAndDelete(userDoc._id);
+    } catch (delErr) {
+      // Roll back the newly created target so we never leave a half-migrated user.
+      console.error('Role change: failed to delete source after create; rolling back target', delErr);
+      if (createdId) {
+        await Target.findByIdAndDelete(createdId).catch(() => {});
+      }
+      return res.status(500).json({
+        success: false,
+        message: 'Role change failed while removing the old account. No changes were kept.',
+      });
+    }
+
+    res.json({
+      success: true,
+      message: `${uname} is now a ${toRole}`,
+    });
+  } catch (err) {
+    console.error('Error changing user role:', err);
+    const msg = err && err.message ? String(err.message) : 'Failed to change user role';
+    if (err && err.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: 'A user with this username or email already exists in the target role.',
+      });
+    }
+    res.status(500).json({ success: false, message: msg });
   }
-  let userDoc = null;
-  if (fromRole === 'teacher') {
-    userDoc = await Teacher.findOneAndDelete({ username });
-  } else if (fromRole === 'student') {
-    userDoc = await Student.findOneAndDelete({ username });
-  } else if (fromRole === 'admin') {
-    userDoc = await Admin.findOneAndDelete({ username });
-  }
-  if (!userDoc) {
-    return res.status(404).json({ success: false, message: 'User not found' });
-  }
-  // Move to new collection
-  if (toRole === 'teacher') {
-    await Teacher.create({ username, password: userDoc.password });
-  } else if (toRole === 'student') {
-    await Student.create({ username, password: userDoc.password });
-  } else if (toRole === 'admin') {
-    await Admin.create({ username, password: userDoc.password });
-  }
-  res.json({ success: true });
 });
 
 // Migration endpoint to add hasGeneratedPassword field to all users

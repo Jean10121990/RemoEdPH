@@ -71,14 +71,14 @@
                         <!-- Video Introduction Upload -->
                         <div class="video-upload-section">
                             <h4 class="info-section-title" style="font-size: 1rem; margin-bottom: 12px;">Video Introduction</h4>
-                            <div class="video-upload-btn" onclick="document.getElementById('video-introduction').click()">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <label class="video-upload-btn" for="video-introduction" id="video-upload-label">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                     <path d="M23 7l-7 4 7 4V7z"/>
                                     <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
                                 </svg>
                                 <span>Upload Video Introduction</span>
-                            </div>
-                            <input type="file" id="video-introduction" accept="video/*" style="display: none;">
+                            </label>
+                            <input type="file" id="video-introduction" accept="video/*" style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;">
                             <div id="video-preview" class="video-preview" style="display: none; margin-top: 12px;">
                                 <video id="video-player" controls style="width: 100%; border-radius: 8px; aspect-ratio: 1 / 1; object-fit: cover;">
                                     <source src="" type="video/mp4">
@@ -147,6 +147,13 @@
                                  <label class="form-label">Last Name *</label>
                                  <input type="text" class="form-input" id="lastname" name="lastname" required disabled>
                              </div>
+                            <div class="form-group" style="grid-column: 1 / -1;">
+                                <label class="form-label">Teacher Nickname *</label>
+                                <input type="text" class="form-input" id="nickname" name="nickname" maxlength="40" placeholder="e.g. Teacher Grace" disabled>
+                                <small style="display:block; margin-top:6px; color:#64748b; font-size:0.8rem; line-height:1.4;">
+                                  This is the name students and visitors see (dashboard, booking, Our Teachers). Your legal name stays private.
+                                </small>
+                            </div>
                             <div class="form-group">
                                 <label class="form-label">Birthday</label>
                                 <input type="date" class="form-input" id="birthday" name="birthday" disabled>
@@ -372,6 +379,9 @@
                                 <button type="button" class="doc-category-btn" onclick="showDocumentCategory('valid-id')" data-category="valid-id">
                                     🆔 Valid ID <span id="valid-id-count-badge" class="doc-count-badge">0</span>
                                 </button>
+                                <button type="button" class="doc-category-btn" onclick="showDocumentCategory('nbi')" data-category="nbi">
+                                    🛡️ NBI <span id="nbi-count-badge" class="doc-count-badge">0</span>
+                                </button>
                             </div>
                         </div>
                         
@@ -409,6 +419,17 @@
                                 <!-- Valid ID items will be added here dynamically -->
                             </div>
                             <button type="button" class="add-btn" id="add-valid-id-btn" onclick="addValidIdItem()" style="margin-top: 12px;">+ Add Valid ID</button>
+                        </div>
+
+                        <!-- NBI Clearance Section (up to 2) -->
+                        <div class="info-section document-category" id="nbi-category" style="display: none; margin-top: 32px;">
+                            <div class="info-section-title">
+                                <span>🛡️ NBI Clearance</span>
+                                <span style="font-size: 0.9rem; color: #666; font-weight: 400;">(Up to 2)</span>
+                            </div>
+                            <p style="color: #666; font-size: 0.9rem; margin: 0 0 12px;">Upload your NBI clearance. HR will review and update verification status.</p>
+                            <div id="nbi-container"></div>
+                            <button type="button" class="add-btn" id="add-nbi-btn" onclick="addNbiItem()" style="margin-top: 12px;">+ Add NBI Clearance</button>
                         </div>
                         
                         <div class="profile-footer-actions" style="margin-top: 24px;">
@@ -455,7 +476,7 @@
                         
                         <div class="section-title" style="margin-top: 40px;">Quick Links</div>
                         <div class="quick-links">
-                            <a href="#" class="quick-link" onclick="openSupportModal('faq'); return false;">❓ Frequently Asked Questions</a>
+                            <a href="faq.html" class="quick-link">❓ Frequently Asked Questions</a>
                             <a href="teacher-professional-development.html#teaching-abilities" class="quick-link">🎯 Teaching Abilities (Career Growth)</a>
                             <a href="teacher-dashboard.html#community-responsibility" class="quick-link">🌍 Community & Social Responsibility</a>
                             <a href="#" class="quick-link" onclick="openSupportModal('webinars'); return false;">📹 Training Webinars</a>
@@ -518,8 +539,11 @@
                                 🔒 Privacy Policy
                             </a>
                         </div>
-                        <p style="color: #666; font-size: 0.85rem; margin-top: 10px;">
-                            As a freelance tutor, you are an independent contractor. Please review our terms and privacy policy to understand your rights and responsibilities.
+                        <p id="legal-policies-status" style="color: #475569; font-size: 0.85rem; margin-top: 10px; font-weight: 600;">
+                            TOS: … · Privacy: …
+                        </p>
+                        <p style="color: #666; font-size: 0.85rem; margin-top: 6px;">
+                            As a freelance tutor, you are an independent contractor. Open each document to review, sign electronically, and print your contract.
                         </p>
                     </div>
                     
@@ -544,7 +568,32 @@
         let diplomaCounter = 0;
         let certificateCounter = 0;
         let validIdCounter = 0;
+        let nbiCounter = 0;
         let isEditingProfile = false;
+
+        /** Name shown publicly (students, landing). Prefer nickname for privacy. */
+        function teacherPublicDisplayName(profile) {
+            if (!profile) return 'Teacher';
+            const nick = (profile.nickname || '').trim();
+            if (nick) return nick;
+            return (
+                (profile.fullname && String(profile.fullname).trim()) ||
+                `${profile.firstName || ''} ${profile.lastName || ''}`.trim() ||
+                profile.username ||
+                'Teacher'
+            );
+        }
+
+        function updateLegalPoliciesStatus(profile) {
+            const el = document.getElementById('legal-policies-status');
+            if (!el) return;
+            const tos = profile && profile.tosAgreement;
+            const privacy = profile && profile.privacyPolicy;
+            const tosLabel = tos && tos.accepted ? 'Signed' : 'Unsigned';
+            const privacyLabel = privacy && privacy.accepted ? 'Signed' : 'Unsigned';
+            el.textContent = `TOS: ${tosLabel} · Privacy: ${privacyLabel}`;
+            el.style.color = (tos && tos.accepted && privacy && privacy.accepted) ? '#059669' : '#b45309';
+        }
 
         const REMOED_FOUNDER_TEACHER_EMAILS = [];
         function getTeacherProfileEmailForFounderCheck() {
@@ -652,9 +701,12 @@
                         if (response.ok) {
                             const data = await response.json();
                             if (data.profile) {
-                                const firstName = data.profile.firstName || username;
+                                const firstName =
+                                    (data.profile.nickname && String(data.profile.nickname).trim()) ||
+                                    data.profile.firstName ||
+                                    username;
                                 
-                                // Update username with "Hi, [FirstName]" format
+                                // Update username with "Hi, [Nickname]" format
                                 if (usernameEl) {
                                     usernameEl.textContent = `Hi, ${firstName}`;
                                 }
@@ -799,7 +851,7 @@
                     window.__lastLoadedProfileTeachingAbilities = profile.teachingAbilities || null;
                     
                      // Set display values
-                     const displayName = profile.fullname || `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || profile.username || 'Teacher';
+                     const displayName = teacherPublicDisplayName(profile);
                      document.getElementById('profile-name-large').textContent = displayName;
                      document.getElementById('profile-email-large').textContent = profile.email || '';
                      
@@ -814,11 +866,14 @@
                             ? `Hire date: ${(window.TimezoneUtils && window.TimezoneUtils.formatDateLongPhilippines) ? window.TimezoneUtils.formatDateLongPhilippines(new Date(profile.hireDate)) : new Date(profile.hireDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: '2-digit' })}`
                             : 'Hire date: -';
                     }
+                    updateLegalPoliciesStatus(profile);
                      
                      // Populate form fields
                      document.getElementById('firstname').value = profile.firstName || '';
                      document.getElementById('middlename').value = profile.middleName || '';
                      document.getElementById('lastname').value = profile.lastName || '';
+                     const nickEl = document.getElementById('nickname');
+                     if (nickEl) nickEl.value = profile.nickname || '';
                     document.getElementById('birthday').value = profile.birthday ? profile.birthday.split('T')[0] : '';
                     document.getElementById('hire-date-input').value = profile.hireDate ? profile.hireDate.split('T')[0] : '';
                     document.getElementById('gender').value = profile.gender || '';
@@ -947,6 +1002,17 @@
                             });
                         } else if (profile.documents.validId) {
                             addValidIdItem({ fileData: profile.documents.validId, fileName: 'Valid ID' });
+                        }
+
+                        const nbiContainer = document.getElementById('nbi-container');
+                        if (nbiContainer) nbiContainer.innerHTML = '';
+                        nbiCounter = 0;
+                        if (profile.documents.nbiClearances && Array.isArray(profile.documents.nbiClearances)) {
+                            profile.documents.nbiClearances.forEach((nbi, index) => {
+                                if (nbi && nbi.fileData && index < 2) {
+                                    addNbiItem({ fileData: nbi.fileData, fileName: nbi.fileName || `NBI Clearance ${index + 1}` });
+                                }
+                            });
                         }
                         updateDocumentCounts();
                     }
@@ -1549,6 +1615,70 @@
             }
         }
 
+        function addNbiItem(data = null) {
+            if (!isEditingProfile && data === null) {
+                enableEditing();
+            }
+            const container = document.getElementById('nbi-container');
+            if (!container) return;
+            const currentCount = container.children.length;
+            if (currentCount >= 2 && data === null) {
+                showMessage('Maximum of 2 NBI clearances allowed', 'error');
+                return;
+            }
+            const itemId = `nbi-${nbiCounter++}`;
+            const disabledAttr = isEditingProfile ? '' : 'disabled';
+            const displayNumber = currentCount + 1;
+            const nbiItem = document.createElement('div');
+            nbiItem.className = 'document-item';
+            nbiItem.id = itemId;
+            nbiItem.innerHTML = `
+                <div class="document-header">
+                    <strong>NBI Clearance ${displayNumber}</strong>
+                    <button type="button" class="remove-btn" onclick="removeNbiItem('${itemId}')" style="padding: 4px 8px; font-size: 0.75rem;">Remove</button>
+                </div>
+                <div class="document-content">
+                    <div class="document-upload-compact">
+                        <div class="file-upload" id="nbi-upload-${itemId}">
+                            <input type="file" id="nbi-file-${itemId}" name="nbi-${itemId}" accept=".pdf,.jpg,.jpeg,.png" ${disabledAttr}>
+                            <label class="file-upload-label-compact" for="nbi-file-${itemId}">🛡️ Upload</label>
+                        </div>
+                    </div>
+                    <div class="document-preview-compact" id="nbi-preview-${itemId}" style="display: ${data && data.fileData ? 'block' : 'none'};">
+                        <img src="${data && data.fileData ? data.fileData : ''}" alt="NBI Preview">
+                        <div class="file-info">${data && data.fileName ? data.fileName : 'No file selected'}</div>
+                    </div>
+                </div>
+            `;
+            container.appendChild(nbiItem);
+            if (data && data.fileData) {
+                setTimeout(() => {
+                    const preview = document.getElementById(`nbi-preview-${itemId}`);
+                    if (preview) {
+                        const previewImg = preview.querySelector('img');
+                        const fileInfo = preview.querySelector('.file-info');
+                        if (previewImg) previewImg.src = data.fileData;
+                        if (fileInfo) fileInfo.textContent = data.fileName || 'NBI Clearance';
+                        preview.style.display = 'block';
+                    }
+                }, 50);
+            }
+            setTimeout(() => {
+                setupDocumentUpload(`nbi-file-${itemId}`, `nbi-preview-${itemId}`);
+            }, 150);
+            updateDocumentCounts();
+        }
+
+        function removeNbiItem(itemId) {
+            const item = document.getElementById(itemId);
+            if (item) {
+                item.remove();
+                const container = document.getElementById('nbi-container');
+                if (container) nbiCounter = container.children.length;
+                updateDocumentCounts();
+            }
+        }
+
         function getVideoIntroductionPayload() {
             const videoPlayer = document.getElementById('video-player');
             const source = videoPlayer ? videoPlayer.querySelector('source') : null;
@@ -1576,6 +1706,7 @@
                 firstName: firstName,
                 middleName: middleName,
                 lastName: lastName,
+                nickname: (document.getElementById('nickname')?.value || '').trim(),
                 fullname: fullname,
                 birthday: document.getElementById('birthday').value,
                 hireDate: document.getElementById('hire-date-input')?.value || null,
@@ -1605,10 +1736,12 @@
                     const diplomas = collectDiplomasData();
                     const certificates = collectCertificatesData();
                     const validIds = collectValidIdsData();
+                    const nbiClearances = collectNbiClearancesData();
                     return {
                         diplomas: diplomas,
                         certificates: certificates,
-                        validIds: validIds
+                        validIds: validIds,
+                        nbiClearances: nbiClearances
                     };
                 })()
             };
@@ -1768,7 +1901,7 @@
                         console.error('Full response:', JSON.stringify(data, null, 2));
                     }
                     // Update display
-                    const displayName = profileData.fullname || `${profileData.firstName || ''} ${profileData.lastName || ''}`.trim() || profileData.username || 'Teacher';
+                    const displayName = teacherPublicDisplayName(profileData);
                     document.getElementById('profile-name-large').textContent = displayName;
                     document.getElementById('profile-email-large').textContent = profileData.email || '';
                     const hireDateLabel = document.getElementById('profile-hire-date');
@@ -1801,13 +1934,12 @@
                         console.log('❌ No firstName found in profileData:', profileData);
                     }
                     
-                    // Disable editing after successful save
+                    // Disable form fields after successful save (keep video/profile photo uploadable)
                     isEditingProfile = false;
                     const inputs = document.querySelectorAll('.form-input, .form-textarea');
                     inputs.forEach(input => input.disabled = true);
                     
-                    const fileInputs = document.querySelectorAll('input[type="file"]');
-                    fileInputs.forEach(input => input.disabled = true);
+                    setDocumentFileInputsDisabled(true);
                     
                     // Show/hide buttons in all tabs
                     const editIds = ['edit-profile-btn', 'edit-education-btn', 'edit-documents-btn'];
@@ -1884,6 +2016,18 @@
                                 validIds.forEach((vid) => {
                                     if (vid && vid.fileData) {
                                         addValidIdItem({ fileData: vid.fileData, fileName: vid.fileName || 'Valid ID' });
+                                    }
+                                });
+                            }
+
+                            const nbiContainer = document.getElementById('nbi-container');
+                            if (nbiContainer) nbiContainer.innerHTML = '';
+                            nbiCounter = 0;
+                            const nbiClearances = data.profile.documents.nbiClearances || [];
+                            if (Array.isArray(nbiClearances) && nbiClearances.length > 0) {
+                                nbiClearances.forEach((nbi) => {
+                                    if (nbi && nbi.fileData) {
+                                        addNbiItem({ fileData: nbi.fileData, fileName: nbi.fileName || 'NBI Clearance' });
                                     }
                                 });
                             }
@@ -2144,15 +2288,60 @@
             return validIds;
         }
 
+        function collectNbiClearancesData() {
+            const nbiClearances = [];
+            document.querySelectorAll('[id^="nbi-preview-"]').forEach(preview => {
+                const previewImg = preview.querySelector('img');
+                const fileInfo = preview.querySelector('.file-info');
+                if (!preview || !previewImg) return;
+                const hasImage = previewImg.src && previewImg.src.startsWith('data:') &&
+                    !previewImg.src.includes('data:image/svg+xml') && previewImg.src.length > 100;
+                if (hasImage) {
+                    const fileName = fileInfo && fileInfo.textContent && fileInfo.textContent !== 'No file selected'
+                        ? fileInfo.textContent : `NBI Clearance ${nbiClearances.length + 1}`;
+                    nbiClearances.push({ fileData: previewImg.src, fileName: fileName });
+                }
+            });
+            return nbiClearances;
+        }
+
+        function setDocumentFileInputsDisabled(disabled) {
+            // Keep profile picture + video introduction uploadable without entering Edit mode
+            const keepEnabled = new Set(['profile-picture', 'video-introduction', 'bulk-upload-input']);
+            document.querySelectorAll('input[type="file"]').forEach((input) => {
+                if (keepEnabled.has(input.id)) {
+                    input.disabled = false;
+                    return;
+                }
+                input.disabled = disabled;
+            });
+        }
+
+        function getTeacherAuthToken() {
+            try {
+                if (window.RemoedUserSession && typeof window.RemoedUserSession.getUserToken === 'function') {
+                    const t = window.RemoedUserSession.getUserToken();
+                    if (t) return t;
+                }
+            } catch (_e) {}
+            return (
+                localStorage.getItem('remoed_teacher_token') ||
+                localStorage.getItem('remoed_teacher_auth') ||
+                localStorage.getItem('remoed_user_token') ||
+                localStorage.getItem('token') ||
+                sessionStorage.getItem('token') ||
+                ''
+            );
+        }
+
         function enableEditing() {
             isEditingProfile = true;
             // Enable all form inputs
             const inputs = document.querySelectorAll('.form-input, .form-textarea');
             inputs.forEach(input => input.disabled = false);
             
-            // Enable file uploads
-            const fileInputs = document.querySelectorAll('input[type="file"]');
-            fileInputs.forEach(input => input.disabled = false);
+            // Enable document file uploads (video + profile picture stay always on)
+            setDocumentFileInputsDisabled(false);
             
             // Diploma and certificate buttons are always enabled (they auto-enable editing when clicked)
             // No need to disable/enable them
@@ -2179,6 +2368,11 @@
                 const previewId = id.replace('valid-id-file-', 'valid-id-preview-');
                 setupDocumentUpload(id, previewId);
             });
+            document.querySelectorAll('[id^="nbi-file-"]').forEach(input => {
+                const id = input.id;
+                const previewId = id.replace('nbi-file-', 'nbi-preview-');
+                setupDocumentUpload(id, previewId);
+            });
             
             // Show/hide buttons in all tabs
             const editIds = ['edit-profile-btn', 'edit-education-btn', 'edit-documents-btn'];
@@ -2195,9 +2389,8 @@
             const inputs = document.querySelectorAll('.form-input, .form-textarea');
             inputs.forEach(input => input.disabled = true);
             
-            // Disable file uploads
-            const fileInputs = document.querySelectorAll('input[type="file"]');
-            fileInputs.forEach(input => input.disabled = true);
+            // Disable file uploads (documents only — video + avatar stay enabled)
+            setDocumentFileInputsDisabled(true);
             
             // Diploma and certificate buttons remain enabled (they auto-enable editing when clicked)
             // No need to disable them
@@ -2221,12 +2414,20 @@
         }
         
         function setupVideoUpload() {
-             document.getElementById('video-introduction').addEventListener('change', function(e) {
+             const videoInput = document.getElementById('video-introduction');
+             if (!videoInput) {
+                 console.error('Video introduction input not found');
+                 return;
+             }
+             // Always allow picking a video, even when other profile fields are locked
+             videoInput.disabled = false;
+
+             videoInput.addEventListener('change', function(e) {
                  const file = e.target.files[0];
                  console.log('File selected:', file);
                  
                  if (file) {
-                     const token = localStorage.getItem('token');
+                     const token = getTeacherAuthToken();
                      if (!token) {
                          showMessage('Authentication required. Please login again.', 'error');
                          return;
@@ -2238,18 +2439,25 @@
                      // Check file size (limit to 50MB)
                      if (file.size > 50 * 1024 * 1024) {
                          showMessage('Video file size must be less than 50MB', 'error');
+                         e.target.value = '';
                          return;
                      }
                      
                      // Check file type
                      if (!file.type.startsWith('video/')) {
                          showMessage('Please select a valid video file. Selected file type: ' + file.type, 'error');
+                         e.target.value = '';
                          return;
                      }
+
+                     showMessage('Uploading video introduction…', 'success');
                      
                      const reader = new FileReader();
-                     reader.onload = function(e) {
-                         const videoData = e.target.result;
+                     reader.onerror = function() {
+                         showMessage('Could not read the video file. Please try another file.', 'error');
+                     };
+                     reader.onload = function(ev) {
+                         const videoData = ev.target.result;
                          
                          // Show preview immediately
                          const videoPlayer = document.getElementById('video-player');
@@ -2275,12 +2483,11 @@
                          })
                          .then(response => {
                              console.log('Video upload response status:', response.status);
-                             console.log('Video upload response headers:', response.headers);
-                             
                              if (!response.ok) {
-                                 throw new Error(`HTTP error! status: ${response.status}`);
+                                 return response.json().catch(() => ({})).then((data) => {
+                                     throw new Error(data.error || (`HTTP error! status: ${response.status}`));
+                                 });
                              }
-                             
                              return response.json();
                          })
                          .then(data => {
@@ -2288,6 +2495,7 @@
                              if (data.success) {
                                  console.log('Video introduction updated successfully');
                                  showMessage('Video introduction updated successfully!', 'success');
+                                 updateProfileCompletion();
                              } else {
                                  console.error('Video upload failed:', data.error);
                                  showMessage('Failed to upload video: ' + (data.error || 'Unknown error'), 'error');
@@ -2686,8 +2894,7 @@
                     window.location.href = 'teacher-dashboard.html?help=technical';
                     break;
                 case 'faq':
-                    // Redirect to dashboard or a FAQ page
-                    window.location.href = 'teacher-dashboard.html';
+                    window.location.href = 'faq.html';
                     break;
                 case 'webinars':
                     // Redirect to professional development
@@ -2734,12 +2941,15 @@
         
         // Handle profile picture click — open file picker anytime; upload saves via change handler
         function handleProfilePictureClick() {
-            document.getElementById('profile-picture').click();
+            const input = document.getElementById('profile-picture');
+            if (!input) return;
+            input.disabled = false;
+            input.click();
         }
         
         // Update profile avatar
         function updateProfileAvatar(profile) {
-            const displayName = profile.fullname || `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || profile.username || 'Teacher';
+            const displayName = teacherPublicDisplayName(profile);
             const avatarImg = document.getElementById('profile-avatar-img');
             const avatarText = document.getElementById('profile-avatar-text');
             
@@ -2750,7 +2960,7 @@
             } else {
                 avatarImg.style.display = 'none';
                 avatarText.style.display = 'inline-block';
-                avatarText.textContent = displayName[0].toUpperCase();
+                avatarText.textContent = (displayName[0] || 'T').toUpperCase();
             }
         }
         
@@ -2759,6 +2969,7 @@
             const requiredFields = {
                 'firstname': 'First Name',
                 'lastname': 'Last Name',
+                'nickname': 'Teacher Nickname',
                 'email': 'Email',
                 'username': 'Username',
                 'introduction': 'Introduction',
@@ -3193,10 +3404,12 @@
             const diplomaCount = document.getElementById('diplomas-container')?.children.length || 0;
             const certificateCount = document.getElementById('certificates-container')?.children.length || 0;
             const validIdCount = document.getElementById('valid-ids-container')?.children.length || 0;
+            const nbiCount = document.getElementById('nbi-container')?.children.length || 0;
             
             const diplomaBadge = document.getElementById('diploma-count-badge');
             const certificateBadge = document.getElementById('certificate-count-badge');
             const validIdBadge = document.getElementById('valid-id-count-badge');
+            const nbiBadge = document.getElementById('nbi-count-badge');
             
             if (diplomaBadge) {
                 diplomaBadge.textContent = diplomaCount;
@@ -3209,6 +3422,10 @@
             if (validIdBadge) {
                 validIdBadge.textContent = validIdCount;
                 validIdBadge.style.display = validIdCount > 0 ? 'inline-block' : 'none';
+            }
+            if (nbiBadge) {
+                nbiBadge.textContent = nbiCount;
+                nbiBadge.style.display = nbiCount > 0 ? 'inline-block' : 'none';
             }
         }
         
@@ -3347,7 +3564,12 @@
             }
             
             return {
-                name: (document.getElementById('firstname')?.value || '') + ' ' + (document.getElementById('lastname')?.value || ''),
+                name: teacherPublicDisplayName({
+                    nickname: document.getElementById('nickname')?.value || '',
+                    firstName: document.getElementById('firstname')?.value || '',
+                    lastName: document.getElementById('lastname')?.value || '',
+                    username: document.getElementById('username')?.value || ''
+                }),
                 email: document.getElementById('email')?.value || '',
                 contact: document.getElementById('contact')?.value || '',
                 introduction: document.getElementById('introduction')?.value || '',
@@ -3542,17 +3764,6 @@
                 </div>
                 ` : ''}
                 
-                ${data.hobbies || data.teachingAbilities?.creativityHobbies ? `
-                <div style="background: linear-gradient(135deg, #e0f2f1 0%, #b2dfdb 100%); padding: 24px; border-radius: 16px; margin-bottom: 24px; border-left: 5px solid #009688;">
-                    <h3 style="margin: 0 0 12px 0; color: #009688; font-size: 1.4rem; display: flex; align-items: center; gap: 8px;">
-                        🎨 My Hobbies & Interests
-                    </h3>
-                    <p style="color: #1a202c; line-height: 1.8; font-size: 1.05rem; margin: 0;">
-                        ${data.hobbies || data.teachingAbilities?.creativityHobbies || 'I love learning and teaching! 😊'}
-                    </p>
-                </div>
-                ` : ''}
-                
                 <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 24px; border-radius: 16px; text-align: center; color: white; margin-top: 32px; box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);">
                     <h3 style="margin: 0 0 12px 0; font-size: 1.5rem; color: white; font-weight: 800; text-shadow: 0 2px 4px rgba(0,0,0,0.2);">Ready to Learn Together? 🚀</h3>
                     <p style="margin: 0; font-size: 1.1rem; color: white; font-weight: 600; text-shadow: 0 1px 3px rgba(0,0,0,0.2);">Book a class with me and let's start your English learning journey! 💪✨</p>
@@ -3595,7 +3806,6 @@
         }
         
     </script>
-</body>
 <script src="mobile-utils.js"></script>
 <script>
     // Initialize mobile features for profile page
@@ -4115,5 +4325,8 @@
         });
     }
 </script>
+<script src="js/remo-ai-engine.js?v=smart-1"></script>
+<script src="js/remo-ai-enhance.js?v=smart-1"></script>
+</body>
 </html> 
 
