@@ -126,7 +126,9 @@
             teachers: [],
             admins: [],
             query: '',
-            objectUrls: []
+            objectUrls: [],
+            modalPersonType: '',
+            modalPersonId: ''
         };
 
         function adminApiFetchInit(init) {
@@ -168,22 +170,59 @@
             return 'application/octet-stream';
         }
 
+        function detectMime(file) {
+            var fromName = guessMime(file.fileName);
+            if (fromName !== 'application/octet-stream') return fromName;
+            var fromUrl = guessMime(file.url || file.storedPath || '');
+            if (fromUrl !== 'application/octet-stream') return fromUrl;
+            if (file.category === 'idDocument' || file.category === 'nbi' || file.category === 'validId' || file.category === 'diploma' || file.category === 'certificate') {
+                return 'image/jpeg';
+            }
+            return 'application/octet-stream';
+        }
+
+        function displayName(file) {
+            return file.label || file.fileName || 'Document';
+        }
+
+        function downloadName(file) {
+            var name = String(file.fileName || 'document').trim() || 'document';
+            if (/\.[a-z0-9]+$/i.test(name)) return name;
+            var mime = detectMime(file);
+            var ext = mime === 'application/pdf' ? '.pdf'
+                : mime === 'image/png' ? '.png'
+                : mime === 'image/webp' ? '.webp'
+                : mime === 'image/gif' ? '.gif'
+                : '.jpg';
+            var base = (file.label || file.category || 'document').replace(/[^\w\-]+/g, '-').replace(/^-|-$/g, '') || 'document';
+            return base + ext;
+        }
+
+        function authFileUrl(file) {
+            if (!state.modalPersonType || !state.modalPersonId || !file || !file.id) return null;
+            return '/api/admin/hr-documents/' +
+                encodeURIComponent(state.modalPersonType) + '/' +
+                encodeURIComponent(state.modalPersonId) + '/file/' +
+                encodeURIComponent(file.id);
+        }
+
+        function resolveFileUrl(file) {
+            return authFileUrl(file) || file.url || null;
+        }
+
         function toObjectUrl(file) {
-            if (file.url) return { href: file.url, revoke: false };
             var raw = file.fileData || '';
             if (!raw) return null;
             if (raw.indexOf('http://') === 0 || raw.indexOf('https://') === 0 || raw.indexOf('/') === 0) {
-                return { href: raw, revoke: false };
+                return { href: raw, revoke: false, mime: detectMime(file) };
             }
-            var mime = 'application/octet-stream';
+            var mime = detectMime(file);
             var b64 = raw;
             if (raw.indexOf('data:') === 0) {
                 var m = raw.match(/^data:([^;]+);base64,([\s\S]+)$/);
-                if (!m) return { href: raw, revoke: false };
-                mime = m[1];
+                if (!m) return { href: raw, revoke: false, mime: mime };
+                mime = m[1] || mime;
                 b64 = m[2];
-            } else {
-                mime = guessMime(file.fileName);
             }
             try {
                 var binary = atob(b64);
@@ -199,39 +238,74 @@
             }
         }
 
+        function fetchFileBlob(file) {
+            var url = resolveFileUrl(file);
+            if (!url) {
+                var local = toObjectUrl(file);
+                return Promise.resolve(local);
+            }
+            return fetch(url, adminApiFetchInit())
+                .then(function (r) {
+                    if (!r.ok) throw new Error('HTTP ' + r.status);
+                    return r.blob().then(function (blob) {
+                        var mime = (blob.type && blob.type !== 'application/json' && blob.type !== 'text/html')
+                            ? blob.type
+                            : detectMime(file);
+                        var typed = (blob.type === mime) ? blob : new Blob([blob], { type: mime });
+                        if (typed.type === 'application/json' || typed.type === 'text/html') {
+                            throw new Error('Server returned ' + typed.type + ' instead of a document file');
+                        }
+                        var href = URL.createObjectURL(typed);
+                        state.objectUrls.push(href);
+                        return { href: href, revoke: true, mime: mime };
+                    });
+                });
+        }
+
         function openPreview(file) {
             var frame = document.getElementById('preview-frame');
             frame.classList.add('open');
-            frame.innerHTML = '';
-            var resolved = toObjectUrl(file);
-            if (!resolved) {
-                frame.innerHTML = '<div class="fallback">Unable to preview this file. Try Download.</div>';
-                return;
-            }
-            var mime = resolved.mime || guessMime(file.fileName);
-            if ((mime && mime.indexOf('image/') === 0) || /\.(png|jpe?g|webp|gif)$/i.test(file.fileName || '')) {
-                frame.innerHTML = '<img alt="" src="' + esc(resolved.href) + '" />';
-            } else if (mime === 'application/pdf' || /\.pdf$/i.test(file.fileName || '')) {
-                frame.innerHTML = '<iframe title="Document preview" src="' + esc(resolved.href) + '"></iframe>';
-            } else {
-                frame.innerHTML = '<div class="fallback">Preview not available for this file type. Use Open / Download.</div>';
-            }
+            frame.innerHTML = '<div class="fallback">Loading preview…</div>';
+            fetchFileBlob(file)
+                .then(function (resolved) {
+                    if (!resolved) {
+                        frame.innerHTML = '<div class="fallback">Unable to preview this file. Try Download.</div>';
+                        return;
+                    }
+                    var mime = resolved.mime || detectMime(file);
+                    if ((mime && mime.indexOf('image/') === 0) || /\.(png|jpe?g|webp|gif)$/i.test(file.fileName || file.url || '')) {
+                        frame.innerHTML = '<img alt="" src="' + esc(resolved.href) + '" />';
+                    } else if (mime === 'application/pdf' || /\.pdf$/i.test(file.fileName || file.url || '')) {
+                        frame.innerHTML = '<iframe title="Document preview" src="' + esc(resolved.href) + '"></iframe>';
+                    } else {
+                        frame.innerHTML = '<div class="fallback">Preview not available for this file type. Use Download.</div>';
+                    }
+                })
+                .catch(function (err) {
+                    console.warn(err);
+                    frame.innerHTML = '<div class="fallback">Preview failed (' + esc(err.message || 'error') + '). Try Download.</div>';
+                });
         }
 
         function downloadFile(file) {
-            var resolved = toObjectUrl(file);
-            if (!resolved) {
-                alert('Unable to download this file.');
-                return;
-            }
-            var a = document.createElement('a');
-            a.href = resolved.href;
-            a.download = file.fileName || 'document';
-            a.target = '_blank';
-            a.rel = 'noopener';
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
+            fetchFileBlob(file)
+                .then(function (resolved) {
+                    if (!resolved) {
+                        alert('Unable to download this file.');
+                        return;
+                    }
+                    var a = document.createElement('a');
+                    a.href = resolved.href;
+                    a.download = downloadName(file);
+                    a.rel = 'noopener';
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                })
+                .catch(function (err) {
+                    console.warn(err);
+                    alert('Download failed: ' + (err.message || 'unknown error'));
+                });
         }
 
         function setTab(tab) {
@@ -314,6 +388,8 @@
             body.innerHTML = 'Loading documents…';
             document.getElementById('modal-title').textContent = 'Documents';
             document.getElementById('modal-sub').textContent = '';
+            state.modalPersonType = personType;
+            state.modalPersonId = personId;
             modal.classList.add('open');
 
             fetch('/api/admin/hr-documents/' + encodeURIComponent(personType) + '/' + encodeURIComponent(personId), adminApiFetchInit())
@@ -349,8 +425,8 @@
                         groups[cat].forEach(function (f, idx) {
                             var key = cat + '-' + idx;
                             html += '<div class="doc-row">' +
-                                '<div><div class="name">' + esc(f.fileName || 'Document') + '</div>' +
-                                '<div class="meta">' + esc(f.source || '') +
+                                '<div><div class="name">' + esc(displayName(f)) + '</div>' +
+                                '<div class="meta">' + esc(f.fileName || f.source || '') +
                                 (f.nbiClearanceStatus ? ' · NBI: ' + esc(f.nbiClearanceStatus) : '') +
                                 '</div></div>' +
                                 '<div class="doc-actions">' +

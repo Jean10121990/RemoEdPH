@@ -3849,23 +3849,29 @@ router.get('/hr-documents/:personType/:personId', requireHrOrSuper, async (req, 
       if (!admin) return res.status(404).json({ success: false, error: 'Admin not found' });
       const files = [];
       if (admin.idDocumentPath) {
+        const base = path.basename(String(admin.idDocumentPath));
         files.push({
           id: 'admin-id',
           category: 'idDocument',
-          fileName: 'Government ID',
+          label: 'Government ID',
+          fileName: base && base.includes('.') ? base : `government-id${path.extname(base) || '.jpg'}`,
           source: 'upload',
           previewKind: 'url',
           url: adminPublicUploadUrl(admin.idDocumentPath),
+          storedPath: admin.idDocumentPath,
         });
       }
       if (admin.nbiClearanceDocumentPath) {
+        const base = path.basename(String(admin.nbiClearanceDocumentPath));
         files.push({
           id: 'admin-nbi',
           category: 'nbi',
-          fileName: 'NBI Clearance',
+          label: 'NBI Clearance',
+          fileName: base && base.includes('.') ? base : `nbi-clearance${path.extname(base) || '.jpg'}`,
           source: 'upload',
           previewKind: 'url',
           url: adminPublicUploadUrl(admin.nbiClearanceDocumentPath),
+          storedPath: admin.nbiClearanceDocumentPath,
           nbiClearanceStatus: admin.nbiClearanceStatus || 'none',
         });
       }
@@ -3892,6 +3898,88 @@ router.get('/hr-documents/:personType/:personId', requireHrOrSuper, async (req, 
   } catch (err) {
     console.error('GET /hr-documents/:personType/:personId:', err);
     res.status(500).json({ success: false, error: 'Failed to load documents' });
+  }
+});
+
+/** Stream a staff document with correct Content-Type (avoids .json downloads / broken previews). */
+router.get('/hr-documents/:personType/:personId/file/:fileId', requireHrOrSuper, async (req, res) => {
+  try {
+    const personType = String(req.params.personType || '').toLowerCase();
+    const personId = String(req.params.personId || '').trim();
+    const fileId = String(req.params.fileId || '').trim();
+    if (!mongoose.isValidObjectId(personId) || !fileId) {
+      return res.status(400).json({ success: false, error: 'Invalid request' });
+    }
+
+    const mimeFromName = (name) => {
+      const n = String(name || '').toLowerCase();
+      if (n.endsWith('.pdf')) return 'application/pdf';
+      if (n.endsWith('.png')) return 'image/png';
+      if (n.endsWith('.jpg') || n.endsWith('.jpeg')) return 'image/jpeg';
+      if (n.endsWith('.webp')) return 'image/webp';
+      if (n.endsWith('.gif')) return 'image/gif';
+      return 'application/octet-stream';
+    };
+
+    if (personType === 'admin') {
+      const admin = await Admin.findById(personId)
+        .select('idDocumentPath nbiClearanceDocumentPath')
+        .lean();
+      if (!admin) return res.status(404).json({ success: false, error: 'Admin not found' });
+      let stored = null;
+      let downloadName = 'document';
+      if (fileId === 'admin-id') {
+        stored = admin.idDocumentPath;
+        downloadName = path.basename(String(stored || 'government-id.jpg'));
+      } else if (fileId === 'admin-nbi') {
+        stored = admin.nbiClearanceDocumentPath;
+        downloadName = path.basename(String(stored || 'nbi-clearance.jpg'));
+      } else {
+        return res.status(404).json({ success: false, error: 'File not found' });
+      }
+      if (!stored) return res.status(404).json({ success: false, error: 'File not found' });
+      const uploadsRoot = path.resolve(path.join(__dirname, '../uploads'));
+      const abs = path.resolve(uploadsRoot, String(stored).replace(/^[/\\]+/, '').replace(/\\/g, '/'));
+      const relToRoot = path.relative(uploadsRoot, abs);
+      if (relToRoot.startsWith('..') || path.isAbsolute(relToRoot) || !require('fs').existsSync(abs)) {
+        return res.status(404).json({ success: false, error: 'File missing on server' });
+      }
+      res.setHeader('Content-Type', mimeFromName(downloadName));
+      res.setHeader('Content-Disposition', `inline; filename="${downloadName.replace(/"/g, '')}"`);
+      return res.sendFile(abs);
+    }
+
+    if (personType === 'teacher') {
+      const teacher = await Teacher.findById(personId).select('documents').lean();
+      if (!teacher) return res.status(404).json({ success: false, error: 'Teacher not found' });
+      const files = collectTeacherDocuments(teacher);
+      const file = files.find((f) => f.id === fileId);
+      if (!file || !file.fileData) {
+        return res.status(404).json({ success: false, error: 'File not found' });
+      }
+      let raw = String(file.fileData);
+      let mime = mimeFromName(file.fileName);
+      if (raw.startsWith('data:')) {
+        const m = raw.match(/^data:([^;]+);base64,([\s\S]+)$/);
+        if (!m) return res.status(400).json({ success: false, error: 'Invalid file data' });
+        mime = m[1] || mime;
+        raw = m[2];
+      } else if (raw.startsWith('http') || raw.startsWith('/')) {
+        return res.redirect(raw);
+      }
+      const buf = Buffer.from(raw, 'base64');
+      const downloadName = (file.fileName && String(file.fileName).includes('.'))
+        ? file.fileName
+        : `document.${mime.includes('pdf') ? 'pdf' : mime.includes('png') ? 'png' : 'jpg'}`;
+      res.setHeader('Content-Type', mime);
+      res.setHeader('Content-Disposition', `inline; filename="${String(downloadName).replace(/"/g, '')}"`);
+      return res.send(buf);
+    }
+
+    return res.status(400).json({ success: false, error: 'Invalid person type' });
+  } catch (err) {
+    console.error('GET /hr-documents/.../file:', err);
+    res.status(500).json({ success: false, error: 'Failed to open file' });
   }
 });
 
