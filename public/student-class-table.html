@@ -1320,6 +1320,17 @@
       return t.username || 'Unknown Teacher';
     }
 
+    function teacherIdFromBooking(booking) {
+      if (!booking) return '';
+      const t = booking.teacherId;
+      if (t == null) return '';
+      if (typeof t === 'string' || typeof t === 'number') return String(t).trim();
+      if (typeof t === 'object') {
+        return String(t.teacherId || t._id || t.id || t.username || t.email || '').trim();
+      }
+      return String(t).trim();
+    }
+
     // Prevent external script errors from interfering with our functionality
     window.addEventListener('error', function(e) {
       // Ignore errors from external scripts like QuillBot
@@ -1480,7 +1491,7 @@
             bookingId: currentFeedbackBooking._id,
             rating: selectedRating,
             comment: comments,
-            teacherId: currentFeedbackBooking.teacherId
+            teacherId: teacherIdFromBooking(currentFeedbackBooking)
         });
     }
     

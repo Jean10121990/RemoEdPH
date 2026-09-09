@@ -248,6 +248,7 @@
                             rows.push(['Username', u.username || '—']);
                             rows.push(['Email', u.email || '—']);
                             rows.push(['Teacher ID', u.teacherId || '—']);
+                            rows.push(['Nickname', (u.nickname && String(u.nickname).trim()) || '—']);
                             rows.push(['Status', u.status || '—']);
                             rows.push(['Payout tier', tierLabel]);
                             rows.push(['Rate (25 min)', u.hourlyRate != null ? ('₱' + Number(u.hourlyRate).toFixed(2)) : '—']);

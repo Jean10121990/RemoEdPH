@@ -326,7 +326,9 @@ async function computeTeacherScoresForMonth(monthKey) {
     if (typeof id === 'object') {
       return String(id.teacherId || id._id || id.id || '').trim();
     }
-    return String(id).trim();
+    const key = String(id).trim();
+    if (!key || key === '[object Object]') return '';
+    return key;
   }
 
   function ensure(id) {
@@ -396,10 +398,22 @@ async function computeTeacherScoresForMonth(monthKey) {
   }
 
   for (const s of starRows) {
-    applyTeacherRating(s.recipientId, s.rating, s.lessonDate || s.receivedAt, s.bookingId);
+    let teacherKey = normalizeTeacherKey(s.recipientId);
+    if (!teacherKey && s.bookingId) {
+      const booking = await Booking.findById(s.bookingId).select('teacherId').lean();
+      teacherKey = normalizeTeacherKey(booking && booking.teacherId);
+    }
+    if (!teacherKey) continue;
+    applyTeacherRating(teacherKey, s.rating, s.lessonDate || s.receivedAt, s.bookingId);
   }
   for (const f of feedbacks) {
-    applyTeacherRating(f.teacherId, f.rating, f.lessonDate || f.submittedAt, f.bookingId);
+    let teacherKey = normalizeTeacherKey(f.teacherId);
+    if (!teacherKey && f.bookingId) {
+      const booking = await Booking.findById(f.bookingId).select('teacherId').lean();
+      teacherKey = normalizeTeacherKey(booking && booking.teacherId);
+    }
+    if (!teacherKey) continue;
+    applyTeacherRating(teacherKey, f.rating, f.lessonDate || f.submittedAt, f.bookingId);
   }
 
   for (const rw of rewards) {

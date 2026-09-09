@@ -1810,14 +1810,23 @@ router.post('/feedback/submit', verifyToken, requireStudent, async (req, res) =>
     
     const { bookingId, teacherId, rating, comment } = req.body;
     const bookingIdStr = bookingId != null ? String(bookingId).trim() : '';
-    const teacherIdStr = teacherId != null ? String(teacherId).trim() : '';
     const ratingNum = Number(rating);
 
-    if (!bookingIdStr || !teacherIdStr || !Number.isFinite(ratingNum)) {
-      console.log('❌ Missing required fields', { bookingIdStr, teacherIdStr, rating });
+    function normalizeTeacherId(raw) {
+      if (raw == null) return '';
+      if (typeof raw === 'object') {
+        return String(raw.teacherId || raw._id || raw.id || raw.username || raw.email || '').trim();
+      }
+      const s = String(raw).trim();
+      if (!s || s === '[object Object]') return '';
+      return s;
+    }
+
+    if (!bookingIdStr || !Number.isFinite(ratingNum)) {
+      console.log('❌ Missing required fields', { bookingIdStr, rating });
       return res.status(400).json({
         error:
-          'Missing required fields: bookingId, teacherId, and a star rating (1–5). Select stars before submitting.',
+          'Missing required fields: bookingId and a star rating (1–5). Select stars before submitting.',
       });
     }
 
@@ -1837,11 +1846,19 @@ router.post('/feedback/submit', verifyToken, requireStudent, async (req, res) =>
       return res.status(400).json({ error: 'Feedback already submitted for this class' });
     }
     
-    // Get booking information for lesson date
+    // Get booking information for lesson date + authoritative teacherId
     const booking = await Booking.findById(bookingIdStr);
     if (!booking) {
       console.log('❌ Booking not found:', bookingIdStr);
       return res.status(404).json({ error: 'Booking not found' });
+    }
+
+    const teacherIdStr =
+      normalizeTeacherId(booking.teacherId) || normalizeTeacherId(teacherId);
+    if (!teacherIdStr) {
+      return res.status(400).json({
+        error: 'Could not resolve teacher for this booking. Please refresh and try again.',
+      });
     }
     
     // Create new feedback
