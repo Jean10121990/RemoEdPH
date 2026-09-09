@@ -1007,6 +1007,7 @@
     <link rel="stylesheet" href="css/portal-chrome-compact.css">
   <link rel="stylesheet" href="css/student-portal-layout.css?v=slide-match-1">
   <link rel="stylesheet" href="css/student-sidebar.css?v=slide-match-1">
+  <link rel="stylesheet" href="css/class-info-modal.css?v=cim-1">
 </head>
 <body class="student-portal page-student-class-table">
   <div class="remoed-main">
@@ -1081,54 +1082,57 @@
     </div>
   </div>
   <!-- Class Info Modal -->
-  <div id="booking-info-modal" class="remoed-modal">
-    <div class="remoed-modal-content">
-      <div class="remoed-modal-header">
-        <h2 class="remoed-modal-title">Class Information</h2>
+  <div id="booking-info-modal" class="remoed-modal cim-shell">
+    <div class="remoed-modal-content cim-panel">
+      <div class="remoed-modal-header cim-header">
+        <div class="cim-header-text">
+          <p class="cim-eyebrow">Scheduled class</p>
+          <h2 class="remoed-modal-title">Class Information</h2>
+        </div>
         <button type="button" class="remoed-modal-close" id="close-booking-info-modal" aria-label="Close">&times;</button>
       </div>
-      <div class="remoed-modal-body">
-        <div class="class-details" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px 15px; font-size: 0.85rem; margin-bottom: 12px;">
-          <div class="detail-row" style="margin: 0; display: flex; align-items: center; gap: 8px;">
-            <label style="font-weight: bold; color: #000; font-size: 0.8rem; min-width: 70px;">Date:</label>
-            <span id="info-class-date" style="color: #000; font-weight: bold; flex: 1;"></span>
+      <div class="remoed-modal-body cim-body">
+        <div class="class-details cim-meta">
+          <div class="cim-field">
+            <span class="cim-field-label">Date</span>
+            <span class="cim-field-value" id="info-class-date"></span>
           </div>
-          <div class="detail-row" style="margin: 0; display: flex; align-items: center; gap: 8px;">
-            <label style="font-weight: bold; color: #000; font-size: 0.8rem; min-width: 70px;">Time:</label>
-            <span id="info-class-time" style="color: #000; font-weight: bold; flex: 1;"></span>
+          <div class="cim-field">
+            <span class="cim-field-label">Time</span>
+            <span class="cim-field-value" id="info-class-time"></span>
           </div>
-          <div class="detail-row" style="margin: 0; display: flex; align-items: center; gap: 8px;">
-            <label style="font-weight: bold; color: #000; font-size: 0.8rem; min-width: 70px;">Teacher:</label>
-            <span id="info-class-teacher" style="color: #000; font-weight: bold; flex: 1;"></span>
+          <div class="cim-field">
+            <span class="cim-field-label">Teacher</span>
+            <span class="cim-field-value" id="info-class-teacher"></span>
           </div>
-          <div class="detail-row" style="margin: 0; display: flex; align-items: center; gap: 8px;">
-            <label style="font-weight: bold; color: #000; font-size: 0.8rem; min-width: 70px;">Lesson:</label>
-            <span id="info-class-lesson" style="color: #000; font-weight: bold; flex: 1;"></span>
+          <div class="cim-field">
+            <span class="cim-field-label">Lesson</span>
+            <span class="cim-field-value" id="info-class-lesson"></span>
           </div>
-          <div class="detail-row" style="margin: 0; display: flex; align-items: center; gap: 8px; grid-column: 1 / -1;">
-            <label style="font-weight: bold; color: #000; font-size: 0.8rem; min-width: 90px;">Classroom ID:</label>
-            <span id="info-classroom-id" style="font-weight: bold; color: #1ca7e7; font-size: 0.75rem; flex: 1;"></span>
+          <div class="cim-field cim-field--wide">
+            <span class="cim-field-label">Classroom ID</span>
+            <span class="cim-field-value cim-field-value--id" id="info-classroom-id"></span>
           </div>
         </div>
 
-        <div style="margin: 10px 0; text-align: center;">
+        <div class="cim-primary">
           <button type="button" class="remoed-btn remoed-btn-primary" id="join-classroom-btn">Enter Live Classroom</button>
         </div>
 
-        <div id="cancel-booking-row" style="margin: 10px 0;">
-          <label style="font-weight: 600; color: #333; display: block; margin-bottom: 6px; font-size: 0.85rem;">Actions:</label>
-          <div id="cancel-window-notice" style="display: none; padding: 8px 10px; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 6px; margin-bottom: 8px; font-size: 0.75rem; color: #856404; line-height: 1.35;">
+        <section id="cancel-booking-row" class="cim-section" aria-label="Actions">
+          <h3 class="cim-section-title">Actions</h3>
+          <div id="cancel-window-notice" class="cim-notice" style="display: none;">
             The 30-minute emergency cancellation window has closed. Late cancellations forfeit the class credit if you do not attend.
           </div>
           <button type="button" class="remoed-btn remoed-btn-danger" id="cancel-booking-btn">Request Cancellation</button>
-        </div>
+        </section>
 
-        <div id="emergency-cancel-panel" style="display: none; margin-top: 8px; padding: 10px; background: #f8f9fa; border-radius: 4px; border: 1px solid #e0e6ed;">
-          <h4 style="margin: 0 0 6px 0; color: #dc3545; font-size: 0.9rem;">Emergency Cancellation</h4>
-          <p style="margin: 0 0 8px 0; font-size: 0.75rem; color: #555;">Cancel at least 30 minutes before start to keep your lesson credit.</p>
+        <div id="emergency-cancel-panel" class="cim-inline-form" style="display: none;">
+          <h4>Emergency Cancellation</h4>
+          <p style="margin: 0 0 10px; font-size: 0.78rem; color: #64748b; line-height: 1.4;">Cancel at least 30 minutes before start to keep your lesson credit.</p>
           <div class="form-group">
-            <label for="emergency-cancel-reason" style="display: block; margin-bottom: 3px; font-weight: 600; color: #333; font-size: 0.8rem;">Reason:</label>
-            <select id="emergency-cancel-reason" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.85rem; box-sizing: border-box;">
+            <label for="emergency-cancel-reason" class="cim-field-label" style="display:block;margin-bottom:6px;">Reason</label>
+            <select id="emergency-cancel-reason">
               <option value="">Select a reason…</option>
               <option value="Power Interruption">Power Interruption</option>
               <option value="Natural Disaster">Natural Disaster</option>
@@ -1136,13 +1140,13 @@
               <option value="Other Valid Reason">Other Valid Reason</option>
             </select>
           </div>
-          <div style="display: flex; gap: 6px; margin-top: 8px;">
-            <button type="button" class="remoed-btn remoed-btn-secondary" id="emergency-cancel-back-btn" style="padding: 5px 10px; font-size: 0.8rem;">Back</button>
-            <button type="button" class="remoed-btn remoed-btn-danger" id="emergency-cancel-submit-btn" style="padding: 5px 10px; font-size: 0.8rem;">Submit Cancellation</button>
+          <div style="display: flex; gap: 8px; margin-top: 10px; justify-content: flex-end;">
+            <button type="button" class="remoed-btn remoed-btn-secondary" id="emergency-cancel-back-btn">Back</button>
+            <button type="button" class="remoed-btn remoed-btn-danger" id="emergency-cancel-submit-btn">Submit Cancellation</button>
           </div>
         </div>
       </div>
-      <div class="remoed-modal-footer">
+      <div class="remoed-modal-footer cim-footer">
         <button type="button" class="remoed-btn remoed-btn-secondary" id="close-booking-info-modal2">Close</button>
       </div>
     </div>

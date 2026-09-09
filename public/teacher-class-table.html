@@ -46,6 +46,7 @@
 <link rel="stylesheet" href="css/global-portal.css">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="css/portal-chrome-compact.css?v=rail-align-1">
+    <link rel="stylesheet" href="css/class-info-modal.css?v=cim-1">
 </head>
 <body class="page-teacher-class-table teacher-portal">
   <div class="remoed-main">
@@ -148,95 +149,97 @@
   </div>
 
   <!-- Class Info Modal -->
-  <div id="class-info-modal" class="remoed-modal">
-    <div class="remoed-modal-content">
-      <div class="remoed-modal-header">
-        <h2 class="remoed-modal-title">Class Information</h2>
-        <button class="remoed-modal-close" onclick="closeClassInfo()">&times;</button>
+  <div id="class-info-modal" class="remoed-modal cim-shell">
+    <div class="remoed-modal-content cim-panel">
+      <div class="remoed-modal-header cim-header">
+        <div class="cim-header-text">
+          <p class="cim-eyebrow">Scheduled class</p>
+          <h2 class="remoed-modal-title">Class Information</h2>
+        </div>
+        <button type="button" class="remoed-modal-close" onclick="closeClassInfo()" aria-label="Close">&times;</button>
       </div>
-      <div class="remoed-modal-body">
-        <!-- Compact Class Details Grid -->
-        <div class="class-details" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px 15px; font-size: 0.85rem; margin-bottom: 12px;">
-          <div class="detail-row" style="margin: 0; display: flex; align-items: center; gap: 8px;">
-            <label style="font-weight: bold; color: #000; font-size: 0.8rem; min-width: 70px;">Date:</label>
-            <span id="class-date" style="color: #000; font-weight: bold; flex: 1;"></span>
+      <div class="remoed-modal-body cim-body">
+        <div class="class-details cim-meta">
+          <div class="cim-field">
+            <span class="cim-field-label">Date</span>
+            <span class="cim-field-value" id="class-date"></span>
           </div>
-          <div class="detail-row" style="margin: 0; display: flex; align-items: center; gap: 8px;">
-            <label style="font-weight: bold; color: #000; font-size: 0.8rem; min-width: 70px;">Time:</label>
-            <span id="class-time" style="color: #000; font-weight: bold; flex: 1;"></span>
+          <div class="cim-field">
+            <span class="cim-field-label">Time</span>
+            <span class="cim-field-value" id="class-time"></span>
           </div>
-          <div class="detail-row" style="margin: 0; display: flex; align-items: center; gap: 8px;">
-            <label style="font-weight: bold; color: #000; font-size: 0.8rem; min-width: 70px;">Student:</label>
-            <span id="class-student" style="color: #000; font-weight: bold; flex: 1;"></span>
-          </div>
-          <div id="class-student-photo-wrap" style="display: none; margin: 6px 0 0 78px;">
-            <img id="class-student-photo" alt="" width="48" height="48" loading="lazy" decoding="async" style="border-radius: 50%; object-fit: cover; border: 1px solid #e0e6ed;" />
-          </div>
-          <div class="detail-row" style="margin: 0; display: flex; align-items: center; gap: 8px;">
-            <label style="font-weight: bold; color: #000; font-size: 0.8rem; min-width: 70px;">Level:</label>
-            <span id="class-level" style="color: #000; font-weight: bold; flex: 1;"></span>
-          </div>
-          <div class="detail-row" style="margin: 0; display: flex; align-items: center; gap: 8px;">
-            <label style="font-weight: bold; color: #000; font-size: 0.8rem; min-width: 70px;">Lesson:</label>
-            <span id="class-lesson" style="color: #000; font-weight: bold; flex: 1;"></span>
-          </div>
-          <div class="detail-row" style="margin: 0; display: flex; align-items: center; gap: 8px;">
-            <label style="font-weight: bold; color: #000; font-size: 0.8rem; min-width: 70px;">Classroom ID:</label>
-            <span id="classroom-id" style="font-weight: bold; color: #1ca7e7; font-size: 0.75rem; flex: 1;"></span>
-          </div>
-        </div>
-        
-        <!-- Join Classroom / Preview Lesson Button -->
-        <div style="margin: 10px 0; text-align: center;">
-          <button class="remoed-btn remoed-btn-primary" id="join-classroom-btn" onclick="joinClassroom()">Enter Live Classroom</button>
-        </div>
-        
-        <!-- Actions Section -->
-        <div style="margin: 10px 0;">
-          <label style="font-weight: 600; color: #333; display: block; margin-bottom: 6px; font-size: 0.85rem;">Actions:</label>
-          <!-- Compact Cancellation Penalty Notice -->
-          <div style="padding: 3px 6px; background: #fff3cd; border-radius: 3px; border: 1px solid #ffeaa7; margin-bottom: 5px;">
-            <div style="font-size: 0.65rem; color: #856404; font-weight: 600; text-align: center; line-height: 1.2;">
-              ⚠️ Cancellation Penalty: <span style="color: #28a745;">>72h: 0%</span> | <span style="color: #20c997;">48-72h: 12.5%</span> | <span style="color: #ffc107;">24-48h: 25%</span> | <span style="color: #fd7e14;">3-24h: 100%</span> | <span style="color: #dc3545;">&lt;3h: 300%</span>
+          <div class="cim-field cim-field--wide">
+            <span class="cim-field-label">Student</span>
+            <div class="cim-person">
+              <div id="class-student-photo-wrap" style="display: none;">
+                <img id="class-student-photo" alt="" width="40" height="40" loading="lazy" decoding="async" />
+              </div>
+              <span class="cim-field-value" id="class-student"></span>
             </div>
           </div>
-          <button class="remoed-btn remoed-btn-danger" onclick="toggleCancellationForm()" id="cancel-btn">Request Cancellation</button>
-        </div>
-        
-        <!-- Class Management Buttons -->
-        <div id="class-management-buttons" style="display: none; margin: 10px 0;">
-          <label style="font-weight: 600; color: #333; display: block; margin-bottom: 6px; font-size: 0.85rem;">Class Management:</label>
-          <div style="display: grid; grid-template-columns: 1fr; gap: 4px;">
-            <button class="remoed-btn remoed-btn-warning" onclick="markStudentAbsent()" id="student-absent-btn">
-              👤 Student Absent
-            </button>
-            <button class="remoed-btn remoed-btn-success" onclick="completeClass()" id="complete-class-btn">
-              ✅ Complete Class & Feedback
-            </button>
-            <button class="remoed-btn remoed-btn-danger" onclick="reportClassIssue().catch(console.error)" id="class-issue-btn">
-              ⚠️ Class Issue
-            </button>
+          <div class="cim-field">
+            <span class="cim-field-label">Level</span>
+            <span class="cim-field-value" id="class-level"></span>
+          </div>
+          <div class="cim-field">
+            <span class="cim-field-label">Lesson</span>
+            <span class="cim-field-value" id="class-lesson"></span>
+          </div>
+          <div class="cim-field cim-field--wide">
+            <span class="cim-field-label">Classroom ID</span>
+            <span class="cim-field-value cim-field-value--id" id="classroom-id"></span>
           </div>
         </div>
-          
-        <!-- Cancellation Form (initially hidden) -->
-        <div id="cancellation-form" style="display: none; margin-top: 8px; padding: 10px; background: #f8f9fa; border-radius: 4px; border: 1px solid #e0e6ed;">
-          <h4 style="margin: 0 0 6px 0; color: #dc3545; font-size: 0.9rem;">Cancellation Request</h4>
+
+        <div class="cim-primary">
+          <button type="button" class="remoed-btn remoed-btn-primary" id="join-classroom-btn" onclick="joinClassroom()">Enter Live Classroom</button>
+        </div>
+
+        <section class="cim-section" aria-label="Actions">
+          <h3 class="cim-section-title">Actions</h3>
+          <div class="cim-penalty" role="note">
+            <p class="cim-penalty-lead">Cancellation penalty schedule</p>
+            <span class="cim-chip" data-tier="0">&gt;72h <strong>0%</strong></span>
+            <span class="cim-chip" data-tier="1">48–72h <strong>12.5%</strong></span>
+            <span class="cim-chip" data-tier="2">24–48h <strong>25%</strong></span>
+            <span class="cim-chip" data-tier="3">3–24h <strong>100%</strong></span>
+            <span class="cim-chip" data-tier="4">&lt;3h <strong>300%</strong></span>
+          </div>
+          <button type="button" class="remoed-btn remoed-btn-danger" onclick="toggleCancellationForm()" id="cancel-btn">Request Cancellation</button>
+        </section>
+
+        <section id="class-management-buttons" class="cim-section" style="display: none;" aria-label="Class management">
+          <h3 class="cim-section-title">Class Management</h3>
+          <div class="cim-mgmt-grid">
+            <button type="button" class="remoed-btn remoed-btn-warning cim-btn-mgmt" onclick="markStudentAbsent()" id="student-absent-btn">
+              Student Absent
+            </button>
+            <button type="button" class="remoed-btn remoed-btn-danger cim-btn-mgmt" onclick="reportClassIssue().catch(console.error)" id="class-issue-btn">
+              Report Issue
+            </button>
+            <button type="button" class="remoed-btn remoed-btn-success cim-btn-mgmt cim-btn-mgmt--wide" onclick="completeClass()" id="complete-class-btn">
+              Complete Class &amp; Feedback
+            </button>
+          </div>
+        </section>
+
+        <div id="cancellation-form" class="cim-inline-form" style="display: none;">
+          <h4>Cancellation Request</h4>
           <div class="form-group">
-            <label for="cancellation-reason-inline" style="display: block; margin-bottom: 3px; font-weight: 600; color: #333; font-size: 0.8rem;">Reason for Cancellation:</label>
-            <textarea id="cancellation-reason-inline" placeholder="Please provide a detailed reason for cancellation (minimum 10 characters)..." rows="2" maxlength="500" style="width: 100%; padding: 5px; border: 1px solid #ddd; border-radius: 3px; box-sizing: border-box; font-size: 0.8rem;"></textarea>
-            <div class="char-count" style="margin-top: 2px; font-size: 0.7rem; color: #666;">
+            <label for="cancellation-reason-inline" class="cim-field-label" style="display:block;margin-bottom:6px;">Reason for cancellation</label>
+            <textarea id="cancellation-reason-inline" placeholder="Please provide a detailed reason for cancellation (minimum 10 characters)..." rows="3" maxlength="500"></textarea>
+            <div class="char-count" style="margin-top: 4px; font-size: 0.72rem; color: #64748b;">
               <span id="char-count-inline">0</span>/500 characters
             </div>
           </div>
-          <div style="display: flex; gap: 6px; margin-top: 6px;">
-            <button class="remoed-btn remoed-btn-secondary" onclick="hideCancellationForm()" style="padding: 5px 10px; font-size: 0.8rem;">Cancel</button>
-            <button class="remoed-btn remoed-btn-danger" onclick="submitCancellationRequest()" style="padding: 5px 10px; font-size: 0.8rem;">Submit Request</button>
+          <div style="display: flex; gap: 8px; margin-top: 10px; justify-content: flex-end;">
+            <button type="button" class="remoed-btn remoed-btn-secondary" onclick="hideCancellationForm()">Back</button>
+            <button type="button" class="remoed-btn remoed-btn-danger" onclick="submitCancellationRequest()">Submit Request</button>
           </div>
         </div>
       </div>
-      <div class="remoed-modal-footer">
-        <button class="remoed-btn remoed-btn-secondary" onclick="closeClassInfo()">Close</button>
+      <div class="remoed-modal-footer cim-footer">
+        <button type="button" class="remoed-btn remoed-btn-secondary" onclick="closeClassInfo()">Close</button>
       </div>
     </div>
   </div>
