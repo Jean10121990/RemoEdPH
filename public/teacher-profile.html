@@ -670,7 +670,7 @@
             async function updateSidebarProfile() {
                 const username = localStorage.getItem('remoedUsername') || 'Teacher';
                 const teacherId = localStorage.getItem('teacherId');
-                const token = localStorage.getItem('token');
+                const token = getTeacherAuthToken();
                 
                 // Get username element (could be remoed-username or sidebar-email depending on page)
                 const usernameEl = document.getElementById('remoed-username') || document.getElementById('sidebar-email');
@@ -746,7 +746,7 @@
             // Load sidebar (shared component)
             (function() {
                 var script = document.createElement('script');
-                script.src = 'js/teacher-sidebar.js?v=teacher-slide-1
+                script.src = 'js/teacher-sidebar.js?v=teacher-slide-1';
                 script.onload = function() {
                     TeacherSidebar.render('teacher-sidebar-root', 'profile');
                     updateSidebarProfile();
@@ -822,7 +822,7 @@
 
                  function loadProfileData() {
              // Load profile data from API
-             const token = localStorage.getItem('token');
+             const token = getTeacherAuthToken();
              console.log('Token from localStorage:', token ? 'Present' : 'Missing');
              
              if (!token) {
