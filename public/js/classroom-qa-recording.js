@@ -810,31 +810,45 @@
     } catch (_e) {}
     var wrap = document.createElement('div');
     wrap.id = 'qa-recording-panel';
-    wrap.setAttribute(
-      'style',
-      [
-        'position:fixed',
-        'bottom:12px',
-        'left:12px',
-        'z-index:8500',
-        'max-width:300px',
-        'padding:10px 12px',
-        'border-radius:10px',
-        'background:rgba(15,23,42,0.92)',
-        'color:#e2e8f0',
-        'font:12px/1.4 system-ui,Segoe UI,sans-serif',
-        'box-shadow:0 8px 24px rgba(0,0,0,0.35)',
-        'border:1px solid rgba(148,163,184,0.35)'
-      ].join(';')
-    );
+    wrap.className = 'qa-recording-dock';
     wrap.innerHTML =
-      '<div style="font-weight:700;margin-bottom:6px;color:#93c5fd;">QA lesson recording</div>' +
-      '<div id="qa-rec-status" style="opacity:0.9;margin-bottom:8px;">…</div>' +
-      '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">' +
-      '<button type="button" id="qa-rec-start" style="padding:6px 12px;border:none;border-radius:6px;background:#2563eb;color:#fff;font-weight:600;cursor:pointer;">Start</button>' +
+      '<button type="button" class="qa-recording-dock__toggle" id="qa-rec-toggle" aria-expanded="false">' +
+      '<span class="qa-recording-dock__title">QA recording</span>' +
+      '<span class="qa-recording-dock__chev" aria-hidden="true">▸</span>' +
+      '</button>' +
+      '<div class="qa-recording-dock__body" id="qa-rec-body" hidden>' +
+      '<div id="qa-rec-status" class="qa-recording-dock__status">…</div>' +
+      '<div class="qa-recording-dock__actions">' +
+      '<button type="button" id="qa-rec-start" class="qa-recording-dock__start">Start</button>' +
       '</div>' +
-      '<div id="qa-rec-hint" style="margin-top:8px;font-size:11px;opacity:0.75;"></div>';
-    document.body.appendChild(wrap);
+      '<div id="qa-rec-hint" class="qa-recording-dock__hint"></div>' +
+      '</div>';
+    var slot = document.getElementById('teacher-notes-qa-slot');
+    if (slot) {
+      slot.appendChild(wrap);
+      try {
+        var rail = document.getElementById('teacher-notes-rail');
+        if (rail) rail.classList.add('is-visible');
+        var notesToggle = document.getElementById('lc-notes-toggle');
+        if (notesToggle) notesToggle.hidden = false;
+        var mobileNotes = document.getElementById('lc-mobile-notes-btn');
+        if (mobileNotes) mobileNotes.hidden = false;
+      } catch (_e2) {}
+    } else {
+      document.body.appendChild(wrap);
+      wrap.classList.add('qa-recording-dock--floating');
+    }
+    var toggle = wrap.querySelector('#qa-rec-toggle');
+    var body = wrap.querySelector('#qa-rec-body');
+    if (toggle && body) {
+      toggle.addEventListener('click', function () {
+        var open = body.hasAttribute('hidden');
+        if (open) body.removeAttribute('hidden');
+        else body.setAttribute('hidden', '');
+        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        wrap.classList.toggle('is-open', open);
+      });
+    }
     return wrap;
   }
 

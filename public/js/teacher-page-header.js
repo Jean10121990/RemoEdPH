@@ -51,7 +51,13 @@
         'professional-development': { title: 'Career Growth', icon: 'growth' },
         messages: { title: 'Messages', icon: 'chat' },
         profile: { title: 'Profile', icon: 'person' },
-        'attendance-analysis': { title: 'Attendance Analysis', icon: 'chart' }
+        'attendance-analysis': { title: 'Attendance Analysis', icon: 'chart' },
+        'peer-learning': { title: 'Peer Learning', icon: 'growth' },
+        'view-profile': { title: 'Teacher Profile', icon: 'person' },
+        'training-course': { title: 'Training Course', icon: 'book' },
+        assessment: { title: 'Assessment', icon: 'chart' },
+        'view-assessment': { title: 'Assessment Results', icon: 'chart' },
+        payslip: { title: 'Payslip', icon: 'money' }
     };
 
     function escapeHtml(s) {

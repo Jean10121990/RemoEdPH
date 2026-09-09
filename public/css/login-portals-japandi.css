@@ -37,14 +37,14 @@
 }
 
 .teacher-login-page {
-  background: #f2ede4;
+  background: #f4faf5;
 }
 
-/* Teacher: beige + soft purple / periwinkle (card/button purples unchanged) */
+/* Teacher: soft green brand atmosphere */
 .teacher-login-page .page-atmosphere--teacher .atmosphere-blob--1 {
   width: min(58vmin, 520px);
   height: min(58vmin, 520px);
-  background: #ebe4d8;
+  background: #e8f6eb;
   top: -12%;
   left: -18%;
 }
@@ -52,7 +52,7 @@
 .teacher-login-page .page-atmosphere--teacher .atmosphere-blob--2 {
   width: min(50vmin, 440px);
   height: min(50vmin, 440px);
-  background: rgba(199, 183, 255, 0.4);
+  background: rgba(0, 168, 45, 0.18);
   top: 8%;
   right: -12%;
 }
@@ -60,7 +60,7 @@
 .teacher-login-page .page-atmosphere--teacher .atmosphere-blob--3 {
   width: min(62vmin, 560px);
   height: min(62vmin, 560px);
-  background: rgba(165, 180, 252, 0.3);
+  background: rgba(0, 174, 239, 0.12);
   bottom: -20%;
   left: 20%;
 }
@@ -68,7 +68,7 @@
 .teacher-login-page .page-atmosphere--teacher .atmosphere-blob--4 {
   width: min(44vmin, 400px);
   height: min(44vmin, 400px);
-  background: rgba(224, 231, 255, 0.5);
+  background: rgba(253, 216, 53, 0.28);
   bottom: 5%;
   right: 5%;
 }
@@ -76,7 +76,7 @@
 .teacher-login-page .page-atmosphere--teacher .atmosphere-blob--5 {
   width: min(36vmin, 320px);
   height: min(36vmin, 320px);
-  background: rgba(237, 233, 254, 0.65);
+  background: rgba(0, 138, 36, 0.14);
   top: 42%;
   left: 35%;
 }

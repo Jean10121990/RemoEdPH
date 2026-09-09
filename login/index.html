@@ -9,13 +9,15 @@
     <link rel="stylesheet" href="/modern-styles.css" />
     <style>
       :root {
-        --primary: #667eea;
-        --primary-dark: #764ba2;
+        --primary: #00aeef;
+        --primary-dark: #008fc4;
+        --accent: #fdd835;
+        --green: #00a82d;
         --surface: #ffffff;
-        --text: #1e2a4a;
-        --muted: #6b7280;
-        --stroke: #e7eaf3;
-        --bg: #efefff;
+        --text: #1a3a4a;
+        --muted: #4a6575;
+        --stroke: #dcebf5;
+        --bg: #f5f9fc;
       }
       body {
         margin: 0;
@@ -26,27 +28,41 @@
         justify-content: center;
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         color: var(--text);
-        background: radial-gradient(circle at top, #f7f7ff, var(--bg));
+        background:
+          radial-gradient(ellipse 70% 50% at 0% 0%, rgba(0, 174, 239, 0.14), transparent 55%),
+          radial-gradient(ellipse 50% 40% at 100% 100%, rgba(0, 168, 45, 0.08), transparent 50%),
+          var(--bg);
       }
       .login-card {
         width: min(980px, 100%);
         display: grid;
         grid-template-columns: 1.05fr 0.95fr;
         background: var(--surface);
-        border-radius: 28px;
-        box-shadow: 0 30px 60px rgba(31, 41, 55, 0.18);
-        border: 1px solid rgba(102, 126, 234, 0.1);
+        border-radius: 22px;
+        box-shadow: 0 20px 48px rgba(0, 100, 140, 0.12);
+        border: 1px solid rgba(0, 174, 239, 0.16);
         overflow: hidden;
       }
       .panel {
-        padding: 44px 52px;
+        padding: 44px 48px;
       }
       .visual {
-        background: linear-gradient(135deg, #4c1d95 0%, #312e81 45%, #0f172a 100%);
+        background: linear-gradient(160deg, #008fc4 0%, #00aeef 48%, #007db0 100%);
         color: #f8fafc;
         padding: 44px 40px;
         display: flex;
         align-items: center;
+        position: relative;
+      }
+      .visual::after {
+        content: '';
+        position: absolute;
+        inset: auto 24px 24px auto;
+        width: 72px;
+        height: 6px;
+        border-radius: 999px;
+        background: var(--accent);
+        opacity: 0.95;
       }
       .brand {
         display: flex;
@@ -59,19 +75,13 @@
       }
       .brand-name {
         font-weight: 800;
-        color: var(--primary);
+        color: var(--primary-dark);
         font-size: 1.4rem;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.02em;
       }
       .brand-subtitle {
         font-size: 0.9rem;
         color: var(--muted);
-      }
-      .title {
-        font-size: 1.9rem;
-        margin: 6px 0 6px;
-        color: var(--text);
-        font-weight: 800;
       }
       .subtitle {
         margin: 0 0 24px;
@@ -89,30 +99,72 @@
         color: var(--text);
         font-size: 0.95rem;
       }
-      input {
+      input[type="text"],
+      input[type="password"] {
         width: 100%;
-        border: 1px solid var(--stroke);
-        border-radius: 14px;
+        border: 2px solid var(--stroke);
+        border-radius: 12px;
         padding: 12px 16px;
         font-size: 1rem;
-        background: #fbfbff;
+        background: #fff;
         box-sizing: border-box;
       }
-      input:focus {
+      input[type="text"]:focus,
+      input[type="password"]:focus {
         outline: none;
         border-color: var(--primary);
-        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        box-shadow: 0 0 0 4px rgba(0, 174, 239, 0.14);
+      }
+      .password-row {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 8px;
+      }
+      .password-row label {
+        margin-bottom: 0;
+      }
+      .forgot-inline {
+        font-size: 0.88rem;
+        font-weight: 600;
+        color: var(--primary-dark);
+        text-decoration: none;
+        white-space: nowrap;
+      }
+      .forgot-inline:hover {
+        text-decoration: underline;
+      }
+      .remember-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 0 0 18px;
+        font-weight: 600;
+        cursor: pointer;
+        color: var(--text);
+        font-size: 0.92rem;
+      }
+      .remember-row input {
+        width: 18px;
+        height: 18px;
+        margin: 0;
+        accent-color: var(--primary-dark);
       }
       .btn {
         width: 100%;
-        border: none;
-        border-radius: 14px;
+        border: 2px solid var(--accent);
+        border-radius: 999px;
         padding: 12px 16px;
         font-weight: 800;
         font-size: 1rem;
         color: #fff;
-        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+        background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+        box-shadow: 0 8px 20px rgba(0, 143, 196, 0.28);
         cursor: pointer;
+      }
+      .btn:hover {
+        box-shadow: 0 10px 24px rgba(0, 143, 196, 0.36);
       }
       .btn:disabled {
         opacity: 0.7;
@@ -129,15 +181,18 @@
         color: #b91c1c;
       }
       .links {
-        margin-top: 16px;
+        margin-top: 18px;
         display: flex;
         gap: 12px;
         flex-wrap: wrap;
       }
       .links a {
-        color: var(--primary);
+        color: var(--primary-dark);
         font-weight: 700;
         text-decoration: none;
+      }
+      .links a:hover {
+        text-decoration: underline;
       }
       .visual h3 {
         margin: 0 0 12px;
@@ -147,7 +202,7 @@
       }
       .visual p {
         margin: 0;
-        color: rgba(248, 250, 252, 0.9);
+        color: rgba(255, 255, 255, 0.92);
         line-height: 1.65;
       }
       @media (max-width: 900px) {
@@ -184,20 +239,20 @@
             <input id="email" name="email" type="text" placeholder="you@example.com or username" required autofocus />
           </div>
           <div class="field">
-            <label for="password">Password</label>
+            <div class="password-row">
+              <label for="password">Password</label>
+              <a class="forgot-inline" href="/forgot-password.html">Forgot password?</a>
+            </div>
             <input id="password" name="password" type="password" placeholder="Enter your password" required autocomplete="current-password" />
           </div>
-          <div class="field" style="display:flex; align-items:center; justify-content:space-between; gap: 12px;">
-            <label style="display:flex; align-items:center; gap:10px; margin: 0; font-weight:700; cursor:pointer;">
-              <input id="remember-me" type="checkbox" style="width:18px; height:18px; margin:0;" />
-              Remember me on this device
-            </label>
-          </div>
+          <label class="remember-row" for="remember-me">
+            <input id="remember-me" type="checkbox" />
+            Remember me on this device
+          </label>
           <button id="login-btn" type="submit" class="btn">Login</button>
         </form>
 
         <div class="links">
-          <a href="/forgot-password.html">Forgot password?</a>
           <a href="/index.html">Back to Home</a>
         </div>
       </div>
@@ -205,7 +260,7 @@
       <div class="visual">
         <div>
           <h3>Welcome to RemoEdPH</h3>
-          <p>Your gateway to AI-powered English learning. Please enter your details to access your personalized dashboard.</p>
+          <p>Your gateway to AI-powered English learning. Sign in to open your personalized dashboard.</p>
         </div>
       </div>
     </div>

@@ -7,12 +7,11 @@ export default function Navbar() {
 
   return (
     <nav className="navbar">
-      <div className="logo-section">
-        <img src="/images/remoed-logo-new.png" alt="RemoEdPH Logo" />
-        <span>RemoEdPH</span>
-      </div>
+      <a className="logo-section" href="/" aria-label="RemoEdPH home">
+        <img src="/images/remoed-logo-new.png" alt="RemoEdPH" width="180" height="56" />
+      </a>
       <div className="nav-buttons">
-        <a href={legacyUrl("/teachers")} className="nav-btn">
+        <a href="#our-teachers" className="nav-btn">
           Our Teachers
         </a>
         <a href="#assessment" className="nav-btn">
@@ -21,14 +20,8 @@ export default function Navbar() {
         <a href="#plans" className="nav-btn">
           Plans
         </a>
-        <a href={legacyUrl("/application-form")} className="nav-btn">
-          Apply Now
-        </a>
-        <a href={legacyUrl("/teacher-login.html")} className="nav-btn">
-          Teacher Login
-        </a>
         <LanguageSwitcher />
-        <a href={legacyUrl("/student-login.html")} className="nav-btn primary">
+        <a href={legacyUrl("/login/")} className="nav-btn primary">
           {t("login_title")}
         </a>
       </div>

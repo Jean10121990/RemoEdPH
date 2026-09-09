@@ -35,7 +35,7 @@ async function createTestStudent() {
     }
 
     console.log('\n🔧 Next steps:');
-    console.log('1. Go to http://localhost:5000/student-login.html');
+    console.log('1. Go to http://localhost:5000/login/');
     console.log('2. Login with: teststudent@remoedph.com / student123');
     console.log('3. Go to Book a Class page');
     console.log('4. Try booking a class with your teacher slots!');

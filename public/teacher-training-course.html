@@ -9,18 +9,19 @@
     <meta http-equiv="Pragma" content="no-cache" />
     <title>Training Course - RemoEdPH</title>
     <link rel="stylesheet" href="modern-styles.css">
-    <link rel="stylesheet" href="css/teacher-sidebar.css">
+    <link rel="stylesheet" href="css/teacher-sidebar.css?v=rail-align-1">
+    <link rel="stylesheet" href="css/global-portal.css">
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="css/portal-chrome-compact.css">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css?v=rail-align-1">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
     <style>
-        .tc-layout { display:grid; grid-template-columns:260px 1fr; gap:20px; min-height:60vh; }
-        @media (max-width:768px){ .tc-layout { grid-template-columns:1fr; } }
+        .tc-layout { display:grid; grid-template-columns:minmax(200px,240px) 1fr; gap:20px; min-height:60vh; }
+        @media (max-width:900px){ .tc-layout { grid-template-columns:1fr; } }
         .tc-sidebar { background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:12px; }
         .tc-mod { padding:10px; border-radius:8px; margin-bottom:6px; cursor:pointer; border:1px solid transparent; }
-        .tc-mod.active { background:#eef2ff; border-color:#6366f1; }
-        .tc-mod.done::after { content:' ✓'; color:#16a34a; }
+        .tc-mod.active { background:rgba(0,168,45,0.1); border-color:#00a82d; color:#008a24; font-weight:700; }
+        .tc-mod.done::after { content:' ✓'; color:#00a82d; }
         .tc-content { background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:20px; }
         .tc-video { width:100%; max-height:420px; border-radius:8px; background:#000; }
         .tc-pdf-shell {
@@ -75,14 +76,18 @@
         .tc-preview-loading { padding: 24px; color: #64748b; }
     </style>
 </head>
-<body class="teacher-portal">
+<body class="page-teacher-training-course teacher-portal">
 <div class="remoed-main">
     <div id="teacher-sidebar-root"></div>
-    <script src="js/teacher-sidebar.js"></script>
-    <script>TeacherSidebar.render('teacher-sidebar-root', 'professional-development');</script>
+    <script src="js/teacher-sidebar.js?v=teacher-slide-1"></script>
+    <script src="js/teacher-page-header.js?v=teacher-green-1"></script>
+    <script>
+        TeacherSidebar.render('teacher-sidebar-root', 'professional-development');
+        TeacherPageHeader.render('training-course');
+    </script>
     <div class="remoed-content">
         <div class="remoed-section">
-            <a href="teacher-professional-development.html#training" style="font-size:0.9rem;">← Back to Training Portal</a>
+            <a href="teacher-professional-development.html#training" style="font-size:0.9rem; color:#008a24; font-weight:600;">← Back to Training Portal</a>
             <h1 id="tc-title" style="margin:12px 0 4px;">Loading…</h1>
             <p id="tc-desc" class="muted"></p>
             <div class="tc-layout">
@@ -245,7 +250,7 @@
         const done = m.progress && m.progress.status === 'completed';
         const completeBtn = isSynthetic
             ? ''
-            : '<button type="button" id="tc-complete" style="margin-top:20px;padding:10px 18px;background:'+(done?'#16a34a':'#6366f1')+';color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;">'+(done?'Completed ✓':'Mark module complete')+'</button>';
+            : '<button type="button" id="tc-complete" style="margin-top:20px;padding:10px 18px;background:'+(done?'#16a34a':'#00a82d')+';color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;">'+(done?'Completed ✓':'Mark module complete')+'</button>';
 
         v.innerHTML = '<h2 style="margin-top:0">'+esc(m.title)+'</h2><p class="tc-preview-loading">Loading…</p>' + completeBtn;
 

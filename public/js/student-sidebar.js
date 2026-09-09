@@ -30,7 +30,7 @@
         { id: 'profile', label: 'My Profile', href: 'student-profile.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>' },
         { id: 'level', label: 'My Level', href: 'student-assessment.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 12h10M7 8h6M7 16h4"/></svg>' },
         { id: 'credits', label: 'My Credits', href: 'student-credits.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M2 10h20M7 14h4"/></svg>' },
-        { id: 'logout', label: 'Exit', href: null, icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7"/><path d="M3 12a9 9 0 0118 0 9 9 0 01-18 0z"/></svg>', isLogout: true }
+        { id: 'logout', label: 'Log out', href: null, icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7"/><path d="M3 12a9 9 0 0118 0 9 9 0 01-18 0z"/></svg>', isLogout: true }
     ];
 
     function getActiveFromPath() {
@@ -139,6 +139,12 @@
         if (!nav) return;
         nav.classList.toggle('sidebar-collapsed', !!collapsed);
         document.body.classList.toggle('student-sidebar-collapsed', !!collapsed);
+        var toggleBtn = nav.querySelector('.sidebar-collapse-toggle');
+        if (toggleBtn) {
+            toggleBtn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+            toggleBtn.title = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
+            toggleBtn.setAttribute('aria-label', toggleBtn.title);
+        }
     }
 
     function refreshBookNavItem(container) {
@@ -220,13 +226,16 @@
             : containerIdOrElement;
         if (!container) return;
 
-        // Hard cleanup: remove any legacy floating toggles/overlays.
+        // Hard cleanup: remove floating chrome toggles so collapse matches teacher (width slide, not off-canvas).
         try {
             var legacy = document.getElementById('sidebarToggle');
             if (legacy) legacy.remove();
+            var legacyClose = document.getElementById('sidebarClose');
+            if (legacyClose) legacyClose.remove();
             document.querySelectorAll('.mobile-hamburger, .mobile-sidebar-overlay, .remoed-mobile-topbar').forEach(function (el) {
                 try { el.remove(); } catch (_e) {}
             });
+            document.body.classList.remove('remoed-portal-sidebar-mounted', 'remoed-desktop-sidebar-collapsed');
         } catch (_e) {}
 
         var active = activePageId || getActiveFromPath();
@@ -259,12 +268,12 @@
             '<nav class="remoed-sidebar student-sidebar">' +
             '  <div class="sidebar-header">' +
             '    <div class="sidebar-header-inner">' +
-            '      <img class="sidebar-logo-img" src="images/remoed-logo.png" alt="RemoEdPH" onerror="this.src=\'remoed-logo.png\'">' +
+            '      <img class="sidebar-logo-img" src="images/remoed-logo-new.png" alt="RemoEdPH" onerror="this.src=\'images/remoed-logo.png\'">' +
             '      <div class="sidebar-brand">' +
             '        <div class="sidebar-title">RemoEdPH</div>' +
             '        <div class="sidebar-subtitle">Student Portal</div>' +
             '      </div>' +
-            '      <button type="button" class="sidebar-collapse-toggle" aria-label="Toggle sidebar" title="Toggle sidebar">' +
+            '      <button type="button" class="sidebar-collapse-toggle" aria-label="Collapse sidebar" title="Collapse sidebar">' +
             svgBars() +
             '      </button>' +
             '    </div>' +
@@ -331,7 +340,7 @@
         applyGreetingFromStorage(container);
         loadProfileIntoSidebar(container);
         queuePortalLayoutMount();
-        queuePortalSidebarChromeMount();
+        // Mini-sidebar collapse is handled locally (same width animation as teacher); no floating desktop toggle.
     }
 
     function queuePortalLayoutMount() {
@@ -361,35 +370,6 @@
             } catch (e1) { /* ignore */ }
         };
         document.head.appendChild(s);
-    }
-
-    function queuePortalSidebarChromeMount() {
-        if (typeof global.RemoedPortalSidebarChrome !== 'undefined' && global.RemoedPortalSidebarChrome.mount) {
-            global.RemoedPortalSidebarChrome.mount();
-            return;
-        }
-        if (document.querySelector('script[data-remoed-portal-sidebar-chrome]')) {
-            document.addEventListener('remoed-portal-sidebar-chrome-ready', function onceCh() {
-                document.removeEventListener('remoed-portal-sidebar-chrome-ready', onceCh);
-                if (global.RemoedPortalSidebarChrome && global.RemoedPortalSidebarChrome.mount) {
-                    global.RemoedPortalSidebarChrome.mount();
-                }
-            });
-            return;
-        }
-        var ch = document.createElement('script');
-        ch.src = 'js/portal-sidebar-chrome.js';
-        ch.async = true;
-        ch.setAttribute('data-remoed-portal-sidebar-chrome', '1');
-        ch.onload = function () {
-            if (global.RemoedPortalSidebarChrome && global.RemoedPortalSidebarChrome.mount) {
-                global.RemoedPortalSidebarChrome.mount();
-            }
-            try {
-                document.dispatchEvent(new Event('remoed-portal-sidebar-chrome-ready'));
-            } catch (e2) { /* ignore */ }
-        };
-        document.head.appendChild(ch);
     }
 
     function injectStudentNoMotionStyles() {

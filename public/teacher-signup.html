@@ -8,11 +8,11 @@
   <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
   <style>
     :root {
-      --remo-green: #0d9488;
-      --remo-blue: #2563eb;
-      --remo-yellow: #eab308;
-      --remo-ink: #0f172a;
-      --remo-muted: #64748b;
+      --remo-green: #00a82d;
+      --remo-blue: #00aeef;
+      --remo-yellow: #fdd835;
+      --remo-ink: #0a3d18;
+      --remo-muted: #4a6575;
     }
     * { box-sizing: border-box; }
     html, body { min-height: 100%; }
@@ -21,7 +21,7 @@
       font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
       color: #1e293b;
       -webkit-font-smoothing: antialiased;
-      background: linear-gradient(165deg, #f0fdf4 0%, #eff6ff 45%, #fefce8 100%);
+      background: linear-gradient(165deg, #f0fdf4 0%, #e8f8ec 45%, #fffbeb 100%);
       background-attachment: fixed;
     }
     .ts-wrap {
@@ -36,7 +36,7 @@
       border: 1px solid rgba(255, 255, 255, 0.6);
       background: rgba(255, 255, 255, 0.92);
       padding: 1.5rem;
-      box-shadow: 0 4px 24px -4px rgba(37, 99, 235, 0.12), 0 8px 32px -8px rgba(13, 148, 136, 0.15);
+      box-shadow: 0 4px 24px -4px rgba(0, 168, 45, 0.12), 0 8px 32px -8px rgba(0, 174, 239, 0.1);
       backdrop-filter: blur(8px);
     }
     @media (min-width: 768px) {
@@ -223,7 +223,7 @@
     }
   </style>
 </head>
-<body class="page-teacher-signup">
+<body class="page-teacher-signup teacher-portal">
   <div class="ts-wrap">
     <div class="ts-card">
       <div class="ts-orb ts-orb-tr" aria-hidden="true"></div>
@@ -282,7 +282,7 @@
         </div>
         <div class="ts-actions">
           <button type="button" class="btn btn-secondary" id="cancel-btn">Cancel</button>
-          <a class="btn btn-primary" id="login-link" href="/teacher-login.html" hidden>Go to teacher login</a>
+          <a class="btn btn-primary" id="login-link" href="/login/" hidden>Go to login</a>
           <button type="submit" class="btn btn-primary" id="submit-btn">Activate teacher account</button>
         </div>
         <div id="status" class="status"></div>
@@ -434,7 +434,7 @@
           return;
         }
         setStatus('Account activated successfully. Redirecting to teacher login...', 'success');
-        setTimeout(function () { window.location.href = '/teacher-login.html'; }, 1200);
+        setTimeout(function () { window.location.href = '/login/'; }, 1200);
       } catch (error) {
         setStatus('Server error. Please try again.', 'error');
         submitBtn.disabled = false;

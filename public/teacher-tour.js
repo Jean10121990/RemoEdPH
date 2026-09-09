@@ -114,7 +114,7 @@
     window.teacherTour = new PortalTour({
       steps: buildSteps(),
       storageKey: 'teacherTourCompleted',
-      accent: '#667eea',
+      accent: '#00a82d',
       accentRgb: '102, 126, 234',
       portalLabel: 'Teacher',
       welcomeMessage: welcome,

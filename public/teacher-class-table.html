@@ -36,21 +36,22 @@
 
       const logoutNav = document.getElementById('logout-nav');
       if (logoutNav) {
-        logoutNav.onclick = function() { localStorage.clear(); window.location.href = 'teacher-login.html'; };
+        logoutNav.onclick = function() { localStorage.clear(); window.location.href = '/login/'; };
       }
     });
   </script>
 <!-- Remo AI Chatbot Styles -->
-<link rel="stylesheet" href="css/teacher-sidebar.css">
+  <title>Class Schedule - RemoEdPH</title>
+<link rel="stylesheet" href="css/teacher-sidebar.css?v=rail-align-1">
 <link rel="stylesheet" href="css/global-portal.css">
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="css/portal-chrome-compact.css">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css?v=rail-align-1">
 </head>
-<body class="page-teacher-class-table">
+<body class="page-teacher-class-table teacher-portal">
   <div class="remoed-main">
     <div id="teacher-sidebar-root"></div>
-    <script src="js/teacher-sidebar.js"></script>
-    <script src="js/teacher-page-header.js"></script>
+    <script src="js/teacher-sidebar.js?v=teacher-slide-1"></script>
+    <script src="js/teacher-page-header.js?v=teacher-green-1"></script>
         <script>
             TeacherSidebar.render('teacher-sidebar-root', 'class-schedule');
             TeacherPageHeader.render('class-schedule');
@@ -1725,7 +1726,7 @@
         const token = localStorage.getItem('token');
         if (!token) {
           alert('Authentication required for cancellation.');
-          window.location.href = 'teacher-login.html';
+          window.location.href = '/login/';
           return;
         }
 
@@ -2474,7 +2475,7 @@
                 showNotification('Authentication required. Please log in again.', 'error');
                 setTimeout(() => {
                     localStorage.clear();
-                    window.location.href = 'teacher-login.html';
+                    window.location.href = '/login/';
                 }, 2000);
                 return;
             }
@@ -2512,7 +2513,7 @@
                 showNotification('Session expired. Please log in again.', 'error');
                 setTimeout(() => {
                     localStorage.clear();
-                    window.location.href = 'teacher-login.html';
+                    window.location.href = '/login/';
                 }, 2000);
             } else {
                 const errorData = await response.json();

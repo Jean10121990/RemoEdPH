@@ -9,13 +9,43 @@
     <title>Teaching Assessment - RemoEdPH</title>
     <link rel="stylesheet" href="modern-styles.css">
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="css/portal-chrome-compact.css">
+    <link rel="stylesheet" href="css/teacher-sidebar.css?v=rail-align-1">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css?v=rail-align-1">
+    <link rel="stylesheet" href="css/teacher-brand-overrides.css?v=teacher-green-2">
     <script src="js/user-session.js"></script>
+    <style>
+      body.page-teacher-assessment .assess-shell {
+        max-width: 920px;
+        margin: 0 auto;
+        padding: 24px 16px 48px;
+      }
+      body.page-teacher-assessment .assess-topbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 16px;
+      }
+      body.page-teacher-assessment .assess-topbar a {
+        color: #008a24;
+        font-weight: 700;
+        text-decoration: none;
+      }
+      body.page-teacher-assessment .header h1 { color: #008a24; }
+      body.page-teacher-assessment .progress-fill {
+        background: linear-gradient(90deg, #008a24, #00a82d) !important;
+      }
+    </style>
 </head>
-<body class="page-teacher-assessment">
-    <div class="container">
+<body class="page-teacher-assessment teacher-portal">
+    <div class="assess-shell container">
+        <div class="assess-topbar">
+            <a href="teacher-professional-development.html">← Career Growth</a>
+            <a href="teacher-dashboard.html">Dashboard</a>
+        </div>
         <div class="header">
-            <h1>🎯 Teaching Abilities Assessment</h1>
+            <h1>Teaching Abilities Assessment</h1>
             <p>Complete all tests to begin teaching. Your assessments will be reviewed by RemoEd trainers/admins.</p>
             <div class="progress-bar">
                 <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
@@ -252,7 +282,7 @@
         
         const token = localStorage.getItem('token');
         if (!token) {
-            window.location.href = 'teacher-login.html';
+            window.location.href = '/login/';
         }
         
         // Assessment state

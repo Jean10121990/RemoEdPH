@@ -27,21 +27,19 @@
         referrerpolicy="no-referrer"
     />
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="landing-brand.css">
+    <link rel="stylesheet" href="landing-brand.css?v=logo-brand-9">
     <link rel="stylesheet" href="css/site-i18n.css">
 </head>
 <body class="page-teachers">
     <nav class="navbar">
-        <a href="/" class="logo-section">
-            <img src="/images/remoed-logo-new.png" alt="RemoEdPH Logo" />
-            <span>RemoEdPH</span>
+        <a href="/" class="logo-section" aria-label="RemoEdPH home">
+            <img src="/images/remoed-logo-new.png" alt="RemoEdPH" width="180" height="56" />
         </a>
         <div class="nav-buttons" id="nav-buttons">
+            <a href="/#our-teachers" class="nav-btn">Our Teachers</a>
             <a href="/#assessment" class="nav-btn">Free Assessment</a>
             <a href="/#plans" class="nav-btn">Plans</a>
-            <a href="/application-form" class="nav-btn">Apply Now</a>
             <a href="/login/" class="nav-btn primary">Login</a>
-            <a href="/#assessment" class="nav-btn nav-btn-register">Register</a>
             <select
                 class="site-lang-switcher"
                 id="nav-lang-switcher"
@@ -466,6 +464,56 @@
         loadTeachers().then(function () {
             return openTeacherFromQuery();
         });
+    </script>
+
+    <footer class="footer site-footer">
+      <div class="site-footer__inner">
+        <div class="site-footer__brand">
+          <a href="/" class="site-footer__logo" aria-label="RemoEdPH home">
+            <img src="/images/remoed-logo-new.png" alt="RemoEdPH" width="140" height="44" />
+          </a>
+          <p class="site-footer__tagline">Live English for ages 3–6</p>
+          <a class="site-footer__contact" href="mailto:support@remoedph.com">support@remoedph.com</a>
+          <a
+            class="site-footer__social"
+            href="https://www.facebook.com/remoed"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="RemoEdPH on Facebook"
+          >
+            <i class="fa-brands fa-facebook" aria-hidden="true"></i>
+            <span>Facebook</span>
+          </a>
+        </div>
+        <nav class="site-footer__col" aria-label="Learn">
+          <h3 class="site-footer__heading">Learn</h3>
+          <a href="/#assessment">Free Assessment</a>
+          <a href="/#plans">Plans</a>
+          <a href="/teachers">Our Teachers</a>
+          <a href="/site-faq.html">FAQ</a>
+        </nav>
+        <nav class="site-footer__col" aria-label="For teachers">
+          <h3 class="site-footer__heading">For Teachers</h3>
+          <a href="/application-form">Apply to Teach</a>
+          </nav>
+        <nav class="site-footer__col" aria-label="Account">
+          <h3 class="site-footer__heading">Account</h3>
+          <a href="/login/">Login</a>
+          <a href="/#assessment">Register</a>
+        </nav>
+        <nav class="site-footer__col" aria-label="Legal">
+          <h3 class="site-footer__heading">Legal</h3>
+          <a href="/site-terms.html">Terms of Service</a>
+          <a href="/site-privacy.html">Privacy Policy</a>
+        </nav>
+      </div>
+      <p class="site-footer__copy">&copy; <span id="footer-year">2026</span> RemoEdPH. All rights reserved.</p>
+    </footer>
+    <script>
+      (function () {
+        var y = document.getElementById("footer-year");
+        if (y) y.textContent = String(new Date().getFullYear());
+      })();
     </script>
     <script src="js/site-i18n.js"></script>
     <script>

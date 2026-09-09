@@ -1,0 +1,166 @@
+/**
+ * Teacher brand overrides — load LAST (after style.css) so green wins over legacy purple.
+ * Injected by js/teacher-sidebar.js; also safe to link manually after style.css.
+ */
+
+body.teacher-portal,
+body[class*="page-teacher-"] {
+  --primary: #00a82d;
+  --primary-dark: #008a24;
+  --remoed-brand-blue: #00aeef;
+  --remoed-brand-green: #00a82d;
+  --remoed-brand-green-deep: #008a24;
+  --remoed-brand-yellow: #fdd835;
+}
+
+/* Remap common legacy purple accents from style.css / modern-styles */
+body.teacher-portal .btn-primary,
+body.teacher-portal .btn.btn-primary,
+body.teacher-portal button.btn-primary,
+body.teacher-portal .primary-btn,
+body.teacher-portal .remoed-btn-primary,
+body.teacher-portal .time-btn,
+body.teacher-portal .time-btn.primary,
+body.teacher-portal .clock-in,
+body.teacher-portal .clock-in.primary,
+body[class*="page-teacher-"] .btn-primary,
+body[class*="page-teacher-"] .btn.btn-primary,
+body[class*="page-teacher-"] .primary-btn,
+body[class*="page-teacher-"] .remoed-btn-primary,
+body[class*="page-teacher-"] .time-btn.primary,
+body[class*="page-teacher-"] .clock-in.primary {
+  background: linear-gradient(135deg, #008a24, #00a82d) !important;
+  background-color: #00a82d !important;
+  border-color: #008a24 !important;
+  color: #fff !important;
+}
+
+body.teacher-portal .btn-success,
+body[class*="page-teacher-"] .btn-success {
+  background: #00a82d !important;
+  border-color: #008a24 !important;
+}
+
+body.teacher-portal .section-title,
+body.teacher-portal .info-section-title,
+body.teacher-portal .page-header h1,
+body.teacher-portal .header h1,
+body.teacher-portal .service-header h1,
+body.teacher-portal .remoed-header h1,
+body.teacher-portal .breakdown-header,
+body.teacher-portal h2.section-title,
+body[class*="page-teacher-"] .section-title,
+body[class*="page-teacher-"] .info-section-title {
+  color: #008a24 !important;
+}
+
+body.teacher-portal .tab-button.active,
+body.teacher-portal .tab-btn.active,
+body.teacher-portal .week-tab.active,
+body.teacher-portal .filter-tab.active,
+body.teacher-portal .nav-tab.active,
+body[class*="page-teacher-"] .tab-button.active,
+body[class*="page-teacher-"] .tab-btn.active,
+body[class*="page-teacher-"] .week-tab.active,
+body[class*="page-teacher-"] .filter-tab.active {
+  background: linear-gradient(135deg, #008a24, #00a82d) !important;
+  color: #fff !important;
+  border-color: #008a24 !important;
+}
+
+body.teacher-portal .progress-fill,
+body.teacher-portal .progress-bar-fill,
+body.teacher-portal .completion-fill,
+body.teacher-portal .completion-bar,
+body.teacher-portal .commitment-bar,
+body.teacher-portal [class*="progress"] > .fill,
+body[class*="page-teacher-"] .progress-fill,
+body[class*="page-teacher-"] .completion-bar {
+  background: linear-gradient(90deg, #008a24, #00a82d) !important;
+}
+
+body.teacher-portal .stat-card,
+body.teacher-portal .metric-card,
+body[class*="page-teacher-"] .stat-card {
+  border-color: rgba(0, 168, 45, 0.2);
+}
+
+body.teacher-portal .stat-value,
+body.teacher-portal .metric-value,
+body[class*="page-teacher-"] .stat-value {
+  color: #008a24 !important;
+}
+
+body.teacher-portal .badge.primary,
+body.teacher-portal .status-badge.active,
+body.teacher-portal .chip.active,
+body[class*="page-teacher-"] .badge.primary {
+  background: #00a82d !important;
+  color: #fff !important;
+}
+
+body.teacher-portal input:focus,
+body.teacher-portal select:focus,
+body.teacher-portal textarea:focus,
+body.teacher-portal .form-input:focus,
+body[class*="page-teacher-"] input:focus,
+body[class*="page-teacher-"] select:focus,
+body[class*="page-teacher-"] textarea:focus {
+  border-color: #00a82d !important;
+  box-shadow: 0 0 0 3px rgba(0, 168, 45, 0.18) !important;
+  outline-color: #00a82d !important;
+}
+
+body.teacher-portal .preview-btn,
+body.teacher-portal #preview-profile-btn,
+body.teacher-portal .upload-btn,
+body.teacher-portal .video-upload-btn,
+body.page-teacher-profile .preview-btn,
+body.page-teacher-profile #preview-profile-btn {
+  background: linear-gradient(135deg, #008a24, #00a82d) !important;
+  color: #fff !important;
+  border: none !important;
+}
+
+body.teacher-portal .chart-icon,
+body[class*="page-teacher-"] .chart-icon {
+  background: linear-gradient(135deg, #008a24, #00a82d) !important;
+}
+
+body.teacher-portal .nav-header .nav-title-icon,
+body.teacher-portal .nav-header .nav-icon svg,
+body.teacher-portal .nav-header .nav-icon.primary svg {
+  color: #008a24 !important;
+}
+
+body.teacher-portal .nav-header .time-btn-mini.clock-in.primary {
+  background: #00a82d !important;
+}
+
+body.teacher-portal .tc-mod.active,
+body.page-teacher-training-course .tc-mod.active {
+  background: rgba(0, 168, 45, 0.12) !important;
+  border-color: #00a82d !important;
+  color: #008a24 !important;
+}
+
+body.teacher-portal .open-class-toolbar-btn--open,
+body[class*="page-teacher-"] .open-class-toolbar-btn--open {
+  background: #00a82d !important;
+  border-color: #008a24 !important;
+}
+
+body.teacher-portal .lesson-title-save-btn,
+body.page-teacher-lessons-library .lesson-title-save-btn {
+  background: #00a82d !important;
+  border-color: #00a82d !important;
+  color: #fff !important;
+}
+
+/* Bottom nav (mobile) */
+body.teacher-portal .remoed-bottom-nav__link.is-active,
+body.teacher-portal .remoed-bottom-nav__link[aria-current="page"],
+body[class*="page-teacher-"] .remoed-bottom-nav__link.is-active {
+  color: #00a82d !important;
+  background: rgba(0, 168, 45, 0.1) !important;
+}

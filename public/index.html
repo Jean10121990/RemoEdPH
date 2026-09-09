@@ -123,7 +123,7 @@
       referrerpolicy="no-referrer"
     />
     <link rel="stylesheet" href="/style.css" />
-    <link rel="stylesheet" href="/landing-brand.css?v=plan-badges-2" />
+    <link rel="stylesheet" href="/landing-brand.css?v=logo-brand-9" />
     <link rel="stylesheet" href="/css/site-i18n.css" />
   </head>
   <!-- Google tag (gtag.js) -->
@@ -139,16 +139,14 @@
   <body class="page-index">
     <!-- Navigation -->
     <nav class="navbar">
-      <div class="logo-section">
-        <img src="/images/remoed-logo-new.png" alt="RemoEdPH Logo" />
-        <span>RemoEdPH</span>
-      </div>
+      <a class="logo-section" href="/" aria-label="RemoEdPH home">
+        <img src="/images/remoed-logo-new.png" alt="RemoEdPH" width="180" height="56" />
+      </a>
       <div class="nav-buttons" id="nav-buttons">
+        <a href="#our-teachers" class="nav-btn" data-i18n="nav_teachers">Our Teachers</a>
         <a href="#assessment" class="nav-btn" data-i18n="nav_assessment">Free Assessment</a>
         <a href="#plans" class="nav-btn" data-i18n="nav_plans">Plans</a>
-        <a href="/application-form" class="nav-btn" data-i18n="nav_apply">Apply Now</a>
         <a href="/login/" class="nav-btn primary" data-i18n="nav_login">Login</a>
-        <a href="#assessment" class="nav-btn nav-btn-register" data-i18n="nav_register">Register</a>
         <select
           class="site-lang-switcher"
           id="nav-lang-switcher"
@@ -162,41 +160,17 @@
     <section class="hero japandi-hero">
       <div class="hero-grid">
         <div class="hero-copy">
+          <p class="brand-kicker">RemoEdPH</p>
           <h1 data-i18n="hero_title">Learn English at Home!</h1>
           <p data-i18n="hero_lead">
-            Calm, engaging English lessons for children ages 3-6. Designed for modern families across Asia—starting on your laptop, with mobile and tablet support coming soon.
-          </p>
-          <p class="hero-account-note" data-i18n="hero_account_note">
-            Create a student account by taking the free assessment — registration starts there.
+            Calm, engaging English lessons for children ages 3–6. Live classes designed for busy Filipino families.
           </p>
           <div class="cta-buttons">
             <div class="assessment-cta-wrap">
               <div class="assessment-cta-cluster">
-                <picture class="hero-mascot-picture hero-mascot-picture--ed">
-                  <img
-                    src="/images/ed-boy.png"
-                    alt="Ed, RemoEd student mascot"
-                    class="mascot-img"
-                    width="120"
-                    height="120"
-                    decoding="async"
-                    onerror="this.onerror=null;this.src='/images/placeholder-avatar.png'"
-                  />
-                </picture>
                 <a href="#assessment" class="cta-btn primary" data-i18n="hero_cta"
                   >Take Free Assessment</a
                 >
-                <picture class="hero-mascot-picture hero-mascot-picture--sophia">
-                  <img
-                    src="/images/grace-teacher.png"
-                    alt="Grace, RemoEd teacher mascot"
-                    class="mascot-img"
-                    width="120"
-                    height="120"
-                    decoding="async"
-                    onerror="this.onerror=null;this.src='/images/placeholder-avatar.png'"
-                  />
-                </picture>
               </div>
             </div>
           </div>
@@ -254,7 +228,7 @@
         <article class="benefit-card">
           <div class="benefit-card__layout">
             <div
-              class="benefit-icon-circle benefit-icon-circle--orange"
+              class="benefit-icon-circle benefit-icon-circle--yellow"
               aria-hidden="true"
             >
               <i class="fa-solid fa-people-roof"></i>
@@ -271,7 +245,7 @@
         <article class="benefit-card">
           <div class="benefit-card__layout">
             <div
-              class="benefit-icon-circle benefit-icon-circle--violet"
+              class="benefit-icon-circle benefit-icon-circle--blue-soft"
               aria-hidden="true"
             >
               <i class="fa-solid fa-puzzle-piece"></i>
@@ -288,7 +262,7 @@
         <article class="benefit-card">
           <div class="benefit-card__layout">
             <div
-              class="benefit-icon-circle benefit-icon-circle--teal"
+              class="benefit-icon-circle benefit-icon-circle--green-soft"
               aria-hidden="true"
             >
               <i class="fa-solid fa-chalkboard-user"></i>
@@ -305,7 +279,7 @@
         <article class="benefit-card">
           <div class="benefit-card__layout">
             <div
-              class="benefit-icon-circle benefit-icon-circle--mint"
+              class="benefit-icon-circle benefit-icon-circle--blue"
               aria-hidden="true"
             >
               <i class="fa-solid fa-mobile-screen-button"></i>
@@ -400,6 +374,10 @@
     <!-- Subscription Plans -->
     <section class="section" id="plans">
       <h2 class="section-title" data-i18n="plans_title">Choose Your Learning Plan</h2>
+      <div id="cefr-level-banner" class="cefr-level-banner" role="status" aria-live="polite" hidden>
+        <strong id="cefr-level-banner-title"></strong>
+        <p>Choose a learning plan below and tap Enroll Now to sign up.</p>
+      </div>
       <p class="plans-register-note" data-i18n="plans_register_note">
         You must register an account first (by taking the free assessment) before buying a plan.
       </p>
@@ -530,8 +508,48 @@
     </section>
 
     <!-- Footer -->
-    <footer class="footer">
-      <p>&copy; 2024 RemoEdPH. All rights reserved. 🌟</p>
+    <footer class="footer site-footer">
+      <div class="site-footer__inner">
+        <div class="site-footer__brand">
+          <a href="/" class="site-footer__logo" aria-label="RemoEdPH home">
+            <img src="/images/remoed-logo-new.png" alt="RemoEdPH" width="140" height="44" />
+          </a>
+          <p class="site-footer__tagline">Live English for ages 3–6</p>
+          <a class="site-footer__contact" href="mailto:support@remoedph.com">support@remoedph.com</a>
+          <a
+            class="site-footer__social"
+            href="https://www.facebook.com/remoed"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="RemoEdPH on Facebook"
+          >
+            <i class="fa-brands fa-facebook" aria-hidden="true"></i>
+            <span>Facebook</span>
+          </a>
+        </div>
+        <nav class="site-footer__col" aria-label="Learn">
+          <h3 class="site-footer__heading">Learn</h3>
+          <a href="#assessment">Free Assessment</a>
+          <a href="#plans">Plans</a>
+          <a href="/teachers">Our Teachers</a>
+          <a href="/site-faq.html">FAQ</a>
+        </nav>
+        <nav class="site-footer__col" aria-label="For teachers">
+          <h3 class="site-footer__heading">For Teachers</h3>
+          <a href="/application-form">Apply to Teach</a>
+        </nav>
+        <nav class="site-footer__col" aria-label="Account">
+          <h3 class="site-footer__heading">Account</h3>
+          <a href="/login/">Login</a>
+          <a href="#assessment">Register</a>
+        </nav>
+        <nav class="site-footer__col" aria-label="Legal">
+          <h3 class="site-footer__heading">Legal</h3>
+          <a href="/site-terms.html">Terms of Service</a>
+          <a href="/site-privacy.html">Privacy Policy</a>
+        </nav>
+      </div>
+      <p class="site-footer__copy">&copy; <span id="footer-year">2026</span> RemoEdPH. All rights reserved.</p>
     </footer>
 
     <!-- Sign Up Modal -->
@@ -756,6 +774,9 @@
 
       // Returning from free assessment: prefill email and land on plans (Enroll sets plan + opens signup)
       document.addEventListener("DOMContentLoaded", function () {
+        const yearEl = document.getElementById("footer-year");
+        if (yearEl) yearEl.textContent = String(new Date().getFullYear());
+
         const urlParams = new URLSearchParams(window.location.search);
         const email = urlParams.get("email");
         const cefrLevel = urlParams.get("cefrLevel");
@@ -765,26 +786,22 @@
           const signupEmailEl = document.getElementById("signup-email");
           if (signupEmailEl) signupEmailEl.value = email;
 
-          let legacySignupFixed = false;
           // Legacy links used ?signup=true and opened the modal without a plan — send users to pricing instead
           if (signup === "true") {
             const u = new URL(window.location.href);
             u.searchParams.delete("signup");
             if (!u.hash || u.hash === "#") u.hash = "plans";
             history.replaceState({}, "", u.pathname + u.search + u.hash);
-            legacySignupFixed = true;
           }
 
           scrollToPlansSection();
 
-          const onPlans =
-            legacySignupFixed || window.location.hash === "#plans";
-          if (!onPlans) {
-            setTimeout(() => {
-              alert(
-                `🎉 Your level: ${cefrLevel}\n\nChoose a learning plan below and tap Enroll Now to sign up.`,
-              );
-            }, 600);
+          const banner = document.getElementById("cefr-level-banner");
+          const bannerTitle = document.getElementById("cefr-level-banner-title");
+          if (banner && bannerTitle) {
+            bannerTitle.textContent = "Your level: " + cefrLevel;
+            banner.hidden = false;
+            banner.classList.add("is-visible");
           }
         } else if (window.location.hash === "#plans") {
           scrollToPlansSection();
@@ -874,7 +891,7 @@
           }
         });
     </script>
-    <script src="/js/site-i18n.js"></script>
+    <script src="/js/site-i18n.js?v=nav-teachers-1"></script>
     <script>
       SiteI18n.init();
       (function () {

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="js/security-guard.js?v=1"></script>
-    <title>🎮 Play & Learn - RemoEdPH</title>
+    <title>Play & Learn - RemoEdPH</title>
     <link rel="stylesheet" href="modern-styles.css">
     <style>
         body { 
@@ -89,14 +89,14 @@
 
         .selection-card:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 14px rgba(102, 126, 234, 0.2);
-            border-color: #667eea;
+            box-shadow: 0 6px 14px rgba(0, 174, 239, 0.2);
+            border-color: #00aeef;
         }
 
         .selection-card.active {
-            background: linear-gradient(135deg, #667eea 0%, #5a67d8 100%);
+            background: linear-gradient(135deg, #00aeef 0%, #008fc4 100%);
             color: white;
-            border-color: #667eea;
+            border-color: #00aeef;
         }
 
         .selection-card .icon {
@@ -194,13 +194,13 @@
 
         /* Reading Game Styles */
         .word-card {
-            background: linear-gradient(135deg, #667eea 0%, #5a67d8 100%);
+            background: linear-gradient(135deg, #00aeef 0%, #008fc4 100%);
             color: white;
             border-radius: 12px;
             padding: 8px 12px;
             text-align: center;
             margin: 6px 0;
-            box-shadow: 0 4px 14px rgba(102, 126, 234, 0.25);
+            box-shadow: 0 4px 14px rgba(0, 174, 239, 0.25);
         }
 
         .word-card .word {
@@ -253,7 +253,7 @@
         /* Speaking Game Styles */
         .speaking-card {
             background: white;
-            border: 2px solid #667eea;
+            border: 2px solid #00aeef;
             border-radius: 14px;
             padding: 16px;
             text-align: center;
@@ -268,7 +268,7 @@
         }
 
         .record-btn {
-            background: linear-gradient(135deg, #667eea 0%, #5a67d8 100%);
+            background: linear-gradient(135deg, #00aeef 0%, #008fc4 100%);
             color: white;
             border: none;
             border-radius: 10px;
@@ -279,7 +279,7 @@
             font-weight: 700;
             cursor: pointer;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+            box-shadow: 0 4px 12px rgba(0, 174, 239, 0.3);
         }
 
         .record-btn:hover {
@@ -294,7 +294,7 @@
         /* Writing Game Styles */
         .writing-prompt {
             background: #f8f9fa;
-            border-left: 4px solid #667eea;
+            border-left: 4px solid #00aeef;
             border-radius: 8px;
             padding: 10px 12px;
             margin: 8px 0;
@@ -302,7 +302,7 @@
 
         .writing-prompt h3 {
             margin: 0 0 6px 0;
-            color: #667eea;
+            color: #00aeef;
             font-size: 1rem;
         }
 
@@ -320,7 +320,7 @@
 
         .writing-area:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: #00aeef;
         }
 
         /* Listening Game Styles */
@@ -333,7 +333,7 @@
         }
 
         .audio-btn {
-            background: linear-gradient(135deg, #667eea 0%, #5a67d8 100%);
+            background: linear-gradient(135deg, #00aeef 0%, #008fc4 100%);
             color: white;
             border: none;
             border-radius: 10px;
@@ -346,7 +346,7 @@
 
         .audio-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+            box-shadow: 0 4px 12px rgba(0, 174, 239, 0.3);
         }
 
         /* Good Moral Activity Styles */
@@ -405,7 +405,7 @@
         }
 
         .score-display {
-            background: linear-gradient(135deg, #667eea 0%, #5a67d8 100%);
+            background: linear-gradient(135deg, #00aeef 0%, #008fc4 100%);
             color: white;
             border-radius: 10px;
             padding: 8px 14px;
@@ -483,13 +483,13 @@
     </style>
     <link rel="stylesheet" href="css/teacher-sidebar.css">
     <link rel="stylesheet" href="css/portal-chrome-compact.css">
-    <link rel="stylesheet" href="css/student-portal-layout.css">
-    <link rel="stylesheet" href="css/student-sidebar.css">
+    <link rel="stylesheet" href="css/student-portal-layout.css?v=slide-match-1">
+    <link rel="stylesheet" href="css/student-sidebar.css?v=slide-match-1">
 </head>
 <body class="student-portal page-student-games-activities">
     <div class="remoed-main">
         <div id="student-sidebar-root"></div>
-        <script src="js/student-sidebar.js"></script>
+        <script src="js/student-sidebar.js?v=slide-match-1"></script>
         <script src="js/student-page-header.js"></script>
         <script>
             StudentSidebar.render('student-sidebar-root', 'games');
@@ -551,7 +551,7 @@
             
             document.getElementById('logout-nav').onclick = function() {
                 localStorage.clear();
-                window.location.href = 'student-login.html';
+                window.location.href = '/login/';
             };
             
             setupGameSelection();
@@ -861,7 +861,7 @@
                                     <audio controls style="width: 100%; margin-top: 8px;">
                                         <source src="${audioUrl}" type="audio/webm">
                                     </audio>
-                                    <button onclick="downloadRecording('${audioUrl}')" style="margin-top: 8px; padding: 6px 12px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">Download Recording</button>
+                                    <button onclick="downloadRecording('${audioUrl}')" style="margin-top: 8px; padding: 6px 12px; background: #00aeef; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">Download Recording</button>
                                 </div>
                             `;
                         }

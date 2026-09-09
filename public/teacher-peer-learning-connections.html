@@ -8,38 +8,42 @@
     <script src="js/security-guard.js?v=1"></script>
     <title>Peer Learning Connections - RemoEdPH</title>
     <link rel="stylesheet" href="modern-styles.css">
-    <link rel="stylesheet" href="css/teacher-sidebar.css">
+    <link rel="stylesheet" href="css/teacher-sidebar.css?v=rail-align-1">
     <link rel="stylesheet" href="css/global-portal.css">
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="css/portal-chrome-compact.css">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css?v=rail-align-1">
     <script src="js/user-session.js"></script>
 </head>
-<body class="page-teacher-peer-learning-connections">
+<body class="page-teacher-peer-learning-connections teacher-portal">
     <div class="remoed-main">
         <div id="teacher-sidebar-root"></div>
-        <script src="js/teacher-sidebar.js"></script>
-        <script>TeacherSidebar.render('teacher-sidebar-root', 'professional-development');</script>
+        <script src="js/teacher-sidebar.js?v=teacher-slide-1"></script>
+        <script src="js/teacher-page-header.js?v=teacher-green-1"></script>
+        <script>
+            TeacherSidebar.render('teacher-sidebar-root', 'professional-development');
+            TeacherPageHeader.render('peer-learning');
+        </script>
         <div class="remoed-content">
             <div class="page-header">
                 <div>
                     <button class="back-btn" onclick="window.location.href='teacher-professional-development.html#peer-learning'">
                         ← Back to Peer Learning
                     </button>
-                    <h1 style="margin-top: 16px;">👥 Peer Learning Connections</h1>
+                    <h1 style="margin-top: 16px;">Peer Learning Connections</h1>
                 </div>
             </div>
             
             <!-- Tab Navigation -->
             <div class="tab-buttons">
-                <button class="tab-btn active" onclick="showTab('connections', this)">✅ My Connections</button>
-                <button class="tab-btn" onclick="showTab('pending', this)">⏳ Pending Requests</button>
-                <button class="tab-btn" onclick="showTab('sent', this)">📤 Sent Requests</button>
+                <button class="tab-btn active" onclick="showTab('connections', this)">My Connections</button>
+                <button class="tab-btn" onclick="showTab('pending', this)">Pending Requests</button>
+                <button class="tab-btn" onclick="showTab('sent', this)">Sent Requests</button>
             </div>
             
             <!-- My Connections Tab -->
             <div id="connections-tab" class="tab-content active">
                 <div class="section-card">
-                    <h2 style="margin: 0 0 24px 0; color: #667eea;">Connected Teachers</h2>
+                    <h2 style="margin: 0 0 24px 0; color: #00a82d;">Connected Teachers</h2>
                     <div id="connections-list">
                         <!-- Connections will be loaded here -->
                     </div>
@@ -49,7 +53,7 @@
             <!-- Pending Requests Tab -->
             <div id="pending-tab" class="tab-content">
                 <div class="section-card">
-                    <h2 style="margin: 0 0 24px 0; color: #667eea;">Connection Requests Received</h2>
+                    <h2 style="margin: 0 0 24px 0; color: #00a82d;">Connection Requests Received</h2>
                     <div id="pending-requests-list">
                         <!-- Pending requests will be loaded here -->
                     </div>
@@ -59,7 +63,7 @@
             <!-- Sent Requests Tab -->
             <div id="sent-tab" class="tab-content">
                 <div class="section-card">
-                    <h2 style="margin: 0 0 24px 0; color: #667eea;">Connection Requests Sent</h2>
+                    <h2 style="margin: 0 0 24px 0; color: #00a82d;">Connection Requests Sent</h2>
                     <div id="sent-requests-list">
                         <!-- Sent requests will be loaded here -->
                     </div>
@@ -74,7 +78,7 @@
             const userType = localStorage.getItem('userType');
             if (userType !== 'teacher') {
                 alert('Access denied. This page is for teachers only.');
-                window.location.href = 'teacher-login.html';
+                window.location.href = '/login/';
                 return;
             }
             
@@ -92,7 +96,7 @@
             if (logoutNav) {
                 logoutNav.onclick = function() {
                     localStorage.clear();
-                    window.location.href = 'teacher-login.html';
+                    window.location.href = '/login/';
                 };
             }
             
@@ -178,7 +182,7 @@
                                 <h4>${conn.name || 'Unknown'} <span class="status-badge connected">Connected</span></h4>
                                 <p>⭐ ${conn.rating || 'N/A'} | ${conn.experience || 'Not specified'} experience</p>
                                 <p style="margin-top: 4px;">
-                                    ${(conn.expertise || []).map(exp => `<span style="background: #e8f4fd; color: #667eea; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; margin-right: 4px;">${exp}</span>`).join('')}
+                                    ${(conn.expertise || []).map(exp => `<span style="background: #e8f4fd; color: #00a82d; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; margin-right: 4px;">${exp}</span>`).join('')}
                                 </p>
                             </div>
                             <div class="connection-actions">
@@ -341,7 +345,7 @@
                                 <h4>${req.name || 'Unknown'} <span class="status-badge pending">Pending</span></h4>
                                 <p>⭐ ${req.rating || 'N/A'} | ${req.experience || 'Not specified'} experience</p>
                                 <p style="margin-top: 4px;">
-                                    ${(req.expertise || []).map(exp => `<span style="background: #e8f4fd; color: #667eea; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; margin-right: 4px;">${exp}</span>`).join('')}
+                                    ${(req.expertise || []).map(exp => `<span style="background: #e8f4fd; color: #00a82d; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; margin-right: 4px;">${exp}</span>`).join('')}
                                 </p>
                             </div>
                             <div class="connection-actions">
@@ -377,10 +381,10 @@
             const modalContent = document.createElement('div');
             modalContent.style.cssText = 'background: white; border-radius: 16px; padding: 32px; max-width: 500px; width: 90%;';
             modalContent.innerHTML = `
-                <h2 style="margin: 0 0 16px 0; color: #667eea;">Send Connection Request</h2>
+                <h2 style="margin: 0 0 16px 0; color: #00a82d;">Send Connection Request</h2>
                 <p style="color: #666; margin-bottom: 24px;">Send a connection request to start peer learning and collaboration.</p>
                 <div style="margin-bottom: 16px;">
-                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #667eea;">Message (Optional)</label>
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #00a82d;">Message (Optional)</label>
                     <textarea id="connection-message" placeholder="Add a personal message..." style="width: 100%; padding: 12px; border: 2px solid #e8f4fd; border-radius: 8px; font-size: 0.9rem; min-height: 100px; resize: vertical;"></textarea>
                 </div>
                 <div style="display: flex; gap: 12px;">

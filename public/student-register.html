@@ -8,16 +8,16 @@
   <title>Student Registration - RemoEdPH</title>
   <link rel="stylesheet" href="modern-styles.css">
   <script src="js/referral-tracking.js"></script>
-<link rel="stylesheet" href="css/student-sidebar-unified.css">
-    <link rel="stylesheet" href="style.css">
-    <script src="js/user-session.js"></script>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="css/student-portal-layout.css?v=slide-match-1">
+  <script src="js/user-session.js"></script>
 </head>
 <body  class="student-no-motion page-student-register">
   <div class="login-shell">
     <div class="login-card">
       <div class="login-panel">
         <div class="brand">
-          <img src="remoed-logo.png" alt="RemoEdPH Logo">
+          <img src="images/remoed-logo-new.png" onerror="this.src='images/remoed-logo.png'" alt="RemoEdPH Logo">
           <div>
             <div class="brand-name">RemoEdPH</div>
             <div class="brand-subtitle">Student Portal</div>
@@ -73,8 +73,8 @@
         <div class="register-error" id="student-register-error"></div>
         
         <div class="links-container">
-          <a href="student-login.html">Back to Student Login</a>
-          <a href="student-forgot-password.html">Forgot Password?</a>
+          <a href="/login/">Back to Login</a>
+          <a href="forgot-password.html">Forgot Password?</a>
           <a href="index.html">Back to Home</a>
         </div>
       </div>
@@ -96,7 +96,7 @@
   <!-- Plan Selection Modal -->
   <div id="plan-selection-modal" class="plan-modal" style="display: none;">
     <div class="plan-modal-content">
-      <h2 style="color: #667eea; margin-bottom: 24px; text-align: center;">📚 Choose Your Learning Plan 📚</h2>
+      <h2 style="color: #00aeef; margin-bottom: 24px; text-align: center;">📚 Choose Your Learning Plan 📚</h2>
       <p style="text-align: center; color: #666; margin-bottom: 20px; line-height: 1.45;">Select a plan. You’ll pay in PHP at checkout (estimates use <strong>1 USD = ₱60.03</strong>).</p>
       
       <div class="plans-grid-modal">
@@ -266,7 +266,7 @@
             errorDiv.style.display = 'block';
             submitBtn.textContent = '✅ Success!';
             setTimeout(() => {
-              window.location.href = 'student-login.html';
+              window.location.href = '/login/';
             }, 2200);
             return;
           }
@@ -277,7 +277,7 @@
           errorDiv.style.display = 'block';
           submitBtn.textContent = '✅ Success!';
           setTimeout(() => {
-            window.location.href = 'student-login.html';
+            window.location.href = '/login/';
           }, 2200);
         } else {
           errorDiv.textContent = data.message || 'Registration failed. Please try again.';
@@ -328,7 +328,7 @@
             email,
             planId,
             referralCode: localStorage.getItem('referralCode') || '',
-            success_url: `${origin}/student-login.html`,
+            success_url: `${origin}/login/`,
             cancel_url: `${origin}/student-register.html`
           })
         });
@@ -360,7 +360,7 @@
       localStorage.removeItem('newStudentId');
       
       // Redirect to login
-      window.location.href = 'student-login.html';
+      window.location.href = '/login/';
     }
   </script>
 </body>

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="js/security-guard.js?v=1"></script>
     <script src="js/user-session.js"></script>
-    <title>👤 My Profile - RemoEdPH</title>
+    <title>My Profile - RemoEdPH</title>
     <link rel="stylesheet" href="modern-styles.css">
     <style>
         body { 
@@ -26,11 +26,17 @@
             margin-left: 260px;
             max-width: calc(100vw - 260px);
             background: #f8fafc;
+            min-width: 0;
+            box-sizing: border-box;
+            overflow-x: hidden;
         }
         
         .profile-container {
             max-width: 1200px;
             margin: 0 auto;
+            min-width: 0;
+            width: 100%;
+            box-sizing: border-box;
         }
         
         /* Facebook-style Profile Header */
@@ -43,6 +49,9 @@
             display: flex;
             align-items: center;
             gap: 24px;
+            min-width: 0;
+            max-width: 100%;
+            box-sizing: border-box;
         }
         
         .profile-avatar-large {
@@ -98,6 +107,8 @@
         
         .profile-header-info {
             flex: 1;
+            min-width: 0;
+            max-width: 100%;
         }
         
         .profile-name-large {
@@ -106,6 +117,8 @@
             color: #1CA7E7;
             margin: 0 0 8px 0;
             text-shadow: 2px 2px 4px rgba(28, 167, 231, 0.2);
+            word-break: break-word;
+            overflow-wrap: anywhere;
         }
         
         .profile-email-large {
@@ -115,6 +128,8 @@
             font-weight: 600;
             white-space: normal;
             overflow-wrap: anywhere;
+            word-break: break-word;
+            max-width: 100%;
         }
         
         .profile-actions {
@@ -144,8 +159,11 @@
         /* Profile Content Grid - Facebook Style */
         .profile-content-grid {
             display: grid;
-            grid-template-columns: 300px 1fr;
+            grid-template-columns: minmax(0, 300px) minmax(0, 1fr);
             gap: 24px;
+            min-width: 0;
+            width: 100%;
+            box-sizing: border-box;
         }
         
         .profile-sidebar-card {
@@ -156,6 +174,10 @@
             height: fit-content;
             position: sticky;
             top: 24px;
+            min-width: 0;
+            max-width: 100%;
+            box-sizing: border-box;
+            overflow: visible;
         }
         
         .profile-main-card {
@@ -163,6 +185,10 @@
             border-radius: 16px;
             padding: 32px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            min-width: 0;
+            max-width: 100%;
+            box-sizing: border-box;
+            overflow: visible;
         }
         
         .section-title {
@@ -190,12 +216,16 @@
         
         .form-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: repeat(2, minmax(0, 1fr));
             gap: 20px;
+            min-width: 0;
+            width: 100%;
         }
         
         .form-group {
             margin-bottom: 20px;
+            min-width: 0;
+            max-width: 100%;
         }
         
         .form-group.full-width {
@@ -212,6 +242,7 @@
         
         .form-input {
             width: 100%;
+            max-width: 100%;
             padding: 12px 16px;
             border: 3px solid #E8F4FD;
             border-radius: 12px;
@@ -219,6 +250,18 @@
             transition: all 0.3s ease;
             box-sizing: border-box;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-width: 0;
+        }
+
+        input.form-input[type="email"],
+        #email,
+        #parentEmail,
+        #current-email,
+        #new-email {
+            overflow-x: auto;
+            text-overflow: clip;
+            white-space: normal;
+            word-break: break-all;
         }
         
         .form-input:focus {
@@ -456,14 +499,21 @@
         }
         
         .tab-btn.active {
-            color: #1CA7E7;
-            border-bottom-color: #1CA7E7;
+            color: #ffffff;
+            background: linear-gradient(135deg, #008fc4, #00aeef);
+            border-bottom-color: transparent;
+            border-radius: 10px;
         }
         
-        .tab-btn:hover {
-            color: #1CA7E7;
-            background: #F0F8FF;
-            border-radius: 12px 12px 0 0;
+        .tab-btn:hover:not(.active) {
+            color: #008fc4;
+            background: rgba(0, 174, 239, 0.12);
+            border-radius: 10px;
+        }
+
+        .tab-btn.active:hover {
+            color: #ffffff;
+            background: linear-gradient(135deg, #008fc4, #00aeef);
         }
         
         .tab-content {
@@ -483,23 +533,28 @@
             padding-top: 20px;
         }
         
-        /* Info Cards - Facebook Style */
+        /* Info Cards - Facebook Style (stacked so long emails fully show) */
         .info-card {
             background: #F8F9FA;
             border-radius: 12px;
             padding: 20px;
             margin-bottom: 16px;
             border-left: 4px solid #1CA7E7;
+            min-width: 0;
+            max-width: 100%;
+            box-sizing: border-box;
+            overflow: visible;
         }
         
         .info-row {
-            display: grid;
-            grid-template-columns: 110px minmax(0, 1fr);
-            gap: 12px;
-            align-items: start;
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 4px;
             padding: 12px 0;
             border-bottom: 1px solid #E8F4FD;
             min-width: 0;
+            max-width: 100%;
         }
         
         .info-row:last-child {
@@ -510,27 +565,31 @@
             font-weight: 700;
             color: #1E3A5F;
             min-width: 0;
-            font-size: 0.95rem;
-            white-space: nowrap;
+            font-size: 0.9rem;
+            white-space: normal;
+            line-height: 1.3;
         }
         
         .info-value {
             color: #4A6FA5;
             font-size: 0.95rem;
-            flex: 1;
             min-width: 0;
             max-width: 100%;
+            width: 100%;
+            display: block;
             word-break: break-word;
-            overflow-wrap: break-word;
+            overflow-wrap: anywhere;
             white-space: normal;
-            line-height: 1.35;
+            line-height: 1.4;
+            overflow: visible;
         }
 
         #sidebar-email-display,
         .profile-sidebar-card .info-value {
-            word-break: break-all;
-            overflow-wrap: break-word;
+            word-break: break-word;
+            overflow-wrap: anywhere;
             min-width: 0;
+            max-width: 100%;
         }
         
         .info-value.empty {
@@ -588,13 +647,13 @@
     </style>
     <link rel="stylesheet" href="css/teacher-sidebar.css">
     <link rel="stylesheet" href="css/portal-chrome-compact.css">
-    <link rel="stylesheet" href="css/student-portal-layout.css">
-    <link rel="stylesheet" href="css/student-sidebar.css">
+    <link rel="stylesheet" href="css/student-portal-layout.css?v=slide-match-1">
+    <link rel="stylesheet" href="css/student-sidebar.css?v=slide-match-1">
 </head>
 <body class="student-portal page-student-profile">
     <div class="remoed-main">
         <div id="student-sidebar-root"></div>
-        <script src="js/student-sidebar.js"></script>
+        <script src="js/student-sidebar.js?v=slide-match-1"></script>
         <script src="js/student-page-header.js"></script>
         <script>
             StudentSidebar.render('student-sidebar-root', 'profile');
@@ -602,19 +661,23 @@
         </script>
         <div class="remoed-content">
             <div class="profile-container">
-                <!-- Facebook-style Profile Header -->
+                <!-- Profile Header -->
                 <div class="profile-header">
                     <div class="profile-avatar-large click-to-upload" id="profile-avatar" title="Change photo">
                         <img id="profile-avatar-img" src="" alt="Profile Avatar" style="width:100%; height:100%; object-fit:cover; border-radius:50%; display:none;">
-                        <span id="profile-avatar-text" style="font-size:4rem; font-weight:bold; color:#fff; display:inline-block;">S</span>
-                        <div class="upload-overlay">📸 Click to upload</div>
+                        <span id="profile-avatar-text" style="font-size:2rem; font-weight:bold; color:#fff; display:inline-block; line-height:1;">S</span>
+                        <div class="upload-overlay">Change photo</div>
                         <input type="file" id="avatar-upload-input" accept="image/*" style="display:none;" aria-hidden="true">
                     </div>
                     <div class="profile-header-info">
                         <h1 class="profile-name-large" id="profile-name">Student Name</h1>
                         <p class="profile-email-large" id="profile-email">student@email.com</p>
+                        <div class="student-current-level profile-level-pill" id="student-current-level" aria-live="polite">
+                            <span class="student-current-level-label">Current Level</span>
+                            <span class="student-current-level-value" id="student-current-level-value">…</span>
+                        </div>
                         <div class="profile-actions">
-                            <button class="back-btn" onclick="goBack()">← Back to Dashboard</button>
+                            <button class="back-btn" type="button" onclick="goBack()">← Back to Dashboard</button>
                         </div>
                     </div>
                 </div>
@@ -623,23 +686,27 @@
                 <div class="profile-content-grid">
                     <!-- Profile Sidebar Card -->
                     <div class="profile-sidebar-card">
-                        <h3 class="section-title" style="font-size: 1.3rem; margin-bottom: 20px;">📋 Quick Info</h3>
+                        <h3 class="section-title">Quick Info</h3>
                         <div class="info-card">
                             <div class="info-row">
-                                <span class="info-label">📧 Email:</span>
+                                <span class="info-label">Email</span>
                                 <span class="info-value" id="sidebar-email-display">student@email.com</span>
                             </div>
                             <div class="info-row">
-                                <span class="info-label">📞 Contact:</span>
+                                <span class="info-label">Contact</span>
                                 <span class="info-value" id="sidebar-contact-display">-</span>
                             </div>
                             <div class="info-row">
-                                <span class="info-label">🎂 Birthday:</span>
+                                <span class="info-label">Birthday</span>
                                 <span class="info-value" id="sidebar-birthday-display">-</span>
                             </div>
                             <div class="info-row">
-                                <span class="info-label">📍 Location:</span>
+                                <span class="info-label">Location</span>
                                 <span class="info-value" id="sidebar-location-display">-</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Level</span>
+                                <span class="info-value" id="sidebar-level-display">-</span>
                             </div>
                         </div>
                     </div>
@@ -656,7 +723,7 @@
                     <div id="personal" class="tab-content active">
                         <!-- Basic Information Section -->
                         <div class="info-section">
-                            <h4 class="info-section-title">👤 Basic Information</h4>
+                            <h4 class="info-section-title">Basic Information</h4>
                             <div class="form-grid">
                                 <div class="form-group">
                                     <label class="form-label">First Name</label>
@@ -680,7 +747,7 @@
                                     </select>
                                 </div>
                                 <div class="form-group">
-                                    <label class="form-label">🎂 Birthday</label>
+                                    <label class="form-label">Birthday</label>
                                     <input type="date" class="form-input" id="birthday" disabled>
                                 </div>
                                 <div class="form-group">
@@ -692,18 +759,18 @@
                         
                         <!-- Contact Information Section -->
                         <div class="info-section">
-                            <h4 class="info-section-title">📞 Contact Information</h4>
+                            <h4 class="info-section-title">Contact Information</h4>
                             <div class="form-grid">
-                                <div class="form-group">
-                                    <label class="form-label">📧 Email</label>
+                                <div class="form-group full-width">
+                                    <label class="form-label">Email</label>
                                     <input type="email" class="form-input" id="email" placeholder="Email" disabled>
                                 </div>
                                 <div class="form-group">
-                                    <label class="form-label">📱 Contact Number</label>
+                                    <label class="form-label">Contact Number</label>
                                     <input type="tel" class="form-input" id="contact" placeholder="Contact Number" disabled>
                                 </div>
                                 <div class="form-group full-width">
-                                    <label class="form-label">📍 Address</label>
+                                    <label class="form-label">Address</label>
                                     <textarea class="form-textarea" id="address" placeholder="Complete Address" disabled></textarea>
                                 </div>
                             </div>
@@ -711,7 +778,7 @@
                         
                         <!-- About Section -->
                         <div class="info-section">
-                            <h4 class="info-section-title">💬 About Me</h4>
+                            <h4 class="info-section-title">About Me</h4>
                             <div class="form-group full-width">
                                 <textarea class="form-textarea" id="aboutMe" placeholder="Tell us about yourself, your interests, and learning goals..." disabled style="min-height: 150px;"></textarea>
                             </div>
@@ -719,14 +786,14 @@
                         
                         <!-- Interests Section -->
                         <div class="info-section">
-                            <h4 class="info-section-title">🎨 Interests & Hobbies</h4>
+                            <h4 class="info-section-title">Interests & Hobbies</h4>
                             <div class="form-grid">
                                 <div class="form-group">
-                                    <label class="form-label">🗣️ Language</label>
+                                    <label class="form-label">Language</label>
                                     <input type="text" class="form-input" id="language" placeholder="Primary Language" disabled>
                                 </div>
                                 <div class="form-group">
-                                    <label class="form-label">🎯 Hobbies</label>
+                                    <label class="form-label">Hobbies</label>
                                     <input type="text" class="form-input" id="hobbies" placeholder="Hobbies" disabled>
                                 </div>
                             </div>
@@ -734,30 +801,30 @@
                         
                         <!-- Family & Emergency Contact Section -->
                         <div class="info-section">
-                            <h4 class="info-section-title">👨‍👩‍👧 Family & Emergency Contact</h4>
+                            <h4 class="info-section-title">Family & Emergency Contact</h4>
                             <div class="form-grid">
                                 <div class="form-group">
-                                    <label class="form-label">👨‍👩‍👧 Parent/Guardian Name</label>
+                                    <label class="form-label">Parent/Guardian Name</label>
                                     <input type="text" class="form-input" id="parentName" placeholder="Parent/Guardian Name" disabled>
                                 </div>
                                 <div class="form-group">
-                                    <label class="form-label">📞 Parent/Guardian Contact</label>
+                                    <label class="form-label">Parent/Guardian Contact</label>
                                     <input type="tel" class="form-input" id="parentContact" placeholder="Parent/Guardian Contact" disabled>
                                 </div>
-                                <div class="form-group">
-                                    <label class="form-label">📧 Parent/Guardian Email</label>
+                                <div class="form-group full-width">
+                                    <label class="form-label">Parent/Guardian Email</label>
                                     <input type="email" class="form-input" id="parentEmail" placeholder="Parent/Guardian Email" disabled>
                                 </div>
                                 <div class="form-group">
-                                    <label class="form-label">🚨 Emergency Contact Person</label>
+                                    <label class="form-label">Emergency Contact Person</label>
                                     <input type="text" class="form-input" id="emergencyContactPerson" placeholder="Emergency contact person" disabled>
                                 </div>
                                 <div class="form-group">
-                                    <label class="form-label">📞 Emergency Contact Number</label>
+                                    <label class="form-label">Emergency Contact Number</label>
                                     <input type="tel" class="form-input" id="emergencyContactNumber" placeholder="Emergency contact number" disabled>
                                 </div>
                                 <div class="form-group full-width" id="emergency-contact-legacy-wrap" style="display: none;">
-                                    <label class="form-label">🚨 Emergency Contact (previous notes)</label>
+                                    <label class="form-label">Emergency Contact (previous notes)</label>
                                     <textarea class="form-textarea" id="emergencyContact" placeholder="Emergency Contact Information" disabled></textarea>
                                 </div>
                             </div>
@@ -767,56 +834,57 @@
                     <!-- Settings Tab -->
                     <div id="settings" class="tab-content">
                         <div class="info-section">
-                            <h4 class="info-section-title">⚙️ Account Settings</h4>
+                            <h4 class="info-section-title">Account Settings</h4>
                             <div class="form-grid">
-                                <div class="form-group">
-                                    <label class="form-label">📧 Current Email</label>
+                                <div class="form-group full-width">
+                                    <label class="form-label">Current Email</label>
                                     <input type="email" class="form-input" id="current-email" readonly>
                                 </div>
-                                <div class="form-group">
-                                    <label class="form-label">📧 New Email</label>
+                                <div class="form-group full-width">
+                                    <label class="form-label">New Email</label>
                                     <input type="email" class="form-input" id="new-email" placeholder="Enter new email address">
                                 </div>
                                 <div class="form-group">
-                                    <label class="form-label">👤 Current Username</label>
+                                    <label class="form-label">Current Username</label>
                                     <input type="text" class="form-input" id="current-username" readonly>
                                 </div>
                                 <div class="form-group">
-                                    <label class="form-label">👤 New Username</label>
+                                    <label class="form-label">New Username</label>
                                     <input type="text" class="form-input" id="new-username" placeholder="Enter new username">
                                 </div>
                             </div>
                         </div>
                         
-                        <div class="info-section">
-                            <h4 class="info-section-title">🔐 Change Password</h4>
+                        <div class="info-section profile-password-section">
+                            <h4 class="info-section-title">Change Password</h4>
+                            <p class="profile-password-hint">Update your password here if you still know your current one.</p>
                             <div class="form-grid">
                                 <div class="form-group">
-                                    <label class="form-label">🔑 Current Password</label>
-                                    <input type="password" class="form-input" id="current-password" placeholder="Enter current password">
+                                    <label class="form-label" for="current-password">Current Password</label>
+                                    <input type="password" class="form-input" id="current-password" placeholder="Enter current password" autocomplete="current-password">
+                                    <a class="forgot-current-link" href="forgot-password.html">Forgot current password?</a>
                                 </div>
                                 <div class="form-group">
-                                    <label class="form-label">🔑 New Password</label>
-                                    <input type="password" class="form-input" id="new-password" placeholder="Enter new password">
+                                    <label class="form-label" for="new-password">New Password</label>
+                                    <input type="password" class="form-input" id="new-password" placeholder="Enter new password" autocomplete="new-password">
                                 </div>
                                 <div class="form-group">
-                                    <label class="form-label">🔑 Confirm New Password</label>
-                                    <input type="password" class="form-input" id="confirm-password" placeholder="Confirm new password">
+                                    <label class="form-label" for="confirm-password">Confirm New Password</label>
+                                    <input type="password" class="form-input" id="confirm-password" placeholder="Confirm new password" autocomplete="new-password">
                                 </div>
                             </div>
                         </div>
                         
-                        <div style="display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap;">
-                            <button class="save-btn" onclick="updateSettings()">💾 Update Settings</button>
-                            <button class="cancel-btn" onclick="resetSettingsForm()">🔄 Reset Form</button>
-                            <button class="edit-btn" onclick="goToForgotPassword()">🔓 Forgot Password</button>
+                        <div class="profile-settings-actions">
+                            <button class="save-btn" type="button" onclick="updateSettings()">Update Settings</button>
+                            <button class="cancel-btn" type="button" onclick="resetSettingsForm()">Reset Form</button>
                         </div>
                     </div>
                 </div>
                 <div class="profile-edit-actions">
-                    <button class="edit-btn" id="edit-btn" onclick="enableEditing()">✏️ Edit</button>
-                    <button class="cancel-btn" id="cancel-btn" onclick="cancelEditing()" style="display: none;">❌ Cancel</button>
-                    <button class="save-btn" id="save-btn" onclick="saveProfile()" style="display: none;">💾 Save Changes</button>
+                    <button class="edit-btn" type="button" id="edit-btn" onclick="enableEditing()">Edit Profile</button>
+                    <button class="cancel-btn" type="button" id="cancel-btn" onclick="cancelEditing()" style="display: none;">Cancel</button>
+                    <button class="save-btn" type="button" id="save-btn" onclick="saveProfile()" style="display: none;">Save Changes</button>
                 </div>
                 
                 <div class="success-message" id="success-message" style="display: none; padding: 16px 24px; border-radius: 12px; margin-bottom: 24px; font-weight: 600;">
@@ -877,7 +945,7 @@
             // Logout functionality
             document.getElementById('logout-nav').onclick = function() {
                 localStorage.clear();
-                window.location.href = 'student-login.html';
+                window.location.href = '/login/';
             };
             
             updateProfileDisplay();
@@ -955,7 +1023,7 @@
             document.getElementById('sidebar-email-display').textContent = email;
             document.getElementById('sidebar-contact-display').textContent = contact !== '-' ? contact : '-';
             document.getElementById('sidebar-birthday-display').textContent = birthday !== '-' ? new Date(birthday).toLocaleDateString() : '-';
-            document.getElementById('sidebar-location-display').textContent = address !== '' ? (address.length > 30 ? address.substring(0, 30) + '...' : address) : '-';
+            document.getElementById('sidebar-location-display').textContent = address ? address : '-';
             
             // Main profile avatar: set initial text and hide image (use helper for consistency)
             try {
@@ -1263,7 +1331,7 @@
                     showSuccessMessage('Session expired. Please log in again.', 'error');
                     setTimeout(() => {
                         localStorage.clear();
-                        window.location.href = 'student-login.html';
+                        window.location.href = '/login/';
                     }, 2000);
                 } else if (response && response.status === 404) {
                     console.log('ℹ️ No profile found - creating new profile');
@@ -1342,8 +1410,9 @@
             document.getElementById('profile-name').textContent = displayName;
             document.getElementById('profile-email').textContent = profile.email || profile.username || loginEmail;
             
-            // Update sidebar quick info
+            // Update sidebar quick info + level badge
             updateSidebarQuickInfo(profile);
+            updateStudentCurrentLevel(profile);
             
             // Update avatar text
                 const mainText = document.getElementById('profile-avatar-text');
@@ -1820,6 +1889,38 @@
             document.getElementById('current-username').value = username;
         }
         
+        const CEFR_LEVEL_LABELS = {
+            A1: 'Beginner',
+            A2: 'Elementary',
+            B1: 'Intermediate',
+            B2: 'Upper Intermediate',
+            C1: 'Advanced',
+            C2: 'Proficiency'
+        };
+
+        function formatCefrLevel(profile) {
+            const raw = (profile && (profile.cefrLevel || profile.leveling || profile.level)) || '';
+            const level = String(raw).trim().toUpperCase();
+            if (level && CEFR_LEVEL_LABELS[level]) return level + ' · ' + CEFR_LEVEL_LABELS[level];
+            return level || '';
+        }
+
+        function updateStudentCurrentLevel(profile) {
+            const valueEl = document.getElementById('student-current-level-value');
+            const sidebarLevel = document.getElementById('sidebar-level-display');
+            const formatted = formatCefrLevel(profile);
+            if (valueEl) {
+                if (formatted) {
+                    valueEl.textContent = formatted;
+                } else {
+                    valueEl.innerHTML = '<a href="student-assessment.html">Take Assessment</a>';
+                }
+            }
+            if (sidebarLevel) {
+                sidebarLevel.textContent = formatted || 'Not set';
+            }
+        }
+
         function updateSidebarQuickInfo(profile) {
             const email = profile.email || profile.username || '-';
             const contact = profile.contact || '-';
@@ -1838,7 +1939,8 @@
             } else {
                 document.getElementById('sidebar-birthday-display').textContent = '-';
             }
-            document.getElementById('sidebar-location-display').textContent = address !== '' ? (address.length > 30 ? address.substring(0, 30) + '...' : address) : '-';
+            document.getElementById('sidebar-location-display').textContent = address ? address : '-';
+            updateStudentCurrentLevel(profile);
         }
         
         function goToForgotPassword() {

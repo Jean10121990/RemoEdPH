@@ -327,7 +327,7 @@ const emailTemplates = {
             </ol>
             
             <div style="text-align: center; margin: 30px 0;">
-              <a href="${process.env.FRONTEND_URL || 'http://localhost:5000'}/teacher-login.html" class="btn">Go to Teacher Login</a>
+              <a href="${process.env.FRONTEND_URL || 'http://localhost:5000'}/login/" class="btn">Go to Login</a>
             </div>
             
             <p><strong>About RemoEdPH:</strong><br>
@@ -392,7 +392,7 @@ Please do not reply to this email.
 
     const amount = Number(planPrice || 0) || 0;
     const amountText = amount ? `₱${amount.toLocaleString()}` : '₱0';
-    const loginUrl = `${process.env.FRONTEND_URL || 'http://localhost:5000'}/student-login.html`;
+    const loginUrl = `${process.env.FRONTEND_URL || 'http://localhost:5000'}/login/`;
 
     return {
       subject: `RemoEdPH - Subscription Activated`,
@@ -436,7 +436,7 @@ Please do not reply to this email.
 
               <p style="margin-top: 18px;">You can now log in and click <strong>Start Learning</strong>.</p>
               <div style="text-align:center; margin: 22px 0;">
-                <a class="btn" href="${loginUrl}">Go to Student Login</a>
+                <a class="btn" href="${loginUrl}">Go to Login</a>
               </div>
 
               <p>If you have questions, please contact support.</p>

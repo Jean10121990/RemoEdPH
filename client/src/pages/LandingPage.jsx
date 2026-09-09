@@ -17,6 +17,7 @@ export default function LandingPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState("");
   const [assessmentData, setAssessmentData] = useState(null);
+  const [cefrLevel, setCefrLevel] = useState("");
 
   const urlEmail = searchParams.get("email") || "";
 
@@ -31,7 +32,7 @@ export default function LandingPage() {
 
   useEffect(() => {
     const email = searchParams.get("email");
-    const cefrLevel = searchParams.get("cefrLevel");
+    const level = searchParams.get("cefrLevel");
     const signup = searchParams.get("signup");
 
     const scrollPlans = () => {
@@ -43,7 +44,8 @@ export default function LandingPage() {
       return () => clearTimeout(t);
     };
 
-    if (email && cefrLevel) {
+    if (email && level) {
+      setCefrLevel(level);
       if (signup === "true") {
         const next = new URLSearchParams(searchParams);
         next.delete("signup");
@@ -52,19 +54,7 @@ export default function LandingPage() {
           window.location.hash = "plans";
         }
       }
-      const cancelScroll = scrollPlans();
-      let cancelAlert;
-      if (window.location.hash !== "#plans") {
-        cancelAlert = setTimeout(() => {
-          alert(
-            `🎉 Your level: ${cefrLevel}\n\nChoose a learning plan below and tap Enroll Now to sign up.`,
-          );
-        }, 600);
-      }
-      return () => {
-        cancelScroll();
-        if (cancelAlert) clearTimeout(cancelAlert);
-      };
+      return scrollPlans();
     }
 
     if (window.location.hash === "#plans") return scrollPlans();
@@ -86,7 +76,7 @@ export default function LandingPage() {
       <Hero />
       <BenefitsSection />
       <AssessmentForm />
-      <PlansSection onOpenSignup={openSignup} />
+      <PlansSection onOpenSignup={openSignup} cefrLevel={cefrLevel} />
       <SiteFooter />
       <SignupModal
         open={modalOpen}

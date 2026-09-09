@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Clear session data and token
             localStorage.setItem('loggedOut', '1');
             localStorage.removeItem('authToken');
-            window.location.href = 'teacher-login.html';
+            window.location.href = '/login/';
         });
     }
 

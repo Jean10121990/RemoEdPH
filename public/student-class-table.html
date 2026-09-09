@@ -126,7 +126,7 @@
     }
     
     .schedule-table th {
-      background: linear-gradient(135deg, #667eea, #5a67d8);
+      background: linear-gradient(135deg, #00aeef, #008fc4);
       font-weight: 600;
       color: white;
       position: sticky;
@@ -633,7 +633,7 @@
     }
     
     .remoed-modal-header {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, #00aeef 0%, #008fc4 100%);
       color: white;
       padding: 1.5rem;
       display: flex;
@@ -718,7 +718,7 @@
     }
 
     .modal .modal-header {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, #00aeef 0%, #008fc4 100%);
       color: white;
       padding: 1rem 1.5rem;
       display: flex;
@@ -829,13 +829,13 @@
     .remoed-star:hover {
       color: #fbbf24;
       transform: scale(1.1);
-      text-shadow: 0 0 8px rgba(251, 191, 36, 0.4);
+      text-shadow: none;
     }
     
     .remoed-star.active {
       color: #f59e0b !important;
       transform: scale(1.05);
-      text-shadow: 0 0 10px rgba(245, 158, 11, 0.6);
+      text-shadow: none;
     }
     
     .remoed-rating-text {
@@ -893,8 +893,8 @@
     }
     
     .remoed-checkbox-item input[type="checkbox"]:checked + .remoed-checkbox-custom {
-      background: #667eea;
-      border-color: #667eea;
+      background: #00aeef;
+      border-color: #00aeef;
     }
     
     .remoed-checkbox-icon {
@@ -1005,13 +1005,13 @@
   </style>
   <link rel="stylesheet" href="css/teacher-sidebar.css">
     <link rel="stylesheet" href="css/portal-chrome-compact.css">
-  <link rel="stylesheet" href="css/student-portal-layout.css">
-  <link rel="stylesheet" href="css/student-sidebar.css">
+  <link rel="stylesheet" href="css/student-portal-layout.css?v=slide-match-1">
+  <link rel="stylesheet" href="css/student-sidebar.css?v=slide-match-1">
 </head>
 <body class="student-portal page-student-class-table">
   <div class="remoed-main">
     <div id="student-sidebar-root"></div>
-    <script src="js/student-sidebar.js"></script>
+    <script src="js/student-sidebar.js?v=slide-match-1"></script>
     <script src="js/student-page-header.js"></script>
     <script>
       StudentSidebar.render('student-sidebar-root', 'schedule');
@@ -1035,7 +1035,7 @@
     <!-- Booking Indicators Legend -->
     <div class="booking-legend" style="margin-bottom: 20px; padding: 15px; background: linear-gradient(135deg, #f8f9fa 0%, #e8f4fd 100%); border-radius: 12px; border: 1px solid rgba(28, 167, 231, 0.1); box-shadow: 0 4px 16px rgba(28, 167, 231, 0.05);">
       <div style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; flex-wrap: nowrap; overflow-x: auto;">
-        <h3 style="margin: 0; color: #667eea; font-size: 1.1rem; font-weight: 600;">📊 Schedule Indicators:</h3>
+        <h3 style="margin: 0; color: #00aeef; font-size: 1.1rem; font-weight: 600;">📊 Schedule Indicators:</h3>
         <div style="display: flex; align-items: center; gap: 4px; white-space: nowrap; flex-shrink: 0;">
           <span style="display: inline-block; width: 18px; height: 18px; background: #f8d7da; color: #721c24; text-align: center; font-weight: bold; border-radius: 3px; font-size: 0.75rem; line-height: 18px;">B</span>
           <span style="white-space: nowrap;">Booked</span>
@@ -1072,12 +1072,12 @@
   <div id="booking-modal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.25); z-index:2000; align-items:center; justify-content:center;">
     <div style="background:#fff; border-radius:12px; max-width:350px; width:90vw; margin:auto; box-shadow:0 4px 24px rgba(28,167,231,0.13); padding:28px 22px 18px 22px; position:relative;">
       <button id="close-booking-modal" style="position:absolute; top:10px; right:14px; background:none; border:none; font-size:1.3rem; color:#888; cursor:pointer;">&times;</button>
-      <div style="font-size:1.2rem; font-weight:700; color:#667eea; margin-bottom:10px;">Class Details</div>
-      <div style="margin-bottom:8px;"><span style="font-weight:600; color:#667eea;">Teacher:</span> <span id="modal-teacher"></span></div>
-      <div style="margin-bottom:8px;"><span style="font-weight:600; color:#667eea;">Lesson:</span> <span id="modal-lesson"></span></div>
-      <div style="margin-bottom:8px;"><span style="font-weight:600; color:#667eea;">Level:</span> <span id="modal-level"></span></div>
-      <div style="margin-bottom:8px;"><span style="font-weight:600; color:#667eea;">Date:</span> <span id="modal-date"></span></div>
-      <div style="margin-bottom:8px;"><span style="font-weight:600; color:#667eea;">Time:</span> <span id="modal-time"></span></div>
+      <div style="font-size:1.2rem; font-weight:700; color:#00aeef; margin-bottom:10px;">Class Details</div>
+      <div style="margin-bottom:8px;"><span style="font-weight:600; color:#00aeef;">Teacher:</span> <span id="modal-teacher"></span></div>
+      <div style="margin-bottom:8px;"><span style="font-weight:600; color:#00aeef;">Lesson:</span> <span id="modal-lesson"></span></div>
+      <div style="margin-bottom:8px;"><span style="font-weight:600; color:#00aeef;">Level:</span> <span id="modal-level"></span></div>
+      <div style="margin-bottom:8px;"><span style="font-weight:600; color:#00aeef;">Date:</span> <span id="modal-date"></span></div>
+      <div style="margin-bottom:8px;"><span style="font-weight:600; color:#00aeef;">Time:</span> <span id="modal-time"></span></div>
     </div>
   </div>
   <!-- Class Info Modal -->
@@ -1873,7 +1873,7 @@
     // Logout functionality
     document.getElementById('logout-nav').onclick = function() {
       localStorage.clear();
-      window.location.href = 'student-login.html';
+      window.location.href = '/login/';
     };
 
     // Weekly grid variables — Luxon local week (viewer clock)
@@ -2057,7 +2057,7 @@
             console.log('❌ Unauthorized - token may be expired');
             alert('Session expired. Please log in again.');
             localStorage.clear();
-            window.location.href = 'student-login.html';
+            window.location.href = '/login/';
             return;
           } else if (response.status === 404) {
             console.log('ℹ️ No bookings found for this week');
@@ -2534,7 +2534,7 @@
         const token = localStorage.getItem('token');
         if (!token) {
           alert('Authentication required. Please log in again.');
-          window.location.href = 'student-login.html';
+          window.location.href = '/login/';
           return;
         }
         if (submitBtn) {
@@ -2730,7 +2730,7 @@
         const token = localStorage.getItem('token');
         if (!token) {
           alert('Authentication required for cancellation.');
-          window.location.href = 'student-login.html';
+          window.location.href = '/login/';
           return;
         }
 

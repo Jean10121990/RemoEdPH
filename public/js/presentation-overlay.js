@@ -20,9 +20,65 @@
 
   function btnStyle(extra) {
     return (
-      'padding:6px 12px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;cursor:pointer;font-size:0.8rem;' +
+      'padding:6px 12px;border-radius:8px;border:1px solid #cbd5e1;background:#fff;cursor:pointer;font-size:0.8rem;' +
       (extra || '')
     );
+  }
+
+  function createRewardsMenu() {
+    var wrap = document.createElement('div');
+    wrap.className = 'lc-rewards-menu';
+
+    var toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'lc-rewards-toggle';
+    toggle.textContent = 'Rewards';
+    toggle.title = 'Send a reward animation';
+    toggle.setAttribute('aria-expanded', 'false');
+    toggle.style.cssText = btnStyle('font-weight:700;');
+
+    var dropdown = document.createElement('div');
+    dropdown.className = 'lc-rewards-dropdown';
+    dropdown.hidden = true;
+
+    function makeReward(cls, label, title, html) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'action-btn ' + cls;
+      btn.title = title;
+      btn.setAttribute('aria-label', title);
+      if (html) btn.innerHTML = html;
+      else btn.textContent = label;
+      btn.style.cssText = btnStyle('min-width:36px;width:100%;justify-content:flex-start;');
+      dropdown.appendChild(btn);
+      return btn;
+    }
+
+    makeReward(
+      'flag-btn',
+      '',
+      'Flag reward',
+      '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="#666" d="M2 2h2v20H2z"/><path fill="#28a745" d="M4 2v10l10-5L4 2z"/></svg><span style="margin-left:8px">Flag</span>'
+    );
+    makeReward('cookie-btn', '🍪 Cookie', 'Cookie reward');
+    makeReward('star-btn', '⭐ Star', 'Star reward');
+
+    toggle.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var open = dropdown.hidden;
+      dropdown.hidden = !open;
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      wrap.classList.toggle('is-open', open);
+    });
+    document.addEventListener('click', function () {
+      dropdown.hidden = true;
+      wrap.classList.remove('is-open');
+      toggle.setAttribute('aria-expanded', 'false');
+    });
+
+    wrap.appendChild(toggle);
+    wrap.appendChild(dropdown);
+    return wrap;
   }
 
   function absoluteUrl(pathOrUrl) {
@@ -30,6 +86,20 @@
     if (/^https?:\/\//i.test(pathOrUrl) || pathOrUrl.startsWith('data:')) return pathOrUrl;
     var base = global.location.origin;
     return pathOrUrl.startsWith('/') ? base + pathOrUrl : base + '/' + pathOrUrl;
+  }
+
+  /** Office Online can only fetch publicly reachable HTTPS URLs (not localhost). */
+  function officeOnlineCanFetchUrl(src) {
+    try {
+      var u = new URL(absoluteUrl(src));
+      if (u.protocol !== 'https:') return false;
+      if (/localhost|127\.0\.0\.1|\.local$|^10\.|^192\.168\.|^172\.(1[6-9]|2\d|3[0-1])\./i.test(u.hostname)) {
+        return false;
+      }
+      return true;
+    } catch (_e) {
+      return false;
+    }
   }
 
   function resolveSourceUrl(material) {
@@ -57,13 +127,13 @@
     var src = absoluteUrl(fileUrlOrPath);
     if (!src || src.startsWith('data:')) return null;
     if (isOfficeHosted(src)) return src;
+    if (!officeOnlineCanFetchUrl(src)) return null;
     return 'https://view.officeapps.live.com/op/embed.aspx?src=' + encodeURIComponent(src);
   }
 
   /**
-   * Build iframe src for live class. Prefer Office Online for PPTX so native chrome
-   * (including bottom nav) works; HTML5 packages use same-origin URL.
-   * Optional slideIndex (0-based) maps to Office wdStartOn / #slide=N.
+   * Build iframe src for live class. Prefer Office Online for public HTTPS PPTX;
+   * skip Office Online on localhost (returns null so caller can use PDF preview).
    */
   function buildIframeSrc(material, slideIndex) {
     var src = resolveSourceUrl(material);
@@ -81,7 +151,7 @@
     }
     if (isPptFileUrl(src)) {
       var embed = buildSecureOfficeEmbedUrl(src);
-      if (!embed) return src;
+      if (!embed) return null;
       embed += (embed.indexOf('?') >= 0 ? '&' : '?') + 'wdStartOn=' + encodeURIComponent(String(idx + 1));
       embed += '&wdSlideIndex=' + encodeURIComponent(String(idx + 1));
       return embed;
@@ -197,8 +267,8 @@
     if (state.toggleDraw) {
       state.toggleDraw.classList.toggle('active', state.drawing);
       state.toggleDraw.setAttribute('aria-pressed', state.drawing ? 'true' : 'false');
-      state.toggleDraw.style.background = state.drawing ? '#dbeafe' : '#fff';
-      state.toggleDraw.style.borderColor = state.drawing ? '#1ca7e7' : '#cbd5e1';
+      state.toggleDraw.style.background = state.drawing ? '#dcfce7' : '#fff';
+      state.toggleDraw.style.borderColor = state.drawing ? '#00a82d' : '#cbd5e1';
       state.toggleDraw.textContent = state.drawing ? 'Draw ✓' : 'Draw';
     }
   }
@@ -253,34 +323,35 @@
     var nextSlideBtn = null;
     var slideLabel = null;
     if (isTeacher) {
+      var navGroup = document.createElement('div');
+      navGroup.className = 'remoed-ppt-nav';
+      navGroup.style.cssText = 'display:inline-flex;align-items:center;gap:4px;';
+
       prevSlideBtn = document.createElement('button');
       prevSlideBtn.type = 'button';
       prevSlideBtn.textContent = '◀';
-      prevSlideBtn.title = 'Previous slide (syncs student)';
+      prevSlideBtn.title = 'Previous slide (syncs student — not Office Next)';
       prevSlideBtn.style.cssText = btnStyle(
-        'min-width:36px;font-weight:700;background:#1ca7e7;color:#fff;border-color:#1ca7e7;'
+        'min-width:36px;font-weight:700;background:#00a82d;color:#fff;border-color:#008a24;'
       );
 
       slideLabel = document.createElement('span');
+      slideLabel.className = 'remoed-ppt-slide-label';
       slideLabel.style.cssText =
-        'font-size:0.8rem;font-weight:700;color:#0f172a;min-width:72px;text-align:center;padding:4px 8px;background:#f1f5f9;border-radius:6px;';
+        'font-size:0.8rem;font-weight:700;color:#0f172a;min-width:64px;text-align:center;padding:4px 8px;background:#f1f5f9;border-radius:8px;';
 
       nextSlideBtn = document.createElement('button');
       nextSlideBtn.type = 'button';
       nextSlideBtn.textContent = '▶';
-      nextSlideBtn.title = 'Next slide (syncs student)';
+      nextSlideBtn.title = 'Next slide (syncs student — not Office Next)';
       nextSlideBtn.style.cssText = btnStyle(
-        'min-width:36px;font-weight:700;background:#1ca7e7;color:#fff;border-color:#1ca7e7;'
+        'min-width:36px;font-weight:700;background:#00a82d;color:#fff;border-color:#008a24;'
       );
 
-      toolbar.appendChild(prevSlideBtn);
-      toolbar.appendChild(slideLabel);
-      toolbar.appendChild(nextSlideBtn);
-
-      var syncHint = document.createElement('span');
-      syncHint.style.cssText = 'font-size:0.72rem;color:#0369a1;max-width:220px;line-height:1.25;';
-      syncHint.textContent = 'Use these arrows to sync slides (Office Next does not).';
-      toolbar.appendChild(syncHint);
+      navGroup.appendChild(prevSlideBtn);
+      navGroup.appendChild(slideLabel);
+      navGroup.appendChild(nextSlideBtn);
+      toolbar.appendChild(navGroup);
     }
 
     toolbar.appendChild(toggleDraw);
@@ -288,31 +359,7 @@
     toolbar.appendChild(clearBtn);
 
     if (isTeacher) {
-      var flagBtn = document.createElement('button');
-      flagBtn.type = 'button';
-      flagBtn.className = 'action-btn flag-btn';
-      flagBtn.innerHTML =
-        '<svg viewBox="0 0 24 24" width="18" height="18" style="display:block;margin:0 auto" aria-hidden="true"><path fill="#666" d="M2 2h2v20H2z"/><path fill="#28a745" d="M4 2v10l10-5L4 2z"/></svg>';
-      flagBtn.title = 'Flag reward';
-      flagBtn.style.cssText = btnStyle('min-width:36px;padding:4px 8px;');
-
-      var cookieBtn = document.createElement('button');
-      cookieBtn.type = 'button';
-      cookieBtn.className = 'action-btn cookie-btn';
-      cookieBtn.textContent = '🍪';
-      cookieBtn.title = 'Cookie reward';
-      cookieBtn.style.cssText = btnStyle('min-width:36px;');
-
-      var starBtn = document.createElement('button');
-      starBtn.type = 'button';
-      starBtn.className = 'action-btn star-btn';
-      starBtn.textContent = '⭐';
-      starBtn.title = 'Star reward';
-      starBtn.style.cssText = btnStyle('min-width:36px;');
-
-      toolbar.appendChild(flagBtn);
-      toolbar.appendChild(cookieBtn);
-      toolbar.appendChild(starBtn);
+      toolbar.appendChild(createRewardsMenu());
     }
 
     var stack = document.createElement('div');
@@ -437,8 +484,11 @@
       var src = buildIframeSrc(material, i);
       if (!src) {
         iframeWrap.innerHTML =
-          '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#94a3b8;padding:24px;text-align:center;">' +
-          '<div><p style="font-weight:600;">No presentation URL</p><p>' +
+          '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#334155;padding:24px;text-align:center;font-family:Segoe UI,sans-serif;">' +
+          '<div style="max-width:420px;">' +
+          '<p style="font-weight:700;font-size:1.05rem;margin:0 0 8px;">Presentation preview unavailable</p>' +
+          '<p style="margin:0 0 8px;color:#64748b;line-height:1.5;">Microsoft Office Online cannot open PowerPoint files from localhost. RemoEd will convert this lesson to PDF for class.</p>' +
+          '<p style="margin:0;color:#94a3b8;font-size:0.9rem;">' +
           escapeHtml(material.name || '') +
           '</p></div></div>';
         return;

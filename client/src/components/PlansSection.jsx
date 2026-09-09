@@ -8,7 +8,7 @@ import {
 } from "../config/plans.js";
 import { getAuthenticatedStudentContext } from "../utils/authStudent.js";
 
-export default function PlansSection({ onOpenSignup }) {
+export default function PlansSection({ onOpenSignup, cefrLevel }) {
   const [loadingId, setLoadingId] = React.useState(null);
 
   async function handleEnroll(planId) {
@@ -58,6 +58,12 @@ export default function PlansSection({ onOpenSignup }) {
   return (
     <section className="section plans-section" id="plans">
       <h2 className="section-title">Choose Your Learning Plan</h2>
+      {cefrLevel ? (
+        <div className="cefr-level-banner is-visible" role="status" aria-live="polite">
+          <strong>Your level: {cefrLevel}</strong>
+          <p>Choose a learning plan below and tap Enroll Now to sign up.</p>
+        </div>
+      ) : null}
       <div className="plans-grid">
         {PLAN_CARDS.map((p) => (
           <div key={p.id} className={`plan-card ${p.cardClass}`}>

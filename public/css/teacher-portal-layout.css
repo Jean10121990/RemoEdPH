@@ -1,0 +1,566 @@
+/**
+ * Teacher portal — RemoEdPH green rail + brand accent overrides.
+ * Loaded via teacher-sidebar.css. Requires body.teacher-portal (set by teacher-sidebar.js).
+ */
+
+:root {
+  --remoed-brand-blue: #00aeef;
+  --remoed-brand-blue-soft: #5cc8f5;
+  --remoed-brand-blue-deep: #008fc4;
+  --remoed-brand-green: #00a82d;
+  --remoed-brand-green-soft: #34c759;
+  --remoed-brand-green-deep: #008a24;
+  --remoed-brand-yellow: #fdd835;
+  --remoed-sidebar-subtitle: rgba(255, 255, 255, 0.85);
+  --remoed-sidebar-active-start: #008a24;
+  --remoed-sidebar-active-end: #00a82d;
+  --remoed-sidebar-active-border: #fdd835;
+  --remoed-sidebar-inactive: rgba(255, 255, 255, 0.92);
+  --remoed-sidebar-inactive-hover-bg: rgba(255, 255, 255, 0.14);
+  --remoed-sidebar-inactive-hover-text: #ffffff;
+}
+
+html body.teacher-portal,
+html body[class*="page-teacher-"] {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #f8fafc;
+  color: #1a202c;
+}
+
+/* —— Green gradient rail —— */
+body.teacher-portal nav.remoed-sidebar.remoed-sidebar,
+body[class*="page-teacher-"] nav.remoed-sidebar.remoed-sidebar {
+  background: linear-gradient(
+    180deg,
+    #008a24 0%,
+    #00a82d 42%,
+    #007a20 100%
+  ) !important;
+  box-shadow: 4px 0 24px rgba(0, 100, 40, 0.28);
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+body.teacher-portal .remoed-sidebar .sidebar-header,
+body[class*="page-teacher-"] .remoed-sidebar .sidebar-header {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  height: auto;
+  min-height: 0;
+  overflow: visible;
+  background: transparent !important;
+  padding: 14px 12px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+body.teacher-portal .remoed-sidebar .sidebar-header-inner,
+body[class*="page-teacher-"] .remoed-sidebar .sidebar-header-inner {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas: "logo brand toggle";
+  align-items: center;
+  column-gap: 10px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+
+body.teacher-portal .remoed-sidebar .sidebar-logo-img,
+body[class*="page-teacher-"] .remoed-sidebar .sidebar-logo-img {
+  grid-area: logo;
+  width: 44px !important;
+  height: 44px !important;
+  min-width: 44px !important;
+  min-height: 44px !important;
+  max-width: 44px !important;
+  max-height: 44px !important;
+  display: block;
+  margin: 0;
+  object-fit: contain !important;
+  object-position: center;
+  background: #ffffff;
+  border-radius: 10px !important;
+  padding: 4px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  align-self: center;
+}
+
+body.teacher-portal .remoed-sidebar.sidebar-collapsed .sidebar-logo-img,
+body[class*="page-teacher-"] .remoed-sidebar.sidebar-collapsed .sidebar-logo-img {
+  width: 40px !important;
+  height: 40px !important;
+  min-width: 40px !important;
+  min-height: 40px !important;
+  max-width: 40px !important;
+  max-height: 40px !important;
+  margin: 0 auto;
+  padding: 4px;
+  border-radius: 10px !important;
+}
+
+body.teacher-portal .remoed-sidebar .sidebar-brand,
+body[class*="page-teacher-"] .remoed-sidebar .sidebar-brand {
+  grid-area: brand;
+  min-width: 0;
+  text-align: left;
+  margin: 0;
+}
+
+body.teacher-portal .remoed-sidebar .sidebar-title,
+body[class*="page-teacher-"] .remoed-sidebar .sidebar-title {
+  display: block;
+  font-weight: 800;
+  color: #ffffff !important;
+  font-size: 1.05rem;
+  line-height: 1.2;
+  margin: 0;
+  text-shadow: none !important;
+}
+
+body.teacher-portal .remoed-sidebar .sidebar-subtitle,
+body[class*="page-teacher-"] .remoed-sidebar .sidebar-subtitle {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85) !important;
+  line-height: 1.25;
+  margin: 2px 0 0;
+  text-shadow: none !important;
+}
+
+body.teacher-portal .remoed-sidebar .sidebar-collapse-toggle,
+body[class*="page-teacher-"] .remoed-sidebar .sidebar-collapse-toggle {
+  grid-area: toggle;
+  width: 36px;
+  height: 36px;
+  margin: 0;
+  border-radius: 10px;
+  border: 2px solid #fdd835 !important;
+  background: rgba(255, 255, 255, 0.14) !important;
+  color: #ffffff !important;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: end;
+}
+
+body.teacher-portal .remoed-sidebar .sidebar-collapse-toggle:hover,
+body.teacher-portal .remoed-sidebar .sidebar-collapse-toggle:focus-visible,
+body[class*="page-teacher-"] .remoed-sidebar .sidebar-collapse-toggle:hover,
+body[class*="page-teacher-"] .remoed-sidebar .sidebar-collapse-toggle:focus-visible {
+  background: #fdd835 !important;
+  color: #0a3d18 !important;
+  border-color: #fdd835 !important;
+  outline: none;
+}
+
+body.teacher-portal .remoed-sidebar .sidebar-user,
+body[class*="page-teacher-"] .remoed-sidebar .sidebar-user {
+  padding: 14px 14px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(0, 0, 0, 0.08);
+}
+
+body.teacher-portal .remoed-sidebar .remoed-username,
+body[class*="page-teacher-"] .remoed-sidebar .remoed-username {
+  color: #ffffff !important;
+  font-weight: 700;
+}
+
+body.teacher-portal .remoed-sidebar #remoed-avatar,
+body[class*="page-teacher-"] .remoed-sidebar #remoed-avatar {
+  background: #ffffff !important;
+  color: #008a24 !important;
+  border: 2px solid #fdd835;
+}
+
+body.teacher-portal .remoed-sidebar #avatar-text,
+body[class*="page-teacher-"] .remoed-sidebar #avatar-text {
+  color: #008a24 !important;
+  font-weight: 800;
+}
+
+body.teacher-portal .remoed-sidebar .remoed-menu,
+body[class*="page-teacher-"] .remoed-sidebar .remoed-menu {
+  padding: 10px 8px 16px;
+}
+
+body.teacher-portal .remoed-sidebar .remoed-menu li,
+body[class*="page-teacher-"] .remoed-sidebar .remoed-menu li {
+  color: rgba(255, 255, 255, 0.92) !important;
+  border-left: 3px solid transparent;
+  border-radius: 10px;
+  margin: 2px 0;
+}
+
+body.teacher-portal .remoed-sidebar .remoed-menu li svg,
+body[class*="page-teacher-"] .remoed-sidebar .remoed-menu li svg {
+  color: rgba(255, 255, 255, 0.92) !important;
+  stroke: currentColor;
+}
+
+body.teacher-portal .remoed-sidebar .remoed-menu li:not(#logout-nav):not(.active):hover,
+body[class*="page-teacher-"] .remoed-sidebar .remoed-menu li:not(#logout-nav):not(.active):hover {
+  background: rgba(255, 255, 255, 0.14) !important;
+  color: #ffffff !important;
+  border-left-color: #fdd835;
+}
+
+body.teacher-portal .remoed-sidebar .remoed-menu li.active,
+body[class*="page-teacher-"] .remoed-sidebar .remoed-menu li.active {
+  background: rgba(255, 255, 255, 0.22) !important;
+  color: #ffffff !important;
+  border-left: 3px solid #fdd835 !important;
+  box-shadow: none;
+  font-weight: 800;
+}
+
+body.teacher-portal .remoed-sidebar .remoed-menu li.active svg,
+body[class*="page-teacher-"] .remoed-sidebar .remoed-menu li.active svg {
+  color: #fdd835 !important;
+  stroke: #fdd835 !important;
+}
+
+body.teacher-portal .remoed-sidebar .remoed-menu li#logout-nav,
+body[class*="page-teacher-"] .remoed-sidebar .remoed-menu li#logout-nav {
+  color: #ffe4e4 !important;
+  margin-top: auto;
+}
+
+body.teacher-portal .remoed-sidebar .remoed-menu li#logout-nav svg,
+body[class*="page-teacher-"] .remoed-sidebar .remoed-menu li#logout-nav svg {
+  color: #ffb4b4 !important;
+  stroke: #ffb4b4 !important;
+}
+
+body.teacher-portal .remoed-sidebar .remoed-menu li#logout-nav:hover,
+body[class*="page-teacher-"] .remoed-sidebar .remoed-menu li#logout-nav:hover {
+  background: rgba(220, 38, 38, 0.28) !important;
+  color: #ffffff !important;
+  border-left-color: #fecaca;
+}
+
+body.teacher-portal .remoed-menu li.active .remoed-pending-dot,
+body.teacher-portal .remoed-menu li.active .remoed-schedule-count-badge,
+body[class*="page-teacher-"] .remoed-menu li.active .remoed-pending-dot,
+body[class*="page-teacher-"] .remoed-menu li.active .remoed-schedule-count-badge {
+  box-shadow: 0 0 0 2px rgba(0, 138, 36, 0.95);
+}
+
+/* —— Sidebar width + content offset (beats page style.css) —— */
+body.teacher-portal nav.remoed-sidebar.remoed-sidebar,
+body[class*="page-teacher-"] nav.remoed-sidebar.remoed-sidebar {
+  width: 260px !important;
+  min-width: 260px !important;
+  max-width: 260px !important;
+  z-index: 500 !important;
+  transition:
+    width 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+    min-width 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+    max-width 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.28s ease;
+  will-change: width;
+}
+
+body.teacher-portal nav.remoed-sidebar.sidebar-collapsed,
+body[class*="page-teacher-"] nav.remoed-sidebar.sidebar-collapsed {
+  width: 72px !important;
+  min-width: 72px !important;
+  max-width: 72px !important;
+}
+
+body.teacher-portal .remoed-content,
+body[class*="page-teacher-"] .remoed-content {
+  margin-left: 260px !important;
+  max-width: calc(100vw - 260px) !important;
+  box-sizing: border-box;
+  transition:
+    margin-left 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+    max-width 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body.teacher-portal.teacher-sidebar-collapsed .remoed-content,
+body[class*="page-teacher-"].teacher-sidebar-collapsed .remoed-content {
+  margin-left: 72px !important;
+  max-width: calc(100vw - 72px) !important;
+}
+
+/* Collapsed mini-rail — single centered column */
+body.teacher-portal .remoed-sidebar.sidebar-collapsed,
+body[class*="page-teacher-"] .remoed-sidebar.sidebar-collapsed {
+  align-items: center !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+body.teacher-portal .remoed-sidebar.sidebar-collapsed .sidebar-header,
+body.teacher-portal .remoed-sidebar.sidebar-collapsed .sidebar-user,
+body[class*="page-teacher-"] .remoed-sidebar.sidebar-collapsed .sidebar-header,
+body[class*="page-teacher-"] .remoed-sidebar.sidebar-collapsed .sidebar-user {
+  width: 100%;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+body.teacher-portal .remoed-sidebar.sidebar-collapsed .sidebar-header-inner,
+body[class*="page-teacher-"] .remoed-sidebar.sidebar-collapsed .sidebar-header-inner {
+  display: flex !important;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0 !important;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+body.teacher-portal .remoed-sidebar.sidebar-collapsed .sidebar-collapse-toggle,
+body[class*="page-teacher-"] .remoed-sidebar.sidebar-collapsed .sidebar-collapse-toggle {
+  justify-self: center;
+  order: -1;
+  margin: 0 auto;
+  width: 36px;
+  height: 36px;
+}
+
+body.teacher-portal .remoed-sidebar.sidebar-collapsed .sidebar-user-inner,
+body[class*="page-teacher-"] .remoed-sidebar.sidebar-collapsed .sidebar-user-inner {
+  justify-content: center !important;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body.teacher-portal .remoed-sidebar.sidebar-collapsed #remoed-avatar,
+body[class*="page-teacher-"] .remoed-sidebar.sidebar-collapsed #remoed-avatar {
+  margin: 0 auto !important;
+  width: 40px !important;
+  height: 40px !important;
+}
+
+body.teacher-portal .remoed-sidebar.sidebar-collapsed .remoed-menu,
+body[class*="page-teacher-"] .remoed-sidebar.sidebar-collapsed .remoed-menu {
+  width: 100%;
+  align-items: center;
+  padding: 8px 0 16px !important;
+  margin: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+body.teacher-portal .remoed-sidebar.sidebar-collapsed .remoed-menu::-webkit-scrollbar,
+body[class*="page-teacher-"] .remoed-sidebar.sidebar-collapsed .remoed-menu::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+body.teacher-portal nav.remoed-sidebar.sidebar-collapsed .remoed-menu li,
+body[class*="page-teacher-"] nav.remoed-sidebar.sidebar-collapsed .remoed-menu li {
+  width: 40px !important;
+  min-width: 40px !important;
+  max-width: 40px !important;
+  height: 40px !important;
+  margin: 2px auto !important;
+  padding: 0 !important;
+  gap: 0 !important;
+  justify-content: center !important;
+  align-items: center !important;
+  border-left: none !important;
+  border-radius: 10px !important;
+  box-sizing: border-box;
+  transform: none !important;
+  overflow: visible;
+}
+
+body.teacher-portal nav.remoed-sidebar.sidebar-collapsed .remoed-menu li svg,
+body[class*="page-teacher-"] nav.remoed-sidebar.sidebar-collapsed .remoed-menu li svg {
+  margin: 0 !important;
+  display: block;
+}
+
+body.teacher-portal nav.remoed-sidebar.sidebar-collapsed .remoed-menu li.active,
+body[class*="page-teacher-"] nav.remoed-sidebar.sidebar-collapsed .remoed-menu li.active {
+  border-left: none !important;
+  border-radius: 10px !important;
+  outline: 2px solid #fdd835;
+  outline-offset: 0;
+  width: 40px !important;
+  max-width: 40px !important;
+  height: 40px !important;
+  background: rgba(0, 0, 0, 0.22) !important;
+  transform: none !important;
+}
+
+body.teacher-portal nav.remoed-sidebar.sidebar-collapsed .remoed-menu li:not(.active):hover,
+body[class*="page-teacher-"] nav.remoed-sidebar.sidebar-collapsed .remoed-menu li:not(.active):hover {
+  border-radius: 10px !important;
+  border-left: none !important;
+  background: rgba(255, 255, 255, 0.14) !important;
+  transform: none !important;
+}
+
+body.teacher-portal nav.remoed-sidebar.sidebar-collapsed .remoed-menu li .remoed-pending-dot,
+body.teacher-portal nav.remoed-sidebar.sidebar-collapsed .remoed-menu li .remoed-schedule-count-badge,
+body[class*="page-teacher-"] nav.remoed-sidebar.sidebar-collapsed .remoed-menu li .remoed-pending-dot,
+body[class*="page-teacher-"] nav.remoed-sidebar.sidebar-collapsed .remoed-menu li .remoed-schedule-count-badge {
+  top: 2px !important;
+  right: 2px !important;
+}
+
+@media (max-width: 768px) {
+  body.teacher-portal .remoed-content,
+  body[class*="page-teacher-"] .remoed-content,
+  body.teacher-portal.teacher-sidebar-collapsed .remoed-content,
+  body[class*="page-teacher-"].teacher-sidebar-collapsed .remoed-content {
+    margin-left: 0 !important;
+    max-width: 100% !important;
+  }
+}
+
+/* —— Compact chrome accents (teacher) —— */
+body.teacher-portal .nav-header .nav-title-icon,
+body[class*="page-teacher-"] .nav-header .nav-title-icon {
+  color: var(--remoed-brand-green-deep) !important;
+}
+
+body.teacher-portal .nav-header .nav-icon:hover {
+  background: rgba(0, 168, 45, 0.12) !important;
+}
+
+body.teacher-portal .nav-header .nav-icon svg,
+body.teacher-portal .nav-header .nav-icon.primary svg {
+  color: var(--remoed-brand-green-deep) !important;
+}
+
+body.teacher-portal .nav-header .time-btn-mini.clock-in.primary {
+  background: var(--remoed-brand-green) !important;
+  color: #fff !important;
+}
+
+/* —— Global purple → green remaps on teacher pages —— */
+body.teacher-portal .btn-primary,
+body.teacher-portal .primary-btn,
+body.teacher-portal button.primary,
+body[class*="page-teacher-"] .btn-primary,
+body[class*="page-teacher-"] .primary-btn {
+  background: linear-gradient(135deg, var(--remoed-brand-green-deep), var(--remoed-brand-green)) !important;
+  border-color: var(--remoed-brand-green-deep) !important;
+  color: #fff !important;
+}
+
+body.page-teacher-profile .preview-btn,
+body.page-teacher-profile #preview-profile-btn {
+  background: linear-gradient(135deg, var(--remoed-brand-green-deep), var(--remoed-brand-green)) !important;
+}
+
+body.page-teacher-lessons-library .lesson-title-save-btn {
+  background: var(--remoed-brand-green) !important;
+  border-color: var(--remoed-brand-green) !important;
+}
+
+body.page-teacher-lessons-library .lesson-title-save-btn:hover {
+  background: var(--remoed-brand-green-deep) !important;
+}
+
+body.page-teacher-service-fee .week-tab.active,
+body.page-teacher-service-fee .tab.active,
+body.page-teacher-service-fee button.tab-btn.active {
+  background: linear-gradient(135deg, var(--remoed-brand-green-deep), var(--remoed-brand-green)) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+}
+
+body.page-teacher-professional-development .commitment-bar,
+body.page-teacher-professional-development .progress-fill,
+body.page-teacher-training-course .module-item.active {
+  background: linear-gradient(90deg, var(--remoed-brand-green-deep), var(--remoed-brand-green)) !important;
+}
+
+body.teacher-portal a:not(.nav-icon):not([class*="btn"]):hover {
+  color: var(--remoed-brand-green-deep);
+}
+
+/* Focus rings */
+body.teacher-portal input:focus,
+body.teacher-portal select:focus,
+body.teacher-portal textarea:focus,
+body[class*="page-teacher-"] input:focus,
+body[class*="page-teacher-"] select:focus,
+body[class*="page-teacher-"] textarea:focus {
+  border-color: var(--remoed-brand-green) !important;
+  box-shadow: 0 0 0 3px rgba(0, 168, 45, 0.18) !important;
+}
+
+/* Assessment focused shell */
+body.page-teacher-assessment,
+body.page-teacher-view-assessment {
+  background:
+    radial-gradient(ellipse 60% 40% at 0% 0%, rgba(0, 168, 45, 0.1), transparent 55%),
+    #f8fafc;
+}
+
+body.page-teacher-assessment .header h1,
+body.page-teacher-view-assessment .header h1 {
+  color: var(--remoed-brand-green-deep) !important;
+}
+
+/* Portal toggle buttons → brand green */
+body.teacher-portal .portal-sidebar-toggle,
+body[class*="page-teacher-"] .portal-sidebar-toggle {
+  border-color: var(--remoed-brand-green) !important;
+  color: var(--remoed-brand-green) !important;
+  box-shadow: 0 2px 10px rgba(0, 168, 45, 0.18);
+}
+
+body.teacher-portal .portal-sidebar-toggle:hover,
+body.teacher-portal .portal-sidebar-toggle:focus-visible {
+  background: var(--remoed-brand-green) !important;
+  color: #fff !important;
+  border-color: var(--remoed-brand-green-deep) !important;
+}
+
+/* Catch leftover indigo/purple patterns via common interactive classes */
+body.teacher-portal .progress-fill,
+body.teacher-portal .progress-bar > div,
+body.teacher-portal .completion-bar,
+body.teacher-portal .stat-card.primary,
+body[class*="page-teacher-"] .progress-fill,
+body[class*="page-teacher-"] .week-tab.active,
+body[class*="page-teacher-"] .filter-tab.active,
+body[class*="page-teacher-"] .tab-button.active,
+body[class*="page-teacher-"] .tab-btn.active {
+  background: linear-gradient(135deg, var(--remoed-brand-green-deep), var(--remoed-brand-green)) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+}
+
+body.teacher-portal .back-btn,
+body[class*="page-teacher-"] .back-btn {
+  color: var(--remoed-brand-green-deep) !important;
+  border-color: rgba(0, 168, 45, 0.35) !important;
+}
+
+body.teacher-portal a.btn,
+body.teacher-portal .save-btn,
+body.teacher-portal .submit-btn,
+body.teacher-portal .action-btn,
+body[class*="page-teacher-"] .save-btn,
+body[class*="page-teacher-"] .submit-btn {
+  background: linear-gradient(135deg, var(--remoed-brand-green-deep), var(--remoed-brand-green)) !important;
+  border-color: var(--remoed-brand-green-deep) !important;
+  color: #fff !important;
+}

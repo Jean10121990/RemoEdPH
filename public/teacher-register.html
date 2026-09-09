@@ -8,10 +8,10 @@
   <title>Teacher Sign Up - RemoEdPH</title>
   <link rel="stylesheet" href="modern-styles.css">
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="css/portal-chrome-compact.css">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css?v=rail-align-1">
     <script src="js/user-session.js"></script>
 </head>
-<body class="page-teacher-register">
+<body class="page-teacher-register teacher-portal">
   <div class="login-shell">
     <div class="login-card">
       <div class="login-panel">
@@ -80,7 +80,7 @@
           </button>
         </form>
         <div class="links-container">
-          <a href="teacher-login.html">Already have an account? Login here</a>
+          <a href="/login/">Already have an account? Login here</a>
           <a href="index.html">Back to Home</a>
         </div>
       </div>
@@ -202,7 +202,7 @@
           
           // Redirect to login page after 2 seconds
           setTimeout(() => {
-            window.location.href = 'teacher-login.html';
+            window.location.href = '/login/';
           }, 2000);
         } else {
           errorDiv.textContent = data.message || '❌ Registration failed. Please try again.';

@@ -1592,7 +1592,7 @@ router.post('/confirm-payment', async (req, res) => {
       success: true,
       message: 'Payment confirmed. Subscription activated.',
       email: emailStatus,
-      next: 'student-login.html'
+      next: '/login/'
     });
   } catch (error) {
     console.error('❌ Error confirming payment:', error);

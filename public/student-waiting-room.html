@@ -6,18 +6,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="js/security-guard.js?v=1"></script>
-    <title>Student Waiting Room - Online Distance Learning</title>
-<link rel="stylesheet" href="css/student-sidebar-unified.css">
+    <title>Waiting Room - RemoEdPH</title>
+    <link rel="stylesheet" href="modern-styles.css">
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/student-portal-layout.css?v=slide-match-1">
     <script src="js/user-session.js"></script>
 </head>
-<body  class="student-no-motion page-student-waiting-room">
+<body class="student-no-motion page-student-waiting-room">
     <div class="waiting-container">
-        <div class="waiting-icon">⏳</div>
+        <div class="waiting-brand">
+            <img src="images/remoed-logo-new.png" alt="RemoEdPH" onerror="this.src='images/remoed-logo.png'">
+        </div>
+        <div class="waiting-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        </div>
         <h1 class="waiting-title">Waiting for Teacher</h1>
-        <p class="waiting-subtitle">Please wait while your teacher joins the classroom. We'll automatically connect you when they arrive.</p>
+        <p class="waiting-subtitle">Please wait while your teacher joins the classroom. We'll connect you automatically when they arrive.</p>
         
-        <div class="waiting-spinner"></div>
+        <div class="waiting-spinner" aria-hidden="true"></div>
         <div class="status-message" id="status-message">Checking for teacher...</div>
 
         <div class="device-check-section">
@@ -25,28 +31,28 @@
             <div class="device-item">
                 <span class="device-name">Camera</span>
                 <div class="device-status">
-                    <span class="status-icon" id="camera-icon">⏳</span>
+                    <span class="status-icon status-pending" id="camera-icon" aria-hidden="true"></span>
                     <span class="status-text" id="camera-status">Checking...</span>
                 </div>
             </div>
             <div class="device-item">
                 <span class="device-name">Microphone</span>
                 <div class="device-status">
-                    <span class="status-icon" id="mic-icon">⏳</span>
+                    <span class="status-icon status-pending" id="mic-icon" aria-hidden="true"></span>
                     <span class="status-text" id="mic-status">Checking...</span>
                 </div>
             </div>
             <div class="device-item">
                 <span class="device-name">Internet Connection</span>
                 <div class="device-status">
-                    <span class="status-icon" id="internet-icon">⏳</span>
+                    <span class="status-icon status-pending" id="internet-icon" aria-hidden="true"></span>
                     <span class="status-text" id="internet-status">Checking...</span>
                 </div>
             </div>
             <div class="device-item">
                 <span class="device-name">Browser Compatibility</span>
                 <div class="device-status">
-                    <span class="status-icon" id="browser-icon">⏳</span>
+                    <span class="status-icon status-pending" id="browser-icon" aria-hidden="true"></span>
                     <span class="status-text" id="browser-status">Checking...</span>
                 </div>
             </div>
@@ -75,8 +81,8 @@
         </div>
 
         <div class="action-buttons">
-            <button class="btn btn-primary" id="refresh-btn" onclick="refreshDeviceCheck()">Refresh Device Check</button>
-            <button class="btn btn-warning" id="debug-btn" onclick="debugWaitingRoom()">Debug Waiting Room</button>
+            <button class="btn btn-primary" id="refresh-btn" type="button" onclick="refreshDeviceCheck()">Refresh Device Check</button>
+            <button class="btn btn-warning" id="debug-btn" type="button" onclick="debugWaitingRoom()" hidden>Debug Waiting Room</button>
             <a href="/student-dashboard.html" class="btn btn-secondary">Back to Dashboard</a>
         </div>
     </div>
@@ -104,10 +110,11 @@
 
         // Initialize the waiting room
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🎓 Student waiting room initialized');
-            console.log('📋 Booking ID:', bookingId);
-            console.log('🏠 Room:', room);
-            
+            if (new URLSearchParams(window.location.search).get('debug') === '1') {
+                var dbg = document.getElementById('debug-btn');
+                if (dbg) dbg.hidden = false;
+            }
+
             // Load class information
             loadClassInformation();
             
@@ -152,7 +159,10 @@
                                 }
                             };
                             document.querySelector('.waiting-container').innerHTML = `
-                                <div class="waiting-icon">⏳</div>
+                                <div class="waiting-brand"><img src="images/remoed-logo-new.png" alt="RemoEdPH" onerror="this.src='images/remoed-logo.png'"></div>
+                                <div class="waiting-icon" aria-hidden="true">
+                                  <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                                </div>
                                 <h1 class="waiting-title">Class hasn’t started yet</h1>
                                 <p id="waiting-early-sub" class="waiting-subtitle">Entry opens 10 minutes before your scheduled class.</p>
                                 <div class="action-buttons">
@@ -282,11 +292,11 @@
                 const stream = await navigator.mediaDevices.getUserMedia({ video: true });
                 stream.getTracks().forEach(track => track.stop());
                 
-                updateDeviceStatus('camera', true, '✅', 'Available');
+                updateDeviceStatus('camera', true, 'ok', 'Available');
                 deviceCheckResults.camera = true;
             } catch (error) {
                 console.error('Camera check failed:', error);
-                updateDeviceStatus('camera', false, '❌', 'Not available');
+                updateDeviceStatus('camera', false, 'bad', 'Not available');
                 deviceCheckResults.camera = false;
             }
         }
@@ -297,11 +307,11 @@
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 stream.getTracks().forEach(track => track.stop());
                 
-                updateDeviceStatus('mic', true, '✅', 'Available');
+                updateDeviceStatus('mic', true, 'ok', 'Available');
                 deviceCheckResults.microphone = true;
             } catch (error) {
                 console.error('Microphone check failed:', error);
-                updateDeviceStatus('mic', false, '❌', 'Not available');
+                updateDeviceStatus('mic', false, 'bad', 'Not available');
                 deviceCheckResults.microphone = false;
             }
         }
@@ -309,10 +319,10 @@
         // Check internet connection
         function checkInternetConnection() {
             if (navigator.onLine) {
-                updateDeviceStatus('internet', true, '✅', 'Connected');
+                updateDeviceStatus('internet', true, 'ok', 'Connected');
                 deviceCheckResults.internet = true;
             } else {
-                updateDeviceStatus('internet', false, '❌', 'Disconnected');
+                updateDeviceStatus('internet', false, 'bad', 'Disconnected');
                 deviceCheckResults.internet = false;
             }
         }
@@ -325,28 +335,32 @@
             const isEdge = /Edg/.test(navigator.userAgent);
 
             if (isChrome || isFirefox || isSafari || isEdge) {
-                updateDeviceStatus('browser', true, '✅', 'Compatible');
+                updateDeviceStatus('browser', true, 'ok', 'Compatible');
                 deviceCheckResults.browser = true;
             } else {
-                updateDeviceStatus('browser', false, '⚠️', 'May have issues');
+                updateDeviceStatus('browser', false, 'warn', 'May have issues');
                 deviceCheckResults.browser = false;
             }
         }
 
-        // Update device status display
-        function updateDeviceStatus(device, success, icon, text) {
-            const iconElement = document.getElementById(`${device}-icon`);
-            const statusElement = document.getElementById(`${device}-status`);
-            
-            if (iconElement && statusElement) {
-                iconElement.textContent = icon;
+        // Update device status display — state: 'ok' | 'bad' | 'warn' | 'pending'
+        function updateDeviceStatus(device, success, state, text) {
+            var iconElement = document.getElementById(device + '-icon');
+            var statusElement = document.getElementById(device + '-status');
+            var kind = state;
+            if (kind !== 'ok' && kind !== 'bad' && kind !== 'warn' && kind !== 'pending') {
+                kind = success ? 'ok' : 'bad';
+            }
+            var cls = 'status-' + kind;
+            if (iconElement) {
+                iconElement.textContent = '';
+                iconElement.className = 'status-icon ' + cls;
+            }
+            if (statusElement) {
                 statusElement.textContent = text;
-                
-                if (success) {
-                    statusElement.className = 'status-text status-success';
-                } else {
-                    statusElement.className = 'status-text status-error';
-                }
+                statusElement.className =
+                    'status-text ' +
+                    (kind === 'ok' ? 'status-success' : kind === 'pending' ? 'status-pending-text' : 'status-error');
             }
         }
 
@@ -355,10 +369,10 @@
             console.log('🔄 Refreshing device check...');
             
             // Reset status
-            updateDeviceStatus('camera', false, '⏳', 'Checking...');
-            updateDeviceStatus('mic', false, '⏳', 'Checking...');
-            updateDeviceStatus('internet', false, '⏳', 'Checking...');
-            updateDeviceStatus('browser', false, '⏳', 'Checking...');
+            updateDeviceStatus('camera', false, 'pending', 'Checking...');
+            updateDeviceStatus('mic', false, 'pending', 'Checking...');
+            updateDeviceStatus('internet', false, 'pending', 'Checking...');
+            updateDeviceStatus('browser', false, 'pending', 'Checking...');
             
             // Perform check again
             performDeviceCheck();
@@ -473,12 +487,12 @@
 
         // Listen for online/offline events
         window.addEventListener('online', () => {
-            updateDeviceStatus('internet', true, '✅', 'Connected');
+            updateDeviceStatus('internet', true, 'ok', 'Connected');
             deviceCheckResults.internet = true;
         });
 
         window.addEventListener('offline', () => {
-            updateDeviceStatus('internet', false, '❌', 'Disconnected');
+            updateDeviceStatus('internet', false, 'bad', 'Disconnected');
             deviceCheckResults.internet = false;
         });
 

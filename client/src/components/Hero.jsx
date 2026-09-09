@@ -1,27 +1,31 @@
-import Guide from "./Guide.jsx";
-
 export default function Hero() {
   return (
     <section className="hero japandi-hero">
       <div className="hero-grid">
         <div className="hero-copy">
+          <p className="brand-kicker">RemoEdPH</p>
           <h1>Learn English at Home!</h1>
           <p>
-            Calm, playful English learning for children ages 2–6. Designed for
-            busy Filipino families using phones and tablets.
+            Calm, engaging English lessons for children ages 3–6. Live classes
+            designed for busy Filipino families.
           </p>
           <div className="cta-buttons">
             <div className="assessment-cta-wrap">
-              <Guide character="ed" className="intro-kid" />
               <a href="#assessment" className="cta-btn primary">
                 Take Free Assessment
               </a>
-              <Guide character="sophia" className="intro-kid" />
             </div>
           </div>
         </div>
         <div className="hero-media">
-          <Guide character="remo" className="robot-float" alt="Remo Robot" />
+          <img
+            src="/images/hero-remoed-family.png"
+            alt="RemoEdPH teacher and students with Remo mascot waving hello"
+            className="hero-illustration"
+            width="960"
+            height="720"
+            decoding="async"
+          />
         </div>
       </div>
     </section>

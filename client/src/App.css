@@ -1,19 +1,22 @@
-/* RemoEdPH SPA — design tokens + Japandi landing (aligned with public/landing-brand + style.css :root) */
+/* RemoEdPH SPA — logo palette (remoed-logo-new: grass green, sky blue, signal yellow) */
 :root {
-  --remo-blue: #1ca7e7;
-  --remo-blue-deep: #0f7bb0;
-  --remo-logo-green: #2fb27a;
-  --remo-logo-green-deep: #1f8f62;
-  --remo-logo-yellow: #ffd700;
+  --remo-blue: #00aeef;
+  --remo-blue-deep: #008fc4;
+  --remo-logo-green: #00a82d;
+  --remo-logo-green-deep: #008a24;
+  --remo-logo-yellow: #fdd835;
   --remo-logo-yellow-soft: #ffe566;
-  --japandi-beige: #f5f1ea;
-  --ed-accent: #f58a3b;
-  --ink-primary: #1e3a5f;
-  --ink-secondary: #41556a;
+  --japandi-beige: #ffffff;
+  --remo-tint-blue: #e8f7fc;
+  --remo-tint-green: #e8f8ec;
+  --remo-tint-yellow: #fff8dc;
+  --ed-accent: #fdd835;
+  --ink-primary: #1a3a4a;
+  --ink-secondary: #4a6575;
   --main-radius: 20px;
   --safe-radius: 20px;
   --surface-card: #ffffff;
-  --shadow-soft: 0 10px 28px rgba(19, 38, 58, 0.08);
+  --shadow-soft: 0 10px 28px rgba(26, 58, 74, 0.08);
 }
 
 *,
@@ -48,7 +51,7 @@ body {
   top: 0;
   z-index: 1000;
   border-bottom: 1px solid rgba(30, 58, 95, 0.08);
-  box-shadow: 0 8px 24px rgba(28, 167, 231, 0.1);
+  box-shadow: 0 8px 24px rgba(0, 174, 239, 0.1);
 }
 
 .navbar::after {
@@ -71,23 +74,17 @@ body {
   display: flex;
   align-items: center;
   gap: 12px;
+  text-decoration: none;
+  color: inherit;
 }
 
 .logo-section img {
-  height: 50px;
+  height: 56px;
+  width: auto;
 }
 
 .logo-section span {
-  font-size: 1.75rem;
-  font-weight: 800;
-  background: linear-gradient(
-    90deg,
-    var(--remo-logo-green-deep),
-    var(--remo-blue)
-  );
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  display: none;
 }
 
 .nav-buttons {
@@ -151,7 +148,7 @@ body {
   text-decoration: none;
   font-size: 0.95rem;
   transition: all 0.25s ease;
-  box-shadow: inset 0 -3px 0 rgba(47, 178, 122, 0.28);
+  box-shadow: inset 0 -3px 0 rgba(0, 168, 45, 0.28);
 }
 
 .nav-btn:hover {
@@ -167,24 +164,25 @@ body {
 .nav-btn.primary {
   background: linear-gradient(
     135deg,
-    var(--remo-logo-green-deep),
+    var(--remo-blue-deep),
     var(--remo-blue)
   );
   color: #fff;
   border: 3px solid var(--remo-logo-yellow);
-  box-shadow: 0 6px 20px rgba(31, 143, 98, 0.32);
+  box-shadow: 0 6px 20px rgba(0, 143, 196, 0.32);
 }
 
 /* Hero */
 .hero.japandi-hero {
   background: linear-gradient(
-    145deg,
-    #e8f6fd 0%,
-    #e4f5ee 38%,
-    #fff8e1 72%,
-    #f0f9ff 100%
+    160deg,
+    #ffffff 0%,
+    var(--remo-tint-blue) 42%,
+    var(--remo-tint-green) 72%,
+    #ffffff 100%
   );
   padding: 96px 24px 88px;
+  text-align: left;
 }
 
 .hero-grid {
@@ -192,56 +190,87 @@ body {
   margin: 0 auto;
   display: grid;
   grid-template-columns: 1.15fr 0.85fr;
-  gap: 32px;
+  gap: 40px;
   align-items: center;
 }
 
+.hero-copy {
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.hero-copy .brand-kicker {
+  display: inline-block;
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--remo-blue-deep);
+  margin: 0 0 10px;
+}
+
 .hero-copy h1 {
-  font-size: clamp(2rem, 4vw, 3.25rem);
+  font-size: clamp(2.15rem, 4.2vw, 3.25rem);
   font-weight: 800;
   color: var(--ink-primary);
   margin: 0 0 16px;
   line-height: 1.15;
+  max-width: 18ch;
+  text-align: left;
 }
 
 .hero-copy p {
-  font-size: 1.15rem;
+  font-size: 1.12rem;
   color: var(--ink-secondary);
   margin: 0 0 28px;
-  max-width: 36rem;
+  max-width: 34rem;
+  text-align: left;
 }
 
 .cta-buttons {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px 20px;
-  max-width: 520px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  max-width: none;
+  justify-content: flex-start;
 }
 
 .assessment-cta-wrap {
-  grid-column: 1 / -1;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 12px;
   flex-wrap: wrap;
 }
 
 .intro-kid {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 3px solid #fff;
-  box-shadow: 0 8px 16px rgba(36, 49, 66, 0.16);
+  display: none;
 }
 
 .robot-float {
   width: min(280px, 70vw);
   display: block;
   margin: 0 auto;
-  filter: drop-shadow(0 14px 20px rgba(21, 136, 191, 0.22));
+  filter: drop-shadow(0 14px 20px rgba(0, 143, 196, 0.22));
   animation: float 3.2s ease-in-out infinite;
+}
+
+.hero-media {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.hero-illustration {
+  width: 100%;
+  max-width: min(520px, 100%);
+  height: auto;
+  display: block;
+  object-fit: contain;
+  border-radius: 24px;
+  filter: drop-shadow(0 18px 32px rgba(0, 143, 196, 0.16));
 }
 
 @keyframes float {
@@ -275,8 +304,10 @@ body {
   );
   color: #fff;
   border: 3px solid var(--remo-logo-yellow-soft);
-  box-shadow: 0 8px 22px rgba(15, 123, 176, 0.4);
+  box-shadow: 0 8px 22px rgba(0, 143, 196, 0.4);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+  min-width: 220px;
+  padding: 16px 32px;
 }
 
 .cta-btn.primary:hover {
@@ -285,10 +316,10 @@ body {
 }
 
 .cta-btn.secondary {
-  background: #fffef8;
+  background: #ffffff;
   color: var(--ink-primary);
   border: 3px solid var(--remo-blue);
-  box-shadow: 0 4px 14px rgba(28, 167, 231, 0.12);
+  box-shadow: 0 4px 14px rgba(0, 174, 239, 0.12);
 }
 
 .cta-btn.secondary:hover {
@@ -322,7 +353,11 @@ body {
 
 /* Assessment */
 .assessment-section {
-  background: linear-gradient(140deg, #dceffd 0%, #d9f0e6 100%);
+  background: linear-gradient(
+    140deg,
+    var(--remo-tint-blue) 0%,
+    var(--remo-tint-green) 100%
+  );
   padding: 72px 24px 80px;
   text-align: center;
 }
@@ -466,14 +501,167 @@ body {
 }
 
 .footer {
-  background: var(--ink-primary);
+  background: linear-gradient(180deg, var(--remo-blue-deep), #006a94);
   color: #fff;
+  text-align: left;
+  padding: 48px 24px 28px;
+}
+
+.site-footer__inner {
+  max-width: 1100px;
+  margin: 0 auto 28px;
+  display: grid;
+  grid-template-columns: 1.4fr repeat(4, minmax(0, 1fr));
+  gap: 28px 24px;
+  align-items: start;
+}
+
+.site-footer__brand {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.site-footer__logo {
+  display: inline-flex;
+  line-height: 0;
+  text-decoration: none;
+}
+
+.site-footer__logo img {
+  height: 44px;
+  width: auto;
+  display: block;
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 4px 8px;
+}
+
+.site-footer__tagline {
+  margin: 0;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.site-footer__contact {
+  color: var(--remo-logo-yellow);
+  font-weight: 700;
+  text-decoration: none;
+  font-size: 0.92rem;
+}
+
+.site-footer__contact:hover {
+  text-decoration: underline;
+}
+
+.site-footer__social {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 0.92rem;
+  text-decoration: none;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.site-footer__social i {
+  font-size: 1.15rem;
+}
+
+.site-footer__social:hover {
+  background: #1877f2;
+  border-color: #1877f2;
+  color: #ffffff;
+}
+
+.site-footer__col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.site-footer__heading {
+  margin: 0 0 4px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--remo-logo-yellow);
+  text-shadow: none;
+  filter: none;
+}
+
+.site-footer__col a {
+  color: #ffffff;
+  font-weight: 600;
+  text-decoration: none;
+  font-size: 0.95rem;
+  opacity: 0.92;
+}
+
+.site-footer__col a:hover {
+  color: var(--remo-logo-yellow);
+  opacity: 1;
+}
+
+.site-footer__copy {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.22);
   text-align: center;
-  padding: 32px 16px;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 900px) {
+  .site-footer__inner {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .site-footer__brand {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 520px) {
+  .site-footer__inner {
+    grid-template-columns: 1fr;
+  }
+}
+
+.footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px 20px;
+  margin: 0 0 16px;
+}
+
+.footer-links a {
+  color: #ffffff;
+  font-weight: 700;
+  text-decoration: none;
+  opacity: 0.92;
+}
+
+.footer-links a:hover {
+  color: var(--remo-logo-yellow);
+  opacity: 1;
 }
 
 .footer p {
   margin: 0;
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .footer-admin-wrap {
@@ -505,7 +693,7 @@ body {
 }
 
 .benefits-section {
-  background: var(--japandi-beige);
+  background: #ffffff;
 }
 
 .section-title {
@@ -526,9 +714,9 @@ body {
   border-radius: 4px;
   background: linear-gradient(
     90deg,
-    var(--remo-logo-green, #2fb27a),
-    var(--remo-logo-yellow, #ffd700),
-    var(--remo-blue, #1ca7e7)
+    var(--remo-logo-green),
+    var(--remo-logo-yellow),
+    var(--remo-blue)
   );
 }
 
@@ -568,7 +756,7 @@ body {
 
 .benefit-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 14px 36px rgba(28, 167, 231, 0.12);
+  box-shadow: 0 14px 36px rgba(0, 174, 239, 0.12);
 }
 
 .benefit-card__layout {
@@ -602,41 +790,40 @@ body {
 }
 
 .benefit-icon-circle--blue {
-  background: #dbeefa;
+  background: var(--remo-tint-blue);
   color: var(--remo-blue-deep);
 }
 
 .benefit-icon-circle--green {
-  background: #d4efe0;
-  color: #1f7a52;
+  background: var(--remo-tint-green);
+  color: var(--remo-logo-green-deep);
 }
 
+.benefit-icon-circle--yellow,
 .benefit-icon-circle--orange {
-  background: #fde8d6;
-  color: #c45d12;
+  background: var(--remo-tint-yellow);
+  color: #c9a000;
 }
 
-.benefit-icon-circle--violet {
-  background: #ece8fc;
-  color: #5b4dbd;
-}
-
-.benefit-icon-circle--teal {
-  background: #d5efee;
-  color: #0d6b6b;
-}
-
+.benefit-icon-circle--blue-soft,
+.benefit-icon-circle--violet,
+.benefit-icon-circle--teal,
 .benefit-icon-circle--mint {
-  background: #d9f0e6;
+  background: var(--remo-tint-blue);
   color: var(--remo-blue-deep);
+}
+
+.benefit-icon-circle--green-soft {
+  background: var(--remo-tint-green);
+  color: var(--remo-logo-green-deep);
 }
 
 .benefit-bubble {
   position: relative;
   flex: 1;
   min-width: 0;
-  background: linear-gradient(180deg, #ffffff 0%, var(--japandi-beige) 100%);
-  border: 1px solid rgba(30, 58, 95, 0.1);
+  background: linear-gradient(180deg, #ffffff 0%, var(--remo-tint-blue) 100%);
+  border: 1px solid rgba(26, 58, 74, 0.1);
   border-radius: 16px;
   padding: 1rem 1.1rem 1.05rem;
   text-align: left;
@@ -647,9 +834,9 @@ body {
   position: absolute;
   width: 14px;
   height: 14px;
-  background: linear-gradient(135deg, #ffffff 0%, var(--japandi-beige) 100%);
-  border-left: 1px solid rgba(30, 58, 95, 0.1);
-  border-top: 1px solid rgba(30, 58, 95, 0.1);
+  background: linear-gradient(135deg, #ffffff 0%, var(--remo-tint-blue) 100%);
+  border-left: 1px solid rgba(26, 58, 74, 0.1);
+  border-top: 1px solid rgba(26, 58, 74, 0.1);
   top: -7px;
   left: 50%;
   transform: translateX(-50%) rotate(45deg);
@@ -684,8 +871,41 @@ body {
 
 /* Plans */
 .plans-section {
-  background: linear-gradient(140deg, #cfe9f8 0%, #d6efe7 45%, #edf5fb 100%);
+  background: linear-gradient(
+    160deg,
+    var(--remo-tint-blue) 0%,
+    #ffffff 45%,
+    var(--remo-tint-green) 100%
+  );
   max-width: 100%;
+}
+
+.cefr-level-banner {
+  display: none;
+  max-width: 720px;
+  margin: 0 auto 28px;
+  padding: 16px 20px;
+  border-radius: 16px;
+  border: 2px solid var(--remo-logo-yellow);
+  background: linear-gradient(135deg, var(--remo-tint-green), var(--remo-tint-blue));
+  color: var(--ink-primary);
+  text-align: center;
+  box-shadow: 0 8px 24px rgba(0, 168, 45, 0.12);
+}
+
+.cefr-level-banner.is-visible {
+  display: block;
+}
+
+.cefr-level-banner strong {
+  color: var(--remo-logo-green-deep);
+  font-size: 1.1rem;
+}
+
+.cefr-level-banner p {
+  margin: 6px 0 0;
+  color: var(--ink-secondary);
+  font-weight: 600;
 }
 
 .plans-section .section-title {
@@ -756,7 +976,7 @@ body {
   position: absolute;
   top: -14px;
   left: 20px;
-  background: linear-gradient(135deg, #1ca7e7, #5cb3ff);
+  background: linear-gradient(135deg, var(--remo-blue), var(--remo-blue-deep));
   color: white;
   padding: 8px 16px;
   border-radius: 999px;
@@ -768,8 +988,8 @@ body {
   position: absolute;
   top: -15px;
   right: 20px;
-  background: linear-gradient(135deg, #ffd700, #ffe66d);
-  color: #1e3a5f;
+  background: linear-gradient(135deg, var(--remo-logo-yellow), var(--remo-logo-yellow-soft));
+  color: var(--ink-primary);
   padding: 8px 20px;
   border-radius: 20px;
   font-weight: 800;
@@ -844,7 +1064,7 @@ body {
 
 .plan-features li::before {
   content: "✓";
-  color: #4caf50;
+  color: var(--remo-logo-green);
   font-weight: 800;
   font-size: 1.5rem;
 }
@@ -971,6 +1191,22 @@ body {
 @media (max-width: 900px) {
   .hero-grid {
     grid-template-columns: 1fr;
+  }
+
+  .hero-copy {
+    align-items: center;
+    text-align: center;
+  }
+
+  .hero-copy h1,
+  .hero-copy p {
+    text-align: center;
+    max-width: none;
+  }
+
+  .cta-buttons,
+  .assessment-cta-wrap {
+    justify-content: center;
   }
 
   .hero-media {

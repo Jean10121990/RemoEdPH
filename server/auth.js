@@ -147,7 +147,7 @@ router.get(
           success: false,
           code: 'already_used',
           message: inviteErrorMessage('used'),
-          loginUrl: '/teacher-login.html',
+          loginUrl: '/login/',
           applicant: applicantPayload(found.application, found.invitation),
         });
       }
@@ -195,7 +195,7 @@ router.post('/teacher-signup/complete', authRegisterLimiter, async (req, res) =>
         success: false,
         code: 'already_used',
         message: inviteErrorMessage('used'),
-        loginUrl: '/teacher-login.html',
+        loginUrl: '/login/',
         applicant: applicantPayload(found.application, found.invitation),
       });
     }
@@ -1340,77 +1340,78 @@ router.post('/complete-checkout-profile', authRegisterLimiter, async (req, res) 
   }
 });
 
-// Add forgot password endpoint for teachers - generates new password
-router.post('/forgot-password', passwordResetLimiter, async (req, res) => {
-  try {
-    const { email } = req.body;
-    
-    // Check if email is provided
-    if (!email) {
-      return res.status(400).json({ success: false, message: 'Email address is required.' });
-    }
-    
-    // Look for user by username or email field
-    const user = await Teacher.findOne({ 
-      $or: [
-        { username: email },
-        { email: email }
-      ]
-    });
-    
-    if (!user) {
-      // Email doesn't exist in database
-      return res.status(404).json({ success: false, message: 'Email address not found. Please check your email or contact support.' });
-    }
-    
-    // Verify that the entered email matches the user's registered email
-    const userEmail = user.email || user.username;
-    if (userEmail !== email) {
-      // Email doesn't match the user's registered email
-      return res.status(404).json({ success: false, message: 'Email address not found. Please check your email or contact support.' });
-    }
-    
-    // Generate a strong password (10 characters)
-    const newPassword = generateStrongPassword();
-    
-    // Hash the new password
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-    
-    // Update user's password
+// Unified forgot password — Student and/or Teacher by email or username
+async function resetPasswordForAccounts(identifier) {
+  const raw = String(identifier || '').trim();
+  if (!raw) {
+    return { ok: false, status: 400, body: { success: false, message: 'Email or username is required.' } };
+  }
+
+  const escaped = raw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const rx = new RegExp(`^${escaped}$`, 'i');
+  const query = { $or: [{ username: rx }, { email: rx }] };
+
+  const [student, teacher] = await Promise.all([
+    Student.findOne(query),
+    Teacher.findOne(query)
+  ]);
+
+  const accounts = [];
+  if (student) accounts.push({ user: student, role: 'Student' });
+  if (teacher) accounts.push({ user: teacher, role: 'Teacher' });
+
+  // Anti-enumeration: same success copy whether or not an account exists
+  const genericOk = {
+    success: true,
+    message: 'If an account exists for that email or username, a new password has been sent.'
+  };
+
+  if (!accounts.length) {
+    return { ok: true, status: 200, body: genericOk };
+  }
+
+  const newPassword = generateStrongPassword();
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+  let emailFallback = false;
+  const rolesReset = [];
+
+  for (const { user, role } of accounts) {
     user.password = hashedPassword;
+    if (role === 'Student' || role === 'Teacher') {
+      user.hasGeneratedPassword = true;
+    }
     user.resetPasswordToken = undefined;
     user.resetPasswordExpires = undefined;
     await user.save();
-    
-    // Send email with new password to the entered email address
-    const emailResult = await sendPasswordResetEmail(
-      email, // Use the email address that was entered
-      user.username, 
-      newPassword, 
-      'Teacher'
-    );
-    
-    if (emailResult.success) {
-      res.json({ 
-        success: true, 
-        message: 'A new password has been generated and sent to your email address.'
-      });
-    } else if (emailResult.fallback) {
-      // Email not configured - return password for testing
-      console.log('Email not configured - returning password for testing');
-      res.json({ 
-        success: true, 
-        message: 'A new password has been generated. Please check your email or contact support if you don\'t receive it.',
-        newPassword: newPassword // Only for testing when email not configured
-      });
-    } else {
-      // If email fails, still update password but notify user
-      console.error('Email sending failed:', emailResult.error);
-      res.json({ 
-        success: true, 
-        message: 'A new password has been generated. Please check your email or contact support if you don\'t receive it.'
-      });
+    rolesReset.push(role);
+
+    const toEmail = user.email || raw;
+    const emailResult = await sendPasswordResetEmail(toEmail, user.username, newPassword, role);
+    if (emailResult && emailResult.fallback) {
+      emailFallback = true;
+    } else if (emailResult && !emailResult.success) {
+      console.error('Password reset email failed for', role, emailResult.error);
     }
+  }
+
+  const body = {
+    success: true,
+    message: emailFallback
+      ? 'A new password has been generated. Please check your email or contact support if you don\'t receive it.'
+      : 'A new password has been generated and sent to your email address.',
+    roles: rolesReset
+  };
+  // Only expose password when email transport is not configured (dev/fallback)
+  if (emailFallback) {
+    body.newPassword = newPassword;
+  }
+  return { ok: true, status: 200, body };
+}
+
+router.post('/forgot-password', passwordResetLimiter, async (req, res) => {
+  try {
+    const result = await resetPasswordForAccounts(req.body && (req.body.email || req.body.username));
+    return res.status(result.status).json(result.body);
   } catch (error) {
     console.error('Error in forgot password:', error);
     res.status(500).json({ success: false, message: 'An error occurred while processing your request.' });
@@ -1442,78 +1443,11 @@ router.post('/reset-password', passwordResetLimiter, async (req, res) => {
 
 // Student login endpoint (duplicate removed - using the one above)
 
-// Student forgot password endpoint - generates new password
+// Legacy student endpoint — same unified reset as /forgot-password
 router.post('/student-forgot-password', passwordResetLimiter, async (req, res) => {
   try {
-    const { email } = req.body;
-    
-    // Check if email is provided
-    if (!email) {
-      return res.status(400).json({ success: false, message: 'Email address is required.' });
-    }
-    
-    // Look for user by username or email field
-    const user = await Student.findOne({ 
-      $or: [
-        { username: email },
-        { email: email }
-      ]
-    });
-    
-    if (!user) {
-      // Email doesn't exist in database
-      return res.status(404).json({ success: false, message: 'Email address not found. Please check your email or contact support.' });
-    }
-    
-    // Verify that the entered email matches the user's registered email
-    const userEmail = user.email || user.username;
-    if (userEmail !== email) {
-      // Email doesn't match the user's registered email
-      return res.status(404).json({ success: false, message: 'Email address not found. Please check your email or contact support.' });
-    }
-    
-    // Generate a strong password (10 characters)
-    const newPassword = generateStrongPassword();
-    
-    // Hash the new password
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-    
-    // Update user's password and set hasGeneratedPassword flag
-    user.password = hashedPassword;
-    user.hasGeneratedPassword = true; // Set flag to force password change
-    user.resetPasswordToken = undefined;
-    user.resetPasswordExpires = undefined;
-    await user.save();
-    
-    // Send email with new password to the entered email address
-    const emailResult = await sendPasswordResetEmail(
-      email, // Use the email address that was entered
-      user.username, 
-      newPassword, 
-      'Student'
-    );
-    
-    if (emailResult.success) {
-      res.json({ 
-        success: true, 
-        message: 'A new password has been generated and sent to your email address.'
-      });
-    } else if (emailResult.fallback) {
-      // Email not configured - return password for testing
-      console.log('Email not configured - returning password for testing');
-      res.json({ 
-        success: true, 
-        message: 'A new password has been generated. Please check your email or contact support if you don\'t receive it.',
-        newPassword: newPassword // Only for testing when email not configured
-      });
-    } else {
-      // If email fails, still update password but notify user
-      console.error('Email sending failed:', emailResult.error);
-      res.json({ 
-        success: true, 
-        message: 'A new password has been generated. Please check your email or contact support if you don\'t receive it.'
-      });
-    }
+    const result = await resetPasswordForAccounts(req.body && (req.body.email || req.body.username));
+    return res.status(result.status).json(result.body);
   } catch (error) {
     console.error('Error in student forgot password:', error);
     res.status(500).json({ success: false, message: 'An error occurred while processing your request.' });

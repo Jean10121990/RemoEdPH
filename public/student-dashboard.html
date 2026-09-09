@@ -47,14 +47,14 @@
             left: 50%;
             transform: translateX(-50%);
             background: linear-gradient(135deg, #FFD700, #FFE66D);
-            color: #1CA7E7;
+            color: #00aeef;
             padding: 6px 10px;
             border-radius: 12px;
             font-size: 0.7rem;
             font-weight: 800;
             white-space: nowrap;
             box-shadow: 0 3px 10px rgba(255, 215, 0, 0.4);
-            border: 2px solid #1CA7E7;
+            border: 2px solid #00aeef;
             opacity: 0;
             transition: opacity 0.3s ease;
             pointer-events: none;
@@ -92,7 +92,7 @@
             top: -45px;
             left: 50%;
             transform: translateX(-50%);
-            background: linear-gradient(135deg, #1CA7E7, #5CB3FF);
+            background: linear-gradient(135deg, #00aeef, #5CB3FF);
             color: white;
             padding: 8px 14px;
             border-radius: 16px;
@@ -116,7 +116,7 @@
             height: 0;
             border-left: 8px solid transparent;
             border-right: 8px solid transparent;
-            border-top: 8px solid #1CA7E7;
+            border-top: 8px solid #00aeef;
         }
         
         /* Remo Robot SVG Style */
@@ -184,15 +184,19 @@
         }
 
         .student-current-level-value {
-            color: #1CA7E7;
-            font-weight: 700;
+            color: #ffffff;
+            font-weight: 800;
             min-width: 0;
+            background: linear-gradient(135deg, #008fc4, #00aeef);
+            border: 1px solid #fdd835;
+            padding: 4px 10px;
+            border-radius: 999px;
         }
 
         .student-current-level-value a {
-            color: #1CA7E7;
+            color: #ffffff;
             text-decoration: underline;
-            font-weight: 600;
+            font-weight: 700;
         }
         
         .points-display, .badge {
@@ -228,18 +232,18 @@
         .nav-icon svg {
             width: 20px;
             height: 20px;
-            color: #667eea;
+            color: #008fc4;
         }
         
         .nav-icon.primary svg {
-            color: #8b5cf6;
+            color: #00aeef;
         }
         
         .nav-badge {
             position: absolute;
             top: -5px;
             right: -5px;
-            background: #8b5cf6;
+            background: #00a82d;
             color: white;
             border-radius: 50%;
             width: 20px;
@@ -310,32 +314,168 @@
             background: transparent;
         }
         
-        /* Charts */
-        .charts-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 0.5rem;
-            margin-bottom: 0.55rem;
+        /* Dashboard home — next class first */
+        .dash-next-class {
+            background: linear-gradient(145deg, #e8f7fc 0%, #ffffff 48%, #e8f8ec 100%);
+            border: 1px solid rgba(0, 174, 239, 0.22);
+            border-radius: 18px;
+            padding: 1.25rem 1.35rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 10px 28px rgba(0, 143, 196, 0.1);
         }
-        
+        .dash-next-class__label {
+            margin: 0 0 0.35rem;
+            font-size: 0.78rem;
+            font-weight: 800;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: #008fc4;
+        }
+        .dash-next-class__body {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+        .dash-next-class__title {
+            margin: 0 0 0.25rem;
+            font-size: 1.35rem;
+            font-weight: 800;
+            color: #1a3a4a;
+        }
+        .dash-next-class__meta {
+            margin: 0;
+            color: #4a6575;
+            font-size: 0.98rem;
+            font-weight: 600;
+        }
+        .dash-next-class__actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.6rem;
+        }
+        .dash-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.7rem 1.25rem;
+            border-radius: 999px;
+            font-weight: 800;
+            font-size: 0.92rem;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+            transition: filter 0.2s ease, transform 0.2s ease;
+        }
+        .dash-btn:hover { filter: brightness(1.05); transform: translateY(-1px); }
+        .dash-btn--primary {
+            background: linear-gradient(135deg, #008fc4, #00aeef);
+            color: #fff;
+            border: 2px solid #fdd835;
+            box-shadow: 0 6px 18px rgba(0, 143, 196, 0.3);
+        }
+        .dash-btn--secondary {
+            background: #fff;
+            color: #008fc4;
+            border: 2px solid #00aeef;
+        }
+        .dash-btn--green {
+            background: linear-gradient(135deg, #008a24, #00a82d);
+            color: #fff;
+            border: 2px solid #fdd835;
+        }
+        .dash-stats {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+        .dash-stat {
+            background: #fff;
+            border: 1px solid rgba(0, 174, 239, 0.14);
+            border-radius: 14px;
+            padding: 0.9rem 1rem;
+            box-shadow: 0 6px 18px rgba(26, 58, 74, 0.05);
+        }
+        .dash-stat__label {
+            margin: 0 0 0.35rem;
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: #64748b;
+        }
+        .dash-stat__value {
+            margin: 0;
+            font-size: 1.55rem;
+            font-weight: 800;
+            color: #008fc4;
+        }
+        .dash-stat--green .dash-stat__value { color: #00a82d; }
+        .dash-stat--yellow .dash-stat__value { color: #b8960a; }
+        .dash-home-grid {
+            display: grid;
+            grid-template-columns: 1.4fr 0.9fr;
+            gap: 0.85rem;
+            flex: 1;
+            min-height: 0;
+        }
+        .dash-panel {
+            background: #fff;
+            border: 1px solid rgba(0, 174, 239, 0.14);
+            border-radius: 16px;
+            padding: 1rem 1.1rem;
+            box-shadow: 0 6px 18px rgba(26, 58, 74, 0.05);
+        }
+        .dash-panel__title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 0 0 0.75rem;
+            font-size: 1rem;
+            font-weight: 800;
+            color: #1a3a4a;
+        }
+        .dash-panel__title svg { color: #00aeef; }
+        .dash-quick-links {
+            display: flex;
+            flex-direction: column;
+            gap: 0.55rem;
+        }
+        .dash-quick-link {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            padding: 0.75rem 0.9rem;
+            border-radius: 12px;
+            background: #e8f7fc;
+            border: 1px solid rgba(0, 174, 239, 0.18);
+            color: #1a3a4a;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 0.92rem;
+        }
+        .dash-quick-link:hover {
+            background: #dff3fb;
+            border-color: #00aeef;
+        }
+        .dash-community-note {
+            margin: 0.85rem 0 0;
+            padding: 0.75rem 0.9rem;
+            border-radius: 12px;
+            background: #e8f8ec;
+            border: 1px solid rgba(0, 168, 45, 0.2);
+            color: #1a3a4a;
+            font-size: 0.88rem;
+            font-weight: 600;
+            line-height: 1.45;
+        }
+
+        /* Charts (legacy ids still used for values) */
+        .charts-grid,
         .charts-grid-secondary {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 0.5rem;
-            margin-bottom: 0.55rem;
-        }
-        
-        @media (max-width: 1400px) {
-            .charts-grid-secondary {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-        
-        @media (max-width: 768px) {
-            .charts-grid,
-            .charts-grid-secondary {
-                grid-template-columns: 1fr;
-            }
+            display: none;
         }
         
         .chart-card {
@@ -344,66 +484,23 @@
             padding: 0.6rem;
             box-shadow: 0 2px 8px rgba(0,0,0,0.06);
             border: 1px solid #e0e6ed;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
         
         .chart-card.primary {
-            border-left: 4px solid #8b5cf6;
-        }
-        
-        .chart-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-        }
-        
-        .chart-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 0.45rem;
-        }
-        
-        .chart-title {
-            font-size: 0.74rem;
-            font-weight: 600;
-            color: #64748b;
-            text-transform: uppercase;
-            letter-spacing: 0.35px;
-        }
-        
-        .chart-icon {
-            width: 30px;
-            height: 30px;
-            border-radius: 7px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            border-left: 4px solid #00aeef;
         }
         
         .chart-icon.primary {
-            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+            background: linear-gradient(135deg, #008fc4 0%, #00aeef 100%);
             color: white;
         }
         
-        .chart-value {
-            font-size: 1.3rem;
-            font-weight: 700;
-            margin-bottom: 0.2rem;
-        }
-        
         .chart-value.primary {
-            color: #8b5cf6;
-        }
-        
-        .chart-change {
-            font-size: 0.72rem;
-            display: flex;
-            align-items: center;
-            gap: 0.25rem;
+            color: #00aeef;
         }
         
         .chart-change.positive {
-            color: #10b981;
+            color: #00a82d;
         }
         
         .chart-change.negative {
@@ -422,11 +519,7 @@
         }
         
         .remoed-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 0.55rem;
-            flex: 1;
-            min-height: 0;
+            display: none;
         }
 
         .remoed-section-title {
@@ -435,18 +528,7 @@
             font-size: 1rem !important;
         }
 
-        /* Community & Social Responsibility */
-        .community-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 6px;
-            max-height: min(220px, 28vh);
-            overflow-y: auto;
-            padding-right: 2px;
-        }
-        @media (max-width: 768px) {
-            .community-grid { grid-template-columns: 1fr; max-height: none; }
-        }
+        .community-grid { display: none; }
         .community-item {
             display: flex;
             gap: 8px;
@@ -464,7 +546,7 @@
             align-items: center;
             justify-content: center;
             background: rgba(102, 126, 234, 0.12);
-            color: #667eea;
+            color: #00aeef;
             flex-shrink: 0;
             font-size: 1.05rem;
         }
@@ -580,32 +662,32 @@
                 height: 18px;
             }
             
-            /* Charts grid adjustments for mobile */
-            .charts-grid {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 1rem;
+            /* Dashboard home mobile */
+            .dash-stats {
+                grid-template-columns: 1fr;
             }
-            
-            .chart-card {
-                padding: 1rem;
+            .dash-home-grid {
+                grid-template-columns: 1fr;
             }
-            
-            .chart-value {
-                font-size: 1.5rem;
+            .dash-next-class__body {
+                flex-direction: column;
+                align-items: flex-start;
             }
-            
-            .chart-title {
-                font-size: 0.8rem;
+            .dash-next-class__actions {
+                width: 100%;
+            }
+            .dash-btn {
+                flex: 1 1 auto;
+                min-width: 140px;
             }
         }
         
         @media (max-width: 600px) {
-            .charts-grid {
-                grid-template-columns: 1fr;
-            }
-            
             .nav-right {
                 gap: 0.5rem;
+            }
+            .dash-stats {
+                grid-template-columns: 1fr;
             }
         }
         
@@ -619,8 +701,8 @@
         }
     </style>
     <link rel="stylesheet" href="css/teacher-sidebar.css">
-    <link rel="stylesheet" href="css/student-portal-layout.css">
-    <link rel="stylesheet" href="css/student-sidebar.css">
+    <link rel="stylesheet" href="css/student-portal-layout.css?v=slide-match-1">
+    <link rel="stylesheet" href="css/student-sidebar.css?v=slide-match-1">
     <link rel="stylesheet" href="css/portal-chrome-compact.css">
 </head>
   <body class="student-portal page-student-dashboard">
@@ -656,10 +738,10 @@
                         <div class="nav-dropdown-header">
                             <span>Notifications</span>
                             <div style="display: flex; gap: 8px;">
-                                <button onclick="markAllNotificationsAsRead()" style="background: none; border: none; cursor: pointer; color: #667eea; font-size: 0.8rem; padding: 4px 8px; border-radius: 4px; transition: background 0.2s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
+                                <button onclick="markAllNotificationsAsRead()" style="background: none; border: none; cursor: pointer; color: #00aeef; font-size: 0.8rem; padding: 4px 8px; border-radius: 4px; transition: background 0.2s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
                                     Mark All Read
                                 </button>
-                                <button onclick="refreshNotifications()" style="background: none; border: none; cursor: pointer; color: #667eea;">
+                                <button onclick="refreshNotifications()" style="background: none; border: none; cursor: pointer; color: #00aeef;">
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                                         <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
                                     </svg>
@@ -691,208 +773,96 @@
         </div>
         
         <div id="student-sidebar-root"></div>
-        <script src="js/student-sidebar.js"></script>
+        <script src="js/student-sidebar.js?v=slide-match-1"></script>
         <script src="js/student-page-header.js"></script>
         <script>
             StudentSidebar.render('student-sidebar-root', 'dashboard');
             StudentPageHeader.polishExisting('dashboard');
         </script>
         <div class="remoed-content" style="position: relative; z-index: 2; overflow-y: auto; overflow-x: visible;">
-            <!-- Populated by loadUpcomingClasses(); hidden so layout matches pre-fix grid (dropdown still shows schedule) -->
             <ul id="upcoming-classes-list" class="notification-list upcoming-classes-list" hidden></ul>
-            <!-- Primary Charts Grid (Total Classes & Completed Classes) -->
-            <div class="charts-grid">
-                <!-- Total Classes Booked Chart -->
-                <div class="chart-card primary">
-                    <div class="chart-header">
-                        <span class="chart-title">Total Classes Booked</span>
-                        <div class="chart-icon primary">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
-                                <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
-                            </svg>
-                        </div>
+
+            <!-- Next class (primary) -->
+            <section class="dash-next-class" aria-labelledby="dash-next-heading">
+                <p class="dash-next-class__label" id="dash-next-heading">Next up</p>
+                <div class="dash-next-class__body">
+                    <div>
+                        <h2 class="dash-next-class__title" id="dash-next-title">No class scheduled</h2>
+                        <p class="dash-next-class__meta" id="dash-next-meta">Book a live English class to get started.</p>
                     </div>
+                    <div class="dash-next-class__actions" id="dash-next-actions">
+                        <a class="dash-btn dash-btn--primary" href="student-book.html">Book a Class</a>
+                        <a class="dash-btn dash-btn--secondary" href="student-class-table.html">My Schedule</a>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Compact stats (values filled by existing loadChartData / upcoming) -->
+            <div class="dash-stats" aria-label="Learning summary">
+                <div class="dash-stat">
+                    <p class="dash-stat__label">Completed</p>
+                    <p class="dash-stat__value" id="completed-classes">0</p>
+                </div>
+                <div class="dash-stat dash-stat--green">
+                    <p class="dash-stat__label">Upcoming</p>
+                    <p class="dash-stat__value" id="upcoming-count">0</p>
+                </div>
+                <div class="dash-stat dash-stat--yellow">
+                    <p class="dash-stat__label">Stars given</p>
+                    <p class="dash-stat__value" id="total-stars">0</p>
+                </div>
+            </div>
+
+            <!-- Hidden legacy metric nodes kept for loadChartData compatibility -->
+            <div class="charts-grid" aria-hidden="true">
+                <div class="chart-card primary">
                     <div class="chart-value primary" id="total-classes">0</div>
-                    <div class="chart-change positive">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M7 14l5-5 5 5z"/>
-                        </svg>
-                        <span id="classes-change">+0%</span>
-                    </div>
+                    <span id="classes-change">+0%</span>
+                    <span id="completed-change">+0%</span>
                 </div>
+            </div>
+            <div class="charts-grid-secondary" aria-hidden="true">
+                <div class="chart-value" id="total-cancellations">0</div>
+                <span id="cancellations-change">-0%</span>
+                <div class="chart-value" id="average-rating">0.0</div>
+                <span id="stars-change">+0%</span>
+            </div>
 
-                <!-- Completed Classes Chart -->
-                <div class="chart-card primary">
-                    <div class="chart-header">
-                        <span class="chart-title">Completed Classes</span>
-                        <div class="chart-icon primary">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
-                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                            </svg>
-                        </div>
-                    </div>
-                    <div class="chart-value primary" id="completed-classes">0</div>
-                    <div class="chart-change positive">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M7 14l5-5 5 5z"/>
+            <div class="dash-home-grid">
+                <div class="dash-panel">
+                    <h3 class="dash-panel__title">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
                         </svg>
-                        <span id="completed-change">+0%</span>
+                        Announcements
+                    </h3>
+                    <div id="student-announcement-list-right">
+                        <!-- Announcements loaded here -->
+                    </div>
+                    <p class="dash-community-note">
+                        RemoEdPH cares about family, teachers, and the planet — look out for community events in announcements.
+                    </p>
+                </div>
+                <div class="dash-panel">
+                    <h3 class="dash-panel__title">Quick links</h3>
+                    <div class="dash-quick-links">
+                        <a class="dash-quick-link" href="student-book.html">Book a class</a>
+                        <a class="dash-quick-link" href="student-class-table.html">View my schedule</a>
+                        <a class="dash-quick-link" href="student-learning-journey.html">Learning journey</a>
+                        <a class="dash-quick-link" href="student-credits.html">Credits &amp; plans</a>
                     </div>
                 </div>
             </div>
 
-            <!-- Secondary Charts Grid (Other Metrics) -->
-            <div class="charts-grid-secondary">
-                <!-- Total Cancellations Chart -->
-                <div class="chart-card">
-                    <div class="chart-header">
-                        <span class="chart-title">Cancellations</span>
-                        <div class="chart-icon" style="background: linear-gradient(135deg, #ef4444, #dc2626);">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
-                                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-                            </svg>
-                        </div>
-                    </div>
-                    <div class="chart-value" id="total-cancellations">0</div>
-                    <div class="chart-change negative">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M7 10l5 5 5-5z"/>
-                        </svg>
-                        <span id="cancellations-change">-0%</span>
-                    </div>
+            <!-- Reschedule Notifications -->
+            <div class="remoed-section" id="reschedule-section" style="display: none; margin-top: 1rem;">
+                <div class="remoed-section-title" style="display: flex; align-items: center; gap: 10px; color: #dc2626;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                    </svg>
+                    Reschedule available
                 </div>
-                
-                <!-- Total Stars Given Chart -->
-                <div class="chart-card">
-                    <div class="chart-header">
-                        <span class="chart-title">Stars Given</span>
-                        <div class="chart-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
-                                <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
-                            </svg>
-                        </div>
-                    </div>
-                    <div class="chart-value" id="total-stars">0</div>
-                    <div class="chart-change positive">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M7 14l5-5 5 5z"/>
-                        </svg>
-                        <span id="stars-change">+0%</span>
-                    </div>
-                </div>
-                
-                <!-- Average Rating Given Chart -->
-                <div class="chart-card">
-                    <div class="chart-header">
-                        <span class="chart-title">Average Rating</span>
-                        <div class="chart-icon" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
-                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                            </svg>
-                        </div>
-                    </div>
-                    <div class="chart-value" id="average-rating">0.0</div>
-                    <div class="chart-change positive">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M7 14l5-5 5 5z"/>
-                        </svg>
-                        <span>⭐</span>
-                    </div>
-                </div>
-
-                <!-- Upcoming Classes Chart -->
-                <div class="chart-card">
-                    <div class="chart-header">
-                        <span class="chart-title">Upcoming Classes</span>
-                        <div class="chart-icon" style="background: linear-gradient(135deg, #3b82f6, #2563eb);">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
-                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                            </svg>
-                        </div>
-                    </div>
-                    <div class="chart-value" id="upcoming-count">0</div>
-                    <div class="chart-change positive">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M7 14l5-5 5 5z"/>
-                        </svg>
-                        <span>Scheduled</span>
-                    </div>
-                </div>
-            </div>
-            
-            
-            
-            <!-- Main Content Grid -->
-            <div class="remoed-grid">
-                <div>
-                    <!-- Community & Social Responsibility -->
-                    <div class="remoed-section" id="community-responsibility">
-                        <div class="remoed-section-title" style="display: flex; align-items: center; gap: 10px;">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="color: #667eea;">
-                                <path d="M12 12c2.21 0 4-1.79 4-4S14.21 4 12 4 8 5.79 8 8s1.79 4 4 4zm0 2c-3.33 0-8 1.67-8 5v1h16v-1c0-3.33-4.67-5-8-5z"/>
-                            </svg>
-                            Community & Social Responsibility
-                        </div>
-                        <div class="community-grid">
-                            <div class="community-item">
-                                <div class="community-icon">👨‍👩‍👧</div>
-                                <div><h4>Family Day</h4><p>Activities that encourage parent involvement and celebrate learning together.</p></div>
-                            </div>
-                            <div class="community-item">
-                                <div class="community-icon">👩‍🏫</div>
-                                <div><h4>Teachers’ Day</h4><p>Recognizing teacher dedication through appreciation and community events.</p></div>
-                            </div>
-                            <div class="community-item">
-                                <div class="community-icon">🧒</div>
-                                <div><h4>Students’ Day</h4><p>Celebrating student progress and building confidence through fun events.</p></div>
-                            </div>
-                            <div class="community-item">
-                                <div class="community-icon">🥣</div>
-                                <div><h4>Feeding Program</h4><p>Supporting learner wellness through food assistance and community outreach.</p></div>
-                            </div>
-                            <div class="community-item">
-                                <div class="community-icon">♻️</div>
-                                <div><h4>Waste Management</h4><p>Promoting proper segregation and eco-friendly habits at home and in school.</p></div>
-                            </div>
-                            <div class="community-item">
-                                <div class="community-icon">🧠</div>
-                                <div><h4>Mental Health Support</h4><p>Resources and awareness activities to support a safe, positive learning environment.</p></div>
-                            </div>
-                            <div class="community-item">
-                                <div class="community-icon">🌱</div>
-                                <div><h4>Sustainability Projects</h4><p>Simple projects and activities that build care for the environment.</p></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Reschedule Notifications -->
-                    <div class="remoed-section" id="reschedule-section" style="display: none;">
-                        <div class="remoed-section-title" style="display: flex; align-items: center; gap: 10px; color: #dc2626;">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                            </svg>
-                            🔄 Reschedule Available
-                        </div>
-                        <div id="reschedule-notifications" style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px; padding: 12px; margin-bottom: 12px;">
-                            <!-- Reschedule notifications will be loaded here -->
-                        </div>
-                    </div>
-                </div>
-                <div>
-                    <!-- Announcements -->
-                    <div class="remoed-section">
-                        <div class="remoed-section-title" style="display: flex; align-items: center; gap: 10px;">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="color: #667eea;">
-                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                            </svg>
-                            Announcements and Updates
-                        </div>
-                        <div class="upcoming-classes-container">
-                            <div id="student-announcement-list-right" style="background: #fafdff; border-radius: 10px; padding: 8px; margin-bottom: 8px;">
-                                <!-- Announcements will be loaded here -->
-                            </div>
-                        </div>
-                    </div>
+                <div id="reschedule-notifications" style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px; padding: 12px; margin-bottom: 12px;">
                 </div>
             </div>
         </div>
@@ -919,7 +889,7 @@
         loadProfilePicture(studentId);
       }
       
-      // Logout: handled by js/student-sidebar.js (localStorage.clear + sessionStorage.clear + replace)
+      // Logout: handled by js/student-sidebar.js?v=slide-match-1 (localStorage.clear + sessionStorage.clear + replace)
 
       // Load chart data
       loadChartData();
@@ -1095,14 +1065,14 @@
                   <div style="font-size: 0.9rem;">${n.message}</div>
                   <div style="font-size: 0.8rem; color: #666;">${time}</div>
                 </div>
-                ${!n.read ? '<span style="background: #667eea; color: white; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem;">New</span>' : ''}
+                ${!n.read ? '<span style="background: #00aeef; color: white; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem;">New</span>' : ''}
               </div>
             </div>`;
           }).join('');
           
           // Add "View All" option if there are more notifications
           if (data.notifications.length > 10) {
-            notificationsHTML += `<div class="nav-dropdown-item" style="text-align: center; color: #667eea; font-weight: 500; border-top: 1px solid #e2e8f0; margin-top: 8px; padding-top: 12px; cursor: pointer;" onclick="viewAllNotifications()">
+            notificationsHTML += `<div class="nav-dropdown-item" style="text-align: center; color: #00aeef; font-weight: 500; border-top: 1px solid #e2e8f0; margin-top: 8px; padding-top: 12px; cursor: pointer;" onclick="viewAllNotifications()">
                 View All ${data.notifications.length} Notifications
             </div>`;
           }
@@ -1168,7 +1138,7 @@
                   <div style="font-size: 0.8rem; color: #666;">${classItem.teacherName || 'Unknown Teacher'}</div>
                 </div>
                 <button onclick="window.location.href='live-classroom.html?room=${classItem.classroomId}&type=student&bookingId=${classItem._id}'" 
-                        style="background: #667eea; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; cursor: pointer;">
+                        style="background: #00aeef; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; cursor: pointer;">
                   Join
                 </button>
               </div>
@@ -1366,7 +1336,7 @@
                   <div style="font-size: 0.9rem;">${n.message}</div>
                   <div style="font-size: 0.8rem; color: #666;">${time}</div>
                 </div>
-                ${!n.read ? '<span style="background: #667eea; color: white; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem;">New</span>' : ''}
+                ${!n.read ? '<span style="background: #00aeef; color: white; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem;">New</span>' : ''}
               </div>
             </div>`;
           }).join('');
@@ -1481,6 +1451,55 @@
     
 
     
+    function formatNextClassTime(classItem) {
+      try {
+        const classDate = new Date(classItem.date + 'T' + (classItem.time || '00:00'));
+        const now = new Date();
+        const today = now.toISOString().split('T')[0];
+        const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        if (classItem.date === today) return 'Today, ' + classItem.time;
+        if (classItem.date === tomorrow) return 'Tomorrow, ' + classItem.time;
+        return classDate.toLocaleDateString('en-US', {
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric',
+        }) + ', ' + classItem.time;
+      } catch (_e) {
+        return (classItem.date || '') + ' at ' + (classItem.time || '');
+      }
+    }
+
+    function renderNextClassHero(classes) {
+      const titleEl = document.getElementById('dash-next-title');
+      const metaEl = document.getElementById('dash-next-meta');
+      const actionsEl = document.getElementById('dash-next-actions');
+      if (!titleEl || !metaEl || !actionsEl) return;
+
+      if (!classes || !classes.length) {
+        titleEl.textContent = 'No class scheduled';
+        metaEl.textContent = 'Book a live English class to get started.';
+        actionsEl.innerHTML =
+          '<a class="dash-btn dash-btn--primary" href="student-book.html">Book a Class</a>' +
+          '<a class="dash-btn dash-btn--secondary" href="student-class-table.html">My Schedule</a>';
+        return;
+      }
+
+      const next = classes[0];
+      const teacher = next.teacherName || 'Your teacher';
+      titleEl.textContent = formatNextClassTime(next);
+      metaEl.textContent = 'with ' + teacher;
+      const room = encodeURIComponent(next.classroomId || '');
+      const bookingId = encodeURIComponent(next._id || '');
+      actionsEl.innerHTML =
+        '<a class="dash-btn dash-btn--green" href="live-classroom.html?room=' +
+        room +
+        '&type=student&bookingId=' +
+        bookingId +
+        '">Join Class</a>' +
+        '<a class="dash-btn dash-btn--secondary" href="student-class-table.html">My Schedule</a>' +
+        '<a class="dash-btn dash-btn--primary" href="student-book.html">Book another</a>';
+    }
+
     // Load upcoming classes for student
     async function loadUpcomingClasses() {
       try {
@@ -1490,33 +1509,43 @@
             'Authorization': `Bearer ${token}`
           }
         });
-        
+
         if (response.ok) {
           const data = await response.json();
+          const classes = data.classes || [];
+          renderNextClassHero(classes);
+
+          const upcomingCountEl = document.getElementById('upcoming-count');
+          if (upcomingCountEl) upcomingCountEl.textContent = String(classes.length);
+
           const upcomingClassesList = document.getElementById('upcoming-classes-list');
-          
-          if (data.classes && data.classes.length > 0) {
-            upcomingClassesList.innerHTML = data.classes.map(classItem => `
+          if (!upcomingClassesList) return;
+
+          if (classes.length > 0) {
+            upcomingClassesList.innerHTML = classes.map(classItem => `
               <li class="upcoming-class-item">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                   <div>
-                    <div style="font-weight: 600; color: #1ca7e7;">${classItem.date} at ${classItem.time}</div>
+                    <div style="font-weight: 600; color: #00aeef;">${classItem.date} at ${classItem.time}</div>
                     <div style="font-size: 0.9rem; color: #666;">Teacher: ${classItem.teacherName}</div>
                   </div>
-                  <button onclick="window.location.href='live-classroom.html?room=${classItem.classroomId}&type=student&bookingId=${classItem._id}'" 
-                          style="background: #667eea; color: white; border: none; border-radius: 4px; padding: 4px 8px; font-size: 0.8rem; cursor: pointer;">Join</button>
+                  <button onclick="window.location.href='live-classroom.html?room=${classItem.classroomId}&type=student&bookingId=${classItem._id}'"
+                          style="background: #00aeef; color: white; border: none; border-radius: 4px; padding: 4px 8px; font-size: 0.8rem; cursor: pointer;">Join</button>
                 </div>
               </li>
             `).join('');
           } else {
             upcomingClassesList.innerHTML = '<li class="upcoming-class-item"><div style="text-align: center; color: #888;">No upcoming classes</div></li>';
           }
+        } else {
+          renderNextClassHero([]);
         }
       } catch (error) {
         console.error('Error loading upcoming classes:', error);
+        renderNextClassHero([]);
       }
     }
-    
+
     // Get notification icon based on type
     function getNotificationIcon(type) {
       const icons = {

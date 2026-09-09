@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="js/security-guard.js?v=1"></script>
-    <title>➕ Book a Class - RemoEdPH</title>
+    <title>Book a Class - RemoEdPH</title>
     <link rel="stylesheet" href="modern-styles.css">
     <style>
         body { 
@@ -130,7 +130,7 @@
             gap: 12px;
         }
         .submit-btn {
-            background: linear-gradient(135deg, #667eea, #5a67d8);
+            background: linear-gradient(135deg, #00aeef, #008fc4);
             color: #fff;
             border: none;
             border-radius: 8px;
@@ -139,7 +139,7 @@
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
-            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+            box-shadow: 0 2px 8px rgba(0, 174, 239, 0.3);
             height: 40px;
             min-width: 120px;
             display: flex;
@@ -147,9 +147,9 @@
             justify-content: center;
         }
         .submit-btn:hover {
-            background: linear-gradient(135deg, #5a67d8, #4c51bf);
+            background: linear-gradient(135deg, #008fc4, #008fc4);
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 4px 12px rgba(0, 174, 239, 0.4);
         }
         .back-btn {
             background: linear-gradient(135deg, #6c757d, #5a6268);
@@ -194,7 +194,7 @@
             width: 100px;
             min-width: 100px;
             padding: 12px;
-            background: linear-gradient(135deg, #667eea, #5a67d8);
+            background: linear-gradient(135deg, #00aeef, #008fc4);
             color: white;
             font-weight: 600;
             text-align: center;
@@ -206,7 +206,7 @@
         .grid-header {
             display: grid;
             grid-template-columns: 100px repeat(7, 1fr);
-            background: linear-gradient(135deg, #667eea, #5a67d8);
+            background: linear-gradient(135deg, #00aeef, #008fc4);
             color: white;
             font-weight: 600;
             text-shadow: 0 1px 2px rgba(0,0,0,0.1);
@@ -391,7 +391,7 @@
             position: static;
         }
         .booking-panel h3 {
-            color: #667eea;
+            color: #00aeef;
             margin-bottom: 12px;
             font-size: 1.2rem;
         }
@@ -414,8 +414,8 @@
         }
         .form-group input:focus, .form-group select:focus {
             outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102,126,234,0.1);
+            border-color: #00aeef;
+            box-shadow: 0 0 0 3px rgba(0,174,239,0.1);
         }
         .form-group input.error, .form-group select.error {
             border-color: #dc3545;
@@ -487,7 +487,7 @@
         }
         .selected-slots-count {
             font-weight: bold;
-            color: #667eea;
+            color: #00aeef;
             font-size: 0.9rem;
         }
         .clear-all-slots {
@@ -546,7 +546,7 @@
         }
         .booking-summary h4 {
             margin: 0 0 8px 0;
-            color: #667eea;
+            color: #00aeef;
             font-size: 0.9rem;
         }
         .booking-summary-item {
@@ -677,12 +677,12 @@
             transition: border-color 0.2s, box-shadow 0.2s;
         }
         .custom-teacher-select__trigger:hover {
-            border-color: #667eea;
+            border-color: #00aeef;
         }
         .custom-teacher-select__trigger:focus {
             outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+            border-color: #00aeef;
+            box-shadow: 0 0 0 3px rgba(0, 174, 239, 0.2);
         }
         .custom-teacher-select__value {
             display: flex;
@@ -808,7 +808,7 @@
         }
         .cts-item__rating {
             font-size: 0.8rem;
-            color: #667eea;
+            color: #00aeef;
             margin-top: 2px;
         }
         .cts-item__rating--muted {
@@ -820,7 +820,7 @@
             flex-shrink: 0;
             border: none;
             background: transparent;
-            color: #667eea;
+            color: #00aeef;
             font-size: 1.15rem;
             cursor: pointer;
             border-radius: 8px;
@@ -828,7 +828,7 @@
             transition: background 0.15s;
         }
         .cts-item__info:hover {
-            background: rgba(102, 126, 234, 0.12);
+            background: rgba(0, 174, 239, 0.12);
         }
 
         .teacher-preference-label-row {
@@ -861,20 +861,20 @@
             transition: background 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s;
         }
         .teacher-pref-info-btn.is-active {
-            border-color: #667eea;
-            background: linear-gradient(135deg, #eef2ff, #f8fafc);
-            color: #667eea;
+            border-color: #00aeef;
+            background: linear-gradient(135deg, #e8f7fc, #f8fafc);
+            color: #00aeef;
             cursor: pointer;
-            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+            box-shadow: 0 2px 8px rgba(0, 174, 239, 0.2);
         }
         .teacher-pref-info-btn.is-active:hover {
-            background: #eef2ff;
-            border-color: #5a67d8;
-            color: #5a67d8;
+            background: #e8f7fc;
+            border-color: #008fc4;
+            color: #008fc4;
         }
         .teacher-pref-info-btn:focus-visible {
             outline: none;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.35);
+            box-shadow: 0 0 0 3px rgba(0, 174, 239, 0.35);
         }
 
         /* Glassmorphism teacher profile modal */
@@ -949,13 +949,13 @@
             border-radius: 50%;
             object-fit: cover;
             border: 3px solid rgba(255,255,255,0.9);
-            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.2);
+            box-shadow: 0 8px 24px rgba(0, 174, 239, 0.2);
         }
         .teacher-glass-hero-placeholder {
             width: 88px;
             height: 88px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #c7d2fe, #e9d5ff);
+            background: linear-gradient(135deg, #b3e9fa, #e9d5ff);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -967,7 +967,7 @@
             color: #1e293b;
             margin: 0 0 4px;
         }
-        .teacher-glass-rating { color: #667eea; font-weight: 600; font-size: 0.95rem; }
+        .teacher-glass-rating { color: #00aeef; font-weight: 600; font-size: 0.95rem; }
         .teacher-glass-section { margin-top: 14px; }
         .teacher-glass-section h4 {
             margin: 0 0 8px;
@@ -1011,8 +1011,8 @@
             font-size: 0.75rem;
             padding: 4px 10px;
             border-radius: 999px;
-            background: rgba(102, 126, 234, 0.15);
-            color: #4c51bf;
+            background: rgba(0, 174, 239, 0.15);
+            color: #008fc4;
             font-weight: 600;
         }
         .teacher-glass-footer {
@@ -1024,12 +1024,12 @@
             padding: 12px;
             border: none;
             border-radius: 12px;
-            background: linear-gradient(135deg, #667eea, #5a67d8);
+            background: linear-gradient(135deg, #00aeef, #008fc4);
             color: #fff;
             font-weight: 700;
             font-size: 0.95rem;
             cursor: pointer;
-            box-shadow: 0 4px 14px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 4px 14px rgba(0, 174, 239, 0.4);
         }
         .teacher-glass-select-btn:hover {
             filter: brightness(1.05);
@@ -1037,13 +1037,13 @@
     </style>
     <link rel="stylesheet" href="css/teacher-sidebar.css">
     <link rel="stylesheet" href="css/portal-chrome-compact.css">
-    <link rel="stylesheet" href="css/student-portal-layout.css">
-    <link rel="stylesheet" href="css/student-sidebar.css">
+    <link rel="stylesheet" href="css/student-portal-layout.css?v=slide-match-1">
+    <link rel="stylesheet" href="css/student-sidebar.css?v=slide-match-1">
 </head>
 <body class="student-portal page-student-book">
     <div class="remoed-main">
         <div id="student-sidebar-root"></div>
-        <script src="js/student-sidebar.js"></script>
+        <script src="js/student-sidebar.js?v=slide-match-1"></script>
         <script src="js/student-page-header.js"></script>
         <script>
             StudentSidebar.render('student-sidebar-root', 'book');
@@ -1148,7 +1148,7 @@
                             
                             <!-- Visual Separator -->
                             <div style="border-top: 2px solid #e0e6ed; margin: 20px 0; padding-top: 20px;">
-                                <h3 style="color: #667eea; margin-bottom: 15px; font-size: 1.1rem;">📝 Booking Details</h3>
+                                <h3 style="color: #00aeef; margin-bottom: 15px; font-size: 1.1rem;">📝 Booking Details</h3>
                             </div>
                             
                             <form id="booking-form">
@@ -1233,7 +1233,7 @@
         
         if (!token) {
             alert('Please log in to access this page.');
-            window.location.href = 'student-login.html';
+            window.location.href = '/login/';
         }
         
         // Timezone alignment utility (uses detected/selected timezone)
@@ -1336,7 +1336,7 @@
         // Logout functionality
         document.getElementById('logout-nav').onclick = function() {
             localStorage.clear();
-            window.location.href = 'student-login.html';
+            window.location.href = '/login/';
         };
         
         // Set to current week to see today's slots
@@ -1513,7 +1513,7 @@
                         // Real token issue - redirect to login
                         alert('Session expired. Please log in again.');
                         localStorage.clear();
-                        window.location.href = 'student-login.html';
+                        window.location.href = '/login/';
                     } else {
                         // Server issue - continue with basic functionality
                         console.warn('⚠️ Server issue detected, continuing with basic functionality');
@@ -1830,7 +1830,7 @@
                         console.log('❌ Unauthorized - token may be expired');
                         alert('Session expired. Please log in again.');
                         localStorage.clear();
-                        window.location.href = 'student-login.html';
+                        window.location.href = '/login/';
                         return;
                     }
                     const errorText = await response.text();
@@ -3323,7 +3323,7 @@
                     console.log('❌ Unauthorized - token may be expired, redirecting to login');
                     alert('Session expired. Please log in again.');
                     localStorage.clear();
-                    window.location.href = 'student-login.html';
+                    window.location.href = '/login/';
                     return;
                 } else {
                     console.log('❌ All API attempts failed - using avatar text');

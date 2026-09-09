@@ -52,61 +52,67 @@
   </script>
     <link rel="stylesheet" href="style.css">
   <!-- After global styles so chat / layout rules are not overridden -->
-  <link rel="stylesheet" href="live-classroom.css" />
-  <link rel="stylesheet" href="css/mobile-first.css" />
+  <link rel="stylesheet" href="live-classroom.css?v=lc-polish-3" />
 </head>
 <body class="page-live-classroom">
-  <div class="top-bar">
-    <span>Live Classroom</span>
-    <div class="top-buttons">
-      <button id="class-info-btn">Class Info</button>
-      <span id="connection-status" style="padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; background: #f0f0f0; white-space:nowrap; height:28px; display:flex; align-items:center;"></span>
+  <header class="top-bar" role="banner">
+    <div class="top-bar__left">
+      <div class="top-bar__brand">
+        <span class="top-bar__title">Live Classroom</span>
+        <span class="top-bar__dot" aria-hidden="true"></span>
+        <span class="top-bar__identity" id="lc-session-identity">Loading…</span>
+      </div>
+      <div class="top-bar__meta">
+        <span class="top-bar__pill" id="lc-student-level-pill" hidden></span>
+        <span class="top-bar__time">Class time <strong id="class-time">00:00</strong></span>
+      </div>
     </div>
-  </div>
+    <div class="top-buttons">
+      <div class="top-bar__session-actions" id="lc-session-actions">
+        <button type="button" class="nav-action-btn finish-btn top-bar__action" id="finish-btn" title="Finish Class" style="display:none;">Finish</button>
+        <button type="button" class="nav-action-btn absent-btn top-bar__action" id="absent-btn" title="Mark Absent" style="display:none;">Absent</button>
+        <button type="button" class="nav-action-btn leave-btn top-bar__action" id="leave-btn" title="Leave Classroom" style="display:none;">Leave</button>
+      </div>
+      <button type="button" id="lc-notes-toggle" class="top-bar__ghost top-bar__icon-btn" title="Teacher notes" aria-label="Teacher notes" hidden>Notes</button>
+      <button type="button" id="class-info-btn" class="top-bar__ghost top-bar__icon-btn" title="Class Info" aria-label="Class Info">ⓘ</button>
+      <span id="connection-status" class="top-bar__status" aria-live="polite"></span>
+    </div>
+  </header>
+
+  <div id="lc-notes-scrim" class="lc-notes-scrim" hidden aria-hidden="true"></div>
         
   <div class="main-container">
-    <!-- Left rail: nav + teacher-only internal notes (curriculum cheat sheet) -->
+    <!-- Teacher notes only (session actions live in the top bar) -->
     <div class="left-rail" id="left-rail">
-      <div class="left-nav-bar">
-        <div class="nav-buttons-top">
-          <button class="nav-action-btn finish-btn" id="finish-btn" title="Finish Class" style="display:none;">Finish</button>
-          <button class="nav-action-btn absent-btn" id="absent-btn" title="Mark Absent" style="display:none;">Absent</button>
-          <button class="nav-action-btn leave-btn" id="leave-btn" title="Leave Classroom" style="display:none; background:#e74c3c;">Leave</button>
-        </div>
-        <div class="nav-icons">
-          <!-- Lessons tab removed - moved to admin side -->
-        </div>
-      </div>
       <aside class="teacher-notes-rail" id="teacher-notes-rail" aria-label="Internal teacher notes">
-        <div class="teacher-notes-rail-header">Teacher notes</div>
+        <div class="teacher-notes-rail-header">
+          <span>Teacher notes</span>
+          <button type="button" class="teacher-notes-collapse" id="teacher-notes-collapse" title="Hide notes" aria-label="Hide notes">«</button>
+        </div>
         <p class="teacher-notes-rail-hint">For teachers only. Answers &amp; tips from curriculum specialists.</p>
         <div class="teacher-notes-rail-body" id="teacher-notes-body"></div>
+        <div class="teacher-notes-rail-footer" id="teacher-notes-qa-slot" aria-label="QA recording"></div>
       </aside>
     </div>
 
     <!-- Main Content Area -->
     <div class="center-panel">
-      <!-- Action buttons moved into PDF control row -->
-      
-      <div class="tabs">
-        <button class="active" data-tab="lesson-content">Lesson Content</button>
-        <button data-tab="whiteboard">Whiteboard</button>
+      <div class="tabs lc-toolbar-tabs">
+        <button class="active" data-tab="lesson-content">Lesson</button>
+        <button data-tab="whiteboard">Board</button>
         <button data-tab="videos">Videos</button>
       </div>
       
       <!-- Lesson Content Tab -->
       <div class="panel-content active" id="lesson-content-panel">
         <div class="lesson-viewer">
-          <!-- Lesson Content Viewer title removed -->
-          <!-- Lesson content viewer dropdown removed - lesson loads automatically from booking -->
-          <!-- Presenter Mode Status and Navigation Controls -->
-          <div id="presenter-mode-controls" style="display:none; gap:8px; align-items:center; justify-content:center; margin:8px 0; flex-shrink:0;">
-            <span id="presenter-status-indicator" style="font-size:18px; color:#e11d48;" title="Live Sync Active">●</span>
-            <!-- Navigation buttons for PDF (moved outside iframe) -->
-            <div id="pdf-navigation-controls" style="display:none; gap:4px; align-items:center;">
-              <button id="pdf-prev-btn" title="Previous Page" style="padding:6px 10px; background:#1ca7e7; color:#fff; border:none; border-radius:4px; cursor:pointer; font-size:1.2rem; font-weight:bold; min-width:36px; height:36px; display:flex; align-items:center; justify-content:center;">◀</button>
-              <span id="pdf-page-info" style="padding:6px 12px; background:#fff; border:1px solid #ccc; border-radius:4px; font-size:0.85rem; font-weight:600; min-width:80px; text-align:center;">Page 1</span>
-              <button id="pdf-next-btn" title="Next Page" style="padding:6px 10px; background:#1ca7e7; color:#fff; border:none; border-radius:4px; cursor:pointer; font-size:1.2rem; font-weight:bold; min-width:36px; height:36px; display:flex; align-items:center; justify-content:center;">▶</button>
+          <!-- Outer duplicate slide nav removed — PDF.js / presentation toolbar owns Prev/Next -->
+          <div id="presenter-mode-controls" class="lc-presenter-sync" style="display:none;" aria-hidden="true">
+            <span id="presenter-status-indicator" title="Live Sync Active">● Syncing</span>
+            <div id="pdf-navigation-controls" hidden>
+              <button type="button" id="pdf-prev-btn" title="Previous Page">◀</button>
+              <span id="pdf-page-info">Page 1</span>
+              <button type="button" id="pdf-next-btn" title="Next Page">▶</button>
             </div>
           </div>
           <div id="lesson-file-viewer" class="file-viewer"></div>
@@ -132,9 +138,14 @@
         </div>
       </div>
 
-      <div class="panel-content" id="videos-panel" style="display:none; flex-direction:column; padding:12px; overflow:auto;">
-        <p style="color:#64748b; font-size:0.9rem; margin:0 0 12px;">School library videos. Students open this tab during live class.</p>
-        <div id="portal-videos-list"></div>
+      <div class="panel-content" id="videos-panel" style="display:none; flex-direction:column;">
+        <div class="lc-videos-panel">
+          <header class="lc-videos-panel__header">
+            <h2 class="lc-videos-panel__title">Library videos</h2>
+            <p class="lc-videos-panel__lead">School clips students can open during class. Pick one to play in the lesson stage.</p>
+          </header>
+          <div id="portal-videos-list" class="lc-videos-panel__list"></div>
+        </div>
       </div>
       
       <!-- Lessons Tab removed - moved to admin side -->
@@ -143,14 +154,13 @@
                     
     <!-- Right Sidebar -->
     <div class="right-panel">
-      <div class="class-time-header">Class Time: <span id="class-time">00:00</span></div>
-      
       <div class="video-container">
-        <div class="video teacher">
+        <div class="video teacher is-waiting-peer" id="peer-video-tile">
           <div class="video-header">
             <p>Teacher</p>
           </div>
           <video id="remote-video" autoplay playsinline muted></video>
+          <div class="video-empty-hint" id="peer-video-empty">Waiting for peer…</div>
         </div>
         <div class="video student">
           <div class="video-header">
@@ -159,30 +169,39 @@
           <video id="local-video" autoplay muted playsinline></video>
           <div id="camera-error-message" style="display:none; padding:8px; background:#fee; color:#c33; font-size:0.85rem; text-align:center; margin:4px 0; border-radius:4px;">
             <div style="margin-bottom:4px;">Camera/Mic not available</div>
-            <button id="retry-camera-btn" style="padding:4px 12px; background:#4f46e5; color:#fff; border:none; border-radius:4px; cursor:pointer; font-size:0.8rem;">Retry</button>
+            <button id="retry-camera-btn" style="padding:4px 12px; background:#00a82d; color:#fff; border:none; border-radius:4px; cursor:pointer; font-size:0.8rem;">Retry</button>
           </div>
-          <div class="video-controls">
-            <button id="toggle-camera" class="video-control-btn" title="Toggle Camera">📷</button>
-            <button id="toggle-mic" class="video-control-btn" title="Toggle Microphone">🎤</button>
-            <button id="toggle-mute" class="video-control-btn" title="Mute Audio">🔇</button>
+          <div class="video-controls" aria-label="Media controls">
+            <button id="toggle-camera" class="video-control-btn" type="button" title="Toggle camera" aria-label="Toggle camera">C</button>
+            <button id="toggle-mic" class="video-control-btn" type="button" title="Toggle microphone" aria-label="Toggle microphone">M</button>
+            <button id="toggle-mute" class="video-control-btn is-off" type="button" title="Unmute peer audio" aria-label="Unmute peer audio">A</button>
           </div>
         </div>
       </div>
       
       <div class="chat-section" id="classChat">
-        <div class="chat-header">Class Chat</div>
-        <div id="chat-messages" class="chat-messages"></div>
+        <div class="chat-header">
+          <span>Class Chat</span>
+          <span class="chat-unread-badge" id="chat-unread-badge" hidden>0</span>
+        </div>
+        <div id="chat-messages" class="chat-messages">
+          <div class="chat-empty" id="chat-empty">No messages yet — say hello to start.</div>
+        </div>
         <form id="chat-form" class="chat-form">
           <textarea id="chat-input" class="chat-input" rows="2" placeholder="Type here — Enter to send, Shift+Enter for new line" title="Enter sends. Shift+Enter adds a line." aria-label="Chat message"></textarea>
-          <button type="submit" class="chat-send">✈️</button>
+          <button type="submit" class="chat-send" aria-label="Send">➤</button>
         </form>
       </div>
     </div>
   </div>
 
-  <nav class="lc-mobile-dock" id="lc-mobile-dock" aria-label="Lesson or chat" hidden>
+  <nav class="lc-mobile-dock" id="lc-mobile-dock" aria-label="Classroom panels" hidden>
     <button type="button" class="lc-mobile-dock__btn is-active" data-lc-tab="lesson">Lesson</button>
-    <button type="button" class="lc-mobile-dock__btn" data-lc-tab="chat">Chat</button>
+    <button type="button" class="lc-mobile-dock__btn" data-lc-tab="notes" id="lc-mobile-notes-btn" hidden>Notes</button>
+    <button type="button" class="lc-mobile-dock__btn" data-lc-tab="av">Camera</button>
+    <button type="button" class="lc-mobile-dock__btn" data-lc-tab="chat" id="lc-mobile-chat-btn">
+      Chat<span class="lc-mobile-chat-unread" id="lc-mobile-chat-unread" hidden></span>
+    </button>
   </nav>
   <script>
     (function () {
@@ -194,14 +213,47 @@
       function syncDock() {
         var on = mq();
         dock.hidden = !on;
-        if (!on) document.body.classList.remove('lc-mobile-view-chat');
+        if (!on) {
+          document.body.classList.remove('lc-mobile-view-chat', 'lc-mobile-view-notes', 'lc-mobile-view-av');
+        }
       }
       function applyTab(tab) {
-        var chat = tab === 'chat';
-        document.body.classList.toggle('lc-mobile-view-chat', chat);
+        document.body.classList.toggle('lc-mobile-view-chat', tab === 'chat');
+        document.body.classList.toggle('lc-mobile-view-notes', tab === 'notes');
+        document.body.classList.toggle('lc-mobile-view-av', tab === 'av');
         dock.querySelectorAll('[data-lc-tab]').forEach(function (btn) {
           btn.classList.toggle('is-active', btn.getAttribute('data-lc-tab') === tab);
         });
+        if (tab === 'chat') {
+          if (typeof window.__lcClearChatUnread === 'function') {
+            window.__lcClearChatUnread();
+          } else {
+            try {
+              var badge = document.getElementById('chat-unread-badge');
+              var mobileBadge = document.getElementById('lc-mobile-chat-unread');
+              if (badge) {
+                badge.hidden = true;
+                badge.textContent = '0';
+              }
+              if (mobileBadge) {
+                mobileBadge.hidden = true;
+                mobileBadge.textContent = '';
+              }
+            } catch (_e) {}
+          }
+        }
+        if (tab === 'notes') {
+          var rail = document.getElementById('teacher-notes-rail');
+          var body = document.getElementById('teacher-notes-body');
+          if (rail) {
+            rail.classList.add('is-visible', 'is-drawer-open');
+            document.body.classList.remove('lc-notes-collapsed');
+          }
+          if (body && !String(body.textContent || '').trim()) {
+            body.textContent =
+              'No notes loaded yet. Open a booked class with a lesson, or ask curriculum to add teacher notes in Admin → Lessons Library.';
+          }
+        }
       }
       dock.addEventListener('click', function (e) {
         var b = e.target.closest('[data-lc-tab]');
@@ -254,7 +306,7 @@
         </div>
       </div>
       <div style="margin-top:16px; display:flex; justify-content:flex-end;">
-        <button id="class-info-ok" style="padding:8px 16px; border-radius:6px; border:none; background:#4f46e5; color:#fff; font-weight:600; cursor:pointer;">OK</button>
+        <button id="class-info-ok" style="padding:8px 16px; border-radius:6px; border:none; background:#00a82d; color:#fff; font-weight:600; cursor:pointer;">OK</button>
       </div>
     </div>
   </div>
@@ -264,7 +316,7 @@
       <div style="font-size:2rem; margin-bottom:12px;">⏳</div>
       <h1 id="classroom-entry-blocked-message" style="margin:0 0 12px; font-size:1.25rem; color:#0f172a;">Class hasn’t started yet</h1>
       <p id="classroom-entry-blocked-sub" style="margin:0 0 16px; color:#64748b; font-size:0.95rem; line-height:1.5;"></p>
-      <p id="classroom-entry-countdown" style="margin:0 0 20px; font-size:1.1rem; font-weight:600; color:#1ca7e7;"></p>
+      <p id="classroom-entry-countdown" style="margin:0 0 20px; font-size:1.1rem; font-weight:600; color:#00aeef;"></p>
       <button type="button" onclick="window.location.href= (localStorage.getItem('userType')==='teacher') ? 'teacher-class-table.html' : 'student-class-table.html'" style="padding:10px 20px; border:none; border-radius:8px; background:#64748b; color:#fff; font-weight:600; cursor:pointer;">Back to schedule</button>
     </div>
   </div>
@@ -313,9 +365,9 @@
   </div>
     <script src="js/classroom-entry.js"></script>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-    <script src="js/presentation-overlay.js?v=slide-sync-2"></script>
+    <script src="js/presentation-overlay.js?v=lc-polish-3"></script>
     <script src="js/virtual-background.js"></script>
-    <script src="js/classroom-qa-recording.js" defer></script>
+    <script src="js/classroom-qa-recording.js?v=lc-polish-3" defer></script>
     <script>
     // Collaborative annotation client
     (function(){
@@ -563,19 +615,45 @@
       try {
         const teacherLabelEl = document.querySelector('.video.teacher .video-header p');
         const studentLabelEl = document.querySelector('.video.student .video-header p');
+        const peerEmptyHint = document.getElementById('peer-video-empty');
         if (teacherLabelEl && studentLabelEl) {
           if (userType === 'teacher') {
             // You are the teacher: your local camera tile should say Teacher (You)
             teacherLabelEl.textContent = 'Student';
             studentLabelEl.textContent = 'Teacher (You)';
+            if (peerEmptyHint) peerEmptyHint.textContent = 'Waiting for student…';
           } else {
             // You are the student: keep default labels
             teacherLabelEl.textContent = 'Teacher';
             studentLabelEl.textContent = 'Student (You)';
+            if (peerEmptyHint) peerEmptyHint.textContent = 'Waiting for teacher…';
           }
         }
       } catch (e) {
         console.warn('Could not update video labels based on user type:', e);
+      }
+
+      function setPeerVideoWaiting(waiting) {
+        const tile = document.getElementById('peer-video-tile');
+        if (!tile) return;
+        tile.classList.toggle('is-waiting-peer', !!waiting);
+      }
+
+      function markPeerVideoConnected() {
+        setPeerVideoWaiting(false);
+      }
+
+      function markPeerVideoDisconnected() {
+        const rv = document.getElementById('remote-video');
+        if (rv) {
+          try {
+            rv.srcObject = null;
+          } catch (_e) {}
+        }
+        try {
+          remoteStream = null;
+        } catch (_e2) {}
+        setPeerVideoWaiting(true);
       }
 
       // Tab management
@@ -605,15 +683,16 @@
       const stopPresenterBtn = document.getElementById('stop-presenter-mode-btn');
       const presenterStatusIndicator = document.getElementById('presenter-status-indicator');
       
-      if (userType === 'teacher' && presenterModeControls) {
-        presenterModeControls.style.display = 'flex';
-        presenterModeControls.style.alignItems = 'center';
-        presenterModeControls.style.gap = '8px';
+      // Presenter sync chrome stays hidden — in-viewer toolbar owns navigation
+      if (presenterModeControls) {
+        presenterModeControls.style.display = 'none';
+        presenterModeControls.setAttribute('aria-hidden', 'true');
       }
 
       const pdfNavControls = document.getElementById('pdf-navigation-controls');
       const pdfPrevBtn = document.getElementById('pdf-prev-btn');
       const pdfNextBtn = document.getElementById('pdf-next-btn');
+      if (pdfNavControls) pdfNavControls.style.display = 'none';
 
       if (!window.__remoedHeaderSlideNavBound) {
         window.__remoedHeaderSlideNavBound = true;
@@ -1137,6 +1216,7 @@
         rv.playsInline = true;
         rv.style.display = 'block';
         rv.style.visibility = 'visible';
+        if (typeof markPeerVideoConnected === 'function') markPeerVideoConnected();
         if (rv.paused) {
           rv.play().catch(function () {});
         }
@@ -1622,6 +1702,7 @@
 
             attachStreamWithRetry(remoteVideoEl, remoteStream, { muted: false, label: 'remote-video' }).catch(() => {});
             console.log('✅ Remote stream received, tracks:', remoteStream.getTracks().length);
+            if (typeof markPeerVideoConnected === 'function') markPeerVideoConnected();
 
             remoteVideoEl.muted = false;
             remoteVideoEl.autoplay = true;
@@ -1668,6 +1749,7 @@
           
           if (state === 'failed' || state === 'disconnected') {
             console.warn('⚠️ Connection failed/disconnected');
+            if (typeof markPeerVideoDisconnected === 'function') markPeerVideoDisconnected();
             attemptReconnect();
           } else if (state === 'connected') {
             console.log('✅ Peer connection established successfully');
@@ -1675,6 +1757,9 @@
             if (reconnectTimeout) {
               clearTimeout(reconnectTimeout);
               reconnectTimeout = null;
+            }
+            if (remoteVideo && remoteVideo.srcObject && typeof markPeerVideoConnected === 'function') {
+              markPeerVideoConnected();
             }
             
             // Verify tracks are active after connection
@@ -2238,24 +2323,167 @@
         return d.length >= 100;
       }
 
+      function classroomAuthToken() {
+        try {
+          if (typeof RemoedUserSession !== 'undefined' && RemoedUserSession.getUserToken) {
+            const t = RemoedUserSession.getUserToken();
+            if (t) return t;
+          }
+        } catch (_e) {}
+        return (
+          localStorage.getItem('remoed_teacher_token') ||
+          localStorage.getItem('remoed_student_token') ||
+          localStorage.getItem('remoed_user_token') ||
+          localStorage.getItem('token') ||
+          ''
+        );
+      }
+
+      function officeOnlineCanReachThisHost() {
+        try {
+          const host = window.location.hostname || '';
+          if (window.location.protocol !== 'https:') return false;
+          if (/localhost|127\.0\.0\.1|\.local$/i.test(host)) return false;
+          if (/^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[0-1])\.)/.test(host)) return false;
+          return true;
+        } catch (_e) {
+          return false;
+        }
+      }
+
+      /**
+       * On localhost / private hosts, convert PPTX → same-origin PDF so class can view slides.
+       * On public HTTPS, keep Office Online when available.
+       */
+      async function resolvePresentationMaterialForViewer(material) {
+        if (!material) return material;
+        const pType = material.presentationType || '';
+        if (pType === 'pdf_preview' || pType === 'html5_zip' || pType === 'office_embed') {
+          return material;
+        }
+        const fileName = String(material.name || material.html5EntryUrl || '');
+        const isPptLike =
+          /\.(ppt|pptx)(\?|#|$)/i.test(fileName) ||
+          String(material.type || '').toLowerCase().includes('ppt') ||
+          /\.(ppt|pptx)(\?|#|$)/i.test(String(material.html5EntryUrl || ''));
+        if (!isPptLike) return material;
+
+        const fileId = material.id || material.materialId || '';
+        if (!fileId) return material;
+
+        // Public HTTPS: try Office Online path first (overlay builds embed URL).
+        // Still prefer PDF conversion when Office cannot reach this origin.
+        if (officeOnlineCanReachThisHost() && material.html5EntryUrl && /^https:\/\//i.test(window.location.origin)) {
+          // Keep PPT for Office Online
+          return material;
+        }
+
+        const token = classroomAuthToken();
+        if (!token) return material;
+
+        try {
+          const resp = await fetch(
+            '/api/lessons/presentation/' + encodeURIComponent(fileId) + '/local-preview',
+            { headers: { Authorization: 'Bearer ' + token } }
+          );
+          const data = await resp.json().catch(() => ({}));
+          if (!resp.ok || !data.success) {
+            throw new Error(data.error || 'Could not prepare presentation preview');
+          }
+          if (data.mode === 'html5_zip' || data.mode === 'office_embed') {
+            return Object.assign({}, material, {
+              presentationType: data.mode,
+              html5EntryUrl: data.previewUrl || material.html5EntryUrl,
+              embedUrl: data.previewUrl || material.embedUrl
+            });
+          }
+          if (data.mode === 'office_online' && data.embedUrl) {
+            return Object.assign({}, material, {
+              presentationType: 'office_embed',
+              embedUrl: data.embedUrl
+            });
+          }
+          if (data.mode === 'pdf') {
+            const pdfPath =
+              data.previewPdfPath ||
+              (data.previewUrl && String(data.previewUrl).startsWith('/api/')
+                ? data.previewUrl
+                : `/api/lessons/presentation/${encodeURIComponent(fileId)}/preview.pdf`) ||
+              data.previewUrl ||
+              '';
+            return Object.assign({}, material, {
+              presentationType: 'pdf_preview',
+              name: data.fileName || String(material.name || 'lesson').replace(/\.(ppt|pptx)$/i, '.pdf'),
+              type: 'application/pdf',
+              data: pdfPath.split('?')[0],
+              html5EntryUrl: '',
+              embedUrl: '',
+              previewPdfPath: pdfPath.split('?')[0]
+            });
+          }
+        } catch (err) {
+          console.error('[live-classroom] PPT preview resolve failed:', err);
+          material = Object.assign({}, material, {
+            __pptPreviewError: err.message || String(err)
+          });
+        }
+        return material;
+      }
+
       function showLessonFile(material) {
+        void showLessonFileAsync(material);
+      }
+
+      async function showLessonFileAsync(material) {
         if (!lessonFileViewer || !material) return;
         
         // Prevent duplicate rendering of the same material (stops blinking from repeated sync/broadcast)
-        if (currentDisplayedMaterialId === material.id) {
+        if (currentDisplayedMaterialId === material.id && !material.__forceReload) {
           return;
         }
         
         // Mark as rendering
         isRenderingLesson = true;
         currentDisplayedMaterialId = material.id;
+
+        const needsPptResolve =
+          material.presentationType !== 'pdf_preview' &&
+          (/\.(ppt|pptx)$/i.test(material.name || '') ||
+            String(material.type || '').toLowerCase().includes('ppt') ||
+            /\.(ppt|pptx)(\?|$)/i.test(material.html5EntryUrl || '') ||
+            material.presentationType === 'office_embed' ||
+            material.presentationType === 'html5_zip');
+
+        if (needsPptResolve && material.presentationType !== 'html5_zip' && material.presentationType !== 'office_embed') {
+          lessonFileViewer.innerHTML =
+            '<div style="display:flex;align-items:center;justify-content:center;height:100%;min-height:240px;color:#334155;font-family:Segoe UI,sans-serif;padding:24px;text-align:center;">' +
+            '<div><p style="font-weight:700;margin:0 0 8px;">Preparing lesson slides…</p>' +
+            '<p style="margin:0;color:#64748b;">Converting PowerPoint for classroom view</p></div></div>';
+          material = await resolvePresentationMaterialForViewer(material);
+          if (material.__pptPreviewError) {
+            currentDisplayedMaterialId = null;
+            isRenderingLesson = false;
+            lessonFileViewer.innerHTML =
+              '<div style="display:flex;align-items:center;justify-content:center;height:100%;min-height:280px;padding:28px;text-align:center;font-family:Segoe UI,sans-serif;color:#334155;">' +
+              '<div style="max-width:480px;">' +
+              '<p style="font-weight:800;font-size:1.15rem;margin:0 0 10px;color:#b91c1c;">Could not open lesson slides</p>' +
+              '<p style="margin:0 0 12px;line-height:1.55;color:#475569;">Microsoft Office Online cannot load PowerPoint from localhost. RemoEd tried to convert this file to PDF but conversion failed.</p>' +
+              '<p style="margin:0 0 14px;font-size:0.92rem;color:#64748b;">' +
+              escapeHtml(material.__pptPreviewError) +
+              '</p>' +
+              '<p style="margin:0;font-size:0.9rem;color:#64748b;">Install LibreOffice on this PC, or set <code>CLOUDMERSIVE_API_KEY</code> in the server environment, then reload the class.</p>' +
+              '</div></div>';
+            return;
+          }
+        }
         
         console.log('📄 [CLIENT] showLessonFile called:', {
           name: material.name,
           type: material.type,
           hasData: !!material.data,
           dataLength: material.data?.length,
-          dataStart: material.data?.substring(0, 50)
+          dataStart: material.data?.substring(0, 50),
+          presentationType: material.presentationType
         });
         
         lessonFileViewer.innerHTML = '';
@@ -2271,14 +2499,15 @@
         const fileType = (material.type || '').toLowerCase();
         const fileName = (material.name || '').toLowerCase();
         const isImage = fileType.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp)$/i.test(fileName);
-        const isPDF = fileType.includes('pdf') || fileType.includes('application/pdf') || fileName.endsWith('.pdf');
+        const isPDF = fileType.includes('pdf') || fileType.includes('application/pdf') || fileName.endsWith('.pdf') || material.presentationType === 'pdf_preview';
         const isVideo = fileType.includes('video') || /\.(mp4|webm|ogg)$/i.test(fileName);
         const isPpt =
-          fileType.includes('ppt') ||
+          !isPDF &&
+          (fileType.includes('ppt') ||
           /\.(ppt|pptx)$/i.test(fileName) ||
           material.presentationType === 'office_embed' ||
           material.presentationType === 'html5_zip' ||
-          (!!material.html5EntryUrl && /\.(ppt|pptx)(\?|$)/i.test(material.html5EntryUrl || ''));
+          (!!material.html5EntryUrl && /\.(ppt|pptx)(\?|$)/i.test(material.html5EntryUrl || '')));
 
         if (isImage) {
           console.log('🖼️ [CLIENT] Displaying as image');
@@ -2303,8 +2532,6 @@
           controls.className = 'pdf-viewer-controls';
           const controlsTopRow = document.createElement('div');
           controlsTopRow.className = 'pdf-controls-top-row';
-          const controlsBottomRow = document.createElement('div');
-          controlsBottomRow.className = 'pdf-controls-bottom-row';
           
           const prevBtn = document.createElement('button');
           prevBtn.textContent = '◀';
@@ -2339,7 +2566,8 @@
           // Annotation controls (teacher draw, students view)
           const annotateToggle = document.createElement('button');
           annotateToggle.id = 'pdf-annotate-toggle';
-          annotateToggle.textContent = '✏️';
+          annotateToggle.type = 'button';
+          annotateToggle.textContent = 'Pen';
           annotateToggle.title = 'Toggle drawing on the PDF';
           
           const annotationColorPicker = document.createElement('input');
@@ -2360,45 +2588,122 @@
           
           const eraseBtn = document.createElement('button');
           eraseBtn.id = 'pdf-annotate-eraser';
-          eraseBtn.textContent = '🩹';
+          eraseBtn.type = 'button';
+          eraseBtn.textContent = 'Eraser';
           eraseBtn.title = 'Switch to eraser';
           
           const clearPageBtn = document.createElement('button');
           clearPageBtn.id = 'pdf-annotate-clear';
-          clearPageBtn.textContent = '🧹';
+          clearPageBtn.type = 'button';
+          clearPageBtn.textContent = 'Clear page';
           clearPageBtn.title = 'Clear annotations on this page';
           
           const annotatorIndicator = document.createElement('span');
           annotatorIndicator.className = 'pdf-annotator-indicator';
           annotatorIndicator.textContent = '●';
           annotatorIndicator.title = 'Annotations status';
+
+          const drawMenu = document.createElement('div');
+          drawMenu.className = 'lc-draw-menu';
+          const drawToggle = document.createElement('button');
+          drawToggle.type = 'button';
+          drawToggle.className = 'lc-draw-toggle';
+          drawToggle.textContent = 'Draw';
+          drawToggle.title = 'Drawing tools';
+          drawToggle.setAttribute('aria-expanded', 'false');
+          const drawDropdown = document.createElement('div');
+          drawDropdown.className = 'lc-draw-dropdown';
+          drawDropdown.hidden = true;
+          drawDropdown.appendChild(annotateToggle);
+          drawDropdown.appendChild(annotationColorPicker);
+          drawDropdown.appendChild(annotationSizeSelect);
+          drawDropdown.appendChild(eraseBtn);
+          drawDropdown.appendChild(clearPageBtn);
+          drawToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const open = drawDropdown.hidden;
+            drawDropdown.hidden = !open;
+            drawToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+            drawMenu.classList.toggle('is-open', open);
+            if (open) {
+              try {
+                document.querySelectorAll('.lc-rewards-menu.is-open').forEach((m) => {
+                  m.classList.remove('is-open');
+                  const d = m.querySelector('.lc-rewards-dropdown');
+                  const t = m.querySelector('.lc-rewards-toggle');
+                  if (d) d.hidden = true;
+                  if (t) t.setAttribute('aria-expanded', 'false');
+                });
+              } catch (_e) {}
+            }
+          });
+          document.addEventListener('click', () => {
+            drawDropdown.hidden = true;
+            drawMenu.classList.remove('is-open');
+            drawToggle.setAttribute('aria-expanded', 'false');
+          });
+          drawDropdown.addEventListener('click', (e) => e.stopPropagation());
+          drawMenu.appendChild(drawToggle);
+          drawMenu.appendChild(drawDropdown);
           
           const flagBtn = document.createElement('button');
+          flagBtn.type = 'button';
           flagBtn.className = 'action-btn flag-btn';
-          flagBtn.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" style="display:block;margin:0 auto" aria-hidden="true"><path fill="#666" d="M2 2h2v20H2z"/><path fill="#28a745" d="M4 2v10l10-5L4 2z"/></svg>';
+          flagBtn.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="#666" d="M2 2h2v20H2z"/><path fill="#28a745" d="M4 2v10l10-5L4 2z"/></svg><span>Flag</span>';
           flagBtn.title = 'Flag reward';
           
           const cookieBtn = document.createElement('button');
+          cookieBtn.type = 'button';
           cookieBtn.className = 'action-btn cookie-btn';
-          cookieBtn.textContent = '🍪';
+          cookieBtn.textContent = '🍪 Cookie';
           cookieBtn.title = 'Cookie reward';
           
           const starBtn = document.createElement('button');
+          starBtn.type = 'button';
           starBtn.className = 'action-btn star-btn';
-          starBtn.textContent = '⭐';
+          starBtn.textContent = '⭐ Star';
           starBtn.title = 'Star reward';
+
+          const rewardsMenu = document.createElement('div');
+          rewardsMenu.className = 'lc-rewards-menu';
+          const rewardsToggle = document.createElement('button');
+          rewardsToggle.type = 'button';
+          rewardsToggle.className = 'lc-rewards-toggle';
+          rewardsToggle.textContent = 'Rewards';
+          rewardsToggle.title = 'Send a reward animation';
+          rewardsToggle.setAttribute('aria-expanded', 'false');
+          const rewardsDropdown = document.createElement('div');
+          rewardsDropdown.className = 'lc-rewards-dropdown';
+          rewardsDropdown.hidden = true;
+          rewardsDropdown.appendChild(flagBtn);
+          rewardsDropdown.appendChild(cookieBtn);
+          rewardsDropdown.appendChild(starBtn);
+          rewardsToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const open = rewardsDropdown.hidden;
+            rewardsDropdown.hidden = !open;
+            rewardsToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+            rewardsMenu.classList.toggle('is-open', open);
+            if (open) {
+              drawDropdown.hidden = true;
+              drawMenu.classList.remove('is-open');
+              drawToggle.setAttribute('aria-expanded', 'false');
+            }
+          });
+          document.addEventListener('click', () => {
+            rewardsDropdown.hidden = true;
+            rewardsMenu.classList.remove('is-open');
+            rewardsToggle.setAttribute('aria-expanded', 'false');
+          });
+          rewardsDropdown.addEventListener('click', (e) => e.stopPropagation());
+          rewardsMenu.appendChild(rewardsToggle);
+          rewardsMenu.appendChild(rewardsDropdown);
           
           const annotatorControls = document.createElement('div');
-          annotatorControls.className = 'pdf-annotator-controls';
-          annotatorControls.appendChild(annotateToggle);
-          annotatorControls.appendChild(annotationColorPicker);
-          annotatorControls.appendChild(annotationSizeSelect);
-          annotatorControls.appendChild(eraseBtn);
-          annotatorControls.appendChild(clearPageBtn);
+          annotatorControls.className = 'pdf-annotator-controls pdf-annotator-controls--compact';
+          annotatorControls.appendChild(drawMenu);
+          annotatorControls.appendChild(rewardsMenu);
           annotatorControls.appendChild(annotatorIndicator);
-          annotatorControls.appendChild(flagBtn);
-          annotatorControls.appendChild(cookieBtn);
-          annotatorControls.appendChild(starBtn);
           if (presenterStatusIndicator) {
             presenterStatusIndicator.style.marginLeft = '4px';
             annotatorControls.appendChild(presenterStatusIndicator);
@@ -2425,9 +2730,9 @@
           controlsTopRow.appendChild(zoomOutBtn);
           controlsTopRow.appendChild(zoomInBtn);
           controlsTopRow.appendChild(fitToViewerBtn);
-          controlsBottomRow.appendChild(annotatorControls);
+          controlsTopRow.appendChild(annotatorControls);
           controls.appendChild(controlsTopRow);
-          controls.appendChild(controlsBottomRow);
+          // Bottom annotate row retired — Draw + Rewards menus live on the top row
           
           pdfContainer.appendChild(controls);
           pdfContainer.appendChild(canvasContainer);
@@ -2563,8 +2868,10 @@
               canvas.style.pointerEvents = annotationEnabled && (isTeacher || allowStudentAnnotations) ? 'auto' : 'none';
             });
             if (annotateToggle) {
-              annotateToggle.textContent = annotationEnabled ? '✏️' : '✏️';
+              annotateToggle.textContent = annotationEnabled ? 'Pen on' : 'Pen';
               annotateToggle.classList.toggle('active', annotationEnabled);
+              drawToggle.classList.toggle('is-drawing', annotationEnabled);
+              drawToggle.textContent = annotationEnabled ? 'Draw ✓' : 'Draw';
             }
             if (annotatorIndicator) {
               annotatorIndicator.textContent = annotationEnabled
@@ -3150,7 +3457,14 @@
           let pdfLoadOpts = null;
 
           if (typeof pdfData === 'string' && (pdfData.startsWith('/') || /^https?:\/\//i.test(pdfData))) {
-            const url = pdfData.startsWith('/') ? window.location.origin + pdfData : pdfData;
+            let url = pdfData.startsWith('/') ? window.location.origin + pdfData : pdfData;
+            // Auth for /api/.../preview.pdf (and similar) — use the current user's token
+            if (/\/api\/lessons\/presentation\/[^/]+\/preview\.pdf/i.test(url) || /\/uploads\/presentations\/.+\/preview\.pdf/i.test(url)) {
+              const tok = classroomAuthToken();
+              if (tok && !/[?&]token=/.test(url)) {
+                url += (url.indexOf('?') >= 0 ? '&' : '?') + 'token=' + encodeURIComponent(tok);
+              }
+            }
             pdfLoadOpts = { url: url, withCredentials: true };
           } else if (typeof pdfData === 'string' && pdfData.startsWith('data:')) {
             const base64Data = pdfData.split(',')[1];
@@ -3209,7 +3523,7 @@
               <div class="pdf-error">
                 <p style="font-size: 1.2rem; margin-bottom: 16px;">Failed to load PDF</p>
                 <p style="margin-bottom: 16px;">${error.message || 'Unknown error'}</p>
-                <a href="${material.data}" download style="color: #1ca7e7; text-decoration: underline;">Download PDF instead</a>
+                <a href="${material.data}" download style="color: #00aeef; text-decoration: underline;">Download PDF instead</a>
               </div>
             `;
           });
@@ -3226,7 +3540,12 @@
                   name: material.name,
                   type: material.type,
                   size: material.size || (material.data && material.data.length) || 0,
-                  data: material.data,
+                  data:
+                    material.presentationType === 'pdf_preview'
+                      ? (material.previewPdfPath || String(material.data || '').split('?')[0])
+                      : material.data,
+                  presentationType: material.presentationType || undefined,
+                  previewPdfPath: material.previewPdfPath || undefined,
                   uploader: material.uploader || 'Teacher'
                 };
                 if (window.DEBUG_MODE) {
@@ -3267,22 +3586,12 @@
               }
             });
           }
-          if (userType === 'teacher' && pdfNavControls) {
-            pdfNavControls.style.display = 'flex';
-            const headerInfo = document.getElementById('pdf-page-info');
-            if (headerInfo) headerInfo.textContent = 'Slide 1';
-            if (pdfPrevBtn) {
-              pdfPrevBtn.title = 'Previous slide (syncs student)';
-            }
-            if (pdfNextBtn) {
-              pdfNextBtn.title = 'Next slide (syncs student)';
-            }
-          }
+          // Outer duplicate slide nav retired — in-viewer toolbar owns Prev/Next
+          if (pdfNavControls) pdfNavControls.style.display = 'none';
           if (userType === 'teacher') {
             if (!presenterModeActive) {
               presenterModeActive = true;
-              if (presenterModeControls) presenterModeControls.style.display = 'flex';
-              if (presenterStatusIndicator) presenterStatusIndicator.style.display = 'inline-block';
+              // Sync indicator stays CSS-hidden; socket still notifies students
               if (socket && socket.connected) {
                 socket.emit('presenter-mode-start', { room });
               }
@@ -3339,8 +3648,7 @@
           // Automatically start presenter mode if not already active
           if (!presenterModeActive) {
             presenterModeActive = true;
-            if (presenterModeControls) presenterModeControls.style.display = 'flex';
-            if (presenterStatusIndicator) presenterStatusIndicator.style.display = 'inline-block';
+            // Outer presenter chrome stays hidden; sync still starts via socket
             
             // Notify server to start presenter mode
             if (socket && socket.connected) {
@@ -3619,7 +3927,7 @@
         }
         
         // Validate material has required fields
-        if (!material.id || (!material.data && !material.html5EntryUrl && !material.embedUrl && !material.previewUrl)) {
+        if (!material.id || (!material.data && !material.html5EntryUrl && !material.embedUrl && !material.previewUrl && !material.previewPdfPath)) {
           console.error('⚠️ Invalid material received - missing id or data:', { hasId: !!material.id, hasData: !!material.data, material });
           // Try to get from lessonState if available
           const existingMaterial = lessonState.get(materialId);
@@ -4332,7 +4640,7 @@
       const retryCameraBtn = document.getElementById('retry-camera-btn');
       let isCameraOn = true;
       let isMicOn = true;
-      let isMuted = false;
+      let isMuted = true; // remote video starts muted in markup until user unmutes
       let isBgBlurOn = false;
       let blurModelReady = false;
       let blurRunner = null;
@@ -4857,8 +5165,9 @@
           if (videoTrack) {
             isCameraOn = !isCameraOn;
             videoTrack.enabled = isCameraOn;
-            toggleCameraBtn.textContent = isCameraOn ? '📷' : '📷❌';
-            toggleCameraBtn.style.opacity = isCameraOn ? '1' : '0.5';
+            toggleCameraBtn.textContent = 'C';
+            toggleCameraBtn.classList.toggle('is-off', !isCameraOn);
+            toggleCameraBtn.style.opacity = isCameraOn ? '1' : '0.55';
           }
         });
       }
@@ -4871,13 +5180,15 @@
           if (audioTrack) {
             isMicOn = !isMicOn;
             audioTrack.enabled = isMicOn;
-            toggleMicBtn.textContent = isMicOn ? '🎤' : '🎤❌';
-            toggleMicBtn.style.opacity = isMicOn ? '1' : '0.5';
+            toggleMicBtn.textContent = 'M';
+            toggleMicBtn.classList.toggle('is-off', !isMicOn);
+            toggleMicBtn.style.opacity = isMicOn ? '1' : '0.55';
             // If mic is disabled, also mute
             if (!isMicOn) {
               isMuted = true;
               if (toggleMuteBtn) {
-                toggleMuteBtn.textContent = '🔇';
+                toggleMuteBtn.textContent = 'A';
+                toggleMuteBtn.classList.add('is-off');
                 toggleMuteBtn.style.opacity = '1';
               }
             }
@@ -4887,13 +5198,16 @@
 
       // Toggle mute (mute/unmute audio output)
       if (toggleMuteBtn) {
+        if (remoteVideo) remoteVideo.muted = true;
         toggleMuteBtn.addEventListener('click', () => {
           if (!remoteVideo) return;
           isMuted = !isMuted;
           remoteVideo.muted = isMuted;
-          toggleMuteBtn.textContent = isMuted ? '🔇' : '🔊';
-          toggleMuteBtn.style.opacity = isMuted ? '1' : '0.5';
-          toggleMuteBtn.title = isMuted ? 'Unmute Audio' : 'Mute Audio';
+          toggleMuteBtn.textContent = 'A';
+          toggleMuteBtn.classList.toggle('is-off', isMuted);
+          toggleMuteBtn.style.opacity = isMuted ? '1' : '0.55';
+          toggleMuteBtn.title = isMuted ? 'Unmute peer audio' : 'Mute peer audio';
+          toggleMuteBtn.setAttribute('aria-label', toggleMuteBtn.title);
         });
       }
 
@@ -5322,8 +5636,40 @@
         );
       }
 
+      let chatUnreadCount = 0;
+
+      function isChatPanelVisible() {
+        if (document.body.classList.contains('lc-mobile-view-chat')) return true;
+        const mqMobile = window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
+        return !mqMobile;
+      }
+
+      function setChatUnread(count) {
+        chatUnreadCount = Math.max(0, count | 0);
+        const badge = document.getElementById('chat-unread-badge');
+        const mobileBadge = document.getElementById('lc-mobile-chat-unread');
+        const show = chatUnreadCount > 0;
+        if (badge) {
+          badge.hidden = !show;
+          badge.textContent = chatUnreadCount > 9 ? '9+' : String(chatUnreadCount);
+        }
+        if (mobileBadge) {
+          mobileBadge.hidden = !show;
+          mobileBadge.textContent = chatUnreadCount > 9 ? '9+' : String(chatUnreadCount);
+        }
+      }
+
+      function clearChatUnread() {
+        setChatUnread(0);
+      }
+      try {
+        window.__lcClearChatUnread = clearChatUnread;
+      } catch (_e) {}
+
       function addChatMessage(message, sender, isOwn = false, timestamp = null) {
         if (!chatMessages) return;
+        const emptyEl = document.getElementById('chat-empty');
+        if (emptyEl) emptyEl.hidden = true;
         const row = document.createElement('div');
         row.className = `message-row${isOwn ? ' own' : ''}`;
 
@@ -5357,6 +5703,11 @@
         row.appendChild(bubble);
         chatMessages.appendChild(row);
         chatMessages.scrollTop = chatMessages.scrollHeight;
+        if (!isOwn && !isChatPanelVisible()) {
+          setChatUnread(chatUnreadCount + 1);
+        } else if (isChatPanelVisible()) {
+          clearChatUnread();
+        }
       }
 
       // Track sent messages to prevent duplicates - use messageId for reliable tracking
@@ -5694,6 +6045,54 @@
       }
 
       // Auto-load lesson from booking
+      function formatClassroomLevelLabel(raw) {
+        if (!raw) return '';
+        const level = String(raw).toLowerCase();
+        if (level.includes('little seeds') || level === 'nursery') return 'Little Seeds (Age 3)';
+        if (level.includes('sprouts') || level === 'kinder' || level === 'kindergarten') return 'Sprouts (Age 4)';
+        if (level.includes('saplings') || level === 'preparatory' || level === 'prep' || level === 'primary') return 'Saplings (Age 5)';
+        if (level.includes('young stewards') || level.includes('steward')) return 'Young Stewards (Age 6)';
+        return String(raw);
+      }
+
+      function applySessionIdentityFromBooking(booking) {
+        const identityEl = document.getElementById('lc-session-identity');
+        const levelPill = document.getElementById('lc-student-level-pill');
+        if (!booking) return;
+
+        const studentName =
+          booking.studentName ||
+          (booking.student && (booking.student.firstName || booking.student.username)) ||
+          '';
+        const teacherName =
+          booking.teacherName ||
+          (booking.teacher && (booking.teacher.firstName || booking.teacher.username)) ||
+          '';
+
+        if (identityEl) {
+          if (userType === 'teacher' && studentName) {
+            identityEl.textContent = studentName;
+            identityEl.title = studentName;
+          } else if (userType === 'student' && teacherName) {
+            identityEl.textContent = teacherName;
+            identityEl.title = teacherName;
+          } else if (studentName) {
+            identityEl.textContent = studentName;
+            identityEl.title = studentName;
+          }
+        }
+
+        const levelLabel = formatClassroomLevelLabel(booking.studentLevel);
+        if (levelPill) {
+          if (levelLabel) {
+            levelPill.textContent = levelLabel;
+            levelPill.hidden = false;
+          } else {
+            levelPill.hidden = true;
+          }
+        }
+      }
+
       async function loadLessonFromBooking() {
         try {
           const bookingId = getQueryParam('bookingId') || getQueryParam('bookingid');
@@ -5740,6 +6139,15 @@
               console.warn('Failed to fetch booking via classroom endpoint:', e);
             }
           }
+
+          if (booking) applySessionIdentityFromBooking(booking);
+          else {
+            const identityEl = document.getElementById('lc-session-identity');
+            if (identityEl && (identityEl.textContent === 'Loading…' || identityEl.textContent === 'Session')) {
+              identityEl.textContent = username || room || 'Class';
+              identityEl.title = identityEl.textContent;
+            }
+          }
           
           const lid = getLessonIdFromBooking(booking);
           if (lid) {
@@ -5759,15 +6167,104 @@
       }
       
       // Internal teacher notes (staff-only from API) — cheat sheet next to Finish / Absent
+      function syncTeacherNotesChrome(visible) {
+        const notesToggle = document.getElementById('lc-notes-toggle');
+        const mobileNotes = document.getElementById('lc-mobile-notes-btn');
+        if (notesToggle) notesToggle.hidden = !visible;
+        if (mobileNotes) mobileNotes.hidden = !visible;
+      }
+
+      function setTeacherNotesOpen(open) {
+        const rail = document.getElementById('teacher-notes-rail');
+        const scrim = document.getElementById('lc-notes-scrim');
+        if (!rail) return;
+        const drawerMode =
+          window.matchMedia && window.matchMedia('(max-width: 1100px)').matches;
+        if (open) {
+          document.body.classList.remove('lc-notes-collapsed');
+          rail.classList.add('is-visible');
+          if (drawerMode) {
+            rail.classList.add('is-drawer-open');
+            if (scrim) {
+              scrim.hidden = false;
+              scrim.setAttribute('aria-hidden', 'false');
+            }
+            document.body.classList.add('lc-notes-drawer-open');
+          } else {
+            rail.classList.remove('is-drawer-open');
+            if (scrim) {
+              scrim.hidden = true;
+              scrim.setAttribute('aria-hidden', 'true');
+            }
+            document.body.classList.remove('lc-notes-drawer-open');
+          }
+        } else {
+          if (drawerMode) {
+            rail.classList.remove('is-drawer-open');
+          } else {
+            document.body.classList.add('lc-notes-collapsed');
+          }
+          if (scrim) {
+            scrim.hidden = true;
+            scrim.setAttribute('aria-hidden', 'true');
+          }
+          document.body.classList.remove('lc-notes-drawer-open');
+        }
+      }
+
+      (function bindTeacherNotesChrome() {
+        const collapseBtn = document.getElementById('teacher-notes-collapse');
+        const notesToggle = document.getElementById('lc-notes-toggle');
+        const scrim = document.getElementById('lc-notes-scrim');
+        if (collapseBtn) {
+          collapseBtn.addEventListener('click', () => setTeacherNotesOpen(false));
+        }
+        if (scrim) {
+          scrim.addEventListener('click', () => setTeacherNotesOpen(false));
+        }
+        if (notesToggle) {
+          notesToggle.addEventListener('click', () => {
+            const rail = document.getElementById('teacher-notes-rail');
+            const drawerMode =
+              window.matchMedia && window.matchMedia('(max-width: 1100px)').matches;
+            let opening = true;
+            if (drawerMode) {
+              opening = !(rail && rail.classList.contains('is-drawer-open'));
+            } else {
+              opening = document.body.classList.contains('lc-notes-collapsed') || !(rail && rail.classList.contains('is-visible'));
+            }
+            setTeacherNotesOpen(opening);
+          });
+        }
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape' && document.body.classList.contains('lc-notes-drawer-open')) {
+            setTeacherNotesOpen(false);
+          }
+        });
+      })();
+
       async function loadTeacherNotesForClassroom(lessonId) {
         const rail = document.getElementById('teacher-notes-rail');
         const body = document.getElementById('teacher-notes-body');
         if (userType !== 'teacher') {
           if (rail) rail.classList.remove('is-visible');
+          syncTeacherNotesChrome(false);
           return;
         }
-        if (!rail || !body || !lessonId) return;
+        if (!rail || !body || !lessonId) {
+          if (userType === 'teacher' && rail && body && !lessonId) {
+            rail.classList.add('is-visible');
+            syncTeacherNotesChrome(true);
+            if (!String(body.textContent || '').trim()) {
+              body.textContent =
+                'No lesson linked yet. Notes appear when this booking has a lesson in the library.';
+            }
+          }
+          return;
+        }
         rail.classList.add('is-visible');
+        syncTeacherNotesChrome(true);
+        document.body.classList.remove('lc-notes-collapsed');
         body.textContent = 'Loading…';
         try {
           const token = localStorage.getItem('token');
@@ -5966,14 +6463,10 @@
 
           let studentLevel = '-';
           if (booking && booking.studentLevel) {
-            const level = booking.studentLevel.toLowerCase();
-            if (level.includes('little seeds') || level === 'nursery') studentLevel = 'Little Seeds (Age 3)';
-            else if (level.includes('sprouts') || level === 'kinder' || level === 'kindergarten') studentLevel = 'Sprouts (Age 4)';
-            else if (level.includes('saplings') || level === 'preparatory' || level === 'prep' || level === 'primary') studentLevel = 'Saplings (Age 5)';
-            else if (level.includes('young stewards') || level.includes('steward')) studentLevel = 'Young Stewards (Age 6)';
-            else studentLevel = booking.studentLevel;
+            studentLevel = formatClassroomLevelLabel(booking.studentLevel) || booking.studentLevel;
           }
           setText('ci-student-level', studentLevel);
+          if (booking) applySessionIdentityFromBooking(booking);
         } catch (error) {
           console.error('Error fetching class info:', error);
           setText('ci-class-time', getQueryParam('slot') || (classTimeElement ? classTimeElement.textContent : '--:--'));
@@ -6025,9 +6518,11 @@
           updateTeacherAbsentButtonEligibility();
         }
         if (leaveBtn) leaveBtn.style.display = 'none';
+        syncTeacherNotesChrome(true);
       } else {
         const notesRail = document.getElementById('teacher-notes-rail');
         if (notesRail) notesRail.classList.remove('is-visible');
+        syncTeacherNotesChrome(false);
         if (finishBtn) finishBtn.style.display = 'none';
         if (absentBtn) absentBtn.style.display = 'none';
         if (leaveBtn) {

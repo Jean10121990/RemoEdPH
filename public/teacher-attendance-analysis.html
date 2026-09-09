@@ -8,20 +8,20 @@
     <script src="js/security-guard.js?v=1"></script>
     <title>Attendance Analysis - RemoEdPH</title>
     <link rel="stylesheet" href="modern-styles.css">
-    <link rel="stylesheet" href="css/teacher-sidebar.css">
+    <link rel="stylesheet" href="css/teacher-sidebar.css?v=rail-align-1">
     <link rel="stylesheet" href="css/global-portal.css">
 <!-- Remo AI Chatbot Styles -->
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="css/portal-chrome-compact.css">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css?v=rail-align-1">
     <script src="js/user-session.js"></script>
 </head>
-<body class="page-teacher-attendance-analysis">
+<body class="page-teacher-attendance-analysis teacher-portal">
     <div class="remoed-main">
-        <div id="sidebar"></div>
-        <script src="js/teacher-sidebar.js"></script>
-        <script src="js/teacher-page-header.js"></script>
+        <div id="teacher-sidebar-root"></div>
+        <script src="js/teacher-sidebar.js?v=teacher-slide-1"></script>
+        <script src="js/teacher-page-header.js?v=teacher-green-1"></script>
         <script>
-            TeacherSidebar.render('sidebar', 'performance-indicator');
+            TeacherSidebar.render('teacher-sidebar-root', 'performance-indicator');
             TeacherPageHeader.render('attendance-analysis');
         </script>
         <div class="remoed-content">
@@ -43,7 +43,7 @@
                 
                 <!-- Metrics Section -->
                 <div class="metrics-section">
-                    <h2 style="margin-top: 0; color: #667eea;">Performance Metrics</h2>
+                    <h2 style="margin-top: 0; color: #00a82d;">Performance Metrics</h2>
                     <div class="metrics-grid" id="metrics-grid"></div>
                 </div>
                 

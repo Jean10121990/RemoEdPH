@@ -9,6 +9,64 @@
 
     var SVG_STROKE = 'stroke-width="2"'; // consistent 2px line weight
     var LS_KEY = 'remoed_teacher_sidebar_collapsed';
+    var BRAND_CSS_ID = 'teacher-brand-overrides';
+    var PURPLE_HEX = /#667eea|#764ba2|#5a67d8|#6366f1|#4f46e5|#818cf8|#4c51bf|#8b5cf6|#7c3aed|#a78bfa|#9333ea|#6b46c1|#4c1d95|#312e81/gi;
+    var PURPLE_TO_GREEN = {
+        '667eea': '00a82d',
+        '764ba2': '008a24',
+        '5a67d8': '00a82d',
+        '6366f1': '00a82d',
+        '4f46e5': '008a24',
+        '818cf8': '34c759',
+        '4c51bf': '008a24',
+        '8b5cf6': '00a82d',
+        '7c3aed': '008a24',
+        'a78bfa': '34c759',
+        '9333ea': '00a82d',
+        '6b46c1': '008a24',
+        '4c1d95': '008a24',
+        '312e81': '007a20'
+    };
+
+    function ensureBrandOverridesCss() {
+        try {
+            document.body.classList.add('teacher-portal');
+            if (document.getElementById(BRAND_CSS_ID)) return;
+            var link = document.createElement('link');
+            link.id = BRAND_CSS_ID;
+            link.rel = 'stylesheet';
+            link.href = 'css/teacher-brand-overrides.css?v=teacher-green-2';
+            document.head.appendChild(link);
+        } catch (_e) {}
+    }
+
+    function scrubPurpleInlineStyles(root) {
+        try {
+            var scope = root && root.querySelectorAll ? root : document;
+            var nodes = scope.querySelectorAll
+                ? scope.querySelectorAll('[style]')
+                : [];
+            Array.prototype.forEach.call(nodes, function (el) {
+                var s = el.getAttribute('style');
+                if (!s || !PURPLE_HEX.test(s)) {
+                    PURPLE_HEX.lastIndex = 0;
+                    return;
+                }
+                PURPLE_HEX.lastIndex = 0;
+                var next = s.replace(PURPLE_HEX, function (m) {
+                    var key = String(m).replace('#', '').toLowerCase();
+                    return '#' + (PURPLE_TO_GREEN[key] || '00a82d');
+                });
+                if (next !== s) el.setAttribute('style', next);
+            });
+        } catch (_e) {}
+    }
+
+    function schedulePurpleScrub() {
+        scrubPurpleInlineStyles(document);
+        setTimeout(function () { scrubPurpleInlineStyles(document); }, 400);
+        setTimeout(function () { scrubPurpleInlineStyles(document); }, 1500);
+    }
 
     function svgBars() {
         return (
@@ -32,7 +90,7 @@
         { id: 'professional-development', label: 'Career Growth', href: 'teacher-professional-development.html?v=6', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>' },
         { id: 'messages', label: 'Messages', href: 'teacher-messages.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>' },
         { id: 'profile', label: 'Profile', href: 'teacher-profile.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>' },
-        { id: 'logout', label: 'Logout', href: null, icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7"/><path d="M3 12a9 9 0 0118 0 9 9 0 01-18 0z"/></svg>', isLogout: true }
+        { id: 'logout', label: 'Log out', href: null, icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7"/><path d="M3 12a9 9 0 0118 0 9 9 0 01-18 0z"/></svg>', isLogout: true }
     ];
 
     function getActiveFromPath() {
@@ -47,6 +105,12 @@
         if (path.indexOf('teacher-referrals') !== -1) return 'referral-rewards';
         if (path.indexOf('teacher-performance-indicator') !== -1) return 'performance-indicator';
         if (path.indexOf('teacher-professional-development') !== -1) return 'professional-development';
+        if (path.indexOf('teacher-peer-learning') !== -1) return 'professional-development';
+        if (path.indexOf('teacher-view-profile') !== -1) return 'professional-development';
+        if (path.indexOf('teacher-training-course') !== -1) return 'professional-development';
+        if (path.indexOf('teacher-assessment') !== -1) return 'professional-development';
+        if (path.indexOf('teacher-attendance') !== -1) return 'performance-indicator';
+        if (path.indexOf('teacher-payslip') !== -1) return 'teaching-fee';
         if (path.indexOf('teacher-messages') !== -1) return 'messages';
         if (path.indexOf('teacher-profile') !== -1) return 'profile';
         return null;
@@ -70,12 +134,27 @@
         if (!nav) return;
         nav.classList.toggle('sidebar-collapsed', !!collapsed);
         document.body.classList.toggle('teacher-sidebar-collapsed', !!collapsed);
+        var toggleBtn = nav.querySelector('.sidebar-collapse-toggle');
+        if (toggleBtn) {
+            toggleBtn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+            toggleBtn.title = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
+            toggleBtn.setAttribute('aria-label', toggleBtn.title);
+        }
     }
 
     function render(containerIdOrElement, activePageId) {
+        ensureBrandOverridesCss();
+        schedulePurpleScrub();
+        try {
+            document.body.classList.add('teacher-portal');
+        } catch (_e) {}
+
         var container = typeof containerIdOrElement === 'string'
             ? document.getElementById(containerIdOrElement)
             : containerIdOrElement;
+        if (!container && typeof containerIdOrElement === 'string') {
+            container = document.getElementById('teacher-sidebar-root') || document.getElementById('sidebar');
+        }
         if (!container) return;
 
         // Hard cleanup: remove any legacy floating toggles/overlays injected by older scripts or cached JS.

@@ -14,7 +14,7 @@
 <body class="page-device-check">
     <div class="remoed-main">
         <div id="teacher-sidebar-root"></div>
-        <script src="js/teacher-sidebar.js"></script>
+        <script src="js/teacher-sidebar.js?v=teacher-green-2"></script>
         <script>TeacherSidebar.render('teacher-sidebar-root', 'device-check');</script>
     <div class="remoed-content">
         <div class="device-check-card">
@@ -422,7 +422,7 @@
             
             if (!teacherId || !token) {
                 alert('Please log in as a teacher to access the classroom.');
-                window.location.href = 'teacher-login.html';
+                window.location.href = '/login/';
                 return;
             }
             

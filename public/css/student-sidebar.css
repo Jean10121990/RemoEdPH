@@ -1,8 +1,21 @@
 /**
- * Student portal sidebar — light overrides on top of teacher-sidebar.css.
- * Keep rail/content spacing in student-portal-layout.css; match teacher chrome here.
+ * Student portal sidebar — RemoEdPH brand blue rail (not white).
+ * Loaded after teacher-sidebar.css; student-portal-layout.css owns spacing.
  */
 
+body.student-portal nav.remoed-sidebar.student-sidebar,
+body.student-portal nav.remoed-sidebar {
+  background: linear-gradient(
+    180deg,
+    #008fc4 0%,
+    #00aeef 42%,
+    #007db0 100%
+  ) !important;
+  box-shadow: 4px 0 24px rgba(0, 100, 140, 0.28);
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+/* Header: logo + brand left, collapse toggle flush right */
 body.student-portal .remoed-sidebar .sidebar-header {
   display: block;
   width: 100%;
@@ -10,30 +23,51 @@ body.student-portal .remoed-sidebar .sidebar-header {
   height: auto;
   min-height: 0;
   overflow: visible;
-  background-color: #ffffff;
-  padding: 10px 15px;
-  border-bottom: 2px solid #e8f4fd;
+  background: transparent !important;
+  padding: 14px 12px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 body.student-portal .remoed-sidebar .sidebar-header-inner {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas: "logo brand toggle";
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  column-gap: 10px;
+  row-gap: 0;
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
   min-width: 0;
   margin: 0;
-  padding: 10px 15px;
+  padding: 0;
   text-align: left;
   position: relative;
   z-index: 10;
 }
 
+body.student-portal .remoed-sidebar .sidebar-logo-img {
+  grid-area: logo;
+  width: 44px !important;
+  height: 44px !important;
+  min-width: 44px !important;
+  min-height: 44px !important;
+  max-width: 44px !important;
+  max-height: 44px !important;
+  display: block;
+  margin: 0;
+  flex-shrink: 0;
+  object-fit: contain !important;
+  object-position: center;
+  background: #ffffff;
+  border-radius: 10px !important;
+  padding: 4px;
+  box-sizing: border-box;
+  align-self: center;
+}
+
 body.student-portal .remoed-sidebar .sidebar-brand {
+  grid-area: brand;
   flex: 1 1 auto;
   min-width: 0;
   box-sizing: border-box;
@@ -41,40 +75,64 @@ body.student-portal .remoed-sidebar .sidebar-brand {
   margin: 0;
 }
 
-body.student-portal .remoed-sidebar .sidebar-brand .sidebar-title {
+body.student-portal .remoed-sidebar .sidebar-brand .sidebar-title,
+body.student-portal .remoed-sidebar .sidebar-title {
   display: block;
-  font-weight: 700;
-  color: var(--remoed-brand-blue, #5a67d8);
-  font-size: 1.1rem;
+  font-weight: 800;
+  color: #ffffff !important;
+  font-size: 1.05rem;
   line-height: 1.2;
   margin: 0;
   text-align: left;
+  text-shadow: none !important;
 }
 
-body.student-portal .remoed-sidebar .sidebar-brand .sidebar-subtitle {
+body.student-portal .remoed-sidebar .sidebar-brand .sidebar-subtitle,
+body.student-portal .remoed-sidebar .sidebar-subtitle {
   display: block;
-  font-size: 0.75rem;
-  color: var(--remoed-sidebar-subtitle, #5c6370);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85) !important;
   line-height: 1.25;
-  margin: 0;
+  margin: 2px 0 0;
   text-align: left;
+  text-shadow: none !important;
 }
 
-body.student-portal .remoed-sidebar .sidebar-logo-img {
-  width: 48px;
-  height: 48px;
-  display: block;
-  margin: 0;
+body.student-portal .remoed-sidebar .sidebar-collapse-toggle {
+  grid-area: toggle;
   flex-shrink: 0;
-  object-fit: contain;
-  object-position: center center;
-  max-width: 80%;
+  width: 36px;
+  height: 36px;
+  margin: 0;
+  border-radius: 10px;
+  border: 2px solid #fdd835 !important;
+  background: rgba(255, 255, 255, 0.14) !important;
+  color: #ffffff !important;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: none;
+  align-self: center;
+  justify-self: end;
 }
 
+body.student-portal .remoed-sidebar .sidebar-collapse-toggle:hover,
+body.student-portal .remoed-sidebar .sidebar-collapse-toggle:focus-visible {
+  background: #fdd835 !important;
+  color: #1a3a4a !important;
+  border-color: #fdd835 !important;
+  outline: none;
+}
+
+/* User strip */
 body.student-portal .remoed-sidebar .sidebar-user {
   text-align: left;
   box-sizing: border-box;
-  padding: 16px;
+  padding: 14px 14px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(0, 0, 0, 0.08);
 }
 
 body.student-portal .remoed-sidebar .sidebar-user-inner {
@@ -90,6 +148,85 @@ body.student-portal .remoed-sidebar .sidebar-user-inner {
 body.student-portal .remoed-sidebar .remoed-username {
   text-align: left;
   margin-left: 0;
+  color: #ffffff !important;
+  font-weight: 700;
+  text-shadow: none !important;
+}
+
+body.student-portal .remoed-sidebar #remoed-avatar {
+  background: #ffffff !important;
+  color: #008fc4 !important;
+  border: 2px solid #fdd835;
+  box-shadow: none;
+}
+
+body.student-portal .remoed-sidebar #avatar-text {
+  color: #008fc4 !important;
+  font-weight: 800;
+}
+
+/* Menu */
+body.student-portal .remoed-sidebar .remoed-menu {
+  padding: 10px 8px 16px;
+}
+
+body.student-portal .remoed-sidebar .remoed-menu li {
+  color: rgba(255, 255, 255, 0.92) !important;
+  border-left: 3px solid transparent;
+  border-radius: 10px;
+  margin: 2px 0;
+}
+
+body.student-portal .remoed-sidebar .remoed-menu li svg {
+  color: rgba(255, 255, 255, 0.92) !important;
+  stroke: currentColor;
+}
+
+body.student-portal .remoed-sidebar .remoed-menu li:not(#logout-nav):not(.active):hover {
+  background: rgba(255, 255, 255, 0.14) !important;
+  color: #ffffff !important;
+  border-left-color: #fdd835;
+}
+
+body.student-portal .remoed-sidebar .remoed-menu li.active {
+  background: rgba(255, 255, 255, 0.22) !important;
+  color: #ffffff !important;
+  border-left: 3px solid #fdd835 !important;
+  box-shadow: none;
+  font-weight: 800;
+}
+
+body.student-portal .remoed-sidebar .remoed-menu li.active svg {
+  color: #fdd835 !important;
+}
+
+body.student-portal .remoed-sidebar .remoed-menu .menu-label,
+body.student-portal .remoed-sidebar .remoed-menu .remoed-menu-label {
+  color: inherit !important;
+  text-shadow: none !important;
+}
+
+body.student-portal .remoed-sidebar .remoed-menu li#logout-nav {
+  color: #ffe4e4 !important;
+  margin-top: auto;
+}
+
+body.student-portal .remoed-sidebar .remoed-menu li#logout-nav svg {
+  color: #ffb4b4 !important;
+}
+
+body.student-portal .remoed-sidebar .remoed-menu li#logout-nav:hover {
+  background: rgba(220, 38, 38, 0.28) !important;
+  color: #ffffff !important;
+  border-left-color: #fecaca;
+}
+
+/* Kill white heading glow from child-friendly-styles on sidebar */
+body.student-portal .remoed-sidebar h1,
+body.student-portal .remoed-sidebar h2,
+body.student-portal .remoed-sidebar h3,
+body.student-portal .remoed-sidebar .sidebar-title {
+  text-shadow: none !important;
 }
 
 @media (max-width: 768px) {
@@ -99,36 +236,16 @@ body.student-portal .remoed-sidebar .remoed-username {
   }
 
   body.student-portal .remoed-sidebar .sidebar-header {
-    /* Preserve space under mobile safe-area / chrome without the old 50px bloat */
-    padding: max(10px, env(safe-area-inset-top, 0px)) 15px 10px;
-  }
-
-  body.student-portal .remoed-sidebar .sidebar-header-inner {
-    padding: 10px 12px;
-  }
-
-  body.student-portal .remoed-sidebar .sidebar-logo-img {
-    width: 48px;
-    height: 48px;
+    padding: max(12px, env(safe-area-inset-top, 0px)) 12px 10px;
   }
 }
 
-@media (min-width: 769px) and (max-width: 1024px) {
-  body.student-portal .remoed-sidebar .sidebar-header-inner {
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  body.student-portal .remoed-sidebar .sidebar-user {
-    padding: 16px;
-  }
-
-  body.student-portal .remoed-sidebar .sidebar-user-inner {
-    justify-content: flex-start !important;
-  }
+/* ---- Collapsed mini-rail — single centered column (matches teacher) ---- */
+body.student-portal .remoed-sidebar.sidebar-collapsed {
+  align-items: center !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
 }
-
-/* ---- Collapsed mini-rail (match Teacher SoT; beat expanded student selectors) ---- */
 
 body.student-portal .remoed-sidebar.sidebar-collapsed .sidebar-brand,
 body.student-portal .remoed-sidebar.sidebar-collapsed .sidebar-subtitle,
@@ -136,38 +253,94 @@ body.student-portal .remoed-sidebar.sidebar-collapsed .remoed-username {
   display: none !important;
 }
 
+body.student-portal .remoed-sidebar.sidebar-collapsed .sidebar-header,
+body.student-portal .remoed-sidebar.sidebar-collapsed .sidebar-user {
+  width: 100%;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-sizing: border-box;
+}
+
 body.student-portal .remoed-sidebar.sidebar-collapsed .sidebar-header {
-  padding: 8px 0;
+  padding-top: 12px !important;
+  padding-bottom: 10px !important;
 }
 
 body.student-portal .remoed-sidebar.sidebar-collapsed .sidebar-header-inner {
+  display: flex !important;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: 8px;
-  padding: 10px 8px;
+  gap: 10px;
+  padding: 0 !important;
+  margin: 0 auto;
+  width: 100%;
   text-align: center;
+  box-sizing: border-box;
+}
+
+body.student-portal .remoed-sidebar.sidebar-collapsed .sidebar-collapse-toggle {
+  justify-self: center;
+  order: -1;
+  margin: 0 auto;
+  width: 36px;
+  height: 36px;
 }
 
 body.student-portal .remoed-sidebar.sidebar-collapsed .sidebar-logo-img {
-  width: 38px;
-  height: 38px;
-  max-width: none;
+  width: 40px !important;
+  height: 40px !important;
+  min-width: 40px !important;
+  min-height: 40px !important;
+  max-width: 40px !important;
+  max-height: 40px !important;
   margin: 0 auto;
+  order: 0;
+  padding: 4px;
+  border-radius: 10px !important;
+  object-fit: contain !important;
+  box-sizing: border-box;
+  flex-shrink: 0;
 }
 
 body.student-portal .remoed-sidebar.sidebar-collapsed .sidebar-user {
-  padding: 8px !important;
+  padding-top: 10px !important;
+  padding-bottom: 10px !important;
   text-align: center;
 }
 
 body.student-portal .remoed-sidebar.sidebar-collapsed .sidebar-user-inner {
   justify-content: center !important;
   gap: 0;
+  width: 100%;
+  margin: 0;
+  padding: 0;
 }
 
 body.student-portal .remoed-sidebar.sidebar-collapsed #remoed-avatar {
-  margin: 0 auto;
+  margin: 0 auto !important;
+  width: 40px !important;
+  height: 40px !important;
+}
+
+body.student-portal .remoed-sidebar.sidebar-collapsed .remoed-menu {
+  width: 100%;
+  align-items: center;
+  padding: 8px 0 16px !important;
+  margin: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+body.student-portal .remoed-sidebar.sidebar-collapsed .remoed-menu::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
 }
 
 body.student-portal nav.remoed-sidebar.sidebar-collapsed .remoed-menu .menu-label,
@@ -176,20 +349,41 @@ body.student-portal nav.remoed-sidebar.sidebar-collapsed .remoed-menu .remoed-me
 }
 
 body.student-portal nav.remoed-sidebar.sidebar-collapsed .remoed-menu li {
-  justify-content: center;
-  padding: 12px 8px !important;
-  gap: 0;
-  border-left-width: 0 !important;
+  width: 40px !important;
+  min-width: 40px !important;
+  max-width: 40px !important;
+  height: 40px !important;
+  margin: 2px auto !important;
+  padding: 0 !important;
+  gap: 0 !important;
+  justify-content: center !important;
+  align-items: center !important;
+  border-left: none !important;
+  border-radius: 10px !important;
+  box-sizing: border-box;
+  transform: none !important;
   white-space: nowrap;
-  overflow: hidden;
+  overflow: visible;
+}
+
+body.student-portal nav.remoed-sidebar.sidebar-collapsed .remoed-menu li svg {
+  margin: 0 !important;
+  display: block;
 }
 
 body.student-portal nav.remoed-sidebar.sidebar-collapsed .remoed-menu li:not(#logout-nav):not(.active):hover {
-  border-radius: 8px;
-  border-left-width: 0 !important;
+  border-radius: 10px !important;
+  border-left: none !important;
+  transform: none !important;
 }
 
 body.student-portal nav.remoed-sidebar.sidebar-collapsed .remoed-menu li.active {
-  border-left-width: 0 !important;
-  border-radius: 8px;
+  border-left: none !important;
+  border-radius: 10px !important;
+  outline: 2px solid #fdd835;
+  outline-offset: 0;
+  width: 40px !important;
+  max-width: 40px !important;
+  height: 40px !important;
+  transform: none !important;
 }

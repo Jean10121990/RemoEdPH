@@ -9,83 +9,85 @@
     <title>Reschedule Class - RemoEdPH</title>
     <link rel="stylesheet" href="modern-styles.css">
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/student-portal-layout.css?v=slide-match-1">
     <script src="js/user-session.js"></script>
 </head>
 <body class="page-student-reschedule">
     <div class="container">
         <div class="header">
-            <h1>🔄 Reschedule Class</h1>
-            <p>Due to teacher technical issues, you can reschedule your class</p>
+            <img class="reschedule-logo" src="images/remoed-logo-new.png" alt="RemoEdPH" onerror="this.src='images/remoed-logo.png'">
+            <h1>Reschedule Class</h1>
+            <p>Due to teacher technical issues, you can pick a new time for this class.</p>
         </div>
         
         <div class="content">
             <div id="notification-container"></div>
             
             <div class="issue-info">
-                <h3>📋 Issue Details</h3>
+                <h3>Issue Details</h3>
                 <div class="issue-details">
                     <div class="issue-detail">
-                        <label>Booking ID:</label>
+                        <label>Booking ID</label>
                         <span id="booking-id">Loading...</span>
                     </div>
                     <div class="issue-detail">
-                        <label>Original Date:</label>
+                        <label>Original Date</label>
                         <span id="original-date">Loading...</span>
                     </div>
                     <div class="issue-detail">
-                        <label>Original Time:</label>
+                        <label>Original Time</label>
                         <span id="original-time">Loading...</span>
                     </div>
                     <div class="issue-detail">
-                        <label>Teacher:</label>
+                        <label>Teacher</label>
                         <span id="teacher-name">Loading...</span>
                     </div>
                     <div class="issue-detail">
-                        <label>Issue Type:</label>
+                        <label>Issue Type</label>
                         <span id="issue-type">Loading...</span>
                     </div>
                     <div class="issue-detail">
-                        <label>Admin Review:</label>
+                        <label>Admin Review</label>
                         <span id="admin-review">Loading...</span>
                     </div>
                 </div>
             </div>
             
             <div class="deadline-warning">
-                <h4>⏰ Reschedule Deadline</h4>
+                <h4>Reschedule Deadline</h4>
                 <p>You have <span id="countdown" class="countdown">--:--</span> remaining to reschedule your class.</p>
                 <p>After this deadline, you will not be able to reschedule and the class will be marked as completed.</p>
             </div>
             
             <div class="reschedule-form">
-                <h3>📅 Select New Date & Time</h3>
+                <h3>Select New Date &amp; Time</h3>
                 
                 <div class="form-group">
-                    <label for="new-date">New Date:</label>
+                    <label for="new-date">New Date</label>
                     <input type="date" id="new-date" required>
                 </div>
                 
                 <div class="form-group">
-                    <label>Available Time Slots:</label>
+                    <label>Available Time Slots</label>
                     <div class="time-slots" id="time-slots">
                         <!-- Time slots will be populated here -->
                     </div>
                 </div>
                 
                 <div class="form-group">
-                    <label for="reschedule-reason">Reason for Reschedule (Optional):</label>
+                    <label for="reschedule-reason">Reason for Reschedule (Optional)</label>
                     <input type="text" id="reschedule-reason" placeholder="Brief reason for rescheduling...">
                 </div>
                 
                 <div class="actions">
-                    <button class="btn btn-primary" id="reschedule-btn" onclick="rescheduleClass()">
-                        🔄 Reschedule Class
+                    <button class="btn btn-primary" id="reschedule-btn" type="button" onclick="rescheduleClass()">
+                        Reschedule Class
                     </button>
-                    <button class="btn btn-secondary" onclick="window.location.href='student-dashboard.html'">
-                        📊 Back to Dashboard
+                    <button class="btn btn-secondary" type="button" onclick="window.location.href='student-dashboard.html'">
+                        Back to Dashboard
                     </button>
-                    <button class="btn btn-danger" onclick="declineReschedule()">
-                        ❌ Decline Reschedule
+                    <button class="btn btn-danger" type="button" onclick="declineReschedule()">
+                        Decline Reschedule
                     </button>
                 </div>
             </div>
@@ -105,7 +107,7 @@
         function checkAuth() {
             const token = localStorage.getItem('studentToken');
             if (!token) {
-                window.location.href = 'student-login.html';
+                window.location.href = '/login/';
                 return;
             }
         }

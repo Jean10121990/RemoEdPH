@@ -6,19 +6,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="js/security-guard.js?v=1"></script>
-    <title>📜 My Classes - RemoEdPH</title>
+    <title>My Classes - RemoEdPH</title>
     <link rel="stylesheet" href="modern-styles.css">
 <link rel="stylesheet" href="css/teacher-sidebar.css">
     <link rel="stylesheet" href="css/portal-chrome-compact.css">
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="css/student-portal-layout.css">
-    <link rel="stylesheet" href="css/student-sidebar.css">
+    <link rel="stylesheet" href="css/student-portal-layout.css?v=slide-match-1">
+    <link rel="stylesheet" href="css/student-sidebar.css?v=slide-match-1">
     <script src="js/user-session.js"></script>
 </head>
 <body  class="student-portal page-student-booking-history">
     <div class="remoed-main">
         <div id="student-sidebar-root"></div>
-        <script src="js/student-sidebar.js"></script>
+        <script src="js/student-sidebar.js?v=slide-match-1"></script>
         <script src="js/student-page-header.js"></script>
         <script>
             StudentSidebar.render('student-sidebar-root', 'classes');
@@ -153,7 +153,7 @@
              
              document.getElementById('logout-nav').onclick = function() {
                  try { localStorage.clear(); } catch (_e) {}
-                 window.location.href = 'student-login.html';
+                 window.location.href = '/login/';
              };
              
              loadBookingHistory();

@@ -11,27 +11,23 @@
     <meta http-equiv="Expires" content="0">
     <title>Open/Close Class Slots - RemoEdPH</title>
     <link rel="stylesheet" href="modern-styles.css?v=4">
-    <link rel="stylesheet" href="css/teacher-sidebar.css">
+    <link rel="stylesheet" href="css/teacher-sidebar.css?v=rail-align-1">
     <link rel="stylesheet" href="css/global-portal.css">
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="css/portal-chrome-compact.css">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css?v=rail-align-1">
     <script src="js/user-session.js?v=1.1"></script>
     <script src="js/teacher-slots.js?v=1.3"></script>
 </head>
-<body class="page-teacher-open-class">
+<body class="page-teacher-open-class teacher-portal">
   <div class="remoed-main">
     <div id="teacher-sidebar-root"></div>
-    <script src="js/teacher-sidebar.js?v=1.1"></script>
-    <script src="js/teacher-page-header.js"></script>
+    <script src="js/teacher-sidebar.js?v=teacher-slide-1"></script>
+    <script src="js/teacher-page-header.js?v=teacher-green-1"></script>
         <script>
             TeacherSidebar.render('teacher-sidebar-root', 'class-configuration');
             TeacherPageHeader.render('class-configuration');
         </script>
   <div class="remoed-content">
-    <div class="header">
-      
-    </div>
-
     <div class="header-info">
       <div class="info-item">
         <span class="quota" id="available-slots-count">Calculating available slots...</span>
@@ -233,7 +229,7 @@
     // Logout functionality
     document.getElementById('logout-nav').onclick = function() {
       localStorage.clear();
-      window.location.href = 'teacher-login.html';
+      window.location.href = '/login/';
     };
 
     let selectedSlots = new Set();
@@ -1551,7 +1547,7 @@
       // Check if teacher is logged in
       if (!teacherId) {
         alert('Please log in as a teacher to access this page.');
-        window.location.href = 'teacher-login.html';
+        window.location.href = '/login/';
         return;
       }
       

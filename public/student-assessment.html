@@ -6,13 +6,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="js/security-guard.js?v=2"></script>
-    <title>🎯 My Level Assessment - RemoEdPH</title>
+    <title>My Level Assessment - RemoEdPH</title>
     <link rel="stylesheet" href="modern-styles.css">
 <link rel="stylesheet" href="css/teacher-sidebar.css">
     <link rel="stylesheet" href="css/portal-chrome-compact.css">
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="css/student-portal-layout.css">
-    <link rel="stylesheet" href="css/student-sidebar.css">
+    <link rel="stylesheet" href="css/student-portal-layout.css?v=slide-match-1">
+    <link rel="stylesheet" href="css/student-sidebar.css?v=slide-match-1">
     <script src="js/user-session.js"></script>
     <style>
       .post-assessment-modal {
@@ -24,7 +24,7 @@
         justify-content: center;
         padding: 20px;
         box-sizing: border-box;
-        background: rgba(90, 103, 216, 0.35);
+        background: rgba(0, 143, 196, 0.35);
         backdrop-filter: blur(6px);
       }
       .post-assessment-modal.is-open { display: flex; }
@@ -34,8 +34,8 @@
         background: #fff;
         border-radius: 24px;
         padding: 28px 26px 24px;
-        box-shadow: 0 28px 60px rgba(90, 103, 216, 0.18);
-        border: 1px solid rgba(90, 103, 216, 0.2);
+        box-shadow: 0 28px 60px rgba(0, 143, 196, 0.18);
+        border: 1px solid rgba(0, 143, 196, 0.2);
         text-align: center;
         color: #334155;
       }
@@ -82,13 +82,13 @@
       .pam-btn-primary {
         background: linear-gradient(135deg, var(--remoed-brand-blue), var(--remoed-brand-blue-soft));
         color: #fff;
-        box-shadow: 0 10px 24px rgba(90, 103, 216, 0.35);
+        box-shadow: 0 10px 24px rgba(0, 143, 196, 0.35);
         border: 2px solid rgba(250, 214, 72, 0.85);
       }
       .pam-btn-secondary {
         background: #fff;
         color: var(--remoed-brand-blue);
-        border: 2px solid rgba(90, 103, 216, 0.45);
+        border: 2px solid rgba(0, 143, 196, 0.45);
       }
       .cefr-guides {
         margin: 28px 0 8px;
@@ -110,7 +110,7 @@
         margin-bottom: 14px;
       }
       .cefr-guide-tab {
-        border: 2px solid rgba(90, 103, 216, 0.25);
+        border: 2px solid rgba(0, 143, 196, 0.25);
         background: #f8fafc;
         color: #334155;
         border-radius: 999px;
@@ -121,15 +121,15 @@
         font-family: inherit;
       }
       .cefr-guide-tab.active {
-        background: linear-gradient(135deg, #5a67d8, #6b8afd);
+        background: linear-gradient(135deg, #008fc4, #6b8afd);
         color: #fff;
         border-color: transparent;
-        box-shadow: 0 6px 16px rgba(90, 103, 216, 0.28);
+        box-shadow: 0 6px 16px rgba(0, 143, 196, 0.28);
       }
       .cefr-guide-panel {
         display: none;
         background: #f8fbff;
-        border: 1px solid rgba(90, 103, 216, 0.15);
+        border: 1px solid rgba(0, 143, 196, 0.15);
         border-radius: 16px;
         padding: 12px;
       }
@@ -194,7 +194,7 @@
 <body  class="student-portal page-student-assessment">
     <div class="remoed-main">
         <div id="student-sidebar-root"></div>
-        <script src="js/student-sidebar.js"></script>
+        <script src="js/student-sidebar.js?v=slide-match-1"></script>
         <script src="js/student-page-header.js"></script>
         <script>
             StudentSidebar.render('student-sidebar-root', 'level');
@@ -607,7 +607,7 @@
             if (logoutNav) {
                 logoutNav.onclick = function() {
                     localStorage.clear();
-                    window.location.href = 'student-login.html';
+                    window.location.href = '/login/';
                 };
             }
         });

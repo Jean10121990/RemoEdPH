@@ -27,7 +27,16 @@ canvas {
 .remoed-sidebar .sidebar-logo-img,
 .remoed-sidebar #profile-image {
   max-width: 100%;
-  height: auto;
+}
+
+/* Keep brand mark square — height:auto + narrow rail stretches it into a tall pill */
+.remoed-sidebar .sidebar-logo-img {
+  width: 40px;
+  height: 40px;
+  max-width: 40px;
+  max-height: 40px;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 
 /* --- Portal shell: full-width content + desktop cap --- */
@@ -346,8 +355,8 @@ canvas {
 
   .remoed-bottom-nav__link.is-active,
   .remoed-bottom-nav__link[aria-current="page"] {
-    color: #5a67d8;
-    background: rgba(90, 103, 216, 0.1);
+    color: #00a82d;
+    background: rgba(0, 168, 45, 0.1);
   }
 
   body:has(nav.admin-sidebar.remoed-sidebar) .remoed-bottom-nav__link.is-active,
@@ -704,9 +713,15 @@ canvas {
   }
 
   .remoed-sidebar .sidebar-logo-img {
-    width: 40px;
-    height: 40px;
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    min-height: 40px !important;
+    max-width: 40px !important;
+    max-height: 40px !important;
     margin: 0 auto;
+    object-fit: contain !important;
+    border-radius: 10px !important;
   }
 
   .remoed-sidebar .sidebar-user {

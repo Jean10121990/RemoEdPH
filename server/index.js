@@ -568,11 +568,19 @@ try {
   fs.readdirSync(publicDir).forEach((name) => {
     // Admin + teacher portal HTML must never be sticky-cached (dev tunnels / Back button
     // otherwise serve stale scripts until a hard refresh).
-    if (/^(admin|teacher)-.*\.html$/i.test(name)) protectedHtmlFiles.add(name);
+    // Skip legacy login stubs — they redirect to unified /login/.
+    if (/^(admin|teacher)-.*\.html$/i.test(name) && !/^(teacher-login|student-login)\.html$/i.test(name)) {
+      protectedHtmlFiles.add(name);
+    }
   });
 } catch (e) {
   /* ignore */
 }
+
+// Prefer 302 redirect over serving stub HTML for legacy login URLs
+protectedHtmlFiles.delete('teacher-login.html');
+protectedHtmlFiles.delete('student-login.html');
+
 protectedHtmlFiles.forEach((htmlName) => {
   app.get(`/${htmlName}`, noStoreProtectedResponse, (req, res) => {
     res.sendFile(path.join(publicDir, htmlName));

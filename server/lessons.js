@@ -22,6 +22,10 @@ const {
   presentationPublicFields,
   PRESENTATIONS_ROOT
 } = require('./utils/presentationUpload');
+const {
+  buildLessonPptxPreviewPdf,
+  publicPreviewUrl
+} = require('./utils/pptxLocalPreview');
 
 function publicHttpsPresentationUrl(relPath) {
   const rel = String(relPath || '').trim();
@@ -1137,7 +1141,8 @@ router.get('/presentation/:fileId/secure-embed', authenticateToken, async (req, 
 });
 
 /**
- * PPTX preview metadata — same as secure-embed (no conversion).
+ * PPTX preview: convert to PDF once and cache beside the file.
+ * Used when Microsoft Office Online cannot fetch private/localhost URLs (live class + library).
  */
 router.get('/presentation/:fileId/local-preview', authenticateToken, async (req, res) => {
   try {
@@ -1151,29 +1156,88 @@ router.get('/presentation/:fileId/local-preview', authenticateToken, async (req,
       return res.status(404).json({ error: 'Presentation not found' });
     }
 
-    const preview = resolveLessonPptxPreview(file);
-    if (preview.error) {
-      return res.status(404).json({ error: preview.error });
+    const pType = file.presentationType || 'file';
+    if (pType === 'html5_zip' && file.html5EntryUrl) {
+      return res.json({
+        success: true,
+        mode: 'html5_zip',
+        previewUrl: file.html5EntryUrl,
+        fileName: file.fileName
+      });
     }
+    if (pType === 'office_embed' && file.embedUrl) {
+      return res.json({
+        success: true,
+        mode: 'office_embed',
+        previewUrl: file.embedUrl,
+        fileName: file.fileName
+      });
+    }
+
+    // Prefer Office Online only when the PPTX is on a public HTTPS host Microsoft can fetch.
+    const officePreview = resolveLessonPptxPreview(file);
+    if (!officePreview.error && officePreview.mode === 'office_online' && officePreview.embedUrl) {
+      return res.json({
+        success: true,
+        mode: 'office_online',
+        previewUrl: officePreview.embedUrl,
+        embedUrl: officePreview.embedUrl,
+        fileName: file.fileName
+      });
+    }
+
+    const result = await buildLessonPptxPreviewPdf(file);
+    const previewUrl = publicPreviewUrl(fileId);
+    const expectedStatic = path.join(PRESENTATIONS_ROOT, String(fileId), 'preview.pdf');
+    if (result.previewPath !== expectedStatic) {
+      try {
+        await fsp.copyFile(result.previewPath, expectedStatic);
+      } catch (_c) {}
+    }
+
     return res.json({
       success: true,
-      mode: preview.mode,
-      previewUrl: preview.embedUrl,
-      embedUrl: preview.embedUrl,
-      fileName: file.fileName
+      mode: 'pdf',
+      previewUrl,
+      previewPdfPath: `/api/lessons/presentation/${encodeURIComponent(fileId)}/preview.pdf`,
+      cached: !!result.cached,
+      method: result.method || null,
+      fileName: (file.fileName || 'presentation').replace(/\.(ppt|pptx)$/i, '.pdf')
     });
   } catch (error) {
     console.error('Presentation local-preview error:', error);
     res.status(500).json({
-      error: error.message || 'Failed to open lesson preview'
+      error: error.message || 'Failed to build lesson preview'
     });
   }
 });
 
-router.get('/presentation/:fileId/preview.pdf', authenticateToken, async (_req, res) => {
-  return res.status(410).json({
-    error: 'PPTX is previewed directly. File conversion has been removed.'
-  });
+/** Same-origin PDF stream for classroom / library (token via Authorization or ?token=). */
+router.get('/presentation/:fileId/preview.pdf', authenticateToken, async (req, res) => {
+  try {
+    const { fileId } = req.params;
+    const lesson = await Lesson.findOne({ 'files._id': fileId }).select('files');
+    if (!lesson) {
+      return res.status(404).json({ error: 'Presentation not found' });
+    }
+    const file = lesson.files.id(fileId);
+    if (!file) {
+      return res.status(404).json({ error: 'Presentation not found' });
+    }
+    const pType = file.presentationType || 'file';
+    if (pType === 'html5_zip' || pType === 'office_embed') {
+      return res.status(409).json({ error: 'This presentation uses an embed package, not a PDF preview.' });
+    }
+    const result = await buildLessonPptxPreviewPdf(file);
+    const pdfName = String(file.fileName || 'preview').replace(/\.(ppt|pptx)$/i, '') + '.pdf';
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${pdfName.replace(/"/g, '')}"`);
+    res.setHeader('Cache-Control', 'private, max-age=300');
+    return res.sendFile(result.previewPath);
+  } catch (error) {
+    console.error('Presentation preview.pdf error:', error);
+    res.status(500).json({ error: error.message || 'Failed to open lesson preview' });
+  }
 });
 
 // Delete lesson file (teacher or admin) - remove from embedded files array

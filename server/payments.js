@@ -228,7 +228,7 @@ router.post('/create-link', optionalVerifyStudent, async (req, res) => {
       passwordHash = await bcrypt.hash(password, 10);
     }
 
-    const safeSuccessUrl = String(success_url || `${req.protocol}://${req.get('host')}/student-login.html`).trim();
+    const safeSuccessUrl = String(success_url || `${req.protocol}://${req.get('host')}/login/`).trim();
     const safeCancelUrl = String(cancel_url || `${req.protocol}://${req.get('host')}/#plans`).trim();
     const lineItemDescription = String(description || planDescription(selectedPlanId)).trim();
 

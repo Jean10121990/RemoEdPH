@@ -7,8 +7,17 @@
 
 /* Fallback when this file is loaded without teacher-sidebar.css (e.g. credits page) */
 :root {
-  --remoed-brand-blue: #5a67d8;
-  --remoed-brand-blue-soft: #818cf8;
+  --remoed-brand-blue: #00aeef;
+  --remoed-brand-blue-soft: #5cc8f5;
+  --remoed-brand-blue-deep: #008fc4;
+  --remoed-brand-green: #00a82d;
+  --remoed-brand-green-deep: #008a24;
+  --remoed-brand-yellow: #fdd835;
+  --remoed-sidebar-active-start: #008fc4;
+  --remoed-sidebar-active-end: #00aeef;
+  --remoed-sidebar-active-border: #00aeef;
+  --remoed-sidebar-inactive-hover-bg: rgba(0, 174, 239, 0.12);
+  --remoed-sidebar-inactive-hover-text: #008fc4;
 }
 
 /* Match teacher portal: Segoe stack, slate page background (replaces child-friendly styles on portal pages). */
@@ -65,28 +74,37 @@ body.student-portal .remoed-sidebar .remoed-menu li#logout-nav {
   }
 }
 
-/* Same rail width as teacher (260px). */
+/* Same rail width + collapse animation as teacher (260 ↔ 72). */
 body.student-portal nav.remoed-sidebar.remoed-sidebar {
-  width: 260px;
-  min-width: 260px;
-  transition: width 0.3s ease, min-width 0.3s ease, max-width 0.3s ease;
+  width: 260px !important;
+  min-width: 260px !important;
+  max-width: 260px !important;
+  transition:
+    width 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+    min-width 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+    max-width 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.28s ease;
+  will-change: width;
 }
 
-/* Beat the expanded 260px lock when mini-collapsed (Teacher SoT: 70px). */
 body.student-portal nav.remoed-sidebar.remoed-sidebar.sidebar-collapsed {
-  width: 70px !important;
-  min-width: 70px !important;
-  max-width: 70px !important;
+  width: 72px !important;
+  min-width: 72px !important;
+  max-width: 72px !important;
 }
 
 body.student-portal .remoed-content {
-  margin-left: 260px;
-  max-width: calc(100vw - 260px);
+  margin-left: 260px !important;
+  max-width: calc(100vw - 260px) !important;
+  box-sizing: border-box;
+  transition:
+    margin-left 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+    max-width 0.28s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 body.student-portal.student-sidebar-collapsed .remoed-content {
-  margin-left: 70px !important;
-  max-width: calc(100vw - 70px) !important;
+  margin-left: 72px !important;
+  max-width: calc(100vw - 72px) !important;
 }
 
 /* Long labels (e.g. My Learning Journey): allow wrap; teacher defaults use single-line ellipsis. */
@@ -114,7 +132,7 @@ body.student-portal nav.remoed-sidebar .remoed-menu li:not(#logout-nav):not(.act
 }
 
 body.student-portal nav.remoed-sidebar .remoed-menu li:not(#logout-nav):not(.active):hover {
-  background: var(--remoed-sidebar-inactive-hover-bg, rgba(90, 103, 216, 0.12));
+  background: var(--remoed-sidebar-inactive-hover-bg, rgba(0, 143, 196, 0.12));
   color: var(--remoed-sidebar-inactive-hover-text, #4c51bf);
   border-radius: 0 8px 8px 0;
 }
@@ -122,10 +140,10 @@ body.student-portal nav.remoed-sidebar .remoed-menu li:not(#logout-nav):not(.act
 body.student-portal nav.remoed-sidebar .remoed-menu li.active {
   background: linear-gradient(
     90deg,
-    var(--remoed-sidebar-active-start, #5a67d8) 0%,
-    var(--remoed-sidebar-active-end, #6d78e8) 100%
+    var(--remoed-sidebar-active-start, #008fc4) 0%,
+    var(--remoed-sidebar-active-end, #00aeef) 100%
   );
-  border-left: 4px solid var(--remoed-sidebar-active-border, #5a67d8);
+  border-left: 4px solid var(--remoed-sidebar-active-border, #00aeef);
   color: #fff;
   border-radius: 0 8px 8px 0;
 }
@@ -176,8 +194,8 @@ body.student-portal nav.remoed-sidebar .remoed-username {
   }
 
   body.student-portal.student-sidebar-collapsed .remoed-content {
-    margin-left: 70px !important;
-    max-width: calc(100vw - 70px) !important;
+    margin-left: 72px !important;
+    max-width: calc(100vw - 72px) !important;
   }
 
   body.student-portal .remoed-sidebar:not(.sidebar-collapsed) .sidebar-header-inner {
@@ -315,7 +333,7 @@ body.page-student-book .grid-header {
 
 body.page-student-book .slot-cell.selected {
   background: var(--remoed-brand-blue) !important;
-  box-shadow: 0 4px 12px rgba(90, 103, 216, 0.4) !important;
+  box-shadow: 0 4px 12px rgba(0, 143, 196, 0.4) !important;
 }
 
 body.page-student-class-table .schedule-table th {
@@ -323,8 +341,8 @@ body.page-student-class-table .schedule-table th {
 }
 
 body.page-student-class-table .weekly-grid {
-  box-shadow: 0 8px 32px rgba(90, 103, 216, 0.12) !important;
-  border: 1px solid rgba(90, 103, 216, 0.12) !important;
+  box-shadow: 0 8px 32px rgba(0, 143, 196, 0.12) !important;
+  border: 1px solid rgba(0, 143, 196, 0.12) !important;
 }
 
 /* --- Dashboard: slimmer top bar + less content padding --- */
@@ -477,14 +495,14 @@ body.student-portal.page-student-watch-videos h1 {
 }
 
 body.student-portal.page-student-watch-videos .card {
-  border-color: rgba(90, 103, 216, 0.18) !important;
-  box-shadow: 0 8px 28px rgba(90, 103, 216, 0.08) !important;
+  border-color: rgba(0, 143, 196, 0.18) !important;
+  box-shadow: 0 8px 28px rgba(0, 143, 196, 0.08) !important;
 }
 
 body.student-portal.page-student-watch-videos .coming {
-  border-color: rgba(90, 103, 216, 0.22) !important;
+  border-color: rgba(0, 143, 196, 0.22) !important;
   color: var(--remoed-brand-blue) !important;
-  background: rgba(90, 103, 216, 0.06) !important;
+  background: rgba(0, 143, 196, 0.06) !important;
 }
 
 /* --- My Lesson Credits (shell page; may load only this file + style.css) --- */
@@ -497,103 +515,372 @@ body.page-student-credits .balance:not(.balance-low) {
 }
 
 body.page-student-credits .btn-link {
-  background: rgba(90, 103, 216, 0.1) !important;
+  background: rgba(0, 143, 196, 0.1) !important;
   color: var(--remoed-brand-blue) !important;
 }
 
 body.page-student-credits .btn-link:hover {
-  background: rgba(90, 103, 216, 0.16) !important;
+  background: rgba(0, 143, 196, 0.16) !important;
 }
 
 body.page-student-credits .stat-pill {
-  background: rgba(90, 103, 216, 0.08) !important;
+  background: rgba(0, 143, 196, 0.08) !important;
   color: var(--remoed-brand-blue) !important;
 }
 
 body.page-student-credits .primary-btn {
   background: linear-gradient(135deg, var(--remoed-brand-blue), var(--remoed-brand-blue-soft)) !important;
-  box-shadow: 0 8px 22px rgba(90, 103, 216, 0.28) !important;
+  box-shadow: 0 8px 22px rgba(0, 143, 196, 0.28) !important;
 }
 
-/* --- Student Profile --- */
+/* --- Student Profile redesign --- */
+body.student-portal.page-student-profile {
+  background:
+    radial-gradient(ellipse 80% 50% at 10% -10%, rgba(0, 174, 239, 0.14), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 100% 0%, rgba(0, 168, 45, 0.08), transparent 50%),
+    #f5f9fc !important;
+}
+
+body.student-portal.page-student-profile .remoed-content {
+  background: transparent !important;
+  padding: 20px 24px 40px !important;
+}
+
 body.student-portal.page-student-profile .profile-name-large {
-  color: #111827 !important;
-  font-size: 18px !important;
-  font-weight: 600 !important;
+  color: #1a3a4a !important;
+  font-size: 1.65rem !important;
+  font-weight: 800 !important;
   text-shadow: none !important;
+  letter-spacing: -0.02em;
+  margin: 0 0 4px !important;
 }
 
 body.student-portal.page-student-profile .profile-email-large {
-  color: #4b5563 !important;
-  font-size: 13px !important;
+  color: #4a6575 !important;
+  font-size: 0.95rem !important;
   font-weight: 500 !important;
   opacity: 1;
+  margin: 0 0 12px !important;
 }
 
 body.student-portal.page-student-profile .profile-header {
-  padding: 16px 20px !important;
-  gap: 16px !important;
+  padding: 22px 24px !important;
+  gap: 20px !important;
+  background: #ffffff !important;
+  border: 1px solid rgba(0, 174, 239, 0.16) !important;
+  border-radius: 18px !important;
+  box-shadow: 0 10px 28px rgba(0, 100, 140, 0.08) !important;
+  align-items: center !important;
 }
 
 body.student-portal.page-student-profile .profile-avatar-large {
-  width: 88px !important;
-  height: 88px !important;
-  background: linear-gradient(135deg, var(--remoed-brand-blue), var(--remoed-brand-blue-soft)) !important;
-  box-shadow: 0 4px 12px rgba(90, 103, 216, 0.28) !important;
+  width: 96px !important;
+  height: 96px !important;
+  background: linear-gradient(135deg, #008fc4, #00aeef) !important;
+  border: 3px solid #fdd835 !important;
+  box-shadow: 0 8px 20px rgba(0, 143, 196, 0.28) !important;
 }
 
-body.student-portal.page-student-profile .back-btn {
-  background: linear-gradient(135deg, var(--remoed-brand-blue), var(--remoed-brand-blue-soft)) !important;
-  box-shadow: 0 4px 14px rgba(90, 103, 216, 0.35) !important;
-  padding: 8px 16px !important;
-  font-size: 13px !important;
+body.student-portal.page-student-profile .profile-avatar-large .upload-overlay {
+  font-size: 0.75rem !important;
+  padding: 8px !important;
 }
 
-body.student-portal.page-student-profile .back-btn:hover {
-  box-shadow: 0 6px 20px rgba(90, 103, 216, 0.45) !important;
+body.student-portal.page-student-profile .profile-level-pill.student-current-level {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 14px;
+  padding: 6px 10px 6px 12px;
+  border-radius: 999px;
+  background: #e8f7fc !important;
+  border: 1px solid rgba(0, 174, 239, 0.28) !important;
+}
+
+body.student-portal.page-student-profile .student-current-level-label {
+  color: #1a3a4a !important;
+  font-weight: 700 !important;
+  font-size: 0.82rem !important;
+}
+
+body.student-portal.page-student-profile .back-btn,
+body.student-portal.page-student-profile .edit-btn,
+body.student-portal.page-student-profile .save-btn {
+  background: linear-gradient(135deg, #008fc4, #00aeef) !important;
+  border: 2px solid #fdd835 !important;
+  color: #ffffff !important;
+  border-radius: 999px !important;
+  box-shadow: 0 6px 16px rgba(0, 143, 196, 0.25) !important;
+  font-weight: 700 !important;
+  text-shadow: none !important;
+}
+
+body.student-portal.page-student-profile .back-btn:hover,
+body.student-portal.page-student-profile .edit-btn:hover,
+body.student-portal.page-student-profile .save-btn:hover {
+  box-shadow: 0 8px 22px rgba(0, 143, 196, 0.35) !important;
+  transform: translateY(-1px);
+}
+
+body.student-portal.page-student-profile .cancel-btn {
+  background: #eef2f6 !important;
+  color: #1a3a4a !important;
+  border: 2px solid #d0dbe3 !important;
+  border-radius: 999px !important;
+  box-shadow: none !important;
 }
 
 body.student-portal.page-student-profile .profile-avatar-large:hover {
-  box-shadow: 0 8px 20px rgba(90, 103, 216, 0.4) !important;
+  box-shadow: 0 10px 24px rgba(0, 143, 196, 0.4) !important;
+}
+
+/* Profile layout: long emails must wrap, never clip */
+body.student-portal.page-student-profile .remoed-content,
+body.student-portal.page-student-profile .profile-container,
+body.student-portal.page-student-profile .profile-content-grid,
+body.student-portal.page-student-profile .profile-sidebar-card,
+body.student-portal.page-student-profile .profile-main-card,
+body.student-portal.page-student-profile .profile-header,
+body.student-portal.page-student-profile .profile-header-info {
+  min-width: 0 !important;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+body.student-portal.page-student-profile .profile-content-grid {
+  display: grid !important;
+  grid-template-columns: minmax(0, 280px) minmax(0, 1fr) !important;
+  gap: 20px !important;
+  width: 100%;
+}
+
+body.student-portal.page-student-profile .profile-sidebar-card,
+body.student-portal.page-student-profile .profile-main-card {
+  background: #ffffff !important;
+  border: 1px solid rgba(0, 174, 239, 0.14) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 8px 24px rgba(0, 100, 140, 0.06) !important;
+  padding: 20px !important;
+}
+
+body.student-portal.page-student-profile .profile-email-large,
+body.student-portal.page-student-profile #profile-email {
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: unset !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+  max-width: 100% !important;
+}
+
+body.student-portal.page-student-profile .info-card {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow: visible !important;
+  background: #f3fafd !important;
+  border-left: 4px solid #00aeef !important;
+  border-radius: 12px !important;
+  padding: 14px 16px !important;
+}
+
+body.student-portal.page-student-profile .info-row {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 4px !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  border-bottom-color: rgba(0, 174, 239, 0.12) !important;
+}
+
+body.student-portal.page-student-profile .info-label {
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: unset !important;
+  color: #5a7382 !important;
+  font-size: 0.78rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+body.student-portal.page-student-profile .info-value,
+body.student-portal.page-student-profile #sidebar-email-display {
+  display: block !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: unset !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+  line-height: 1.4 !important;
+  color: #1a3a4a !important;
+  font-weight: 600 !important;
+}
+
+body.student-portal.page-student-profile .form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  min-width: 0 !important;
+  gap: 14px !important;
+}
+
+body.student-portal.page-student-profile .form-group,
+body.student-portal.page-student-profile .form-input,
+body.student-portal.page-student-profile .form-textarea {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+body.student-portal.page-student-profile .form-label {
+  color: #1a3a4a !important;
+  font-weight: 700 !important;
+  font-size: 0.88rem !important;
+}
+
+body.student-portal.page-student-profile .form-input,
+body.student-portal.page-student-profile .form-textarea {
+  border: 2px solid #dcebf5 !important;
+  border-radius: 10px !important;
+  padding: 10px 14px !important;
+  font-size: 0.95rem !important;
+  background: #fff !important;
+}
+
+body.student-portal.page-student-profile #email,
+body.student-portal.page-student-profile #parentEmail,
+body.student-portal.page-student-profile #current-email,
+body.student-portal.page-student-profile #new-email {
+  width: 100% !important;
+  overflow-x: auto !important;
+  text-overflow: clip !important;
+}
+
+body.student-portal.page-student-profile .profile-avatar-large #profile-avatar-text,
+body.student-portal.page-student-profile .profile-avatar-large span {
+  font-size: 2rem !important;
+  line-height: 1 !important;
+}
+
+body.student-portal.page-student-profile .tab-buttons {
+  background: #e8f7fc !important;
+  border-radius: 12px !important;
+  padding: 4px !important;
+  gap: 4px !important;
+  border-bottom: none !important;
+  margin-bottom: 20px !important;
+}
+
+body.student-portal.page-student-profile .tab-btn {
+  border: none !important;
+  border-radius: 10px !important;
+  background: transparent !important;
+  color: #4a6575 !important;
+  font-weight: 700 !important;
+  padding: 10px 16px !important;
+}
+
+body.student-portal.page-student-profile .tab-btn.active {
+  background: linear-gradient(135deg, #008fc4, #00aeef) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(0, 143, 196, 0.25);
+}
+
+body.student-portal.page-student-profile .info-section-title {
+  color: #1a3a4a !important;
+  font-size: 1.05rem !important;
+  font-weight: 800 !important;
+  border-bottom: 2px solid #fdd835 !important;
+  padding-bottom: 8px !important;
+  margin-bottom: 14px !important;
+}
+
+body.student-portal.page-student-profile .profile-edit-actions,
+body.student-portal.page-student-profile .profile-settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(0, 174, 239, 0.12);
+}
+
+body.student-portal.page-student-profile .profile-password-hint {
+  margin: -4px 0 14px;
+  color: #4a6575;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+body.student-portal.page-student-profile .forgot-current-link {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #008fc4 !important;
+  text-decoration: none;
+}
+
+body.student-portal.page-student-profile .forgot-current-link:hover {
+  text-decoration: underline;
+  color: #007db0 !important;
+}
+
+@media (max-width: 1024px) {
+  body.student-portal.page-student-profile .profile-content-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
 }
 
 body.student-portal.page-student-profile .section-title {
-  color: #111827 !important;
-  font-size: 15px !important;
-  font-weight: 600 !important;
+  color: #1a3a4a !important;
+  font-size: 1.1rem !important;
+  font-weight: 800 !important;
+  border-bottom: 2px solid #fdd835 !important;
+  padding-bottom: 8px !important;
+  margin-bottom: 16px !important;
 }
 
 body.student-portal.page-student-profile .form-input:focus,
 body.student-portal.page-student-profile .form-textarea:focus {
-  border-color: var(--remoed-brand-blue) !important;
-  box-shadow: 0 0 0 4px rgba(90, 103, 216, 0.12) !important;
+  border-color: #00aeef !important;
+  box-shadow: 0 0 0 4px rgba(0, 174, 239, 0.14) !important;
 }
 
 body.student-portal.page-student-profile .file-upload-label {
-  border-color: var(--remoed-brand-blue) !important;
-  color: var(--remoed-brand-blue) !important;
-  background: rgba(90, 103, 216, 0.05) !important;
+  border-color: #00aeef !important;
+  color: #008fc4 !important;
+  background: rgba(0, 174, 239, 0.06) !important;
 }
 
 body.student-portal.page-student-profile .edit-btn,
 body.student-portal.page-student-profile .add-btn {
-  background: linear-gradient(135deg, var(--remoed-brand-blue), var(--remoed-brand-blue-soft)) !important;
-  box-shadow: 0 4px 12px rgba(90, 103, 216, 0.3) !important;
+  background: linear-gradient(135deg, #008fc4, #00aeef) !important;
+  box-shadow: 0 4px 12px rgba(0, 143, 196, 0.28) !important;
+  color: #ffffff !important;
+  border: 2px solid #fdd835 !important;
 }
 
 body.student-portal.page-student-profile .edit-btn:hover,
 body.student-portal.page-student-profile .add-btn:hover {
-  box-shadow: 0 6px 20px rgba(90, 103, 216, 0.4) !important;
+  box-shadow: 0 6px 20px rgba(0, 143, 196, 0.38) !important;
 }
 
-body.student-portal.page-student-profile .tab-btn.active {
-  color: var(--remoed-brand-blue) !important;
-  border-bottom-color: var(--remoed-brand-blue) !important;
+body.student-portal.page-student-profile .tab-btn.active,
+body.student-portal.page-student-profile .tab-btn.active:hover,
+body.student-portal.page-student-profile .tab-btn.active:focus-visible {
+  background: linear-gradient(135deg, #008fc4, #00aeef) !important;
+  color: #ffffff !important;
+  border-bottom-color: transparent !important;
+  box-shadow: 0 4px 12px rgba(0, 143, 196, 0.25) !important;
 }
 
-body.student-portal.page-student-profile .tab-btn:hover {
-  color: var(--remoed-brand-blue) !important;
-  background: rgba(90, 103, 216, 0.06) !important;
+body.student-portal.page-student-profile .tab-btn:hover:not(.active),
+body.student-portal.page-student-profile .tab-btn:focus-visible:not(.active) {
+  color: #008fc4 !important;
+  background: rgba(0, 174, 239, 0.12) !important;
 }
 
 body.student-portal.page-student-profile .info-card {
@@ -603,7 +890,7 @@ body.student-portal.page-student-profile .info-card {
 /* --- Level Assessment --- */
 body.student-portal.page-student-assessment .assessment-header {
   background: linear-gradient(135deg, var(--remoed-brand-blue), var(--remoed-brand-blue-soft)) !important;
-  box-shadow: 0 8px 24px rgba(90, 103, 216, 0.35) !important;
+  box-shadow: 0 8px 24px rgba(0, 143, 196, 0.35) !important;
 }
 
 body.student-portal.page-student-assessment .assessment-intro h2 {
@@ -612,31 +899,31 @@ body.student-portal.page-student-assessment .assessment-intro h2 {
 
 body.student-portal.page-student-assessment .start-btn {
   background: linear-gradient(135deg, var(--remoed-brand-blue), var(--remoed-brand-blue-soft)) !important;
-  box-shadow: 0 6px 20px rgba(90, 103, 216, 0.4) !important;
+  box-shadow: 0 6px 20px rgba(0, 143, 196, 0.4) !important;
 }
 
 body.student-portal.page-student-assessment .start-btn:hover {
-  box-shadow: 0 10px 30px rgba(90, 103, 216, 0.5) !important;
+  box-shadow: 0 10px 30px rgba(0, 143, 196, 0.5) !important;
 }
 
 body.student-portal.page-student-assessment .question-number {
   background: linear-gradient(135deg, var(--remoed-brand-blue), var(--remoed-brand-blue-soft)) !important;
-  box-shadow: 0 4px 12px rgba(90, 103, 216, 0.35) !important;
+  box-shadow: 0 4px 12px rgba(0, 143, 196, 0.35) !important;
 }
 
 body.student-portal.page-student-assessment .progress-fill {
   background: linear-gradient(90deg, var(--remoed-brand-blue), var(--remoed-brand-blue-soft), #ffd700) !important;
-  box-shadow: 0 2px 8px rgba(90, 103, 216, 0.25) !important;
+  box-shadow: 0 2px 8px rgba(0, 143, 196, 0.25) !important;
 }
 
 body.student-portal.page-student-assessment .option-btn:hover {
   border-color: var(--remoed-brand-blue) !important;
-  box-shadow: 0 6px 20px rgba(90, 103, 216, 0.18) !important;
+  box-shadow: 0 6px 20px rgba(0, 143, 196, 0.18) !important;
 }
 
 body.student-portal.page-student-assessment .option-btn.selected {
   background: linear-gradient(135deg, var(--remoed-brand-blue), var(--remoed-brand-blue-soft)) !important;
-  box-shadow: 0 6px 20px rgba(90, 103, 216, 0.4) !important;
+  box-shadow: 0 6px 20px rgba(0, 143, 196, 0.4) !important;
 }
 
 body.student-portal.page-student-assessment .next-btn {
@@ -645,7 +932,7 @@ body.student-portal.page-student-assessment .next-btn {
 
 body.student-portal.page-student-assessment .cefr-level {
   background: linear-gradient(135deg, var(--remoed-brand-blue), var(--remoed-brand-blue-soft)) !important;
-  box-shadow: 0 8px 24px rgba(90, 103, 216, 0.4) !important;
+  box-shadow: 0 8px 24px rgba(0, 143, 196, 0.4) !important;
 }
 
 body.student-portal.page-student-assessment .level-description {
@@ -667,12 +954,12 @@ body.student-portal.page-student-assessment .post-assessment-modal__score strong
 
 body.student-portal.page-student-assessment .pam-btn-primary {
   background: linear-gradient(135deg, var(--remoed-brand-blue), var(--remoed-brand-blue-soft)) !important;
-  box-shadow: 0 10px 24px rgba(90, 103, 216, 0.35) !important;
+  box-shadow: 0 10px 24px rgba(0, 143, 196, 0.35) !important;
 }
 
 body.student-portal.page-student-assessment .pam-btn-secondary {
   color: var(--remoed-brand-blue) !important;
-  border-color: rgba(90, 103, 216, 0.35) !important;
+  border-color: rgba(0, 143, 196, 0.35) !important;
 }
 
 body.student-portal.page-student-assessment #score-display .assessment-score-pct {
@@ -744,7 +1031,7 @@ body.student-portal.page-student-assessment #score-display .assessment-score-pct
   border-color: var(--remoed-brand-blue);
   background: linear-gradient(90deg, var(--remoed-sidebar-active-start) 0%, var(--remoed-sidebar-active-end) 100%);
   color: #fff;
-  box-shadow: 0 4px 14px rgba(90, 103, 216, 0.25);
+  box-shadow: 0 4px 14px rgba(0, 143, 196, 0.25);
 }
 
 .page-student-learning-journey .lj-trail-root {
@@ -842,8 +1129,8 @@ body.student-portal.page-student-assessment #score-display .assessment-score-pct
   font-size: 0.82rem;
   text-decoration: none;
   color: #fff;
-  background: linear-gradient(135deg, #5a67d8, #7c3aed);
-  box-shadow: 0 4px 14px rgba(90, 103, 216, 0.35);
+  background: linear-gradient(135deg, var(--remoed-brand-blue-deep, #008fc4), var(--remoed-brand-blue, #00aeef));
+  box-shadow: 0 4px 14px rgba(0, 143, 196, 0.35);
   border: none;
   cursor: pointer;
 }
@@ -1012,10 +1299,884 @@ body.student-portal .nav-header .nav-badge {
   height: 18px;
   padding: 0 4px;
   border-radius: 999px;
-  background: #7c3aed;
+  background: #00a82d;
   color: #fff;
   font-size: 0.68rem;
   font-weight: 700;
   align-items: center;
   justify-content: center;
+}
+
+/* Student portal brand accents (override purple chrome leftovers) */
+body.student-portal .nav-header .nav-title-icon,
+body.student-portal .student-page-nav-header .nav-title-icon {
+  color: var(--remoed-brand-blue) !important;
+}
+
+body.student-portal .nav-header .nav-icon svg {
+  color: var(--remoed-brand-blue-deep) !important;
+}
+
+body.page-student-dashboard .student-current-level-value,
+body.student-portal .student-current-level-value {
+  background: linear-gradient(135deg, var(--remoed-brand-blue-deep), var(--remoed-brand-blue)) !important;
+  border: 1px solid var(--remoed-brand-yellow) !important;
+  color: #ffffff !important;
+  padding: 4px 10px !important;
+  border-radius: 999px !important;
+  font-weight: 800 !important;
+}
+
+body.page-student-dashboard .student-current-level-value a,
+body.student-portal .student-current-level-value a {
+  color: #ffffff !important;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* —— My Classes (booking history) brand refresh —— */
+body.page-student-booking-history {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+  background: #f8fafc !important;
+}
+
+body.page-student-booking-history .remoed-sidebar {
+  background: linear-gradient(180deg, #008fc4 0%, #00aeef 42%, #007db0 100%) !important;
+  box-shadow: 4px 0 24px rgba(0, 100, 140, 0.28) !important;
+}
+
+body.page-student-booking-history .remoed-content {
+  background: #f8fafc !important;
+}
+
+body.page-student-booking-history .booking-history-container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 8px 8px 32px;
+}
+
+body.page-student-booking-history .booking-count {
+  display: inline-block;
+  font-size: 0.9rem !important;
+  font-weight: 700 !important;
+  color: #008fc4 !important;
+  background: #e8f7fc !important;
+  border: 1px solid rgba(0, 174, 239, 0.25) !important;
+  padding: 8px 14px !important;
+  border-radius: 999px !important;
+}
+
+body.page-student-booking-history .booking-history-title {
+  color: #008fc4 !important;
+}
+
+body.page-student-booking-history .filter-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+body.page-student-booking-history .filter-tab {
+  padding: 8px 14px !important;
+  border-radius: 999px !important;
+  border: 2px solid rgba(0, 174, 239, 0.28) !important;
+  background: #ffffff !important;
+  color: #1a3a4a !important;
+  font-weight: 700 !important;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+
+body.page-student-booking-history .filter-tab:hover {
+  border-color: #00aeef !important;
+  color: #008fc4 !important;
+}
+
+body.page-student-booking-history .filter-tab.active {
+  background: linear-gradient(135deg, #008fc4, #00aeef) !important;
+  border-color: #fdd835 !important;
+  color: #ffffff !important;
+}
+
+body.page-student-booking-history .view-selector {
+  background: #e8f7fc !important;
+  border-radius: 999px !important;
+  padding: 4px !important;
+}
+
+body.page-student-booking-history .view-btn {
+  border-radius: 999px !important;
+  font-weight: 700 !important;
+  color: #4a6575 !important;
+}
+
+body.page-student-booking-history .view-btn.active {
+  background: linear-gradient(135deg, #008fc4, #00aeef) !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+}
+
+body.page-student-booking-history .book-first-class-btn,
+body.page-student-booking-history a.book-first-class-btn {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 22px !important;
+  border-radius: 999px !important;
+  background: linear-gradient(135deg, #008fc4, #00aeef) !important;
+  color: #ffffff !important;
+  border: 2px solid #fdd835 !important;
+  font-weight: 800 !important;
+  text-decoration: none !important;
+  box-shadow: 0 6px 18px rgba(0, 143, 196, 0.28);
+}
+
+body.page-student-booking-history .empty-state-title {
+  color: #1a3a4a !important;
+}
+
+body.page-student-booking-history .empty-state-text {
+  color: #4a6575 !important;
+}
+
+/* —— Portal brand sweep (Book / Schedule / Games / Videos / Credits / auth) —— */
+body.student-portal.page-student-credits .remoed-content {
+  background: #f5f9fc !important;
+  padding: 16px 20px 32px !important;
+}
+
+body.student-portal.page-student-credits .shell {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+body.student-portal.page-student-credits .credits-inline-header {
+  margin-bottom: 12px !important;
+  padding: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+body.student-portal.page-student-credits .credits-inline-header .brand img,
+body.student-portal.page-student-credits .credits-inline-header .brand-title,
+body.student-portal.page-student-credits .btn-link {
+  display: none !important;
+}
+
+body.student-portal.page-student-credits .tagline {
+  color: #4a6575 !important;
+  font-size: 0.95rem !important;
+}
+
+body.student-portal.page-student-credits .card,
+body.student-portal.page-student-credits .checkout-order-card {
+  border: 1px solid rgba(0, 174, 239, 0.14) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 8px 24px rgba(0, 100, 140, 0.06) !important;
+}
+
+body.student-portal.page-student-credits .primary-btn,
+body.page-student-credits .primary-btn {
+  background: linear-gradient(135deg, #008fc4, #00aeef) !important;
+  border: 2px solid #fdd835 !important;
+  color: #fff !important;
+  box-shadow: 0 6px 16px rgba(0, 143, 196, 0.28) !important;
+}
+
+body.student-portal.page-student-credits .stat-pill,
+body.page-student-credits .stat-pill {
+  background: #e8f7fc !important;
+  color: #008fc4 !important;
+}
+
+body.student-portal.page-student-credits .balance:not(.balance-low),
+body.page-student-credits .balance:not(.balance-low) {
+  color: #008fc4 !important;
+}
+
+body.student-portal.page-student-credits .credits-progress-fill {
+  background: linear-gradient(90deg, #00a82d, #00aeef) !important;
+}
+
+/* Book / Schedule / Games — force brand over any leftover purple */
+body.page-student-book .student-book-toolbar__title,
+body.page-student-class-table .student-schedule-toolbar__title {
+  color: #1a3a4a !important;
+}
+
+body.page-student-book .grid-header,
+body.page-student-class-table .schedule-table th {
+  background: linear-gradient(135deg, #008fc4, #00aeef) !important;
+  color: #fff !important;
+}
+
+body.page-student-book .slot-cell.selected,
+body.page-student-book .slot-cell:hover:not(.unavailable):not(.booked) {
+  background: rgba(0, 174, 239, 0.18) !important;
+  border-color: #00aeef !important;
+  box-shadow: 0 0 0 2px rgba(253, 216, 53, 0.55) !important;
+}
+
+body.page-student-book .book-btn,
+body.page-student-book button.primary,
+body.page-student-book .confirm-btn,
+body.page-student-book .primary-btn {
+  background: linear-gradient(135deg, #008fc4, #00aeef) !important;
+  border-color: #fdd835 !important;
+  color: #fff !important;
+}
+
+body.page-student-class-table .today-indicator,
+body.page-student-class-table .day-header.today,
+body.page-student-class-table th.today {
+  text-shadow: none !important;
+  box-shadow: inset 0 -3px 0 #fdd835 !important;
+}
+
+body.page-student-class-table .booking-block,
+body.page-student-class-table .class-block {
+  border-color: rgba(0, 174, 239, 0.35) !important;
+}
+
+body.page-student-games-activities .download-btn,
+body.page-student-games-activities .primary-btn,
+body.page-student-games-activities .game-card button,
+body.page-student-games-activities .activity-card .btn {
+  background: linear-gradient(135deg, #008fc4, #00aeef) !important;
+  color: #fff !important;
+  border-color: #fdd835 !important;
+}
+
+body.page-student-games-activities .game-card,
+body.page-student-games-activities .activity-card {
+  border-color: rgba(0, 174, 239, 0.16) !important;
+}
+
+body.page-student-games-activities .page-header h1,
+body.page-student-videos .sv-hero h1 {
+  color: #1a3a4a !important;
+}
+
+body.student-portal.page-student-videos .sv-hero,
+body.page-student-videos .sv-hero {
+  background: linear-gradient(135deg, #e8f7fc, #f0fdf4) !important;
+  border-color: rgba(0, 174, 239, 0.2) !important;
+}
+
+body.student-portal.page-student-videos .sv-card-play span,
+body.page-student-videos .sv-btn-primary {
+  background: linear-gradient(135deg, #008fc4, #00aeef) !important;
+  color: #fff !important;
+}
+
+body.student-portal.page-student-assessment .cefr-level,
+body.student-portal.page-student-assessment .cefr-tab.active,
+body.page-student-assessment .cefr-level.active {
+  background: linear-gradient(135deg, #008fc4, #00aeef) !important;
+  color: #fff !important;
+  box-shadow: 0 4px 12px rgba(0, 143, 196, 0.28) !important;
+}
+
+body.student-portal.page-student-assessment .assessment-header,
+body.student-portal.page-student-assessment .start-btn,
+body.student-portal.page-student-assessment .next-btn,
+body.student-portal.page-student-assessment .question-number {
+  box-shadow: 0 6px 18px rgba(0, 143, 196, 0.28) !important;
+}
+
+body.page-student-learning-journey .back-to-dashboard,
+body.page-student-learning-journey a.back-btn {
+  display: none !important;
+}
+
+body.page-student-register .brand-name,
+body.page-student-register .login-title {
+  color: #008fc4 !important;
+}
+
+body.page-student-register .login-card {
+  border: 1px solid rgba(0, 174, 239, 0.16);
+  box-shadow: 0 16px 40px rgba(0, 100, 140, 0.1);
+}
+
+body.page-student-register button[type="submit"],
+body.page-student-register .primary-btn,
+body.page-student-register .register-btn {
+  background: linear-gradient(135deg, #008fc4, #00aeef) !important;
+  border: 2px solid #fdd835 !important;
+  color: #fff !important;
+}
+
+
+/* —— Payment / Waiting Room / Reschedule / Auth leftovers —— */
+body.page-student-payment {
+  --p: #00aeef !important;
+  --pd: #008fc4 !important;
+  --a: #fdd835 !important;
+  --bg1: #e8f7fc !important;
+  --bg2: #f0fdf4 !important;
+  --bg3: #fffbeb !important;
+  --txt: #1a3a4a !important;
+  background: radial-gradient(ellipse 70% 50% at 0% 0%, rgba(0,174,239,.16), transparent 55%),
+    radial-gradient(ellipse 50% 40% at 100% 0%, rgba(0,168,45,.08), transparent 50%),
+    #f5f9fc !important;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+}
+
+body.page-student-payment .brand img {
+  height: 48px !important;
+  width: auto !important;
+}
+
+body.page-student-payment .card {
+  background: #fff !important;
+  border: 1px solid rgba(0,174,239,.16) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 12px 28px rgba(0,100,140,.08) !important;
+  backdrop-filter: none !important;
+}
+
+body.page-student-payment .method {
+  border: 2px solid rgba(0,174,239,.18) !important;
+  border-radius: 12px !important;
+  background: #fff !important;
+}
+
+body.page-student-payment .method:hover,
+body.page-student-payment .method.active {
+  border-color: #00aeef !important;
+  box-shadow: 0 0 0 3px rgba(253,216,53,.35) !important;
+}
+
+body.page-student-payment .m-ico {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg,#008fc4,#00aeef);
+  color: #fff;
+  font-weight: 800;
+  font-size: 1rem;
+}
+
+body.page-student-payment .btn,
+body.page-student-payment .link-btn {
+  background: linear-gradient(135deg,#008fc4,#00aeef) !important;
+  border: 2px solid #fdd835 !important;
+  color: #fff !important;
+  border-radius: 999px !important;
+  font-weight: 700 !important;
+}
+
+body.page-student-payment .next-steps {
+  display: grid;
+  gap: 10px;
+}
+
+body.page-student-payment .ok .big {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 8px;
+  border-radius: 50%;
+  background: #00a82d;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  font-weight: 800;
+}
+
+body.page-student-waiting-room {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(0,174,239,.35), transparent 60%),
+    linear-gradient(160deg, #008fc4 0%, #00aeef 45%, #007db0 100%) !important;
+}
+
+body.page-student-waiting-room .waiting-container {
+  border-radius: 18px !important;
+  box-shadow: 0 20px 48px rgba(0,60,90,.28) !important;
+  border: 1px solid rgba(255,255,255,.55);
+  padding: 32px 28px !important;
+}
+
+body.page-student-waiting-room .waiting-brand img {
+  height: 44px;
+  margin-bottom: 12px;
+}
+
+body.page-student-waiting-room .waiting-icon {
+  color: #008fc4;
+  margin: 8px auto 12px;
+  animation: none !important;
+}
+
+body.page-student-waiting-room .waiting-title {
+  color: #1a3a4a !important;
+  font-size: 1.75rem !important;
+}
+
+body.page-student-waiting-room .waiting-subtitle {
+  color: #4a6575 !important;
+}
+
+body.page-student-waiting-room .device-check-section {
+  text-align: left;
+  background: #f3fafd;
+  border-radius: 12px;
+  padding: 14px 16px;
+  border: 1px solid rgba(0,174,239,.14);
+  margin-top: 18px;
+}
+
+body.page-student-waiting-room .device-check-title {
+  margin: 0 0 10px;
+  color: #1a3a4a;
+  font-size: 1rem;
+}
+
+body.page-student-waiting-room .device-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(0,174,239,.1);
+}
+
+body.page-student-waiting-room .device-item:last-child {
+  border-bottom: none;
+}
+
+body.page-student-waiting-room .status-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 8px;
+  flex-shrink: 0;
+  border: 2px solid transparent;
+  box-sizing: border-box;
+}
+
+body.page-student-waiting-room .status-icon.status-ok { background: #00a82d; }
+body.page-student-waiting-room .status-icon.status-bad { background: #dc2626; }
+body.page-student-waiting-room .status-icon.status-warn { background: #f59e0b; }
+body.page-student-waiting-room .status-icon.status-pending {
+  background: transparent;
+  border-color: #00aeef;
+  border-top-color: transparent;
+  animation: remoed-spin 0.9s linear infinite;
+}
+
+@keyframes remoed-spin {
+  to { transform: rotate(360deg); }
+}
+
+body.page-student-waiting-room .status-text.status-success { color: #008a24; font-weight: 700; }
+body.page-student-waiting-room .status-text.status-error { color: #b91c1c; font-weight: 600; }
+
+body.page-student-waiting-room .btn-primary {
+  background: linear-gradient(135deg,#008fc4,#00aeef) !important;
+  border: 2px solid #fdd835 !important;
+  color: #fff !important;
+  border-radius: 999px !important;
+}
+
+body.page-student-waiting-room .btn-secondary {
+  background: #eef2f6 !important;
+  color: #1a3a4a !important;
+  border: 2px solid #d0dbe3 !important;
+  border-radius: 999px !important;
+}
+
+body.page-student-waiting-room .btn-warning[hidden] { display: none !important; }
+
+body.page-student-reschedule {
+  background:
+    radial-gradient(ellipse 70% 45% at 10% 0%, rgba(0,174,239,.2), transparent 55%),
+    #f5f9fc !important;
+}
+
+body.page-student-reschedule .container {
+  border-radius: 18px !important;
+  box-shadow: 0 16px 40px rgba(0,100,140,.12) !important;
+  border: 1px solid rgba(0,174,239,.14);
+  overflow: hidden;
+}
+
+body.page-student-reschedule .header {
+  background: linear-gradient(135deg, #008fc4, #00aeef) !important;
+  padding: 28px 24px !important;
+}
+
+body.page-student-reschedule .reschedule-logo {
+  height: 40px;
+  background: #fff;
+  border-radius: 10px;
+  padding: 4px;
+  margin-bottom: 12px;
+}
+
+body.page-student-reschedule .deadline-warning {
+  background: #fffbeb !important;
+  border: 1px solid #fdd835 !important;
+  border-radius: 12px !important;
+}
+
+body.page-student-reschedule .countdown {
+  color: #008fc4 !important;
+  font-weight: 800;
+}
+
+body.page-student-reschedule .btn-primary {
+  background: linear-gradient(135deg,#008fc4,#00aeef) !important;
+  border: 2px solid #fdd835 !important;
+  color: #fff !important;
+  border-radius: 999px !important;
+}
+
+body.page-student-reschedule .btn-secondary {
+  background: #eef2f6 !important;
+  color: #1a3a4a !important;
+  border: 2px solid #d0dbe3 !important;
+  border-radius: 999px !important;
+}
+
+body.page-student-reschedule .btn-danger {
+  background: #fff !important;
+  color: #b91c1c !important;
+  border: 2px solid #fecaca !important;
+  border-radius: 999px !important;
+}
+
+body.page-student-reschedule .time-slots .time-slot.selected,
+body.page-student-reschedule .time-slot.active {
+  background: linear-gradient(135deg,#008fc4,#00aeef) !important;
+  color: #fff !important;
+  border-color: #fdd835 !important;
+}
+
+body.page-student-forgot-password,
+body.page-student-reset-password {
+  min-height: 100vh;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+  background:
+    radial-gradient(ellipse 70% 50% at 0% 0%, rgba(0,174,239,.14), transparent 55%),
+    radial-gradient(ellipse 50% 40% at 100% 100%, rgba(0,168,45,.08), transparent 50%),
+    #f5f9fc !important;
+}
+
+body.page-student-forgot-password .floating-elements { display: none !important; }
+
+body.page-student-forgot-password .forgot-container,
+body.page-student-reset-password .reset-container {
+  width: 100%;
+  max-width: 420px;
+  background: #fff;
+  border-radius: 18px;
+  padding: 28px 26px;
+  border: 1px solid rgba(0,174,239,.16);
+  box-shadow: 0 16px 40px rgba(0,100,140,.1);
+}
+
+body.page-student-forgot-password .remoed-logo {
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+body.page-student-forgot-password .remoed-logo img,
+body.page-student-reset-password .reset-logo {
+  height: 48px;
+  display: block;
+  margin: 0 auto 8px;
+}
+
+body.page-student-forgot-password .remoed-title,
+body.page-student-forgot-password .forgot-title,
+body.page-student-reset-password .reset-title {
+  color: #008fc4 !important;
+  font-weight: 800 !important;
+  text-align: center;
+  text-shadow: none !important;
+}
+
+body.page-student-forgot-password .remoed-subtitle,
+body.page-student-forgot-password .forgot-lead,
+body.page-student-reset-password .reset-lead {
+  text-align: center;
+  color: #4a6575;
+  margin: 0 0 16px;
+}
+
+body.page-student-forgot-password .forgot-btn,
+body.page-student-reset-password .reset-form button {
+  width: 100%;
+  background: linear-gradient(135deg,#008fc4,#00aeef) !important;
+  border: 2px solid #fdd835 !important;
+  color: #fff !important;
+  border-radius: 999px !important;
+  font-weight: 700 !important;
+  padding: 12px 18px !important;
+}
+
+body.page-student-forgot-password .links-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 18px;
+  text-align: center;
+}
+
+body.page-student-forgot-password .links-container a,
+body.page-student-reset-password .back-link {
+  color: #008fc4 !important;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+body.page-student-forgot-password .forgot-alert {
+  background: #ecfdf3;
+  border: 1px solid #bbf7d0;
+  border-radius: 12px;
+  padding: 14px;
+  text-align: left;
+}
+
+body.page-student-forgot-password .forgot-temp-pw {
+  font-family: ui-monospace, Consolas, monospace;
+  background: #f8fafc;
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+body.page-student-forgot-password input,
+body.page-student-reset-password input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border: 2px solid #dcebf5;
+  border-radius: 10px;
+  margin-bottom: 12px;
+}
+
+body.page-student-register {
+  background:
+    radial-gradient(ellipse 70% 50% at 0% 0%, rgba(0,174,239,.14), transparent 55%),
+    #f5f9fc !important;
+}
+
+/* Teacher forgot-password.html (shared auth) */
+body.page-forgot-password {
+  min-height: 100vh;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+  background:
+    radial-gradient(ellipse 70% 50% at 0% 0%, rgba(0,174,239,.14), transparent 55%),
+    radial-gradient(ellipse 50% 40% at 100% 100%, rgba(0,168,45,.08), transparent 50%),
+    #f5f9fc !important;
+  color: #1a3a4a;
+}
+
+body.page-forgot-password .floating-elements {
+  display: none !important;
+}
+
+body.page-forgot-password .forgot-container {
+  width: 100%;
+  max-width: 420px;
+  background: #fff;
+  border-radius: 18px;
+  padding: 28px 26px;
+  border: 1px solid rgba(0, 174, 239, 0.16);
+  box-shadow: 0 16px 40px rgba(0, 100, 140, 0.1);
+  text-align: center;
+}
+
+body.page-forgot-password .remoed-logo {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 10px !important;
+  margin: 0 0 20px !important;
+  padding: 0 0 16px !important;
+  text-align: center !important;
+  animation: none !important;
+  border-bottom: 1px solid rgba(0, 174, 239, 0.12);
+}
+
+body.page-forgot-password .remoed-logo .brand-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+body.page-forgot-password .remoed-logo img {
+  height: 52px !important;
+  width: auto !important;
+  display: block !important;
+  margin: 0 auto !important;
+}
+
+body.page-forgot-password .remoed-title,
+body.page-forgot-password .forgot-title {
+  color: #008fc4 !important;
+  font-weight: 800 !important;
+  text-shadow: none !important;
+}
+
+body.page-forgot-password .remoed-title {
+  display: block !important;
+  font-size: 1.35rem !important;
+  margin: 0 !important;
+  line-height: 1.2 !important;
+}
+
+body.page-forgot-password .remoed-subtitle,
+body.page-forgot-password .forgot-lead {
+  color: #4a6575 !important;
+  margin: 0 0 16px !important;
+  font-size: 0.95rem !important;
+  text-align: center !important;
+  width: 100% !important;
+  max-width: none !important;
+  white-space: normal !important;
+}
+
+body.page-forgot-password .remoed-subtitle {
+  margin: 0 !important;
+  font-size: 0.85rem !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.02em;
+}
+
+body.page-forgot-password .forgot-title {
+  font-size: 1.5rem;
+  margin: 0 0 8px;
+  text-align: center;
+}
+
+body.page-forgot-password .forgot-label {
+  display: block;
+  text-align: left;
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: #1a3a4a;
+  margin-bottom: 6px;
+}
+
+body.page-forgot-password .forgot-form input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border: 2px solid #dcebf5;
+  border-radius: 10px;
+  margin-bottom: 14px;
+  font-size: 1rem;
+}
+
+body.page-forgot-password .forgot-form input:focus {
+  outline: none;
+  border-color: #00aeef;
+  box-shadow: 0 0 0 4px rgba(0, 174, 239, 0.14);
+}
+
+body.page-forgot-password .forgot-form button {
+  width: 100%;
+  background: linear-gradient(135deg, #008fc4, #00aeef) !important;
+  border: 2px solid #fdd835 !important;
+  color: #fff !important;
+  border-radius: 999px !important;
+  font-weight: 700 !important;
+  padding: 12px 18px !important;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(0, 143, 196, 0.28);
+}
+
+body.page-forgot-password .forgot-form button:hover {
+  box-shadow: 0 8px 22px rgba(0, 143, 196, 0.38);
+}
+
+body.page-forgot-password .forgot-form button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+body.page-forgot-password .links-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+body.page-forgot-password .links-container a {
+  color: #008fc4 !important;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+body.page-forgot-password .links-container a:hover {
+  text-decoration: underline;
+}
+
+body.page-forgot-password .forgot-return-btn {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 18px !important;
+  border-radius: 999px !important;
+  border: 2px solid #d0dbe3 !important;
+  background: #eef2f6 !important;
+  color: #1a3a4a !important;
+  font-weight: 700 !important;
+  text-decoration: none !important;
+}
+
+body.page-forgot-password .forgot-return-btn:hover {
+  background: #e2e8f0 !important;
+  text-decoration: none !important;
+  border-color: #00aeef !important;
+  color: #008fc4 !important;
+}
+
+body.page-forgot-password .forgot-message {
+  margin-top: 14px;
+  text-align: left;
+}
+
+body.page-forgot-password .forgot-message.error {
+  color: #b91c1c;
+  font-weight: 600;
+  text-align: center;
+}
+
+body.page-forgot-password .forgot-alert {
+  background: #ecfdf3;
+  border: 1px solid #bbf7d0;
+  border-radius: 12px;
+  padding: 14px;
+}
+
+body.page-forgot-password .forgot-temp-pw {
+  font-family: ui-monospace, Consolas, monospace;
+  background: #f8fafc;
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
 }

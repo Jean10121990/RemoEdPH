@@ -8,11 +8,11 @@
     <script src="js/security-guard.js?v=1"></script>
     <title>Lessons Library - RemoEdPH</title>
     <link rel="stylesheet" href="modern-styles.css">
-    <link rel="stylesheet" href="css/teacher-sidebar.css">
+    <link rel="stylesheet" href="css/teacher-sidebar.css?v=rail-align-1">
     <link rel="stylesheet" href="css/global-portal.css">
 <!-- Remo AI Chatbot Styles -->
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="css/portal-chrome-compact.css">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css?v=rail-align-1">
     <script src="js/user-session.js"></script>
     <style>
         .page-teacher-lessons-library .preview-skeleton {
@@ -100,16 +100,16 @@
         }
         .page-teacher-lessons-library .btn-icon.view.view-btn--loading {
             opacity: 0.85;
-            color: #667eea;
+            color: #00a82d;
             pointer-events: none;
         }
     </style>
 </head>
-<body class="page-teacher-lessons-library">
+<body class="page-teacher-lessons-library teacher-portal">
     <div class="remoed-main">
     <div id="teacher-sidebar-root"></div>
-    <script src="js/teacher-sidebar.js"></script>
-    <script src="js/teacher-page-header.js"></script>
+    <script src="js/teacher-sidebar.js?v=teacher-slide-1"></script>
+    <script src="js/teacher-page-header.js?v=teacher-green-1"></script>
         <script>
             TeacherSidebar.render('teacher-sidebar-root', 'lessons-library');
             TeacherPageHeader.render('lessons-library');
@@ -195,7 +195,7 @@
                 </div>
 
                 <div class="upload-section" id="upload-section" style="display: none;">
-                    <h3 style="margin: 0 0 1rem 0; color: #667eea; font-weight: 600;">Upload File</h3>
+                    <h3 style="margin: 0 0 1rem 0; color: #00a82d; font-weight: 600;">Upload File</h3>
                     <div class="upload-area" id="upload-area" onclick="document.getElementById('file-input').click()">
                         <svg class="upload-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -521,7 +521,7 @@
 
         // Check authentication
         if (!token || !teacherId) {
-            window.location.href = 'teacher-login.html';
+            window.location.href = '/login/';
         }
 
         // Load user info
@@ -1381,7 +1381,7 @@
                             <div class="preview-unsupported-icon">⚠️</div>
                             <h3>Image Preview Error</h3>
                             <p>Unable to display image. The file may be corrupted.</p>
-                            <button onclick="downloadFile('${file._id}', '${fileName}')" style="margin-top: 1rem; padding: 0.75rem 1.5rem; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                            <button onclick="downloadFile('${file._id}', '${fileName}')" style="margin-top: 1rem; padding: 0.75rem 1.5rem; background: #00a82d; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
                                 Download File
                             </button>
                         </div>
@@ -1405,7 +1405,7 @@
                             <div class="preview-unsupported-icon">⚠️</div>
                             <h3>Video Preview Error</h3>
                             <p>Unable to play video. The file may be corrupted or in an unsupported format.</p>
-                            <button onclick="downloadFile('${file._id}', '${fileName}')" style="margin-top: 1rem; padding: 0.75rem 1.5rem; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                            <button onclick="downloadFile('${file._id}', '${fileName}')" style="margin-top: 1rem; padding: 0.75rem 1.5rem; background: #00a82d; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
                                 Download File
                             </button>
                         </div>
@@ -1421,7 +1421,7 @@
                         <h3>PowerPoint Preview</h3>
                         <p>PowerPoint files cannot be previewed in the browser.</p>
                         <p style="margin-top: 1rem; font-size: 0.9rem; color: #64748b;">Please download the file to view it.</p>
-                        <button onclick="downloadFile('${file._id}', '${fileName}')" style="margin-top: 1rem; padding: 0.75rem 1.5rem; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                        <button onclick="downloadFile('${file._id}', '${fileName}')" style="margin-top: 1rem; padding: 0.75rem 1.5rem; background: #00a82d; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
                             Download File
                         </button>
                     </div>
@@ -1434,7 +1434,7 @@
                         <h3>Word Document Preview</h3>
                         <p>Word documents cannot be previewed in the browser.</p>
                         <p style="margin-top: 1rem; font-size: 0.9rem; color: #64748b;">Please download the file to view it.</p>
-                        <button onclick="downloadFile('${file._id}', '${fileName}')" style="margin-top: 1rem; padding: 0.75rem 1.5rem; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                        <button onclick="downloadFile('${file._id}', '${fileName}')" style="margin-top: 1rem; padding: 0.75rem 1.5rem; background: #00a82d; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
                             Download File
                         </button>
                     </div>
@@ -1447,7 +1447,7 @@
                         <h3>Preview Not Available</h3>
                         <p>This file type cannot be previewed in the browser.</p>
                         <p style="margin-top: 1rem; font-size: 0.9rem; color: #64748b;">File: ${fileName}</p>
-                        <button onclick="downloadFile('${file._id}', '${fileName}')" style="margin-top: 1rem; padding: 0.75rem 1.5rem; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                        <button onclick="downloadFile('${file._id}', '${fileName}')" style="margin-top: 1rem; padding: 0.75rem 1.5rem; background: #00a82d; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
                             Download File
                         </button>
                     </div>
@@ -1536,7 +1536,7 @@
         // Logout
         document.getElementById('logout-nav').addEventListener('click', () => {
             localStorage.clear();
-            window.location.href = 'teacher-login.html';
+            window.location.href = '/login/';
         });
     </script>
     
