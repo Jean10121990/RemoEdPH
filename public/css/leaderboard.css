@@ -1,19 +1,29 @@
 /**
  * Platform leaderboard — dual tabs, podium, table.
- * Teacher accent: #47BC3E / #8DF97C. Student accent: brand blue.
+ * Teacher accent: #47BC3E. Student / Admin accent: blue.
  */
 .page-leaderboard {
-  --lb-accent: #47BC3E;
-  --lb-accent-deep: #2E9A28;
-  --lb-accent-soft: rgba(141, 249, 124, 0.22);
+  --lb-accent: #00aeef;
+  --lb-accent-deep: #008fc4;
+  --lb-accent-soft: rgba(0, 174, 239, 0.12);
   --lb-gold: #c9a227;
   --lb-silver: #8b95a5;
   --lb-bronze: #b87333;
+  --lb-ink: #0f172a;
+  --lb-muted: #64748b;
+  --lb-line: #e2e8f0;
+  --lb-surface: #ffffff;
+  --lb-bg: transparent;
+}
+
+/* Teacher portal keeps mint/forest brand */
+body.teacher-portal.page-leaderboard:not(.admin-portal) {
+  --lb-accent: #47BC3E;
+  --lb-accent-deep: #2E9A28;
+  --lb-accent-soft: rgba(141, 249, 124, 0.22);
   --lb-ink: #1a2e26;
   --lb-muted: #5b6f66;
   --lb-line: #d7e5dd;
-  --lb-surface: #ffffff;
-  --lb-bg: transparent;
 }
 
 body.student-portal.page-leaderboard {
@@ -23,6 +33,28 @@ body.student-portal.page-leaderboard {
   --lb-ink: #0f172a;
   --lb-muted: #64748b;
   --lb-line: #e2e8f0;
+}
+
+/* Admin portal — match admin hub blue (#2563eb / #1ca7e7), not teacher green */
+body.admin-portal.page-leaderboard,
+html.lb-role-admin body.page-leaderboard {
+  --lb-accent: #2563eb;
+  --lb-accent-deep: #1d4ed8;
+  --lb-accent-soft: rgba(37, 99, 235, 0.12);
+  --lb-ink: #0f172a;
+  --lb-muted: #64748b;
+  --lb-line: #e2e8f0;
+  --remoed-brand-blue: #1ca7e7;
+  --remoed-sidebar-active-start: #2563eb;
+  --remoed-sidebar-active-end: #1d4ed8;
+  --remoed-sidebar-active-border: #1e40af;
+  background: #f6fbff;
+}
+
+body.admin-portal.page-leaderboard .lb-hero {
+  background:
+    radial-gradient(ellipse 70% 80% at 0% 0%, var(--lb-accent-soft), transparent 55%),
+    linear-gradient(135deg, #fff 0%, #f0f7ff 100%);
 }
 
 .lb-wrap {

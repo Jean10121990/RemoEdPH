@@ -22,12 +22,13 @@
     })();
   </script>
   <title>Leaderboard - RemoEdPH</title>
+  <link rel="stylesheet" href="modern-styles.css" id="modern-styles-css" />
   <link rel="stylesheet" href="css/teacher-sidebar.css?v=lb-nav-2" />
   <link rel="stylesheet" href="css/portal-chrome-compact.css?v=lb-nav-2" />
   <link rel="stylesheet" href="css/student-portal-layout.css?v=lb-sidebar-1" id="student-layout-css" />
   <link rel="stylesheet" href="css/student-sidebar.css?v=lb-sidebar-1" id="student-sidebar-css" />
   <link rel="stylesheet" href="css/teacher-brand-overrides.css?v=mint-forest-1" id="teacher-brand-css" />
-  <link rel="stylesheet" href="css/leaderboard.css?v=lb-2" />
+  <link rel="stylesheet" href="css/leaderboard.css?v=lb-admin-2" />
   <style>
     body.page-leaderboard {
       overflow-x: hidden;
@@ -43,8 +44,9 @@
       overflow-x: hidden;
       box-sizing: border-box;
     }
-    body.page-leaderboard.admin-portal {
-      --remoed-brand-blue: #1ca7e7;
+    /* Match other admin pages: header offset */
+    body.page-leaderboard.admin-portal.has-admin-page-header .remoed-content {
+      margin-top: 60px;
     }
   </style>
   <script>
@@ -53,10 +55,14 @@
       var studentLayout = document.getElementById('student-layout-css');
       var studentSide = document.getElementById('student-sidebar-css');
       var teacherBrand = document.getElementById('teacher-brand-css');
-      if (role === 'teacher' || role === 'admin') {
+      if (role === 'admin') {
         if (studentLayout) studentLayout.disabled = true;
         if (studentSide) studentSide.disabled = true;
-        if (teacherBrand) teacherBrand.disabled = role !== 'teacher';
+        if (teacherBrand) teacherBrand.disabled = true;
+      } else if (role === 'teacher') {
+        if (studentLayout) studentLayout.disabled = true;
+        if (studentSide) studentSide.disabled = true;
+        if (teacherBrand) teacherBrand.disabled = false;
       } else {
         if (studentLayout) studentLayout.disabled = false;
         if (studentSide) studentSide.disabled = false;
@@ -360,15 +366,15 @@
     var body = document.body;
     var root = document.getElementById('portal-sidebar-root');
     if (state.role === 'admin') {
-      body.classList.add('admin-portal', 'teacher-portal');
-      body.classList.remove('student-portal');
+      body.classList.add('admin-portal', 'page-admin-leaderboard', 'has-admin-page-header');
+      body.classList.remove('student-portal', 'teacher-portal');
       root.id = 'admin-sidebar-root';
       var as = document.createElement('script');
-      as.src = 'js/admin-sidebar.js?v=lb-admin-1';
+      as.src = 'js/admin-sidebar.js?v=lb-admin-2';
       as.onload = function () {
         AdminSidebar.render('admin-sidebar-root', 'leaderboard');
         var h = document.createElement('script');
-        h.src = 'js/admin-page-header.js?v=lb-admin-1';
+        h.src = 'js/admin-page-header.js?v=lb-admin-2';
         h.onload = function () {
           if (window.AdminPageHeader) AdminPageHeader.render('leaderboard');
         };
