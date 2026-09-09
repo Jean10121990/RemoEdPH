@@ -20,6 +20,7 @@
 
     var MENU_ITEMS = [
         { id: 'dashboard', label: 'Dashboard', href: 'student-dashboard.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/></svg>' },
+        { id: 'leaderboard', label: 'Leaderboard', href: 'leaderboard.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 01-10 0V4z"/><path d="M5 8H3a2 2 0 000 4h2M19 8h2a2 2 0 010 4h-2"/></svg>' },
         { id: 'schedule', label: 'My Schedule', href: 'student-class-table.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M16 3v4M8 3v4"/></svg>' },
         { id: 'book', label: 'Book Class', href: 'student-book.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>' },
         { id: 'classes', label: 'My Classes', href: 'student-booking-history.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>' },
@@ -62,6 +63,8 @@
                 return 'messages';
             case 'student-learning-journey.html':
                 return 'journey';
+            case 'leaderboard.html':
+                return 'leaderboard';
             case 'student-profile.html':
                 return 'profile';
             case 'student-assessment.html':
@@ -358,7 +361,7 @@
             return;
         }
         var s = document.createElement('script');
-        s.src = 'js/portal-layout.js';
+        s.src = 'js/portal-layout.js?v=lb-nav-2';
         s.async = true;
         s.setAttribute('data-remoed-portal-layout', '1');
         s.onload = function () {

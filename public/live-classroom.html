@@ -52,7 +52,8 @@
   </script>
     <link rel="stylesheet" href="style.css">
   <!-- After global styles so chat / layout rules are not overridden -->
-  <link rel="stylesheet" href="live-classroom.css?v=lc-polish-3" />
+  <link rel="stylesheet" href="live-classroom.css?v=relax-green-1" />
+  <link rel="stylesheet" href="css/live-classroom-redesign.css?v=lc-ui-1" />
 </head>
 <body class="page-live-classroom">
   <header class="top-bar" role="banner">
@@ -169,7 +170,7 @@
           <video id="local-video" autoplay muted playsinline></video>
           <div id="camera-error-message" style="display:none; padding:8px; background:#fee; color:#c33; font-size:0.85rem; text-align:center; margin:4px 0; border-radius:4px;">
             <div style="margin-bottom:4px;">Camera/Mic not available</div>
-            <button id="retry-camera-btn" style="padding:4px 12px; background:#00a82d; color:#fff; border:none; border-radius:4px; cursor:pointer; font-size:0.8rem;">Retry</button>
+            <button id="retry-camera-btn" style="padding:4px 12px; background:#3d9470; color:#fff; border:none; border-radius:4px; cursor:pointer; font-size:0.8rem;">Retry</button>
           </div>
           <div class="video-controls" aria-label="Media controls">
             <button id="toggle-camera" class="video-control-btn" type="button" title="Toggle camera" aria-label="Toggle camera">C</button>
@@ -273,40 +274,43 @@
   </div>
 
   <!-- Centered Class Info Modal -->
-  <div id="class-info-modal-overlay" style="position:fixed; inset:0; background:rgba(15,23,42,0.45); display:none; align-items:center; justify-content:center; z-index:9000;">
-    <div style="background:#ffffff; border-radius:12px; padding:20px 24px; width:90%; max-width:420px; box-shadow:0 24px 55px rgba(15,23,42,0.35);">
-      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
-        <h2 style="margin:0; font-size:1.15rem; color:#111827;">Class Information</h2>
-        <button id="class-info-close" style="border:none; background:transparent; font-size:1.4rem; cursor:pointer; color:#6b7280;">&times;</button>
+  <div id="class-info-modal-overlay" class="lc-info-overlay" hidden>
+    <div class="lc-info-panel" role="dialog" aria-modal="true" aria-labelledby="lc-info-title">
+      <div class="lc-info-header">
+        <div>
+          <p class="lc-info-eyebrow">Session details</p>
+          <h2 class="lc-info-title" id="lc-info-title">Class Information</h2>
+        </div>
+        <button type="button" id="class-info-close" class="lc-info-close" aria-label="Close">&times;</button>
       </div>
-      <div style="font-size:0.9rem; color:#374151; display:flex; flex-direction:column; gap:8px;">
-        <div style="display:flex; justify-content:space-between; gap:12px;">
-          <span style="font-weight:600;">Room ID:</span>
-          <span id="ci-room" style="text-align:right;"></span>
+      <div class="lc-info-body">
+        <div class="lc-info-row">
+          <span class="lc-info-label">Room ID</span>
+          <span class="lc-info-value" id="ci-room"></span>
         </div>
-        <div style="display:flex; justify-content:space-between; gap:12px;">
-          <span style="font-weight:600;">Booking ID:</span>
-          <span id="ci-booking" style="text-align:right;"></span>
+        <div class="lc-info-row">
+          <span class="lc-info-label">Booking ID</span>
+          <span class="lc-info-value" id="ci-booking"></span>
         </div>
-        <div style="display:flex; justify-content:space-between; gap:12px;">
-          <span style="font-weight:600;">User Type:</span>
-          <span id="ci-user-type" style="text-align:right;"></span>
+        <div class="lc-info-row">
+          <span class="lc-info-label">User Type</span>
+          <span class="lc-info-value" id="ci-user-type"></span>
         </div>
-        <div style="display:flex; justify-content:space-between; gap:12px;">
-          <span style="font-weight:600;">Username:</span>
-          <span id="ci-username" style="text-align:right;"></span>
+        <div class="lc-info-row">
+          <span class="lc-info-label">Username</span>
+          <span class="lc-info-value" id="ci-username"></span>
         </div>
-        <div style="display:flex; justify-content:space-between; gap:12px;">
-          <span style="font-weight:600;">Class Time:</span>
-          <span id="ci-class-time" style="text-align:right;"></span>
+        <div class="lc-info-row">
+          <span class="lc-info-label">Class Time</span>
+          <span class="lc-info-value" id="ci-class-time"></span>
         </div>
-        <div style="display:flex; justify-content:space-between; gap:12px;">
-          <span style="font-weight:600;">Student Level:</span>
-          <span id="ci-student-level" style="text-align:right;"></span>
+        <div class="lc-info-row">
+          <span class="lc-info-label">Student Level</span>
+          <span class="lc-info-value" id="ci-student-level"></span>
         </div>
       </div>
-      <div style="margin-top:16px; display:flex; justify-content:flex-end;">
-        <button id="class-info-ok" style="padding:8px 16px; border-radius:6px; border:none; background:#00a82d; color:#fff; font-weight:600; cursor:pointer;">OK</button>
+      <div class="lc-info-footer">
+        <button type="button" id="class-info-ok" class="lc-info-ok">OK</button>
       </div>
     </div>
   </div>
@@ -6473,12 +6477,14 @@
           setText('ci-student-level', '-');
         }
 
-        classInfoOverlay.style.display = 'flex';
+        classInfoOverlay.hidden = false;
+        classInfoOverlay.classList.add('is-open');
       }
 
       function closeClassInfoModal() {
         if (classInfoOverlay) {
-          classInfoOverlay.style.display = 'none';
+          classInfoOverlay.classList.remove('is-open');
+          classInfoOverlay.hidden = true;
         }
       }
 

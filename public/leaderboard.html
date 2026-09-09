@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
+  <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
+  <script src="js/security-guard.js?v=1"></script>
+  <script src="js/user-session.js"></script>
+  <script>
+    (function () {
+      var role = 'student';
+      try {
+        var ut = (localStorage.getItem('userType') || localStorage.getItem('userRole') || '').toLowerCase();
+        if (ut === 'teacher' || ut === 'admin') role = 'teacher';
+      } catch (e) {}
+      window.__LB_ROLE__ = role;
+      document.documentElement.classList.add(role === 'teacher' ? 'lb-role-teacher' : 'lb-role-student');
+    })();
+  </script>
+  <title>Leaderboard - RemoEdPH</title>
+  <link rel="stylesheet" href="css/teacher-sidebar.css?v=lb-nav-2" />
+  <link rel="stylesheet" href="css/portal-chrome-compact.css?v=lb-nav-2" />
+  <link rel="stylesheet" href="css/student-portal-layout.css?v=lb-sidebar-1" id="student-layout-css" />
+  <link rel="stylesheet" href="css/student-sidebar.css?v=lb-sidebar-1" id="student-sidebar-css" />
+  <link rel="stylesheet" href="css/teacher-brand-overrides.css?v=relax-green-1" id="teacher-brand-css" />
+  <link rel="stylesheet" href="css/leaderboard.css?v=lb-2" />
+  <style>
+    body.page-leaderboard {
+      overflow-x: hidden;
+    }
+    body.page-leaderboard .remoed-main {
+      width: 100%;
+      max-width: 100vw;
+      overflow-x: hidden;
+      box-sizing: border-box;
+    }
+    body.page-leaderboard .remoed-content {
+      min-width: 0;
+      overflow-x: hidden;
+      box-sizing: border-box;
+    }
+  </style>
+  <script>
+    (function () {
+      var role = window.__LB_ROLE__ || 'student';
+      var studentLayout = document.getElementById('student-layout-css');
+      var studentSide = document.getElementById('student-sidebar-css');
+      var teacherBrand = document.getElementById('teacher-brand-css');
+      if (role === 'teacher') {
+        if (studentLayout) studentLayout.disabled = true;
+        if (studentSide) studentSide.disabled = true;
+        if (teacherBrand) teacherBrand.disabled = false;
+      } else {
+        if (studentLayout) studentLayout.disabled = false;
+        if (studentSide) studentSide.disabled = false;
+        if (teacherBrand) teacherBrand.disabled = true;
+      }
+    })();
+  </script>
+</head>
+<body class="page-leaderboard">
+  <div class="remoed-main">
+    <div id="portal-sidebar-root"></div>
+    <div class="remoed-content">
+      <div id="page-header-root"></div>
+      <div class="lb-wrap">
+        <header class="lb-hero">
+          <h1>Platform Leaderboard</h1>
+          <p>Monthly rankings for students and teachers across RemoEdPH. Scores refresh from live class activity.</p>
+        </header>
+
+        <nav class="lb-tabs" role="tablist" aria-label="Leaderboard type">
+          <button type="button" class="lb-tab is-active" role="tab" aria-selected="true" data-tab="students" id="tab-students">Student Leaderboard</button>
+          <button type="button" class="lb-tab" role="tab" aria-selected="false" data-tab="teachers" id="tab-teachers">Teacher Leaderboard</button>
+        </nav>
+
+        <div class="lb-filters">
+          <div class="lb-filter">
+            <label for="lb-month">Month</label>
+            <select id="lb-month"></select>
+          </div>
+          <div class="lb-filter" id="lb-age-wrap">
+            <label for="lb-age">Age bracket</label>
+            <select id="lb-age">
+              <option value="ALL">All ages</option>
+            </select>
+          </div>
+        </div>
+
+        <p class="lb-status" id="lb-status" aria-live="polite">Loading…</p>
+
+        <section class="lb-podium" id="lb-podium" aria-label="Top 3 podium"></section>
+
+        <section class="lb-table-card" aria-label="Leaderboard table">
+          <div class="lb-table-head">
+            <h2 id="lb-table-title">Ranks 4+</h2>
+          </div>
+          <div class="lb-table-wrap">
+            <table class="lb-table">
+              <thead id="lb-thead"></thead>
+              <tbody id="lb-tbody"></tbody>
+            </table>
+          </div>
+          <div class="lb-pager">
+            <button type="button" id="lb-prev" disabled>Previous</button>
+            <span id="lb-page-label">Page 1</span>
+            <button type="button" id="lb-next" disabled>Next</button>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <script>
+(function () {
+  var state = {
+    tab: 'students',
+    month: '',
+    ageGroup: 'ALL',
+    page: 1,
+    pageSize: 15,
+    role: window.__LB_ROLE__ || 'student'
+  };
+
+  function detectRole() {
+    return window.__LB_ROLE__ || 'student';
+  }
+
+  function getToken() {
+    try {
+      if (window.RemoedUserSession && RemoedUserSession.getUserToken) {
+        var t = RemoedUserSession.getUserToken();
+        if (t) return t;
+      }
+    } catch (e) {}
+    return (
+      localStorage.getItem('remoed_teacher_token') ||
+      localStorage.getItem('remoed_student_token') ||
+      localStorage.getItem('remoed_user_token') ||
+      localStorage.getItem('token') ||
+      ''
+    );
+  }
+
+  function escapeHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function initialOf(name) {
+    var n = String(name || '?').trim();
+    return (n.charAt(0) || '?').toUpperCase();
+  }
+
+  function avatarHtml(row) {
+    var name = row.displayName || '?';
+    if (row.avatar) {
+      return '<img src="' + escapeHtml(row.avatar) + '" alt="" loading="lazy" />';
+    }
+    return '<span class="lb-avatar-fallback">' + escapeHtml(initialOf(name)) + '</span>';
+  }
+
+  function monthOptions() {
+    var sel = document.getElementById('lb-month');
+    sel.innerHTML = '';
+    var now = new Date();
+    for (var i = 0; i < 12; i++) {
+      var d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      var y = d.getFullYear();
+      var m = String(d.getMonth() + 1).padStart(2, '0');
+      var key = y + '-' + m;
+      var label = d.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+      var opt = document.createElement('option');
+      opt.value = key;
+      opt.textContent = label;
+      sel.appendChild(opt);
+    }
+    state.month = sel.value;
+  }
+
+  function setStatus(msg, isError) {
+    var el = document.getElementById('lb-status');
+    el.textContent = msg || '';
+    el.classList.toggle('is-error', !!isError);
+  }
+
+  function frameIcon(rank, isTeacher) {
+    if (rank === 1) return isTeacher ? '🥇' : '👑';
+    if (rank === 2) return isTeacher ? '🥈' : '⭐';
+    return isTeacher ? '🥉' : '🛡️';
+  }
+
+  function frameClass(rank) {
+    if (rank === 1) return 'gold';
+    if (rank === 2) return 'silver';
+    return 'bronze';
+  }
+
+  function renderPodium(podium, isTeacher) {
+    var root = document.getElementById('lb-podium');
+    if (!podium || !podium.length) {
+      root.innerHTML = '<div class="lb-empty-podium">No rankings yet for this month. Complete classes to appear here.</div>';
+      return;
+    }
+    var byRank = {};
+    podium.forEach(function (p) { byRank[p.rank] = p; });
+    var html = '';
+    [2, 1, 3].forEach(function (rank) {
+      var row = byRank[rank];
+      if (!row) return;
+      var metrics = '';
+      if (isTeacher) {
+        metrics =
+          '<div class="lb-podium-metrics">' +
+          '<span class="lb-chip">' + escapeHtml(String(row.lessonsCompletedCount || 0)) + ' lessons</span>' +
+          '<span class="lb-chip">★ ' + escapeHtml(String(row.avgStudentRating || 0)) + '</span>' +
+          '<span class="lb-chip">' + escapeHtml(String(row.badgesAwardedCount || 0)) + ' badges</span>' +
+          '</div>';
+      } else {
+        metrics =
+          '<div class="lb-podium-metrics">' +
+          '<span class="lb-chip">🥇 ' + escapeHtml(String(row.goldCount || 0)) + '</span>' +
+          '<span class="lb-chip">🥈 ' + escapeHtml(String(row.silverCount || 0)) + '</span>' +
+          '<span class="lb-chip">🥉 ' + escapeHtml(String(row.bronzeCount || 0)) + '</span>' +
+          '<span class="lb-chip">' + escapeHtml(String(row.attendanceCount || 0)) + ' attended</span>' +
+          '</div>';
+      }
+      html +=
+        '<article class="lb-podium-card lb-podium-card--' + rank + '">' +
+        '<span class="lb-podium-place">#' + rank + '</span>' +
+        '<div class="lb-avatar-frame lb-avatar-frame--' + frameClass(rank) + '">' +
+        avatarHtml(row) +
+        '<span class="lb-frame-icon" aria-hidden="true">' + frameIcon(rank, isTeacher) + '</span>' +
+        '</div>' +
+        '<h3 class="lb-podium-name">' + escapeHtml(row.displayName) + '</h3>' +
+        '<p class="lb-podium-sub">' + escapeHtml(isTeacher ? (row.badgeTitle || 'Educator') : (row.ageGroup && row.ageGroup !== 'ALL' ? row.ageGroup : 'Student')) + '</p>' +
+        '<div class="lb-podium-points">' + escapeHtml(String(row.totalPoints || 0)) + ' pts</div>' +
+        metrics +
+        '</article>';
+    });
+    root.innerHTML = html || '<div class="lb-empty-podium">No top rankings yet.</div>';
+  }
+
+  function renderTable(table, pagination, isTeacher) {
+    var thead = document.getElementById('lb-thead');
+    var tbody = document.getElementById('lb-tbody');
+    if (isTeacher) {
+      thead.innerHTML =
+        '<tr><th>Rank</th><th>Teacher</th><th>Lessons</th><th>Avg rating</th><th>Badges</th><th>Score</th></tr>';
+    } else {
+      thead.innerHTML =
+        '<tr><th>Rank</th><th>Student</th><th>Gold</th><th>Silver</th><th>Bronze</th><th>Domains</th><th>Attended</th><th>Score</th></tr>';
+    }
+
+    if (!table || !table.length) {
+      tbody.innerHTML =
+        '<tr><td colspan="8" style="text-align:center;color:var(--lb-muted);padding:1.5rem;">No additional ranks for this filter.</td></tr>';
+    } else {
+      tbody.innerHTML = table.map(function (row) {
+        if (isTeacher) {
+          return (
+            '<tr>' +
+            '<td class="lb-rank">#' + escapeHtml(String(row.rank)) + '</td>' +
+            '<td><div class="lb-user">' + avatarHtml(row) +
+            '<div><div class="lb-user-name">' + escapeHtml(row.displayName) + '</div>' +
+            '<div class="lb-user-sub">' + escapeHtml(row.badgeTitle || '') + '</div></div></div></td>' +
+            '<td>' + escapeHtml(String(row.lessonsCompletedCount || 0)) + '</td>' +
+            '<td>' + escapeHtml(String(row.avgStudentRating || 0)) + '</td>' +
+            '<td>' + escapeHtml(String(row.badgesAwardedCount || 0)) + '</td>' +
+            '<td class="lb-score">' + escapeHtml(String(row.totalPoints || 0)) + '</td>' +
+            '</tr>'
+          );
+        }
+        return (
+          '<tr>' +
+          '<td class="lb-rank">#' + escapeHtml(String(row.rank)) + '</td>' +
+          '<td><div class="lb-user">' + avatarHtml(row) +
+          '<div><div class="lb-user-name">' + escapeHtml(row.displayName) + '</div></div></div></td>' +
+          '<td>' + escapeHtml(String(row.goldCount || 0)) + '</td>' +
+          '<td>' + escapeHtml(String(row.silverCount || 0)) + '</td>' +
+          '<td>' + escapeHtml(String(row.bronzeCount || 0)) + '</td>' +
+          '<td>' + escapeHtml(String(row.domainCount || 0)) + '</td>' +
+          '<td>' + escapeHtml(String(row.attendanceCount || 0)) + '</td>' +
+          '<td class="lb-score">' + escapeHtml(String(row.totalPoints || 0)) + '</td>' +
+          '</tr>'
+        );
+      }).join('');
+    }
+
+    var prev = document.getElementById('lb-prev');
+    var next = document.getElementById('lb-next');
+    var label = document.getElementById('lb-page-label');
+    var pg = (pagination && pagination.page) || 1;
+    var pages = (pagination && pagination.totalPages) || 1;
+    label.textContent = 'Page ' + pg + ' of ' + pages;
+    prev.disabled = pg <= 1;
+    next.disabled = pg >= pages;
+  }
+
+  async function load() {
+    var token = getToken();
+    if (!token) {
+      setStatus('Please sign in to view the leaderboard.', true);
+      return;
+    }
+    setStatus('Loading rankings…');
+    var isTeacherTab = state.tab === 'teachers';
+    document.getElementById('lb-age-wrap').style.display = isTeacherTab ? 'none' : '';
+    var url = isTeacherTab
+      ? '/api/leaderboard/teachers?month=' + encodeURIComponent(state.month) +
+        '&page=' + state.page + '&pageSize=' + state.pageSize
+      : '/api/leaderboard/students?month=' + encodeURIComponent(state.month) +
+        '&ageGroup=' + encodeURIComponent(state.ageGroup) +
+        '&page=' + state.page + '&pageSize=' + state.pageSize;
+
+    try {
+      var res = await fetch(url, {
+        headers: { Authorization: 'Bearer ' + token }
+      });
+      var data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error((data && data.error) || ('HTTP ' + res.status));
+      }
+      if (data.ageGroups && data.ageGroups.length) {
+        var ageSel = document.getElementById('lb-age');
+        var cur = state.ageGroup;
+        ageSel.innerHTML = data.ageGroups.map(function (g) {
+          var label = g === 'ALL' ? 'All ages' : g;
+          return '<option value="' + escapeHtml(g) + '"' + (g === cur ? ' selected' : '') + '>' + escapeHtml(label) + '</option>';
+        }).join('');
+      }
+      renderPodium(data.podium || [], isTeacherTab);
+      renderTable(data.table || [], data.pagination, isTeacherTab);
+      setStatus(
+        'Month ' + (data.month || state.month) +
+        ' · updated ' + (data.generatedAt ? new Date(data.generatedAt).toLocaleString() : 'just now')
+      );
+    } catch (err) {
+      console.error(err);
+      setStatus(err.message || 'Failed to load leaderboard', true);
+      document.getElementById('lb-podium').innerHTML = '';
+      document.getElementById('lb-tbody').innerHTML = '';
+    }
+  }
+
+  function mountChrome() {
+    state.role = detectRole();
+    var body = document.body;
+    var root = document.getElementById('portal-sidebar-root');
+    if (state.role === 'teacher') {
+      body.classList.add('teacher-portal');
+      body.classList.remove('student-portal');
+      root.id = 'teacher-sidebar-root';
+      var ts = document.createElement('script');
+      ts.src = 'js/teacher-sidebar.js?v=lb-nav-2';
+      ts.onload = function () {
+        TeacherSidebar.render('teacher-sidebar-root', 'leaderboard');
+        var h = document.createElement('script');
+        h.src = 'js/teacher-page-header.js?v=lb-nav-2';
+        h.onload = function () {
+          if (window.TeacherPageHeader) TeacherPageHeader.render('leaderboard');
+        };
+        document.head.appendChild(h);
+      };
+      document.head.appendChild(ts);
+    } else {
+      body.classList.add('student-portal');
+      body.classList.remove('teacher-portal');
+      root.id = 'student-sidebar-root';
+      var ss = document.createElement('script');
+      ss.src = 'js/student-sidebar.js?v=lb-nav-2';
+      ss.onload = function () {
+        StudentSidebar.render('student-sidebar-root', 'leaderboard');
+        var h = document.createElement('script');
+        h.src = 'js/student-page-header.js?v=lb-nav-2';
+        h.onload = function () {
+          if (window.StudentPageHeader) StudentPageHeader.render('leaderboard');
+        };
+        document.head.appendChild(h);
+      };
+      document.head.appendChild(ss);
+    }
+  }
+
+  document.querySelectorAll('.lb-tab').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      document.querySelectorAll('.lb-tab').forEach(function (b) {
+        b.classList.remove('is-active');
+        b.setAttribute('aria-selected', 'false');
+      });
+      btn.classList.add('is-active');
+      btn.setAttribute('aria-selected', 'true');
+      state.tab = btn.getAttribute('data-tab');
+      state.page = 1;
+      load();
+    });
+  });
+
+  document.getElementById('lb-month').addEventListener('change', function () {
+    state.month = this.value;
+    state.page = 1;
+    load();
+  });
+  document.getElementById('lb-age').addEventListener('change', function () {
+    state.ageGroup = this.value;
+    state.page = 1;
+    load();
+  });
+  document.getElementById('lb-prev').addEventListener('click', function () {
+    if (state.page > 1) {
+      state.page -= 1;
+      load();
+    }
+  });
+  document.getElementById('lb-next').addEventListener('click', function () {
+    state.page += 1;
+    load();
+  });
+
+  monthOptions();
+  mountChrome();
+  load();
+})();
+  </script>
+</body>
+</html>

@@ -185,7 +185,7 @@ body.student-portal.page-student-profile .profile-avatar-large {
   height: 88px !important;
   font-size: 2rem !important;
   border-width: 3px !important;
-  box-shadow: 0 4px 12px rgba(0, 168, 45, 0.22) !important;
+  box-shadow: 0 4px 12px rgba(61, 148, 112, 0.22) !important;
 }
 
 body.page-teacher-profile .profile-name-large,
@@ -793,7 +793,7 @@ body.page-teacher-profile #preview-profile-btn {
 
 body.page-teacher-profile .preview-btn,
 body.page-teacher-profile #preview-profile-btn {
-  background: linear-gradient(135deg, #008a24, #00a82d) !important;
+  background: linear-gradient(135deg, #2f7358, #3d9470) !important;
   color: #fff !important;
   border: none !important;
   cursor: pointer !important;
@@ -856,7 +856,7 @@ body.page-teacher-performance-indicator .badges-section {
   padding: 16px !important;
   margin-bottom: 15px !important;
   border-radius: 12px !important;
-  box-shadow: 0 4px 12px rgba(0, 168, 45, 0.22) !important;
+  box-shadow: 0 4px 12px rgba(61, 148, 112, 0.22) !important;
 }
 
 body.page-teacher-performance-indicator .badges-header {
@@ -1178,13 +1178,13 @@ body.page-teacher-lessons-library .lesson-title-edit-btn:hover {
 }
 
 body.page-teacher-lessons-library .lesson-title-save-btn {
-  background: #00a82d;
-  border-color: #00a82d;
+  background: #3d9470;
+  border-color: #3d9470;
   color: #fff;
 }
 
 body.page-teacher-lessons-library .lesson-title-save-btn:hover {
-  background: #008a24;
+  background: #2f7358;
 }
 
 body.page-teacher-lessons-library .lesson-title-input {

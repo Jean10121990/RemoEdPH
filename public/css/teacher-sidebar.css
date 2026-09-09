@@ -8,22 +8,22 @@
 @import url('portal-chrome-compact.css');
 @import url('teacher-portal-layout.css');
 
-/* Brand + sidebar tokens — RemoEdPH logo palette (teacher rail is green) */
+/* Brand + sidebar tokens — RemoEdPH logo palette (teacher rail is relaxing green) */
 :root {
   --remoed-brand-blue: #00aeef;
   --remoed-brand-blue-soft: #5cc8f5;
   --remoed-brand-blue-deep: #008fc4;
-  --remoed-brand-green: #00a82d;
-  --remoed-brand-green-soft: #34c759;
-  --remoed-brand-green-deep: #008a24;
-  --remoed-brand-yellow: #fdd835;
+  --remoed-brand-green: #3d9470;
+  --remoed-brand-green-soft: #5fad88;
+  --remoed-brand-green-deep: #2f7358;
+  --remoed-brand-yellow: #f0d55c;
   --remoed-sidebar-subtitle: #5c6370;
-  --remoed-sidebar-active-start: #008a24;
-  --remoed-sidebar-active-end: #00a82d;
-  --remoed-sidebar-active-border: #00a82d;
+  --remoed-sidebar-active-start: #2f7358;
+  --remoed-sidebar-active-end: #3d9470;
+  --remoed-sidebar-active-border: #3d9470;
   --remoed-sidebar-inactive: #2d3748;
-  --remoed-sidebar-inactive-hover-bg: rgba(0, 168, 45, 0.12);
-  --remoed-sidebar-inactive-hover-text: #008a24;
+  --remoed-sidebar-inactive-hover-bg: rgba(61, 148, 112, 0.12);
+  --remoed-sidebar-inactive-hover-text: #2f7358;
 }
 
 /* Sidebar container – fixed, full height (teacher green rail via teacher-portal-layout.css) */
@@ -76,9 +76,9 @@
     width: 36px;
     height: 36px;
     border-radius: 10px;
-    border: 2px solid var(--remoed-brand-green, #00a82d);
+    border: 2px solid var(--remoed-brand-green, #3d9470);
     background: #fff;
-    color: var(--remoed-brand-green, #00a82d);
+    color: var(--remoed-brand-green, #3d9470);
     cursor: pointer;
     display: inline-flex;
     align-items: center;
@@ -88,9 +88,9 @@
 
 .remoed-sidebar .sidebar-collapse-toggle:hover,
 .remoed-sidebar .sidebar-collapse-toggle:focus-visible {
-    background: var(--remoed-brand-green, #00a82d);
+    background: var(--remoed-brand-green, #3d9470);
     color: #fff;
-    border-color: var(--remoed-brand-green-deep, #008a24);
+    border-color: var(--remoed-brand-green-deep, #2f7358);
     outline: none;
     transform: scale(1.04);
 }
@@ -339,6 +339,9 @@
 
 /* Logout at bottom – red */
 .remoed-menu li#logout-nav {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
     margin-top: auto;
     color: #e74c3c;
 }
@@ -471,9 +474,9 @@ body.remoed-portal-sidebar-mounted {
     height: 44px;
     padding: 0;
     border-radius: 10px;
-    border: 2px solid var(--remoed-brand-green, #00a82d);
+    border: 2px solid var(--remoed-brand-green, #3d9470);
     background: #fff;
-    color: var(--remoed-brand-green, #00a82d);
+    color: var(--remoed-brand-green, #3d9470);
     cursor: pointer;
     display: inline-flex;
     align-items: center;
@@ -496,9 +499,9 @@ body.remoed-drawer-open .portal-sidebar-toggle {
 
 .portal-sidebar-toggle:hover,
 .portal-sidebar-toggle:focus-visible {
-    background: var(--remoed-brand-green, #00a82d);
+    background: var(--remoed-brand-green, #3d9470);
     color: #fff;
-    border-color: var(--remoed-brand-green-deep, #008a24);
+    border-color: var(--remoed-brand-green-deep, #2f7358);
     outline: none;
 }
 

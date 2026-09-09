@@ -379,6 +379,7 @@ app.use('/api/teacher/training', noStoreProtectedResponse, teacherTrainingRoutes
 app.use('/api/bookings', noStoreProtectedResponse, bookingsSlotRoutes);
 app.use('/api/slots', noStoreProtectedResponse, slotsRoutes);
 app.use('/api/student', noStoreProtectedResponse, studentRoutes);
+app.use('/api/leaderboard', noStoreProtectedResponse, require('./routes/leaderboard'));
 // Public teacher application form: POST /api/applications
 app.use('/api', applicationRoutes);
 // Must be before /api/admin: same path prefix /api/admin/... is otherwise swallowed by adminRoutes → 404

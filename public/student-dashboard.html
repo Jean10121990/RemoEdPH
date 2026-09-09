@@ -773,7 +773,7 @@
         </div>
         
         <div id="student-sidebar-root"></div>
-        <script src="js/student-sidebar.js?v=slide-match-1"></script>
+        <script src="js/student-sidebar.js?v=lb-nav-2"></script>
         <script src="js/student-page-header.js"></script>
         <script>
             StudentSidebar.render('student-sidebar-root', 'dashboard');
@@ -889,21 +889,7 @@
         loadProfilePicture(studentId);
       }
       
-      // Logout: handled by js/student-sidebar.js?v=slide-match-1 (localStorage.clear + sessionStorage.clear + replace)
-
-      // Load chart data
-      loadChartData();
-      
-      // Load upcoming classes and notifications
-      loadUpcomingClasses();
-      loadNotificationsDropdown();
-      loadUpcomingClassesDropdown();
-      loadRescheduleNotifications();
-      
-
-      
-      // Fetch and display student announcements
-      fetch('/api/announcement?role=student')
+      // Logout: handled by js/student-sidebar.js?v=lb-nav-2'/api/announcement?role=student')
         .then(r => r.json())
         .then(list => {
           const listDivs = [document.getElementById('student-announcement-list-right')].filter(Boolean);

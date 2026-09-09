@@ -8,11 +8,11 @@
     <script src="js/security-guard.js?v=1"></script>
     <title>Teacher Profile - RemoEdPH</title>
     <link rel="stylesheet" href="modern-styles.css">
-    <link rel="stylesheet" href="css/teacher-sidebar.css?v=rail-align-1">
+    <link rel="stylesheet" href="css/teacher-sidebar.css?v=relax-green-1">
     <link rel="stylesheet" href="css/global-portal.css">
 <!-- Remo AI Chatbot Styles -->
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="css/portal-chrome-compact.css?v=rail-align-1">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css?v=relax-green-1">
     <script src="js/user-session.js"></script>
 </head>
 <body class="page-teacher-profile teacher-portal">
@@ -93,10 +93,10 @@
                     <div class="profile-main-card">
                 <div id="profile-form">
                     <!-- Profile Completion Indicator -->
-                    <div id="profile-completion-indicator" style="background: linear-gradient(135deg, #f0f8ff 0%, #e8f4fd 100%); border: 2px solid #00a82d; border-radius: 10px;">
+                    <div id="profile-completion-indicator" style="background: linear-gradient(135deg, #f0f8ff 0%, #e8f4fd 100%); border: 2px solid #3d9470; border-radius: 10px;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                             <div>
-                                <h4 style="margin: 0; color: #00a82d; font-size: 0.95rem; font-weight: 600;">Profile Completion</h4>
+                                <h4 style="margin: 0; color: #3d9470; font-size: 0.95rem; font-weight: 600;">Profile Completion</h4>
                                 <p style="margin: 4px 0 0 0; color: #666; font-size: 0.8rem;" id="completion-message">Complete your profile to attract more students</p>
                             </div>
                             <button type="button" class="preview-btn" id="preview-profile-btn" onclick="togglePreviewMode()">
@@ -104,17 +104,17 @@
                             </button>
                         </div>
                         <div style="background: #e0e6ed; border-radius: 8px; height: 12px; overflow: hidden; position: relative;">
-                            <div id="completion-progress-bar" style="background: linear-gradient(90deg, #00a82d, #008a24); height: 100%; width: 0%; transition: width 0.5s ease; border-radius: 8px;"></div>
+                            <div id="completion-progress-bar" style="background: linear-gradient(90deg, #3d9470, #2f7358); height: 100%; width: 0%; transition: width 0.5s ease; border-radius: 8px;"></div>
                         </div>
                         <div style="display: flex; justify-content: space-between; margin-top: 8px;">
-                            <span id="completion-percentage" style="font-size: 0.9rem; font-weight: 700; color: #00a82d;">0%</span>
+                            <span id="completion-percentage" style="font-size: 0.9rem; font-weight: 700; color: #3d9470;">0%</span>
                             <span id="completion-details" style="font-size: 0.8rem; color: #666;"></span>
                         </div>
                         <div id="missing-fields-list" style="margin-top: 12px; font-size: 0.85rem; color: #666; display: none;">
                             <strong style="color: #e74c3c;">Missing required:</strong> <span id="missing-fields-text"></span>
                         </div>
                         <div id="missing-optional-list" style="margin-top: 8px; font-size: 0.85rem; color: #666; display: none;">
-                            <strong style="color: #00a82d;">Optional for 100%:</strong> <span id="missing-optional-text"></span>
+                            <strong style="color: #3d9470;">Optional for 100%:</strong> <span id="missing-optional-text"></span>
                         </div>
                     </div>
                     
@@ -324,7 +324,7 @@
                     <!-- Documents Tab -->
                     <div id="documents-tab" class="tab-content">
                         <div class="section-title">Documents & Certificates</div>
-                        <div style="background: #e3f2fd; border-left: 4px solid #00a82d; padding: 12px 16px; margin-bottom: 24px; border-radius: 8px; color: #1976d2; font-size: 0.95rem;">
+                        <div style="background: #e3f2fd; border-left: 4px solid #3d9470; padding: 12px 16px; margin-bottom: 24px; border-radius: 8px; color: #1976d2; font-size: 0.95rem;">
                             <strong>💡 Note:</strong> Click <strong>"Edit"</strong> to enable uploads, then click <strong>"Save Changes"</strong> below to save all documents.
                         </div>
                         
@@ -334,27 +334,27 @@
                                 <span>📤 Bulk Upload</span>
                                 <span style="font-size: 0.9rem; color: #666; font-weight: 400;">Drag & drop multiple files</span>
                             </div>
-                            <div id="bulk-upload-zone" class="bulk-upload-zone" style="border: 3px dashed #00a82d; border-radius: 12px; padding: 40px; text-align: center; background: #f0f8ff; cursor: pointer; transition: all 0.3s ease; margin-top: 12px;">
+                            <div id="bulk-upload-zone" class="bulk-upload-zone" style="border: 3px dashed #3d9470; border-radius: 12px; padding: 40px; text-align: center; background: #f0f8ff; cursor: pointer; transition: all 0.3s ease; margin-top: 12px;">
                                 <input type="file" id="bulk-upload-input" multiple accept=".pdf,.jpg,.jpeg,.png" style="display: none;">
                                 <div id="bulk-upload-content">
-                                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#00a82d" stroke-width="2" style="margin: 0 auto 16px; display: block;">
+                                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#3d9470" stroke-width="2" style="margin: 0 auto 16px; display: block;">
                                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                                         <polyline points="17 8 12 3 7 8"></polyline>
                                         <line x1="12" y1="3" x2="12" y2="15"></line>
                                     </svg>
-                                    <p style="margin: 0; color: #00a82d; font-weight: 600; font-size: 1rem;">Drag & drop files here or click to browse</p>
+                                    <p style="margin: 0; color: #3d9470; font-weight: 600; font-size: 1rem;">Drag & drop files here or click to browse</p>
                                     <p style="margin: 8px 0 0 0; color: #666; font-size: 0.85rem;">You can upload multiple files at once (PDF, JPG, PNG)</p>
                                 </div>
                                 <div id="bulk-upload-progress" style="display: none; margin-top: 16px;">
                                     <div style="background: #e0e6ed; border-radius: 8px; height: 8px; overflow: hidden;">
-                                        <div id="bulk-upload-progress-bar" style="background: linear-gradient(90deg, #00a82d, #008a24); height: 100%; width: 0%; transition: width 0.3s ease;"></div>
+                                        <div id="bulk-upload-progress-bar" style="background: linear-gradient(90deg, #3d9470, #2f7358); height: 100%; width: 0%; transition: width 0.3s ease;"></div>
                                     </div>
                                     <p id="bulk-upload-status" style="margin: 8px 0 0 0; color: #666; font-size: 0.85rem;"></p>
                                 </div>
                             </div>
                             <div id="bulk-upload-files-list" style="margin-top: 16px; display: none;">
                                 <div style="background: #f8f9fa; border-radius: 8px; padding: 12px; max-height: 200px; overflow-y: auto;">
-                                    <strong style="color: #00a82d; font-size: 0.9rem;">Selected Files:</strong>
+                                    <strong style="color: #3d9470; font-size: 0.9rem;">Selected Files:</strong>
                                     <div id="bulk-files-list" style="margin-top: 8px;"></div>
                                 </div>
                                 <div style="margin-top: 12px; display: flex; gap: 8px;">
@@ -746,12 +746,12 @@
             // Load sidebar (shared component)
             (function() {
                 var script = document.createElement('script');
-                script.src = 'js/teacher-sidebar.js?v=teacher-slide-1';
+                script.src = 'js/teacher-sidebar.js?v=lb-nav-2';
                 script.onload = function() {
                     TeacherSidebar.render('teacher-sidebar-root', 'profile');
                     updateSidebarProfile();
                     var h = document.createElement('script');
-                    h.src = 'js/teacher-page-header.js?v=teacher-green-1';
+                    h.src = 'js/teacher-page-header.js?v=relax-green-1';
                     h.onload = function() { TeacherPageHeader.render('profile'); };
                     document.head.appendChild(h);
                 };
@@ -2850,11 +2850,11 @@
             const modalHTML = `
                 <div id="support-modal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center;">
                     <div style="background: white; border-radius: 12px; padding: 30px; max-width: 500px; width: 90%; box-shadow: 0 8px 24px rgba(0,0,0,0.2);">
-                        <h2 style="color: #00a82d; margin-top: 0;">${modal.title}</h2>
+                        <h2 style="color: #3d9470; margin-top: 0;">${modal.title}</h2>
                         <p style="color: #666; line-height: 1.6; margin-bottom: 24px;">${modal.content}</p>
                         <div style="display: flex; gap: 12px; justify-content: flex-end;">
-                            <button onclick="closeSupportModal()" style="padding: 10px 20px; border: 2px solid #00a82d; background: white; color: #00a82d; border-radius: 8px; cursor: pointer; font-weight: 600;">Close</button>
-                            <button onclick="handleSupportAction('${type}')" style="padding: 10px 20px; background: #00a82d; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">${modal.action}</button>
+                            <button onclick="closeSupportModal()" style="padding: 10px 20px; border: 2px solid #3d9470; background: white; color: #3d9470; border-radius: 8px; cursor: pointer; font-weight: 600;">Close</button>
+                            <button onclick="handleSupportAction('${type}')" style="padding: 10px 20px; background: #3d9470; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">${modal.action}</button>
                         </div>
                     </div>
                 </div>
@@ -3079,7 +3079,7 @@
                     messageEl.style.color = '#10b981';
                 } else if (requiredPercentage === 100) {
                     messageEl.textContent = 'Great! Add optional information to improve your profile';
-                    messageEl.style.color = '#00a82d';
+                    messageEl.style.color = '#3d9470';
                 } else {
                     messageEl.textContent = 'Complete your profile to attract more students';
                     messageEl.style.color = '#666';
@@ -3461,7 +3461,7 @@
             const profileData = collectProfileDataForPreview();
             
             modal.innerHTML = `
-                <div class="preview-modal-header" style="background: linear-gradient(135deg, #00a82d 0%, #008a24 100%); padding: 20px 24px; border-radius: 20px 20px 0 0; color: white;">
+                <div class="preview-modal-header" style="background: linear-gradient(135deg, #3d9470 0%, #2f7358 100%); padding: 20px 24px; border-radius: 20px 20px 0 0; color: white;">
                     <h3 style="margin: 0; color: white; font-size: 1.3rem; display: flex; align-items: center; gap: 8px;">
                         👁️ This is how students see your profile!
                     </h3>
@@ -3602,7 +3602,7 @@
                 const levelLower = level.toLowerCase();
                 if (levelLower.includes('expert') || levelLower.includes('advanced')) return '#10b981';
                 if (levelLower.includes('intermediate')) return '#f59e0b';
-                return '#00a82d';
+                return '#3d9470';
             };
             
             // Helper function to get level emoji
@@ -3616,14 +3616,14 @@
             };
             
             return `
-                <div style="background: linear-gradient(135deg, #00a82d 0%, #008a24 100%); padding: 30px 20px; border-radius: 20px 20px 0 0; margin: -24px -24px 30px -24px; text-align: center; color: white;">
+                <div style="background: linear-gradient(135deg, #3d9470 0%, #2f7358 100%); padding: 30px 20px; border-radius: 20px 20px 0 0; margin: -24px -24px 30px -24px; text-align: center; color: white;">
                     ${data.profilePicture ? `
                         <div style="position: relative; display: inline-block; margin-bottom: 16px;">
                             <img src="${data.profilePicture}" style="width: 140px; height: 140px; border-radius: 50%; object-fit: cover; border: 5px solid white; box-shadow: 0 8px 20px rgba(0,0,0,0.2);">
                             <div style="position: absolute; bottom: 5px; right: 5px; background: #10b981; width: 32px; height: 32px; border-radius: 50%; border: 3px solid white; display: flex; align-items: center; justify-content: center; font-size: 18px;">✓</div>
                         </div>
                     ` : `
-                        <div style="width: 140px; height: 140px; border-radius: 50%; background: white; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center; font-size: 60px; color: #00a82d; border: 5px solid white; box-shadow: 0 8px 20px rgba(0,0,0,0.2);">
+                        <div style="width: 140px; height: 140px; border-radius: 50%; background: white; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center; font-size: 60px; color: #3d9470; border: 5px solid white; box-shadow: 0 8px 20px rgba(0,0,0,0.2);">
                             ${firstName.charAt(0).toUpperCase()}
                         </div>
                     `}
@@ -3632,11 +3632,11 @@
                 </div>
                 
                 ${data.videoIntroduction && data.videoIntroduction.trim() !== '' ? `
-                <div style="background: linear-gradient(135deg, #f0f8ff 0%, #e8f4fd 100%); padding: 24px; border-radius: 16px; margin-bottom: 24px; border: 3px solid #00a82d; text-align: center;">
-                    <h3 style="margin: 0 0 16px 0; color: #00a82d; font-size: 1.4rem; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <div style="background: linear-gradient(135deg, #f0f8ff 0%, #e8f4fd 100%); padding: 24px; border-radius: 16px; margin-bottom: 24px; border: 3px solid #3d9470; text-align: center;">
+                    <h3 style="margin: 0 0 16px 0; color: #3d9470; font-size: 1.4rem; display: flex; align-items: center; justify-content: center; gap: 8px;">
                         🎥 Watch My Introduction Video!
                     </h3>
-                    <video controls style="width: 100%; max-width: 600px; border-radius: 12px; box-shadow: 0 4px 16px rgba(0, 168, 45, 0.3); background: #000;" preload="metadata">
+                    <video controls style="width: 100%; max-width: 600px; border-radius: 12px; box-shadow: 0 4px 16px rgba(61, 148, 112, 0.3); background: #000;" preload="metadata">
                         <source src="${data.videoIntroduction}" type="video/mp4">
                         <source src="${data.videoIntroduction}" type="video/webm">
                         Your browser does not support the video tag.
@@ -3761,7 +3761,7 @@
                 </div>
                 ` : ''}
                 
-                <div style="background: linear-gradient(135deg, #00a82d 0%, #008a24 100%); padding: 24px; border-radius: 16px; text-align: center; color: white; margin-top: 32px; box-shadow: 0 4px 16px rgba(0, 168, 45, 0.3);">
+                <div style="background: linear-gradient(135deg, #3d9470 0%, #2f7358 100%); padding: 24px; border-radius: 16px; text-align: center; color: white; margin-top: 32px; box-shadow: 0 4px 16px rgba(61, 148, 112, 0.3);">
                     <h3 style="margin: 0 0 12px 0; font-size: 1.5rem; color: white; font-weight: 800; text-shadow: 0 2px 4px rgba(0,0,0,0.2);">Ready to Learn Together? 🚀</h3>
                     <p style="margin: 0; font-size: 1.1rem; color: white; font-weight: 600; text-shadow: 0 1px 3px rgba(0,0,0,0.2);">Book a class with me and let's start your English learning journey! 💪✨</p>
                 </div>

@@ -69,6 +69,7 @@
         schedule: { title: 'My Schedule', icon: 'calendar' },
         games: { title: 'Play & Learn', icon: 'gamepad' },
         journey: { title: 'My Learning Journey', icon: 'path' },
+        leaderboard: { title: 'Leaderboard', icon: 'target' },
         book: { title: 'Book a Class', icon: 'plus' },
         classes: { title: 'My Classes', icon: 'list' },
         messages: { title: 'Messages', icon: 'chat' },

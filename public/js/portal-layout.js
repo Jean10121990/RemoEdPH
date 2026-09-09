@@ -13,6 +13,7 @@
   var BOTTOM_NAV_PRIORITY = {
     student: [
       'dashboard',
+      'leaderboard',
       'book',
       'schedule',
       'classes',
@@ -26,6 +27,7 @@
     ],
     teacher: [
       'dashboard',
+      'leaderboard',
       'class-schedule',
       'class-configuration',
       'messages',

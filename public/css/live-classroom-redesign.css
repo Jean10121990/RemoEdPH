@@ -1,0 +1,458 @@
+/**
+ * Live Classroom visual redesign — relaxing sage chrome.
+ * Load AFTER live-classroom.css.
+ */
+
+body.page-live-classroom {
+  --lc-green: #3d9470;
+  --lc-green-deep: #2f7358;
+  --lc-green-soft: #5fad88;
+  --lc-green-mist: #e8f4ee;
+  --lc-yellow: #f0d55c;
+  --lc-ink: #1a2e26;
+  --lc-muted: #5b6f66;
+  --lc-border: #d7e5dd;
+  --lc-surface: #ffffff;
+  --lc-shadow: 0 12px 32px -20px rgba(31, 74, 56, 0.4);
+  background:
+    radial-gradient(ellipse 55% 42% at 8% -8%, rgba(95, 173, 136, 0.2), transparent 58%),
+    radial-gradient(ellipse 45% 38% at 96% 0%, rgba(61, 148, 112, 0.12), transparent 52%),
+    linear-gradient(180deg, #f5faf7 0%, #eef5f1 48%, #f8fbf9 100%) !important;
+}
+
+/* Soft top bar (not solid neon green block) */
+body.page-live-classroom .top-bar {
+  background:
+    linear-gradient(90deg, rgba(61, 148, 112, 0.12) 0%, rgba(255, 255, 255, 0.96) 32%, #ffffff 100%) !important;
+  color: var(--lc-ink) !important;
+  border-bottom: 1px solid var(--lc-border) !important;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.85), var(--lc-shadow) !important;
+  min-height: 56px !important;
+  padding: 8px 16px 8px 18px !important;
+  position: relative;
+}
+
+body.page-live-classroom .top-bar::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(180deg, var(--lc-green-soft), var(--lc-green-deep));
+}
+
+body.page-live-classroom .top-bar__title {
+  color: var(--lc-green-deep) !important;
+  font-size: 0.95rem !important;
+  letter-spacing: -0.01em;
+}
+
+body.page-live-classroom .top-bar__dot {
+  background: var(--lc-green) !important;
+  opacity: 0.8;
+}
+
+body.page-live-classroom .top-bar__identity {
+  color: var(--lc-ink) !important;
+  opacity: 0.9 !important;
+}
+
+body.page-live-classroom .top-bar__pill {
+  background: var(--lc-green-mist) !important;
+  border: 1px solid rgba(61, 148, 112, 0.28) !important;
+  color: var(--lc-green-deep) !important;
+  padding: 3px 10px !important;
+}
+
+body.page-live-classroom .top-bar__time {
+  color: var(--lc-muted) !important;
+  opacity: 1 !important;
+}
+
+body.page-live-classroom .top-bar__time strong {
+  color: var(--lc-green-deep) !important;
+}
+
+body.page-live-classroom .top-bar__ghost {
+  background: #fff !important;
+  color: var(--lc-green-deep) !important;
+  border: 1px solid var(--lc-border) !important;
+  box-shadow: none !important;
+}
+
+body.page-live-classroom .top-bar__ghost:hover {
+  background: var(--lc-green-mist) !important;
+  border-color: rgba(61, 148, 112, 0.35) !important;
+}
+
+body.page-live-classroom .top-bar__status {
+  background: var(--lc-green-mist) !important;
+  color: var(--lc-green-deep) !important;
+  border: 1px solid rgba(61, 148, 112, 0.25) !important;
+  border-radius: 999px !important;
+  padding: 4px 10px !important;
+  font-weight: 700 !important;
+  font-size: 0.72rem !important;
+}
+
+body.page-live-classroom .top-bar__action.leave-btn,
+body.page-live-classroom .leave-btn.top-bar__action {
+  background: #fff !important;
+  color: var(--lc-ink) !important;
+  border: 1px solid var(--lc-border) !important;
+  box-shadow: none !important;
+}
+
+body.page-live-classroom .top-bar__action.finish-btn {
+  background: linear-gradient(135deg, var(--lc-green-deep), var(--lc-green)) !important;
+  border: none !important;
+}
+
+body.page-live-classroom .top-bar__action.absent-btn {
+  background: #fff7ed !important;
+  color: #c2410c !important;
+  border: 1px solid #fed7aa !important;
+  box-shadow: none !important;
+}
+
+/* Tabs — calm underline, not stretch blocks */
+body.page-live-classroom .center-panel {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+body.page-live-classroom .tabs.lc-toolbar-tabs,
+body.page-live-classroom .tabs {
+  background: rgba(255, 255, 255, 0.72) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--lc-border) !important;
+  padding: 0 12px !important;
+  gap: 4px !important;
+  justify-content: flex-start !important;
+}
+
+body.page-live-classroom .tabs button {
+  flex: 0 0 auto !important;
+  min-width: 88px;
+  padding: 12px 16px !important;
+  font-size: 0.86rem !important;
+  font-weight: 650 !important;
+  color: var(--lc-muted) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+
+body.page-live-classroom .tabs button.active {
+  color: var(--lc-green-deep) !important;
+  border-bottom-color: var(--lc-green) !important;
+  border-bottom-width: 3px !important;
+  background: transparent !important;
+  font-weight: 800 !important;
+}
+
+body.page-live-classroom .tabs button:hover {
+  color: var(--lc-green-deep) !important;
+  background: rgba(61, 148, 112, 0.06) !important;
+}
+
+body.page-live-classroom .lesson-viewer,
+body.page-live-classroom .panel-content.active {
+  background: #fff;
+}
+
+body.page-live-classroom .file-viewer {
+  border-radius: 0 0 12px 12px;
+}
+
+/* Right rail — carded, soft */
+body.page-live-classroom .right-panel {
+  background:
+    linear-gradient(180deg, #f7fbf8 0%, #ffffff 18%, #ffffff 100%) !important;
+  border-left: 1px solid var(--lc-border) !important;
+  box-shadow: -8px 0 28px -24px rgba(31, 74, 56, 0.35);
+  width: 304px !important;
+}
+
+body.page-live-classroom .video-container {
+  gap: 10px !important;
+  padding: 12px !important;
+}
+
+body.page-live-classroom .video {
+  border-radius: 14px !important;
+  border: 1px solid var(--lc-border) !important;
+  background: #0f1f18 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  box-shadow: 0 8px 20px -14px rgba(15, 23, 42, 0.45);
+}
+
+body.page-live-classroom .video-header {
+  margin: 0 !important;
+  border-radius: 0 !important;
+  padding: 7px 10px !important;
+  background: linear-gradient(90deg, rgba(47, 115, 88, 0.92), rgba(61, 148, 112, 0.85)) !important;
+}
+
+body.page-live-classroom .video.is-waiting-peer {
+  background: #f4f9f6 !important;
+  border-style: dashed !important;
+  min-height: 64px !important;
+  box-shadow: none !important;
+}
+
+body.page-live-classroom .video.is-waiting-peer .video-header {
+  background: transparent !important;
+  color: var(--lc-muted);
+}
+
+body.page-live-classroom .video.is-waiting-peer .video-header p {
+  color: var(--lc-muted) !important;
+}
+
+body.page-live-classroom .right-panel video,
+body.page-live-classroom .video video,
+body.page-live-classroom #remote-video,
+body.page-live-classroom #local-video {
+  border-radius: 0 !important;
+  max-height: 168px !important;
+}
+
+/* Chat */
+body.page-live-classroom .chat-section,
+body.page-live-classroom #classChat {
+  background: #fff !important;
+  border-top: 1px solid var(--lc-border) !important;
+  padding: 12px !important;
+  gap: 8px;
+}
+
+body.page-live-classroom .chat-header {
+  background: transparent !important;
+  border: none !important;
+  padding: 2px 2px 8px !important;
+  color: var(--lc-green-deep) !important;
+  font-size: 0.72rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase !important;
+}
+
+body.page-live-classroom .chat-header::before {
+  background: var(--lc-green) !important;
+  width: 7px !important;
+  height: 7px !important;
+}
+
+body.page-live-classroom .chat-empty {
+  color: var(--lc-muted) !important;
+  background: var(--lc-green-mist) !important;
+  border: 1px dashed rgba(61, 148, 112, 0.28) !important;
+  border-radius: 12px !important;
+  padding: 16px 12px !important;
+}
+
+body.page-live-classroom .chat-messages {
+  background: #f8fbf9 !important;
+  border: 1px solid var(--lc-border) !important;
+  border-radius: 12px !important;
+  padding: 8px !important;
+}
+
+body.page-live-classroom .chat-form {
+  gap: 8px !important;
+  padding-top: 4px !important;
+}
+
+body.page-live-classroom .chat-input {
+  border: 1px solid var(--lc-border) !important;
+  border-radius: 12px !important;
+  background: #fff !important;
+  padding: 10px 12px !important;
+  box-shadow: none !important;
+}
+
+body.page-live-classroom .chat-input:focus {
+  border-color: var(--lc-green) !important;
+  box-shadow: 0 0 0 3px rgba(61, 148, 112, 0.16) !important;
+  outline: none !important;
+}
+
+body.page-live-classroom .chat-send {
+  background: linear-gradient(135deg, var(--lc-green-deep), var(--lc-green)) !important;
+  border: none !important;
+  border-radius: 12px !important;
+  width: 44px !important;
+  height: 44px !important;
+  box-shadow: 0 8px 16px -10px rgba(47, 115, 88, 0.55) !important;
+}
+
+body.page-live-classroom .chat-send:hover {
+  filter: brightness(1.05);
+}
+
+/* In-viewer toolbars */
+body.page-live-classroom .pdf-viewer-controls,
+body.page-live-classroom .remoed-ppt-toolbar {
+  background: #f7faf8 !important;
+  border-bottom: 1px solid var(--lc-border) !important;
+}
+
+/* —— Class Information modal —— */
+.lc-info-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(26, 46, 38, 0.42);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 9000;
+  padding: 16px;
+}
+
+.lc-info-overlay[hidden] {
+  display: none !important;
+}
+
+.lc-info-overlay.is-open {
+  display: flex !important;
+}
+
+.lc-info-panel {
+  width: min(92vw, 420px);
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  box-shadow:
+    0 4px 6px -1px rgba(15, 23, 42, 0.06),
+    0 24px 48px -12px rgba(26, 46, 38, 0.28);
+  overflow: hidden;
+}
+
+.lc-info-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--lc-border);
+  position: relative;
+  background: #fff;
+}
+
+.lc-info-header::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(180deg, var(--lc-green), var(--lc-green-deep));
+}
+
+.lc-info-eyebrow {
+  margin: 0 0 2px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--lc-green-deep);
+}
+
+.lc-info-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--lc-ink);
+  letter-spacing: -0.01em;
+}
+
+.lc-info-close {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 8px;
+  border: 1px solid var(--lc-border);
+  background: #f8fafc;
+  color: var(--lc-muted);
+  cursor: pointer;
+  font-size: 1.2rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.lc-info-close:hover {
+  color: var(--lc-ink);
+  background: #fff;
+}
+
+.lc-info-body {
+  padding: 16px 20px;
+  display: grid;
+  gap: 10px;
+}
+
+.lc-info-row {
+  display: grid;
+  grid-template-columns: 112px 1fr;
+  gap: 10px;
+  align-items: start;
+  padding: 10px 12px;
+  background: #f7faf8;
+  border: 1px solid var(--lc-border);
+  border-radius: 10px;
+}
+
+.lc-info-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--lc-muted);
+  padding-top: 2px;
+}
+
+.lc-info-value {
+  font-size: 0.9rem;
+  font-weight: 650;
+  color: var(--lc-ink);
+  word-break: break-word;
+  text-align: left;
+}
+
+.lc-info-footer {
+  padding: 12px 20px 16px;
+  display: flex;
+  justify-content: flex-end;
+  border-top: 1px solid var(--lc-border);
+  background: #fff;
+}
+
+.lc-info-ok {
+  border: none;
+  border-radius: 10px;
+  padding: 0.7rem 1.15rem;
+  font-weight: 750;
+  cursor: pointer;
+  color: #fff;
+  background: linear-gradient(135deg, var(--lc-green-deep), var(--lc-green));
+  box-shadow: 0 8px 18px -10px rgba(47, 115, 88, 0.55);
+}
+
+.lc-info-ok:hover {
+  filter: brightness(1.04);
+}
+
+@media (max-width: 768px) {
+  body.page-live-classroom .top-bar {
+    padding-left: 14px !important;
+  }
+
+  body.page-live-classroom .right-panel {
+    width: 100% !important;
+    box-shadow: none;
+  }
+}

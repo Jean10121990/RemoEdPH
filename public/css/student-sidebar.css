@@ -168,13 +168,33 @@ body.student-portal .remoed-sidebar #avatar-text {
 /* Menu */
 body.student-portal .remoed-sidebar .remoed-menu {
   padding: 10px 8px 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Keep Log out pinned at the bottom of the rail */
+body.student-portal .remoed-sidebar .remoed-menu li#logout-nav {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  margin-top: auto !important;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    #007db0 28%,
+    #007db0 100%
+  );
+  padding-top: 14px;
+  padding-bottom: 12px;
 }
 
 body.student-portal .remoed-sidebar .remoed-menu li {
   color: rgba(255, 255, 255, 0.92) !important;
   border-left: 3px solid transparent;
   border-radius: 10px;
-  margin: 2px 0;
+  margin: 2px 4px;
+  padding-left: 14px;
+  padding-right: 12px;
 }
 
 body.student-portal .remoed-sidebar .remoed-menu li svg {

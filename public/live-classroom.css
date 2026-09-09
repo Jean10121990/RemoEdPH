@@ -1,16 +1,16 @@
 :root {
-  --lc-green: #00a82d;
-  --lc-green-deep: #008a24;
+  --lc-green: #3d9470;
+  --lc-green-deep: #2f7358;
   --lc-blue: #00aeef;
   --lc-blue-deep: #008fc4;
-  --lc-yellow: #fdd835;
-  --lc-ink: #0f172a;
-  --lc-muted: #64748b;
+  --lc-yellow: #f0d55c;
+  --lc-ink: #1a2e26;
+  --lc-muted: #5b6f66;
   --lc-surface: #ffffff;
-  --lc-bg: #f1f5f9;
-  --lc-border: #e2e8f0;
+  --lc-bg: #eef5f1;
+  --lc-border: #d7e5dd;
   --lc-danger: #dc2626;
-  --lc-warn: #f59e0b;
+  --lc-warn: #d97706;
 }
 
 body {
@@ -34,9 +34,9 @@ body.page-live-classroom {
   flex-direction: column;
   box-sizing: border-box;
   background:
-    radial-gradient(ellipse 50% 40% at 0% 0%, rgba(0, 168, 45, 0.06), transparent 55%),
-    radial-gradient(ellipse 40% 35% at 100% 0%, rgba(0, 174, 239, 0.06), transparent 50%),
-    var(--lc-bg);
+    radial-gradient(ellipse 50% 40% at 0% 0%, rgba(61, 148, 112, 0.14), transparent 55%),
+    radial-gradient(ellipse 40% 35% at 100% 0%, rgba(95, 173, 136, 0.1), transparent 50%),
+    linear-gradient(180deg, #f3f8f5 0%, #eef5f1 50%, #f7faf8 100%);
 }
 
 body.page-live-classroom *,
@@ -50,13 +50,13 @@ body.page-live-classroom *::after {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  background: linear-gradient(90deg, var(--lc-green-deep) 0%, var(--lc-green) 55%, #00b833 100%);
+  background: linear-gradient(90deg, var(--lc-green-deep) 0%, var(--lc-green) 55%, #4aa37a 100%);
   color: white;
   padding: 8px 14px;
   min-height: 52px;
   flex-shrink: 0;
   border-bottom: 3px solid var(--lc-yellow);
-  box-shadow: 0 2px 12px rgba(0, 100, 40, 0.18);
+  box-shadow: 0 2px 12px rgba(35, 90, 68, 0.16);
 }
 
 .top-bar__left {
@@ -674,12 +674,12 @@ body[data-classroom-role="student"] .left-rail {
   color: var(--lc-green-deep);
   border-bottom-color: var(--lc-green);
   font-weight: 800;
-  background: rgba(0, 168, 45, 0.06);
+  background: rgba(61, 148, 112, 0.06);
 }
 
 .tabs button:hover {
   color: var(--lc-green-deep);
-  background: rgba(0, 168, 45, 0.04);
+  background: rgba(61, 148, 112, 0.04);
 }
 
 /* Hide duplicate outer slide Prev/Next — in-viewer toolbars own navigation */
@@ -886,7 +886,7 @@ body.page-live-classroom #pdf-annotate-toggle.active {
   min-height: 0;
   height: 100%;
   background:
-    linear-gradient(180deg, rgba(0, 168, 45, 0.04), transparent 120px),
+    linear-gradient(180deg, rgba(61, 148, 112, 0.04), transparent 120px),
     #fff;
 }
 
@@ -1444,7 +1444,7 @@ body.page-live-classroom #lesson-content-panel {
 }
 
 .video-control-btn:hover {
-  background: rgba(0, 168, 45, 0.9);
+  background: rgba(61, 148, 112, 0.9);
   border-color: rgba(253, 216, 53, 0.55);
 }
 

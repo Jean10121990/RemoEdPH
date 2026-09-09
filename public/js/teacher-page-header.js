@@ -48,6 +48,7 @@
         'teaching-fee': { title: 'Teaching Fee', icon: 'money' },
         'referral-rewards': { title: 'Referral Rewards', icon: 'gift' },
         'performance-indicator': { title: 'Performance Indicator', icon: 'chart' },
+        leaderboard: { title: 'Leaderboard', icon: 'chart' },
         'professional-development': { title: 'Career Growth', icon: 'growth' },
         messages: { title: 'Messages', icon: 'chat' },
         profile: { title: 'Profile', icon: 'person' },

@@ -35,7 +35,7 @@
             var link = document.createElement('link');
             link.id = BRAND_CSS_ID;
             link.rel = 'stylesheet';
-            link.href = 'css/teacher-brand-overrides.css?v=teacher-green-2';
+            link.href = 'css/teacher-brand-overrides.css?v=relax-green-1';
             document.head.appendChild(link);
         } catch (_e) {}
     }
@@ -80,6 +80,7 @@
 
     var MENU_ITEMS = [
         { id: 'dashboard', label: 'Dashboard', href: 'teacher-dashboard.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/></svg>' },
+        { id: 'leaderboard', label: 'Leaderboard', href: 'leaderboard.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 01-10 0V4z"/><path d="M5 8H3a2 2 0 000 4h2M19 8h2a2 2 0 010 4h-2"/></svg>' },
         { id: 'class-schedule', label: 'Class Schedule', href: 'teacher-class-table.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M16 3v4M8 3v4"/></svg>' },
         { id: 'class-configuration', label: 'Class Configuration', href: 'teacher-open-class.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>' },
         { id: 'device-check', label: 'Device Check', href: 'device-check.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>' },
@@ -103,6 +104,7 @@
         if (path.indexOf('teacher-lessons-library') !== -1) return 'lessons-library';
         if (path.indexOf('teacher-service-fee') !== -1) return 'teaching-fee';
         if (path.indexOf('teacher-referrals') !== -1) return 'referral-rewards';
+        if (path.indexOf('leaderboard') !== -1) return 'leaderboard';
         if (path.indexOf('teacher-performance-indicator') !== -1) return 'performance-indicator';
         if (path.indexOf('teacher-professional-development') !== -1) return 'professional-development';
         if (path.indexOf('teacher-peer-learning') !== -1) return 'professional-development';

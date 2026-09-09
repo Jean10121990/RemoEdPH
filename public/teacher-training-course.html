@@ -9,10 +9,10 @@
     <meta http-equiv="Pragma" content="no-cache" />
     <title>Training Course - RemoEdPH</title>
     <link rel="stylesheet" href="modern-styles.css">
-    <link rel="stylesheet" href="css/teacher-sidebar.css?v=rail-align-1">
+    <link rel="stylesheet" href="css/teacher-sidebar.css?v=relax-green-1">
     <link rel="stylesheet" href="css/global-portal.css">
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="css/portal-chrome-compact.css?v=rail-align-1">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css?v=relax-green-1">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
     <style>
@@ -20,8 +20,8 @@
         @media (max-width:900px){ .tc-layout { grid-template-columns:1fr; } }
         .tc-sidebar { background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:12px; }
         .tc-mod { padding:10px; border-radius:8px; margin-bottom:6px; cursor:pointer; border:1px solid transparent; }
-        .tc-mod.active { background:rgba(0,168,45,0.1); border-color:#00a82d; color:#008a24; font-weight:700; }
-        .tc-mod.done::after { content:' ✓'; color:#00a82d; }
+        .tc-mod.active { background:rgba(61, 148, 112,0.1); border-color:#3d9470; color:#2f7358; font-weight:700; }
+        .tc-mod.done::after { content:' ✓'; color:#3d9470; }
         .tc-content { background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:20px; }
         .tc-video { width:100%; max-height:420px; border-radius:8px; background:#000; }
         .tc-pdf-shell {
@@ -79,15 +79,15 @@
 <body class="page-teacher-training-course teacher-portal">
 <div class="remoed-main">
     <div id="teacher-sidebar-root"></div>
-    <script src="js/teacher-sidebar.js?v=teacher-slide-1"></script>
-    <script src="js/teacher-page-header.js?v=teacher-green-1"></script>
+    <script src="js/teacher-sidebar.js?v=lb-nav-2"></script>
+    <script src="js/teacher-page-header.js?v=relax-green-1"></script>
     <script>
         TeacherSidebar.render('teacher-sidebar-root', 'professional-development');
         TeacherPageHeader.render('training-course');
     </script>
     <div class="remoed-content">
         <div class="remoed-section">
-            <a href="teacher-professional-development.html#training" style="font-size:0.9rem; color:#008a24; font-weight:600;">← Back to Training Portal</a>
+            <a href="teacher-professional-development.html#training" style="font-size:0.9rem; color:#2f7358; font-weight:600;">← Back to Training Portal</a>
             <h1 id="tc-title" style="margin:12px 0 4px;">Loading…</h1>
             <p id="tc-desc" class="muted"></p>
             <div class="tc-layout">
@@ -250,7 +250,7 @@
         const done = m.progress && m.progress.status === 'completed';
         const completeBtn = isSynthetic
             ? ''
-            : '<button type="button" id="tc-complete" style="margin-top:20px;padding:10px 18px;background:'+(done?'#16a34a':'#00a82d')+';color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;">'+(done?'Completed ✓':'Mark module complete')+'</button>';
+            : '<button type="button" id="tc-complete" style="margin-top:20px;padding:10px 18px;background:'+(done?'#16a34a':'#3d9470')+';color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;">'+(done?'Completed ✓':'Mark module complete')+'</button>';
 
         v.innerHTML = '<h2 style="margin-top:0">'+esc(m.title)+'</h2><p class="tc-preview-loading">Loading…</p>' + completeBtn;
 

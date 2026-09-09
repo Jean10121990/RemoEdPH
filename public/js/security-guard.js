@@ -35,7 +35,12 @@
       if (utCh === 'teacher') return 'teacher';
       if (utCh === 'student') return 'student';
     }
-    if (p.indexOf('live-classroom') !== -1 || p.indexOf('video-room') !== -1 || p.indexOf('whiteboard') !== -1) {
+    if (
+      p.indexOf('live-classroom') !== -1 ||
+      p.indexOf('video-room') !== -1 ||
+      p.indexOf('whiteboard') !== -1 ||
+      p.indexOf('leaderboard') !== -1
+    ) {
       var ut = (getSessionRoleFromStorage() || '').toLowerCase();
       if (ut === 'admin') return 'admin';
       if (ut === 'teacher') return 'teacher';

@@ -268,7 +268,7 @@
       state.toggleDraw.classList.toggle('active', state.drawing);
       state.toggleDraw.setAttribute('aria-pressed', state.drawing ? 'true' : 'false');
       state.toggleDraw.style.background = state.drawing ? '#dcfce7' : '#fff';
-      state.toggleDraw.style.borderColor = state.drawing ? '#00a82d' : '#cbd5e1';
+      state.toggleDraw.style.borderColor = state.drawing ? '#3d9470' : '#cbd5e1';
       state.toggleDraw.textContent = state.drawing ? 'Draw ✓' : 'Draw';
     }
   }
@@ -332,7 +332,7 @@
       prevSlideBtn.textContent = '◀';
       prevSlideBtn.title = 'Previous slide (syncs student — not Office Next)';
       prevSlideBtn.style.cssText = btnStyle(
-        'min-width:36px;font-weight:700;background:#00a82d;color:#fff;border-color:#008a24;'
+        'min-width:36px;font-weight:700;background:#3d9470;color:#fff;border-color:#2f7358;'
       );
 
       slideLabel = document.createElement('span');
@@ -345,7 +345,7 @@
       nextSlideBtn.textContent = '▶';
       nextSlideBtn.title = 'Next slide (syncs student — not Office Next)';
       nextSlideBtn.style.cssText = btnStyle(
-        'min-width:36px;font-weight:700;background:#00a82d;color:#fff;border-color:#008a24;'
+        'min-width:36px;font-weight:700;background:#3d9470;color:#fff;border-color:#2f7358;'
       );
 
       navGroup.appendChild(prevSlideBtn);

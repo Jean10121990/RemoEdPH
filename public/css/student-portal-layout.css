@@ -39,6 +39,20 @@ body.page-student-credits button {
   font-family: inherit;
 }
 
+/* Fixed rail is out of flow — keep the wrapper from consuming flex width (avoids horizontal scroll). */
+@media (min-width: 769px) {
+  body.student-portal .remoed-main > [id$="-sidebar-root"],
+  body.teacher-portal .remoed-main > [id$="-sidebar-root"],
+  body[class*="page-teacher-"] .remoed-main > [id$="-sidebar-root"],
+  body.page-leaderboard .remoed-main > [id$="-sidebar-root"] {
+    flex: 0 0 0 !important;
+    width: 0 !important;
+    min-width: 0 !important;
+    max-width: 0 !important;
+    overflow: visible !important;
+  }
+}
+
 /* --- Sidebar: full-height flex chrome; menu colors/active states from teacher-sidebar.css --- */
 body.student-portal nav.remoed-sidebar.remoed-sidebar {
   height: 100vh;
