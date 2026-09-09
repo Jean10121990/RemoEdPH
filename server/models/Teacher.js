@@ -104,7 +104,18 @@ const teacherSchema = new mongoose.Schema({
     validIds: [{
       fileData: { type: String },
       fileName: { type: String }
+    }],
+    nbiClearances: [{
+      fileData: { type: String },
+      fileName: { type: String }
     }]
+  },
+
+  /** NBI clearance verification (mirrors Admin). */
+  nbiClearanceStatus: {
+    type: String,
+    enum: ['none', 'pending', 'submitted', 'verified'],
+    default: 'none',
   },
   
   // Teaching Abilities

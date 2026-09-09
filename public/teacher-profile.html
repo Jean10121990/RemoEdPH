@@ -379,6 +379,9 @@
                                 <button type="button" class="doc-category-btn" onclick="showDocumentCategory('valid-id')" data-category="valid-id">
                                     🆔 Valid ID <span id="valid-id-count-badge" class="doc-count-badge">0</span>
                                 </button>
+                                <button type="button" class="doc-category-btn" onclick="showDocumentCategory('nbi')" data-category="nbi">
+                                    🛡️ NBI <span id="nbi-count-badge" class="doc-count-badge">0</span>
+                                </button>
                             </div>
                         </div>
                         
@@ -416,6 +419,17 @@
                                 <!-- Valid ID items will be added here dynamically -->
                             </div>
                             <button type="button" class="add-btn" id="add-valid-id-btn" onclick="addValidIdItem()" style="margin-top: 12px;">+ Add Valid ID</button>
+                        </div>
+
+                        <!-- NBI Clearance Section (up to 2) -->
+                        <div class="info-section document-category" id="nbi-category" style="display: none; margin-top: 32px;">
+                            <div class="info-section-title">
+                                <span>🛡️ NBI Clearance</span>
+                                <span style="font-size: 0.9rem; color: #666; font-weight: 400;">(Up to 2)</span>
+                            </div>
+                            <p style="color: #666; font-size: 0.9rem; margin: 0 0 12px;">Upload your NBI clearance. HR will review and update verification status.</p>
+                            <div id="nbi-container"></div>
+                            <button type="button" class="add-btn" id="add-nbi-btn" onclick="addNbiItem()" style="margin-top: 12px;">+ Add NBI Clearance</button>
                         </div>
                         
                         <div class="profile-footer-actions" style="margin-top: 24px;">
@@ -554,6 +568,7 @@
         let diplomaCounter = 0;
         let certificateCounter = 0;
         let validIdCounter = 0;
+        let nbiCounter = 0;
         let isEditingProfile = false;
 
         /** Name shown publicly (students, landing). Prefer nickname for privacy. */
@@ -987,6 +1002,17 @@
                             });
                         } else if (profile.documents.validId) {
                             addValidIdItem({ fileData: profile.documents.validId, fileName: 'Valid ID' });
+                        }
+
+                        const nbiContainer = document.getElementById('nbi-container');
+                        if (nbiContainer) nbiContainer.innerHTML = '';
+                        nbiCounter = 0;
+                        if (profile.documents.nbiClearances && Array.isArray(profile.documents.nbiClearances)) {
+                            profile.documents.nbiClearances.forEach((nbi, index) => {
+                                if (nbi && nbi.fileData && index < 2) {
+                                    addNbiItem({ fileData: nbi.fileData, fileName: nbi.fileName || `NBI Clearance ${index + 1}` });
+                                }
+                            });
                         }
                         updateDocumentCounts();
                     }
@@ -1589,6 +1615,70 @@
             }
         }
 
+        function addNbiItem(data = null) {
+            if (!isEditingProfile && data === null) {
+                enableEditing();
+            }
+            const container = document.getElementById('nbi-container');
+            if (!container) return;
+            const currentCount = container.children.length;
+            if (currentCount >= 2 && data === null) {
+                showMessage('Maximum of 2 NBI clearances allowed', 'error');
+                return;
+            }
+            const itemId = `nbi-${nbiCounter++}`;
+            const disabledAttr = isEditingProfile ? '' : 'disabled';
+            const displayNumber = currentCount + 1;
+            const nbiItem = document.createElement('div');
+            nbiItem.className = 'document-item';
+            nbiItem.id = itemId;
+            nbiItem.innerHTML = `
+                <div class="document-header">
+                    <strong>NBI Clearance ${displayNumber}</strong>
+                    <button type="button" class="remove-btn" onclick="removeNbiItem('${itemId}')" style="padding: 4px 8px; font-size: 0.75rem;">Remove</button>
+                </div>
+                <div class="document-content">
+                    <div class="document-upload-compact">
+                        <div class="file-upload" id="nbi-upload-${itemId}">
+                            <input type="file" id="nbi-file-${itemId}" name="nbi-${itemId}" accept=".pdf,.jpg,.jpeg,.png" ${disabledAttr}>
+                            <label class="file-upload-label-compact" for="nbi-file-${itemId}">🛡️ Upload</label>
+                        </div>
+                    </div>
+                    <div class="document-preview-compact" id="nbi-preview-${itemId}" style="display: ${data && data.fileData ? 'block' : 'none'};">
+                        <img src="${data && data.fileData ? data.fileData : ''}" alt="NBI Preview">
+                        <div class="file-info">${data && data.fileName ? data.fileName : 'No file selected'}</div>
+                    </div>
+                </div>
+            `;
+            container.appendChild(nbiItem);
+            if (data && data.fileData) {
+                setTimeout(() => {
+                    const preview = document.getElementById(`nbi-preview-${itemId}`);
+                    if (preview) {
+                        const previewImg = preview.querySelector('img');
+                        const fileInfo = preview.querySelector('.file-info');
+                        if (previewImg) previewImg.src = data.fileData;
+                        if (fileInfo) fileInfo.textContent = data.fileName || 'NBI Clearance';
+                        preview.style.display = 'block';
+                    }
+                }, 50);
+            }
+            setTimeout(() => {
+                setupDocumentUpload(`nbi-file-${itemId}`, `nbi-preview-${itemId}`);
+            }, 150);
+            updateDocumentCounts();
+        }
+
+        function removeNbiItem(itemId) {
+            const item = document.getElementById(itemId);
+            if (item) {
+                item.remove();
+                const container = document.getElementById('nbi-container');
+                if (container) nbiCounter = container.children.length;
+                updateDocumentCounts();
+            }
+        }
+
         function getVideoIntroductionPayload() {
             const videoPlayer = document.getElementById('video-player');
             const source = videoPlayer ? videoPlayer.querySelector('source') : null;
@@ -1646,10 +1736,12 @@
                     const diplomas = collectDiplomasData();
                     const certificates = collectCertificatesData();
                     const validIds = collectValidIdsData();
+                    const nbiClearances = collectNbiClearancesData();
                     return {
                         diplomas: diplomas,
                         certificates: certificates,
-                        validIds: validIds
+                        validIds: validIds,
+                        nbiClearances: nbiClearances
                     };
                 })()
             };
@@ -1927,6 +2019,18 @@
                                     }
                                 });
                             }
+
+                            const nbiContainer = document.getElementById('nbi-container');
+                            if (nbiContainer) nbiContainer.innerHTML = '';
+                            nbiCounter = 0;
+                            const nbiClearances = data.profile.documents.nbiClearances || [];
+                            if (Array.isArray(nbiClearances) && nbiClearances.length > 0) {
+                                nbiClearances.forEach((nbi) => {
+                                    if (nbi && nbi.fileData) {
+                                        addNbiItem({ fileData: nbi.fileData, fileName: nbi.fileName || 'NBI Clearance' });
+                                    }
+                                });
+                            }
                             updateDocumentCounts();
                         } else {
                             console.log('No documents object in response profile');
@@ -2184,6 +2288,23 @@
             return validIds;
         }
 
+        function collectNbiClearancesData() {
+            const nbiClearances = [];
+            document.querySelectorAll('[id^="nbi-preview-"]').forEach(preview => {
+                const previewImg = preview.querySelector('img');
+                const fileInfo = preview.querySelector('.file-info');
+                if (!preview || !previewImg) return;
+                const hasImage = previewImg.src && previewImg.src.startsWith('data:') &&
+                    !previewImg.src.includes('data:image/svg+xml') && previewImg.src.length > 100;
+                if (hasImage) {
+                    const fileName = fileInfo && fileInfo.textContent && fileInfo.textContent !== 'No file selected'
+                        ? fileInfo.textContent : `NBI Clearance ${nbiClearances.length + 1}`;
+                    nbiClearances.push({ fileData: previewImg.src, fileName: fileName });
+                }
+            });
+            return nbiClearances;
+        }
+
         function setDocumentFileInputsDisabled(disabled) {
             // Keep profile picture + video introduction uploadable without entering Edit mode
             const keepEnabled = new Set(['profile-picture', 'video-introduction', 'bulk-upload-input']);
@@ -2245,6 +2366,11 @@
             document.querySelectorAll('[id^="valid-id-file-"]').forEach(input => {
                 const id = input.id;
                 const previewId = id.replace('valid-id-file-', 'valid-id-preview-');
+                setupDocumentUpload(id, previewId);
+            });
+            document.querySelectorAll('[id^="nbi-file-"]').forEach(input => {
+                const id = input.id;
+                const previewId = id.replace('nbi-file-', 'nbi-preview-');
                 setupDocumentUpload(id, previewId);
             });
             
@@ -3278,10 +3404,12 @@
             const diplomaCount = document.getElementById('diplomas-container')?.children.length || 0;
             const certificateCount = document.getElementById('certificates-container')?.children.length || 0;
             const validIdCount = document.getElementById('valid-ids-container')?.children.length || 0;
+            const nbiCount = document.getElementById('nbi-container')?.children.length || 0;
             
             const diplomaBadge = document.getElementById('diploma-count-badge');
             const certificateBadge = document.getElementById('certificate-count-badge');
             const validIdBadge = document.getElementById('valid-id-count-badge');
+            const nbiBadge = document.getElementById('nbi-count-badge');
             
             if (diplomaBadge) {
                 diplomaBadge.textContent = diplomaCount;
@@ -3294,6 +3422,10 @@
             if (validIdBadge) {
                 validIdBadge.textContent = validIdCount;
                 validIdBadge.style.display = validIdCount > 0 ? 'inline-block' : 'none';
+            }
+            if (nbiBadge) {
+                nbiBadge.textContent = nbiCount;
+                nbiBadge.style.display = nbiCount > 0 ? 'inline-block' : 'none';
             }
         }
         

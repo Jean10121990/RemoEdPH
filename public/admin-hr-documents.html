@@ -84,7 +84,7 @@
         <div class="remoed-content">
             <div class="remoed-section">
                 <div class="remoed-section-title">Staff Documents</div>
-                <p class="muted">View uploaded diplomas, certificates, and IDs for teachers, plus government ID and NBI for admins. Super-Admin and HR only.</p>
+                <p class="muted">View uploaded diplomas, certificates, government IDs, and NBI for teachers, plus government ID and NBI for admins. Super-Admin and HR only.</p>
 
                 <div class="toolbar">
                     <button type="button" class="tab-btn active" id="tab-teachers" data-tab="teachers">Teachers</button>
@@ -334,19 +334,23 @@
             var statusEl = document.getElementById('list-status');
 
             if (state.tab === 'teachers') {
-                thead.innerHTML = '<tr><th>Teacher</th><th>Email</th><th>Status</th><th>Diplomas</th><th>Certificates</th><th>IDs</th><th></th></tr>';
+                thead.innerHTML = '<tr><th>Teacher</th><th>Email</th><th>Status</th><th>Diplomas</th><th>Certificates</th><th>Gov ID</th><th>NBI</th><th>NBI status</th><th></th></tr>';
                 tbody.innerHTML = rows.map(function (r) {
                     var total = r.counts && r.counts.total ? r.counts.total : 0;
+                    var hasGov = !!(r.counts && r.counts.validIds);
+                    var hasNbi = !!(r.counts && r.counts.nbi);
                     return '<tr>' +
                         '<td><strong>' + esc(r.displayName) + '</strong><div class="muted" style="margin:0;">@' + esc(r.username) + '</div></td>' +
                         '<td>' + esc(r.email || '—') + '</td>' +
                         '<td><span class="status-pill ' + (r.status === 'suspended' ? 'status-suspended' : 'status-active') + '">' + esc(r.status || 'active') + '</span></td>' +
                         '<td><span class="badge' + (r.counts.diplomas ? '' : ' zero') + '">' + (r.counts.diplomas || 0) + '</span></td>' +
                         '<td><span class="badge' + (r.counts.certificates ? '' : ' zero') + '">' + (r.counts.certificates || 0) + '</span></td>' +
-                        '<td><span class="badge' + (r.counts.validIds ? '' : ' zero') + '">' + (r.counts.validIds || 0) + '</span></td>' +
+                        '<td><span class="badge' + (hasGov ? '' : ' zero') + '">' + (hasGov ? 'Yes' : 'No') + '</span></td>' +
+                        '<td><span class="badge' + (hasNbi ? '' : ' zero') + '">' + (hasNbi ? 'Yes' : 'No') + '</span></td>' +
+                        '<td><span class="badge' + (r.nbiClearanceStatus && r.nbiClearanceStatus !== 'none' ? ' warn' : ' zero') + '">' + esc(r.nbiClearanceStatus || 'none') + '</span></td>' +
                         '<td><button type="button" class="btn-view" data-open="teacher" data-id="' + esc(r.id) + '"' + (total ? '' : ' disabled') + '>View</button></td>' +
                         '</tr>';
-                }).join('') || '<tr><td colspan="7" class="empty">No teachers match.</td></tr>';
+                }).join('') || '<tr><td colspan="9" class="empty">No teachers match.</td></tr>';
             } else {
                 thead.innerHTML = '<tr><th>Admin</th><th>Role</th><th>Status</th><th>Gov ID</th><th>NBI</th><th>NBI status</th><th></th></tr>';
                 tbody.innerHTML = rows.map(function (r) {
@@ -407,8 +411,26 @@
                         (person.username ? ' · @' + person.username : '') +
                         (person.email ? ' · ' + person.email : '');
 
+                    var status = person.nbiClearanceStatus || 'none';
+                    var statusOpts = ['none', 'pending', 'submitted', 'verified'];
+                    var statusHtml =
+                        '<div class="doc-group" style="margin-bottom:14px;">' +
+                        '<h3>NBI status</h3>' +
+                        '<div class="doc-row" style="align-items:center;">' +
+                        '<div><div class="name">Clearance verification</div>' +
+                        '<div class="meta">Update after reviewing the uploaded NBI file.</div></div>' +
+                        '<div class="doc-actions">' +
+                        '<select id="modal-nbi-status" style="padding:6px 8px;border-radius:6px;border:1px solid #dbe3ec;">' +
+                        statusOpts.map(function (s) {
+                            return '<option value="' + s + '"' + (s === status ? ' selected' : '') + '>' + s + '</option>';
+                        }).join('') +
+                        '</select>' +
+                        '<button type="button" id="modal-nbi-save">Save status</button>' +
+                        '</div></div></div>';
+
                     if (!files.length) {
-                        body.innerHTML = '<div class="empty">No uploaded documents for this account.</div>';
+                        body.innerHTML = statusHtml + '<div class="empty">No uploaded documents for this account.</div>';
+                        wireNbiStatusSave(personType, personId);
                         return;
                     }
 
@@ -419,7 +441,7 @@
                         groups[c].push(f);
                     });
 
-                    var html = '';
+                    var html = statusHtml;
                     Object.keys(groups).forEach(function (cat) {
                         html += '<div class="doc-group"><h3>' + esc(categoryTitle(cat)) + '</h3>';
                         groups[cat].forEach(function (f, idx) {
@@ -443,11 +465,47 @@
                             body._fileMap[cat + '-' + idx] = f;
                         });
                     });
+                    wireNbiStatusSave(personType, personId);
                 })
                 .catch(function (err) {
                     console.error(err);
                     body.innerHTML = '<div class="err">Network error loading documents.</div>';
                 });
+        }
+
+        function wireNbiStatusSave(personType, personId) {
+            var btn = document.getElementById('modal-nbi-save');
+            var sel = document.getElementById('modal-nbi-status');
+            if (!btn || !sel) return;
+            btn.addEventListener('click', function () {
+                btn.disabled = true;
+                btn.textContent = 'Saving…';
+                fetch(
+                    '/api/admin/hr-documents/' + encodeURIComponent(personType) + '/' + encodeURIComponent(personId) + '/nbi-status',
+                    adminApiFetchInit({
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ nbiClearanceStatus: sel.value })
+                    })
+                )
+                    .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+                    .then(function (res) {
+                        btn.disabled = false;
+                        btn.textContent = 'Save status';
+                        if (!res.ok || !res.j.success) {
+                            alert((res.j && (res.j.error || res.j.message)) || 'Failed to update NBI status');
+                            return;
+                        }
+                        loadIndex();
+                        alert('NBI status updated to “' + (res.j.nbiClearanceStatus || sel.value) + '”.');
+                    })
+                    .catch(function (err) {
+                        console.error(err);
+                        btn.disabled = false;
+                        btn.textContent = 'Save status';
+                        alert('Network error updating NBI status.');
+                    });
+            });
         }
 
         function closeModal() {

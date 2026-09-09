@@ -2362,11 +2362,15 @@ router.post('/profile', verifyToken, requireTeacher, async (req, res) => {
     const diplomasArray = Array.isArray(profileData.documents?.diplomas) ? profileData.documents.diplomas : [];
     const certificatesArray = Array.isArray(profileData.documents?.certificates) ? profileData.documents.certificates : [];
     const validIdsArray = Array.isArray(profileData.documents?.validIds) ? profileData.documents.validIds : [];
+    const nbiClearancesArray = Array.isArray(profileData.documents?.nbiClearances)
+      ? profileData.documents.nbiClearances.slice(0, 2)
+      : [];
     
     console.log('=== BACKEND: Documents data received ===');
     console.log('Diplomas count:', diplomasArray.length);
     console.log('Certificates count:', certificatesArray.length);
     console.log('Valid IDs count:', validIdsArray.length);
+    console.log('NBI clearances count:', nbiClearancesArray.length);
     
     if (diplomasArray.length > 0) {
       console.log('Diploma sample:', { fileData: diplomasArray[0].fileData?.substring(0, 50) + '...', fileName: diplomasArray[0].fileName });
@@ -2376,7 +2380,7 @@ router.post('/profile', verifyToken, requireTeacher, async (req, res) => {
     }
 
     const existingForProfilePic = await Teacher.findOne({ teacherId })
-      .select('profilePicture')
+      .select('profilePicture nbiClearanceStatus')
       .lean();
     let resolvedProfilePicture = profileData.profilePicture;
     const profilePicBuf = extractImageBufferFromDataUrl(
@@ -2390,6 +2394,11 @@ router.post('/profile', verifyToken, requireTeacher, async (req, res) => {
       const filename = `${safeId}-${Date.now()}.webp`;
       await fsp.writeFile(path.join(dir, filename), optimized);
       resolvedProfilePicture = `/uploads/teacher-profiles/${filename}`;
+    }
+
+    let nextNbiStatus = existingForProfilePic?.nbiClearanceStatus || 'none';
+    if (nbiClearancesArray.length > 0 && (nextNbiStatus === 'none' || nextNbiStatus === 'pending')) {
+      nextNbiStatus = 'submitted';
     }
     
     // Update teacher profile - use $set with dot notation for nested arrays to ensure proper update
@@ -2421,6 +2430,8 @@ router.post('/profile', verifyToken, requireTeacher, async (req, res) => {
         'documents.certificates': certificatesArray,
         'documents.validId': null,
         'documents.validIds': validIdsArray,
+        'documents.nbiClearances': nbiClearancesArray,
+        nbiClearanceStatus: nextNbiStatus,
         hireDate: profileData.hireDate || null,
         hasEnglishDegree4Year: !!profileData.hasEnglishDegree4Year,
         hasTesolTeylTefl: !!profileData.hasTesolTeylTefl,

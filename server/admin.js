@@ -3691,6 +3691,14 @@ function collectTeacherDocuments(teacher) {
     const row = serializeTeacherDocEntry(docs.validId, 0, 'validId');
     if (row) list.push(row);
   }
+  (docs.nbiClearances || []).forEach((d, i) => {
+    const row = serializeTeacherDocEntry(d, i, 'nbi');
+    if (row) {
+      row.label = 'NBI Clearance';
+      row.nbiClearanceStatus = teacher.nbiClearanceStatus || 'none';
+      list.push(row);
+    }
+  });
   return list;
 }
 
@@ -3715,6 +3723,8 @@ router.get('/hr-documents', requireHrOrSuper, async (req, res) => {
             diplomaArr: { $size: { $ifNull: ['$documents.diplomas', []] } },
             certArr: { $size: { $ifNull: ['$documents.certificates', []] } },
             validArr: { $size: { $ifNull: ['$documents.validIds', []] } },
+            nbiArr: { $size: { $ifNull: ['$documents.nbiClearances', []] } },
+            nbiClearanceStatus: 1,
             legacyCertArr: { $size: { $ifNull: ['$documents.certifications', []] } },
             hasLegacyDiploma: {
               $cond: [
@@ -3747,6 +3757,7 @@ router.get('/hr-documents', requireHrOrSuper, async (req, res) => {
         const diplomas = Number(t.diplomaArr || 0) + Number(t.hasLegacyDiploma || 0);
         const certificates = Number(t.certArr || 0) + Number(t.legacyCertArr || 0);
         const validIds = Number(t.validArr || 0) + Number(t.hasLegacyValidId || 0);
+        const nbi = Number(t.nbiArr || 0);
         const displayName =
           [t.firstName, t.lastName].filter(Boolean).join(' ').trim() ||
           t.nickname ||
@@ -3760,12 +3771,14 @@ router.get('/hr-documents', requireHrOrSuper, async (req, res) => {
           email: t.email || '',
           teacherId: t.teacherId || '',
           status: t.status || 'active',
+          nbiClearanceStatus: t.nbiClearanceStatus || 'none',
           createdAt: t.createdAt || null,
           counts: {
             diplomas,
             certificates,
             validIds,
-            total: diplomas + certificates + validIds,
+            nbi,
+            total: diplomas + certificates + validIds + nbi,
           },
         };
       });
@@ -3837,6 +3850,7 @@ router.get('/hr-documents/:personType/:personId', requireHrOrSuper, async (req, 
           email: teacher.email || '',
           teacherId: teacher.teacherId || '',
           status: teacher.status || 'active',
+          nbiClearanceStatus: teacher.nbiClearanceStatus || 'none',
         },
         files,
       });
@@ -3898,6 +3912,46 @@ router.get('/hr-documents/:personType/:personId', requireHrOrSuper, async (req, 
   } catch (err) {
     console.error('GET /hr-documents/:personType/:personId:', err);
     res.status(500).json({ success: false, error: 'Failed to load documents' });
+  }
+});
+
+router.patch('/hr-documents/:personType/:personId/nbi-status', requireHrOrSuper, async (req, res) => {
+  try {
+    const personType = String(req.params.personType || '').toLowerCase();
+    const personId = String(req.params.personId || '').trim();
+    const allowed = ['none', 'pending', 'submitted', 'verified'];
+    const next = String(req.body?.nbiClearanceStatus || '').trim();
+    if (!mongoose.isValidObjectId(personId)) {
+      return res.status(400).json({ success: false, error: 'Invalid person id' });
+    }
+    if (!allowed.includes(next)) {
+      return res.status(400).json({ success: false, error: 'Invalid nbiClearanceStatus' });
+    }
+
+    if (personType === 'teacher') {
+      const teacher = await Teacher.findByIdAndUpdate(
+        personId,
+        { $set: { nbiClearanceStatus: next } },
+        { new: true }
+      ).select('nbiClearanceStatus').lean();
+      if (!teacher) return res.status(404).json({ success: false, error: 'Teacher not found' });
+      return res.json({ success: true, nbiClearanceStatus: teacher.nbiClearanceStatus || 'none' });
+    }
+
+    if (personType === 'admin') {
+      const admin = await Admin.findByIdAndUpdate(
+        personId,
+        { $set: { nbiClearanceStatus: next } },
+        { new: true }
+      ).select('nbiClearanceStatus').lean();
+      if (!admin) return res.status(404).json({ success: false, error: 'Admin not found' });
+      return res.json({ success: true, nbiClearanceStatus: admin.nbiClearanceStatus || 'none' });
+    }
+
+    return res.status(400).json({ success: false, error: 'personType must be teacher or admin' });
+  } catch (err) {
+    console.error('PATCH /hr-documents/.../nbi-status:', err);
+    res.status(500).json({ success: false, error: 'Failed to update NBI status' });
   }
 });
 
