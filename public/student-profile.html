@@ -1236,10 +1236,10 @@
                                 <label class="form-label">📚 Level</label>
                                 <select class="form-input" ${!isEditing ? 'disabled' : ''}>
                                     <option value="">Select Level</option>
-                                    <option value="Little Seeds (Age 3)">🌱 Little Seeds (Age 3)</option>
-                                    <option value="Sprouts (Age 4)">🌟 Sprouts (Age 4)</option>
-                                    <option value="Saplings (Age 5)">🌿 Saplings (Age 5)</option>
-                                    <option value="Young Stewards (Age 6)">🌳 Young Stewards (Age 6)</option>
+                                    <option value="Little Seeds">🌱 Little Seeds</option>
+                                    <option value="Sprouts">🌟 Sprouts</option>
+                                    <option value="Saplings">🌿 Saplings</option>
+                                    <option value="Young Stewards">🌳 Young Stewards</option>
                                     <option value="primary">📖 Primary</option>
                                     <option value="secondary">🎓 Secondary</option>
                                     <option value="college">🏛️ College</option>
@@ -1649,10 +1649,10 @@
                                 <label class="form-label">📚 Level</label>
                                 <select class="form-input" disabled>
                                     <option value="">Select Level</option>
-                                    <option value="Little Seeds (Age 3)" ${edu.level === 'Little Seeds (Age 3)' || edu.level === 'nursery' ? 'selected' : ''}>🌱 Little Seeds (Age 3)</option>
-                                    <option value="Sprouts (Age 4)" ${edu.level === 'Sprouts (Age 4)' || edu.level === 'kindergarten' ? 'selected' : ''}>🌟 Sprouts (Age 4)</option>
-                                    <option value="Saplings (Age 5)" ${edu.level === 'Saplings (Age 5)' ? 'selected' : ''}>🌿 Saplings (Age 5)</option>
-                                    <option value="Young Stewards (Age 6)" ${edu.level === 'Young Stewards (Age 6)' ? 'selected' : ''}>🌳 Young Stewards (Age 6)</option>
+                                    <option value="Little Seeds" ${edu.level === 'Little Seeds' || edu.level === 'Little Seeds (Age 3)' || edu.level === 'nursery' ? 'selected' : ''}>🌱 Little Seeds</option>
+                                    <option value="Sprouts" ${edu.level === 'Sprouts' || edu.level === 'Sprouts (Age 4)' || edu.level === 'kindergarten' ? 'selected' : ''}>🌟 Sprouts</option>
+                                    <option value="Saplings" ${edu.level === 'Saplings' || edu.level === 'Saplings (Age 5)' ? 'selected' : ''}>🌿 Saplings</option>
+                                    <option value="Young Stewards" ${edu.level === 'Young Stewards' || edu.level === 'Young Stewards (Age 6)' ? 'selected' : ''}>🌳 Young Stewards</option>
                                     <option value="primary" ${edu.level === 'primary' ? 'selected' : ''}>📖 Primary</option>
                                     <option value="secondary" ${edu.level === 'secondary' ? 'selected' : ''}>🎓 Secondary</option>
                                     <option value="college" ${edu.level === 'college' ? 'selected' : ''}>🏛️ College</option>

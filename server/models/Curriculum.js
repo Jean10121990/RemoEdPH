@@ -13,12 +13,16 @@ const curriculumSchema = new mongoose.Schema({
     type: String,
     required: true,
     enum: [
+      'Little Seeds',
+      'Sprouts',
+      'Saplings',
+      'Young Stewards',
       'Little Seeds (Age 3)',
       'Sprouts (Age 4)',
       'Saplings (Age 5)',
       'Young Stewards (Age 6)',
     ],
-    default: 'Little Seeds (Age 3)',
+    default: 'Little Seeds',
     index: true
   },
   order: {

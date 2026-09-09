@@ -28,32 +28,32 @@ async function seedLessons() {
     const curricula = [
       {
         title: 'Little Seeds English Basics',
-        description: 'Introduction to English for Little Seeds (Age 3) students',
-        level: 'Little Seeds (Age 3)',
+        description: 'Introduction to English for Little Seeds students',
+        level: 'Little Seeds',
         order: 1,
         isActive: true,
         createdBy: 'admin'
       },
       {
         title: 'Sprouts Phonics',
-        description: 'Phonics and reading fundamentals for Sprouts (Age 4)',
-        level: 'Sprouts (Age 4)',
+        description: 'Phonics and reading fundamentals for Sprouts',
+        level: 'Sprouts',
         order: 1,
         isActive: true,
         createdBy: 'admin'
       },
       {
         title: 'Saplings Reading & Writing',
-        description: 'Reading and writing skills for Saplings (Age 5)',
-        level: 'Saplings (Age 5)',
+        description: 'Reading and writing skills for Saplings',
+        level: 'Saplings',
         order: 1,
         isActive: true,
         createdBy: 'admin'
       },
       {
         title: 'Young Stewards Communication',
-        description: 'Communication and literacy for Young Stewards (Age 6)',
-        level: 'Young Stewards (Age 6)',
+        description: 'Communication and literacy for Young Stewards',
+        level: 'Young Stewards',
         order: 1,
         isActive: true,
         createdBy: 'admin'
@@ -79,28 +79,28 @@ async function seedLessons() {
 
     // Create sample lessons for each curriculum
     const lessonTemplates = {
-      'Little Seeds (Age 3)': [
+      'Little Seeds': [
         { number: 1, title: 'Alphabet Introduction', description: 'Learn the English alphabet A-Z', duration: 30 },
         { number: 2, title: 'Basic Words', description: 'Introduction to simple words', duration: 30 },
         { number: 3, title: 'Colors and Shapes', description: 'Learn colors and basic shapes', duration: 30 },
         { number: 4, title: 'Numbers 1-10', description: 'Counting from 1 to 10', duration: 30 },
         { number: 5, title: 'Animals', description: 'Learn animal names and sounds', duration: 30 }
       ],
-      'Sprouts (Age 4)': [
+      'Sprouts': [
         { number: 1, title: 'Phonics: Letter Sounds', description: 'Introduction to letter sounds', duration: 45 },
         { number: 2, title: 'Simple Sentences', description: 'Building simple sentences', duration: 45 },
         { number: 3, title: 'Reading Short Stories', description: 'Reading comprehension basics', duration: 45 },
         { number: 4, title: 'Vocabulary Building', description: 'Expanding vocabulary', duration: 45 },
         { number: 5, title: 'Writing Practice', description: 'Basic writing skills', duration: 45 }
       ],
-      'Saplings (Age 5)': [
+      'Saplings': [
         { number: 1, title: 'Advanced Reading', description: 'Reading comprehension and analysis', duration: 60 },
         { number: 2, title: 'Creative Writing', description: 'Writing stories and essays', duration: 60 },
         { number: 3, title: 'Grammar Fundamentals', description: 'Parts of speech and sentence structure', duration: 60 },
         { number: 4, title: 'Vocabulary Expansion', description: 'Advanced vocabulary and synonyms', duration: 60 },
         { number: 5, title: 'Communication Skills', description: 'Speaking and presentation skills', duration: 60 }
       ],
-      'Young Stewards (Age 6)': [
+      'Young Stewards': [
         { number: 1, title: 'Storytelling', description: 'Tell and retell short stories', duration: 60 },
         { number: 2, title: 'Reading Fluency', description: 'Build confident oral reading', duration: 60 },
         { number: 3, title: 'Writing Paragraphs', description: 'Organize ideas into paragraphs', duration: 60 },

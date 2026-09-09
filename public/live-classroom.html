@@ -6055,10 +6055,10 @@
       function formatClassroomLevelLabel(raw) {
         if (!raw) return '';
         const level = String(raw).toLowerCase();
-        if (level.includes('little seeds') || level === 'nursery') return 'Little Seeds (Age 3)';
-        if (level.includes('sprouts') || level === 'kinder' || level === 'kindergarten') return 'Sprouts (Age 4)';
-        if (level.includes('saplings') || level === 'preparatory' || level === 'prep' || level === 'primary') return 'Saplings (Age 5)';
-        if (level.includes('young stewards') || level.includes('steward')) return 'Young Stewards (Age 6)';
+        if (level.includes('little seeds') || level === 'nursery') return 'Little Seeds';
+        if (level.includes('sprouts') || level === 'kinder' || level === 'kindergarten') return 'Sprouts';
+        if (level.includes('saplings') || level === 'preparatory' || level === 'prep' || level === 'primary') return 'Saplings';
+        if (level.includes('young stewards') || level.includes('steward')) return 'Young Stewards';
         return String(raw);
       }
 

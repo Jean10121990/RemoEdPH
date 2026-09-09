@@ -1422,6 +1422,10 @@
     };
 
     const REMOED_KIDS_LEVELS = {
+      'Little Seeds': 'Level 1 - Little Seeds',
+      'Sprouts': 'Level 2 - Sprouts',
+      'Saplings': 'Level 3 - Saplings',
+      'Young Stewards': 'Level 4 - Young Stewards',
       'Little Seeds (Age 3)': 'Level 1 - Little Seeds',
       'Sprouts (Age 4)': 'Level 2 - Sprouts',
       'Saplings (Age 5)': 'Level 3 - Saplings',
@@ -1432,11 +1436,11 @@
       const s = String(raw || '').toLowerCase().trim();
       if (!s) return null;
       if (/^(beginner|intermediate|advanced|a1|a2|b1|b2|c1|c2)$/i.test(s)) return null;
-      if (s.indexOf('little seeds') !== -1 || s === 'nursery' || s.indexOf('age 3') !== -1) return 'Little Seeds (Age 3)';
-      if (s.indexOf('sprouts') !== -1 || s === 'kinder' || s.indexOf('age 4') !== -1) return 'Sprouts (Age 4)';
-      if (s.indexOf('saplings') !== -1 || s === 'prep' || s.indexOf('age 5') !== -1) return 'Saplings (Age 5)';
+      if (s.indexOf('little seeds') !== -1 || s === 'nursery' || s.indexOf('age 3') !== -1) return 'Little Seeds';
+      if (s.indexOf('sprouts') !== -1 || s === 'kinder' || s.indexOf('age 4') !== -1) return 'Sprouts';
+      if (s.indexOf('saplings') !== -1 || s === 'prep' || s.indexOf('age 5') !== -1) return 'Saplings';
       if (s.indexOf('young stewards') !== -1 || s.indexOf('steward') !== -1 || s.indexOf('age 6') !== -1) {
-        return 'Young Stewards (Age 6)';
+        return 'Young Stewards';
       }
       return null;
     }
@@ -1469,7 +1473,7 @@
 
       // Legacy Beginner default → Level 1
       if (profile && String(profile.level || '').toLowerCase() === 'beginner') {
-        valueEl.textContent = REMOED_KIDS_LEVELS['Little Seeds (Age 3)'];
+        valueEl.textContent = REMOED_KIDS_LEVELS['Little Seeds'];
         return;
       }
 
@@ -1480,7 +1484,7 @@
         return;
       }
 
-      valueEl.textContent = REMOED_KIDS_LEVELS['Little Seeds (Age 3)'];
+      valueEl.textContent = REMOED_KIDS_LEVELS['Little Seeds'];
     }
     
 

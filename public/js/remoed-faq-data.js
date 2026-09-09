@@ -124,10 +124,10 @@
             weight: 4,
             a:
               'RemoEd structures its curriculum into four developmental stages:\n\n' +
-              '• **Level 1 (Little Seeds — Age 3)** — A–Z phonics, single-word vocabulary, tracing lines, and early environmental awareness (e.g. “Bye-bye screen”, nature appreciation).\n' +
-              '• **Level 2 (Sprouts — Age 4)** — Tracing full letters, simple identity phrases (“I am…”), basic energy saving, and days of the week.\n' +
-              '• **Level 3 (Saplings — Age 5)** — Phonics blending, writing first names, reading short sentences, sorting trash, and anti-bullying awareness.\n' +
-              '• **Level 4 (Young Steward — Age 6)** — Action verbs, recycling routines, places and nouns, and deeper reading with CVC words.',
+              '• **Level 1 (Little Seeds)** — A–Z phonics, single-word vocabulary, tracing lines, and early environmental awareness (e.g. “Bye-bye screen”, nature appreciation).\n' +
+              '• **Level 2 (Sprouts)** — Tracing full letters, simple identity phrases (“I am…”), basic energy saving, and days of the week.\n' +
+              '• **Level 3 (Saplings)** — Phonics blending, writing first names, reading short sentences, sorting trash, and anti-bullying awareness.\n' +
+              '• **Level 4 (Young Stewards)** — Action verbs, recycling routines, places and nouns, and deeper reading with CVC words.',
           },
           {
             id: 'lesson-flow',

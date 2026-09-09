@@ -25,10 +25,10 @@ const TEACHER_PTS = {
 
 const AGE_GROUPS = [
   'ALL',
-  'Little Seeds (Age 3)',
-  'Sprouts (Age 4)',
-  'Saplings (Age 5)',
-  'Young Stewards (Age 6)',
+  'Little Seeds',
+  'Sprouts',
+  'Saplings',
+  'Young Stewards',
 ];
 
 function manilaParts(d = new Date()) {
@@ -260,11 +260,12 @@ async function computeStudentScoresForMonth(monthKey) {
   }
 
   const rows = [];
+  const { normalizeCurriculumLevel } = require('../config/curriculumLevels');
   for (const row of byStudent.values()) {
     row.domainCount = row._domains.size;
-    // Primary age group = most common level from attended classes
+    // Primary level group = first attended class level (normalize away legacy ages)
     const levels = [...row._levels];
-    row.ageGroup = levels[0] || 'ALL';
+    row.ageGroup = normalizeCurriculumLevel(levels[0]) || levels[0] || 'ALL';
     row.totalPoints =
       row.goldCount * STUDENT_PTS.gold +
       row.silverCount * STUDENT_PTS.silver +
@@ -537,7 +538,11 @@ async function getStudentLeaderboard({ month, ageGroup = 'ALL', page = 1, pageSi
   const monthKey = await ensureMonthBuilt(month);
   const ag = AGE_GROUPS.includes(ageGroup) ? ageGroup : 'ALL';
   const filter = { month: monthKey };
-  if (ag !== 'ALL') filter.ageGroup = ag;
+  if (ag !== 'ALL') {
+    const { CANONICAL_TO_LEGACY } = require('../config/curriculumLevels');
+    const legacy = CANONICAL_TO_LEGACY[ag];
+    filter.ageGroup = legacy ? { $in: [ag, legacy] } : ag;
+  }
 
   let rows = await MonthlyStudentScore.find(filter).sort({ rank: 1 }).lean();
   // If age filter yields empty because ageGroup stored as primary level, re-rank filtered set

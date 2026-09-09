@@ -7,10 +7,11 @@
   <script src="js/user-session.js"></script>
   <title>Quarterly Progress Report — RemoEd</title>
   <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
-  <link rel="stylesheet" href="css/student-sidebar.css?v=slide-match-1">
-  <link rel="stylesheet" href="css/student-portal-layout.css?v=slide-match-1">
+  <link rel="stylesheet" href="css/teacher-sidebar.css">
   <link rel="stylesheet" href="css/portal-chrome-compact.css">
-  <link rel="stylesheet" href="css/student-badges.css?v=1">
+  <link rel="stylesheet" href="css/student-portal-layout.css?v=slide-match-1">
+  <link rel="stylesheet" href="css/student-sidebar.css?v=slide-match-1">
+  <link rel="stylesheet" href="css/student-badges.css?v=2">
   <style>
     :root {
       --pr-blue: #00aeef;
@@ -26,184 +27,240 @@
       color: var(--pr-ink);
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
-    .pr-wrap {
-      max-width: 820px;
+    body.page-progress-report .pr-wrap {
+      max-width: 760px;
       margin: 0 auto;
-      padding: 1rem 1.25rem 2.5rem;
+      padding: 0.75rem 1rem 2.5rem;
+      box-sizing: border-box;
     }
-    .pr-toolbar {
+    body.page-progress-report .pr-toolbar {
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 1rem;
+      margin-bottom: 0.85rem;
     }
-    .pr-toolbar a {
+    body.page-progress-report .pr-toolbar a {
       color: var(--pr-blue-deep);
       font-weight: 700;
       text-decoration: none;
+      font-size: 0.92rem;
     }
-    .pr-print-btn {
+    body.page-progress-report .pr-print-btn {
       border: none;
       border-radius: 999px;
-      padding: 0.55rem 1.15rem;
+      padding: 0.5rem 1.05rem;
       font-weight: 800;
+      font-size: 0.88rem;
       cursor: pointer;
       color: #fff;
       background: linear-gradient(90deg, var(--pr-blue-deep), var(--pr-blue));
       box-shadow: 0 6px 16px rgba(0, 143, 196, 0.25);
     }
-    .pr-sheet {
+    body.page-progress-report .pr-sheet {
       background: #fff;
       border-radius: 18px;
       border: 1px solid var(--pr-line);
       box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
-      padding: 1.5rem 1.6rem 1.75rem;
+      padding: 1.25rem 1.35rem 1.5rem;
+      overflow: hidden;
+      box-sizing: border-box;
     }
-    .pr-header {
+    body.page-progress-report .pr-brand-row {
       display: flex;
-      gap: 1rem;
       align-items: center;
-      flex-wrap: wrap;
-      padding-bottom: 1.1rem;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 1rem;
+    }
+    body.page-progress-report .pr-logo {
+      height: 32px !important;
+      width: auto !important;
+      max-width: 130px !important;
+      max-height: 32px !important;
+      object-fit: contain !important;
+      display: block;
+    }
+    body.page-progress-report .pr-period {
+      flex-shrink: 0;
+      background: var(--pr-mist);
+      color: var(--pr-blue-deep);
+      font-weight: 800;
+      padding: 0.4rem 0.8rem;
+      border-radius: 999px;
+      font-size: 0.8rem;
+    }
+    body.page-progress-report .pr-header {
+      display: flex;
+      gap: 0.85rem;
+      align-items: center;
+      padding-bottom: 1rem;
       border-bottom: 2px solid var(--pr-mist);
-      margin-bottom: 1.25rem;
+      margin-bottom: 1.15rem;
     }
-    .pr-logo {
-      height: 42px;
-      width: auto;
-    }
-    .pr-avatar {
-      width: 72px;
-      height: 72px;
+    body.page-progress-report .pr-avatar {
+      width: 56px !important;
+      height: 56px !important;
+      max-width: 56px !important;
+      max-height: 56px !important;
       border-radius: 50%;
-      object-fit: cover;
+      object-fit: cover !important;
       border: 3px solid #FFD700;
       background: linear-gradient(135deg, #1CA7E7, #5CB3FF);
       color: #fff;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.6rem;
+      font-size: 1.25rem !important;
       font-weight: 800;
       flex-shrink: 0;
+      overflow: hidden;
+      line-height: 1;
     }
-    .pr-header h1 {
-      margin: 0 0 0.2rem;
-      font-size: 1.45rem;
+    body.page-progress-report .pr-header h1 {
+      margin: 0 0 0.15rem;
+      font-size: 1.25rem;
+      line-height: 1.25;
     }
-    .pr-header p {
+    body.page-progress-report .pr-header p {
       margin: 0;
       color: var(--pr-muted);
-      font-size: 0.92rem;
+      font-size: 0.88rem;
     }
-    .pr-period {
-      margin-left: auto;
-      background: var(--pr-mist);
-      color: var(--pr-blue-deep);
-      font-weight: 800;
-      padding: 0.45rem 0.85rem;
-      border-radius: 999px;
-      font-size: 0.85rem;
-    }
-    .pr-section {
-      margin-bottom: 1.35rem;
+    body.page-progress-report .pr-section {
+      margin-bottom: 1.2rem;
       break-inside: avoid;
       page-break-inside: avoid;
     }
-    .pr-section h2 {
-      margin: 0 0 0.75rem;
-      font-size: 1.05rem;
+    body.page-progress-report .pr-section h2 {
+      margin: 0 0 0.65rem;
+      font-size: 1rem;
       color: var(--pr-blue-deep);
+      line-height: 1.3;
     }
-    .pr-skill {
+    body.page-progress-report .pr-skill {
       display: grid;
-      grid-template-columns: 120px 1fr 90px;
+      grid-template-columns: 110px 1fr 88px;
       gap: 10px;
       align-items: center;
-      margin-bottom: 0.55rem;
+      margin-bottom: 0.5rem;
     }
-    .pr-skill-name {
+    body.page-progress-report .pr-skill-name {
       font-weight: 700;
-      font-size: 0.88rem;
+      font-size: 0.85rem;
     }
-    .pr-bar-track {
-      height: 12px;
+    body.page-progress-report .pr-bar-track {
+      height: 10px;
       border-radius: 999px;
       background: #e2e8f0;
       overflow: hidden;
     }
-    .pr-bar-fill {
+    body.page-progress-report .pr-bar-fill {
       height: 100%;
       border-radius: 999px;
       background: linear-gradient(90deg, #38bdf8, #00aeef);
+      max-width: 100%;
     }
-    .pr-level {
-      font-size: 0.78rem;
+    body.page-progress-report .pr-level {
+      font-size: 0.75rem;
       font-weight: 800;
       color: var(--pr-blue-deep);
       text-align: right;
     }
-    .pr-badge-grid {
+    body.page-progress-report .pr-badge-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      align-items: start;
       break-inside: avoid;
       page-break-inside: avoid;
     }
-    .pr-badge {
+    body.page-progress-report .pr-badge {
       border: 1px solid var(--pr-line);
-      border-radius: 14px;
-      padding: 0.75rem 0.5rem;
+      border-radius: 12px;
+      padding: 0.65rem 0.45rem 0.7rem;
       text-align: center;
       break-inside: avoid;
+      background: #fff;
+      min-width: 0;
+      overflow: hidden;
+      box-sizing: border-box;
     }
-    .pr-badge-ico {
-      width: 48px;
-      height: 48px;
-      margin: 0 auto 0.4rem;
+    body.page-progress-report .pr-badge-ico {
+      width: 40px !important;
+      height: 40px !important;
+      max-width: 40px !important;
+      max-height: 40px !important;
+      margin: 0 auto 0.4rem !important;
       border-radius: 50%;
-      display: flex;
+      display: flex !important;
       align-items: center;
       justify-content: center;
       color: #fff;
-      font-size: 1.25rem;
+      overflow: hidden !important;
+      box-sizing: border-box !important;
+      flex: 0 0 40px;
+      line-height: 1 !important;
     }
-    .pr-badge strong {
+    body.page-progress-report .pr-badge-ico img,
+    body.page-progress-report .pr-badge-grid img {
+      width: 22px !important;
+      height: 22px !important;
+      max-width: 22px !important;
+      max-height: 22px !important;
+      object-fit: contain !important;
+    }
+    body.page-progress-report .pr-badge-emoji {
+      font-size: 18px !important;
+      line-height: 1 !important;
       display: block;
-      font-size: 0.82rem;
-      margin-bottom: 0.15rem;
+      width: 18px;
+      height: 18px;
+      overflow: hidden;
+      text-align: center;
     }
-    .pr-badge span {
-      font-size: 0.7rem;
+    body.page-progress-report .pr-badge-name {
+      display: block;
+      font-size: 0.78rem !important;
+      font-weight: 800;
+      margin: 0 0 0.15rem;
+      color: var(--pr-ink);
+      line-height: 1.25;
+      word-break: break-word;
+    }
+    body.page-progress-report .pr-badge-date {
+      display: block;
+      font-size: 0.68rem !important;
       color: var(--pr-muted);
+      line-height: 1.2;
     }
-    .pr-letter {
+    body.page-progress-report .pr-letter {
       background: linear-gradient(180deg, #f8fbff, #fff);
       border: 1px solid var(--pr-line);
       border-radius: 14px;
-      padding: 1rem 1.1rem;
+      padding: 0.95rem 1rem;
       line-height: 1.55;
-      font-size: 0.95rem;
+      font-size: 0.92rem;
       white-space: pre-wrap;
       break-inside: avoid;
       page-break-inside: avoid;
     }
-    .pr-meta {
+    body.page-progress-report .pr-meta {
       color: var(--pr-muted);
       font-size: 0.85rem;
       margin-top: 0.35rem;
     }
-    .pr-empty {
+    body.page-progress-report .pr-empty {
       color: var(--pr-muted);
       font-size: 0.9rem;
+      margin: 0;
     }
-    .pr-footer-brand {
-      margin-top: 1.5rem;
+    body.page-progress-report .pr-footer-brand {
+      margin-top: 1.25rem;
       text-align: center;
       color: var(--pr-muted);
-      font-size: 0.8rem;
+      font-size: 0.78rem;
     }
 
     @page {
@@ -219,46 +276,44 @@
       .student-sidebar,
       #student-sidebar-root,
       .portal-page-header,
+      .nav-header,
       .pr-toolbar {
         display: none !important;
       }
-      .remoed-content {
+      body.page-progress-report .remoed-content {
         margin: 0 !important;
         padding: 0 !important;
         max-width: none !important;
       }
-      .pr-wrap {
+      body.page-progress-report .pr-wrap {
         max-width: none;
         padding: 0;
       }
-      .pr-sheet {
+      body.page-progress-report .pr-sheet {
         border: none;
         box-shadow: none;
         border-radius: 0;
         padding: 0;
       }
-      .pr-section,
-      .pr-badge-grid,
-      .pr-badge,
-      .pr-letter {
+      body.page-progress-report .pr-section,
+      body.page-progress-report .pr-badge-grid,
+      body.page-progress-report .pr-badge,
+      body.page-progress-report .pr-letter {
         break-inside: avoid;
         page-break-inside: avoid;
       }
     }
 
     @media (max-width: 640px) {
-      .pr-badge-grid {
-        grid-template-columns: repeat(2, 1fr);
+      body.page-progress-report .pr-badge-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
-      .pr-skill {
+      body.page-progress-report .pr-skill {
         grid-template-columns: 1fr;
         gap: 4px;
       }
-      .pr-level {
+      body.page-progress-report .pr-level {
         text-align: left;
-      }
-      .pr-period {
-        margin-left: 0;
       }
     }
   </style>
@@ -380,13 +435,14 @@
               var when = b.awardedAt
                 ? new Date(b.awardedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
                 : '';
+              var color = String(b.colorHex || '#00aeef').replace(/[^#a-fA-F0-9]/g, '') || '#00aeef';
               return (
                 '<div class="pr-badge">' +
-                '<div class="pr-badge-ico" style="background:' + escapeHtml(b.colorHex || '#00aeef') + '">' +
-                iconFor(b.iconName) +
+                '<div class="pr-badge-ico" style="background:' + color + '">' +
+                '<span class="pr-badge-emoji" aria-hidden="true">' + iconFor(b.iconName) + '</span>' +
                 '</div>' +
-                '<strong>' + escapeHtml(b.name) + '</strong>' +
-                '<span>' + escapeHtml(when) + '</span>' +
+                '<span class="pr-badge-name">' + escapeHtml(b.name) + '</span>' +
+                '<span class="pr-badge-date">' + escapeHtml(when) + '</span>' +
                 '</div>'
               );
             }).join('') +
@@ -405,17 +461,19 @@
             : '';
 
         sheet.innerHTML =
+          '<div class="pr-brand-row">' +
+          '<img class="pr-logo" src="images/remoed-logo-new.webp" alt="RemoEd" onerror="this.onerror=null;this.src=\'images/remoed-logo-new.png\'">' +
+          '<div class="pr-period">' + escapeHtml(data.periodLabel || (quarter + ' ' + year)) + '</div>' +
+          '</div>' +
           '<header class="pr-header">' +
-          '<img class="pr-logo" src="images/remoed-logo-new.png" alt="RemoEd" onerror="this.src=\'images/remoed-logo.png\'">' +
           avatarHtml +
           '<div>' +
           '<h1>' + escapeHtml(student.displayName || 'Student') + '</h1>' +
           '<p>RemoEdKids · Growth Progress Report</p>' +
           '</div>' +
-          '<div class="pr-period">' + escapeHtml(data.periodLabel || (quarter + ' ' + year)) + '</div>' +
           '</header>' +
           '<section class="pr-section">' +
-          '<h2>🌱 Skill Growth</h2>' +
+          '<h2>Skill Growth</h2>' +
           (report
             ? ''
             : '<p class="pr-empty" style="margin-bottom:0.75rem;">Formal skills letter not posted yet — showing encouraging defaults.</p>') +
@@ -423,11 +481,11 @@
           attendance +
           '</section>' +
           '<section class="pr-section">' +
-          '<h2>🏅 Badges This Quarter</h2>' +
+          '<h2>Badges This Quarter</h2>' +
           badgesHtml +
           '</section>' +
           '<section class="pr-section">' +
-          '<h2>💌 Teacher’s Personal Letter</h2>' +
+          '<h2>Teacher’s Personal Letter</h2>' +
           '<div class="pr-letter">' + letter + '</div>' +
           '</section>' +
           '<p class="pr-footer-brand">RemoEd — celebrating personal progress, one lesson at a time.</p>';

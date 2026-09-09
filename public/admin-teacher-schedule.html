@@ -170,7 +170,7 @@
                 (bookingsByCell[key]||[]).forEach(b=>{
                     const cls = isCancelled(b.status) ? 'as-slot as-slot--cancelled' : 'as-slot as-slot--booked';
                     const who = showAllTeachers() ? esc(teacherLabel(b.teacherId)) + '<br>' : '';
-                    html += '<div class="'+cls+'" data-kind="booking" data-id="'+esc(b._id)+'">'+who+esc(b.studentId)+'<br><small>'+esc(b.status)+'</small></div>';
+                    html += '<div class="'+cls+'" data-kind="booking" data-id="'+esc(b._id)+'">'+who+'<small>'+esc(b.status)+'</small></div>';
                 });
                 (slotsByCell[key]||[]).forEach(s=>{
                     if (activeBookedKeys.has(teacherSlotKey(s.date, s.time, s.teacherId))) return;
@@ -218,13 +218,22 @@
     }
     async function openDrawer(id){
         const res = await fetch('/api/admin/booking/'+id, { headers:{ Authorization:'Bearer '+token() } });
-        const b = await res.json();
+        const data = await res.json().catch(()=>({}));
+        if (!res.ok) {
+            document.getElementById('as-drawer-body').innerHTML =
+                '<h3 style="margin-top:0">Booking</h3><p style="color:#b91c1c">'+(esc(data.error)||'Could not load booking')+'</p>';
+            document.getElementById('as-drawer').classList.add('open');
+            return;
+        }
+        const b = data.booking || data;
+        const dateStr = String(b.date || '').slice(0, 10);
+        const timeStr = String(b.time || '');
         const t = teachers.find(x=>normId(x.teacherId)===normId(b.teacherId));
         document.getElementById('as-drawer-body').innerHTML =
             '<h3 style="margin-top:0">Booking</h3>'+
             '<p><strong>Student:</strong> '+esc(b.studentId)+'</p>'+
             '<p><strong>Teacher:</strong> '+esc(teacherLabel(b.teacherId) || b.teacherId)+'</p>'+
-            '<p><strong>Date:</strong> '+esc(b.date)+' '+esc(b.time)+'</p>'+
+            '<p><strong>Date:</strong> '+esc(dateStr)+(timeStr ? ' '+esc(timeStr) : '')+'</p>'+
             '<p><strong>Status:</strong> '+esc(b.status)+'</p>'+
             '<p><strong>Lesson:</strong> '+esc(b.lesson)+'</p>'+
             (t && t.mongoId

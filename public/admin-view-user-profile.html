@@ -183,10 +183,10 @@
         /** RemoEdKids: Level 1–4 (not CEFR Beginner/Intermediate/Advanced). */
         function formatRemoEdKidsLevel(u) {
             var order = {
-                'Little Seeds (Age 3)': { n: 1, name: 'Little Seeds' },
-                'Sprouts (Age 4)': { n: 2, name: 'Sprouts' },
-                'Saplings (Age 5)': { n: 3, name: 'Saplings' },
-                'Young Stewards (Age 6)': { n: 4, name: 'Young Stewards' }
+                'Little Seeds': { n: 1, name: 'Little Seeds' },
+                'Sprouts': { n: 2, name: 'Sprouts' },
+                'Saplings': { n: 3, name: 'Saplings' },
+                'Young Stewards': { n: 4, name: 'Young Stewards' }
             };
             function normalize(raw) {
                 var s = String(raw || '').toLowerCase().trim();
@@ -195,16 +195,16 @@
                     return null;
                 }
                 if (s.indexOf('little seeds') !== -1 || s === 'nursery' || s.indexOf('age 3') !== -1 || s === 'level 1') {
-                    return 'Little Seeds (Age 3)';
+                    return 'Little Seeds';
                 }
                 if (s.indexOf('sprouts') !== -1 || s === 'kinder' || s.indexOf('kindergarten') !== -1 || s.indexOf('age 4') !== -1 || s === 'level 2') {
-                    return 'Sprouts (Age 4)';
+                    return 'Sprouts';
                 }
                 if (s.indexOf('saplings') !== -1 || s === 'prep' || s.indexOf('preparatory') !== -1 || s.indexOf('age 5') !== -1 || s === 'level 3') {
-                    return 'Saplings (Age 5)';
+                    return 'Saplings';
                 }
                 if (s.indexOf('young stewards') !== -1 || s.indexOf('steward') !== -1 || s.indexOf('age 6') !== -1 || s === 'level 4') {
-                    return 'Young Stewards (Age 6)';
+                    return 'Young Stewards';
                 }
                 return null;
             }
@@ -223,7 +223,7 @@
             }
             // Legacy "Beginner" default → Level 1 for RemoEdKids
             if (!canonical && u && String(u.level || '').toLowerCase() === 'beginner') {
-                canonical = 'Little Seeds (Age 3)';
+                canonical = 'Little Seeds';
             }
             if (!canonical) return '—';
             var meta = order[canonical];

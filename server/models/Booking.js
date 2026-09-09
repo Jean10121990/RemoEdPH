@@ -14,12 +14,16 @@ const bookingSchema = new mongoose.Schema({
     type: String,
     required: true,
     enum: [
+      'Little Seeds',
+      'Sprouts',
+      'Saplings',
+      'Young Stewards',
       'Little Seeds (Age 3)',
       'Sprouts (Age 4)',
       'Saplings (Age 5)',
       'Young Stewards (Age 6)',
     ],
-    default: 'Little Seeds (Age 3)',
+    default: 'Little Seeds',
   },
   paymentMethod: { type: String, default: null }, // Optional - payment handled separately
   status: { type: String, default: 'Booked' }, // Booked, pending, confirmed, completed, cancelled, cancelled_by_student_emergency, absent

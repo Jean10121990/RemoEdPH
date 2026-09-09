@@ -49,10 +49,10 @@
                     <button type="button" class="lj-back" onclick="window.location.href='student-dashboard.html'">← Back to dashboard</button>
                 </header>
                 <div class="lj-level-tabs" role="tablist" aria-label="Level">
-                    <button type="button" class="lj-tab active" data-level="Little Seeds (Age 3)" role="tab" aria-selected="true">Little Seeds (Age 3)</button>
-                    <button type="button" class="lj-tab" data-level="Sprouts (Age 4)" role="tab" aria-selected="false">Sprouts (Age 4)</button>
-                    <button type="button" class="lj-tab" data-level="Saplings (Age 5)" role="tab" aria-selected="false">Saplings (Age 5)</button>
-                    <button type="button" class="lj-tab" data-level="Young Stewards (Age 6)" role="tab" aria-selected="false">Young Stewards (Age 6)</button>
+                    <button type="button" class="lj-tab active" data-level="Little Seeds" role="tab" aria-selected="true">Little Seeds</button>
+                    <button type="button" class="lj-tab" data-level="Sprouts" role="tab" aria-selected="false">Sprouts</button>
+                    <button type="button" class="lj-tab" data-level="Saplings" role="tab" aria-selected="false">Saplings</button>
+                    <button type="button" class="lj-tab" data-level="Young Stewards" role="tab" aria-selected="false">Young Stewards</button>
                 </div>
                 <div id="lj-trail-root" class="lj-trail-root" aria-busy="true">Loading your journey…</div>
             </div>
@@ -74,16 +74,16 @@
             var CHAR_SRC = 'images/remo-green.png';
 
             var LEVEL_META = {
-                'Little Seeds (Age 3)': 'Little Seeds (Age 3)',
-                'Sprouts (Age 4)': 'Sprouts (Age 4)',
-                'Saplings (Age 5)': 'Saplings (Age 5)',
-                'Young Stewards (Age 6)': 'Young Stewards (Age 6)'
+                'Little Seeds': 'Little Seeds',
+                'Sprouts': 'Sprouts',
+                'Saplings': 'Saplings',
+                'Young Stewards': 'Young Stewards'
             };
 
             var completedSet = null;
             var unlockCache = {};
             var activeBatchByLevel = {};
-            var currentLevelKey = 'Little Seeds (Age 3)';
+            var currentLevelKey = 'Little Seeds';
 
             var LOCK_SVG =
                 '<svg class="lj-lock-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +

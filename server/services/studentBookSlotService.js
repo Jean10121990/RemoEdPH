@@ -340,6 +340,10 @@ async function runBookSlot(req, res) {
       const timeStr = timeUtc.replace(':', '');
       const classroomId = `${dateStr}${timeStr}${usernamePart}${studentBookingCount + 1}`;
 
+      const { normalizeCurriculumLevel, DEFAULT_CURRICULUM_LEVEL } = require('../config/curriculumLevels');
+      const canonicalStudentLevel =
+        normalizeCurriculumLevel(studentLevel) || DEFAULT_CURRICULUM_LEVEL;
+
       const b = new Booking({
         studentId,
         teacherId: chosenTeacherId,
@@ -350,7 +354,7 @@ async function runBookSlot(req, res) {
         teacherLocalZone: teacher?.teacherLocalZone || lockedSlot?.teacherLocalZone || null,
         lesson,
         lessonId: lessonId || null,
-        studentLevel,
+        studentLevel: canonicalStudentLevel,
         classroomId,
         status: 'Booked',
         isAssessmentFreeTrialBooking: !!student.assessmentTrialCreditActive,

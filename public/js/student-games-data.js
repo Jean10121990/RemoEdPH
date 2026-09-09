@@ -1,10 +1,10 @@
 /**
  * Play & Learn bank: exactly 10 items per category per level.
- * Levels: Little Seeds (Age 3), Sprouts (Age 4), Saplings (Age 5), Young Stewards (Age 6)
+ * Levels: Little Seeds, Sprouts, Saplings, Young Stewards
  * Categories: reading, speaking, writing, listening, moral
  */
 window.REMOED_GAME_DATA_MASTER = {
-  'Little Seeds (Age 3)': {
+  'Little Seeds': {
     reading: [
       { word: 'A', phonetic: '/eɪ/', options: ['A', 'B', 'C', 'D'], correct: 0 },
       { word: 'B', phonetic: '/biː/', options: ['B', 'P', 'D', 'R'], correct: 0 },
@@ -136,7 +136,7 @@ window.REMOED_GAME_DATA_MASTER = {
       }
     ]
   },
-  'Sprouts (Age 4)': {
+  'Sprouts': {
     reading: [
       { word: 'BOOK', phonetic: '/bʊk/', options: ['Book', 'Look', 'Cook', 'Hook'], correct: 0 },
       { word: 'TREE', phonetic: '/triː/', options: ['Tree', 'Free', 'See', 'Bee'], correct: 0 },
@@ -268,7 +268,7 @@ window.REMOED_GAME_DATA_MASTER = {
       }
     ]
   },
-  'Saplings (Age 5)': {
+  'Saplings': {
     reading: [
       { word: 'SCHOOL', phonetic: '/skuːl/', options: ['School', 'Cool', 'Pool', 'Tool'], correct: 0 },
       { word: 'LEARN', phonetic: '/lɜːrn/', options: ['Learn', 'Earn', 'Yearn', 'Turn'], correct: 0 },
@@ -400,7 +400,7 @@ window.REMOED_GAME_DATA_MASTER = {
       }
     ]
   },
-  'Young Stewards (Age 6)': {
+  'Young Stewards': {
     reading: [
       { word: 'NATURE', phonetic: '/ˈneɪtʃər/', options: ['Nature', 'Future', 'Picture', 'Capture'], correct: 0 },
       { word: 'GROWTH', phonetic: '/ɡroʊθ/', options: ['Growth', 'Truth', 'Youth', 'Booth'], correct: 0 },

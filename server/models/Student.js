@@ -28,7 +28,7 @@ const studentSchema = new mongoose.Schema({
   aboutMe: { type: String },
   photo: { type: String },
   profilePicture: { type: String },
-  level: { type: String, default: 'Little Seeds (Age 3)' }, // RemoEdKids: Little Seeds / Sprouts / Saplings / Young Stewards
+  level: { type: String, default: 'Little Seeds' }, // RemoEdKids: Little Seeds / Sprouts / Saplings / Young Stewards
   cefrLevel: { type: String }, // A1, A2, B1, B2, C1, C2 (assessment)
   leveling: { type: String }, // Curriculum or assessment label
   assessmentScore: { type: Number },
@@ -110,6 +110,10 @@ const studentSchema = new mongoose.Schema({
    * Incremented with each plan purchase for all keys so tabs stay aligned; use for level-scoped rules later.
    */
   learningJourneyPurchasedByLevel: {
+    'Little Seeds': { type: Number, default: 0 },
+    'Sprouts': { type: Number, default: 0 },
+    'Saplings': { type: Number, default: 0 },
+    'Young Stewards': { type: Number, default: 0 },
     'Little Seeds (Age 3)': { type: Number, default: 0 },
     'Sprouts (Age 4)': { type: Number, default: 0 },
     'Saplings (Age 5)': { type: Number, default: 0 },

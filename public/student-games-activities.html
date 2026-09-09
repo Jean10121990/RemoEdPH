@@ -501,10 +501,10 @@
                     <div class="selection-title" style="font-size: 1.1rem; font-weight: 800; color: #2D3436; margin-bottom: 8px;">Choose level and activity</div>
                     <div style="font-weight:600;color:#4b5563;margin-bottom:6px;font-size:0.85rem;">Levels</div>
                     <div class="selection-grid">
-                        <div class="selection-card active" data-level="Little Seeds (Age 3)"><div class="icon">🌱</div><div class="label">Little Seeds (Age 3)</div></div>
-                        <div class="selection-card" data-level="Sprouts (Age 4)"><div class="icon">⭐</div><div class="label">Sprouts (Age 4)</div></div>
-                        <div class="selection-card" data-level="Saplings (Age 5)"><div class="icon">📘</div><div class="label">Saplings (Age 5)</div></div>
-                        <div class="selection-card" data-level="Young Stewards (Age 6)"><div class="icon">🌳</div><div class="label">Young Stewards (Age 6)</div></div>
+                        <div class="selection-card active" data-level="Little Seeds"><div class="icon">🌱</div><div class="label">Little Seeds</div></div>
+                        <div class="selection-card" data-level="Sprouts"><div class="icon">⭐</div><div class="label">Sprouts</div></div>
+                        <div class="selection-card" data-level="Saplings"><div class="icon">📘</div><div class="label">Saplings</div></div>
+                        <div class="selection-card" data-level="Young Stewards"><div class="icon">🌳</div><div class="label">Young Stewards</div></div>
                     </div>
                     <div style="font-weight:600;color:#4b5563;margin-bottom:6px;font-size:0.85rem;">Activities</div>
                     <div class="selection-grid">
@@ -517,7 +517,7 @@
                 </div>
                 <div class="game-display" id="game-display">
                     <div class="game-header">
-                        <div class="game-title">Little Seeds (Age 3) - Reading</div>
+                        <div class="game-title">Little Seeds - Reading</div>
                     </div>
                     <div class="game-content active"></div>
                 </div>
@@ -555,7 +555,7 @@
             };
             
             setupGameSelection();
-            selectedLevel = 'Little Seeds (Age 3)';
+            selectedLevel = 'Little Seeds';
             selectedSkill = 'reading';
             loadGame(selectedLevel, selectedSkill);
         });
@@ -643,13 +643,13 @@
 
         function getLevelName(level) {
             const names = {
-                'Little Seeds (Age 3)': 'Little Seeds (Age 3)',
-                'Sprouts (Age 4)': 'Sprouts (Age 4)',
-                'Saplings (Age 5)': 'Saplings (Age 5)',
-                'Young Stewards (Age 6)': 'Young Stewards (Age 6)',
-                'nursery': 'Little Seeds (Age 3)',
-                'kinder': 'Sprouts (Age 4)',
-                'preparatory': 'Saplings (Age 5)'
+                'Little Seeds': 'Little Seeds',
+                'Sprouts': 'Sprouts',
+                'Saplings': 'Saplings',
+                'Young Stewards': 'Young Stewards',
+                'nursery': 'Little Seeds',
+                'kinder': 'Sprouts',
+                'preparatory': 'Saplings'
             };
             return names[level] || level;
         }

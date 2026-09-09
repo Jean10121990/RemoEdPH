@@ -1,7 +1,16 @@
 /**
  * Canonical RemoEd curriculum / student growth levels (display = storage).
+ * Ages removed from labels; legacy "(Age N)" values still normalize correctly.
  */
 const CURRICULUM_LEVELS = [
+  'Little Seeds',
+  'Sprouts',
+  'Saplings',
+  'Young Stewards',
+];
+
+/** Older stored values still present in Mongo / enums. */
+const LEGACY_CURRICULUM_LEVELS = [
   'Little Seeds (Age 3)',
   'Sprouts (Age 4)',
   'Saplings (Age 5)',
@@ -11,18 +20,26 @@ const CURRICULUM_LEVELS = [
 const DEFAULT_CURRICULUM_LEVEL = CURRICULUM_LEVELS[0];
 
 const LEVEL_ORDER = {
-  'Little Seeds (Age 3)': 1,
-  'Sprouts (Age 4)': 2,
-  'Saplings (Age 5)': 3,
-  'Young Stewards (Age 6)': 4,
+  'Little Seeds': 1,
+  'Sprouts': 2,
+  'Saplings': 3,
+  'Young Stewards': 4,
 };
 
 /** Short names for admin / parent-facing labels (Level N - Name). */
 const LEVEL_SHORT_NAME = {
-  'Little Seeds (Age 3)': 'Little Seeds',
-  'Sprouts (Age 4)': 'Sprouts',
-  'Saplings (Age 5)': 'Saplings',
-  'Young Stewards (Age 6)': 'Young Stewards',
+  'Little Seeds': 'Little Seeds',
+  'Sprouts': 'Sprouts',
+  'Saplings': 'Saplings',
+  'Young Stewards': 'Young Stewards',
+};
+
+/** Map canonical → legacy Mongo key (learningJourneyPurchasedByLevel, etc.). */
+const CANONICAL_TO_LEGACY = {
+  'Little Seeds': 'Little Seeds (Age 3)',
+  'Sprouts': 'Sprouts (Age 4)',
+  'Saplings': 'Saplings (Age 5)',
+  'Young Stewards': 'Young Stewards (Age 6)',
 };
 
 /**
@@ -41,15 +58,17 @@ function normalizeCurriculumLevel(raw) {
   }
 
   if (
+    s === 'little seeds' ||
     s === 'little seeds (age 3)' ||
     s.includes('little seeds') ||
     s === 'nursery' ||
     s.includes('age 3') ||
     s === 'level 1'
   ) {
-    return 'Little Seeds (Age 3)';
+    return 'Little Seeds';
   }
   if (
+    s === 'sprouts' ||
     s === 'sprouts (age 4)' ||
     s.includes('sprouts') ||
     s === 'kinder' ||
@@ -57,9 +76,10 @@ function normalizeCurriculumLevel(raw) {
     s.includes('age 4') ||
     s === 'level 2'
   ) {
-    return 'Sprouts (Age 4)';
+    return 'Sprouts';
   }
   if (
+    s === 'saplings' ||
     s === 'saplings (age 5)' ||
     s.includes('saplings') ||
     s === 'prep' ||
@@ -67,16 +87,17 @@ function normalizeCurriculumLevel(raw) {
     s.includes('age 5') ||
     s === 'level 3'
   ) {
-    return 'Saplings (Age 5)';
+    return 'Saplings';
   }
   if (
+    s === 'young stewards' ||
     s === 'young stewards (age 6)' ||
     s.includes('young stewards') ||
     s.includes('steward') ||
     s.includes('age 6') ||
     s === 'level 4'
   ) {
-    return 'Young Stewards (Age 6)';
+    return 'Young Stewards';
   }
 
   // Exact match against canonical list (case-insensitive)
@@ -85,7 +106,8 @@ function normalizeCurriculumLevel(raw) {
 }
 
 function isValidCurriculumLevel(level) {
-  return CURRICULUM_LEVELS.includes(level);
+  if (CURRICULUM_LEVELS.includes(level)) return true;
+  return normalizeCurriculumLevel(level) != null;
 }
 
 /**
@@ -124,13 +146,26 @@ function resolveStudentCurriculumLevel(student) {
   return null;
 }
 
+/** All accepted enum values (canonical + legacy age labels). */
+const CURRICULUM_LEVEL_ENUM = CURRICULUM_LEVELS.concat(LEGACY_CURRICULUM_LEVELS);
+
 module.exports = {
   CURRICULUM_LEVELS,
+  LEGACY_CURRICULUM_LEVELS,
+  CURRICULUM_LEVEL_ENUM,
   DEFAULT_CURRICULUM_LEVEL,
   LEVEL_ORDER,
   LEVEL_SHORT_NAME,
+  CANONICAL_TO_LEGACY,
   normalizeCurriculumLevel,
   isValidCurriculumLevel,
   formatCurriculumLevelDisplay,
   resolveStudentCurriculumLevel,
+  /** Values to use in Mongo `$in` queries for a level (canonical + legacy age label). */
+  curriculumLevelQueryValues(raw) {
+    const c = normalizeCurriculumLevel(raw);
+    if (!c) return [];
+    const legacy = CANONICAL_TO_LEGACY[c];
+    return legacy ? [c, legacy] : [c];
+  },
 };

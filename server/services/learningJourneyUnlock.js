@@ -41,12 +41,13 @@ function getTotalForLearningJourneyLevel(student, levelKey) {
     const plain = m.toObject();
     raw = plain[canonical];
   }
-  // Legacy slug fallbacks
+  // Legacy slug + age-label fallbacks (older Mongo keys)
   if ((raw == null || raw === 0) && typeof m === 'object') {
     const legacyMap = {
-      'Little Seeds (Age 3)': ['nursery'],
-      'Sprouts (Age 4)': ['kinder'],
-      'Saplings (Age 5)': ['prep', 'preparatory'],
+      'Little Seeds': ['Little Seeds (Age 3)', 'nursery'],
+      'Sprouts': ['Sprouts (Age 4)', 'kinder'],
+      'Saplings': ['Saplings (Age 5)', 'prep', 'preparatory'],
+      'Young Stewards': ['Young Stewards (Age 6)'],
     };
     const aliases = legacyMap[canonical] || [];
     for (const a of aliases) {

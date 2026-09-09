@@ -950,7 +950,8 @@ function isBookingLessonCompleted(b) {
 
 /**
  * All non-cancelled bookings → completed lesson keys for the progress sidebar
- * (4 levels × 10 batches × 22 lessons). Keys: "Little Seeds (Age 3):1:1" … "Young Stewards (Age 6):10:22".
+ * (4 levels × 10 batches × 22 lessons). Keys: "Little Seeds:1:1" … "Young Stewards:10:22"
+ * (legacy age-labeled keys still accepted via normalizeCurriculumLevel).
  */
 router.get('/lesson-progress', verifyToken, requireStudent, async (req, res) => {
   try {

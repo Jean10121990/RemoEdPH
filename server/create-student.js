@@ -24,7 +24,7 @@ async function createTestStudent() {
         password: hashedPassword,
         firstName: 'Test',
         lastName: 'Student',
-        level: 'Little Seeds (Age 3)'
+        level: 'Little Seeds'
       });
       
       await student.save();
