@@ -1,0 +1,303 @@
+/**
+ * Student Trophy Cabinet + badge chips — RemoEd student blue theme.
+ */
+.page-student-profile .sb-cabinet {
+  --sb-blue: #00aeef;
+  --sb-blue-deep: #008fc4;
+  --sb-mist: #e8f7fd;
+  --sb-ink: #0f172a;
+  --sb-muted: #64748b;
+  --sb-line: #e2e8f0;
+}
+
+.page-student-profile .sb-cabinet-hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 1.1rem;
+  padding: 1rem 1.15rem;
+  border-radius: 16px;
+  background:
+    radial-gradient(ellipse 70% 90% at 0% 0%, rgba(0, 174, 239, 0.14), transparent 55%),
+    linear-gradient(135deg, #fff, #f0fbff);
+  border: 1px solid var(--sb-line);
+}
+
+.page-student-profile .sb-cabinet-hero h3 {
+  margin: 0 0 0.25rem;
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--sb-ink);
+}
+
+.page-student-profile .sb-cabinet-hero p {
+  margin: 0;
+  color: var(--sb-muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+  max-width: 36rem;
+}
+
+.page-student-profile .sb-cabinet-count {
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: var(--sb-blue-deep);
+  background: var(--sb-mist);
+  border: 1px solid #bae6fd;
+  border-radius: 999px;
+  padding: 0.45rem 0.9rem;
+}
+
+.page-student-profile .sb-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 1rem;
+}
+
+.page-student-profile .sb-filter {
+  border: 2px solid var(--sb-line);
+  background: #fff;
+  color: var(--sb-muted);
+  font-weight: 700;
+  font-size: 0.82rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.page-student-profile .sb-filter.is-active {
+  border-color: var(--sb-blue);
+  background: linear-gradient(90deg, var(--sb-blue-deep), var(--sb-blue));
+  color: #fff;
+}
+
+.page-student-profile .sb-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 14px;
+}
+
+.page-student-profile .sb-card {
+  position: relative;
+  border-radius: 16px;
+  border: 1px solid var(--sb-line);
+  background: #fff;
+  padding: 1rem 0.85rem 0.95rem;
+  text-align: center;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  overflow: hidden;
+}
+
+.page-student-profile .sb-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 24px rgba(0, 143, 196, 0.12);
+}
+
+.page-student-profile .sb-card.is-locked {
+  background: #f8fafc;
+}
+
+.page-student-profile .sb-card.is-locked .sb-icon-wrap {
+  filter: grayscale(1);
+  opacity: 0.45;
+}
+
+.page-student-profile .sb-card.is-locked .sb-name,
+.page-student-profile .sb-card.is-locked .sb-desc {
+  color: #94a3b8;
+}
+
+.page-student-profile .sb-icon-wrap {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 0.65rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.65rem;
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.12);
+}
+
+.page-student-profile .sb-name {
+  margin: 0 0 0.25rem;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--sb-ink);
+}
+
+.page-student-profile .sb-cat {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--sb-blue-deep);
+  background: var(--sb-mist);
+  border-radius: 999px;
+  padding: 2px 8px;
+  margin-bottom: 0.4rem;
+}
+
+.page-student-profile .sb-desc {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--sb-muted);
+  line-height: 1.4;
+  min-height: 2.2em;
+}
+
+.page-student-profile .sb-meta {
+  margin-top: 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--sb-blue-deep);
+}
+
+.page-student-profile .sb-reports {
+  margin-top: 1.35rem;
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--sb-line);
+}
+
+.page-student-profile .sb-reports h4 {
+  margin: 0 0 0.65rem;
+  font-size: 1rem;
+  color: var(--sb-ink);
+}
+
+.page-student-profile .sb-report-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.page-student-profile .sb-report-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0.75rem 0.9rem;
+  border-radius: 12px;
+  border: 1px solid var(--sb-line);
+  background: #fff;
+}
+
+.page-student-profile .sb-report-row a {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--sb-blue-deep), var(--sb-blue));
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.8rem;
+  text-decoration: none;
+}
+
+.page-student-profile .sb-empty {
+  color: var(--sb-muted);
+  font-size: 0.9rem;
+  padding: 0.5rem 0;
+}
+
+.page-student-profile .sb-confetti {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  overflow: hidden;
+}
+
+.page-student-profile .sb-confetti i {
+  position: absolute;
+  top: -12px;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  animation: sb-fall 1.6s linear forwards;
+}
+
+@keyframes sb-fall {
+  to {
+    transform: translateY(110vh) rotate(540deg);
+    opacity: 0;
+  }
+}
+
+/* Teacher badge picker (shared class names) */
+.tb-award {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid #dbeafe;
+  background: #f0f9ff;
+}
+
+.tb-award-title {
+  margin: 0 0 6px;
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.tb-award-hint {
+  margin: 0 0 10px;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.tb-award-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+  max-height: 220px;
+  overflow: auto;
+}
+
+.tb-award-chip {
+  border: 2px solid #e2e8f0;
+  background: #fff;
+  border-radius: 12px;
+  padding: 8px 6px;
+  cursor: pointer;
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #334155;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.tb-award-chip:hover {
+  border-color: #7dd3fc;
+}
+
+.tb-award-chip.is-selected {
+  border-color: #00aeef;
+  box-shadow: 0 0 0 3px rgba(0, 174, 239, 0.2);
+  transform: translateY(-1px);
+}
+
+.tb-award-chip .tb-ico {
+  display: block;
+  font-size: 1.25rem;
+  margin-bottom: 4px;
+}
+
+.tb-award-note {
+  width: 100%;
+  margin-top: 10px;
+  box-sizing: border-box;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 8px;
+  font-size: 0.85rem;
+  resize: vertical;
+  min-height: 56px;
+}

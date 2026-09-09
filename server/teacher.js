@@ -4735,6 +4735,171 @@ router.post('/update-settings', verifyToken, requireTeacher, async (req, res) =>
 
 
 
+// ——— RemoEdKids growth badges (teacher award) & quarterly reports ———
+const studentBadgeService = require('./services/studentBadgeService');
+const ProgressReport = require('./models/ProgressReport');
+
+router.get('/student-badges/catalog', verifyToken, requireTeacher, async (req, res) => {
+  try {
+    const catalog = await studentBadgeService.ensureBadgeCatalog();
+    res.json({
+      success: true,
+      badges: catalog.map((b) => ({
+        id: String(b._id),
+        key: b.key,
+        name: b.name,
+        category: b.category,
+        description: b.description,
+        unlockHint: b.unlockHint,
+        iconName: b.iconName,
+        colorHex: b.colorHex,
+      })),
+    });
+  } catch (error) {
+    console.error('GET /api/teacher/student-badges/catalog:', error);
+    res.status(500).json({ success: false, error: 'Failed to load badge catalog' });
+  }
+});
+
+router.post('/student-badges/award', verifyToken, requireTeacher, async (req, res) => {
+  try {
+    const teacherId = req.user.teacherId;
+    const { studentId, badgeKeys, teacherNote, bookingId } = req.body || {};
+    let resolvedStudentId = studentId;
+
+    if (bookingId) {
+      const booking = await Booking.findById(bookingId);
+      if (!booking) {
+        return res.status(404).json({ success: false, error: 'Booking not found' });
+      }
+      if (String(booking.teacherId) !== String(teacherId)) {
+        return res.status(403).json({ success: false, error: 'This class does not belong to you' });
+      }
+      resolvedStudentId = booking.studentId || studentId;
+    }
+
+    const awarded = await studentBadgeService.awardBadgesToStudent({
+      studentId: resolvedStudentId,
+      teacherId,
+      badgeKeys,
+      teacherNote,
+      bookingId,
+    });
+
+    res.json({
+      success: true,
+      message:
+        awarded.length === 1
+          ? `You awarded “${awarded[0].name}” — nice encouragement!`
+          : `You awarded ${awarded.length} badges — wonderful celebration!`,
+      awarded,
+    });
+  } catch (error) {
+    console.error('POST /api/teacher/student-badges/award:', error);
+    const status = error.status || 500;
+    res.status(status).json({
+      success: false,
+      error: error.message || 'Failed to award badges',
+    });
+  }
+});
+
+router.post('/progress-reports', verifyToken, requireTeacher, async (req, res) => {
+  try {
+    const teacherId = req.user.teacherId;
+    const {
+      studentId,
+      quarter,
+      year,
+      skillsAssessment,
+      teacherSummary,
+      attendanceRate,
+    } = req.body || {};
+
+    const sid = studentBadgeService.normalizeStudentId(studentId);
+    const q = String(quarter || '').toUpperCase();
+    const y = Number(year);
+    if (!sid || !['Q1', 'Q2', 'Q3', 'Q4'].includes(q) || !Number.isFinite(y)) {
+      return res.status(400).json({
+        success: false,
+        error: 'studentId, quarter (Q1–Q4), and year are required',
+      });
+    }
+
+    const levels = studentBadgeService.QUALITATIVE_LEVELS;
+    const skills = {};
+    const incoming = skillsAssessment && typeof skillsAssessment === 'object' ? skillsAssessment : {};
+    ['Vocabulary', 'Grammar', 'Reading', 'Writing', 'Spelling', 'Pronunciation'].forEach((k) => {
+      const v = String(incoming[k] || 'Exploring');
+      skills[k] = levels.includes(v) ? v : 'Exploring';
+    });
+
+    const report = await ProgressReport.findOneAndUpdate(
+      { studentId: sid, year: y, quarter: q },
+      {
+        $set: {
+          skillsAssessment: skills,
+          teacherSummary: String(teacherSummary || '').trim().slice(0, 4000),
+          attendanceRate:
+            attendanceRate == null || attendanceRate === ''
+              ? null
+              : Math.max(0, Math.min(100, Number(attendanceRate))),
+          createdByTeacherId: teacherId,
+        },
+      },
+      { upsert: true, new: true }
+    );
+
+    res.json({
+      success: true,
+      report: {
+        id: String(report._id),
+        studentId: report.studentId,
+        quarter: report.quarter,
+        year: report.year,
+        skillsAssessment: report.skillsAssessment,
+        teacherSummary: report.teacherSummary,
+        attendanceRate: report.attendanceRate,
+      },
+    });
+  } catch (error) {
+    console.error('POST /api/teacher/progress-reports:', error);
+    res.status(500).json({ success: false, error: 'Failed to save progress report' });
+  }
+});
+
+router.get('/progress-reports/:studentId/:year/:quarter', verifyToken, requireTeacher, async (req, res) => {
+  try {
+    const sid = studentBadgeService.normalizeStudentId(req.params.studentId);
+    const year = Number(req.params.year);
+    const quarter = String(req.params.quarter || '').toUpperCase();
+    if (!sid || !['Q1', 'Q2', 'Q3', 'Q4'].includes(quarter) || !Number.isFinite(year)) {
+      return res.status(400).json({ success: false, error: 'Invalid studentId, year, or quarter' });
+    }
+    const report = await ProgressReport.findOne({ studentId: sid, year, quarter }).lean();
+    const badges = await studentBadgeService.getBadgesInQuarter(sid, year, quarter);
+    res.json({
+      success: true,
+      report: report
+        ? {
+            id: String(report._id),
+            studentId: report.studentId,
+            quarter: report.quarter,
+            year: report.year,
+            skillsAssessment: report.skillsAssessment,
+            teacherSummary: report.teacherSummary,
+            attendanceRate: report.attendanceRate,
+          }
+        : null,
+      badges,
+      periodLabel: `${quarter} ${year}`,
+    });
+  } catch (error) {
+    console.error('GET /api/teacher/progress-reports:', error);
+    res.status(500).json({ success: false, error: 'Failed to load progress report' });
+  }
+});
+
 // Give reward to student
 router.post('/give-reward', verifyToken, requireTeacher, async (req, res) => {
   try {

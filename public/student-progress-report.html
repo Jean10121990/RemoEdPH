@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="js/security-guard.js?v=1"></script>
+  <script src="js/user-session.js"></script>
+  <title>Quarterly Progress Report — RemoEd</title>
+  <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
+  <link rel="stylesheet" href="css/student-sidebar.css?v=slide-match-1">
+  <link rel="stylesheet" href="css/student-portal-layout.css?v=slide-match-1">
+  <link rel="stylesheet" href="css/portal-chrome-compact.css">
+  <link rel="stylesheet" href="css/student-badges.css?v=1">
+  <style>
+    :root {
+      --pr-blue: #00aeef;
+      --pr-blue-deep: #008fc4;
+      --pr-ink: #0f172a;
+      --pr-muted: #64748b;
+      --pr-line: #e2e8f0;
+      --pr-mist: #e8f7fd;
+    }
+    body.student-portal.page-progress-report {
+      margin: 0;
+      background: #f0f9ff;
+      color: var(--pr-ink);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .pr-wrap {
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 1rem 1.25rem 2.5rem;
+    }
+    .pr-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+    .pr-toolbar a {
+      color: var(--pr-blue-deep);
+      font-weight: 700;
+      text-decoration: none;
+    }
+    .pr-print-btn {
+      border: none;
+      border-radius: 999px;
+      padding: 0.55rem 1.15rem;
+      font-weight: 800;
+      cursor: pointer;
+      color: #fff;
+      background: linear-gradient(90deg, var(--pr-blue-deep), var(--pr-blue));
+      box-shadow: 0 6px 16px rgba(0, 143, 196, 0.25);
+    }
+    .pr-sheet {
+      background: #fff;
+      border-radius: 18px;
+      border: 1px solid var(--pr-line);
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+      padding: 1.5rem 1.6rem 1.75rem;
+    }
+    .pr-header {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      flex-wrap: wrap;
+      padding-bottom: 1.1rem;
+      border-bottom: 2px solid var(--pr-mist);
+      margin-bottom: 1.25rem;
+    }
+    .pr-logo {
+      height: 42px;
+      width: auto;
+    }
+    .pr-avatar {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 3px solid #FFD700;
+      background: linear-gradient(135deg, #1CA7E7, #5CB3FF);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.6rem;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+    .pr-header h1 {
+      margin: 0 0 0.2rem;
+      font-size: 1.45rem;
+    }
+    .pr-header p {
+      margin: 0;
+      color: var(--pr-muted);
+      font-size: 0.92rem;
+    }
+    .pr-period {
+      margin-left: auto;
+      background: var(--pr-mist);
+      color: var(--pr-blue-deep);
+      font-weight: 800;
+      padding: 0.45rem 0.85rem;
+      border-radius: 999px;
+      font-size: 0.85rem;
+    }
+    .pr-section {
+      margin-bottom: 1.35rem;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .pr-section h2 {
+      margin: 0 0 0.75rem;
+      font-size: 1.05rem;
+      color: var(--pr-blue-deep);
+    }
+    .pr-skill {
+      display: grid;
+      grid-template-columns: 120px 1fr 90px;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 0.55rem;
+    }
+    .pr-skill-name {
+      font-weight: 700;
+      font-size: 0.88rem;
+    }
+    .pr-bar-track {
+      height: 12px;
+      border-radius: 999px;
+      background: #e2e8f0;
+      overflow: hidden;
+    }
+    .pr-bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #38bdf8, #00aeef);
+    }
+    .pr-level {
+      font-size: 0.78rem;
+      font-weight: 800;
+      color: var(--pr-blue-deep);
+      text-align: right;
+    }
+    .pr-badge-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .pr-badge {
+      border: 1px solid var(--pr-line);
+      border-radius: 14px;
+      padding: 0.75rem 0.5rem;
+      text-align: center;
+      break-inside: avoid;
+    }
+    .pr-badge-ico {
+      width: 48px;
+      height: 48px;
+      margin: 0 auto 0.4rem;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 1.25rem;
+    }
+    .pr-badge strong {
+      display: block;
+      font-size: 0.82rem;
+      margin-bottom: 0.15rem;
+    }
+    .pr-badge span {
+      font-size: 0.7rem;
+      color: var(--pr-muted);
+    }
+    .pr-letter {
+      background: linear-gradient(180deg, #f8fbff, #fff);
+      border: 1px solid var(--pr-line);
+      border-radius: 14px;
+      padding: 1rem 1.1rem;
+      line-height: 1.55;
+      font-size: 0.95rem;
+      white-space: pre-wrap;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .pr-meta {
+      color: var(--pr-muted);
+      font-size: 0.85rem;
+      margin-top: 0.35rem;
+    }
+    .pr-empty {
+      color: var(--pr-muted);
+      font-size: 0.9rem;
+    }
+    .pr-footer-brand {
+      margin-top: 1.5rem;
+      text-align: center;
+      color: var(--pr-muted);
+      font-size: 0.8rem;
+    }
+
+    @page {
+      size: A4 portrait;
+      margin: 15mm;
+    }
+
+    @media print {
+      body.student-portal.page-progress-report {
+        background: #fff !important;
+      }
+      .no-print,
+      .student-sidebar,
+      #student-sidebar-root,
+      .portal-page-header,
+      .pr-toolbar {
+        display: none !important;
+      }
+      .remoed-content {
+        margin: 0 !important;
+        padding: 0 !important;
+        max-width: none !important;
+      }
+      .pr-wrap {
+        max-width: none;
+        padding: 0;
+      }
+      .pr-sheet {
+        border: none;
+        box-shadow: none;
+        border-radius: 0;
+        padding: 0;
+      }
+      .pr-section,
+      .pr-badge-grid,
+      .pr-badge,
+      .pr-letter {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .pr-badge-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .pr-skill {
+        grid-template-columns: 1fr;
+        gap: 4px;
+      }
+      .pr-level {
+        text-align: left;
+      }
+      .pr-period {
+        margin-left: 0;
+      }
+    }
+  </style>
+</head>
+<body class="student-portal page-progress-report">
+  <div class="remoed-main">
+    <div id="student-sidebar-root" class="no-print"></div>
+    <script src="js/student-sidebar.js?v=lb-nav-2"></script>
+    <script src="js/student-page-header.js"></script>
+    <script>
+      try {
+        StudentSidebar.render('student-sidebar-root', 'profile');
+        StudentPageHeader.render('profile');
+      } catch (e) {}
+    </script>
+    <div class="remoed-content">
+      <div class="pr-wrap">
+        <div class="pr-toolbar no-print">
+          <a href="student-profile.html">← Back to My Badges</a>
+          <button type="button" class="pr-print-btn" id="pr-print-btn">Print Report / Save as PDF</button>
+        </div>
+        <article class="pr-sheet" id="pr-sheet">
+          <p class="pr-empty">Loading report…</p>
+        </article>
+      </div>
+    </div>
+  </div>
+  <script src="js/student-badges.js?v=1"></script>
+  <script>
+    function getStudentAuthToken() {
+      try {
+        if (typeof RemoedUserSession !== 'undefined' && RemoedUserSession.getUserToken) {
+          var t = RemoedUserSession.getUserToken();
+          if (t) return t;
+        }
+      } catch (_e) {}
+      return (
+        localStorage.getItem('remoed_student_token') ||
+        localStorage.getItem('remoed_student_auth') ||
+        localStorage.getItem('token') ||
+        ''
+      );
+    }
+
+    function qs(name) {
+      return new URLSearchParams(window.location.search).get(name);
+    }
+
+    function levelWidth(level) {
+      if (level === 'Mastering') return 100;
+      if (level === 'Growing') return 66;
+      return 33;
+    }
+
+    function escapeHtml(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    document.getElementById('pr-print-btn').addEventListener('click', function () {
+      window.print();
+    });
+
+    (async function loadReport() {
+      var year = Number(qs('year')) || new Date().getFullYear();
+      var quarter = String(qs('quarter') || '').toUpperCase();
+      if (!['Q1', 'Q2', 'Q3', 'Q4'].includes(quarter)) {
+        quarter = 'Q' + (Math.floor(new Date().getMonth() / 3) + 1);
+      }
+      var sheet = document.getElementById('pr-sheet');
+      var token = getStudentAuthToken();
+      if (!token) {
+        sheet.innerHTML = '<p class="pr-empty">Please sign in as a student to view this report.</p>';
+        return;
+      }
+      try {
+        var res = await fetch('/api/student/progress-reports/' + year + '/' + quarter, {
+          headers: { Authorization: 'Bearer ' + token },
+        });
+        var data = await res.json().catch(function () { return {}; });
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || 'Failed to load report');
+        }
+        var student = data.student || {};
+        var report = data.report;
+        var badges = data.badges || [];
+        var skills = (report && report.skillsAssessment) || {
+          Vocabulary: 'Exploring',
+          Grammar: 'Exploring',
+          Reading: 'Exploring',
+          Writing: 'Exploring',
+          Spelling: 'Exploring',
+          Pronunciation: 'Exploring',
+        };
+        var iconFor = (window.RemoedStudentBadges && RemoedStudentBadges.iconFor) || function () { return '⭐'; };
+        var initial = (student.displayName || 'S').charAt(0).toUpperCase();
+        var avatarHtml = student.profilePicture
+          ? '<img class="pr-avatar" src="' + escapeHtml(student.profilePicture) + '" alt="">'
+          : '<div class="pr-avatar" aria-hidden="true">' + escapeHtml(initial) + '</div>';
+
+        var skillKeys = ['Vocabulary', 'Grammar', 'Reading', 'Writing', 'Spelling', 'Pronunciation'];
+        var skillsHtml = skillKeys.map(function (k) {
+          var lvl = skills[k] || 'Exploring';
+          return (
+            '<div class="pr-skill">' +
+            '<div class="pr-skill-name">' + k + '</div>' +
+            '<div class="pr-bar-track"><div class="pr-bar-fill" style="width:' + levelWidth(lvl) + '%"></div></div>' +
+            '<div class="pr-level">' + escapeHtml(lvl) + '</div>' +
+            '</div>'
+          );
+        }).join('');
+
+        var badgesHtml = badges.length
+          ? '<div class="pr-badge-grid">' +
+            badges.slice(0, 9).map(function (b) {
+              var when = b.awardedAt
+                ? new Date(b.awardedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+                : '';
+              return (
+                '<div class="pr-badge">' +
+                '<div class="pr-badge-ico" style="background:' + escapeHtml(b.colorHex || '#00aeef') + '">' +
+                iconFor(b.iconName) +
+                '</div>' +
+                '<strong>' + escapeHtml(b.name) + '</strong>' +
+                '<span>' + escapeHtml(when) + '</span>' +
+                '</div>'
+              );
+            }).join('') +
+            '</div>'
+          : '<p class="pr-empty">No badges earned in this quarter yet — every lesson is a chance to grow!</p>';
+
+        var letter = report && report.teacherSummary
+          ? escapeHtml(report.teacherSummary)
+          : 'Your teacher’s personal letter for this quarter will appear here when it is ready. Until then, celebrate every small step — you are growing!';
+
+        var attendance =
+          report && report.attendanceRate != null
+            ? '<p class="pr-meta">Attendance this quarter: <strong>' +
+              Math.round(report.attendanceRate) +
+              '%</strong> — showing up is a superpower!</p>'
+            : '';
+
+        sheet.innerHTML =
+          '<header class="pr-header">' +
+          '<img class="pr-logo" src="images/remoed-logo-new.png" alt="RemoEd" onerror="this.src=\'images/remoed-logo.png\'">' +
+          avatarHtml +
+          '<div>' +
+          '<h1>' + escapeHtml(student.displayName || 'Student') + '</h1>' +
+          '<p>RemoEdKids · Growth Progress Report</p>' +
+          '</div>' +
+          '<div class="pr-period">' + escapeHtml(data.periodLabel || (quarter + ' ' + year)) + '</div>' +
+          '</header>' +
+          '<section class="pr-section">' +
+          '<h2>🌱 Skill Growth</h2>' +
+          (report
+            ? ''
+            : '<p class="pr-empty" style="margin-bottom:0.75rem;">Formal skills letter not posted yet — showing encouraging defaults.</p>') +
+          skillsHtml +
+          attendance +
+          '</section>' +
+          '<section class="pr-section">' +
+          '<h2>🏅 Badges This Quarter</h2>' +
+          badgesHtml +
+          '</section>' +
+          '<section class="pr-section">' +
+          '<h2>💌 Teacher’s Personal Letter</h2>' +
+          '<div class="pr-letter">' + letter + '</div>' +
+          '</section>' +
+          '<p class="pr-footer-brand">RemoEd — celebrating personal progress, one lesson at a time.</p>';
+      } catch (err) {
+        console.error(err);
+        sheet.innerHTML = '<p class="pr-empty">Could not load this report. Please try again from your profile.</p>';
+      }
+    })();
+  </script>
+</body>
+</html>

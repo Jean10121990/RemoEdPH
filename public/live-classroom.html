@@ -54,6 +54,7 @@
   <!-- After global styles so chat / layout rules are not overridden -->
   <link rel="stylesheet" href="live-classroom.css?v=lc-slide-single-1" />
   <link rel="stylesheet" href="css/live-classroom-redesign.css?v=mint-forest-2" />
+  <link rel="stylesheet" href="css/student-badges.css?v=1" />
 </head>
 <body class="page-live-classroom">
   <header class="top-bar" role="banner">
@@ -344,6 +345,7 @@
       <p id="lc-feedback-rating-hint" class="post-class-feedback-hint"></p>
       <label class="post-class-feedback-label" for="lc-feedback-comment">Comments</label>
       <textarea id="lc-feedback-comment" class="post-class-feedback-textarea" rows="4" maxlength="1000" placeholder="How did the student do today?"></textarea>
+      <div id="lc-tb-award-mount"></div>
       <div class="post-class-feedback-actions">
         <button type="button" class="post-class-feedback-primary" id="lc-feedback-submit">Submit &amp; finalize</button>
         <button type="button" class="post-class-feedback-secondary" id="lc-feedback-dismiss">Finish later from schedule</button>
@@ -373,6 +375,8 @@
   </div>
     <script src="js/classroom-entry.js?v=session-ended-1"></script>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="js/student-badges.js?v=1"></script>
+    <script src="js/teacher-badge-award.js?v=1"></script>
     <script src="js/presentation-overlay.js?v=lc-slide-fix-2"></script>
     <script src="js/virtual-background.js"></script>
     <script src="js/classroom-qa-recording.js?v=lc-polish-3" defer></script>
@@ -6641,6 +6645,20 @@
                 lcSubmit.disabled = false;
                 return;
               }
+              try {
+                if (window.RemoedTeacherBadgeAward && RemoedTeacherBadgeAward.submitAwards) {
+                  const awardResult = await RemoedTeacherBadgeAward.submitAwards({
+                    bookingId: bid,
+                    studentId: classroomStudentIdForFeedback || '',
+                    root: document.getElementById('lc-tb-award-mount'),
+                  });
+                  if (awardResult && !awardResult.skipped && awardResult.message) {
+                    alert(awardResult.message);
+                  }
+                }
+              } catch (awardErr) {
+                console.warn('Badge award:', awardErr);
+              }
               alert(data.message || 'Feedback saved and class finalized.');
               window.location.href = 'teacher-class-table.html';
             } catch (err) {
@@ -6660,6 +6678,13 @@
           if (layer) {
             layer.classList.add('is-visible');
             layer.setAttribute('aria-hidden', 'false');
+          }
+          try {
+            if (window.RemoedTeacherBadgeAward && RemoedTeacherBadgeAward.renderInto) {
+              RemoedTeacherBadgeAward.renderInto(document.getElementById('lc-tb-award-mount'));
+            }
+          } catch (badgeUiErr) {
+            console.warn('Badge award UI:', badgeUiErr);
           }
         }
 

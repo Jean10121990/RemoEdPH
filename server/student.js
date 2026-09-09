@@ -2595,4 +2595,93 @@ router.get('/portal-videos', verifyToken, requireStudent, async (req, res) => {
   }
 });
 
+// ——— RemoEdKids growth badges & quarterly progress ———
+const studentBadgeService = require('./services/studentBadgeService');
+const ProgressReport = require('./models/ProgressReport');
+
+router.get('/badges', verifyToken, requireStudent, async (req, res) => {
+  try {
+    const studentId = req.user.studentId || req.user.username;
+    const cabinet = await studentBadgeService.getStudentBadgeCabinet(studentId);
+    res.json({ success: true, ...cabinet });
+  } catch (error) {
+    console.error('GET /api/student/badges:', error);
+    res.status(500).json({ success: false, error: 'Failed to load badges' });
+  }
+});
+
+router.get('/progress-reports', verifyToken, requireStudent, async (req, res) => {
+  try {
+    const studentId = String(req.user.studentId || req.user.username);
+    const rows = await ProgressReport.find({ studentId }).sort({ year: -1, quarter: -1 }).lean();
+    res.json({
+      success: true,
+      reports: rows.map((r) => ({
+        id: String(r._id),
+        studentId: r.studentId,
+        quarter: r.quarter,
+        year: r.year,
+        skillsAssessment: r.skillsAssessment,
+        teacherSummary: r.teacherSummary,
+        attendanceRate: r.attendanceRate,
+        createdAt: r.createdAt,
+        updatedAt: r.updatedAt,
+      })),
+    });
+  } catch (error) {
+    console.error('GET /api/student/progress-reports:', error);
+    res.status(500).json({ success: false, error: 'Failed to load progress reports' });
+  }
+});
+
+router.get('/progress-reports/:year/:quarter', verifyToken, requireStudent, async (req, res) => {
+  try {
+    const studentId = String(req.user.studentId || req.user.username);
+    const year = Number(req.params.year);
+    const quarter = String(req.params.quarter || '').toUpperCase();
+    if (!['Q1', 'Q2', 'Q3', 'Q4'].includes(quarter) || !Number.isFinite(year)) {
+      return res.status(400).json({ success: false, error: 'Invalid year or quarter' });
+    }
+
+    const report = await ProgressReport.findOne({ studentId, year, quarter }).lean();
+    const badges = await studentBadgeService.getBadgesInQuarter(studentId, year, quarter);
+    const student = await Student.findById(studentId).select(
+      'firstName lastName username profilePicture photo level leveling education'
+    ).lean();
+
+    const displayName =
+      (student &&
+        [student.firstName, student.lastName].filter(Boolean).join(' ').trim()) ||
+      (student && student.username) ||
+      'Student';
+
+    res.json({
+      success: true,
+      report: report
+        ? {
+            id: String(report._id),
+            studentId: report.studentId,
+            quarter: report.quarter,
+            year: report.year,
+            skillsAssessment: report.skillsAssessment,
+            teacherSummary: report.teacherSummary,
+            attendanceRate: report.attendanceRate,
+            createdAt: report.createdAt,
+            updatedAt: report.updatedAt,
+          }
+        : null,
+      badges,
+      student: {
+        id: studentId,
+        displayName,
+        profilePicture: (student && (student.profilePicture || student.photo)) || null,
+      },
+      periodLabel: `${quarter} ${year}`,
+    });
+  } catch (error) {
+    console.error('GET /api/student/progress-reports/:year/:quarter:', error);
+    res.status(500).json({ success: false, error: 'Failed to load progress report' });
+  }
+});
+
 module.exports = router; 

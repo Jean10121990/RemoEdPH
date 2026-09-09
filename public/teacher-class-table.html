@@ -47,6 +47,7 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="css/portal-chrome-compact.css?v=mint-forest-1">
     <link rel="stylesheet" href="css/class-info-modal.css?v=modal-stack-1">
+    <link rel="stylesheet" href="css/student-badges.css?v=1">
 </head>
 <body class="page-teacher-class-table teacher-portal">
   <div class="remoed-main">
@@ -220,6 +221,9 @@
             <button type="button" class="remoed-btn remoed-btn-success cim-btn-mgmt cim-btn-mgmt--wide" onclick="completeClass()" id="complete-class-btn">
               Complete Class &amp; Feedback
             </button>
+            <button type="button" class="remoed-btn remoed-btn-secondary cim-btn-mgmt cim-btn-mgmt--wide" onclick="openQuarterlyProgressReport()" id="quarterly-report-btn">
+              Quarterly Progress Letter
+            </button>
           </div>
         </section>
 
@@ -276,6 +280,8 @@
               <span id="feedback-char-count">0</span>/1000 characters
             </div>
           </div>
+
+          <div id="tb-award-mount"></div>
         </div>
         <div class="remoed-modal-footer">
           <button class="remoed-btn remoed-btn-secondary" onclick="closeClassFeedbackModal()">Cancel</button>
@@ -365,6 +371,8 @@
   <script src="timezone-utils.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script src="avatar-helper.js"></script>
+  <script src="js/student-badges.js?v=1"></script>
+  <script src="js/teacher-badge-award.js?v=1"></script>
   <script>
     // Use unique aliases to avoid redeclaring luxon globals from timezone-utils
     const DateTimeLocal = luxon.DateTime;
@@ -2075,6 +2083,27 @@
         }
     }
     
+    function openQuarterlyProgressReport() {
+        if (!currentBooking) {
+            showNotification('No class selected', 'error');
+            return;
+        }
+        let studentId = currentBooking.studentId;
+        if (typeof studentId === 'object' && studentId !== null) {
+            studentId = studentId._id || studentId.id || studentId.username || '';
+        }
+        studentId = String(studentId || '').trim();
+        if (!studentId) {
+            showNotification('Missing student id for progress letter', 'error');
+            return;
+        }
+        const name = encodeURIComponent(currentBooking.studentName || 'Student');
+        window.open(
+            'teacher-progress-report.html?studentId=' + encodeURIComponent(studentId) + '&studentName=' + name,
+            '_blank'
+        );
+    }
+
     // Complete class - now shows feedback form first
     async function completeClass() {
         if (!currentBooking) {
@@ -2163,6 +2192,13 @@
         // Replace Class Info with feedback modal (keep booking context)
         closeClassInfo({ keepBooking: true });
         document.getElementById('class-feedback-modal').classList.add('show');
+        try {
+          if (window.RemoedTeacherBadgeAward && RemoedTeacherBadgeAward.renderInto) {
+            RemoedTeacherBadgeAward.renderInto(document.getElementById('tb-award-mount'));
+          }
+        } catch (badgeUiErr) {
+          console.warn('Badge award UI:', badgeUiErr);
+        }
     }
 
     async function openGiveFeedbackForBooking(booking) {
@@ -2413,6 +2449,26 @@
 
             const submitPayload = await feedbackResponse.json().catch(() => ({}));
             console.log('✅ Feedback + finalize:', submitPayload);
+
+            try {
+              if (window.RemoedTeacherBadgeAward && RemoedTeacherBadgeAward.submitAwards) {
+                const awardResult = await RemoedTeacherBadgeAward.submitAwards({
+                  bookingId: currentBooking._id,
+                  studentId: studentId,
+                  root: document.getElementById('tb-award-mount'),
+                });
+                if (awardResult && !awardResult.skipped && awardResult.message) {
+                  showNotification(awardResult.message, 'success');
+                }
+              }
+            } catch (awardErr) {
+              console.warn('Badge award after feedback:', awardErr);
+              showNotification(
+                awardErr.message || 'Feedback saved, but badges could not be awarded.',
+                'info'
+              );
+            }
+
             showNotification(
                 submitPayload.message || 'Class completed and feedback submitted successfully',
                 'success'

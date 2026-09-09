@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="js/security-guard.js?v=1"></script>
+  <script src="js/user-session.js"></script>
+  <title>Quarterly Progress Letter — RemoEd Teacher</title>
+  <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
+  <link rel="stylesheet" href="css/teacher-sidebar.css?v=mint-forest-1">
+  <link rel="stylesheet" href="css/portal-chrome-compact.css?v=mint-forest-1">
+  <link rel="stylesheet" href="css/student-badges.css?v=1">
+  <style>
+    body.teacher-portal {
+      margin: 0;
+      background: #f4faf5;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #0f172a;
+    }
+    .tpr-wrap {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 1.25rem;
+    }
+    .tpr-card {
+      background: #fff;
+      border: 1px solid #d1fae5;
+      border-radius: 16px;
+      padding: 1.25rem 1.35rem;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+    }
+    .tpr-card h1 {
+      margin: 0 0 0.35rem;
+      font-size: 1.35rem;
+    }
+    .tpr-card .lead {
+      margin: 0 0 1rem;
+      color: #64748b;
+      font-size: 0.92rem;
+    }
+    .tpr-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 1rem;
+    }
+    label {
+      display: block;
+      font-weight: 700;
+      font-size: 0.82rem;
+      margin-bottom: 4px;
+    }
+    select, input, textarea {
+      width: 100%;
+      box-sizing: border-box;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font: inherit;
+    }
+    .tpr-skills {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 1rem;
+    }
+    .tpr-skill-row {
+      display: grid;
+      grid-template-columns: 130px 1fr;
+      gap: 8px;
+      align-items: center;
+    }
+    textarea {
+      min-height: 140px;
+      resize: vertical;
+    }
+    .tpr-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 1rem;
+    }
+    .tpr-btn {
+      border: none;
+      border-radius: 999px;
+      padding: 0.55rem 1.1rem;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .tpr-btn-primary {
+      background: linear-gradient(90deg, #2f9e44, #47BC3E);
+      color: #fff;
+    }
+    .tpr-btn-secondary {
+      background: #e2e8f0;
+      color: #334155;
+    }
+    .tpr-status {
+      margin-top: 0.75rem;
+      font-size: 0.88rem;
+      color: #047857;
+      font-weight: 700;
+    }
+    .tpr-badges {
+      margin-top: 1rem;
+      font-size: 0.85rem;
+      color: #64748b;
+    }
+    @media (max-width: 640px) {
+      .tpr-grid, .tpr-skill-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body class="teacher-portal">
+  <div class="remoed-main">
+    <div id="teacher-sidebar-root"></div>
+    <script src="js/teacher-sidebar.js?v=lb-nav-2"></script>
+    <script src="js/teacher-page-header.js?v=mint-forest-1"></script>
+    <script>
+      try {
+        TeacherSidebar.render('teacher-sidebar-root', 'schedule');
+        TeacherPageHeader.render('schedule');
+      } catch (e) {}
+    </script>
+    <div class="remoed-content">
+      <div class="tpr-wrap">
+        <div class="tpr-card">
+          <h1>Quarterly Progress Letter</h1>
+          <p class="lead" id="tpr-lead">Warm, encouraging growth notes for parents — never grades or rankings.</p>
+          <div class="tpr-grid">
+            <div>
+              <label for="tpr-year">Year</label>
+              <input type="number" id="tpr-year" min="2020" max="2100" />
+            </div>
+            <div>
+              <label for="tpr-quarter">Quarter</label>
+              <select id="tpr-quarter">
+                <option value="Q1">Q1 (Jan–Mar)</option>
+                <option value="Q2">Q2 (Apr–Jun)</option>
+                <option value="Q3">Q3 (Jul–Sep)</option>
+                <option value="Q4">Q4 (Oct–Dec)</option>
+              </select>
+            </div>
+            <div>
+              <label for="tpr-attendance">Attendance rate % (optional)</label>
+              <input type="number" id="tpr-attendance" min="0" max="100" placeholder="e.g. 95" />
+            </div>
+          </div>
+          <h3 style="margin:0 0 0.5rem;font-size:1rem;">Skill growth (qualitative)</h3>
+          <div class="tpr-skills" id="tpr-skills"></div>
+          <label for="tpr-summary">Teacher’s personal letter to parents</label>
+          <textarea id="tpr-summary" maxlength="4000" placeholder="Share milestones, encouragement, and a gentle home-practice tip…"></textarea>
+          <div class="tpr-actions">
+            <button type="button" class="tpr-btn tpr-btn-primary" id="tpr-save">Save progress letter</button>
+            <button type="button" class="tpr-btn tpr-btn-secondary" id="tpr-reload">Reload</button>
+            <a class="tpr-btn tpr-btn-secondary" id="tpr-back" href="teacher-class-table.html" style="text-decoration:none;display:inline-flex;align-items:center;">Back to schedule</a>
+          </div>
+          <div class="tpr-status" id="tpr-status" aria-live="polite"></div>
+          <div class="tpr-badges" id="tpr-badges"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      if (localStorage.getItem('userType') !== 'teacher') {
+        alert('Teachers only.');
+        location.href = 'index.html';
+        return;
+      }
+      var params = new URLSearchParams(location.search);
+      var studentId = params.get('studentId') || '';
+      var studentName = params.get('studentName') || 'Student';
+      var skills = ['Vocabulary', 'Grammar', 'Reading', 'Writing', 'Spelling', 'Pronunciation'];
+      var levels = ['Exploring', 'Growing', 'Mastering'];
+      var now = new Date();
+      document.getElementById('tpr-year').value = now.getFullYear();
+      document.getElementById('tpr-quarter').value = 'Q' + (Math.floor(now.getMonth() / 3) + 1);
+      document.getElementById('tpr-lead').textContent =
+        'Writing for ' + studentName + ' — keep it positive and personal-progress focused.';
+
+      var skillsHost = document.getElementById('tpr-skills');
+      skillsHost.innerHTML = skills.map(function (k) {
+        return (
+          '<div class="tpr-skill-row"><label>' + k + '</label>' +
+          '<select data-skill="' + k + '">' +
+          levels.map(function (l) {
+            return '<option value="' + l + '">' + l + '</option>';
+          }).join('') +
+          '</select></div>'
+        );
+      }).join('');
+
+      function token() {
+        return localStorage.getItem('token') || '';
+      }
+
+      function collectSkills() {
+        var out = {};
+        skillsHost.querySelectorAll('select[data-skill]').forEach(function (sel) {
+          out[sel.getAttribute('data-skill')] = sel.value;
+        });
+        return out;
+      }
+
+      async function load() {
+        var status = document.getElementById('tpr-status');
+        var badgesEl = document.getElementById('tpr-badges');
+        if (!studentId) {
+          status.textContent = 'Missing studentId in URL.';
+          return;
+        }
+        var year = document.getElementById('tpr-year').value;
+        var quarter = document.getElementById('tpr-quarter').value;
+        status.textContent = 'Loading…';
+        try {
+          var res = await fetch(
+            '/api/teacher/progress-reports/' +
+              encodeURIComponent(studentId) +
+              '/' +
+              year +
+              '/' +
+              quarter,
+            { headers: { Authorization: 'Bearer ' + token() } }
+          );
+          var data = await res.json().catch(function () { return {}; });
+          if (!res.ok || !data.success) throw new Error(data.error || 'Load failed');
+          var r = data.report;
+          if (r) {
+            if (r.skillsAssessment) {
+              skills.forEach(function (k) {
+                var sel = skillsHost.querySelector('select[data-skill="' + k + '"]');
+                if (sel && r.skillsAssessment[k]) sel.value = r.skillsAssessment[k];
+              });
+            }
+            document.getElementById('tpr-summary').value = r.teacherSummary || '';
+            document.getElementById('tpr-attendance').value =
+              r.attendanceRate != null ? r.attendanceRate : '';
+            status.textContent = 'Loaded existing letter for ' + quarter + ' ' + year + '.';
+          } else {
+            status.textContent = 'No letter yet for ' + quarter + ' ' + year + ' — create one below.';
+          }
+          var badges = data.badges || [];
+          badgesEl.textContent = badges.length
+            ? 'Badges earned this quarter: ' + badges.map(function (b) { return b.name; }).join(', ')
+            : 'No badges awarded in this quarter yet.';
+        } catch (err) {
+          status.textContent = err.message || 'Could not load.';
+        }
+      }
+
+      document.getElementById('tpr-reload').addEventListener('click', load);
+      document.getElementById('tpr-year').addEventListener('change', load);
+      document.getElementById('tpr-quarter').addEventListener('change', load);
+      document.getElementById('tpr-save').addEventListener('click', async function () {
+        var status = document.getElementById('tpr-status');
+        if (!studentId) {
+          status.textContent = 'Missing studentId.';
+          return;
+        }
+        status.textContent = 'Saving…';
+        try {
+          var att = document.getElementById('tpr-attendance').value;
+          var res = await fetch('/api/teacher/progress-reports', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: 'Bearer ' + token(),
+            },
+            body: JSON.stringify({
+              studentId: studentId,
+              year: Number(document.getElementById('tpr-year').value),
+              quarter: document.getElementById('tpr-quarter').value,
+              skillsAssessment: collectSkills(),
+              teacherSummary: document.getElementById('tpr-summary').value,
+              attendanceRate: att === '' ? null : Number(att),
+            }),
+          });
+          var data = await res.json().catch(function () { return {}; });
+          if (!res.ok || !data.success) throw new Error(data.error || 'Save failed');
+          status.textContent = 'Saved! Parents can view it from the student’s My Badges tab.';
+        } catch (err) {
+          status.textContent = err.message || 'Save failed.';
+        }
+      });
+
+      load();
+    })();
+  </script>
+</body>
+</html>
