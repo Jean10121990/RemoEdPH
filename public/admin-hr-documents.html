@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="js/security-guard.js?v=2"></script>
+    <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
+    <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="js/admin-standalone-redirect.js"></script>
+    <script src="js/admin-embed-init.js"></script>
+    <title>Staff Documents - RemoEdPH Admin</title>
+    <link rel="stylesheet" href="modern-styles.css">
+    <link rel="stylesheet" href="css/teacher-sidebar.css">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css">
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f6fbff; margin: 0; }
+        .remoed-main { display: flex; min-height: calc(100vh - 70px); }
+        .remoed-content { flex: 1; padding: 12px 16px; }
+        .remoed-section { background: #fff; border-radius: 12px; box-shadow: 0 4px 24px rgba(28,167,231,0.07); padding: 14px; margin-bottom: 12px; }
+        .remoed-section-title { font-size: 1rem; font-weight: 700; color: #1ca7e7; margin-bottom: 6px; }
+        .muted { color: #64748b; font-size: 0.88rem; margin: 0 0 14px; }
+        .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 14px; }
+        .tab-btn { padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; background: #f0f0f0; color: #666; }
+        .tab-btn.active { background: #1ca7e7; color: #fff; }
+        .search-input { flex: 1; min-width: 180px; padding: 8px 12px; border: 1px solid #dbe3ec; border-radius: 8px; font-size: 0.9rem; }
+        .doc-table { width: 100%; border-collapse: collapse; }
+        .doc-table th, .doc-table td { padding: 8px 10px; text-align: left; border-bottom: 1px solid #e0e6ed; font-size: 0.85rem; vertical-align: middle; }
+        .doc-table th { background: #f8f9fa; font-weight: 600; color: #1ca7e7; }
+        .doc-table tr:hover { background: #f6fbff; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 0.75rem; font-weight: 700; background: #eef2ff; color: #4338ca; }
+        .badge.zero { background: #f1f5f9; color: #94a3b8; font-weight: 600; }
+        .badge.warn { background: #fef3c7; color: #b45309; }
+        .status-pill { font-size: 0.75rem; font-weight: 700; padding: 2px 8px; border-radius: 4px; }
+        .status-active { background: #d4edda; color: #155724; }
+        .status-suspended { background: #f8d7da; color: #721c24; }
+        .btn-view { padding: 6px 12px; border: none; border-radius: 6px; background: #1ca7e7; color: #fff; font-weight: 600; font-size: 0.8rem; cursor: pointer; }
+        .btn-view:hover { background: #0d8bc7; }
+        .btn-view:disabled { opacity: 0.5; cursor: not-allowed; }
+        .err { color: #c0392b; padding: 12px; background: #fdecea; border-radius: 8px; }
+        .empty { color: #94a3b8; text-align: center; padding: 24px; }
+
+        .modal-backdrop {
+            display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.45);
+            z-index: 2000; align-items: center; justify-content: center; padding: 16px;
+        }
+        .modal-backdrop.open { display: flex; }
+        .modal-card {
+            background: #fff; border-radius: 12px; max-width: 720px; width: 100%;
+            max-height: 88vh; overflow: auto; padding: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+        }
+        .modal-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; margin-bottom: 12px; }
+        .modal-head h2 { margin: 0; font-size: 1.1rem; color: #0f172a; }
+        .modal-close { border: none; background: #f1f5f9; border-radius: 8px; width: 36px; height: 36px; cursor: pointer; font-size: 1.2rem; color: #64748b; }
+        .doc-group { margin-bottom: 16px; }
+        .doc-group h3 { margin: 0 0 8px; font-size: 0.92rem; color: #1ca7e7; }
+        .doc-row {
+            display: flex; justify-content: space-between; align-items: center; gap: 10px;
+            padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 8px; background: #fafcff;
+        }
+        .doc-row .name { font-weight: 600; color: #334155; font-size: 0.88rem; word-break: break-word; }
+        .doc-row .meta { font-size: 0.75rem; color: #94a3b8; margin-top: 2px; }
+        .doc-actions { display: flex; gap: 6px; flex-shrink: 0; }
+        .doc-actions button, .doc-actions a {
+            padding: 6px 10px; border-radius: 6px; font-size: 0.78rem; font-weight: 600;
+            text-decoration: none; border: none; cursor: pointer; background: #667eea; color: #fff;
+        }
+        .doc-actions a.secondary, .doc-actions button.secondary { background: #e2e8f0; color: #334155; }
+        .preview-frame {
+            margin-top: 12px; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;
+            background: #0f172a; min-height: 200px; display: none;
+        }
+        .preview-frame.open { display: block; }
+        .preview-frame img, .preview-frame iframe { width: 100%; max-height: 420px; border: 0; display: block; background: #fff; }
+        .preview-frame .fallback { color: #e2e8f0; padding: 16px; font-size: 0.85rem; }
+    </style>
+</head>
+<body>
+    <div class="remoed-main">
+        <div id="admin-sidebar-root"></div>
+        <script src="js/admin-session.js"></script>
+        <script src="js/admin-page-header.js"></script>
+        <script src="js/admin-sidebar.js"></script>
+        <script>if (!window.__ADMIN_EMBED__) AdminSidebar.render('admin-sidebar-root', 'hr-hub');</script>
+        <div class="remoed-content">
+            <div class="remoed-section">
+                <div class="remoed-section-title">Staff Documents</div>
+                <p class="muted">View uploaded diplomas, certificates, and IDs for teachers, plus government ID and NBI for admins. Super-Admin and HR only.</p>
+
+                <div class="toolbar">
+                    <button type="button" class="tab-btn active" id="tab-teachers" data-tab="teachers">Teachers</button>
+                    <button type="button" class="tab-btn" id="tab-admins" data-tab="admins">Admins</button>
+                    <input type="search" class="search-input" id="doc-search" placeholder="Search name, username, email…" />
+                    <button type="button" class="btn-view" id="btn-refresh" style="background:#64748b;">Refresh</button>
+                </div>
+
+                <div id="list-status" class="muted">Loading…</div>
+                <div id="list-error" class="err" style="display:none;"></div>
+                <div style="overflow-x:auto;">
+                    <table class="doc-table" id="doc-table">
+                        <thead id="doc-thead"></thead>
+                        <tbody id="doc-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-backdrop" id="doc-modal" role="dialog" aria-modal="true">
+        <div class="modal-card">
+            <div class="modal-head">
+                <div>
+                    <h2 id="modal-title">Documents</h2>
+                    <div class="muted" id="modal-sub" style="margin:4px 0 0;"></div>
+                </div>
+                <button type="button" class="modal-close" id="modal-close" aria-label="Close">&times;</button>
+            </div>
+            <div id="modal-body">Loading…</div>
+            <div class="preview-frame" id="preview-frame"></div>
+        </div>
+    </div>
+
+    <script>
+    (function () {
+        var state = {
+            tab: 'teachers',
+            teachers: [],
+            admins: [],
+            query: '',
+            objectUrls: []
+        };
+
+        function adminApiFetchInit(init) {
+            var o = init && typeof init === 'object' ? Object.assign({}, init) : {};
+            var token = (window.RemoedAdminSession && RemoedAdminSession.getAuthToken
+                ? RemoedAdminSession.getAuthToken()
+                : (localStorage.getItem('remoed_admin_token') || localStorage.getItem('remoed_admin_auth') || localStorage.getItem('adminToken') || '')) || '';
+            var headers = Object.assign({}, o.headers || {});
+            if (token) headers['Authorization'] = 'Bearer ' + token;
+            o.headers = headers;
+            o.credentials = 'include';
+            return o;
+        }
+
+        function esc(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        function roleLabel(r) {
+            var m = { super_admin: 'Super-Admin', admin_hr: 'HR', admin_accounting: 'Accounting', admin_qa: 'QA' };
+            return m[r] || r || '—';
+        }
+
+        function revokeObjectUrls() {
+            state.objectUrls.forEach(function (u) {
+                try { URL.revokeObjectURL(u); } catch (e) {}
+            });
+            state.objectUrls = [];
+        }
+
+        function guessMime(fileName) {
+            var n = String(fileName || '').toLowerCase();
+            if (/\.pdf$/.test(n)) return 'application/pdf';
+            if (/\.png$/.test(n)) return 'image/png';
+            if (/\.jpe?g$/.test(n)) return 'image/jpeg';
+            if (/\.webp$/.test(n)) return 'image/webp';
+            if (/\.gif$/.test(n)) return 'image/gif';
+            return 'application/octet-stream';
+        }
+
+        function toObjectUrl(file) {
+            if (file.url) return { href: file.url, revoke: false };
+            var raw = file.fileData || '';
+            if (!raw) return null;
+            if (raw.indexOf('http://') === 0 || raw.indexOf('https://') === 0 || raw.indexOf('/') === 0) {
+                return { href: raw, revoke: false };
+            }
+            var mime = 'application/octet-stream';
+            var b64 = raw;
+            if (raw.indexOf('data:') === 0) {
+                var m = raw.match(/^data:([^;]+);base64,([\s\S]+)$/);
+                if (!m) return { href: raw, revoke: false };
+                mime = m[1];
+                b64 = m[2];
+            } else {
+                mime = guessMime(file.fileName);
+            }
+            try {
+                var binary = atob(b64);
+                var bytes = new Uint8Array(binary.length);
+                for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+                var blob = new Blob([bytes], { type: mime });
+                var href = URL.createObjectURL(blob);
+                state.objectUrls.push(href);
+                return { href: href, revoke: true, mime: mime };
+            } catch (err) {
+                console.warn('Could not decode document', err);
+                return null;
+            }
+        }
+
+        function openPreview(file) {
+            var frame = document.getElementById('preview-frame');
+            frame.classList.add('open');
+            frame.innerHTML = '';
+            var resolved = toObjectUrl(file);
+            if (!resolved) {
+                frame.innerHTML = '<div class="fallback">Unable to preview this file. Try Download.</div>';
+                return;
+            }
+            var mime = resolved.mime || guessMime(file.fileName);
+            if ((mime && mime.indexOf('image/') === 0) || /\.(png|jpe?g|webp|gif)$/i.test(file.fileName || '')) {
+                frame.innerHTML = '<img alt="" src="' + esc(resolved.href) + '" />';
+            } else if (mime === 'application/pdf' || /\.pdf$/i.test(file.fileName || '')) {
+                frame.innerHTML = '<iframe title="Document preview" src="' + esc(resolved.href) + '"></iframe>';
+            } else {
+                frame.innerHTML = '<div class="fallback">Preview not available for this file type. Use Open / Download.</div>';
+            }
+        }
+
+        function downloadFile(file) {
+            var resolved = toObjectUrl(file);
+            if (!resolved) {
+                alert('Unable to download this file.');
+                return;
+            }
+            var a = document.createElement('a');
+            a.href = resolved.href;
+            a.download = file.fileName || 'document';
+            a.target = '_blank';
+            a.rel = 'noopener';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+        }
+
+        function setTab(tab) {
+            state.tab = tab;
+            document.getElementById('tab-teachers').classList.toggle('active', tab === 'teachers');
+            document.getElementById('tab-admins').classList.toggle('active', tab === 'admins');
+            renderTable();
+        }
+
+        function filteredRows() {
+            var q = String(state.query || '').trim().toLowerCase();
+            var rows = state.tab === 'teachers' ? state.teachers : state.admins;
+            if (!q) return rows;
+            return rows.filter(function (r) {
+                return [r.displayName, r.username, r.email, r.teacherId, r.adminRole]
+                    .join(' ')
+                    .toLowerCase()
+                    .indexOf(q) !== -1;
+            });
+        }
+
+        function renderTable() {
+            var thead = document.getElementById('doc-thead');
+            var tbody = document.getElementById('doc-tbody');
+            var rows = filteredRows();
+            var statusEl = document.getElementById('list-status');
+
+            if (state.tab === 'teachers') {
+                thead.innerHTML = '<tr><th>Teacher</th><th>Email</th><th>Status</th><th>Diplomas</th><th>Certificates</th><th>IDs</th><th></th></tr>';
+                tbody.innerHTML = rows.map(function (r) {
+                    var total = r.counts && r.counts.total ? r.counts.total : 0;
+                    return '<tr>' +
+                        '<td><strong>' + esc(r.displayName) + '</strong><div class="muted" style="margin:0;">@' + esc(r.username) + '</div></td>' +
+                        '<td>' + esc(r.email || '—') + '</td>' +
+                        '<td><span class="status-pill ' + (r.status === 'suspended' ? 'status-suspended' : 'status-active') + '">' + esc(r.status || 'active') + '</span></td>' +
+                        '<td><span class="badge' + (r.counts.diplomas ? '' : ' zero') + '">' + (r.counts.diplomas || 0) + '</span></td>' +
+                        '<td><span class="badge' + (r.counts.certificates ? '' : ' zero') + '">' + (r.counts.certificates || 0) + '</span></td>' +
+                        '<td><span class="badge' + (r.counts.validIds ? '' : ' zero') + '">' + (r.counts.validIds || 0) + '</span></td>' +
+                        '<td><button type="button" class="btn-view" data-open="teacher" data-id="' + esc(r.id) + '"' + (total ? '' : ' disabled') + '>View</button></td>' +
+                        '</tr>';
+                }).join('') || '<tr><td colspan="7" class="empty">No teachers match.</td></tr>';
+            } else {
+                thead.innerHTML = '<tr><th>Admin</th><th>Role</th><th>Status</th><th>Gov ID</th><th>NBI</th><th>NBI status</th><th></th></tr>';
+                tbody.innerHTML = rows.map(function (r) {
+                    var total = r.counts && r.counts.total ? r.counts.total : 0;
+                    return '<tr>' +
+                        '<td><strong>' + esc(r.displayName) + '</strong><div class="muted" style="margin:0;">@' + esc(r.username) + '</div></td>' +
+                        '<td>' + esc(roleLabel(r.adminRole)) + '</td>' +
+                        '<td><span class="status-pill ' + (r.status === 'suspended' ? 'status-suspended' : 'status-active') + '">' + esc(r.status || 'active') + '</span></td>' +
+                        '<td><span class="badge' + (r.counts.idDocument ? '' : ' zero') + '">' + (r.counts.idDocument ? 'Yes' : 'No') + '</span></td>' +
+                        '<td><span class="badge' + (r.counts.nbi ? '' : ' zero') + '">' + (r.counts.nbi ? 'Yes' : 'No') + '</span></td>' +
+                        '<td><span class="badge' + (r.nbiClearanceStatus && r.nbiClearanceStatus !== 'none' ? ' warn' : ' zero') + '">' + esc(r.nbiClearanceStatus || 'none') + '</span></td>' +
+                        '<td><button type="button" class="btn-view" data-open="admin" data-id="' + esc(r.id) + '"' + (total ? '' : ' disabled') + '>View</button></td>' +
+                        '</tr>';
+                }).join('') || '<tr><td colspan="7" class="empty">No admins match.</td></tr>';
+            }
+
+            statusEl.textContent = rows.length + ' ' + (state.tab === 'teachers' ? 'teacher' : 'admin') + (rows.length === 1 ? '' : 's') +
+                (state.query ? ' matching “' + state.query + '”' : '');
+        }
+
+        function categoryTitle(cat) {
+            var m = {
+                diploma: 'Diplomas',
+                certificate: 'Certificates',
+                validId: 'Government / Valid IDs',
+                idDocument: 'Government ID',
+                nbi: 'NBI Clearance'
+            };
+            return m[cat] || cat;
+        }
+
+        function openModal(personType, personId) {
+            var modal = document.getElementById('doc-modal');
+            var body = document.getElementById('modal-body');
+            var frame = document.getElementById('preview-frame');
+            revokeObjectUrls();
+            frame.classList.remove('open');
+            frame.innerHTML = '';
+            body.innerHTML = 'Loading documents…';
+            document.getElementById('modal-title').textContent = 'Documents';
+            document.getElementById('modal-sub').textContent = '';
+            modal.classList.add('open');
+
+            fetch('/api/admin/hr-documents/' + encodeURIComponent(personType) + '/' + encodeURIComponent(personId), adminApiFetchInit())
+                .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+                .then(function (res) {
+                    if (!res.ok || !res.j.success) {
+                        body.innerHTML = '<div class="err">' + esc((res.j && (res.j.error || res.j.message)) || 'Failed to load') + '</div>';
+                        return;
+                    }
+                    var person = res.j.person || {};
+                    var files = Array.isArray(res.j.files) ? res.j.files : [];
+                    document.getElementById('modal-title').textContent = person.displayName || 'Documents';
+                    document.getElementById('modal-sub').textContent =
+                        (personType === 'teacher' ? 'Teacher' : 'Admin') +
+                        (person.username ? ' · @' + person.username : '') +
+                        (person.email ? ' · ' + person.email : '');
+
+                    if (!files.length) {
+                        body.innerHTML = '<div class="empty">No uploaded documents for this account.</div>';
+                        return;
+                    }
+
+                    var groups = {};
+                    files.forEach(function (f) {
+                        var c = f.category || 'other';
+                        if (!groups[c]) groups[c] = [];
+                        groups[c].push(f);
+                    });
+
+                    var html = '';
+                    Object.keys(groups).forEach(function (cat) {
+                        html += '<div class="doc-group"><h3>' + esc(categoryTitle(cat)) + '</h3>';
+                        groups[cat].forEach(function (f, idx) {
+                            var key = cat + '-' + idx;
+                            html += '<div class="doc-row">' +
+                                '<div><div class="name">' + esc(f.fileName || 'Document') + '</div>' +
+                                '<div class="meta">' + esc(f.source || '') +
+                                (f.nbiClearanceStatus ? ' · NBI: ' + esc(f.nbiClearanceStatus) : '') +
+                                '</div></div>' +
+                                '<div class="doc-actions">' +
+                                '<button type="button" data-preview="' + esc(key) + '">Preview</button>' +
+                                '<button type="button" class="secondary" data-download="' + esc(key) + '">Download</button>' +
+                                '</div></div>';
+                        });
+                        html += '</div>';
+                    });
+                    body.innerHTML = html;
+                    body._fileMap = {};
+                    Object.keys(groups).forEach(function (cat) {
+                        groups[cat].forEach(function (f, idx) {
+                            body._fileMap[cat + '-' + idx] = f;
+                        });
+                    });
+                })
+                .catch(function (err) {
+                    console.error(err);
+                    body.innerHTML = '<div class="err">Network error loading documents.</div>';
+                });
+        }
+
+        function closeModal() {
+            document.getElementById('doc-modal').classList.remove('open');
+            revokeObjectUrls();
+            document.getElementById('preview-frame').classList.remove('open');
+            document.getElementById('preview-frame').innerHTML = '';
+        }
+
+        function loadIndex() {
+            var statusEl = document.getElementById('list-status');
+            var errEl = document.getElementById('list-error');
+            statusEl.textContent = 'Loading…';
+            errEl.style.display = 'none';
+            fetch('/api/admin/hr-documents', adminApiFetchInit())
+                .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, status: r.status, j: j }; }); })
+                .then(function (res) {
+                    if (!res.ok || !res.j.success) {
+                        errEl.style.display = 'block';
+                        errEl.textContent = (res.j && (res.j.error || res.j.message)) || ('Failed to load (' + res.status + ')');
+                        statusEl.textContent = '';
+                        return;
+                    }
+                    state.teachers = res.j.teachers || [];
+                    state.admins = res.j.admins || [];
+                    renderTable();
+                })
+                .catch(function (err) {
+                    console.error(err);
+                    errEl.style.display = 'block';
+                    errEl.textContent = 'Network error loading staff documents.';
+                    statusEl.textContent = '';
+                });
+        }
+
+        document.getElementById('tab-teachers').addEventListener('click', function () { setTab('teachers'); });
+        document.getElementById('tab-admins').addEventListener('click', function () { setTab('admins'); });
+        document.getElementById('doc-search').addEventListener('input', function (e) {
+            state.query = e.target.value || '';
+            renderTable();
+        });
+        document.getElementById('btn-refresh').addEventListener('click', loadIndex);
+        document.getElementById('modal-close').addEventListener('click', closeModal);
+        document.getElementById('doc-modal').addEventListener('click', function (e) {
+            if (e.target === this) closeModal();
+        });
+        document.getElementById('doc-tbody').addEventListener('click', function (e) {
+            var btn = e.target.closest('[data-open]');
+            if (!btn) return;
+            openModal(btn.getAttribute('data-open'), btn.getAttribute('data-id'));
+        });
+        document.getElementById('modal-body').addEventListener('click', function (e) {
+            var body = document.getElementById('modal-body');
+            var map = body._fileMap || {};
+            var prev = e.target.closest('[data-preview]');
+            if (prev) {
+                var f1 = map[prev.getAttribute('data-preview')];
+                if (f1) openPreview(f1);
+                return;
+            }
+            var dl = e.target.closest('[data-download]');
+            if (dl) {
+                var f2 = map[dl.getAttribute('data-download')];
+                if (f2) downloadFile(f2);
+            }
+        });
+
+        if (window.AdminSidebar && typeof AdminSidebar.applyGreetingFromStorage === 'function') {
+            AdminSidebar.applyGreetingFromStorage();
+        }
+        loadIndex();
+    })();
+    </script>
+</body>
+</html>

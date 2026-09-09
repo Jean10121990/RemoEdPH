@@ -37,6 +37,7 @@
         var path = (window.location.pathname || '').replace(/^\//, '') || window.location.href;
         if (path.indexOf('admin-dashboard') !== -1) return 'dashboard';
         if (path.indexOf('admin-hr-hub') !== -1) return 'hr-hub';
+        if (path.indexOf('admin-hr-documents') !== -1) return 'hr-hub';
         if (path.indexOf('admin-users') !== -1) return 'hr-hub';
         if (path.indexOf('admin-teacher-assessments') !== -1) return 'hr-hub';
         if (path.indexOf('admin-assessment-answer-key') !== -1) return 'hr-hub';

@@ -3632,6 +3632,269 @@ router.get('/admins', async (req, res) => {
   }
 });
 
+/** HR + Super-Admin only — staff document vault */
+function requireHrOrSuper(req, res, next) {
+  const role = (req.user && req.user.adminRole) || 'super_admin';
+  if (role === 'super_admin' || role === 'admin_hr') return next();
+  return res.status(403).json({ error: 'Only Super-Admin or HR can access staff documents.' });
+}
+
+function serializeTeacherDocEntry(entry, index, category) {
+  if (!entry) return null;
+  if (typeof entry === 'string') {
+    const s = entry.trim();
+    if (!s) return null;
+    return {
+      id: `${category}-legacy-${index}`,
+      category,
+      fileName: category === 'diploma' ? 'Diploma (legacy)' : category === 'validId' ? 'Valid ID (legacy)' : `Certificate ${index + 1}`,
+      source: 'legacy',
+      previewKind: s.startsWith('data:') || s.startsWith('http') || s.startsWith('/') ? 'url-or-data' : 'base64',
+      fileData: s,
+    };
+  }
+  if (!entry.fileData && !entry.fileName) return null;
+  return {
+    id: `${category}-${index}`,
+    category,
+    fileName: entry.fileName || `${category}-${index + 1}`,
+    source: 'file',
+    previewKind: 'base64',
+    fileData: entry.fileData || null,
+  };
+}
+
+function collectTeacherDocuments(teacher) {
+  const docs = (teacher && teacher.documents) || {};
+  const list = [];
+  (docs.diplomas || []).forEach((d, i) => {
+    const row = serializeTeacherDocEntry(d, i, 'diploma');
+    if (row) list.push(row);
+  });
+  if (docs.diploma) {
+    const row = serializeTeacherDocEntry(docs.diploma, 0, 'diploma');
+    if (row) list.push(row);
+  }
+  (docs.certificates || []).forEach((d, i) => {
+    const row = serializeTeacherDocEntry(d, i, 'certificate');
+    if (row) list.push(row);
+  });
+  (docs.certifications || []).forEach((d, i) => {
+    const row = serializeTeacherDocEntry(d, i, 'certificate');
+    if (row) list.push(row);
+  });
+  (docs.validIds || []).forEach((d, i) => {
+    const row = serializeTeacherDocEntry(d, i, 'validId');
+    if (row) list.push(row);
+  });
+  if (docs.validId) {
+    const row = serializeTeacherDocEntry(docs.validId, 0, 'validId');
+    if (row) list.push(row);
+  }
+  return list;
+}
+
+// Lightweight index of staff docs (no file payloads)
+router.get('/hr-documents', requireHrOrSuper, async (req, res) => {
+  try {
+    const type = String(req.query.type || 'all').toLowerCase();
+    const out = { teachers: [], admins: [] };
+
+    if (type === 'all' || type === 'teacher' || type === 'teachers') {
+      const teachers = await Teacher.aggregate([
+        {
+          $project: {
+            username: 1,
+            email: 1,
+            teacherId: 1,
+            firstName: 1,
+            lastName: 1,
+            nickname: 1,
+            status: 1,
+            createdAt: 1,
+            diplomaArr: { $size: { $ifNull: ['$documents.diplomas', []] } },
+            certArr: { $size: { $ifNull: ['$documents.certificates', []] } },
+            validArr: { $size: { $ifNull: ['$documents.validIds', []] } },
+            legacyCertArr: { $size: { $ifNull: ['$documents.certifications', []] } },
+            hasLegacyDiploma: {
+              $cond: [
+                {
+                  $and: [
+                    { $ne: [{ $ifNull: ['$documents.diploma', null] }, null] },
+                    { $ne: [{ $ifNull: ['$documents.diploma', ''] }, ''] },
+                  ],
+                },
+                1,
+                0,
+              ],
+            },
+            hasLegacyValidId: {
+              $cond: [
+                {
+                  $and: [
+                    { $ne: [{ $ifNull: ['$documents.validId', null] }, null] },
+                    { $ne: [{ $ifNull: ['$documents.validId', ''] }, ''] },
+                  ],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+        },
+      ]);
+      out.teachers = teachers.map((t) => {
+        const diplomas = Number(t.diplomaArr || 0) + Number(t.hasLegacyDiploma || 0);
+        const certificates = Number(t.certArr || 0) + Number(t.legacyCertArr || 0);
+        const validIds = Number(t.validArr || 0) + Number(t.hasLegacyValidId || 0);
+        const displayName =
+          [t.firstName, t.lastName].filter(Boolean).join(' ').trim() ||
+          t.nickname ||
+          t.username ||
+          '—';
+        return {
+          id: String(t._id),
+          personType: 'teacher',
+          displayName,
+          username: t.username || '',
+          email: t.email || '',
+          teacherId: t.teacherId || '',
+          status: t.status || 'active',
+          createdAt: t.createdAt || null,
+          counts: {
+            diplomas,
+            certificates,
+            validIds,
+            total: diplomas + certificates + validIds,
+          },
+        };
+      });
+      out.teachers.sort((a, b) => b.counts.total - a.counts.total || a.displayName.localeCompare(b.displayName));
+    }
+
+    if (type === 'all' || type === 'admin' || type === 'admins') {
+      const admins = await Admin.find({})
+        .select(
+          'username email firstName lastName adminRole status createdAt idDocumentPath nbiClearanceDocumentPath nbiClearanceStatus'
+        )
+        .lean();
+      out.admins = admins.map((a) => {
+        const hasId = !!(a.idDocumentPath && String(a.idDocumentPath).trim());
+        const hasNbi = !!(a.nbiClearanceDocumentPath && String(a.nbiClearanceDocumentPath).trim());
+        const displayName =
+          [a.firstName, a.lastName].filter(Boolean).join(' ').trim() || a.username || '—';
+        return {
+          id: String(a._id),
+          personType: 'admin',
+          displayName,
+          username: a.username || '',
+          email: a.email || '',
+          adminRole: a.adminRole || 'super_admin',
+          status: a.status || 'active',
+          nbiClearanceStatus: a.nbiClearanceStatus || 'none',
+          createdAt: a.createdAt || null,
+          counts: {
+            idDocument: hasId ? 1 : 0,
+            nbi: hasNbi ? 1 : 0,
+            total: (hasId ? 1 : 0) + (hasNbi ? 1 : 0),
+          },
+        };
+      });
+      out.admins.sort((a, b) => b.counts.total - a.counts.total || a.displayName.localeCompare(b.displayName));
+    }
+
+    res.json({ success: true, ...out });
+  } catch (err) {
+    console.error('GET /hr-documents:', err);
+    res.status(500).json({ success: false, error: 'Failed to load staff documents index' });
+  }
+});
+
+// Full document payloads for one teacher or admin
+router.get('/hr-documents/:personType/:personId', requireHrOrSuper, async (req, res) => {
+  try {
+    const personType = String(req.params.personType || '').toLowerCase();
+    const personId = String(req.params.personId || '').trim();
+    if (!mongoose.isValidObjectId(personId)) {
+      return res.status(400).json({ success: false, error: 'Invalid person id' });
+    }
+
+    if (personType === 'teacher') {
+      const teacher = await Teacher.findById(personId).select('-password').lean();
+      if (!teacher) return res.status(404).json({ success: false, error: 'Teacher not found' });
+      const files = collectTeacherDocuments(teacher);
+      return res.json({
+        success: true,
+        personType: 'teacher',
+        person: {
+          id: String(teacher._id),
+          displayName:
+            [teacher.firstName, teacher.lastName].filter(Boolean).join(' ').trim() ||
+            teacher.nickname ||
+            teacher.username ||
+            '—',
+          username: teacher.username || '',
+          email: teacher.email || '',
+          teacherId: teacher.teacherId || '',
+          status: teacher.status || 'active',
+        },
+        files,
+      });
+    }
+
+    if (personType === 'admin') {
+      const admin = await Admin.findById(personId)
+        .select('-password -passwordHash -passwordSetupTokenHash -twoFactorSecret')
+        .lean();
+      if (!admin) return res.status(404).json({ success: false, error: 'Admin not found' });
+      const files = [];
+      if (admin.idDocumentPath) {
+        files.push({
+          id: 'admin-id',
+          category: 'idDocument',
+          fileName: 'Government ID',
+          source: 'upload',
+          previewKind: 'url',
+          url: adminPublicUploadUrl(admin.idDocumentPath),
+        });
+      }
+      if (admin.nbiClearanceDocumentPath) {
+        files.push({
+          id: 'admin-nbi',
+          category: 'nbi',
+          fileName: 'NBI Clearance',
+          source: 'upload',
+          previewKind: 'url',
+          url: adminPublicUploadUrl(admin.nbiClearanceDocumentPath),
+          nbiClearanceStatus: admin.nbiClearanceStatus || 'none',
+        });
+      }
+      return res.json({
+        success: true,
+        personType: 'admin',
+        person: {
+          id: String(admin._id),
+          displayName:
+            [admin.firstName, admin.lastName].filter(Boolean).join(' ').trim() ||
+            admin.username ||
+            '—',
+          username: admin.username || '',
+          email: admin.email || '',
+          adminRole: admin.adminRole || 'super_admin',
+          status: admin.status || 'active',
+          nbiClearanceStatus: admin.nbiClearanceStatus || 'none',
+        },
+        files,
+      });
+    }
+
+    return res.status(400).json({ success: false, error: 'personType must be teacher or admin' });
+  } catch (err) {
+    console.error('GET /hr-documents/:personType/:personId:', err);
+    res.status(500).json({ success: false, error: 'Failed to load documents' });
+  }
+});
+
 // GET specific user by ID
 router.get('/user/:userId', async (req, res) => {
   try {

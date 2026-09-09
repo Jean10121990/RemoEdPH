@@ -24,10 +24,11 @@
         <div class="remoed-content">
             <div class="remoed-section">
                 <div class="remoed-section-title">HR Hub</div>
-                <p class="muted" style="margin-top:0;margin-bottom:16px;">Users, teacher assessments, <strong>Teacher Pipeline</strong>, Teacher Training (PPT materials), and teacher schedule in one place.</p>
+                <p class="muted" style="margin-top:0;margin-bottom:16px;">Users, <strong>Staff Documents</strong>, teacher assessments, Teacher Pipeline, Teacher Training (PPT materials), and teacher schedule in one place.</p>
 
                 <div class="hub-tabs" role="tablist" aria-label="HR Hub sections">
                     <button type="button" class="hub-tab hub-tab--active" role="tab" id="hr-tab-users" aria-selected="true" aria-controls="hr-panel-users">User Management</button>
+                    <button type="button" class="hub-tab" role="tab" id="hr-tab-documents" aria-selected="false" aria-controls="hr-panel-documents">Staff Documents</button>
                     <button type="button" class="hub-tab" role="tab" id="hr-tab-assessments" aria-selected="false" aria-controls="hr-panel-assessments">Teacher Assessments</button>
                     <button type="button" class="hub-tab" role="tab" id="hr-tab-pipeline" aria-selected="false" aria-controls="hr-panel-pipeline">Teacher Pipeline</button>
                     <button type="button" class="hub-tab" role="tab" id="hr-tab-training" aria-selected="false" aria-controls="hr-panel-training">Teacher Training</button>
@@ -36,6 +37,9 @@
 
                 <div id="hr-panel-users" class="hub-panel" role="tabpanel" aria-labelledby="hr-tab-users">
                     <iframe id="iframe-hr-users" class="hub-iframe" title="User Management"></iframe>
+                </div>
+                <div id="hr-panel-documents" class="hub-panel" role="tabpanel" aria-labelledby="hr-tab-documents" hidden>
+                    <iframe id="iframe-hr-documents" class="hub-iframe" title="Staff Documents"></iframe>
                 </div>
                 <div id="hr-panel-assessments" class="hub-panel" role="tabpanel" aria-labelledby="hr-tab-assessments" hidden>
                     <iframe id="iframe-hr-assessments" class="hub-iframe" title="Teacher Assessments"></iframe>
@@ -56,6 +60,7 @@
         (function () {
             var IFRAMES = {
                 users: { id: 'iframe-hr-users', src: '/admin/admin-users.html?adminEmbed=1&embedVer=8' },
+                documents: { id: 'iframe-hr-documents', src: '/admin/admin-hr-documents.html?adminEmbed=1&embedVer=1' },
                 assessments: { id: 'iframe-hr-assessments', src: '/admin/admin-teacher-assessments.html?adminEmbed=1&embedVer=7' },
                 pipeline: { id: 'iframe-hr-pipeline', src: '/admin/admin-teacher-pipeline.html?adminEmbed=1&embedVer=5' },
                 training: { id: 'iframe-hr-training', src: '/admin/admin-teacher-training.html?adminEmbed=1&embedVer=7' },
@@ -91,7 +96,12 @@
 
             function setHash(tab) {
                 try {
-                    var h = tab === 'assessments' ? '#assessments' : tab === 'pipeline' ? '#pipeline' : tab === 'training' ? '#training' : tab === 'schedule' ? '#schedule' : '#users';
+                    var h = tab === 'assessments' ? '#assessments'
+                        : tab === 'pipeline' ? '#pipeline'
+                        : tab === 'training' ? '#training'
+                        : tab === 'schedule' ? '#schedule'
+                        : tab === 'documents' ? '#documents'
+                        : '#users';
                     if (window.location.hash !== h) {
                         history.replaceState(null, '', 'admin-hr-hub.html' + h);
                     }
@@ -101,6 +111,7 @@
             function showTab(tab) {
                 var map = [
                     { key: 'users', t: 'hr-tab-users', p: 'hr-panel-users' },
+                    { key: 'documents', t: 'hr-tab-documents', p: 'hr-panel-documents' },
                     { key: 'assessments', t: 'hr-tab-assessments', p: 'hr-panel-assessments' },
                     { key: 'pipeline', t: 'hr-tab-pipeline', p: 'hr-panel-pipeline' },
                     { key: 'training', t: 'hr-tab-training', p: 'hr-panel-training' },
@@ -127,6 +138,7 @@
                     if (el) el.addEventListener('click', function () { showTab(key); });
                 }
                 bindTab('hr-tab-users', 'users');
+                bindTab('hr-tab-documents', 'documents');
                 bindTab('hr-tab-assessments', 'assessments');
                 bindTab('hr-tab-pipeline', 'pipeline');
                 bindTab('hr-tab-training', 'training');
@@ -137,6 +149,7 @@
                     else if (h === '#pipeline') showTab('pipeline');
                     else if (h === '#training') showTab('training');
                     else if (h === '#schedule') showTab('schedule');
+                    else if (h === '#documents') showTab('documents');
                     else showTab('users');
                 }
                 applyHash();
