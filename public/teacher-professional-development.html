@@ -10,11 +10,11 @@
     <script src="js/security-guard.js?v=1"></script>
     <title>Career Growth - RemoEdPH</title>
     <link rel="stylesheet" href="modern-styles.css">
-    <link rel="stylesheet" href="css/teacher-sidebar.css?v=relax-green-1">
+    <link rel="stylesheet" href="css/teacher-sidebar.css?v=mint-forest-1">
     <link rel="stylesheet" href="css/global-portal.css">
 <!-- Remo AI Chatbot Styles -->
     <link rel="stylesheet" href="style.css?v=training-cards-1">
-    <link rel="stylesheet" href="css/portal-chrome-compact.css?v=relax-green-1">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css?v=mint-forest-1">
     <style>
         .commitment-meter { min-width: 0; }
         .commitment-meter-header {
@@ -43,7 +43,7 @@
             height: 100%;
             width: 0%;
             border-radius: 999px;
-            background: linear-gradient(90deg, #3d9470 0%, #2f7358 100%);
+            background: linear-gradient(90deg, #47BC3E 0%, #2E9A28 100%);
             transition: width 0.35s ease, background 0.2s ease;
         }
         .commitment-meter.is-pass .commitment-bar-fill {
@@ -61,7 +61,7 @@
     <div class="remoed-main">
         <div id="teacher-sidebar-root"></div>
         <script src="js/teacher-sidebar.js?v=lb-nav-2"></script>
-        <script src="js/teacher-page-header.js?v=relax-green-1"></script>
+        <script src="js/teacher-page-header.js?v=mint-forest-1"></script>
         <script>
             TeacherSidebar.render('teacher-sidebar-root', 'professional-development');
             TeacherPageHeader.render('professional-development');
@@ -152,7 +152,7 @@
                         <p>Your teaching abilities are assessed by <strong>RemoEd trainers and administrators</strong> through interviews, teaching demonstrations, and evaluation of your education level, certifications, work experience, and performance indicators. Levels are updated as you gain experience. This helps students find a strong match.</p>
                         <div id="assessment-status-message" style="margin-top: 16px; padding: 12px; border-radius: 8px; display: none;"></div>
                         <div style="margin-top: 16px;">
-                            <a href="teacher-assessment.html" class="btn btn-primary" id="assessment-button" style="display: inline-block; padding: 12px 24px; text-decoration: none; border-radius: 8px; background: #3d9470; color: white; font-weight: 600;">
+                            <a href="teacher-assessment.html" class="btn btn-primary" id="assessment-button" style="display: inline-block; padding: 12px 24px; text-decoration: none; border-radius: 8px; background: #47BC3E; color: white; font-weight: 600;">
                                 🎯 Take Assessment Tests
                             </a>
                         </div>
@@ -415,7 +415,7 @@
                         </div>
                     </div>
 
-                    <div style="margin-top:16px; border:1px solid #e2e8f0; border-radius:12px; padding:14px; background:linear-gradient(135deg, #5d72d7 0%, #2f7358 100%); color:#f8fafc;">
+                    <div style="margin-top:16px; border:1px solid #e2e8f0; border-radius:12px; padding:14px; background:linear-gradient(135deg, #5d72d7 0%, #2E9A28 100%); color:#f8fafc;">
                         <div style="display:flex; align-items:center; gap:8px; font-size:1.5rem; font-weight:800; margin-bottom:4px;">🏆 Achievement Badges</div>
                         <div style="opacity:0.9; margin-bottom:12px;">Earn badges by demonstrating excellence in teaching.</div>
                         <div style="display:grid; gap:10px; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));">
@@ -452,24 +452,24 @@
     <div id="add-certification-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
         <div style="background: white; border-radius: 16px; padding: 32px; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
-                <h2 style="margin: 0; color: #3d9470;">Add Certification</h2>
+                <h2 style="margin: 0; color: #47BC3E;">Add Certification</h2>
                 <button onclick="closeAddCertificationModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #666;">&times;</button>
             </div>
             <form id="certification-form" onsubmit="saveCertification(event)">
                 <div style="margin-bottom: 16px;">
-                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #3d9470;">Certification Name *</label>
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #47BC3E;">Certification Name *</label>
                     <input type="text" id="cert-name" required style="width: 100%; padding: 12px; border: 2px solid #e8f4fd; border-radius: 8px; font-size: 0.9rem;">
                 </div>
                 <div style="margin-bottom: 16px;">
-                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #3d9470;">Issuing Organization *</label>
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #47BC3E;">Issuing Organization *</label>
                     <input type="text" id="cert-organization" required style="width: 100%; padding: 12px; border: 2px solid #e8f4fd; border-radius: 8px; font-size: 0.9rem;">
                 </div>
                 <div style="margin-bottom: 16px;">
-                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #3d9470;">Issue Date *</label>
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #47BC3E;">Issue Date *</label>
                     <input type="date" id="cert-issue-date" required style="width: 100%; padding: 12px; border: 2px solid #e8f4fd; border-radius: 8px; font-size: 0.9rem;">
                 </div>
                 <div style="margin-bottom: 16px;">
-                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #3d9470;">Expiration Date</label>
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #47BC3E;">Expiration Date</label>
                     <input type="date" id="cert-expiry-date" style="width: 100%; padding: 12px; border: 2px solid #e8f4fd; border-radius: 8px; font-size: 0.9rem;">
                     <label style="display:flex; align-items:center; gap:10px; margin-top: 10px; font-size: 0.9rem; color:#1E3A5F; font-weight:600; cursor:pointer;">
                         <input type="radio" name="cert-expiry-option" id="cert-no-expiration" value="no-expiration" style="transform: scale(1.1);">
@@ -478,7 +478,7 @@
                     <small style="color: #666; font-size: 0.85rem;">Leave blank if certification doesn't expire</small>
                 </div>
                 <div style="margin-bottom: 16px;">
-                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #3d9470;">Certificate Number (Optional)</label>
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #47BC3E;">Certificate Number (Optional)</label>
                     <input type="text" id="cert-number" style="width: 100%; padding: 12px; border: 2px solid #e8f4fd; border-radius: 8px; font-size: 0.9rem;">
                 </div>
                 <div style="display: flex; gap: 12px; margin-top: 24px;">
@@ -1640,7 +1640,7 @@
                 else if (level <= 2) levelBadgeEl.style.background = 'linear-gradient(135deg, #D1ECF1, #B8E0E8)';
                 else if (level <= 3) levelBadgeEl.style.background = 'linear-gradient(135deg, #D4EDDA, #C3E6CB)';
                 else if (level <= 4) levelBadgeEl.style.background = 'linear-gradient(135deg, #D1E7DD, #BADBCC)';
-                else levelBadgeEl.style.background = 'linear-gradient(135deg, #3d9470, #2f7358)';
+                else levelBadgeEl.style.background = 'linear-gradient(135deg, #47BC3E, #2E9A28)';
             }
             if (criteriaListEl && assessment.criteria) {
                 criteriaListEl.innerHTML = '';
@@ -1966,7 +1966,7 @@
             modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;';
             modal.innerHTML = `
                 <div style="background: white; border-radius: 16px; padding: 32px; max-width: 500px; width: 90%;">
-                    <h2 style="margin: 0 0 16px 0; color: #3d9470;">${peerName}</h2>
+                    <h2 style="margin: 0 0 16px 0; color: #47BC3E;">${peerName}</h2>
                     <p style="color: #666; margin-bottom: 24px;">${peerInfo}</p>
                     <p style="color: #666; margin-bottom: 24px;">View their full profile, teaching experience, and connect for peer learning opportunities.</p>
                     <div style="display: flex; gap: 12px;">

@@ -268,9 +268,63 @@
       state.toggleDraw.classList.toggle('active', state.drawing);
       state.toggleDraw.setAttribute('aria-pressed', state.drawing ? 'true' : 'false');
       state.toggleDraw.style.background = state.drawing ? '#dcfce7' : '#fff';
-      state.toggleDraw.style.borderColor = state.drawing ? '#3d9470' : '#cbd5e1';
+      state.toggleDraw.style.borderColor = state.drawing ? '#47BC3E' : '#cbd5e1';
       state.toggleDraw.textContent = state.drawing ? 'Draw ✓' : 'Draw';
     }
+  }
+
+  function resolveTotalSlides(material, options) {
+    options = options || {};
+    material = material || {};
+    var candidates = [
+      options.totalSlides,
+      options.slideCount,
+      options.pageCount,
+      material.totalSlides,
+      material.slideCount,
+      material.pageCount,
+      material.numPages,
+      material.pages
+    ];
+    for (var i = 0; i < candidates.length; i++) {
+      var n = Number(candidates[i]);
+      if (Number.isFinite(n) && n >= 1) return Math.floor(n);
+    }
+    return null;
+  }
+
+  function parseSlideCountFromMessage(data) {
+    if (data == null) return null;
+    var raw = data;
+    if (typeof raw === 'string') {
+      try {
+        raw = JSON.parse(raw);
+      } catch (_e) {
+        return null;
+      }
+    }
+    if (typeof raw !== 'object') return null;
+    var bags = [raw, raw.Values, raw.data, raw.payload];
+    var keys = [
+      'totalSlides',
+      'slideCount',
+      'SlideCount',
+      'pageCount',
+      'PageCount',
+      'numPages',
+      'NumPages',
+      'TotalSlides'
+    ];
+    for (var b = 0; b < bags.length; b++) {
+      var bag = bags[b];
+      if (!bag || typeof bag !== 'object') continue;
+      for (var k = 0; k < keys.length; k++) {
+        if (bag[keys[k]] == null) continue;
+        var n = Number(bag[keys[k]]);
+        if (Number.isFinite(n) && n >= 1) return Math.floor(n);
+      }
+    }
+    return null;
   }
 
   function mountStackedPresentation(container, options) {
@@ -281,6 +335,7 @@
     var room = options.room;
     var isTeacher = !!options.isTeacher;
     var startIndex = Math.max(0, Number(options.slideIndex) || 0);
+    var knownTotalSlides = resolveTotalSlides(material, options);
 
     container.innerHTML = '';
     container.className = (container.className ? container.className + ' ' : '') + 'remoed-ppt-mount';
@@ -332,7 +387,7 @@
       prevSlideBtn.textContent = '◀';
       prevSlideBtn.title = 'Previous slide (syncs student — not Office Next)';
       prevSlideBtn.style.cssText = btnStyle(
-        'min-width:36px;font-weight:700;background:#3d9470;color:#fff;border-color:#2f7358;'
+        'min-width:36px;font-weight:700;background:#47BC3E;color:#fff;border-color:#2E9A28;'
       );
 
       slideLabel = document.createElement('span');
@@ -345,7 +400,7 @@
       nextSlideBtn.textContent = '▶';
       nextSlideBtn.title = 'Next slide (syncs student — not Office Next)';
       nextSlideBtn.style.cssText = btnStyle(
-        'min-width:36px;font-weight:700;background:#3d9470;color:#fff;border-color:#2f7358;'
+        'min-width:36px;font-weight:700;background:#47BC3E;color:#fff;border-color:#2E9A28;'
       );
 
       navGroup.appendChild(prevSlideBtn);
@@ -407,9 +462,37 @@
       color: colorInput.value,
       size: 4,
       slideIndex: startIndex,
+      totalSlides: knownTotalSlides,
       isTeacher: isTeacher
     };
     pptOverlayState[materialId] = state;
+
+    function getMaxIndex() {
+      var total = Number(state.totalSlides);
+      if (Number.isFinite(total) && total >= 1) return Math.floor(total) - 1;
+      return null;
+    }
+
+    function clampSlideIndex(index) {
+      var i = Math.max(0, Math.floor(Number(index) || 0));
+      var maxIdx = getMaxIndex();
+      if (maxIdx != null) i = Math.min(i, maxIdx);
+      return i;
+    }
+
+    function setTotalSlides(total) {
+      var n = Number(total);
+      if (!Number.isFinite(n) || n < 1) return;
+      n = Math.floor(n);
+      if (state.totalSlides === n) {
+        state.slideIndex = clampSlideIndex(state.slideIndex);
+        updateSlideLabel();
+        return;
+      }
+      state.totalSlides = n;
+      state.slideIndex = clampSlideIndex(state.slideIndex);
+      updateSlideLabel();
+    }
 
     function resizeCanvas() {
       var rect = stack.getBoundingClientRect();
@@ -453,10 +536,31 @@
     }
 
     function updateSlideLabel() {
-      if (slideLabel) slideLabel.textContent = 'Slide ' + (state.slideIndex + 1);
+      var current = state.slideIndex + 1;
+      var total = state.totalSlides;
+      if (slideLabel) {
+        slideLabel.textContent =
+          Number.isFinite(total) && total >= 1 ? current + ' / ' + total : 'Slide ' + current;
+      }
       if (prevSlideBtn) prevSlideBtn.disabled = state.slideIndex <= 0;
+      if (nextSlideBtn) {
+        var maxIdx = getMaxIndex();
+        var atEnd = maxIdx != null && state.slideIndex >= maxIdx;
+        nextSlideBtn.disabled = atEnd;
+        nextSlideBtn.title = atEnd
+          ? 'Last slide'
+          : 'Next slide (syncs student — not Office Next)';
+      }
       var headerInfo = document.getElementById('pdf-page-info');
-      if (headerInfo) headerInfo.textContent = 'Slide ' + (state.slideIndex + 1);
+      if (headerInfo) {
+        headerInfo.textContent =
+          Number.isFinite(total) && total >= 1 ? current + ' / ' + total : 'Slide ' + current;
+      }
+      var customInfo = document.getElementById('pdf-page-info-custom');
+      if (customInfo && !(window.pdfViewerState && window.pdfViewerState.pdfDoc)) {
+        customInfo.textContent =
+          Number.isFinite(total) && total >= 1 ? current + '/' + total : String(current);
+      }
     }
 
     function emitSlideChanged(index, slideUrl) {
@@ -479,7 +583,7 @@
 
     function loadIframeAt(index, opts) {
       opts = opts || {};
-      var i = Math.max(0, Number(index) || 0);
+      var i = clampSlideIndex(index);
       state.slideIndex = i;
       var src = buildIframeSrc(material, i);
       if (!src) {
@@ -522,8 +626,33 @@
           if (!(evt.data && evt.data.source === 'remoed-presentation')) return;
         }
       }
+      var reportedTotal = parseSlideCountFromMessage(evt && evt.data);
+      if (reportedTotal != null) setTotalSlides(reportedTotal);
+
       var nextIdx = parseSlideIndexFromMessage(evt && evt.data);
       if (nextIdx == null || nextIdx === state.slideIndex) return;
+
+      // Office often wraps past the last slide back to 0 — lock the real total and stop looping.
+      if (
+        isTeacher &&
+        state._expectingPossibleWrap &&
+        nextIdx === 0 &&
+        state.slideIndex > 0
+      ) {
+        state._expectingPossibleWrap = false;
+        // state.slideIndex is already the invalid/beyond index → true count is that index (1-based)
+        setTotalSlides(Math.max(1, state.slideIndex));
+        state.slideIndex = clampSlideIndex(state.slideIndex - 1);
+        loadIframeAt(state.slideIndex, { broadcast: true, forceReload: true, keepDraw: false });
+        return;
+      }
+      state._expectingPossibleWrap = false;
+
+      nextIdx = clampSlideIndex(nextIdx);
+      if (nextIdx === state.slideIndex) {
+        updateSlideLabel();
+        return;
+      }
       state.slideIndex = nextIdx;
       updateSlideLabel();
       redrawAnnotations(state);
@@ -545,7 +674,7 @@
       // Only when the presentation container is in the DOM (lesson tab)
       if (!container.isConnected) return;
       e.preventDefault();
-      goToSlide(Math.max(0, state.slideIndex + delta), true);
+      stepSlide(delta);
     }
     global.addEventListener('keydown', onTeacherKeyNav);
     state._onTeacherKeyNav = onTeacherKeyNav;
@@ -608,16 +737,37 @@
     canvas.addEventListener('pointerleave', finishStroke);
 
     function goToSlide(index, broadcast) {
-      var i = Math.max(0, Number(index) || 0);
+      var i = clampSlideIndex(index);
       if (!broadcast && i === state.slideIndex) return;
+      if (broadcast && i === state.slideIndex) {
+        updateSlideLabel();
+        return;
+      }
       state._applyingRemoteSlide = !broadcast;
       loadIframeAt(i, { broadcast: !!broadcast, forceReload: true, keepDraw: false });
       state._applyingRemoteSlide = false;
     }
     state.goToSlide = goToSlide;
+    state.setTotalSlides = setTotalSlides;
 
     function stepSlide(delta) {
-      goToSlide(Math.max(0, state.slideIndex + (Number(delta) || 0)), true);
+      var maxIdx = getMaxIndex();
+      var next = state.slideIndex + (Number(delta) || 0);
+      if (next < 0) {
+        updateSlideLabel();
+        return;
+      }
+      if (maxIdx != null && next > maxIdx) {
+        updateSlideLabel();
+        return;
+      }
+      // If total is unknown, mark that the next Office wrap message may mean we passed the end
+      if (maxIdx == null && delta > 0) {
+        state._expectingPossibleWrap = true;
+      } else {
+        state._expectingPossibleWrap = false;
+      }
+      goToSlide(next, true);
     }
     state.stepSlide = stepSlide;
 
@@ -632,6 +782,34 @@
       });
     }
     updateSlideLabel();
+
+    // Prefer PDF preview page count when available (authoritative for PPT→PDF lessons).
+    (function discoverTotalFromPreviewPdf() {
+      if (state.totalSlides != null) return;
+      var preview =
+        material.previewPdfPath ||
+        material.previewPdfUrl ||
+        (material.presentationType === 'pdf_preview' ? material.data : null);
+      if (!preview || typeof global.pdfjsLib === 'undefined') return;
+      var url = absoluteUrl(String(preview).split('?')[0]);
+      if (!url) return;
+      try {
+        var token =
+          global.localStorage &&
+          (global.localStorage.getItem('token') ||
+            global.localStorage.getItem('teacherToken') ||
+            global.localStorage.getItem('remoed_user_token'));
+        if (token && /\/api\//.test(url) && !/[?&]token=/.test(url)) {
+          url += (url.indexOf('?') >= 0 ? '&' : '?') + 'token=' + encodeURIComponent(token);
+        }
+        global.pdfjsLib
+          .getDocument({ url: url, withCredentials: true })
+          .promise.then(function (pdf) {
+            if (pdf && pdf.numPages) setTotalSlides(pdf.numPages);
+          })
+          .catch(function () {});
+      } catch (_e) {}
+    })();
 
     return {
       materialId: materialId,

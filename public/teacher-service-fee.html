@@ -8,10 +8,10 @@
   <script src="js/security-guard.js?v=1"></script>
   <title>Teaching Fee - RemoEdPH</title>
   <link rel="stylesheet" href="modern-styles.css?v=6">
-  <link rel="stylesheet" href="css/teacher-sidebar.css?v=relax-green-1">
+  <link rel="stylesheet" href="css/teacher-sidebar.css?v=mint-forest-1">
   <link rel="stylesheet" href="css/global-portal.css">
   <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="css/portal-chrome-compact.css?v=relax-green-1">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css?v=mint-forest-1">
   <script src="js/user-session.js"></script>
   <script src="js/teacher-payout-settings.js"></script>
   <style>
@@ -42,7 +42,7 @@
   <div class="remoed-main">
         <div id="teacher-sidebar-root"></div>
         <script src="js/teacher-sidebar.js?v=lb-nav-2"></script>
-        <script src="js/teacher-page-header.js?v=relax-green-1"></script>
+        <script src="js/teacher-page-header.js?v=mint-forest-1"></script>
         <script>
             TeacherSidebar.render('teacher-sidebar-root', 'teaching-fee');
             TeacherPageHeader.render('teaching-fee');
@@ -67,7 +67,7 @@
       
       <!-- Weekly Tabs -->
       <div class="weekly-tabs" style="display: flex; justify-content: center; margin: 8px 0 0 0; width: 100%; max-width: 100%; gap: 8px; flex-wrap: wrap;">
-        <button id="current-week-tab" class="week-tab active" onclick="switchWeekTab('current')" style="background: linear-gradient(135deg, #3d9470 0%, #2f7358 100%); border: none; color: #fff; padding: 6px 12px; border-radius: 20px; font-weight: 600; font-size: 0.85rem; box-shadow: 0 2px 8px rgba(61, 148, 112, 0.3); transition: all 0.3s ease; display: flex; align-items: center; gap: 6px;">
+        <button id="current-week-tab" class="week-tab active" onclick="switchWeekTab('current')" style="background: linear-gradient(135deg, #47BC3E 0%, #2E9A28 100%); border: none; color: #fff; padding: 6px 12px; border-radius: 20px; font-weight: 600; font-size: 0.85rem; box-shadow: 0 2px 8px rgba(71, 188, 62, 0.3); transition: all 0.3s ease; display: flex; align-items: center; gap: 6px;">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
             <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
           </svg>
@@ -99,7 +99,7 @@
         <!-- Summary Stats Row -->
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; max-width: 1200px; margin: 0 auto 12px auto;">
           <div style="background: #fff; border: 1px solid #e0e6ed; padding: 12px; border-radius: 8px; text-align: center; box-shadow: 0 2px 6px rgba(0,0,0,0.05);">
-            <div style="font-size: 1.5rem; margin-bottom: 4px; color: #3d9470;">
+            <div style="font-size: 1.5rem; margin-bottom: 4px; color: #47BC3E;">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09v6.91L12 23 1 17V9l11-6z"/>
               </svg>
@@ -143,7 +143,7 @@
           <!-- Pay period fee (bi-monthly PH cut-offs) -->
           <div class="service-section" style="background: #fff; border: 1px solid #e0e6ed; border-radius: 8px; padding: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.05);">
             <div class="service-section-title" style="color: #333; font-size: 0.92rem; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="color: #3d9470;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="color: #47BC3E;">
                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
               </svg>
               Teaching fee (pay period)
@@ -405,7 +405,7 @@
             <h4 style="margin: 0 0 12px 0; color: #495057; font-size: 15px;">Payment Statistics</h4>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px;">
               <div style="background: white; padding: 10px; border-radius: 6px; border: 1px solid #dee2e6; text-align: center;">
-                <div style="font-size: 20px; font-weight: bold; color: #28a745;" id="total-paid">₱0.00</div>
+                <div style="font-size: 20px; font-weight: bold; color: #47BC3E;" id="total-paid">₱0.00</div>
                 <div style="font-size: 11px; color: #6c757d;">Total Paid</div>
               </div>
               <div style="background: white; padding: 10px; border-radius: 6px; border: 1px solid #dee2e6; text-align: center;">
@@ -1128,10 +1128,10 @@
         
         if (activeTab) {
           activeTab.classList.add('active');
-          activeTab.style.background = 'linear-gradient(135deg, #3d9470 0%, #2f7358 100%)';
+          activeTab.style.background = 'linear-gradient(135deg, #47BC3E 0%, #2E9A28 100%)';
           activeTab.style.border = 'none';
           activeTab.style.color = '#fff';
-          activeTab.style.boxShadow = '0 4px 15px rgba(61, 148, 112, 0.3)';
+          activeTab.style.boxShadow = '0 4px 15px rgba(71, 188, 62, 0.3)';
           console.log('✅ Set active tab:', activeTab.id, 'to gradient background');
         } else {
           console.error('❌ Active tab not found:', tabType + '-tab');
@@ -1474,7 +1474,7 @@
       tbody.innerHTML = `
         <tr style="background: #f8f9fa; font-weight: bold;">
           <td colspan="2" style="text-align: right; color: #1ca7e7;">Total Records: ${payments.length}</td>
-          <td style="color: #28a745; font-weight: bold;">₱${totalAmount.toFixed(2)}</td>
+          <td style="color: #47BC3E; font-weight: bold;">₱${totalAmount.toFixed(2)}</td>
           <td colspan="2"></td>
         </tr>
         ${payments.map(payment => {
@@ -1508,7 +1508,7 @@
     // Helper function to get status color
     function getStatusColor(status) {
       const statusLower = (status || '').toLowerCase();
-      if (statusLower === 'success' || statusLower === 'paid') return '#28a745';
+      if (statusLower === 'success' || statusLower === 'paid') return '#47BC3E';
       if (statusLower === 'pending' || statusLower === 'processing') return '#ffc107';
       if (statusLower === 'failed' || statusLower === 'cancelled') return '#dc3545';
       return '#6c757d';
@@ -1582,7 +1582,7 @@
               </div>
               
               <div style="background: white; padding: 15px; border-radius: 6px; border: 1px solid #dee2e6; margin-top: 20px;">
-                <h5 style="margin-top: 0; color: #28a745;">Payment Information</h5>
+                <h5 style="margin-top: 0; color: #47BC3E;">Payment Information</h5>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                   <div>
                     <p><strong>Salary Date Range:</strong> ${data.salaryDateRange || 'N/A'}</p>
@@ -1591,9 +1591,9 @@
                     <p><strong>Absent Classes:</strong> ${data.absentClasses || 0}</p>
                   </div>
                   <div>
-                    <p><strong>Net Amount:</strong> <span style="font-size: 1.2em; font-weight: bold; color: #28a745;">₱${(data.netAmount || 0).toFixed(2)}</span></p>
+                    <p><strong>Net Amount:</strong> <span style="font-size: 1.2em; font-weight: bold; color: #47BC3E;">₱${(data.netAmount || 0).toFixed(2)}</span></p>
                     <p><strong>Status:</strong> 
-                      <span style="font-weight: bold; color: ${data.status === 'success' ? '#28a745' : '#ffc107'};">
+                      <span style="font-weight: bold; color: ${data.status === 'success' ? '#47BC3E' : '#ffc107'};">
                         ${data.status === 'success' ? '✅ Dispersed' : '⏳ Pending'}
                       </span>
                     </p>
@@ -1978,8 +1978,8 @@
         console.log('🎨 Applying initial tab styles...');
         const currentWeekTab = document.getElementById('current-week-tab');
         if (currentWeekTab) {
-          currentWeekTab.style.background = '#3d9470';
-          currentWeekTab.style.borderColor = '#3d9470';
+          currentWeekTab.style.background = '#47BC3E';
+          currentWeekTab.style.borderColor = '#47BC3E';
           currentWeekTab.style.color = '#fff';
           console.log('✅ Applied violet styles to Current Week tab');
         }
@@ -2297,7 +2297,7 @@
             <tr>
               <td style="font-weight: 500;">${formattedDate}</td>
               <td style="text-align: center; color: #1ca7e7; font-weight: 600;">${stats.total}</td>
-              <td style="text-align: center; color: ${stats.completed > 0 ? '#28a745' : '#6c757d'}; font-weight: 600;">${stats.completed}</td>
+              <td style="text-align: center; color: ${stats.completed > 0 ? '#47BC3E' : '#6c757d'}; font-weight: 600;">${stats.completed}</td>
             </tr>
           `;
         })

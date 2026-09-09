@@ -1,11 +1,11 @@
 /**
  * Platform leaderboard — dual tabs, podium, table.
- * Teacher accent: relaxing green. Student accent: brand blue.
+ * Teacher accent: #47BC3E / #8DF97C. Student accent: brand blue.
  */
 .page-leaderboard {
-  --lb-accent: #3d9470;
-  --lb-accent-deep: #2f7358;
-  --lb-accent-soft: rgba(61, 148, 112, 0.12);
+  --lb-accent: #47BC3E;
+  --lb-accent-deep: #2E9A28;
+  --lb-accent-soft: rgba(141, 249, 124, 0.22);
   --lb-gold: #c9a227;
   --lb-silver: #8b95a5;
   --lb-bronze: #b87333;

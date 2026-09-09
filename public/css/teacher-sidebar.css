@@ -13,17 +13,17 @@
   --remoed-brand-blue: #00aeef;
   --remoed-brand-blue-soft: #5cc8f5;
   --remoed-brand-blue-deep: #008fc4;
-  --remoed-brand-green: #3d9470;
-  --remoed-brand-green-soft: #5fad88;
-  --remoed-brand-green-deep: #2f7358;
+  --remoed-brand-green: #47BC3E;
+  --remoed-brand-green-soft: #8DF97C;
+  --remoed-brand-green-deep: #2E9A28;
   --remoed-brand-yellow: #f0d55c;
   --remoed-sidebar-subtitle: #5c6370;
-  --remoed-sidebar-active-start: #2f7358;
-  --remoed-sidebar-active-end: #3d9470;
-  --remoed-sidebar-active-border: #3d9470;
+  --remoed-sidebar-active-start: #2E9A28;
+  --remoed-sidebar-active-end: #47BC3E;
+  --remoed-sidebar-active-border: #8DF97C;
   --remoed-sidebar-inactive: #2d3748;
-  --remoed-sidebar-inactive-hover-bg: rgba(61, 148, 112, 0.12);
-  --remoed-sidebar-inactive-hover-text: #2f7358;
+  --remoed-sidebar-inactive-hover-bg: rgba(71, 188, 62, 0.12);
+  --remoed-sidebar-inactive-hover-text: #2E9A28;
 }
 
 /* Sidebar container – fixed, full height (teacher green rail via teacher-portal-layout.css) */
@@ -76,9 +76,9 @@
     width: 36px;
     height: 36px;
     border-radius: 10px;
-    border: 2px solid var(--remoed-brand-green, #3d9470);
+    border: 2px solid var(--remoed-brand-green, #47BC3E);
     background: #fff;
-    color: var(--remoed-brand-green, #3d9470);
+    color: var(--remoed-brand-green, #47BC3E);
     cursor: pointer;
     display: inline-flex;
     align-items: center;
@@ -88,9 +88,9 @@
 
 .remoed-sidebar .sidebar-collapse-toggle:hover,
 .remoed-sidebar .sidebar-collapse-toggle:focus-visible {
-    background: var(--remoed-brand-green, #3d9470);
+    background: var(--remoed-brand-green, #47BC3E);
     color: #fff;
-    border-color: var(--remoed-brand-green-deep, #2f7358);
+    border-color: var(--remoed-brand-green-deep, #2E9A28);
     outline: none;
     transform: scale(1.04);
 }
@@ -474,9 +474,9 @@ body.remoed-portal-sidebar-mounted {
     height: 44px;
     padding: 0;
     border-radius: 10px;
-    border: 2px solid var(--remoed-brand-green, #3d9470);
+    border: 2px solid var(--remoed-brand-green, #47BC3E);
     background: #fff;
-    color: var(--remoed-brand-green, #3d9470);
+    color: var(--remoed-brand-green, #47BC3E);
     cursor: pointer;
     display: inline-flex;
     align-items: center;
@@ -499,9 +499,9 @@ body.remoed-drawer-open .portal-sidebar-toggle {
 
 .portal-sidebar-toggle:hover,
 .portal-sidebar-toggle:focus-visible {
-    background: var(--remoed-brand-green, #3d9470);
+    background: var(--remoed-brand-green, #47BC3E);
     color: #fff;
-    border-color: var(--remoed-brand-green-deep, #2f7358);
+    border-color: var(--remoed-brand-green-deep, #2E9A28);
     outline: none;
 }
 

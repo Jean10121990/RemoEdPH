@@ -36,11 +36,33 @@ function getScheduledStartMs(booking) {
 }
 
 /**
+ * True when the live session was finished / finalized — no re-entry.
+ * @param {object} booking
+ */
+function isClassroomSessionEnded(booking) {
+  if (!booking) return false;
+  const st = String(booking.status || '').toLowerCase();
+  if (st === 'pending_feedback' || st === 'completed') return true;
+  if (booking.sessionEndedAt) return true;
+  if (booking.finishedAt) return true;
+  if (booking.attendance && booking.attendance.classCompleted) return true;
+  return false;
+}
+
+/**
  * @param {object} booking - Mongoose doc or plain object
  * @param {number} [nowMs=Date.now()]
  * @returns {{ allowed: boolean, code?: string, opensAt?: string, scheduledStart?: string, message?: string, reason?: string }}
  */
 function getClassroomEntryGate(booking, nowMs = Date.now()) {
+  if (isClassroomSessionEnded(booking)) {
+    return {
+      allowed: false,
+      code: 'SESSION_ENDED',
+      message:
+        'This live classroom session has already ended. You cannot re-enter this time slot.',
+    };
+  }
   const startMs = getScheduledStartMs(booking);
   if (startMs == null) {
     return { allowed: true, reason: 'no_schedule' };
@@ -65,5 +87,6 @@ function getClassroomEntryGate(booking, nowMs = Date.now()) {
 module.exports = {
   EARLY_ENTRY_MINUTES,
   getScheduledStartMs,
+  isClassroomSessionEnded,
   getClassroomEntryGate,
 };

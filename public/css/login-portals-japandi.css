@@ -37,14 +37,14 @@
 }
 
 .teacher-login-page {
-  background: #f4faf5;
+  background: #f3fdf0;
 }
 
-/* Teacher: soft green brand atmosphere */
+/* Teacher: soft mint #8DF97C + forest #47BC3E atmosphere */
 .teacher-login-page .page-atmosphere--teacher .atmosphere-blob--1 {
   width: min(58vmin, 520px);
   height: min(58vmin, 520px);
-  background: #e8f6eb;
+  background: #EEFCEB;
   top: -12%;
   left: -18%;
 }
@@ -52,7 +52,7 @@
 .teacher-login-page .page-atmosphere--teacher .atmosphere-blob--2 {
   width: min(50vmin, 440px);
   height: min(50vmin, 440px);
-  background: rgba(0, 168, 45, 0.18);
+  background: rgba(141, 249, 124, 0.35);
   top: 8%;
   right: -12%;
 }
@@ -76,7 +76,7 @@
 .teacher-login-page .page-atmosphere--teacher .atmosphere-blob--5 {
   width: min(36vmin, 320px);
   height: min(36vmin, 320px);
-  background: rgba(0, 138, 36, 0.14);
+  background: rgba(71, 188, 62, 0.2);
   top: 42%;
   left: 35%;
 }

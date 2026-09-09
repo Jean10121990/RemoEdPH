@@ -1871,6 +1871,13 @@ router.post('/feedback/submit', verifyToken, requireStudent, async (req, res) =>
     });
     await starReceived.save();
     console.log('⭐ Star saved to StarReceived collection for teacher:', teacherIdStr);
+
+    try {
+      const { rebuildMonth, currentMonthKey } = require('./services/leaderboardService');
+      rebuildMonth(currentMonthKey()).catch(() => {});
+    } catch (_lbErr) {
+      /* non-blocking */
+    }
     
     console.log('✅ Feedback submitted successfully');
     console.log('📊 Feedback details:', {

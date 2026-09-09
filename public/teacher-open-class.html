@@ -11,10 +11,10 @@
     <meta http-equiv="Expires" content="0">
     <title>Open/Close Class Slots - RemoEdPH</title>
     <link rel="stylesheet" href="modern-styles.css?v=4">
-    <link rel="stylesheet" href="css/teacher-sidebar.css?v=relax-green-1">
+    <link rel="stylesheet" href="css/teacher-sidebar.css?v=mint-forest-1">
     <link rel="stylesheet" href="css/global-portal.css">
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="css/portal-chrome-compact.css?v=relax-green-1">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css?v=mint-forest-1">
     <script src="js/user-session.js?v=1.1"></script>
     <script src="js/teacher-slots.js?v=1.3"></script>
 </head>
@@ -22,7 +22,7 @@
   <div class="remoed-main">
     <div id="teacher-sidebar-root"></div>
     <script src="js/teacher-sidebar.js?v=lb-nav-2"></script>
-    <script src="js/teacher-page-header.js?v=relax-green-1"></script>
+    <script src="js/teacher-page-header.js?v=mint-forest-1"></script>
         <script>
             TeacherSidebar.render('teacher-sidebar-root', 'class-configuration');
             TeacherPageHeader.render('class-configuration');
@@ -39,7 +39,7 @@
           <button class="nav-btn" id="prev-week">← Previous Week</button>
           <span class="week-display" id="week-display"></span>
           <button class="nav-btn" id="next-week">Next Week →</button>
-          <button class="nav-btn today-btn" id="current-week" style="background: #28a745; color: white;">Today</button>
+          <button class="nav-btn today-btn" id="current-week" style="background: #47BC3E; color: white;">Today</button>
           <div class="open-class-toolbar-actions" role="group" aria-label="Open or close selected slots">
             <button type="button" id="open-slots-btn" class="open-class-toolbar-btn open-class-toolbar-btn--open" onclick="openSelectedSlots()">
               <span class="open-class-toolbar-ico open-class-toolbar-ico--sphere" aria-hidden="true"></span>
@@ -64,7 +64,7 @@
       </h4>
       <div style="display: flex; flex-wrap: nowrap; gap: 8px; font-size: 0.75rem; overflow-x: auto; padding-bottom: 4px;">
         <div style="display: flex; align-items: center; gap: 4px; padding: 4px 6px; background: rgba(255,255,255,0.7); border-radius: 4px; border: 1px solid rgba(0,0,0,0.05); white-space: nowrap; min-width: fit-content;">
-          <div style="width: 14px; height: 14px; background: linear-gradient(135deg, #e8f5e8 0%, #d4edda 100%); border-radius: 3px; border: 1px solid #28a745; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #28a745; font-size: 8px;">✓</div>
+          <div style="width: 14px; height: 14px; background: linear-gradient(135deg, #EEFCEB 0%, #8DF97C 100%); border-radius: 3px; border: 1px solid #47BC3E; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #47BC3E; font-size: 8px;">✓</div>
           <span style="font-weight: 500; color: #495057;">Open</span>
         </div>
         <div style="display: flex; align-items: center; gap: 4px; padding: 4px 6px; background: rgba(255,255,255,0.7); border-radius: 4px; border: 1px solid rgba(0,0,0,0.05); white-space: nowrap; min-width: fit-content;">
@@ -84,7 +84,7 @@
           <span style="font-weight: 500; color: #495057;">Finished</span>
         </div>
         <div style="display: flex; align-items: center; gap: 4px; padding: 4px 6px; background: rgba(255,255,255,0.7); border-radius: 4px; border: 1px solid rgba(0,0,0,0.05); white-space: nowrap; min-width: fit-content;">
-          <div style="width: 14px; height: 14px; background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%); border-radius: 3px; border: 1px solid #1e7e34; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; font-size: 8px;">R</div>
+          <div style="width: 14px; height: 14px; background: linear-gradient(135deg, #47BC3E 0%, #2E9A28 100%); border-radius: 3px; border: 1px solid #2E9A28; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; font-size: 8px;">R</div>
           <span style="font-weight: 500; color: #495057;">Resolved</span>
         </div>
         <div style="display: flex; align-items: center; gap: 4px; padding: 4px 6px; background: rgba(255,255,255,0.7); border-radius: 4px; border: 1px solid rgba(0,0,0,0.05); white-space: nowrap; min-width: fit-content;">
@@ -391,7 +391,7 @@
                 slot.title = 'Resolved Issue (Locked)';
                 slot.style.fontWeight = 'bold';
                 slot.style.fontSize = '0.9rem';
-                slot.style.background = '#28a745'; // Green for resolved issue
+                slot.style.background = '#47BC3E'; // Green for resolved issue
                 slot.style.color = 'white';
                 slot.style.cursor = 'not-allowed';
                 slot.onclick = null; // Resolved issue classes cannot be changed
@@ -400,7 +400,7 @@
                 slot.title = 'Class Finished (Locked)';
                 slot.style.fontWeight = 'bold';
                 slot.style.fontSize = '0.9rem';
-                slot.style.background = '#28a745'; // Green for finished
+                slot.style.background = '#47BC3E'; // Green for finished
                 slot.style.color = 'white';
                 slot.style.cursor = 'not-allowed';
                 slot.onclick = null; // Finished classes cannot be changed
@@ -487,7 +487,7 @@
       const isAlreadyOpened = slot.classList.contains('already-opened') || 
                              slot.textContent === 'Open' ||
                              slot.textContent.trim() === 'Open' ||
-                             (slot.style.background === 'rgb(232, 245, 232)' || slot.style.background === '#e8f5e8') ||
+                             (slot.style.background === 'rgb(238, 252, 235)' || slot.style.background === '#EEFCEB') ||
                              slot.style.background.includes('232, 245, 232') ||
                              slot.style.background.includes('e8f5e8') ||
                              slot.style.background.includes('e8f5e8');
@@ -529,7 +529,7 @@
         // Restore original state
         if (slot.classList.contains('already-opened')) {
           // Restore to opened state
-          slot.style.background = '#e8f5e8';
+          slot.style.background = '#EEFCEB';
           slot.style.color = '#2d5a2d';
           slot.style.fontWeight = 'bold';
           slot.textContent = 'Open';
@@ -609,7 +609,7 @@
         slot.title = newTitle;
         
         // Update styling for finished class (green background)
-        slot.style.background = '#28a745';
+        slot.style.background = '#47BC3E';
         slot.style.color = 'white';
         slot.style.cursor = 'not-allowed';
         
@@ -941,7 +941,7 @@
             } else {
               // Mark as already opened (super light green) for current/future dates
               slotElement.classList.add('already-opened');
-              slotElement.style.background = '#e8f5e8';
+              slotElement.style.background = '#EEFCEB';
               slotElement.style.color = '#2d5a2d';
               slotElement.style.fontWeight = 'bold';
               slotElement.textContent = 'Open';
@@ -1111,7 +1111,7 @@
               slotElement.title = 'Resolved Issue (Locked)';
               slotElement.style.fontWeight = 'bold';
               slotElement.style.fontSize = '0.9rem';
-              slotElement.style.background = '#28a745'; // Green for resolved issue
+              slotElement.style.background = '#47BC3E'; // Green for resolved issue
               slotElement.style.color = 'white';
               slotElement.style.cursor = 'not-allowed';
               slotElement.onclick = null; // Resolved issue classes cannot be changed
@@ -1120,7 +1120,7 @@
               slotElement.title = 'Class Finished (Locked)';
               slotElement.style.fontWeight = 'bold';
               slotElement.style.fontSize = '0.9rem';
-              slotElement.style.background = '#28a745'; // Green for finished
+              slotElement.style.background = '#47BC3E'; // Green for finished
               slotElement.style.color = 'white';
               slotElement.style.cursor = 'not-allowed';
               slotElement.onclick = null; // Finished classes cannot be changed
@@ -1611,7 +1611,7 @@
         if (slotElement) {
           console.log('Manually applying slot:', slotKey);
           slotElement.classList.add('already-opened');
-          slotElement.style.background = '#e8f5e8';
+          slotElement.style.background = '#EEFCEB';
           slotElement.style.color = '#2d5a2d';
           slotElement.style.fontWeight = 'bold';
           slotElement.textContent = 'Open';

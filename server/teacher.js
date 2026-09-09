@@ -3079,11 +3079,11 @@ router.post('/mark-user-entered', verifyToken, async (req, res) => {
     });
 
     const entryGate = getClassroomEntryGate(booking, Date.now());
-    if (!entryGate.allowed && entryGate.code === 'TOO_EARLY') {
+    if (!entryGate.allowed && (entryGate.code === 'TOO_EARLY' || entryGate.code === 'SESSION_ENDED')) {
       return res.status(403).json({
         success: false,
-        error: entryGate.message || 'Class has not opened yet.',
-        code: 'TOO_EARLY',
+        error: entryGate.message || 'Classroom entry is not allowed.',
+        code: entryGate.code,
         opensAt: entryGate.opensAt,
         scheduledStart: entryGate.scheduledStart,
         earlyEntryMinutes: EARLY_ENTRY_MINUTES,

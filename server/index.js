@@ -43,7 +43,11 @@ const { verifyToken, requireTeacher } = require('./authMiddleware');
 const jwt = require('jsonwebtoken');
 const { isTokenBlacklisted } = require('./services/jwtBlacklist');
 const SOCKET_AUTH_JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
-const { getClassroomEntryGate, EARLY_ENTRY_MINUTES } = require('./services/classroomEntryWindow');
+const {
+  getClassroomEntryGate,
+  getScheduledStartMs,
+  EARLY_ENTRY_MINUTES,
+} = require('./services/classroomEntryWindow');
 const { primeRedisConnection } = require('./utils/redisClient');
 
 const app = express();
@@ -864,10 +868,31 @@ app.post('/api/booking/:bookingId/end-session', verifyToken, requireTeacher, asy
       });
     }
 
+    const MIN_FINISH_MS = 15 * 60 * 1000;
+    const startMs = getScheduledStartMs(booking);
+    if (startMs != null && Date.now() < startMs + MIN_FINISH_MS) {
+      const unlockAt = new Date(startMs + MIN_FINISH_MS);
+      const minutesRemaining = Math.max(1, Math.ceil((startMs + MIN_FINISH_MS - Date.now()) / 60000));
+      return res.status(400).json({
+        success: false,
+        code: 'TOO_EARLY_TO_FINISH',
+        error: `You can finish the class only after 15 minutes from the scheduled start (~${minutesRemaining} min remaining).`,
+        unlockAt: unlockAt.toISOString(),
+        minutesRemaining,
+      });
+    }
+
     booking.sessionEndedAt = new Date();
     booking.status = 'pending_feedback';
     await booking.save();
     await emitBookingsUpdatedForTeacher(teacherId, booking);
+
+    try {
+      const { rebuildMonth, currentMonthKey } = require('./services/leaderboardService');
+      rebuildMonth(currentMonthKey()).catch(() => {});
+    } catch (_lbErr) {
+      /* non-blocking */
+    }
 
     res.json({
       success: true,
@@ -1534,15 +1559,18 @@ app.post('/api/class/check-time-access', async (req, res) => {
     const gate = getClassroomEntryGate(booking, currentTime.getTime());
     const accessAllowed = gate.allowed;
     const tooEarly = gate.code === 'TOO_EARLY';
+    const sessionEnded = gate.code === 'SESSION_ENDED';
     const isBeforeClass = currentTime < classStartTime;
     const isAfterClass = currentTime > classEndTime;
     const isDuringClass = currentTime >= classStartTime && currentTime <= classEndTime;
 
-    console.log(`⏰ Class entry check for booking ${bookingId}: accessAllowed=${accessAllowed} tooEarly=${tooEarly}`);
+    console.log(`⏰ Class entry check for booking ${bookingId}: accessAllowed=${accessAllowed} tooEarly=${tooEarly} sessionEnded=${sessionEnded}`);
     
     res.json({
       accessAllowed,
       tooEarly,
+      sessionEnded,
+      code: gate.code || null,
       earlyEntryMinutes: EARLY_ENTRY_MINUTES,
       opensAt: gate.opensAt || null,
       scheduledStart: gate.scheduledStart || null,
@@ -1809,15 +1837,15 @@ io.on('connection', socket => {
                     const bookingForGate = await Booking.findOne({ classroomId: room });
                     if (bookingForGate) {
                         const gate = getClassroomEntryGate(bookingForGate, Date.now());
-                        if (!gate.allowed && gate.code === 'TOO_EARLY') {
+                        if (!gate.allowed && (gate.code === 'TOO_EARLY' || gate.code === 'SESSION_ENDED')) {
                             socket.emit('entry-denied', {
                                 code: gate.code,
                                 opensAt: gate.opensAt,
                                 scheduledStart: gate.scheduledStart,
-                                message: gate.message || 'Class has not opened yet.',
+                                message: gate.message || 'Classroom entry is not allowed.',
                                 earlyEntryMinutes: EARLY_ENTRY_MINUTES,
                             });
-                            console.log(`🚫 Socket join blocked (too early) room=${room} socket=${socket.id}`);
+                            console.log(`🚫 Socket join blocked (${gate.code}) room=${room} socket=${socket.id}`);
                             return;
                         }
                     }
@@ -1992,12 +2020,12 @@ io.on('connection', socket => {
                     const bookingForGate = await Booking.findOne({ classroomId: room });
                     if (bookingForGate) {
                         const gate = getClassroomEntryGate(bookingForGate, Date.now());
-                        if (!gate.allowed && gate.code === 'TOO_EARLY') {
+                        if (!gate.allowed && (gate.code === 'TOO_EARLY' || gate.code === 'SESSION_ENDED')) {
                             socket.emit('entry-denied', {
                                 code: gate.code,
                                 opensAt: gate.opensAt,
                                 scheduledStart: gate.scheduledStart,
-                                message: gate.message || 'Class has not opened yet.',
+                                message: gate.message || 'Classroom entry is not allowed.',
                                 earlyEntryMinutes: EARLY_ENTRY_MINUTES,
                             });
                             return;
@@ -2944,7 +2972,7 @@ async function updateBookingAttendance(room, userType, userId, username) {
 
         const gate = getClassroomEntryGate(booking, Date.now());
         if (!gate.allowed) {
-            console.log(`🚫 Entry window closed (too early) for ${userType} in room ${room}`);
+            console.log(`🚫 Entry window closed (${gate.code || 'blocked'}) for ${userType} in room ${room}`);
             return;
         }
         

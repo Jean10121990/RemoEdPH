@@ -6,6 +6,7 @@ const Feedback = require('../models/Feedback');
 const Reward = require('../models/Reward');
 const Student = require('../models/Student');
 const Teacher = require('../models/Teacher');
+const StarReceived = require('../models/StarReceived');
 const MonthlyStudentScore = require('../models/MonthlyStudentScore');
 const MonthlyTeacherScore = require('../models/MonthlyTeacherScore');
 
@@ -80,16 +81,30 @@ function privacyStudentName(student) {
   return initial ? `${firstToken} ${initial}` : firstToken;
 }
 
-function teacherDisplayName(t) {
-  if (!t) return 'Teacher';
+function teacherDisplayName(t, fallbackId) {
+  if (!t) {
+    const id = fallbackId != null ? String(fallbackId).trim() : '';
+    if (id) return `Teacher (${id.length > 12 ? id.slice(0, 10) + '…' : id})`;
+    return 'Unknown Teacher';
+  }
   const nick = (t.nickname && String(t.nickname).trim()) || '';
-  if (nick) {
+  if (nick && nick.toLowerCase() !== 'teacher') {
     return nick.toLowerCase().startsWith('teacher') ? nick : `Teacher ${nick}`;
   }
   const first = String(t.firstName || '').trim();
   if (first) return `Teacher ${first}`;
-  const full = String(t.fullname || t.username || 'Teacher').trim();
-  return full.toLowerCase().startsWith('teacher') ? full : `Teacher ${full.split(/\s+/)[0]}`;
+  const full = String(t.fullname || '').trim();
+  if (full && full.toLowerCase() !== 'teacher') {
+    const token = full.split(/\s+/).filter(Boolean)[0] || full;
+    return token.toLowerCase().startsWith('teacher') ? full : `Teacher ${token}`;
+  }
+  const user = String(t.username || '').trim();
+  if (user && user.toLowerCase() !== 'teacher') {
+    return user.toLowerCase().startsWith('teacher') ? user : `Teacher ${user}`;
+  }
+  const tid = String(t.teacherId || fallbackId || '').trim();
+  if (tid) return `Teacher (${tid.length > 12 ? tid.slice(0, 10) + '…' : tid})`;
+  return 'Unknown Teacher';
 }
 
 function teacherBadgeTitle(score) {
@@ -271,7 +286,9 @@ async function computeTeacherScoresForMonth(monthKey) {
   const bookings = await Booking.find({
     date: { $gte: start, $lte: end },
   })
-    .select('teacherId status lateMinutes attendance absentType dateTimeUtc finishedAt createdAt date')
+    .select(
+      'teacherId status lateMinutes attendance absentType dateTimeUtc finishedAt sessionEndedAt createdAt date'
+    )
     .lean();
 
   const feedbacks = await Feedback.find({
@@ -281,7 +298,18 @@ async function computeTeacherScoresForMonth(monthKey) {
       { submittedAt: { $gte: startUtc, $lte: endUtc } },
     ],
   })
-    .select('teacherId rating submittedAt lessonDate')
+    .select('teacherId rating submittedAt lessonDate bookingId')
+    .lean();
+
+  const starRows = await StarReceived.find({
+    recipientType: 'teacher',
+    giverType: 'student',
+    $or: [
+      { lessonDate: { $gte: startUtc, $lte: endUtc } },
+      { receivedAt: { $gte: startUtc, $lte: endUtc } },
+    ],
+  })
+    .select('recipientId rating receivedAt lessonDate bookingId')
     .lean();
 
   const rewards = await Reward.find({
@@ -291,9 +319,18 @@ async function computeTeacherScoresForMonth(monthKey) {
     .lean();
 
   const byTeacher = new Map();
+  const ratedBookingKeys = new Set();
+
+  function normalizeTeacherKey(id) {
+    if (id == null) return '';
+    if (typeof id === 'object') {
+      return String(id.teacherId || id._id || id.id || '').trim();
+    }
+    return String(id).trim();
+  }
 
   function ensure(id) {
-    const key = String(id || '').trim();
+    const key = normalizeTeacherKey(id);
     if (!key) return null;
     if (!byTeacher.has(key)) {
       byTeacher.set(key, {
@@ -315,14 +352,31 @@ async function computeTeacherScoresForMonth(monthKey) {
     return byTeacher.get(key);
   }
 
+  function applyTeacherRating(teacherKey, rating, ts, bookingId) {
+    const row = ensure(teacherKey);
+    if (!row) return;
+    const r = Number(rating) || 0;
+    if (r <= 0) return;
+    const dedupe = `${normalizeTeacherKey(teacherKey)}::${bookingId || ''}`;
+    if (bookingId && ratedBookingKeys.has(dedupe)) return;
+    if (bookingId) ratedBookingKeys.add(dedupe);
+    row._ratingSum += r;
+    row._ratingN += 1;
+    if (r >= 5) row.fiveStarCount += 1;
+    row.earliestAt = minDate(row.earliestAt, ts ? new Date(ts) : null);
+  }
+
   for (const b of bookings) {
     const row = ensure(b.teacherId);
     if (!row) continue;
+    const st = String(b.status || '').toLowerCase();
     const completed =
-      b.status === 'completed' ||
-      b.status === 'Completed' ||
-      !!(b.attendance && b.attendance.classCompleted);
-    const teacherAbsent = b.absentType === 'teacher' || String(b.status).toLowerCase() === 'absent';
+      st === 'completed' ||
+      st === 'pending_feedback' ||
+      !!(b.attendance && b.attendance.classCompleted) ||
+      !!b.sessionEndedAt ||
+      !!b.finishedAt;
+    const teacherAbsent = b.absentType === 'teacher' || st === 'absent';
 
     if (completed) {
       row.lessonsCompletedCount += 1;
@@ -331,6 +385,7 @@ async function computeTeacherScoresForMonth(monthKey) {
       const ts =
         b.dateTimeUtc ||
         b.finishedAt ||
+        b.sessionEndedAt ||
         (b.date ? new Date(`${b.date}T12:00:00+08:00`) : null) ||
         b.createdAt;
       row.earliestAt = minDate(row.earliestAt, ts ? new Date(ts) : null);
@@ -340,17 +395,11 @@ async function computeTeacherScoresForMonth(monthKey) {
     }
   }
 
+  for (const s of starRows) {
+    applyTeacherRating(s.recipientId, s.rating, s.lessonDate || s.receivedAt, s.bookingId);
+  }
   for (const f of feedbacks) {
-    const row = ensure(f.teacherId);
-    if (!row) continue;
-    const r = Number(f.rating) || 0;
-    if (r > 0) {
-      row._ratingSum += r;
-      row._ratingN += 1;
-    }
-    if (r >= 5) row.fiveStarCount += 1;
-    const ts = f.lessonDate || f.submittedAt;
-    row.earliestAt = minDate(row.earliestAt, ts ? new Date(ts) : null);
+    applyTeacherRating(f.teacherId, f.rating, f.lessonDate || f.submittedAt, f.bookingId);
   }
 
   for (const rw of rewards) {
@@ -456,7 +505,7 @@ async function rebuildMonth(monthKey) {
   return p;
 }
 
-async function ensureMonthBuilt(monthKey, maxAgeMs = 10 * 60 * 1000) {
+async function ensureMonthBuilt(monthKey, maxAgeMs = 60 * 1000) {
   const key = normalizeMonth(monthKey);
   const newest = await MonthlyStudentScore.findOne({ month: key }).sort({ updatedAt: -1 }).lean();
   const newestT = await MonthlyTeacherScore.findOne({ month: key }).sort({ updatedAt: -1 }).lean();
@@ -544,19 +593,31 @@ async function getTeacherLeaderboard({ month, page = 1, pageSize = 20 }) {
   const monthKey = await ensureMonthBuilt(month);
   const rows = await MonthlyTeacherScore.find({ month: monthKey }).sort({ rank: 1 }).lean();
 
+  const ids = rows.map((r) => r.teacherId).filter(Boolean);
   const teachers = await Teacher.find({
-    teacherId: { $in: rows.map((r) => r.teacherId) },
+    $or: [
+      { teacherId: { $in: ids } },
+      { username: { $in: ids } },
+      { email: { $in: ids } },
+    ],
   })
-    .select('teacherId username firstName lastName nickname fullname profilePicture')
+    .select('teacherId username email firstName lastName nickname fullname profilePicture')
     .lean();
-  const byId = new Map(teachers.map((t) => [t.teacherId, t]));
+
+  const byId = new Map();
+  for (const t of teachers) {
+    if (t.teacherId) byId.set(String(t.teacherId), t);
+    if (t.username) byId.set(String(t.username), t);
+    if (t.email) byId.set(String(t.email).toLowerCase(), t);
+  }
 
   const enriched = rows.map((r) => {
-    const t = byId.get(r.teacherId) || null;
+    const tid = String(r.teacherId || '');
+    const t = byId.get(tid) || byId.get(tid.toLowerCase()) || null;
     return {
       rank: r.rank,
       teacherId: r.teacherId,
-      displayName: teacherDisplayName(t),
+      displayName: teacherDisplayName(t, r.teacherId),
       badgeTitle: teacherBadgeTitle(r),
       avatar: (t && t.profilePicture) || null,
       totalPoints: r.totalPoints,

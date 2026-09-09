@@ -52,8 +52,8 @@
   </script>
     <link rel="stylesheet" href="style.css">
   <!-- After global styles so chat / layout rules are not overridden -->
-  <link rel="stylesheet" href="live-classroom.css?v=relax-green-1" />
-  <link rel="stylesheet" href="css/live-classroom-redesign.css?v=lc-ui-1" />
+  <link rel="stylesheet" href="live-classroom.css?v=lc-slide-single-1" />
+  <link rel="stylesheet" href="css/live-classroom-redesign.css?v=mint-forest-2" />
 </head>
 <body class="page-live-classroom">
   <header class="top-bar" role="banner">
@@ -88,12 +88,16 @@
       <aside class="teacher-notes-rail" id="teacher-notes-rail" aria-label="Internal teacher notes">
         <div class="teacher-notes-rail-header">
           <span>Teacher notes</span>
-          <button type="button" class="teacher-notes-collapse" id="teacher-notes-collapse" title="Hide notes" aria-label="Hide notes">«</button>
+          <button type="button" class="teacher-notes-collapse" id="teacher-notes-collapse" title="Hide notes" aria-label="Hide notes">
+            <span class="teacher-notes-collapse__icon" aria-hidden="true">‹</span>
+            <span class="teacher-notes-collapse__label">Hide</span>
+          </button>
         </div>
         <p class="teacher-notes-rail-hint">For teachers only. Answers &amp; tips from curriculum specialists.</p>
         <div class="teacher-notes-rail-body" id="teacher-notes-body"></div>
         <div class="teacher-notes-rail-footer" id="teacher-notes-qa-slot" aria-label="QA recording"></div>
       </aside>
+      <button type="button" id="lc-notes-edge-toggle" class="lc-notes-edge-toggle" title="Show teacher notes" aria-label="Show teacher notes" hidden>Notes</button>
     </div>
 
     <!-- Main Content Area -->
@@ -170,7 +174,7 @@
           <video id="local-video" autoplay muted playsinline></video>
           <div id="camera-error-message" style="display:none; padding:8px; background:#fee; color:#c33; font-size:0.85rem; text-align:center; margin:4px 0; border-radius:4px;">
             <div style="margin-bottom:4px;">Camera/Mic not available</div>
-            <button id="retry-camera-btn" style="padding:4px 12px; background:#3d9470; color:#fff; border:none; border-radius:4px; cursor:pointer; font-size:0.8rem;">Retry</button>
+            <button id="retry-camera-btn" style="padding:4px 12px; background:#47BC3E; color:#fff; border:none; border-radius:4px; cursor:pointer; font-size:0.8rem;">Retry</button>
           </div>
           <div class="video-controls" aria-label="Media controls">
             <button id="toggle-camera" class="video-control-btn" type="button" title="Toggle camera" aria-label="Toggle camera">C</button>
@@ -367,9 +371,9 @@
       <div id="upload-progress" style="display:none; margin-top:12px; padding:8px; background:#f0f9ff; border-radius:6px; font-size:0.85rem; color:#0369a1;"></div>
     </div>
   </div>
-    <script src="js/classroom-entry.js"></script>
+    <script src="js/classroom-entry.js?v=session-ended-1"></script>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-    <script src="js/presentation-overlay.js?v=lc-polish-3"></script>
+    <script src="js/presentation-overlay.js?v=lc-slide-fix-2"></script>
     <script src="js/virtual-background.js"></script>
     <script src="js/classroom-qa-recording.js?v=lc-polish-3" defer></script>
     <script>
@@ -572,13 +576,30 @@
       function showClassroomEntryBlocked(gate) {
         const el = document.getElementById('classroom-entry-blocked-overlay');
         if (!el) return;
+        const title = document.getElementById('classroom-entry-blocked-message');
         const sub = document.getElementById('classroom-entry-blocked-sub');
+        const countdown = document.getElementById('classroom-entry-countdown');
+        if (title) {
+          title.textContent =
+            gate && gate.code === 'SESSION_ENDED'
+              ? 'Class session ended'
+              : 'Class hasn’t started yet';
+        }
         if (sub) {
-          sub.textContent = (gate && gate.message) ? gate.message : 'You can join starting 10 minutes before the scheduled start time.';
+          sub.textContent =
+            gate && gate.message
+              ? gate.message
+              : gate && gate.code === 'SESSION_ENDED'
+                ? 'This live classroom session has already ended. You cannot re-enter this time slot.'
+                : 'You can join starting 10 minutes before the scheduled start time.';
+        }
+        if (countdown && gate && gate.code === 'SESSION_ENDED') {
+          countdown.textContent = '';
         }
         el.style.display = 'flex';
         let opensMs = gate && gate.opensAtMs;
         if (opensMs == null && gate && gate.opensAt) opensMs = new Date(gate.opensAt).getTime();
+        if (gate && gate.code === 'SESSION_ENDED') return;
         const tick = () => {
           const t = document.getElementById('classroom-entry-countdown');
           if (!t || opensMs == null || !Number.isFinite(opensMs)) return;
@@ -595,7 +616,7 @@
 
       async function emitSocketJoin() {
         const gate = await entryCheckPromise;
-        if (!gate.allowed && gate.code === 'TOO_EARLY') {
+        if (!gate.allowed && (gate.code === 'TOO_EARLY' || gate.code === 'SESSION_ENDED')) {
           showClassroomEntryBlocked(gate);
           return false;
         }
@@ -706,10 +727,18 @@
             return;
           }
           const vs = window.pdfViewerState || {};
-          if (typeof vs.goToPage === 'function') {
-            vs.goToPage((vs.pageNum || 1) + delta, true);
+          if (typeof vs.goToPage === 'function' && vs.pdfDoc) {
+            const cur = clampSafe(vs.pageNum || 1);
+            const max = Math.max(1, Number(vs.pdfDoc.numPages) || 1);
+            const next = Math.min(Math.max(1, cur + delta), max);
+            if (next === cur) return;
+            vs.goToPage(next, true);
           }
         };
+        function clampSafe(n) {
+          const parsed = parseInt(n, 10);
+          return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+        }
         if (pdfPrevBtn) pdfPrevBtn.addEventListener('click', () => stepClassroomSlide(-1));
         if (pdfNextBtn) pdfNextBtn.addEventListener('click', () => stepClassroomSlide(1));
       }
@@ -2538,14 +2567,18 @@
           controlsTopRow.className = 'pdf-controls-top-row';
           
           const prevBtn = document.createElement('button');
+          prevBtn.type = 'button';
           prevBtn.textContent = '◀';
           prevBtn.id = 'pdf-prev-btn-custom';
           prevBtn.title = 'Previous page';
+          prevBtn.setAttribute('aria-label', 'Previous slide');
           
           const nextBtn = document.createElement('button');
+          nextBtn.type = 'button';
           nextBtn.textContent = '▶';
           nextBtn.id = 'pdf-next-btn-custom';
           nextBtn.title = 'Next page';
+          nextBtn.setAttribute('aria-label', 'Next slide');
           
           const pageInfo = document.createElement('span');
           pageInfo.className = 'pdf-page-info';
@@ -2772,11 +2805,13 @@
           const FIT_VIEWER_MARGIN_PX = 24;
           const FIT_STABILITY_FACTOR = 0.94; // keep 100% browser zoom comfortable
 
-          /** Keep page index within [1, numPages] — prevents blank viewer past last slide */
+          /** Keep page index within [1, numPages] — never wrap / loop */
           function clampPdfPage(n) {
-            if (!pdfDoc || !pdfDoc.numPages) return Math.max(1, parseInt(n, 10) || 1);
-            const max = pdfDoc.numPages;
-            return Math.min(Math.max(1, parseInt(n, 10) || 1), max);
+            const parsed = parseInt(n, 10);
+            const page = Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+            if (!pdfDoc || !pdfDoc.numPages) return Math.max(1, page);
+            const max = Math.max(1, Number(pdfDoc.numPages) || 1);
+            return Math.min(Math.max(1, page), max);
           }
           function emitPresenterPdfSync() {
             if (userType !== 'teacher' || !socket || !socket.connected || !presenterModeActive) return;
@@ -2786,7 +2821,8 @@
                 page: pageNum,
                 scrollTop: currentPdfContainer ? currentPdfContainer.scrollTop : 0,
                 scrollLeft: currentPdfContainer ? currentPdfContainer.scrollLeft : 0,
-                materialId: window.currentPdfMaterialId
+                materialId: window.currentPdfMaterialId,
+                totalSlides: pdfDoc ? pdfDoc.numPages : undefined
               });
             } catch (e) {
               console.warn('presenter-sync-update failed', e);
@@ -2813,21 +2849,13 @@
             if (prevBtn) prevBtn.disabled = pageNum <= 1;
             if (nextBtn) {
               const atEnd = pageNum >= pdfDoc.numPages;
-              if (isTeacher && atEnd) {
-                nextBtn.textContent = 'Finish class';
-                nextBtn.title = 'Finish class and close the classroom';
-                nextBtn.disabled = false;
-                nextBtn.style.fontWeight = '600';
-                nextBtn.style.background = '#15803d';
-                nextBtn.style.color = '#fff';
-              } else {
-                nextBtn.textContent = '▶';
-                nextBtn.title = 'Next page';
-                nextBtn.disabled = atEnd;
-                nextBtn.style.fontWeight = '';
-                nextBtn.style.background = '';
-                nextBtn.style.color = '';
-              }
+              // Keep Next as Next — Finish stays on the top-bar Finish button
+              nextBtn.textContent = '▶';
+              nextBtn.title = atEnd ? 'Last page' : 'Next page';
+              nextBtn.disabled = atEnd;
+              nextBtn.style.fontWeight = '';
+              nextBtn.style.background = '';
+              nextBtn.style.color = '';
             }
             // In-app fix (preferred over browser extensions): last slide + Finish class must not collapse toolbar
             if (isTeacher && controls && annotatorControls) {
@@ -2837,16 +2865,8 @@
               annotatorControls.style.setProperty('display', 'flex', 'important');
             }
           }
-          function onNextOrFinishClick() {
-            if (!pdfDoc) return;
-            if (pageNum >= pdfDoc.numPages) {
-              if (isTeacher) {
-                const finishBtn = document.getElementById('finish-btn');
-                if (finishBtn) finishBtn.click();
-              }
-              return;
-            }
-            onNextPage();
+          function onNextOrFinishClick(e) {
+            onNextPage(e);
           }
           
           // Expose PDF state for presenter sync (teacher/student)
@@ -3076,13 +3096,12 @@
           }
 
           function scrollPageIntoFrame(pageEl, smooth = false) {
+            // Single-page mode: keep the active slide centered; no multi-page scroll nav.
             if (!pageEl || !pdfContainer) return;
-            const controlsH = ((controls && controls.offsetHeight) || 0);
-            const targetTop = Math.max(0, pageEl.offsetTop - controlsH - 8);
-            pdfContainer.scrollTo({
-              top: targetTop,
-              behavior: smooth ? 'smooth' : 'auto'
-            });
+            try {
+              pdfContainer.scrollTop = 0;
+              if (canvasContainer) canvasContainer.scrollTop = 0;
+            } catch (_e) {}
           }
 
           // Calculate scale to fit viewer size (CSS pixels — do not bake in devicePixelRatio)
@@ -3118,112 +3137,80 @@
             const scaleToFit = Math.min(widthScale, heightScale) * FIT_STABILITY_FACTOR;
             return Math.min(Math.max(scaleToFit, 0.35), 3.0); // stable clamp
           }
-          
-          function renderPage(num, useFitScale = false) {
+
+          /**
+           * Single-page slideshow: only the active page is in the DOM.
+           * Next/Prev swap the page — no stacked scroll (that was breaking navigation).
+           */
+          function showCurrentPage(useFitScale = false) {
+            if (!pdfDoc) return;
+            const safeNum = clampPdfPage(pageNum);
+            pageNum = safeNum;
+            window.pdfViewerState.pageNum = pageNum;
             pageRendering = true;
-            const safeNum = clampPdfPage(num);
-            pdfDoc.getPage(safeNum).then(function(page) {
+            const renderToken = (window.__lcPdfRenderToken = (window.__lcPdfRenderToken || 0) + 1);
+            const myToken = renderToken;
+
+            pdfDoc.getPage(safeNum).then(function (page) {
+              if (myToken !== window.__lcPdfRenderToken) return;
               let renderScale = scale;
-              
-              // Use fit-to-viewer scale if requested
               if (useFitScale || fitToViewerMode) {
                 renderScale = calculateFitToViewerScale(page);
+                scale = renderScale;
+                window.pdfViewerState.scale = scale;
               }
-              
+
               const viewport = page.getViewport({ scale: renderScale });
-              
-              // Create or get canvas for this page
-              let canvasDiv = document.getElementById(`pdf-page-${safeNum}`);
-              if (!canvasDiv) {
-                canvasDiv = document.createElement('div');
-                canvasDiv.className = 'pdf-page';
-                canvasDiv.id = `pdf-page-${safeNum}`;
-                canvasContainer.appendChild(canvasDiv);
-              }
-              
-              // Remove old canvas if exists
-              canvasDiv.innerHTML = '';
-              
+              canvasContainer.innerHTML = '';
+              pageCanvases = {};
+              annotationLayers.clear();
+
+              const canvasDiv = document.createElement('div');
+              canvasDiv.className = 'pdf-page pdf-page--single';
+              canvasDiv.id = `pdf-page-${safeNum}`;
+              canvasDiv.dataset.pageNumber = String(safeNum);
+
               const canvas = document.createElement('canvas');
               const ctx = canvas.getContext('2d');
               const outputScale = applyPdfCanvasHiDpi(canvas, viewport);
-              
               canvasDiv.appendChild(canvas);
+              canvasContainer.appendChild(canvasDiv);
               pageCanvases[safeNum] = { canvas, canvasDiv, scale: renderScale, outputScale };
               registerAnnotationLayer(safeNum, viewport, canvasDiv);
-              
+
               const renderContext = {
                 canvasContext: ctx,
                 viewport: viewport,
                 transform: outputScale !== 1 ? [outputScale, 0, 0, outputScale, 0, 0] : undefined
               };
-              
-              page.render(renderContext).promise.then(function() {
+
+              return page.render(renderContext).promise.then(function () {
+                if (myToken !== window.__lcPdfRenderToken) return;
                 pageRendering = false;
-                if (pageNumPending !== null) {
-                  renderPage(pageNumPending, useFitScale);
-                  pageNumPending = null;
-                }
-                
+                allPagesRendered = true;
                 updateNavButtonStates();
-                
-                // Scroll to current page
-                if (canvasDiv) scrollPageIntoFrame(canvasDiv, false);
+                scrollPageIntoFrame(canvasDiv, false);
+                if (pageNumPending !== null) {
+                  const pending = pageNumPending;
+                  pageNumPending = null;
+                  pageNum = clampPdfPage(pending);
+                  showCurrentPage(useFitScale || fitToViewerMode);
+                }
               });
+            }).catch(function (err) {
+              pageRendering = false;
+              console.error('PDF page render failed', err);
             });
           }
-          
+
+          function renderPage(num, useFitScale = false) {
+            pageNum = clampPdfPage(num);
+            showCurrentPage(useFitScale);
+          }
+
           function renderAllPages(useFitScale = false) {
-            if (!pdfDoc) return;
-            
-            canvasContainer.innerHTML = '';
-            pageCanvases = {};
-            annotationLayers.clear();
-            
-            // Render all pages
-            for (let i = 1; i <= pdfDoc.numPages; i++) {
-              pdfDoc.getPage(i).then(function(page) {
-                let renderScale = scale;
-                
-                if (useFitScale || fitToViewerMode) {
-                  renderScale = calculateFitToViewerScale(page);
-                }
-                
-                const viewport = page.getViewport({ scale: renderScale });
-                
-                const canvasDiv = document.createElement('div');
-                canvasDiv.className = 'pdf-page';
-                canvasDiv.id = `pdf-page-${i}`;
-                
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                const outputScale = applyPdfCanvasHiDpi(canvas, viewport);
-                
-                canvasDiv.appendChild(canvas);
-                canvasContainer.appendChild(canvasDiv);
-                pageCanvases[i] = { canvas, canvasDiv, scale: renderScale, outputScale };
-                registerAnnotationLayer(i, viewport, canvasDiv);
-                
-                const renderContext = {
-                  canvasContext: ctx,
-                  viewport: viewport,
-                  transform: outputScale !== 1 ? [outputScale, 0, 0, outputScale, 0, 0] : undefined
-                };
-                
-                page.render(renderContext).promise.then(function() {
-                  if (i === pdfDoc.numPages) {
-                    allPagesRendered = true;
-                    pageNum = clampPdfPage(pageNum);
-                    updateNavButtonStates();
-                    emitPageChange(pageNum);
-                    
-                    // Scroll to first page
-                    const firstPage = document.getElementById(`pdf-page-${pageNum}`);
-                    if (firstPage) scrollPageIntoFrame(firstPage, false);
-                  }
-                });
-              });
-            }
+            // Compatibility alias — classroom uses single-page mode
+            showCurrentPage(useFitScale);
           }
 
           function emitPageChange(page) {
@@ -3236,90 +3223,77 @@
 
           function goToPage(targetPage, useFitScale = true) {
             if (!pdfDoc) return;
-            pageNum = clampPdfPage(targetPage);
+            const next = clampPdfPage(targetPage);
+            if (pageRendering) {
+              pageNumPending = next;
+              pageNum = next;
+              window.pdfViewerState.pageNum = pageNum;
+              updateNavButtonStates();
+              return;
+            }
+            pageNum = next;
             window.pdfViewerState.pageNum = pageNum;
             updateNavButtonStates();
-            queueRenderPage(pageNum, useFitScale);
-            const targetCanvas = pageCanvases[pageNum]?.canvasDiv;
-            if (targetCanvas) {
-              scrollPageIntoFrame(targetCanvas, true);
-            } else {
-              const el = document.getElementById(`pdf-page-${pageNum}`);
-              if (el) scrollPageIntoFrame(el, true);
-            }
+            showCurrentPage(useFitScale || fitToViewerMode);
+            emitPageChange(pageNum);
+            emitPresenterPdfSync();
           }
           
           window.pdfViewerState.goToPage = goToPage;
           
           function queueRenderPage(num, useFitScale = false) {
-            const target = clampPdfPage(num);
-            if (pageRendering) {
-              pageNumPending = target;
-            } else {
-              if (allPagesRendered) {
-                // Re-render all pages with new scale
-                renderAllPages(useFitScale);
-              } else {
-                renderPage(target, useFitScale);
-              }
-            }
+            goToPage(num, useFitScale);
           }
           
-          function onPrevPage() {
-            if (!pdfDoc || pageNum <= 1) return;
-            pageNum = clampPdfPage(pageNum - 1);
-            window.pdfViewerState.pageNum = pageNum;
-            const targetPage = document.getElementById(`pdf-page-${pageNum}`);
-            if (targetPage) {
-              scrollPageIntoFrame(targetPage, true);
-            } else {
-              goToPage(pageNum, true);
+          function onPrevPage(e) {
+            if (e) {
+              e.preventDefault();
+              e.stopPropagation();
             }
-            updateNavButtonStates();
-            emitPresenterPdfSync();
-          }
-          
-          function onNextPage() {
             if (!pdfDoc) return;
-            const maxP = pdfDoc.numPages;
+            pageNum = clampPdfPage(pageNum);
+            if (pageNum <= 1) {
+              pageNum = 1;
+              updateNavButtonStates();
+              return;
+            }
+            goToPage(pageNum - 1, true);
+          }
+          
+          function onNextPage(e) {
+            if (e) {
+              e.preventDefault();
+              e.stopPropagation();
+            }
+            if (!pdfDoc) return;
+            const maxP = Math.max(1, Number(pdfDoc.numPages) || 1);
+            pageNum = clampPdfPage(pageNum);
             if (pageNum >= maxP) {
               pageNum = maxP;
               updateNavButtonStates();
               return;
             }
-            pageNum = Math.min(pageNum + 1, maxP);
-            window.pdfViewerState.pageNum = pageNum;
-            let targetPage = document.getElementById(`pdf-page-${pageNum}`);
-            if (!targetPage && allPagesRendered) {
-              pageNum = clampPdfPage(pageNum);
-              targetPage = document.getElementById(`pdf-page-${pageNum}`);
-            }
-            if (targetPage) {
-              scrollPageIntoFrame(targetPage, true);
-              updateNavButtonStates();
-              emitPresenterPdfSync();
-            } else {
-              goToPage(pageNum, true);
-              emitPresenterPdfSync();
-            }
+            goToPage(pageNum + 1, true);
           }
           
           function onZoomIn() {
             fitToViewerMode = false;
-            scale += 0.25;
-            renderAllPages(false);
+            scale = Math.min(3, (Number(scale) || 1) + 0.25);
+            window.pdfViewerState.scale = scale;
+            showCurrentPage(false);
           }
           
           function onZoomOut() {
-            if (scale <= 0.5) return;
+            if ((Number(scale) || 1) <= 0.5) return;
             fitToViewerMode = false;
-            scale -= 0.25;
-            renderAllPages(false);
+            scale = Math.max(0.5, (Number(scale) || 1) - 0.25);
+            window.pdfViewerState.scale = scale;
+            showCurrentPage(false);
           }
           
           function onFitToViewer() {
             fitToViewerMode = true;
-            renderAllPages(true);
+            showCurrentPage(true);
             fitToViewerBtn.textContent = 'Fit to Viewer ✓';
             fitToViewerBtn.style.background = '#d4edda';
             fitToViewerBtn.style.color = '#155724';
@@ -3327,16 +3301,35 @@
           
           // Make controls work for both teacher and student
           prevBtn.addEventListener('click', onPrevPage);
-          nextBtn.addEventListener('click', onNextOrFinishClick);
+          nextBtn.addEventListener('click', onNextPage);
           zoomInBtn.addEventListener('click', onZoomIn);
           zoomOutBtn.addEventListener('click', onZoomOut);
           fitToViewerBtn.addEventListener('click', onFitToViewer);
+
+          // Teacher keyboard slide nav (does not steal focus from chat/inputs)
+          if (isTeacher) {
+            window.addEventListener('keydown', (e) => {
+              if (!pdfDoc || window.currentPdfMaterialId !== material.id) return;
+              const t = e.target;
+              if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) {
+                return;
+              }
+              if (e.key === 'ArrowRight' || e.key === 'PageDown') {
+                e.preventDefault();
+                onNextPage(e);
+              } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+                e.preventDefault();
+                onPrevPage(e);
+              }
+            });
+          }
+
           window.addEventListener('resize', () => {
             if (!fitToViewerMode || !pdfDoc) return;
             clearTimeout(window.__pdfFitResizeTimer);
             window.__pdfFitResizeTimer = setTimeout(() => {
               if (fitToViewerMode && pdfDoc && window.currentPdfMaterialId === material.id) {
-                renderAllPages(true);
+                showCurrentPage(true);
               }
             }, 120);
           });
@@ -3499,17 +3492,22 @@
             pageNum = 1;
             window.pdfViewerState.pdfDoc = pdfDoc;
             window.pdfViewerState.pageNum = pageNum;
+            window.pdfViewerState.totalSlides = pdf.numPages;
+            updateNavButtonStates();
             
-            // Auto-fit to viewer on load
+            // Single-page slideshow — Next/Prev swap the active page
             fitToViewerMode = true;
-            renderAllPages(true);
-            // Hard-refresh/layout jitter fix: re-fit after layout settles
+            showCurrentPage(true);
+            const materialIdAtLoad = material.id;
             setTimeout(() => {
-              if (fitToViewerMode && window.currentPdfMaterialId === material.id) renderAllPages(true);
-            }, 180);
-            setTimeout(() => {
-              if (fitToViewerMode && window.currentPdfMaterialId === material.id) renderAllPages(true);
-            }, 700);
+              if (
+                fitToViewerMode &&
+                window.currentPdfMaterialId === materialIdAtLoad &&
+                pageNum <= 1
+              ) {
+                showCurrentPage(true);
+              }
+            }, 200);
             
             // Update fit button state
             fitToViewerBtn.textContent = 'Fit to Viewer ✓';
@@ -3580,6 +3578,7 @@
               isTeacher: userType === 'teacher',
               materialIndex: materialIndex >= 0 ? materialIndex : 0,
               materialCount: Math.max(1, materialsList.length),
+              totalSlides: material.totalSlides || material.slideCount || material.pageCount || null,
               onNavigateMaterial: (delta) => {
                 if (!materialsList.length) return;
                 const cur = Math.max(0, materialsList.findIndex((m) => String(m.id) === String(material.id)));
@@ -6174,52 +6173,88 @@
       function syncTeacherNotesChrome(visible) {
         const notesToggle = document.getElementById('lc-notes-toggle');
         const mobileNotes = document.getElementById('lc-mobile-notes-btn');
+        const edgeToggle = document.getElementById('lc-notes-edge-toggle');
         if (notesToggle) notesToggle.hidden = !visible;
         if (mobileNotes) mobileNotes.hidden = !visible;
+        if (edgeToggle) edgeToggle.hidden = !visible;
       }
 
       function setTeacherNotesOpen(open) {
         const rail = document.getElementById('teacher-notes-rail');
+        const leftRail = document.getElementById('left-rail');
         const scrim = document.getElementById('lc-notes-scrim');
         if (!rail) return;
         const drawerMode =
           window.matchMedia && window.matchMedia('(max-width: 1100px)').matches;
+
         if (open) {
-          document.body.classList.remove('lc-notes-collapsed');
           rail.classList.add('is-visible');
           if (drawerMode) {
-            rail.classList.add('is-drawer-open');
+            // Force closed transform first so opening can animate
+            rail.classList.remove('is-drawer-open');
+            document.body.classList.remove('lc-notes-collapsed');
+            void rail.offsetWidth;
+            requestAnimationFrame(() => {
+              rail.classList.add('is-drawer-open');
+              document.body.classList.add('lc-notes-drawer-open');
+            });
             if (scrim) {
               scrim.hidden = false;
               scrim.setAttribute('aria-hidden', 'false');
             }
-            document.body.classList.add('lc-notes-drawer-open');
           } else {
-            rail.classList.remove('is-drawer-open');
-            if (scrim) {
-              scrim.hidden = true;
-              scrim.setAttribute('aria-hidden', 'true');
-            }
-            document.body.classList.remove('lc-notes-drawer-open');
-          }
-        } else {
-          if (drawerMode) {
-            rail.classList.remove('is-drawer-open');
-          } else {
-            document.body.classList.add('lc-notes-collapsed');
-          }
+          // Start from closed width, then open so width transition always plays
+          rail.classList.add('is-visible');
+          document.body.classList.add('lc-notes-collapsed');
+          rail.classList.remove('is-drawer-open');
+          if (leftRail) void leftRail.offsetWidth;
+          requestAnimationFrame(() => {
+            document.body.classList.remove('lc-notes-collapsed');
+          });
           if (scrim) {
             scrim.hidden = true;
             scrim.setAttribute('aria-hidden', 'true');
           }
           document.body.classList.remove('lc-notes-drawer-open');
         }
+        } else if (drawerMode) {
+          rail.classList.remove('is-drawer-open');
+          document.body.classList.remove('lc-notes-drawer-open');
+          if (scrim) {
+            scrim.hidden = true;
+            scrim.setAttribute('aria-hidden', 'true');
+          }
+        } else {
+          document.body.classList.add('lc-notes-collapsed');
+          document.body.classList.remove('lc-notes-drawer-open');
+          if (scrim) {
+            scrim.hidden = true;
+            scrim.setAttribute('aria-hidden', 'true');
+          }
+        }
       }
 
       (function bindTeacherNotesChrome() {
         const collapseBtn = document.getElementById('teacher-notes-collapse');
         const notesToggle = document.getElementById('lc-notes-toggle');
+        const edgeToggle = document.getElementById('lc-notes-edge-toggle');
         const scrim = document.getElementById('lc-notes-scrim');
+
+        function toggleNotesFromChrome() {
+          const rail = document.getElementById('teacher-notes-rail');
+          const drawerMode =
+            window.matchMedia && window.matchMedia('(max-width: 1100px)').matches;
+          let opening = true;
+          if (drawerMode) {
+            opening = !(rail && rail.classList.contains('is-drawer-open'));
+          } else {
+            opening =
+              document.body.classList.contains('lc-notes-collapsed') ||
+              !(rail && rail.classList.contains('is-visible'));
+          }
+          setTeacherNotesOpen(opening);
+        }
+
         if (collapseBtn) {
           collapseBtn.addEventListener('click', () => setTeacherNotesOpen(false));
         }
@@ -6227,18 +6262,10 @@
           scrim.addEventListener('click', () => setTeacherNotesOpen(false));
         }
         if (notesToggle) {
-          notesToggle.addEventListener('click', () => {
-            const rail = document.getElementById('teacher-notes-rail');
-            const drawerMode =
-              window.matchMedia && window.matchMedia('(max-width: 1100px)').matches;
-            let opening = true;
-            if (drawerMode) {
-              opening = !(rail && rail.classList.contains('is-drawer-open'));
-            } else {
-              opening = document.body.classList.contains('lc-notes-collapsed') || !(rail && rail.classList.contains('is-visible'));
-            }
-            setTeacherNotesOpen(opening);
-          });
+          notesToggle.addEventListener('click', toggleNotesFromChrome);
+        }
+        if (edgeToggle) {
+          edgeToggle.addEventListener('click', () => setTeacherNotesOpen(true));
         }
         document.addEventListener('keydown', (e) => {
           if (e.key === 'Escape' && document.body.classList.contains('lc-notes-drawer-open')) {
@@ -6637,6 +6664,17 @@
         }
 
         finishBtn.addEventListener('click', async () => {
+          const MIN_FINISH_MS = 15 * 60 * 1000;
+          const scheduledMs = absentRuleStartMs;
+          if (scheduledMs != null && Date.now() < scheduledMs + MIN_FINISH_MS) {
+            const remMin = Math.max(1, Math.ceil((scheduledMs + MIN_FINISH_MS - Date.now()) / 60000));
+            alert(
+              'You can finish the live classroom only after 15 minutes from the scheduled start (~' +
+                remMin +
+                ' min remaining).'
+            );
+            return;
+          }
           if (
             !confirm(
               'End the live session? The video call will stop. You can submit feedback on this screen to finalize credits and pay, or finish later from your schedule.'
@@ -6679,6 +6717,10 @@
                 );
                 if (!endRes.ok) {
                   const ed = await endRes.json().catch(() => ({}));
+                  if (ed.code === 'TOO_EARLY_TO_FINISH' || endRes.status === 400) {
+                    alert(ed.error || 'You can finish only after 15 minutes from the scheduled start.');
+                    return;
+                  }
                   console.warn('end-session:', ed.error || endRes.status);
                 }
               } catch (endErr) {

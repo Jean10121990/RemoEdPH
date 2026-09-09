@@ -7,16 +7,16 @@
   --remoed-brand-blue: #00aeef;
   --remoed-brand-blue-soft: #5cc8f5;
   --remoed-brand-blue-deep: #008fc4;
-  /* Relaxing sage / forest green (teacher) */
-  --remoed-brand-green: #3d9470;
-  --remoed-brand-green-soft: #5fad88;
-  --remoed-brand-green-deep: #2f7358;
-  --remoed-brand-green-mist: #e8f4ee;
+  /* Teacher mint / forest: #8DF97C soft · #47BC3E primary */
+  --remoed-brand-green: #47BC3E;
+  --remoed-brand-green-soft: #8DF97C;
+  --remoed-brand-green-deep: #2E9A28;
+  --remoed-brand-green-mist: #EEFCEB;
   --remoed-brand-yellow: #f0d55c;
   --remoed-sidebar-subtitle: rgba(255, 255, 255, 0.85);
-  --remoed-sidebar-active-start: #2f7358;
-  --remoed-sidebar-active-end: #3d9470;
-  --remoed-sidebar-active-border: #f0d55c;
+  --remoed-sidebar-active-start: #2E9A28;
+  --remoed-sidebar-active-end: #47BC3E;
+  --remoed-sidebar-active-border: #8DF97C;
   --remoed-sidebar-inactive: rgba(255, 255, 255, 0.92);
   --remoed-sidebar-inactive-hover-bg: rgba(255, 255, 255, 0.14);
   --remoed-sidebar-inactive-hover-text: #ffffff;
@@ -38,8 +38,8 @@ html body.teacher-portal,
 html body[class*="page-teacher-"] {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background:
-    radial-gradient(1200px 500px at 12% -10%, rgba(95, 173, 136, 0.18), transparent 55%),
-    radial-gradient(900px 420px at 88% 0%, rgba(61, 148, 112, 0.1), transparent 50%),
+    radial-gradient(1200px 500px at 12% -10%, rgba(141, 249, 124, 0.18), transparent 55%),
+    radial-gradient(900px 420px at 88% 0%, rgba(71, 188, 62, 0.1), transparent 50%),
     linear-gradient(180deg, #f3f8f5 0%, #eef5f1 45%, #f7faf8 100%);
   color: #1a2e26;
   min-height: 100%;
@@ -50,11 +50,11 @@ body.teacher-portal nav.remoed-sidebar.remoed-sidebar,
 body[class*="page-teacher-"] nav.remoed-sidebar.remoed-sidebar {
   background: linear-gradient(
     180deg,
-    #2f7358 0%,
-    #3d9470 48%,
-    #27634c 100%
+    #2E9A28 0%,
+    #47BC3E 52%,
+    #3aa832 100%
   ) !important;
-  box-shadow: 4px 0 24px rgba(35, 90, 68, 0.22);
+  box-shadow: 4px 0 24px rgba(46, 154, 40, 0.28);
   border-right: 1px solid rgba(255, 255, 255, 0.12);
 }
 
@@ -194,13 +194,13 @@ body[class*="page-teacher-"] .remoed-sidebar .remoed-username {
 body.teacher-portal .remoed-sidebar #remoed-avatar,
 body[class*="page-teacher-"] .remoed-sidebar #remoed-avatar {
   background: #ffffff !important;
-  color: #2f7358 !important;
+  color: #2E9A28 !important;
   border: 2px solid #fdd835;
 }
 
 body.teacher-portal .remoed-sidebar #avatar-text,
 body[class*="page-teacher-"] .remoed-sidebar #avatar-text {
-  color: #2f7358 !important;
+  color: #2E9A28 !important;
   font-weight: 800;
 }
 
@@ -456,7 +456,7 @@ body[class*="page-teacher-"] .nav-header .nav-title-icon {
 }
 
 body.teacher-portal .nav-header .nav-icon:hover {
-  background: rgba(61, 148, 112, 0.12) !important;
+  background: rgba(71, 188, 62, 0.12) !important;
 }
 
 body.teacher-portal .nav-header .nav-icon svg,
@@ -520,14 +520,14 @@ body[class*="page-teacher-"] input:focus,
 body[class*="page-teacher-"] select:focus,
 body[class*="page-teacher-"] textarea:focus {
   border-color: var(--remoed-brand-green) !important;
-  box-shadow: 0 0 0 3px rgba(61, 148, 112, 0.18) !important;
+  box-shadow: 0 0 0 3px rgba(71, 188, 62, 0.18) !important;
 }
 
 /* Assessment focused shell */
 body.page-teacher-assessment,
 body.page-teacher-view-assessment {
   background:
-    radial-gradient(ellipse 60% 40% at 0% 0%, rgba(61, 148, 112, 0.1), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 0% 0%, rgba(71, 188, 62, 0.1), transparent 55%),
     #f8fafc;
 }
 
@@ -541,7 +541,7 @@ body.teacher-portal .portal-sidebar-toggle,
 body[class*="page-teacher-"] .portal-sidebar-toggle {
   border-color: var(--remoed-brand-green) !important;
   color: var(--remoed-brand-green) !important;
-  box-shadow: 0 2px 10px rgba(61, 148, 112, 0.18);
+  box-shadow: 0 2px 10px rgba(71, 188, 62, 0.18);
 }
 
 body.teacher-portal .portal-sidebar-toggle:hover,
@@ -569,7 +569,7 @@ body[class*="page-teacher-"] .tab-btn.active {
 body.teacher-portal .back-btn,
 body[class*="page-teacher-"] .back-btn {
   color: var(--remoed-brand-green-deep) !important;
-  border-color: rgba(61, 148, 112, 0.35) !important;
+  border-color: rgba(71, 188, 62, 0.35) !important;
 }
 
 body.teacher-portal a.btn,

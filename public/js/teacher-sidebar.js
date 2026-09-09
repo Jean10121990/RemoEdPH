@@ -35,7 +35,7 @@
             var link = document.createElement('link');
             link.id = BRAND_CSS_ID;
             link.rel = 'stylesheet';
-            link.href = 'css/teacher-brand-overrides.css?v=relax-green-1';
+            link.href = 'css/teacher-brand-overrides.css?v=mint-forest-1';
             document.head.appendChild(link);
         } catch (_e) {}
     }

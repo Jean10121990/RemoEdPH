@@ -6,7 +6,7 @@
   <script src="js/security-guard.js?v=1"></script>
   <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
   <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
-  <script src="js/classroom-entry.js"></script>
+  <script src="js/classroom-entry.js?v=session-ended-1"></script>
   <script src="js/user-session.js"></script>
   <script>
     // Defer DOM operations until DOM is ready and guard element access to avoid errors.
@@ -42,17 +42,17 @@
   </script>
 <!-- Remo AI Chatbot Styles -->
   <title>Class Schedule - RemoEdPH</title>
-<link rel="stylesheet" href="css/teacher-sidebar.css?v=relax-green-1">
+<link rel="stylesheet" href="css/teacher-sidebar.css?v=mint-forest-1">
 <link rel="stylesheet" href="css/global-portal.css">
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="css/portal-chrome-compact.css?v=relax-green-1">
-    <link rel="stylesheet" href="css/class-info-modal.css?v=relax-green-1">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css?v=mint-forest-1">
+    <link rel="stylesheet" href="css/class-info-modal.css?v=modal-stack-1">
 </head>
 <body class="page-teacher-class-table teacher-portal">
   <div class="remoed-main">
     <div id="teacher-sidebar-root"></div>
     <script src="js/teacher-sidebar.js?v=lb-nav-2"></script>
-    <script src="js/teacher-page-header.js?v=relax-green-1"></script>
+    <script src="js/teacher-page-header.js?v=mint-forest-1"></script>
         <script>
             TeacherSidebar.render('teacher-sidebar-root', 'class-schedule');
             TeacherPageHeader.render('class-schedule');
@@ -126,7 +126,7 @@
             <span class="remoed-legend-text">Unbooked</span>
           </div>
           <div class="remoed-legend-item">
-            <div class="remoed-legend-color" style="background: #28a745; color: white;">R</div>
+            <div class="remoed-legend-color" style="background: #47BC3E; color: white;">R</div>
             <span class="remoed-legend-text">Resolved Issue</span>
           </div>
         </div>
@@ -245,7 +245,7 @@
   </div>
 
   <!-- Class Feedback Modal -->
-  <div id="class-feedback-modal" class="remoed-modal">
+  <div id="class-feedback-modal" class="remoed-modal remoed-modal--stacked">
     <div class="remoed-modal-content">
       <div class="remoed-modal-header">
         <h2 class="remoed-modal-title">Complete Class & Provide Feedback</h2>
@@ -285,8 +285,8 @@
     </div>
   </div>
 
-  <!-- Class Issue Modal -->
-  <div id="class-issue-modal" class="remoed-modal">
+  <!-- Class Issue Modal (above Class Information z-index 2200) -->
+  <div id="class-issue-modal" class="remoed-modal remoed-modal--stacked">
     <div class="remoed-modal-content">
       <div class="remoed-modal-header">
         <h2 class="remoed-modal-title">Report Class Issue</h2>
@@ -1471,7 +1471,7 @@
           if (!existingIndicator) {
             const indicator = document.createElement('div');
             indicator.className = 'resolved-indicator';
-            indicator.style.cssText = 'position: absolute; top: 2px; right: 2px; background: #28a745; color: white; font-size: 10px; padding: 2px 4px; border-radius: 3px; z-index: 10;';
+            indicator.style.cssText = 'position: absolute; top: 2px; right: 2px; background: #47BC3E; color: white; font-size: 10px; padding: 2px 4px; border-radius: 3px; z-index: 10;';
             indicator.title = 'Class issue marked as resolved by admin';
             indicator.textContent = 'Resolved Issue';
             cell.appendChild(indicator);
@@ -1526,6 +1526,13 @@
         joinBtn.onclick = () => joinClassroom();
         if (window.RemoedClassroomEntry && currentBooking) {
           const gate = window.RemoedClassroomEntry.getEntryGate(currentBooking);
+          if (!gate.allowed && gate.code === 'SESSION_ENDED') {
+            joinBtn.disabled = true;
+            joinBtn.style.opacity = '0.65';
+            joinBtn.title = gate.message || 'Session ended — re-entry is closed.';
+            joinBtn.textContent = 'Session Ended';
+            return;
+          }
           if (!gate.allowed && gate.code === 'TOO_EARLY') {
             joinBtn.disabled = true;
             joinBtn.style.opacity = '0.65';
@@ -1602,14 +1609,19 @@
       document.getElementById('class-info-modal').classList.add('show');
     }
 
-    function closeClassInfo() {
+    function closeClassInfo(opts) {
       document.getElementById('class-info-modal').classList.remove('show');
       hideClassStudentPhoto();
       if (window.__joinBtnCountdownTimer) {
         clearInterval(window.__joinBtnCountdownTimer);
         window.__joinBtnCountdownTimer = null;
       }
-      currentBooking = null;
+      const keepBooking = opts && opts.keepBooking;
+      const issueOpen = document.getElementById('class-issue-modal')?.classList.contains('show');
+      const feedbackOpen = document.getElementById('class-feedback-modal')?.classList.contains('show');
+      if (!keepBooking && !issueOpen && !feedbackOpen) {
+        currentBooking = null;
+      }
     }
 
     async function joinClassroom() {
@@ -1621,12 +1633,18 @@
       }
       if (window.RemoedClassroomEntry) {
         const gate = window.RemoedClassroomEntry.getEntryGate(currentBooking);
-        if (!gate.allowed && gate.code === 'TOO_EARLY') {
-          const when = gate.opensAtMs != null
-            ? (RemoedTZ.formatDateTimePhilippines ? RemoedTZ.formatDateTimePhilippines(new Date(gate.opensAtMs)) : new Date(gate.opensAtMs).toLocaleString('en-PH', { timeZone: teacherTimezone }))
-            : 'the allowed time';
-          alert(`Class hasn’t opened yet. You can enter starting 10 minutes before the scheduled start (from ${when}).`);
-          return;
+        if (!gate.allowed) {
+          if (gate.code === 'SESSION_ENDED') {
+            alert(gate.message || 'This live classroom session has already ended. You cannot re-enter.');
+            return;
+          }
+          if (gate.code === 'TOO_EARLY') {
+            const when = gate.opensAtMs != null
+              ? (RemoedTZ.formatDateTimePhilippines ? RemoedTZ.formatDateTimePhilippines(new Date(gate.opensAtMs)) : new Date(gate.opensAtMs).toLocaleString('en-PH', { timeZone: teacherTimezone }))
+              : 'the allowed time';
+            alert(`Class hasn’t opened yet. You can enter starting 10 minutes before the scheduled start (from ${when}).`);
+            return;
+          }
         }
       }
       const slotTime = liveClassroomSlotParam(currentBooking);
@@ -1948,7 +1966,7 @@
             color: white;
             font-weight: 600;
             z-index: 10000;
-            background: ${type === 'success' ? '#28a745' : '#dc3545'};
+            background: ${type === 'success' ? '#47BC3E' : '#dc3545'};
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         `;
         notification.textContent = message;
@@ -2141,8 +2159,9 @@
         
         // Setup character count
         setupCharacterCount('feedback-comment', 'feedback-char-count');
-        
-        // Show modal
+
+        // Replace Class Info with feedback modal (keep booking context)
+        closeClassInfo({ keepBooking: true });
         document.getElementById('class-feedback-modal').classList.add('show');
     }
 
@@ -2420,58 +2439,70 @@
     // Close class feedback modal
     function closeClassFeedbackModal() {
         document.getElementById('class-feedback-modal').classList.remove('show');
+        if (!document.getElementById('class-info-modal')?.classList.contains('show') &&
+            !document.getElementById('class-issue-modal')?.classList.contains('show')) {
+            currentBooking = null;
+        }
     }
     
-    // Report class issue
+    // Report class issue — close Class Info first so the issue modal is not stacked behind it
     async function reportClassIssue() {
         if (!currentBooking) {
             showNotification('No class selected', 'error');
             return;
         }
-        
-        // Set class info in issue modal
+
+        window.__reportIssueBooking = currentBooking;
+
+        // Set class info in issue modal before closing Class Info
         document.getElementById('issue-class-info').textContent = `${formatClassModalDateLong(currentBooking)} at ${formatClassModalTime12h(currentBooking)}`;
         document.getElementById('issue-student-info').textContent = currentBooking.studentName || 'Unknown Student';
-        
+
         // Clear form
         document.getElementById('issue-type').value = '';
         document.getElementById('issue-description').value = '';
         document.getElementById('issue-screenshot').value = '';
         document.getElementById('issue-char-count').textContent = '0';
-        
+
         // Setup character count
         setupCharacterCount('issue-description', 'issue-char-count');
-        
-        // Show modal
+
+        // Replace Class Info with Report Issue (keep booking context)
+        closeClassInfo({ keepBooking: true });
         document.getElementById('class-issue-modal').classList.add('show');
     }
-    
+
+    function getIssueReportBooking() {
+        return currentBooking || window.__reportIssueBooking || null;
+    }
+
     // Submit class issue
     async function submitClassIssue() {
-        if (!currentBooking) {
+        const booking = getIssueReportBooking();
+        if (!booking) {
             showNotification('No class selected', 'error');
             return;
         }
-        
+
         const issueType = document.getElementById('issue-type').value;
         const description = document.getElementById('issue-description').value.trim();
         const screenshot = document.getElementById('issue-screenshot').files[0];
-        
+
         if (!issueType) {
             showNotification('Please select an issue type', 'error');
             return;
         }
-        
+
         if (!description) {
             showNotification('Please provide a description', 'error');
             return;
         }
-        
+
         if (!screenshot) {
             showNotification('Please upload a screenshot as proof', 'error');
             return;
         }
-        
+
         try {
             const token = localStorage.getItem('token');
             if (!token) {
@@ -2482,23 +2513,27 @@
                 }, 2000);
                 return;
             }
-            
+
             // Fix studentId - ensure it's a string, not an object
-            let studentId = currentBooking.studentId;
+            let studentId = booking.studentId;
             if (typeof studentId === 'object' && studentId !== null) {
-                // If studentId is an object, extract the actual ID
                 studentId = studentId._id || studentId.id || studentId.username || 'unknown';
             }
-            
+
+            let teacherId = booking.teacherId;
+            if (typeof teacherId === 'object' && teacherId !== null) {
+                teacherId = teacherId.teacherId || teacherId._id || teacherId.id || '';
+            }
+
             const formData = new FormData();
-            formData.append('bookingId', currentBooking._id);
-            formData.append('teacherId', currentBooking.teacherId);
+            formData.append('bookingId', booking._id);
+            formData.append('teacherId', teacherId);
             formData.append('studentId', studentId);
             formData.append('issueType', issueType);
             formData.append('description', description);
             formData.append('screenshot', screenshot);
             formData.append('submittedAt', new Date().toISOString());
-            
+
             const response = await fetch('/api/teacher/report-issue', {
                 method: 'POST',
                 headers: {
@@ -2506,13 +2541,12 @@
                 },
                 body: formData
             });
-            
+
             if (response.ok) {
                 showNotification('Issue report submitted successfully. Admin will review it.', 'success');
                 closeClassIssueModal();
                 loadScheduleData(); // Refresh schedule
             } else if (response.status === 401) {
-                // Token is invalid or expired
                 showNotification('Session expired. Please log in again.', 'error');
                 setTimeout(() => {
                     localStorage.clear();
@@ -2593,7 +2627,7 @@
                         if (!existingIndicator) {
                             const indicator = document.createElement('div');
                             indicator.className = 'resolved-indicator';
-                            indicator.style.cssText = 'position: absolute; top: 2px; right: 2px; background: #28a745; color: white; font-size: 10px; padding: 2px 4px; border-radius: 3px; z-index: 10;';
+                            indicator.style.cssText = 'position: absolute; top: 2px; right: 2px; background: #47BC3E; color: white; font-size: 10px; padding: 2px 4px; border-radius: 3px; z-index: 10;';
                             indicator.title = 'Class issue marked as resolved by admin';
                             indicator.textContent = 'Resolved Issue';
                             cell.appendChild(indicator);
@@ -2610,6 +2644,11 @@
     function closeClassIssueModal() {
         document.getElementById('class-issue-modal').classList.remove('show');
         document.getElementById('issue-type').value = '';
+        window.__reportIssueBooking = null;
+        if (!document.getElementById('class-info-modal')?.classList.contains('show') &&
+            !document.getElementById('class-feedback-modal')?.classList.contains('show')) {
+            currentBooking = null;
+        }
     }
     
     // Manual test function for resolved issues (can be called from browser console)
@@ -2633,7 +2672,7 @@
                     if (!existingIndicator) {
                         const indicator = document.createElement('div');
                         indicator.className = 'resolved-indicator';
-                        indicator.style.cssText = 'position: absolute; top: 2px; right: 2px; background: #28a745; color: white; font-size: 10px; padding: 2px 4px; border-radius: 3px; z-index: 10;';
+                        indicator.style.cssText = 'position: absolute; top: 2px; right: 2px; background: #47BC3E; color: white; font-size: 10px; padding: 2px 4px; border-radius: 3px; z-index: 10;';
                         indicator.title = 'Class issue marked as resolved by admin';
                         indicator.textContent = 'Resolved Issue';
                         cell.appendChild(indicator);

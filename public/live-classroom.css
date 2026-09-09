@@ -1,6 +1,8 @@
 :root {
-  --lc-green: #3d9470;
-  --lc-green-deep: #2f7358;
+  --lc-green: #47BC3E;
+  --lc-green-deep: #2E9A28;
+  --lc-green-soft: #8DF97C;
+  --lc-green-mist: #EEFCEB;
   --lc-blue: #00aeef;
   --lc-blue-deep: #008fc4;
   --lc-yellow: #f0d55c;
@@ -34,8 +36,8 @@ body.page-live-classroom {
   flex-direction: column;
   box-sizing: border-box;
   background:
-    radial-gradient(ellipse 50% 40% at 0% 0%, rgba(61, 148, 112, 0.14), transparent 55%),
-    radial-gradient(ellipse 40% 35% at 100% 0%, rgba(95, 173, 136, 0.1), transparent 50%),
+    radial-gradient(ellipse 50% 40% at 0% 0%, rgba(71, 188, 62, 0.14), transparent 55%),
+    radial-gradient(ellipse 40% 35% at 100% 0%, rgba(141, 249, 124, 0.1), transparent 50%),
     linear-gradient(180deg, #f3f8f5 0%, #eef5f1 50%, #f7faf8 100%);
 }
 
@@ -50,7 +52,7 @@ body.page-live-classroom *::after {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  background: linear-gradient(90deg, var(--lc-green-deep) 0%, var(--lc-green) 55%, #4aa37a 100%);
+  background: linear-gradient(90deg, var(--lc-green-deep) 0%, var(--lc-green) 55%, #8DF97C 100%);
   color: white;
   padding: 8px 14px;
   min-height: 52px;
@@ -217,7 +219,7 @@ body.page-live-classroom .main-container {
   max-height: none;
 }
 
-/* Left rail: teacher notes only */
+/* Left rail: teacher notes only — width clip animates open/close on desktop */
 .left-rail {
   display: flex;
   flex-direction: row;
@@ -226,7 +228,15 @@ body.page-live-classroom .main-container {
   height: 100%;
   min-height: 0;
   max-height: 100%;
+  position: relative;
+  width: 0;
+  min-width: 0;
+  max-width: 0;
   overflow: hidden;
+  transition:
+    width 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+    min-width 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+    max-width 0.3s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .left-nav-bar {
@@ -236,8 +246,10 @@ body.page-live-classroom .main-container {
 .teacher-notes-rail {
   display: none;
   width: 240px;
-  max-width: 36vw;
-  background: linear-gradient(180deg, #065f2a 0%, #0a3d1c 100%);
+  min-width: 240px;
+  max-width: 240px;
+  flex: 0 0 240px;
+  background: linear-gradient(180deg, #2E9A28 0%, #1f6b1a 100%);
   border-right: 1px solid rgba(255, 255, 255, 0.1);
   color: #e2e8f0;
   flex-direction: column;
@@ -264,30 +276,80 @@ body.page-live-classroom .main-container {
 }
 
 .teacher-notes-collapse {
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(0, 0, 0, 0.22);
   color: #fff;
-  border-radius: 6px;
-  width: 28px;
-  height: 28px;
+  border-radius: 8px;
+  min-width: 64px;
+  height: 30px;
+  padding: 0 8px;
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: 0.72rem;
+  font-weight: 700;
   line-height: 1;
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.teacher-notes-collapse__icon {
+  font-size: 1rem;
+  line-height: 1;
 }
 
 .teacher-notes-collapse:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.16);
 }
 
-body.lc-notes-collapsed .teacher-notes-rail {
-  display: none !important;
+.lc-notes-edge-toggle {
+  display: none;
 }
 
-body.lc-notes-collapsed .left-rail {
-  width: 0;
-  min-width: 0;
-  overflow: hidden;
+/* Desktop: animate rail width open/closed (overflow clips = slide) */
+@media (min-width: 1101px) {
+  body:not(.lc-notes-collapsed) .left-rail:has(.teacher-notes-rail.is-visible) {
+    width: 240px;
+    min-width: 240px;
+    max-width: 240px;
+  }
+
+  body.lc-notes-collapsed .left-rail {
+    width: 0 !important;
+    min-width: 0 !important;
+    max-width: 0 !important;
+  }
+
+  body.lc-notes-collapsed .teacher-notes-rail.is-visible {
+    display: flex !important;
+  }
+
+  .lc-notes-edge-toggle {
+    display: none;
+    position: fixed;
+    left: 0;
+    top: 96px;
+    z-index: 5600;
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    border: 1px solid rgba(71, 188, 62, 0.35);
+    background: linear-gradient(180deg, #47BC3E, #2E9A28);
+    color: #fff;
+    border-radius: 0 10px 10px 0;
+    padding: 12px 6px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    box-shadow: 4px 0 16px rgba(46, 154, 40, 0.28);
+  }
+
+  body.lc-notes-collapsed .lc-notes-edge-toggle:not([hidden]) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
 }
 
 .teacher-notes-rail-hint {
@@ -674,12 +736,12 @@ body[data-classroom-role="student"] .left-rail {
   color: var(--lc-green-deep);
   border-bottom-color: var(--lc-green);
   font-weight: 800;
-  background: rgba(61, 148, 112, 0.06);
+  background: rgba(71, 188, 62, 0.06);
 }
 
 .tabs button:hover {
   color: var(--lc-green-deep);
-  background: rgba(61, 148, 112, 0.04);
+  background: rgba(71, 188, 62, 0.04);
 }
 
 /* Hide duplicate outer slide Prev/Next — in-viewer toolbars own navigation */
@@ -886,7 +948,7 @@ body.page-live-classroom #pdf-annotate-toggle.active {
   min-height: 0;
   height: 100%;
   background:
-    linear-gradient(180deg, rgba(61, 148, 112, 0.04), transparent 120px),
+    linear-gradient(180deg, rgba(71, 188, 62, 0.04), transparent 120px),
     #fff;
 }
 
@@ -1185,6 +1247,67 @@ body.page-live-classroom #lesson-content-panel {
   max-height: 100%;
 }
 
+body.page-live-classroom #lesson-file-viewer.file-viewer {
+  align-items: stretch !important;
+  justify-content: stretch !important;
+}
+
+body.page-live-classroom #lesson-file-viewer .pdf-viewer-container {
+  flex: 1 1 auto;
+  align-self: stretch;
+}
+  display: flex !important;
+  flex-direction: column !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: 100% !important;
+  overflow: hidden !important;
+  border: 1px solid var(--lc-border, #d7e5dd);
+  border-radius: 8px;
+  background: #f5f5f5;
+  position: relative;
+}
+
+body.page-live-classroom .pdf-canvas-container {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow: auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 12px !important;
+  gap: 0 !important;
+}
+
+body.page-live-classroom .pdf-page.pdf-page--single {
+  margin: 0 auto !important;
+  max-width: 100%;
+}
+
+body.page-live-classroom .pdf-viewer-controls {
+  flex-shrink: 0 !important;
+  position: relative !important;
+  top: auto !important;
+  z-index: 20 !important;
+}
+
+body.page-live-classroom .pdf-controls-top-row button#pdf-prev-btn-custom,
+body.page-live-classroom .pdf-controls-top-row button#pdf-next-btn-custom {
+  min-width: 40px !important;
+  min-height: 34px !important;
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  z-index: 21 !important;
+}
+
+body.page-live-classroom .pdf-controls-top-row button#pdf-prev-btn-custom:disabled,
+body.page-live-classroom .pdf-controls-top-row button#pdf-next-btn-custom:disabled {
+  opacity: 0.45 !important;
+  cursor: not-allowed !important;
+}
+
 /* PDF Container should fill the viewer */
 .file-viewer [id^="pdf-container-"] {
   width: 100% !important;
@@ -1444,7 +1567,7 @@ body.page-live-classroom #lesson-content-panel {
 }
 
 .video-control-btn:hover {
-  background: rgba(61, 148, 112, 0.9);
+  background: rgba(71, 188, 62, 0.9);
   border-color: rgba(253, 216, 53, 0.55);
 }
 
@@ -1749,9 +1872,11 @@ body.page-live-classroom .chat-messages .message-bubble .message-text {
     bottom: 0;
     z-index: 5500;
     width: min(280px, 78vw);
+    min-width: 0;
     max-width: none;
+    flex: none;
     transform: translateX(-105%);
-    transition: transform 0.2s ease;
+    transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
     box-shadow: 8px 0 28px rgba(15, 23, 42, 0.18);
     display: flex;
   }

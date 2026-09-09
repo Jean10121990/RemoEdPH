@@ -1,13 +1,13 @@
 /**
- * Live Classroom visual redesign — relaxing sage chrome.
+ * Live Classroom visual redesign — mint #8DF97C / forest #47BC3E chrome.
  * Load AFTER live-classroom.css.
  */
 
 body.page-live-classroom {
-  --lc-green: #3d9470;
-  --lc-green-deep: #2f7358;
-  --lc-green-soft: #5fad88;
-  --lc-green-mist: #e8f4ee;
+  --lc-green: #47BC3E;
+  --lc-green-deep: #2E9A28;
+  --lc-green-soft: #8DF97C;
+  --lc-green-mist: #EEFCEB;
   --lc-yellow: #f0d55c;
   --lc-ink: #1a2e26;
   --lc-muted: #5b6f66;
@@ -15,15 +15,15 @@ body.page-live-classroom {
   --lc-surface: #ffffff;
   --lc-shadow: 0 12px 32px -20px rgba(31, 74, 56, 0.4);
   background:
-    radial-gradient(ellipse 55% 42% at 8% -8%, rgba(95, 173, 136, 0.2), transparent 58%),
-    radial-gradient(ellipse 45% 38% at 96% 0%, rgba(61, 148, 112, 0.12), transparent 52%),
+    radial-gradient(ellipse 55% 42% at 8% -8%, rgba(141, 249, 124, 0.2), transparent 58%),
+    radial-gradient(ellipse 45% 38% at 96% 0%, rgba(71, 188, 62, 0.12), transparent 52%),
     linear-gradient(180deg, #f5faf7 0%, #eef5f1 48%, #f8fbf9 100%) !important;
 }
 
 /* Soft top bar (not solid neon green block) */
 body.page-live-classroom .top-bar {
   background:
-    linear-gradient(90deg, rgba(61, 148, 112, 0.12) 0%, rgba(255, 255, 255, 0.96) 32%, #ffffff 100%) !important;
+    linear-gradient(90deg, rgba(71, 188, 62, 0.12) 0%, rgba(255, 255, 255, 0.96) 32%, #ffffff 100%) !important;
   color: var(--lc-ink) !important;
   border-bottom: 1px solid var(--lc-border) !important;
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.85), var(--lc-shadow) !important;
@@ -49,8 +49,9 @@ body.page-live-classroom .top-bar__title {
 }
 
 body.page-live-classroom .top-bar__dot {
-  background: var(--lc-green) !important;
-  opacity: 0.8;
+  background: var(--lc-green-soft) !important;
+  box-shadow: 0 0 0 3px rgba(141, 249, 124, 0.35);
+  opacity: 1;
 }
 
 body.page-live-classroom .top-bar__identity {
@@ -60,7 +61,7 @@ body.page-live-classroom .top-bar__identity {
 
 body.page-live-classroom .top-bar__pill {
   background: var(--lc-green-mist) !important;
-  border: 1px solid rgba(61, 148, 112, 0.28) !important;
+  border: 1px solid rgba(71, 188, 62, 0.28) !important;
   color: var(--lc-green-deep) !important;
   padding: 3px 10px !important;
 }
@@ -83,13 +84,13 @@ body.page-live-classroom .top-bar__ghost {
 
 body.page-live-classroom .top-bar__ghost:hover {
   background: var(--lc-green-mist) !important;
-  border-color: rgba(61, 148, 112, 0.35) !important;
+  border-color: rgba(71, 188, 62, 0.35) !important;
 }
 
 body.page-live-classroom .top-bar__status {
-  background: var(--lc-green-mist) !important;
-  color: var(--lc-green-deep) !important;
-  border: 1px solid rgba(61, 148, 112, 0.25) !important;
+  background: var(--lc-green-soft) !important;
+  color: #143d12 !important;
+  border: 1px solid rgba(71, 188, 62, 0.35) !important;
   border-radius: 999px !important;
   padding: 4px 10px !important;
   font-weight: 700 !important;
@@ -154,7 +155,7 @@ body.page-live-classroom .tabs button.active {
 
 body.page-live-classroom .tabs button:hover {
   color: var(--lc-green-deep) !important;
-  background: rgba(61, 148, 112, 0.06) !important;
+  background: rgba(71, 188, 62, 0.06) !important;
 }
 
 body.page-live-classroom .lesson-viewer,
@@ -193,7 +194,7 @@ body.page-live-classroom .video-header {
   margin: 0 !important;
   border-radius: 0 !important;
   padding: 7px 10px !important;
-  background: linear-gradient(90deg, rgba(47, 115, 88, 0.92), rgba(61, 148, 112, 0.85)) !important;
+  background: linear-gradient(90deg, rgba(46, 154, 40, 0.92), rgba(71, 188, 62, 0.85)) !important;
 }
 
 body.page-live-classroom .video.is-waiting-peer {
@@ -249,7 +250,7 @@ body.page-live-classroom .chat-header::before {
 body.page-live-classroom .chat-empty {
   color: var(--lc-muted) !important;
   background: var(--lc-green-mist) !important;
-  border: 1px dashed rgba(61, 148, 112, 0.28) !important;
+  border: 1px dashed rgba(71, 188, 62, 0.28) !important;
   border-radius: 12px !important;
   padding: 16px 12px !important;
 }
@@ -276,7 +277,7 @@ body.page-live-classroom .chat-input {
 
 body.page-live-classroom .chat-input:focus {
   border-color: var(--lc-green) !important;
-  box-shadow: 0 0 0 3px rgba(61, 148, 112, 0.16) !important;
+  box-shadow: 0 0 0 3px rgba(71, 188, 62, 0.16) !important;
   outline: none !important;
 }
 
@@ -286,7 +287,7 @@ body.page-live-classroom .chat-send {
   border-radius: 12px !important;
   width: 44px !important;
   height: 44px !important;
-  box-shadow: 0 8px 16px -10px rgba(47, 115, 88, 0.55) !important;
+  box-shadow: 0 8px 16px -10px rgba(46, 154, 40, 0.55) !important;
 }
 
 body.page-live-classroom .chat-send:hover {
@@ -439,7 +440,7 @@ body.page-live-classroom .remoed-ppt-toolbar {
   cursor: pointer;
   color: #fff;
   background: linear-gradient(135deg, var(--lc-green-deep), var(--lc-green));
-  box-shadow: 0 8px 18px -10px rgba(47, 115, 88, 0.55);
+  box-shadow: 0 8px 18px -10px rgba(46, 154, 40, 0.55);
 }
 
 .lc-info-ok:hover {

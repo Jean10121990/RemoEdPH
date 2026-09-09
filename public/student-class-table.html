@@ -8,6 +8,7 @@
   <title>Class Schedule - RemoEdPH</title>
       <link rel="stylesheet" href="modern-styles.css">
   <script src="vendor/luxon.min.js"></script>
+  <script src="js/classroom-entry.js?v=session-ended-1"></script>
   <style>
     body { 
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -2379,6 +2380,13 @@
         alert('No classroom ID set for this booking.');
         return;
       }
+      if (window.RemoedClassroomEntry) {
+        const gate = window.RemoedClassroomEntry.getEntryGate(booking);
+        if (!gate.allowed) {
+          alert(gate.message || 'You cannot enter this live classroom right now.');
+          return;
+        }
+      }
       const slotTime = (bookingDisplayDateTime(booking).slot) || booking.time || '';
       const roomUrl =
         'live-classroom.html?room=' +
@@ -2450,7 +2458,33 @@
       const isCancelled = isCancelledBookingStatus(booking.status);
       const withinEmergencyWindow = !isPastOrStarted && minutesUntil > 30;
       const joinBtn = document.getElementById('join-classroom-btn');
-      if (joinBtn) joinBtn.style.display = 'inline-block';
+      if (joinBtn) {
+        joinBtn.style.display = 'inline-block';
+        if (window.RemoedClassroomEntry && booking) {
+          const gate = window.RemoedClassroomEntry.getEntryGate(booking);
+          if (!gate.allowed && gate.code === 'SESSION_ENDED') {
+            joinBtn.disabled = true;
+            joinBtn.style.opacity = '0.65';
+            joinBtn.textContent = 'Session Ended';
+            joinBtn.title = gate.message || 'Session ended — re-entry is closed.';
+          } else if (!gate.allowed && gate.code === 'TOO_EARLY') {
+            joinBtn.disabled = true;
+            joinBtn.style.opacity = '0.65';
+            joinBtn.textContent = 'Not open yet';
+            joinBtn.title = gate.message || '';
+          } else {
+            joinBtn.disabled = false;
+            joinBtn.style.opacity = '1';
+            joinBtn.textContent = 'Enter Live Classroom';
+            joinBtn.title = '';
+          }
+        } else {
+          joinBtn.disabled = false;
+          joinBtn.style.opacity = '1';
+          joinBtn.textContent = 'Enter Live Classroom';
+          joinBtn.title = '';
+        }
+      }
 
       if (isCancelled || isPastOrStarted) {
         if (cancelRow) cancelRow.style.display = 'none';

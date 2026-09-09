@@ -3,10 +3,10 @@
  * Teacher: green accent. Student: blue accent.
  */
 .cim-shell.remoed-modal {
-  --cim-accent: #3d9470;
-  --cim-accent-deep: #2f7358;
-  --cim-accent-soft: rgba(61, 148, 112, 0.1);
-  --cim-accent-ring: rgba(61, 148, 112, 0.22);
+  --cim-accent: #47BC3E;
+  --cim-accent-deep: #2E9A28;
+  --cim-accent-soft: rgba(141, 249, 124, 0.18);
+  --cim-accent-ring: rgba(71, 188, 62, 0.28);
   --cim-ink: #0f172a;
   --cim-muted: #64748b;
   --cim-line: #e2e8f0;
@@ -15,6 +15,12 @@
   background: rgba(15, 23, 42, 0.42);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
+}
+
+/* Report Issue / Feedback must sit above Class Information */
+.page-teacher-class-table .remoed-modal.remoed-modal--stacked,
+.remoed-modal.remoed-modal--stacked {
+  z-index: 2300;
 }
 
 body.student-portal .cim-shell.remoed-modal,

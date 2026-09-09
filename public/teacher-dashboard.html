@@ -9,7 +9,7 @@
     <script src="js/dashboard-history-lock.js?v=1"></script>
     <title>RemoEdPH Dashboard</title>
     <link rel="stylesheet" href="modern-styles.css">
-    <link rel="stylesheet" href="css/teacher-sidebar.css?v=relax-green-1">
+    <link rel="stylesheet" href="css/teacher-sidebar.css?v=mint-forest-1">
     <link rel="stylesheet" href="css/global-portal.css">
 <!-- Remo AI Chatbot Styles -->
 <script src="https://cdn.jsdelivr.net/npm/luxon@3.5.0/build/global/luxon.min.js"></script>
@@ -19,7 +19,7 @@
 <script src="teacher-tour.js"></script>
 <script src="js/user-session.js"></script>
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="css/portal-chrome-compact.css?v=relax-green-1">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css?v=mint-forest-1">
 </head>
 <body class="page-teacher-dashboard teacher-portal">
     <!-- Main Layout: Sidebar + Content -->
@@ -46,10 +46,10 @@
                         <div class="nav-dropdown-header">
                             <span>Notifications</span>
                             <div style="display: flex; gap: 8px; align-items: center;">
-                                <button onclick="markAllNotificationsAsRead()" style="background: none; border: none; cursor: pointer; color: #3d9470; font-size: 12px; padding: 4px 8px; border-radius: 4px; transition: all 0.2s;" title="Mark all as read" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='none'">
+                                <button onclick="markAllNotificationsAsRead()" style="background: none; border: none; cursor: pointer; color: #47BC3E; font-size: 12px; padding: 4px 8px; border-radius: 4px; transition: all 0.2s;" title="Mark all as read" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='none'">
                                     Mark All Read
                                 </button>
-                                <button onclick="refreshNotifications()" style="background: none; border: none; cursor: pointer; color: #3d9470;">
+                                <button onclick="refreshNotifications()" style="background: none; border: none; cursor: pointer; color: #47BC3E;">
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                                         <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
                                     </svg>
@@ -82,7 +82,7 @@
         
         <div id="teacher-sidebar-root"></div>
         <script src="js/teacher-sidebar.js?v=lb-nav-2"></script>
-        <script src="js/teacher-page-header.js?v=relax-green-1"></script>
+        <script src="js/teacher-page-header.js?v=mint-forest-1"></script>
         <script>
             TeacherSidebar.render('teacher-sidebar-root', 'dashboard');
             TeacherPageHeader.polishExisting('dashboard');
@@ -92,7 +92,7 @@
             <div class="dashboard-top-row">
                 <div class="remoed-section dashboard-top-row__time">
                     <div class="remoed-section-title" style="display: flex; align-items: center; gap: 10px;">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="color: #3d9470;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="color: #47BC3E;">
                             <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"/>
                             <path d="M12.5 7H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
                         </svg>
@@ -100,7 +100,7 @@
                     </div>
                     <div style="background: #f8f9fa; border: 1px solid #e0e6ed; border-radius: 8px; padding: 12px;" id="time-tracking-card">
                         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="color: #3d9470;">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="color: #47BC3E;">
                                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
                             </svg>
                             <div style="font-size: 1rem; font-weight: 600; color: #333;">Teacher Time Log</div>
@@ -120,7 +120,7 @@
                                 </div>
                             </div>
                             <div class="time-log-buttons">
-                                <button id="time-in-btn" style="background: #28a745; color: white; padding: 8px 14px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: all 0.2s ease; white-space: nowrap;">
+                                <button id="time-in-btn" style="background: #47BC3E; color: white; padding: 8px 14px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: all 0.2s ease; white-space: nowrap;">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 6px; vertical-align: middle;">
                                         <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
                                     </svg>
@@ -132,7 +132,7 @@
                                     </svg>
                                     Time Out
                                 </button>
-                                <button class="remoed-training-btn" id="view-log-btn" style="background: #3d9470; color: white; padding: 8px 14px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: all 0.2s ease; white-space: nowrap;">
+                                <button class="remoed-training-btn" id="view-log-btn" style="background: #47BC3E; color: white; padding: 8px 14px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: all 0.2s ease; white-space: nowrap;">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 6px; vertical-align: middle;">
                                         <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
                                     </svg>
@@ -146,7 +146,7 @@
 
                 <div class="remoed-section dashboard-top-row__announcements">
                     <div class="remoed-section-title" style="display: flex; align-items: center; gap: 10px;">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="color: #3d9470;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="color: #47BC3E;">
                             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
                         </svg>
                         Announcements and Upcoming Trainings
@@ -220,7 +220,7 @@
                 <div class="chart-card">
                     <div class="chart-header">
                         <span class="chart-title">Average Rating</span>
-                        <div class="chart-icon" style="background: linear-gradient(135deg, #3d9470, #2f7358);">
+                        <div class="chart-icon" style="background: linear-gradient(135deg, #47BC3E, #2E9A28);">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
                                 <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                             </svg>
@@ -242,7 +242,7 @@
                     <!-- Community & Social Responsibility -->
                     <div class="remoed-section" id="community-responsibility">
                         <div class="remoed-section-title" style="display: flex; align-items: center; gap: 10px;">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="color: #3d9470;">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="color: #47BC3E;">
                                 <path d="M12 12c2.21 0 4-1.79 4-4S14.21 4 12 4 8 5.79 8 8s1.79 4 4 4zm0 2c-3.33 0-8 1.67-8 5v1h16v-1c0-3.33-4.67-5-8-5z"/>
                             </svg>
                             Community & Social Responsibility
@@ -304,7 +304,7 @@
                     <!-- Referral Link (Teacher) -->
                     <div class="remoed-section" id="teacher-referral-box">
                         <div class="remoed-section-title" style="display:flex;align-items:center;gap:10px;">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="color:#3d9470;">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="color:#47BC3E;">
                                 <path d="M10 13a5 5 0 0 1 0-7l1-1a5 5 0 0 1 7 7l-1 1"/>
                                 <path d="M14 11a5 5 0 0 1 0 7l-1 1a5 5 0 0 1-7-7l1-1"/>
                             </svg>
@@ -316,10 +316,10 @@
                                 <div style="font-size:0.75rem;font-weight:700;color:#334155;margin-bottom:4px;">Subscription referral link</div>
                                 <div style="display:flex;gap:8px;align-items:center;">
                                     <input id="teacher-ref-link" readonly style="flex:1;padding:10px;border:1px solid #d1d5db;border-radius:8px;font-size:0.85rem;" value="Loading…" />
-                                    <button type="button" onclick="copyRefLink('teacher-ref-link')" style="padding:10px 12px;border:none;border-radius:8px;background:#3d9470;color:#fff;font-weight:800;cursor:pointer;">Copy</button>
+                                    <button type="button" onclick="copyRefLink('teacher-ref-link')" style="padding:10px 12px;border:none;border-radius:8px;background:#47BC3E;color:#fff;font-weight:800;cursor:pointer;">Copy</button>
                                 </div>
                                 <p style="margin:10px 0 0;font-size:0.85rem;">
-                                    <a href="teacher-referrals.html" style="color:#3d9470;font-weight:800;text-decoration:none;">View referral stats, reference numbers &amp; earnings →</a>
+                                    <a href="teacher-referrals.html" style="color:#47BC3E;font-weight:800;text-decoration:none;">View referral stats, reference numbers &amp; earnings →</a>
                                 </p>
                             </div>
                         </div>
@@ -500,7 +500,7 @@
             if (!chartContainer) return;
             
             const metrics = [
-                { label: 'Completed Classes', value: analysis.completedClasses || 0, color: '#28a745', max: totalScheduled },
+                { label: 'Completed Classes', value: analysis.completedClasses || 0, color: '#47BC3E', max: totalScheduled },
                 { label: 'Teacher Absences', value: analysis.teacherAbsences || 0, color: '#dc3545', max: totalScheduled },
                 { label: 'Cancellations', value: analysis.cancellations || 0, color: '#ffc107', max: totalScheduled },
                 { label: 'Late Arrivals', value: analysis.lateArrivals || 0, color: '#fd7e14', max: analysis.completedClasses || 1 },
@@ -697,7 +697,7 @@
                     
                     // Add "View All" option if there are more notifications
                     if (notifications.length > 10) {
-                        notificationsHTML += `<div class="nav-dropdown-item" style="text-align: center; color: #3d9470; font-weight: 500; border-top: 1px solid #e2e8f0; margin-top: 8px; padding-top: 12px; cursor: pointer;" onclick="viewAllNotifications()">
+                        notificationsHTML += `<div class="nav-dropdown-item" style="text-align: center; color: #47BC3E; font-weight: 500; border-top: 1px solid #e2e8f0; margin-top: 8px; padding-top: 12px; cursor: pointer;" onclick="viewAllNotifications()">
                             View All ${notifications.length} Notifications
                         </div>`;
                     }
@@ -917,7 +917,7 @@
                                     <div style="font-size: 0.9rem;">${n.message}</div>
                                     <div style="font-size: 0.8rem; color: #666;">${time}</div>
                                 </div>
-                                ${!n.read ? '<span style="background: #3d9470; color: white; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem;">New</span>' : ''}
+                                ${!n.read ? '<span style="background: #47BC3E; color: white; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem;">New</span>' : ''}
                             </div>
                         </div>`;
                     }).join('');
@@ -1010,7 +1010,7 @@
                                     <div style="font-size: 0.8rem; color: #666;">${booking.studentId?.firstName || booking.studentId?.username || 'Unknown'}</div>
                                 </div>
                                 <button onclick="RemoedClassroomEntry.hrefIfAllowed('live-classroom.html?room=${booking.classroomId}&type=teacher&bookingId=${booking._id}&slot=${encodeURIComponent(slotPh || booking.time)}', { date: '${booking.date}', time: '${booking.time}', scheduledStartTime: '${booking.scheduledStartTime || ''}', dateTimeUtc: '${booking.dateTimeUtc || ''}' })" 
-                                        style="background: #3d9470; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; cursor: pointer;">
+                                        style="background: #47BC3E; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; cursor: pointer;">
                                     Join
                                 </button>
                             </div>
@@ -2027,7 +2027,7 @@
       timeInBtn.style.display = 'inline-block';
       timeInBtn.disabled = !status.canTimeIn;
       timeInBtn.textContent = 'Time In';
-      timeInBtn.style.background = '#28a745';
+      timeInBtn.style.background = '#47BC3E';
       timeInBtn.style.color = 'white';
       timeInBtn.style.cursor = 'pointer';
       timeInBtn.style.border = 'none';
