@@ -268,7 +268,8 @@ router.post('/create-link', optionalVerifyStudent, async (req, res) => {
             usd_list: String(totals.usdList),
             usd_founder_discount: String(totals.usdFounderDiscount),
             usd_total: String(totals.usdTotal),
-            exchange_rate_used: String(EXCHANGE_RATE_PHP)
+            exchange_rate_used: String(EXCHANGE_RATE_PHP),
+            referralCode: String(referralCode || ''),
           }
         }
       }
@@ -296,6 +297,26 @@ router.post('/create-link', optionalVerifyStudent, async (req, res) => {
       return res.status(502).json({ success: false, error: 'PayMongo did not return checkout_url' });
     }
 
+    // Persist referral on existing student at checkout time (so webhook refill can award commission).
+    const refTrim = String(referralCode || '').trim();
+    if (resolvedStudent && refTrim) {
+      try {
+        const {
+          resolveReferralOwner,
+          applyReferralFields,
+          recordReferralSignup,
+        } = require('./utils/awardReferralCommission');
+        const owner = await resolveReferralOwner(refTrim);
+        if (owner) {
+          applyReferralFields(resolvedStudent, owner);
+          await resolvedStudent.save();
+          await recordReferralSignup(resolvedStudent);
+        }
+      } catch (refErr) {
+        console.warn('[payments/create-link] referral attach failed:', refErr.message);
+      }
+    }
+
     await PendingRegistration.create({
       registrationId,
       username: resolvedUsername,
@@ -305,7 +326,7 @@ router.post('/create-link', optionalVerifyStudent, async (req, res) => {
       plan: totals.planId,
       amount: totals.phpTotal,
       description: lineItemDescription,
-      referralCode: String(referralCode || ''),
+      referralCode: refTrim,
       paymongoCheckoutId: checkoutId,
       checkoutUrl,
       status: 'pending'

@@ -350,6 +350,26 @@ async function handlePaymongoWebhook(req, res) {
 
       if (applyResult.duplicate) {
         console.log('ℹ️ [PAYMONGO WEBHOOK] Duplicate webhook ignored, payment already processed for student', existing._id);
+        try {
+          const {
+            resolveReferralOwner,
+            applyReferralFields,
+            awardReferralCommissionOnPayment,
+          } = require('./utils/awardReferralCommission');
+          if (!existing.referralCode && pending.referralCode) {
+            const owner = await resolveReferralOwner(pending.referralCode);
+            if (owner) {
+              applyReferralFields(existing, owner);
+              await existing.save();
+            }
+          }
+          await awardReferralCommissionOnPayment(existing, {
+            amountPaid: Number(pending.amount || 0) || 0,
+            plan: planId || pending.plan || existing.subscriptionPlan || '',
+          });
+        } catch (refDupErr) {
+          console.warn('[PAYMONGO WEBHOOK] Referral award on duplicate path failed:', refDupErr.message);
+        }
         await markPaymongoWebhookEventProcessed(paymongoEventId, eventType);
         return sendAck({ processed: true, duplicate: true, refill: true });
       }

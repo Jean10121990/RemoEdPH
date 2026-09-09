@@ -161,11 +161,34 @@ router.get('/referral-link', verifyToken, requireTeacher, async (req, res) => {
 router.get('/referrals', verifyToken, requireTeacher, async (req, res) => {
   try {
     const teacherId = String(req.user.teacherId || '');
+    const teacher = await Teacher.findOne({ teacherId }).select('teacherId referralCode').lean();
+    const referralCode = teacher && teacher.referralCode ? String(teacher.referralCode) : '';
+
+    // Backfill Referral rows for students who already paid via this teacher's link
+    // before commission tracking was wired into PayMongo.
+    if (referralCode) {
+      try {
+        const { reconcileReferralsForOwner } = require('./utils/awardReferralCommission');
+        await reconcileReferralsForOwner({
+          ownerType: 'teacher',
+          ownerId: teacherId,
+          referralCode,
+        });
+      } catch (reconcileErr) {
+        console.warn('Teacher referral reconcile failed:', reconcileErr.message);
+      }
+    }
+
     const { from, to } = req.query;
     const filter = {
-      ownerType: 'teacher',
-      ownerId: teacherId
+      $or: [
+        { ownerType: 'teacher', ownerId: teacherId },
+        { teacherId }, // legacy rows
+      ],
     };
+    if (referralCode) {
+      filter.$or.push({ referralCode });
+    }
     if (from || to) {
       filter.createdAt = {};
       if (from != null && String(from).trim() !== '') {
@@ -186,7 +209,17 @@ router.get('/referrals', verifyToken, requireTeacher, async (req, res) => {
 
     const list = await Referral.find(filter).sort({ createdAt: -1 }).limit(500).lean();
 
-    const totals = list.reduce(
+    // De-dupe if legacy teacherId + ownerId both matched same doc
+    const seen = new Set();
+    const unique = [];
+    for (const r of list) {
+      const id = String(r._id);
+      if (seen.has(id)) continue;
+      seen.add(id);
+      unique.push(r);
+    }
+
+    const totals = unique.reduce(
       (acc, r) => {
         acc.count += 1;
         acc.totalAmountPaid += Number(r.amountPaid || 0) || 0;
@@ -201,7 +234,7 @@ router.get('/referrals', verifyToken, requireTeacher, async (req, res) => {
       { count: 0, successfulCount: 0, pendingCount: 0, totalAmountPaid: 0, totalCommission: 0 }
     );
 
-    const referrals = list.map((r) => {
+    const referrals = unique.map((r) => {
       const id = String(r._id);
       return {
         id,

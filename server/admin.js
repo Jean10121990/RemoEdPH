@@ -1595,6 +1595,27 @@ async function ensureTeacherReferralCode(teacher) {
 router.get('/referrals', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
     const { teacherId, from, to } = req.query;
+
+    // Best-effort backfill so paid referral checkouts appear even if Referral rows were never written.
+    try {
+      const { reconcileReferralsForOwner } = require('./utils/awardReferralCommission');
+      const teacherFilter = teacherId ? { teacherId: String(teacherId) } : {};
+      const teachers = await Teacher.find(teacherFilter)
+        .select('teacherId referralCode')
+        .limit(teacherId ? 1 : 200)
+        .lean();
+      for (const t of teachers) {
+        if (!t.referralCode) continue;
+        await reconcileReferralsForOwner({
+          ownerType: 'teacher',
+          ownerId: String(t.teacherId),
+          referralCode: String(t.referralCode),
+        });
+      }
+    } catch (reconcileErr) {
+      console.warn('Admin referral reconcile failed:', reconcileErr.message);
+    }
+
     const filter = {};
     if (teacherId) filter.teacherId = String(teacherId);
     if (from || to) {
