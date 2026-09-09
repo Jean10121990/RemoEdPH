@@ -1132,6 +1132,7 @@ router.post('/student-register', authRegisterLimiter, async (req, res) => {
       email: email,
       password: hashedPassword,
       parentName: req.body.parentName || '',
+      parentEmail: String(req.body.parentEmail || email || '').trim(),
       contact: req.body.contact || ''
       // firstName and lastName will be set when they update their profile
     });

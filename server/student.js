@@ -237,7 +237,10 @@ router.get('/profile', verifyToken, requireStudent, async (req, res) => {
         hobbies: student.hobbies,
         parentName: student.parentName,
         parentContact: student.parentContact,
+        parentEmail: student.parentEmail || '',
         emergencyContact: student.emergencyContact,
+        emergencyContactPerson: student.emergencyContactPerson || '',
+        emergencyContactNumber: student.emergencyContactNumber || '',
         aboutMe: student.aboutMe,
         profilePicture: student.profilePicture,
         education: student.education,
@@ -303,10 +306,21 @@ router.post('/profile', verifyToken, requireStudent, async (req, res) => {
       hobbies,
       parentName,
       parentContact,
+      parentEmail,
       emergencyContact,
+      emergencyContactPerson,
+      emergencyContactNumber,
       aboutMe,
       education
     } = req.body;
+
+    const person = String(emergencyContactPerson || '').trim();
+    const number = String(emergencyContactNumber || '').trim();
+    const legacyEmergency = String(emergencyContact || '').trim();
+    const combinedEmergency =
+      person || number
+        ? [person, number].filter(Boolean).join(' · ')
+        : legacyEmergency;
 
     const updateData = {
       firstName: firstName || '',
@@ -323,7 +337,10 @@ router.post('/profile', verifyToken, requireStudent, async (req, res) => {
       hobbies: hobbies || '',
       parentName: parentName || '',
       parentContact: encryptPiiString(parentContact || ''),
-      emergencyContact: encryptPiiString(emergencyContact || ''),
+      parentEmail: String(parentEmail || '').trim(),
+      emergencyContact: encryptPiiString(combinedEmergency || ''),
+      emergencyContactPerson: person,
+      emergencyContactNumber: encryptPiiString(number),
       aboutMe: aboutMe || '',
       education: education || []
     };

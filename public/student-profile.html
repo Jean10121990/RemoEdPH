@@ -744,8 +744,20 @@
                                     <label class="form-label">📞 Parent/Guardian Contact</label>
                                     <input type="tel" class="form-input" id="parentContact" placeholder="Parent/Guardian Contact" disabled>
                                 </div>
-                                <div class="form-group full-width">
-                                    <label class="form-label">🚨 Emergency Contact</label>
+                                <div class="form-group">
+                                    <label class="form-label">📧 Parent/Guardian Email</label>
+                                    <input type="email" class="form-input" id="parentEmail" placeholder="Parent/Guardian Email" disabled>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">🚨 Emergency Contact Person</label>
+                                    <input type="text" class="form-input" id="emergencyContactPerson" placeholder="Emergency contact person" disabled>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">📞 Emergency Contact Number</label>
+                                    <input type="tel" class="form-input" id="emergencyContactNumber" placeholder="Emergency contact number" disabled>
+                                </div>
+                                <div class="form-group full-width" id="emergency-contact-legacy-wrap" style="display: none;">
+                                    <label class="form-label">🚨 Emergency Contact (previous notes)</label>
                                     <textarea class="form-textarea" id="emergencyContact" placeholder="Emergency Contact Information" disabled></textarea>
                                 </div>
                             </div>
@@ -1306,7 +1318,23 @@
             document.getElementById('hobbies').value = profile.hobbies || '';
             document.getElementById('parentName').value = profile.parentName || '';
             document.getElementById('parentContact').value = profile.parentContact || '';
-            document.getElementById('emergencyContact').value = profile.emergencyContact || '';
+            document.getElementById('parentEmail').value = profile.parentEmail || profile.email || '';
+            const emergencyPerson = profile.emergencyContactPerson || '';
+            const emergencyNumber = profile.emergencyContactNumber || '';
+            document.getElementById('emergencyContactPerson').value = emergencyPerson;
+            document.getElementById('emergencyContactNumber').value = emergencyNumber;
+            const legacyEmergency = profile.emergencyContact || '';
+            const legacyWrap = document.getElementById('emergency-contact-legacy-wrap');
+            const legacyInput = document.getElementById('emergencyContact');
+            if (legacyInput) legacyInput.value = legacyEmergency;
+            if (legacyWrap) {
+                const showLegacy = !!(legacyEmergency && !emergencyPerson && !emergencyNumber);
+                legacyWrap.style.display = showLegacy ? 'block' : 'none';
+                if (showLegacy && !emergencyPerson && legacyEmergency) {
+                    document.getElementById('emergencyContactPerson').value = legacyEmergency;
+                    legacyWrap.style.display = 'none';
+                }
+            }
             document.getElementById('aboutMe').value = profile.aboutMe || '';
 
             // Update profile display
@@ -1462,7 +1490,10 @@
                     hobbies: document.getElementById('hobbies').value,
                     parentName: document.getElementById('parentName').value,
                     parentContact: document.getElementById('parentContact').value,
-                    emergencyContact: document.getElementById('emergencyContact').value,
+                    parentEmail: document.getElementById('parentEmail').value,
+                    emergencyContactPerson: document.getElementById('emergencyContactPerson').value,
+                    emergencyContactNumber: document.getElementById('emergencyContactNumber').value,
+                    emergencyContact: document.getElementById('emergencyContact')?.value || '',
                     aboutMe: document.getElementById('aboutMe').value
                 };
 

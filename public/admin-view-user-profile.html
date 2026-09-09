@@ -207,9 +207,31 @@
 
                         if (type === 'student') {
                             var name = [u.firstName, u.middleName, u.lastName].filter(Boolean).join(' ').trim() || '—';
+                            var birthdayStr = '—';
+                            if (u.birthday) {
+                                try {
+                                    birthdayStr = new Date(u.birthday).toLocaleDateString('en-US', {
+                                        month: 'short', day: 'numeric', year: 'numeric'
+                                    });
+                                    if (birthdayStr === 'Invalid Date') birthdayStr = String(u.birthday);
+                                } catch (e) {
+                                    birthdayStr = String(u.birthday);
+                                }
+                            }
+                            var emergencyPerson = u.emergencyContactPerson || '';
+                            var emergencyNumber = u.emergencyContactNumber || '';
+                            if (!emergencyPerson && !emergencyNumber && u.emergencyContact) {
+                                emergencyPerson = u.emergencyContact;
+                            }
                             rows.push(['Display name', name]);
                             rows.push(['Username', u.username || '—']);
-                            rows.push(['Email', u.email || '—']);
+                            rows.push(['Account email', u.email || '—']);
+                            rows.push(['Birthday', birthdayStr]);
+                            rows.push(['Parent/Guardian name', u.parentName || '—']);
+                            rows.push(['Parent/Guardian contact', u.parentContact || '—']);
+                            rows.push(['Parent/Guardian email', u.parentEmail || u.email || '—']);
+                            rows.push(['Emergency contact person', emergencyPerson || '—']);
+                            rows.push(['Emergency contact number', emergencyNumber || '—']);
                             rows.push(['Student code', u.studentCode || '—']);
                             rows.push(['Level', u.level || u.cefrLevel || '—']);
                             rows.push(['Status', u.status || '—']);

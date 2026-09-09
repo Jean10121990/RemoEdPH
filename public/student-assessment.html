@@ -90,6 +90,105 @@
         color: var(--remoed-brand-blue);
         border: 2px solid rgba(90, 103, 216, 0.45);
       }
+      .cefr-guides {
+        margin: 28px 0 8px;
+        text-align: left;
+      }
+      .cefr-guides h2 {
+        margin-bottom: 8px;
+      }
+      .cefr-guides__lead {
+        font-size: 1rem !important;
+        color: #475569 !important;
+        margin-bottom: 14px !important;
+        line-height: 1.6 !important;
+      }
+      .cefr-guide-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 14px;
+      }
+      .cefr-guide-tab {
+        border: 2px solid rgba(90, 103, 216, 0.25);
+        background: #f8fafc;
+        color: #334155;
+        border-radius: 999px;
+        padding: 8px 16px;
+        font-weight: 700;
+        font-size: 0.92rem;
+        cursor: pointer;
+        font-family: inherit;
+      }
+      .cefr-guide-tab.active {
+        background: linear-gradient(135deg, #5a67d8, #6b8afd);
+        color: #fff;
+        border-color: transparent;
+        box-shadow: 0 6px 16px rgba(90, 103, 216, 0.28);
+      }
+      .cefr-guide-panel {
+        display: none;
+        background: #f8fbff;
+        border: 1px solid rgba(90, 103, 216, 0.15);
+        border-radius: 16px;
+        padding: 12px;
+      }
+      .cefr-guide-panel.active { display: block; }
+      .cefr-guide-panel img {
+        width: 100%;
+        height: auto;
+        display: block;
+        border-radius: 12px;
+        cursor: zoom-in;
+      }
+      .cefr-guide-panel figcaption {
+        margin-top: 10px;
+        font-size: 0.88rem;
+        color: #64748b;
+        text-align: center;
+      }
+      .results-container .cefr-guides {
+        margin-top: 24px;
+        max-width: 720px;
+        margin-left: auto;
+        margin-right: auto;
+      }
+      .cefr-lightbox {
+        position: fixed;
+        inset: 0;
+        z-index: 11000;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        background: rgba(15, 23, 42, 0.72);
+        box-sizing: border-box;
+      }
+      .cefr-lightbox.is-open { display: flex; }
+      .cefr-lightbox img {
+        max-width: min(960px, 100%);
+        max-height: 92vh;
+        width: auto;
+        height: auto;
+        border-radius: 12px;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.35);
+        background: #fff;
+      }
+      .cefr-lightbox__close {
+        position: absolute;
+        top: 16px;
+        right: 18px;
+        border: none;
+        background: #fff;
+        color: #0f172a;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        font-size: 1.4rem;
+        font-weight: 700;
+        cursor: pointer;
+        line-height: 1;
+      }
     </style>
 </head>
 <body  class="student-portal page-student-assessment">
@@ -121,9 +220,28 @@
                             <li>Fun and colorful questions designed for young learners</li>
                             <li>Pictures and simple words you'll recognize</li>
                             <li>No pressure - just do your best!</li>
-                            <li>Results will show your level: A1 (Beginner) or A2 (Elementary)</li>
+                            <li>Results will show your CEFR level (for example A1 or A2)</li>
                             <li>Takes about 10-15 minutes to complete</li>
                         </ul>
+
+                        <div class="cefr-guides" aria-label="RemoEd level guides">
+                            <h2>🗺️ RemoEd Level Guides</h2>
+                            <p class="cefr-guides__lead">
+                                See how RemoEd Kids and RemoEd Teens levels line up with CEFR — so you and your parents know what each level means.
+                            </p>
+                            <div class="cefr-guide-tabs" role="tablist">
+                                <button type="button" class="cefr-guide-tab active" role="tab" aria-selected="true" data-cefr-guide="kids">RemoEd Kids</button>
+                                <button type="button" class="cefr-guide-tab" role="tab" aria-selected="false" data-cefr-guide="teens">RemoEd Teens</button>
+                            </div>
+                            <figure class="cefr-guide-panel active" id="cefr-guide-kids" data-cefr-panel="kids">
+                                <img src="/images/cefr/remoed-kids-cefr-guide.jpg" alt="RemoEd and CEFR Alignment Guide for kids: Little Seeds, Sprouts, Saplings, and Young Steward" loading="lazy" data-cefr-zoom>
+                                <figcaption>RemoEd Kids · Pre-A1 to A1</figcaption>
+                            </figure>
+                            <figure class="cefr-guide-panel" id="cefr-guide-teens" data-cefr-panel="teens">
+                                <img src="/images/cefr/remoed-teens-cefr-guide.jpg" alt="RemoEd Teens and CEFR Alignment Guide: Trailblazer, Explorer, Voyager, and Ambassador" loading="lazy" data-cefr-zoom>
+                                <figcaption>RemoEd Teens · A1 to B2</figcaption>
+                            </figure>
+                        </div>
                         
                         <button class="start-btn" onclick="startAssessment()">
                             🚀 Let's Start! 🎉
@@ -145,6 +263,25 @@
                     
                     <div class="level-description" id="level-description">
                         <!-- Description will be inserted here -->
+                    </div>
+
+                    <div class="cefr-guides" aria-label="RemoEd level guides">
+                        <h2 style="text-align:center;">🗺️ Where do you fit?</h2>
+                        <p class="cefr-guides__lead" style="text-align:center;">
+                            Compare your CEFR result with RemoEd Kids and RemoEd Teens levels below.
+                        </p>
+                        <div class="cefr-guide-tabs" role="tablist" style="justify-content:center;">
+                            <button type="button" class="cefr-guide-tab active" role="tab" aria-selected="true" data-cefr-guide="kids-result">RemoEd Kids</button>
+                            <button type="button" class="cefr-guide-tab" role="tab" aria-selected="false" data-cefr-guide="teens-result">RemoEd Teens</button>
+                        </div>
+                        <figure class="cefr-guide-panel active" data-cefr-panel="kids-result">
+                            <img src="/images/cefr/remoed-kids-cefr-guide.jpg" alt="RemoEd Kids CEFR alignment guide" loading="lazy" data-cefr-zoom>
+                            <figcaption>RemoEd Kids · Pre-A1 to A1</figcaption>
+                        </figure>
+                        <figure class="cefr-guide-panel" data-cefr-panel="teens-result">
+                            <img src="/images/cefr/remoed-teens-cefr-guide.jpg" alt="RemoEd Teens CEFR alignment guide" loading="lazy" data-cefr-zoom>
+                            <figcaption>RemoEd Teens · A1 to B2</figcaption>
+                        </figure>
                     </div>
                     
                     <div class="action-buttons">
@@ -168,8 +305,63 @@
         </div>
     </div>
 
+    <div id="cefr-lightbox" class="cefr-lightbox" role="dialog" aria-modal="true" aria-label="Level guide preview" hidden>
+        <button type="button" class="cefr-lightbox__close" id="cefr-lightbox-close" aria-label="Close">&times;</button>
+        <img id="cefr-lightbox-img" src="" alt="RemoEd CEFR level guide enlarged">
+    </div>
+
     <script src="avatar-helper.js"></script>
     <script>
+        (function initCefrGuides() {
+            function switchGuide(root, key) {
+                if (!root || !key) return;
+                root.querySelectorAll('.cefr-guide-tab').forEach(function (btn) {
+                    var on = btn.getAttribute('data-cefr-guide') === key;
+                    btn.classList.toggle('active', on);
+                    btn.setAttribute('aria-selected', on ? 'true' : 'false');
+                });
+                root.querySelectorAll('[data-cefr-panel]').forEach(function (panel) {
+                    panel.classList.toggle('active', panel.getAttribute('data-cefr-panel') === key);
+                });
+            }
+
+            document.addEventListener('click', function (e) {
+                var tab = e.target.closest('.cefr-guide-tab');
+                if (tab) {
+                    var root = tab.closest('.cefr-guides');
+                    switchGuide(root, tab.getAttribute('data-cefr-guide'));
+                    return;
+                }
+                var zoom = e.target.closest('[data-cefr-zoom]');
+                if (zoom && zoom.src) {
+                    var box = document.getElementById('cefr-lightbox');
+                    var img = document.getElementById('cefr-lightbox-img');
+                    if (!box || !img) return;
+                    img.src = zoom.src;
+                    img.alt = zoom.alt || 'RemoEd CEFR level guide';
+                    box.hidden = false;
+                    box.classList.add('is-open');
+                    return;
+                }
+                if (e.target.id === 'cefr-lightbox' || e.target.id === 'cefr-lightbox-close') {
+                    var lb = document.getElementById('cefr-lightbox');
+                    if (lb) {
+                        lb.classList.remove('is-open');
+                        lb.hidden = true;
+                    }
+                }
+            });
+
+            document.addEventListener('keydown', function (e) {
+                if (e.key !== 'Escape') return;
+                var lb = document.getElementById('cefr-lightbox');
+                if (lb && lb.classList.contains('is-open')) {
+                    lb.classList.remove('is-open');
+                    lb.hidden = true;
+                }
+            });
+        })();
+
         // Assessment Questions - CEFR A1/A2 Level for Young Learners
         const assessmentQuestions = [
             {
