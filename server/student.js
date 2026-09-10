@@ -72,6 +72,10 @@ const { body, validationResult } = require('express-validator');
 const { encryptPiiString } = require('./utils/piiCrypto');
 const { getBookingStartAsDate } = require('./utils/bookingScheduledStart');
 const {
+  getClassroomEntryGate,
+  EARLY_ENTRY_MINUTES,
+} = require('./services/classroomEntryWindow');
+const {
   processImage,
   extractImageBufferFromDataUrl,
   getUploadsRoot,
@@ -1093,10 +1097,100 @@ router.get('/lesson-progress', verifyToken, requireStudent, async (req, res) => 
       levels: require('./config/curriculumLevels').CURRICULUM_LEVELS,
       batchesPerLevel: 10,
       lessonsPerBatch: 22,
+      lessonsPerLevel: 220,
     });
   } catch (err) {
     console.error('GET /student/lesson-progress:', err);
     res.status(500).json({ error: 'Failed to load lesson progress' });
+  }
+});
+
+/**
+ * Lesson title/description for learning-journey node detail.
+ * Query: level + lessonNumber (1–220), or level + batch + lesson (1–22).
+ */
+router.get('/journey-lesson', verifyToken, requireStudent, async (req, res) => {
+  try {
+    const {
+      CANONICAL_TO_LEGACY,
+    } = require('./config/curriculumLevels');
+    const level = normalizeLevelKey(req.query.level);
+    let lessonNumber = parseInt(String(req.query.lessonNumber || ''), 10);
+    if (!Number.isFinite(lessonNumber) || lessonNumber < 1) {
+      const batch = parseInt(String(req.query.batch || ''), 10);
+      const lesson = parseInt(String(req.query.lesson || ''), 10);
+      if (
+        Number.isFinite(batch) &&
+        batch >= 1 &&
+        batch <= 10 &&
+        Number.isFinite(lesson) &&
+        lesson >= 1 &&
+        lesson <= 22
+      ) {
+        lessonNumber = (batch - 1) * 22 + lesson;
+      }
+    }
+    if (!level || !Number.isFinite(lessonNumber) || lessonNumber < 1 || lessonNumber > 220) {
+      return res.status(400).json({
+        success: false,
+        error: 'Valid level and lessonNumber (1–220) or batch+lesson are required',
+      });
+    }
+
+    const legacy = CANONICAL_TO_LEGACY[level];
+    const levelMatchers = [{ level }, { level: 'all' }];
+    if (legacy) levelMatchers.push({ level: legacy });
+
+    const curricula = await Curriculum.find({
+      isActive: { $ne: false },
+      $or: levelMatchers,
+    })
+      .select('_id title level')
+      .lean();
+
+    if (!curricula.length) {
+      return res.status(404).json({ success: false, error: 'No curriculum for this level' });
+    }
+
+    const curIds = curricula.map((c) => c._id);
+    const lessonDoc = await Lesson.findOne({
+      curriculumId: { $in: curIds },
+      lessonNumber,
+      isActive: { $ne: false },
+    })
+      .select('_id title description lessonNumber estimatedDuration curriculumId')
+      .lean();
+
+    const batch = Math.ceil(lessonNumber / 22);
+    const lessonInBatch = ((lessonNumber - 1) % 22) + 1;
+    const cur =
+      lessonDoc &&
+      curricula.find((c) => String(c._id) === String(lessonDoc.curriculumId));
+
+    res.json({
+      success: true,
+      level,
+      lessonNumber,
+      batch,
+      lesson: lessonInBatch,
+      lessonId: lessonDoc ? String(lessonDoc._id) : null,
+      title: lessonDoc
+        ? lessonDoc.title
+        : `Lesson ${lessonNumber}`,
+      description: lessonDoc ? lessonDoc.description || '' : '',
+      estimatedDuration: lessonDoc ? lessonDoc.estimatedDuration || 30 : 30,
+      curriculumTitle: cur ? cur.title : null,
+      found: !!lessonDoc,
+    });
+  } catch (error) {
+    console.error('GET /student/journey-lesson:', error);
+    res.status(500).json({
+      success: false,
+      error:
+        process.env.NODE_ENV === 'production'
+          ? 'Server error'
+          : String(error && error.message ? error.message : 'Server error'),
+    });
   }
 });
 
@@ -1864,90 +1958,71 @@ router.get('/feedback/history', verifyToken, requireStudent, async (req, res) =>
   }
 });
 
-// Check class access status
+// Check class access status (same gate as live classroom / teacher entry)
 router.get('/class-access/:bookingId', verifyToken, requireStudent, async (req, res) => {
   try {
     const { bookingId } = req.params;
     console.log('🔍 Checking class access for booking:', bookingId);
-    
+
     const booking = await Booking.findById(bookingId);
     if (!booking) {
       console.log('❌ Booking not found:', bookingId);
-      return res.status(404).json({ 
-        allowed: false, 
-        message: 'Booking not found' 
+      return res.status(404).json({
+        allowed: false,
+        message: 'Booking not found',
       });
     }
-    
+
     // Check if student is authorized for this booking
     if (booking.studentId !== req.user.studentId) {
       console.log('❌ Student not authorized for this booking');
-      return res.status(403).json({ 
-        allowed: false, 
-        message: 'Not authorized for this class' 
+      return res.status(403).json({
+        allowed: false,
+        message: 'Not authorized for this class',
       });
     }
-    
-    const now = new Date();
-    const classDate = new Date(booking.date);
-    const [hours, minutes] = booking.time.split(':').map(Number);
-    
-    // Set class start time
-    const classStartTime = new Date(classDate);
-    classStartTime.setHours(hours, minutes, 0, 0);
-    
-    // Set class end time (30 minutes after start)
-    const classEndTime = new Date(classStartTime);
-    classEndTime.setMinutes(classEndTime.getMinutes() + 30);
-    
-    // Allow access 10 minutes before class starts
-    const accessStartTime = new Date(classStartTime);
-    accessStartTime.setMinutes(accessStartTime.getMinutes() - 10);
-    
-    console.log('⏰ Class timing check:');
-    console.log('  - Current time:', now.toISOString());
-    console.log('  - Class start:', classStartTime.toISOString());
-    console.log('  - Class end:', classEndTime.toISOString());
-    console.log('  - Access start:', accessStartTime.toISOString());
-    
-    if (now < accessStartTime) {
+
+    const gate = getClassroomEntryGate(booking, Date.now());
+    if (!gate.allowed) {
       return res.json({
         allowed: false,
-        message: `Class access not available yet. Class starts at ${booking.time}. Please wait until ${accessStartTime.toLocaleTimeString()}.`,
-        classStartTime: classStartTime.toISOString(),
-        accessStartTime: accessStartTime.toISOString()
+        code: gate.code || null,
+        message: gate.message || 'Classroom entry is not allowed.',
+        opensAt: gate.opensAt || null,
+        scheduledStart: gate.scheduledStart || null,
+        accessStartTime: gate.opensAt || null,
+        classStartTime: gate.scheduledStart || null,
+        earlyEntryMinutes: EARLY_ENTRY_MINUTES,
       });
     }
-    
-    if (now > classEndTime) {
-      return res.json({
-        allowed: false,
-        message: `Class has ended. Class ended at ${classEndTime.toLocaleTimeString()}.`,
-        classEndTime: classEndTime.toISOString()
-      });
-    }
-    
+
     console.log('✅ Class access allowed');
     res.json({
       allowed: true,
       message: 'Class access allowed',
+      code: null,
+      opensAt: gate.opensAt || null,
+      scheduledStart: gate.scheduledStart || null,
+      accessStartTime: gate.opensAt || null,
+      classStartTime: gate.scheduledStart || null,
+      earlyEntryMinutes: EARLY_ENTRY_MINUTES,
       booking: {
         id: booking._id,
         date: booking.date,
         time: booking.time,
         teacherId: booking.teacherId,
         studentId: booking.studentId,
-        status: booking.status
+        status: booking.status,
       },
-      classStartTime: classStartTime.toISOString(),
-      classEndTime: classEndTime.toISOString()
     });
-    
   } catch (error) {
     console.error('❌ Error checking class access:', error);
-    res.status(500).json({ 
-      allowed: false, 
-      message: process.env.NODE_ENV === 'production' ? 'Server error' : String(error && error.message ? error.message : 'Server error')
+    res.status(500).json({
+      allowed: false,
+      message:
+        process.env.NODE_ENV === 'production'
+          ? 'Server error'
+          : String(error && error.message ? error.message : 'Server error'),
     });
   }
 });

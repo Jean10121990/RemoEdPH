@@ -1494,6 +1494,30 @@
             } catch (e) {
                 console.warn('preferredTeacher query', e);
             }
+
+            try {
+                const sp = new URLSearchParams(window.location.search);
+                const jl = sp.get('level');
+                let jn = parseInt(sp.get('lessonNumber') || '', 10);
+                const jb = parseInt(sp.get('batch') || '', 10);
+                const jle = parseInt(sp.get('lesson') || '', 10);
+                if ((!Number.isFinite(jn) || jn < 1) && Number.isFinite(jb) && Number.isFinite(jle)) {
+                    jn = (jb - 1) * 22 + jle;
+                }
+                if (jl && String(jl).trim()) {
+                    sessionStorage.setItem('prefillJourneyLevel', String(jl).trim());
+                }
+                if (Number.isFinite(jn) && jn >= 1) {
+                    sessionStorage.setItem('prefillJourneyLessonNumber', String(jn));
+                }
+                if (jl || Number.isFinite(jn)) {
+                    const u = new URL(window.location.href);
+                    ['level', 'lessonNumber', 'batch', 'lesson'].forEach((k) => u.searchParams.delete(k));
+                    window.history.replaceState({}, '', u.pathname + u.search + u.hash);
+                }
+            } catch (e) {
+                console.warn('journey lesson query', e);
+            }
             
             try {
                 // Validate token first
@@ -1505,6 +1529,7 @@
                     setupEventListeners();
                     setupModalEventListeners();
                     setupCustomTeacherSelectorListeners();
+                    applyJourneyLevelPrefill();
                 }).catch((error) => {
                     console.error('❌ Token validation failed:', error);
                     
@@ -3402,6 +3427,44 @@
             }
         }
 
+        function applyJourneyLessonPrefill(levelSelect, lessonSelect) {
+            try {
+                const wantNum = sessionStorage.getItem('prefillJourneyLessonNumber');
+                if (!wantNum || !lessonSelect) return;
+                const target = String(wantNum);
+                const opt = Array.from(lessonSelect.options).find(
+                    (o) => o.dataset && o.dataset.lessonNumber === target
+                );
+                if (opt) {
+                    lessonSelect.value = opt.value;
+                    sessionStorage.removeItem('prefillJourneyLessonNumber');
+                    clearFieldError('lesson');
+                }
+            } catch (e) {
+                console.warn('applyJourneyLessonPrefill', e);
+            }
+        }
+
+        async function applyJourneyLevelPrefill() {
+            try {
+                const lvl = sessionStorage.getItem('prefillJourneyLevel');
+                if (!lvl) return;
+                const levelSelect = document.getElementById('student-level');
+                if (!levelSelect) return;
+                const match = Array.from(levelSelect.options).find(
+                    (o) => o.value === lvl || curriculumLevelsMatch(o.value, lvl)
+                );
+                if (match) {
+                    levelSelect.value = match.value;
+                    sessionStorage.removeItem('prefillJourneyLevel');
+                    clearFieldError('student-level');
+                    await loadLessonsForLevel();
+                }
+            } catch (e) {
+                console.warn('applyJourneyLevelPrefill', e);
+            }
+        }
+
         async function loadLessonsForLevel() {
             const levelSelect = document.getElementById('student-level');
             const lessonSelect = document.getElementById('lesson');
@@ -3503,6 +3566,9 @@
                         option.value = lesson._id.toString(); // Ensure it's a string
                         option.textContent = `Lesson ${lesson.lessonNumber || '?'}: ${lesson.title || 'Untitled'}`;
                         option.title = lesson.description || lesson.title || '';
+                        if (lesson.lessonNumber != null) {
+                            option.dataset.lessonNumber = String(lesson.lessonNumber);
+                        }
                         
                         lessonSelect.appendChild(option);
                     });
@@ -3511,6 +3577,8 @@
                     if (studentTrialBookingActive && allLessons.length === 1) {
                         lessonSelect.value = allLessons[0]._id.toString();
                     }
+
+                    applyJourneyLessonPrefill(levelSelect, lessonSelect);
                 }
             } catch (error) {
                 console.error('Error loading lessons:', error);
