@@ -29,45 +29,6 @@ const {
   publicPreviewUrl
 } = require('./utils/pptxLocalPreview');
 
-function publicHttpsPresentationUrl(relPath) {
-  const rel = String(relPath || '').trim();
-  if (/^https:\/\//i.test(rel)) return rel;
-  if (!rel) return '';
-  const pathPart = rel.startsWith('/') ? rel : '/' + rel;
-  const env = String(process.env.FRONTEND_URL || '')
-    .trim()
-    .replace(/\/$/, '');
-  if (env && /^https:\/\//i.test(env) && !/localhost|127\.0\.0\.1/i.test(env)) {
-    return env + pathPart;
-  }
-  return '';
-}
-
-function officeOnlineEmbedUrl(absoluteHttpsUrl) {
-  return 'https://view.officeapps.live.com/op/embed.aspx?src=' + encodeURIComponent(absoluteHttpsUrl);
-}
-
-function resolveLessonPptxPreview(file) {
-  const pType = file.presentationType || 'file';
-  if (pType === 'office_embed' && file.embedUrl) {
-    return { mode: 'office_embed', embedUrl: file.embedUrl };
-  }
-  if (pType === 'html5_zip' && file.html5EntryUrl) {
-    return { mode: 'html5_zip', embedUrl: file.html5EntryUrl };
-  }
-  const publicUrl = publicHttpsPresentationUrl(file.html5EntryUrl || '');
-  if (!publicUrl) {
-    return {
-      error:
-        'This PowerPoint is not on a public HTTPS URL yet. Upload it on remoedph.com, or set FRONTEND_URL to that site.'
-    };
-  }
-  return {
-    mode: 'office_online',
-    embedUrl: officeOnlineEmbedUrl(publicUrl)
-  };
-}
-
 const LESSON_UPLOAD_MAX_BYTES = 50 * 1024 * 1024;
 const lessonUploadTmp = path.join(__dirname, '../uploads/tmp-lesson-uploads');
 fs.mkdirSync(lessonUploadTmp, { recursive: true });
@@ -1122,7 +1083,7 @@ router.get('/presentation/:fileId/view', authenticateToken, async (req, res) => 
 
 /**
  * Read-only embed metadata for Lessons Library preview (no direct download URL).
- * Client loads Microsoft Office Online (or stored Office embed / HTML5 package) in an iframe.
+ * Prefer same-origin PDF conversion — Microsoft Office Online cannot fetch auth-gated /uploads.
  */
 router.get('/presentation/:fileId/secure-embed', authenticateToken, async (req, res) => {
   try {
@@ -1145,7 +1106,7 @@ router.get('/presentation/:fileId/secure-embed', authenticateToken, async (req, 
         mode: 'office_embed',
         embedUrl: file.embedUrl,
         fileName,
-        downloadAllowed: false
+        downloadAllowed: false,
       });
     }
 
@@ -1155,7 +1116,7 @@ router.get('/presentation/:fileId/secure-embed', authenticateToken, async (req, 
         mode: 'html5_zip',
         embedUrl: file.html5EntryUrl,
         fileName,
-        downloadAllowed: false
+        downloadAllowed: false,
       });
     }
 
@@ -1164,18 +1125,28 @@ router.get('/presentation/:fileId/secure-embed', authenticateToken, async (req, 
       return res.status(404).json({ error: 'No embeddable presentation source' });
     }
 
-    const preview = resolveLessonPptxPreview(file);
-    if (preview.error) {
-      return res.status(404).json({ error: preview.error });
+    // Convert to PDF for authenticated same-origin preview (library + classroom).
+    try {
+      await buildLessonPptxPreviewPdf(file);
+      const previewPdfPath = `/api/lessons/presentation/${encodeURIComponent(fileId)}/preview.pdf`;
+      return res.json({
+        success: true,
+        mode: 'pdf',
+        embedUrl: previewPdfPath,
+        previewUrl: previewPdfPath,
+        previewPdfPath,
+        fileName: String(fileName).replace(/\.(ppt|pptx)$/i, '.pdf'),
+        downloadAllowed: false,
+        hint: 'Converted PDF preview (read-only). The original .pptx is not opened in Microsoft Office Online.',
+      });
+    } catch (convErr) {
+      console.error('secure-embed PDF convert failed:', convErr.message || convErr);
+      return res.status(500).json({
+        error:
+          convErr.message ||
+          'Could not convert this PowerPoint for preview. Ensure the file exists on the server and LibreOffice is available.',
+      });
     }
-    return res.json({
-      success: true,
-      mode: preview.mode,
-      embedUrl: preview.embedUrl,
-      fileName,
-      downloadAllowed: false,
-      hint: 'Read-only PowerPoint preview. The original .pptx is not downloaded from this panel.'
-    });
   } catch (error) {
     console.error('Presentation secure-embed error:', error);
     res.status(500).json({ error: 'Failed to resolve secure embed' });
@@ -1217,7 +1188,7 @@ router.get('/presentation/:fileId/local-preview', authenticateToken, async (req,
     }
 
     // Prefer converted slide images / PDF when available (reliable live-class follow-mode).
-    // Office Online only when no local slide assets exist and Microsoft can fetch the file.
+    // Do NOT hand auth-gated /uploads PPTX URLs to Microsoft Office Online.
     const existingSlideUrls = Array.isArray(file.slideUrls) ? file.slideUrls.filter(Boolean) : [];
     if (existingSlideUrls.length > 0) {
       const previewUrl = publicPreviewUrl(fileId);
@@ -1232,20 +1203,6 @@ router.get('/presentation/:fileId/local-preview', authenticateToken, async (req,
         slideCount: file.slideCount != null ? file.slideCount : existingSlideUrls.length,
         slideUrls: existingSlideUrls,
         convertedPdfUrl: file.convertedPdfUrl || previewUrl
-      });
-    }
-
-    // Prefer Office Online only when the PPTX is on a public HTTPS host Microsoft can fetch.
-    const officePreview = resolveLessonPptxPreview(file);
-    if (!officePreview.error && officePreview.mode === 'office_online' && officePreview.embedUrl) {
-      return res.json({
-        success: true,
-        mode: 'office_online',
-        previewUrl: officePreview.embedUrl,
-        embedUrl: officePreview.embedUrl,
-        fileName: file.fileName,
-        slideCount: file.slideCount != null ? file.slideCount : null,
-        slideUrls: []
       });
     }
 

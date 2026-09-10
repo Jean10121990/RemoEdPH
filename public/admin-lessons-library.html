@@ -2007,27 +2007,32 @@
                                 showSlideStack(localData.slideUrls, 'Converted slide preview (read-only).');
                                 return;
                             }
-                            if (localData.mode === 'office_embed' || localData.mode === 'office_online') {
+                            if (localData.mode === 'office_embed' && (localData.embedUrl || localData.previewUrl)) {
+                                showFrame(localData.embedUrl || localData.previewUrl, 'Read-only Office embed.');
+                                return;
+                            }
+                            if (localData.mode === 'html5_zip' && localData.previewUrl) {
+                                showFrame(absUrl(localData.previewUrl), 'Read-only lesson package.');
+                                return;
+                            }
+                            // Do not use office_online for private /uploads — Microsoft cannot authenticate.
+                            if (localData.previewPdfPath || (localData.mode === 'pdf' && localData.previewUrl)) {
+                                const pdfSrc = localData.previewPdfPath
+                                    ? absUrl(localData.previewPdfPath) + (String(localData.previewPdfPath).includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(token)
+                                    : absUrl(localData.previewUrl) + (String(localData.previewUrl).includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(token);
+                                showFrame(pdfSrc, 'Converted PDF preview (read-only).');
+                                return;
+                            }
+                            if (localData.mode !== 'office_online') {
                                 const src = localData.embedUrl || localData.previewUrl || '';
                                 if (src) {
                                     showFrame(src, localData.hint || 'Read-only PowerPoint preview.');
                                     return;
                                 }
                             }
-                            if (localData.mode === 'html5_zip' && localData.previewUrl) {
-                                showFrame(absUrl(localData.previewUrl), 'Read-only lesson package.');
-                                return;
-                            }
-                            if (localData.previewPdfPath || localData.previewUrl) {
-                                const pdfSrc = localData.previewPdfPath
-                                    ? absUrl(localData.previewPdfPath) + (String(localData.previewPdfPath).includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(token)
-                                    : absUrl(localData.previewUrl);
-                                showFrame(pdfSrc, 'Converted PDF preview (read-only).');
-                                return;
-                            }
                         }
                     } catch (_localErr) {
-                        // Fall through to secure-embed
+                        // Fall through
                     }
 
                     const res = await fetch('/api/lessons/presentation/' + encodeURIComponent(fileId) + '/secure-embed', {
@@ -2038,11 +2043,17 @@
                     if (!res.ok) {
                         throw new Error(data.error || 'Could not open the lesson preview.');
                     }
-                    const src = data.embedUrl || data.previewUrl || '';
+                    if (data.mode === 'office_online') {
+                        throw new Error('This PowerPoint needs a PDF preview on the server. Re-upload or ask admin to convert it.');
+                    }
+                    let src = data.embedUrl || data.previewUrl || data.previewPdfPath || '';
                     if (!src) {
                         throw new Error('This PowerPoint is not available for preview yet.');
                     }
-                    showFrame(src, data.hint || 'Read-only PowerPoint preview.');
+                    if (data.mode === 'pdf' || /preview\.pdf/i.test(src)) {
+                        src = absUrl(src) + (String(src).includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(token);
+                    }
+                    showFrame(src, data.hint || 'Converted PDF preview (read-only).');
                 } catch (err) {
                     mountEl.innerHTML = `
                         <div class="preview-unsupported">

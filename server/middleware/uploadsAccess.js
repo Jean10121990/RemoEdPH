@@ -141,6 +141,12 @@ function requireUploadAccess(req, res, next) {
     if (!token) {
       return res.status(401).json({ error: 'Access denied. Authentication required for uploads.' });
     }
+    // Shared secret for server-to-server pulls (localhost → production file mirror).
+    const mirror = String(process.env.UPLOADS_FETCH_TOKEN || process.env.MEDIA_FETCH_TOKEN || '').trim();
+    if (mirror && token === mirror) {
+      req.user = { role: 'service', isAdmin: true, purpose: 'uploads-fetch' };
+      return next();
+    }
     if (isTokenBlacklisted(token)) {
       return res.status(401).json({ error: 'Token has been revoked.' });
     }

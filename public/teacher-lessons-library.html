@@ -1242,6 +1242,51 @@
                         <p class="secure-ppt-hint">${escapeHtml(hint || 'Read-only preview for class prep.')}</p>
                     `;
                 }
+                function showFriendlyError(message) {
+                    mountEl.innerHTML = `
+                        <div class="preview-unsupported">
+                            <div class="preview-unsupported-icon">📄</div>
+                            <h3>Preview unavailable</h3>
+                            <p>${escapeHtml(message || 'Could not open this presentation.')}</p>
+                            <p style="margin-top:1rem;font-size:0.9rem;color:#64748b;">File: ${escapeHtml(name)}</p>
+                            <p style="margin-top:0.75rem;font-size:0.85rem;color:#64748b;line-height:1.45;">
+                              On localhost the lesson record is often in MongoDB but the .pptx lives only on production disk.
+                              Re-upload the file here, or set <code>FRONTEND_URL</code> + matching <code>JWT_SECRET</code>/<code>UPLOADS_FETCH_TOKEN</code> so this machine can pull it.
+                            </p>
+                        </div>
+                    `;
+                }
+                async function showPdfPreview(pathOrUrl, hint) {
+                    const url = withToken(pathOrUrl);
+                    const res = await fetch(url, {
+                        headers: tok ? { Authorization: 'Bearer ' + tok } : {},
+                        credentials: 'include'
+                    });
+                    const ctype = String(res.headers.get('content-type') || '');
+                    if (!res.ok || ctype.includes('application/json')) {
+                        let msg = 'Could not open PDF preview.';
+                        try {
+                            const data = await res.json();
+                            if (data && data.error) msg = data.error;
+                        } catch (_e) {}
+                        throw new Error(msg);
+                    }
+                    const blob = await res.blob();
+                    if (!blob || !blob.size) throw new Error('Empty PDF preview.');
+                    const objectUrl = URL.createObjectURL(blob);
+                    showFrame(objectUrl, hint || 'Converted PDF preview (read-only).');
+                }
+                function withToken(pathOrUrl) {
+                    const abs = absUrl(pathOrUrl);
+                    if (!abs || !tok) return abs;
+                    try {
+                        const u = new URL(abs, window.location.origin);
+                        if (!u.searchParams.get('token')) u.searchParams.set('token', tok);
+                        return u.toString();
+                    } catch (_e) {
+                        return abs + (abs.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(tok);
+                    }
+                }
                 try {
                     if (presentationType === 'office_embed' && embedUrl) {
                         showFrame(embedUrl, 'Read-only Office embed.');
@@ -1254,28 +1299,40 @@
                     if (!fileId || !tok) {
                         throw new Error('Sign in again to preview this lesson.');
                     }
-                    const res = await fetch('/api/lessons/presentation/' + encodeURIComponent(fileId) + '/secure-embed', {
+
+                    // Prefer same-origin PDF/slide conversion (Office Online cannot fetch auth-gated /uploads).
+                    const localRes = await fetch('/api/lessons/presentation/' + encodeURIComponent(fileId) + '/local-preview', {
                         headers: { Authorization: 'Bearer ' + tok },
                         credentials: 'include'
                     });
-                    const data = await res.json().catch(() => ({}));
-                    if (!res.ok) {
-                        throw new Error(data.error || 'Could not open the lesson preview.');
+                    const localData = await localRes.json().catch(() => ({}));
+                    if (!localRes.ok) {
+                        throw new Error(localData.error || 'Could not build lesson preview.');
                     }
-                    const src = data.embedUrl || data.previewUrl || '';
-                    if (!src) {
-                        throw new Error('This PowerPoint is not available for preview yet.');
+                    if (localData.mode === 'office_embed' && (localData.embedUrl || localData.previewUrl)) {
+                        showFrame(localData.embedUrl || localData.previewUrl, 'Read-only Office embed.');
+                        return;
                     }
-                    showFrame(src, data.hint || 'Read-only PowerPoint preview.');
+                    if (localData.mode === 'html5_zip' && localData.previewUrl) {
+                        showFrame(absUrl(localData.previewUrl), 'Read-only lesson package.');
+                        return;
+                    }
+                    // Skip office_online — Microsoft cannot open private RemoEd URLs.
+                    if (localData.previewPdfPath) {
+                        await showPdfPreview(localData.previewPdfPath, 'Converted PDF preview (read-only).');
+                        return;
+                    }
+                    if (localData.mode === 'pdf' && localData.previewUrl) {
+                        await showPdfPreview(localData.previewUrl, 'Converted PDF preview (read-only).');
+                        return;
+                    }
+                    // Last resort: authenticated PDF stream endpoint
+                    await showPdfPreview(
+                        '/api/lessons/presentation/' + encodeURIComponent(fileId) + '/preview.pdf',
+                        'Converted PDF preview (read-only).'
+                    );
                 } catch (err) {
-                    mountEl.innerHTML = `
-                        <div class="preview-unsupported">
-                            <div class="preview-unsupported-icon">📄</div>
-                            <h3>Preview unavailable</h3>
-                            <p>${escapeHtml(err && err.message ? err.message : 'Could not open this presentation.')}</p>
-                            <p style="margin-top:1rem;font-size:0.9rem;color:#64748b;">File: ${escapeHtml(name)}</p>
-                        </div>
-                    `;
+                    showFriendlyError(err && err.message ? err.message : 'Could not open this presentation.');
                 }
             }
 

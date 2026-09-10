@@ -58,22 +58,55 @@ function publicRemoteOrigin() {
   return '';
 }
 
-async function downloadRemotePptx(url, destPath) {
-  const response = await axios.get(url, {
+async function downloadRemotePptx(url, destPath, authToken) {
+  const headers = {
+    Accept:
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-powerpoint,application/octet-stream,*/*',
+  };
+  let fetchUrl = url;
+  if (authToken) {
+    headers.Authorization = 'Bearer ' + authToken;
+    try {
+      const u = new URL(url);
+      if (!u.searchParams.get('token')) u.searchParams.set('token', authToken);
+      fetchUrl = u.toString();
+    } catch (_e) {
+      fetchUrl = url + (url.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(authToken);
+    }
+  }
+  const response = await axios.get(fetchUrl, {
     responseType: 'arraybuffer',
     timeout: 180000,
     maxContentLength: Infinity,
     maxBodyLength: Infinity,
     validateStatus: (s) => s === 200,
-    headers: {
-      Accept:
-        'application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-powerpoint,application/octet-stream,*/*'
-    }
+    headers,
   });
   const buf = Buffer.from(response.data);
   if (!buf.length) throw new Error('Empty presentation download');
+  // Reject JSON error bodies mistakenly returned as 200
+  const head = buf.slice(0, 32).toString('utf8').trim();
+  if (head.startsWith('{') && /"error"/i.test(head)) {
+    throw new Error('Remote host returned an error JSON instead of the PowerPoint file');
+  }
   await fsp.mkdir(path.dirname(destPath), { recursive: true });
   await fsp.writeFile(destPath, buf);
+}
+
+function resolveUploadsFetchToken() {
+  const mirror = String(process.env.UPLOADS_FETCH_TOKEN || process.env.MEDIA_FETCH_TOKEN || '').trim();
+  if (mirror) return mirror;
+  try {
+    const jwt = require('jsonwebtoken');
+    const secret = process.env.JWT_SECRET || 'your_jwt_secret';
+    return jwt.sign(
+      { purpose: 'uploads-fetch', role: 'admin', isAdmin: true, userType: 'admin' },
+      secret,
+      { expiresIn: '10m' }
+    );
+  } catch (_e) {
+    return '';
+  }
 }
 
 /**
@@ -118,8 +151,9 @@ async function materializePptxSource(file) {
   const rel = String(file.html5EntryUrl || '');
   if (origin && rel.startsWith('/uploads/presentations/')) {
     const remoteUrl = origin + rel;
+    const fetchToken = resolveUploadsFetchToken();
     try {
-      await downloadRemotePptx(remoteUrl, destPath);
+      await downloadRemotePptx(remoteUrl, destPath, fetchToken);
       console.log('[pptxLocalPreview] Cached presentation from', remoteUrl);
       return { sourcePath: destPath, destDir, cachedPreview };
     } catch (remoteErr) {
@@ -132,7 +166,11 @@ async function materializePptxSource(file) {
   }
 
   throw new Error(
-    'This PowerPoint is missing from the server. Ask an admin to re-upload it in Lessons Library, then you can preview it before class.'
+    'This PowerPoint file is not on this machine’s uploads/ folder. ' +
+      (origin
+        ? 'Could not pull it from ' + origin + ' (auth or file missing on production). '
+        : 'Set FRONTEND_URL to your production site to auto-cache it, or ') +
+      're-upload the .pptx in Lessons Library on this environment.'
   );
 }
 
