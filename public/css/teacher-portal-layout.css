@@ -47,7 +47,8 @@ html body[class*="page-teacher-"] {
 
 /* —— Soft green gradient rail —— */
 body.teacher-portal nav.remoed-sidebar.remoed-sidebar,
-body[class*="page-teacher-"] nav.remoed-sidebar.remoed-sidebar {
+body[class*="page-teacher-"] nav.remoed-sidebar.remoed-sidebar,
+body.page-device-check nav.remoed-sidebar.remoed-sidebar {
   background: linear-gradient(
     180deg,
     #2E9A28 0%,
@@ -56,6 +57,9 @@ body[class*="page-teacher-"] nav.remoed-sidebar.remoed-sidebar {
   ) !important;
   box-shadow: 4px 0 24px rgba(46, 154, 40, 0.28);
   border-right: 1px solid rgba(255, 255, 255, 0.12);
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
 }
 
 body.teacher-portal .remoed-sidebar .sidebar-header,
@@ -214,11 +218,15 @@ body[class*="page-teacher-"] .remoed-sidebar > .remoed-menu {
 }
 
 body.teacher-portal .remoed-sidebar .remoed-menu li,
-body[class*="page-teacher-"] .remoed-sidebar .remoed-menu li {
+body[class*="page-teacher-"] .remoed-sidebar .remoed-menu li,
+body.page-device-check .remoed-sidebar .remoed-menu li {
   color: rgba(255, 255, 255, 0.92) !important;
   border-left: 3px solid transparent;
   border-radius: 10px;
-  margin: 2px 0;
+  margin: 2px 0 !important;
+  padding: 10px 14px !important;
+  transform: none !important;
+  box-sizing: border-box;
 }
 
 body.teacher-portal .remoed-sidebar .remoed-menu li svg,

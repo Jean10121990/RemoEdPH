@@ -39,10 +39,11 @@ nav.remoed-sidebar.sidebar-collapsed .remoed-menu li {
 
 /* Ghost-label fix: tablet/mobile-first.css sets font-size:0 + color:transparent on some portal rails.
    Force readable labels in normal (expanded) state. */
-body[class*="page-teacher-"] nav.remoed-sidebar:not(.sidebar-collapsed) .remoed-menu li {
-  font-size: 0.95rem !important;
-  line-height: 1.2 !important;
-  color: var(--remoed-sidebar-inactive, #2d3748) !important;
+body[class*="page-teacher-"] nav.remoed-sidebar:not(.sidebar-collapsed) .remoed-menu li,
+body.page-device-check nav.remoed-sidebar:not(.sidebar-collapsed) .remoed-menu li,
+body.teacher-portal nav.remoed-sidebar:not(.sidebar-collapsed) .remoed-menu li {
+  font-size: 0.9rem !important;
+  line-height: 1.25 !important;
 }
 body[class*="page-teacher-"] nav.remoed-sidebar:not(.sidebar-collapsed) .remoed-menu li#logout-nav {
   color: #e74c3c !important;

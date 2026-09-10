@@ -53,6 +53,7 @@
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
       gap: 1.25rem;
+      align-items: stretch;
     }
     .page-student-videos .sv-card {
       background: #fff;
@@ -62,19 +63,30 @@
       overflow: hidden;
       display: flex;
       flex-direction: column;
+      min-height: 0;
+      height: 100%;
     }
     .page-student-videos .sv-card-thumb {
       position: relative;
+      width: 100%;
       aspect-ratio: 16 / 9;
+      height: auto;
+      max-height: none;
+      flex: 0 0 auto;
       background: #0f172a;
       cursor: pointer;
+      overflow: hidden;
     }
-    .page-student-videos .sv-card-thumb video {
+    .page-student-videos .sv-card-thumb video,
+    .page-student-videos .sv-card-thumb img {
+      position: absolute;
+      inset: 0;
       width: 100%;
       height: 100%;
       object-fit: cover;
+      object-position: center;
       display: block;
-      vertical-align: top;
+      border: 0;
     }
     .page-student-videos .sv-card-play {
       position: absolute;
@@ -86,6 +98,7 @@
       opacity: 0;
       transition: opacity 0.15s ease;
       pointer-events: none;
+      z-index: 1;
     }
     .page-student-videos .sv-card-thumb:hover .sv-card-play { opacity: 1; }
     .page-student-videos .sv-card-play span {
@@ -100,9 +113,37 @@
       padding-left: 4px;
       box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
     }
-    .page-student-videos .sv-card-body { padding: 14px 16px 16px; flex: 1; display: flex; flex-direction: column; }
-    .page-student-videos .sv-card-title { font-weight: 800; font-size: 1.05rem; color: #1e293b; margin: 0 0 6px; line-height: 1.3; }
-    .page-student-videos .sv-card-desc { font-size: 0.88rem; color: #64748b; margin: 0 0 12px; line-height: 1.45; flex: 1; }
+    .page-student-videos .sv-card-body {
+      padding: 14px 16px 16px;
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .page-student-videos .sv-card-title {
+      font-weight: 800;
+      font-size: 1.05rem;
+      color: #1e293b;
+      margin: 0 0 6px;
+      line-height: 1.3;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      min-height: 2.6em;
+    }
+    .page-student-videos .sv-card-desc {
+      font-size: 0.88rem;
+      color: #64748b;
+      margin: 0 0 12px;
+      line-height: 1.45;
+      flex: 1;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      min-height: 3.9em;
+    }
     .page-student-videos .sv-card-actions { display: flex; flex-wrap: wrap; gap: 8px; }
     .page-student-videos .sv-btn {
       padding: 8px 14px;

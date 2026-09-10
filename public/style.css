@@ -10019,6 +10019,8 @@ body.page-teacher-attendance-analysis{
       flex-direction: column;
       align-items: stretch;
       position: fixed;
+      top: 0;
+      left: 0;
       height: 100vh;
       overflow: hidden;
       z-index: 100;
@@ -10074,12 +10076,13 @@ body.page-teacher-attendance-analysis{
       gap: 12px; 
       border-left: 4px solid transparent; 
       transition: background 0.2s, border-color 0.2s; 
+      transform: none !important;
     }.page-teacher-class-table .remoed-menu li.active, .page-teacher-class-table .remoed-menu li:hover{ 
       background: linear-gradient(90deg, #47BC3E 0%, #47BC3E 100%); 
       border-left: 4px solid #47BC3E; 
       color: white; 
-      transform: translateX(4px);
-      transition: all 0.3s ease;
+      transform: none !important;
+      transition: background 0.2s, border-color 0.2s, color 0.2s;
       border-radius: 0 8px 8px 0;
     }.page-teacher-class-table .remoed-sidebar.sidebar-collapsed .remoed-menu li,
     .page-teacher-class-table .remoed-sidebar.sidebar-collapsed .remoed-menu li.active,

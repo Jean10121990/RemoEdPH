@@ -6,16 +6,186 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Device Check - RemoEdPH</title>
-    <link rel="stylesheet" href="modern-styles.css">
-    <link rel="stylesheet" href="css/teacher-sidebar.css">
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="css/portal-chrome-compact.css">
+    <script src="js/security-guard.js?v=1"></script>
+    <script src="js/user-session.js"></script>
+    <script src="js/teacher-session-gate.js?v=2"></script>
+    <link rel="stylesheet" href="css/teacher-sidebar.css?v=logout-pin-2">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css?v=mint-forest-1">
+    <style>
+      /* Keep device-check styles local so modern-styles/style.css cannot skew sidebar spacing */
+      body.page-device-check.teacher-portal {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: #f6fbff;
+        margin: 0;
+        padding: 0;
+        min-height: 100vh;
+      }
+      body.page-device-check .remoed-main {
+        display: block;
+        min-height: 100vh;
+      }
+      body.page-device-check .remoed-content {
+        padding: 12px 16px;
+        box-sizing: border-box;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      body.page-device-check .device-check-card {
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+        padding: 1rem 1.25rem;
+        width: 100%;
+        max-width: 1100px;
+        max-height: calc(100vh - 24px);
+        display: flex;
+        flex-direction: row;
+        gap: 1.25rem;
+        align-items: stretch;
+        box-sizing: border-box;
+        overflow: auto;
+      }
+      body.page-device-check .device-title {
+        font-size: 1.15rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin: 0 0 0.75rem;
+      }
+      body.page-device-check .video-section {
+        flex: 1.1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+      body.page-device-check #video-preview {
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        max-height: 360px;
+        object-fit: cover;
+        border-radius: 10px;
+        background: #0f172a;
+      }
+      body.page-device-check .device-sysinfo {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 0.75rem 0.9rem;
+      }
+      body.page-device-check .device-sysinfo-title {
+        font-weight: 800;
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
+        color: #334155;
+      }
+      body.page-device-check .device-sysinfo-list { margin: 0; }
+      body.page-device-check .device-sysinfo-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 0.35rem 0;
+        border-bottom: 1px solid #e2e8f0;
+      }
+      body.page-device-check .device-sysinfo-row:last-of-type { border-bottom: none; }
+      body.page-device-check .device-sysinfo-row dt {
+        margin: 0;
+        color: #64748b;
+        font-size: 0.82rem;
+        font-weight: 600;
+      }
+      body.page-device-check .device-sysinfo-row dd {
+        margin: 0;
+        color: #0f172a;
+        font-size: 0.82rem;
+        font-weight: 700;
+        text-align: right;
+      }
+      body.page-device-check .device-sysinfo-note {
+        margin: 0.5rem 0 0;
+        font-size: 0.75rem;
+        color: #94a3b8;
+      }
+      body.page-device-check .controls-section {
+        flex: 0.9;
+        min-width: 260px;
+        display: flex;
+        flex-direction: column;
+        gap: 0.65rem;
+      }
+      body.page-device-check .dc-control-row,
+      body.page-device-check .control-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      body.page-device-check .dc-control-row label,
+      body.page-device-check .control-label {
+        min-width: 110px;
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: #475569;
+      }
+      body.page-device-check .dc-tip {
+        font-size: 0.82rem;
+        color: #64748b;
+      }
+      body.page-device-check #status-message {
+        font-size: 0.88rem;
+        color: #334155;
+        font-weight: 600;
+      }
+      body.page-device-check #mic-level {
+        height: 10px;
+        background: #e2e8f0;
+        border-radius: 999px;
+        overflow: hidden;
+      }
+      body.page-device-check #mic-bar {
+        height: 100%;
+        width: 0%;
+        background: linear-gradient(90deg, #2E9A28, #47BC3E);
+      }
+      body.page-device-check .mute-btn,
+      body.page-device-check .proceed-btn,
+      body.page-device-check .back-btn {
+        border: none;
+        border-radius: 999px;
+        padding: 0.55rem 1rem;
+        font-weight: 800;
+        cursor: pointer;
+      }
+      body.page-device-check .mute-btn { background: #27ae60; color: #fff; }
+      body.page-device-check .proceed-btn {
+        background: linear-gradient(90deg, #2E9A28, #47BC3E);
+        color: #fff;
+        margin-top: 0.35rem;
+      }
+      body.page-device-check .back-btn {
+        background: #e2e8f0;
+        color: #334155;
+      }
+      @media (max-width: 900px) {
+        body.page-device-check .device-check-card {
+          flex-direction: column;
+          max-height: none;
+        }
+      }
+    </style>
 </head>
-<body class="page-device-check">
+<body class="page-device-check teacher-portal">
     <div class="remoed-main">
         <div id="teacher-sidebar-root"></div>
-        <script src="js/teacher-sidebar.js?v=lb-nav-2"></script>
-        <script>TeacherSidebar.render('teacher-sidebar-root', 'device-check');</script>
+        <script src="js/teacher-sidebar.js?v=logout-pin-2"></script>
+        <script src="js/teacher-page-header.js?v=mint-forest-1"></script>
+        <script>
+          if (!window.RemoedTeacherSession || !RemoedTeacherSession.requireTeacher({ redirect: 'index.html' })) {
+            throw new Error('Teachers only');
+          }
+          TeacherSidebar.render('teacher-sidebar-root', 'device-check');
+          try { TeacherPageHeader.render('device-check'); } catch (e) {}
+        </script>
     <div class="remoed-content">
         <div class="device-check-card">
             <div class="video-section">
