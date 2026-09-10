@@ -8,14 +8,12 @@
   <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
   <script src="js/classroom-entry.js?v=session-ended-1"></script>
   <script src="js/user-session.js"></script>
+  <script src="js/teacher-session-gate.js?v=2"></script>
   <script>
     // Defer DOM operations until DOM is ready and guard element access to avoid errors.
     document.addEventListener('DOMContentLoaded', function () {
-    const userType = localStorage.getItem('userType');
-    if (userType !== 'teacher') {
-      alert('Access denied. This page is for teachers only.');
-      window.location.href = 'index.html';
-        return;
+    if (!window.RemoedTeacherSession || !RemoedTeacherSession.requireTeacher({ redirect: 'index.html' })) {
+      return;
     }
     
     const username = localStorage.getItem('remoedUsername') || 'Teacher';

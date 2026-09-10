@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="css/portal-chrome-compact.css?v=mint-forest-1">
     <script src="js/user-session.js"></script>
+    <script src="js/teacher-session-gate.js?v=2"></script>
 </head>
 <body class="page-teacher-peer-learning-connections teacher-portal">
     <div class="remoed-main">
@@ -75,10 +76,7 @@
     <script>
         // Check authentication
         document.addEventListener('DOMContentLoaded', function() {
-            const userType = localStorage.getItem('userType');
-            if (userType !== 'teacher') {
-                alert('Access denied. This page is for teachers only.');
-                window.location.href = '/login/';
+            if (!window.RemoedTeacherSession || !RemoedTeacherSession.requireTeacher({ redirect: '/login/' })) {
                 return;
             }
             

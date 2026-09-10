@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="css/portal-chrome-compact.css?v=mint-forest-1">
     <link rel="stylesheet" href="css/teacher-brand-overrides.css?v=mint-forest-1">
     <script src="js/user-session.js"></script>
+    <script src="js/teacher-session-gate.js?v=2"></script>
     <style>
       body.page-teacher-assessment .assess-shell {
         max-width: 920px;
@@ -273,17 +274,10 @@
     
     <script src="js/assessment-answer-key-data.js"></script>
     <script>
-        // Check if user is a teacher
-        const userType = localStorage.getItem('userType');
-        if (userType !== 'teacher') {
-            alert('Access denied. This page is for teachers only.');
-            window.location.href = 'index.html';
+        if (!window.RemoedTeacherSession || !RemoedTeacherSession.requireTeacher({ redirect: 'index.html' })) {
+            throw new Error('Teachers only');
         }
-        
-        const token = localStorage.getItem('token');
-        if (!token) {
-            window.location.href = '/login/';
-        }
+        const token = RemoedTeacherSession.getToken();
         
         // Assessment state
         let currentTest = 'listening';

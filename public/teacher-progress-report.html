@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="js/security-guard.js?v=1"></script>
   <script src="js/user-session.js"></script>
+  <script src="js/teacher-session-gate.js?v=2"></script>
   <title>Quarterly Progress Letter — RemoEd Teacher</title>
   <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
   <link rel="stylesheet" href="css/teacher-sidebar.css?v=mint-forest-1">
@@ -162,9 +163,7 @@
   </div>
   <script>
     (function () {
-      if (localStorage.getItem('userType') !== 'teacher') {
-        alert('Teachers only.');
-        location.href = 'index.html';
+      if (!window.RemoedTeacherSession || !RemoedTeacherSession.requireTeacher({ redirect: 'index.html', message: 'Teachers only.' })) {
         return;
       }
       var params = new URLSearchParams(location.search);
@@ -191,7 +190,7 @@
       }).join('');
 
       function token() {
-        return localStorage.getItem('token') || '';
+        return (window.RemoedTeacherSession && RemoedTeacherSession.getToken()) || localStorage.getItem('token') || '';
       }
 
       function collectSkills() {

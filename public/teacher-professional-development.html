@@ -54,6 +54,7 @@
         .personality-category-meters { display: grid; gap: 10px; }
     </style>
     <script src="js/user-session.js"></script>
+    <script src="js/teacher-session-gate.js?v=2"></script>
     <script src="js/teacher-payout-settings.js"></script>
     <script src="js/assessment-answer-key-data.js"></script>
 </head>
@@ -492,17 +493,10 @@
     <script src="https://cdn.jsdelivr.net/npm/luxon@3.5.0/build/global/luxon.min.js"></script>
     <script src="timezone-utils.js"></script>
     <script>
-        // Role-based access control
-        const userType = localStorage.getItem('userType');
-        if (userType !== 'teacher') {
-            alert('Access denied. This page is for teachers only.');
-            window.location.href = 'index.html';
+        if (!window.RemoedTeacherSession || !RemoedTeacherSession.requireTeacher({ redirect: 'index.html' })) {
+            throw new Error('Teachers only');
         }
-        
-        const token = localStorage.getItem('token');
-        if (!token) {
-            window.location.href = '/login/';
-        }
+        const token = RemoedTeacherSession.getToken();
 
         function escapeHtml(unsafe) {
             if (!unsafe) return '';
@@ -1064,6 +1058,9 @@
         
         // Training Portal
         function teacherAuthToken() {
+            if (window.RemoedTeacherSession && typeof RemoedTeacherSession.getToken === 'function') {
+                return RemoedTeacherSession.getToken() || '';
+            }
             return (
                 localStorage.getItem('remoed_teacher_token') ||
                 sessionStorage.getItem('remoed_teacher_token') ||
@@ -1731,7 +1728,7 @@
         }
 
         async function loadCareerAssessedLevels(profile) {
-            const t = localStorage.getItem('token');
+            const t = teacherAuthToken();
             if (!t) return;
 
             if (profile.assessmentTests && profile.assessmentTests.completed) {
@@ -1797,7 +1794,7 @@
         }
 
         async function loadTeachingAbilitiesCareer() {
-            const t = localStorage.getItem('token');
+            const t = teacherAuthToken();
             if (!t) return;
             try {
                 const response = await fetch('/api/teacher/profile', {

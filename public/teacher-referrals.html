@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="css/portal-chrome-compact.css?v=mint-forest-1">
     <script src="js/user-session.js"></script>
+    <script src="js/teacher-session-gate.js?v=2"></script>
 </head>
 <body class="page-teacher-referrals teacher-portal">
   <div class="remoed-main">
@@ -100,75 +101,13 @@
   <script src="timezone-utils.js"></script>
   <script>
     (function () {
-      function storageRole() {
-        try {
-          return String(
-            localStorage.getItem('userType') || localStorage.getItem('userRole') || ''
-          )
-            .trim()
-            .toLowerCase();
-        } catch (e) {
-          return '';
-        }
-      }
-
-      function decodeJwtRole(token) {
-        try {
-          if (!token || String(token).split('.').length < 2) return '';
-          var payload = JSON.parse(
-            atob(String(token).split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))
-          );
-          var r = String(
-            payload.userRole || payload.userType || payload.role || ''
-          )
-            .trim()
-            .toLowerCase();
-          if (r === 'teacher') return 'teacher';
-          if (payload.teacherId && !payload.studentId) return 'teacher';
-          return r;
-        } catch (e) {
-          return '';
-        }
+      if (!window.RemoedTeacherSession || !RemoedTeacherSession.requireTeacher({ redirect: '/login/', message: 'Access denied. Teachers only.' })) {
+        return;
       }
 
       function token() {
-        try {
-          if (window.RemoedUserSession && typeof window.RemoedUserSession.getUserToken === 'function') {
-            var t = window.RemoedUserSession.getUserToken();
-            if (t) return t;
-          }
-        } catch (e) {}
-        try {
-          return (
-            localStorage.getItem('remoed_teacher_token') ||
-            sessionStorage.getItem('remoed_teacher_token') ||
-            localStorage.getItem('remoed_teacher_auth') ||
-            sessionStorage.getItem('remoed_teacher_auth') ||
-            localStorage.getItem('remoed_user_token') ||
-            localStorage.getItem('token') ||
-            sessionStorage.getItem('token') ||
-            ''
-          );
-        } catch (e2) {
-          return '';
-        }
+        return RemoedTeacherSession.getToken() || '';
       }
-
-      var tok = token();
-      var role = storageRole();
-      var jwtRole = decodeJwtRole(tok);
-      if (role !== 'teacher' && jwtRole !== 'teacher') {
-        alert('Access denied. Teachers only.');
-        window.location.href = '/login/';
-        return;
-      }
-      // Heal stale/missing role so other teacher pages keep working
-      try {
-        if (role !== 'teacher' && jwtRole === 'teacher') {
-          localStorage.setItem('userType', 'teacher');
-          localStorage.setItem('userRole', 'teacher');
-        }
-      } catch (e3) {}
 
       function fmtPeso(n) {
         const v = Number(n || 0) || 0;

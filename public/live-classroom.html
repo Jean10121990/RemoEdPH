@@ -6,6 +6,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="js/security-guard.js?v=1"></script>
+  <script src="js/user-session.js"></script>
+  <script src="js/teacher-session-gate.js?v=2"></script>
   <title>Live Classroom</title>
   <!-- PDF.js library for embedded free PDF viewer -->
   <script type="module">
@@ -326,7 +328,7 @@
       <h1 id="classroom-entry-blocked-message" style="margin:0 0 12px; font-size:1.25rem; color:#0f172a;">Class hasn’t started yet</h1>
       <p id="classroom-entry-blocked-sub" style="margin:0 0 16px; color:#64748b; font-size:0.95rem; line-height:1.5;"></p>
       <p id="classroom-entry-countdown" style="margin:0 0 20px; font-size:1.1rem; font-weight:600; color:#00aeef;"></p>
-      <button type="button" onclick="window.location.href= (localStorage.getItem('userType')==='teacher') ? 'teacher-class-table.html' : 'student-class-table.html'" style="padding:10px 20px; border:none; border-radius:8px; background:#64748b; color:#fff; font-weight:600; cursor:pointer;">Back to schedule</button>
+      <button type="button" onclick="window.location.href= ((window.RemoedTeacherSession && RemoedTeacherSession.isTeacherSession()) || localStorage.getItem('userType')==='teacher' || localStorage.getItem('userRole')==='teacher') ? 'teacher-class-table.html' : 'student-class-table.html'" style="padding:10px 20px; border:none; border-radius:8px; background:#64748b; color:#fff; font-weight:600; cursor:pointer;">Back to schedule</button>
     </div>
   </div>
 

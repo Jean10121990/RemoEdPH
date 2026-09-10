@@ -5,7 +5,12 @@
  */
 (function () {
   function getToken() {
+    if (window.RemoedTeacherSession && typeof RemoedTeacherSession.getToken === 'function') {
+      var t = RemoedTeacherSession.getToken();
+      if (t) return t;
+    }
     return (
+      localStorage.getItem('remoed_teacher_token') ||
       localStorage.getItem('token') ||
       localStorage.getItem('remoedToken') ||
       localStorage.getItem('authToken') ||
@@ -14,7 +19,15 @@
   }
 
   function isTeacher() {
-    return localStorage.getItem('userType') === 'teacher';
+    if (window.RemoedTeacherSession && typeof RemoedTeacherSession.isTeacherSession === 'function') {
+      return RemoedTeacherSession.isTeacherSession();
+    }
+    var role = String(
+      localStorage.getItem('userType') || localStorage.getItem('userRole') || ''
+    )
+      .trim()
+      .toLowerCase();
+    return role === 'teacher';
   }
 
   function formatDateLong(value) {

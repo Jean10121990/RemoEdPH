@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="css/portal-chrome-compact.css?v=mint-forest-1">
     <link rel="stylesheet" href="css/teacher-brand-overrides.css?v=teacher-green-2">
     <script src="js/user-session.js"></script>
+    <script src="js/teacher-session-gate.js?v=2"></script>
     <style>
       body.page-teacher-view-assessment .assess-shell {
         max-width: 920px;
@@ -102,14 +103,12 @@
         function _fmtPhDate(d) { return _TUPh.formatDateShortPhilippines ? _TUPh.formatDateShortPhilippines(d) : d.toLocaleDateString(); }
         function _fmtPhDateTime(d) { return _TUPh.formatDateTimePhilippines ? _TUPh.formatDateTimePhilippines(d) : d.toLocaleString(); }
         // Check authentication
-        const userType = localStorage.getItem('userType');
-        if (userType !== 'teacher') {
-            alert('Access denied. This page is for teachers only.');
-            window.location.href = 'index.html';
+        if (!window.RemoedTeacherSession || !RemoedTeacherSession.requireTeacher({ redirect: 'index.html' })) {
+            throw new Error('Teachers only');
         }
 
         async function loadAssessmentResults() {
-            const token = localStorage.getItem('token');
+            const token = RemoedTeacherSession.getToken();
             if (!token) {
                 document.getElementById('loading').textContent = 'Authentication required. Please login again.';
                 return;

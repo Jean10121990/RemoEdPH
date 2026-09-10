@@ -18,6 +18,7 @@
 <script src="js/portal-tour.js"></script>
 <script src="teacher-tour.js"></script>
 <script src="js/user-session.js"></script>
+<script src="js/teacher-session-gate.js?v=2"></script>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="css/portal-chrome-compact.css?v=notif-bell-2">
 </head>
@@ -1159,10 +1160,8 @@
     });
     
     // Role-based access control
-    const userType = localStorage.getItem('userType');
-    if (userType !== 'teacher') {
-      alert('Access denied. This page is for teachers only.');
-      window.location.replace('index.html');
+    if (!window.RemoedTeacherSession || !RemoedTeacherSession.requireTeacher({ redirect: 'index.html' })) {
+      throw new Error('Teachers only');
     }
     
     // Define all functions first before using them
@@ -1171,7 +1170,7 @@
 
     // Add token validation function with cooldown
     async function validateToken() {
-      const token = localStorage.getItem('token');
+      const token = RemoedTeacherSession.getToken();
       if (!token) {
         console.log('No token found, redirecting to login');
         localStorage.clear();

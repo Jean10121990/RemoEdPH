@@ -6,6 +6,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="js/security-guard.js?v=1"></script>
+  <script src="js/user-session.js"></script>
+  <script src="js/teacher-session-gate.js?v=2"></script>
   <title>Teacher Payslip - RemoEdPH</title>
   <link rel="stylesheet" href="modern-styles.css">
   <link rel="stylesheet" href="style.css">
@@ -313,6 +315,9 @@
       return d.toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Manila' });
     }
     function getToken() {
+      if (window.RemoedTeacherSession && typeof RemoedTeacherSession.getToken === 'function') {
+        return RemoedTeacherSession.getToken() || '';
+      }
       return localStorage.getItem('token') || localStorage.getItem('remoedToken') || '';
     }
     function qs(name) {
@@ -330,7 +335,7 @@
       var msg = document.getElementById('payslip-message');
       var doc = document.getElementById('payslip-doc');
       var token = getToken();
-      if (!token || localStorage.getItem('userType') !== 'teacher') {
+      if (!token || !(window.RemoedTeacherSession && RemoedTeacherSession.isTeacherSession())) {
         msg.className = 'payslip-msg payslip-msg--error no-print';
         msg.textContent = 'Please log in as a teacher to view your payslip.';
         return;

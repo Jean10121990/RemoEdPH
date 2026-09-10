@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="css/portal-chrome-compact.css?v=mint-forest-1">
   <script src="js/user-session.js"></script>
+  <script src="js/teacher-session-gate.js?v=2"></script>
   <script src="js/teacher-payout-settings.js"></script>
   <style>
     .fee-cancel-tooltip-wrap { position: relative; display: inline-flex; align-items: center; align-self: flex-end; margin-bottom: 2px; }
@@ -455,6 +456,12 @@
   <script src="https://cdn.jsdelivr.net/npm/luxon@3.5.0/build/global/luxon.min.js"></script>
   <script src="timezone-utils.js"></script>
   <script>
+    if (!window.RemoedTeacherSession || !RemoedTeacherSession.requireTeacher({ redirect: 'index.html' })) {
+      throw new Error('Teachers only');
+    }
+    function teacherAuthToken() {
+      return RemoedTeacherSession.getToken() || '';
+    }
     const TU = window.TimezoneUtils || {};
     // Set sidebar avatar and email (declare identifiers now; DOM ops deferred)
     const username = localStorage.getItem('remoedUsername') || 'User';
@@ -609,7 +616,7 @@
         const payPeriodEl = document.getElementById('pay-period');
         if (payPeriodEl) payPeriodEl.textContent = periodText + ' · ' + (weekLabel || '');
         
-        const token = localStorage.getItem('token');
+        const token = teacherAuthToken();
         if (typeof RemoedTeacherPayout !== 'undefined') {
           await RemoedTeacherPayout.ensureInitialized();
           updateTeachingFeePayoutSummary();
@@ -812,7 +819,7 @@
     // Calculate deductions for the specified week
     async function calculateDeductions(absentClasses = null, startDate = null, endDate = null) {
       try {
-        const token = localStorage.getItem('token');
+        const token = teacherAuthToken();
         const teacherId = localStorage.getItem('teacherId');
         
         // Use provided dates or fall back to current bi-monthly cut-off (PH)
@@ -985,7 +992,7 @@
     // Load resolved issue payments data
     async function loadResolvedIssuePayments(startDate, endDate) {
       try {
-        const token = localStorage.getItem('token');
+        const token = teacherAuthToken();
         const teacherId = localStorage.getItem('teacherId');
         
         if (!token || !teacherId) {
@@ -1175,7 +1182,7 @@
     // Load weekly payment history with filter functionality
     async function loadWeeklyPaymentHistory() {
       try {
-        const token = localStorage.getItem('token');
+        const token = teacherAuthToken();
         const filterType = document.getElementById('history-filter-type');
         const weekSelect = document.getElementById('week-select');
         const weekSelectionControls = document.getElementById('week-selection-controls');
@@ -1295,7 +1302,7 @@
     // Load payment history by filter type
     async function loadPaymentHistoryByFilter(filterType) {
       try {
-        const token = localStorage.getItem('token');
+        const token = teacherAuthToken();
         const teacherId = localStorage.getItem('teacherId');
         
         console.log('🔍 Debug - Token exists:', !!token);
@@ -1534,7 +1541,7 @@
     
     // Load payment details for a specific week
     async function loadPaymentDetailsForWeek(startDate, endDate) {
-      const token = localStorage.getItem('token');
+      const token = teacherAuthToken();
       const paymentDetailsContainer = document.getElementById('payment-details-container');
       
       paymentDetailsContainer.innerHTML = `
@@ -1721,7 +1728,7 @@
       if (!teacherId) return;
       
       try {
-        const token = localStorage.getItem('token');
+        const token = teacherAuthToken();
         const response = await fetch(`/api/teacher/profile`, {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -1746,7 +1753,7 @@
       if (!teacherId) return;
       
       try {
-        const token = localStorage.getItem('token');
+        const token = teacherAuthToken();
         const response = await fetch(`/api/teacher/profile`, {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -1784,7 +1791,7 @@
     // Debug function to show detailed cancellation deduction information
     async function debugCancellationDeductions() {
       try {
-        const token = localStorage.getItem('token');
+        const token = teacherAuthToken();
         const teacherId = localStorage.getItem('teacherId');
         
         // Get current week dates (Monday to Sunday)
@@ -1882,7 +1889,7 @@
     // Check payment status for a specific week
     async function checkPaymentStatus(startDate, endDate) {
       try {
-        const token = localStorage.getItem('token');
+        const token = teacherAuthToken();
         const response = await fetch(`/api/teacher/profile`, {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -1916,7 +1923,7 @@
     // Load profile picture and update sidebar from backend
     async function loadProfilePicture(teacherId) {
         try {
-            const token = localStorage.getItem('token');
+            const token = teacherAuthToken();
             if (!token) {
                 console.log('No token found for profile picture');
                 return;
@@ -2046,7 +2053,7 @@
       // Debug: Log current localStorage state
       console.log('🔍 Current localStorage state:', {
         teacherId: teacherId,
-        token: localStorage.getItem('token') ? 'Present' : 'Missing',
+        token: teacherAuthToken() ? 'Present' : 'Missing',
         finishedClasses: Object.keys(localStorage).filter(key => key.startsWith('class_finished_')),
         lastNotification: localStorage.getItem('class_completion_notification'),
         lastRefresh: localStorage.getItem('last_fee_refresh')
@@ -2177,7 +2184,7 @@
           return;
         }
         
-        const token = localStorage.getItem('token');
+        const token = teacherAuthToken();
         const teacherId = localStorage.getItem('teacherId');
         
         if (!token || !teacherId) {
@@ -2320,7 +2327,7 @@
     // Debug function to check current bookings
     async function debugCurrentBookings() {
       try {
-        const token = localStorage.getItem('token');
+        const token = teacherAuthToken();
         const teacherId = localStorage.getItem('teacherId');
         
         // Get current week dates (Global format)
@@ -2390,7 +2397,7 @@
     // Debug function to verify salary calculations
     async function debugSalaryCalculation() {
       try {
-        const token = localStorage.getItem('token');
+        const token = teacherAuthToken();
         const teacherId = localStorage.getItem('teacherId');
         
         // Get current week dates
@@ -2553,7 +2560,7 @@
     // Debug function to check attendance for specific bookings
     async function debugAttendanceData() {
       try {
-        const token = localStorage.getItem('token');
+        const token = teacherAuthToken();
         const teacherId = localStorage.getItem('teacherId');
         
         console.log('🔍 Debugging attendance data for teacher:', teacherId);
@@ -2628,7 +2635,7 @@
     // Debug function to show detailed absence breakdown
     async function debugAbsenceBreakdown() {
       try {
-        const token = localStorage.getItem('token');
+        const token = teacherAuthToken();
         const teacherId = localStorage.getItem('teacherId');
         
         console.log('🔍 Debugging absence breakdown for teacher:', teacherId);
@@ -2756,7 +2763,7 @@
     // Debug function to specifically check student absences
     async function debugStudentAbsences() {
       try {
-        const token = localStorage.getItem('token');
+        const token = teacherAuthToken();
         const teacherId = localStorage.getItem('teacherId');
         
         console.log('🔍 Debugging student absences for teacher:', teacherId);

@@ -1,11 +1,12 @@
 // Extracted from teacher-class-table.html inline script
 // (function wrapper to avoid polluting global scope too much)
 
-// Role-based access control
-const userType = localStorage.getItem('userType');
-if (userType !== 'teacher') {
-  alert('Access denied. This page is for teachers only.');
-  window.location.href = 'index.html';
+// Role-based access control (shared gate — also accepts teacher JWT / remoed_teacher_token)
+if (
+  !window.RemoedTeacherSession ||
+  !RemoedTeacherSession.requireTeacher({ redirect: 'index.html' })
+) {
+  throw new Error('Teachers only');
 }
 
 // Get user info from localStorage
