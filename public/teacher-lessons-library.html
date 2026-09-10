@@ -1250,8 +1250,9 @@
                             <p>${escapeHtml(message || 'Could not open this presentation.')}</p>
                             <p style="margin-top:1rem;font-size:0.9rem;color:#64748b;">File: ${escapeHtml(name)}</p>
                             <p style="margin-top:0.75rem;font-size:0.85rem;color:#64748b;line-height:1.45;">
-                              On localhost the lesson record is often in MongoDB but the .pptx lives only on production disk.
-                              Re-upload the file here, or set <code>FRONTEND_URL</code> + matching <code>JWT_SECRET</code>/<code>UPLOADS_FETCH_TOKEN</code> so this machine can pull it.
+                              Preview converts PPTX → PDF on the server. Production needs <code>CLOUDMERSIVE_API_KEY</code>
+                              (or LibreOffice). On localhost, the .pptx must also exist under <code>uploads/</code>
+                              (or be pulled via <code>FRONTEND_URL</code> / <code>UPLOADS_FETCH_TOKEN</code>).
                             </p>
                         </div>
                     `;

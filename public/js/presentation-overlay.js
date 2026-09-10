@@ -658,8 +658,22 @@
         var maxIdx = getMaxIndex();
         var atEnd = maxIdx != null && state.slideIndex >= maxIdx;
         if (maxIdx == null && state._lockedAtEnd) atEnd = true;
+        // Unknown total + already one speculative step past last confirmed Office slide
+        if (
+          maxIdx == null &&
+          state._confirmedSlideIndex != null &&
+          state.slideIndex > state._confirmedSlideIndex
+        ) {
+          atEnd = true;
+        }
+        // Unknown total with no discovery yet: still allow first advances, but label
+        // should not imply infinite slides — title reflects wait-for-confirm after one step.
         nextSlideBtn.disabled = atEnd;
-        nextSlideBtn.title = atEnd ? 'Last slide' : 'Next slide (syncs students)';
+        nextSlideBtn.title = atEnd
+          ? maxIdx == null
+            ? 'Waiting for slide confirmation (or last slide)'
+            : 'Last slide'
+          : 'Next slide (syncs students)';
       }
       var headerInfo = document.getElementById('pdf-page-info');
       if (headerInfo) {
@@ -851,6 +865,8 @@
         return;
       }
       state.slideIndex = nextIdx;
+      state._confirmedSlideIndex = nextIdx;
+      state._lockedAtEnd = false;
       updateSlideLabel();
       redrawAnnotations(state);
       emitSlideChanged(nextIdx, iframe && iframe.src ? iframe.src : null);
@@ -964,15 +980,28 @@
       }
       // Hard stop at bounds — never walk past the last presented slide.
       if (maxIdx == null) {
-        // Unknown total (Office iframe): only allow a single speculative step forward;
-        // wrap detection locks totalSlides. Still never go below 0.
+        // Unknown total (legacy Office iframe): do not allow unbounded next.
+        // Speculative wrap-detection only works when Office posts messages; when the
+        // iframe is an error page those never arrive and the label would climb forever.
         if (deltaN < 0 && state.slideIndex <= 0) {
           updateSlideLabel();
           return;
         }
-        if (deltaN > 0 && state._lockedAtEnd) {
-          updateSlideLabel();
-          return;
+        if (deltaN > 0) {
+          if (state._lockedAtEnd) {
+            updateSlideLabel();
+            return;
+          }
+          var confirmed =
+            state._confirmedSlideIndex != null
+              ? state._confirmedSlideIndex
+              : Math.max(0, state.slideIndex);
+          // Already one step past the last Office-confirmed index — wait for
+          // confirmation or wrap-lock before advancing again.
+          if (state.slideIndex > confirmed) {
+            updateSlideLabel();
+            return;
+          }
         }
       } else {
         var next = state.slideIndex + deltaN;
@@ -983,6 +1012,10 @@
         }
       }
       var nextIdx = clampSlideIndex(state.slideIndex + deltaN);
+      // When total is unknown, clampSlideIndex cannot cap — apply manual step.
+      if (maxIdx == null) {
+        nextIdx = Math.max(0, state.slideIndex + deltaN);
+      }
       if (nextIdx === state.slideIndex) {
         updateSlideLabel();
         return;
@@ -991,6 +1024,9 @@
       // If total is unknown (Office iframe), next wrap message may mean we passed the end
       if (state.renderMode !== 'images' && maxIdx == null && deltaN > 0) {
         state._expectingPossibleWrap = true;
+        if (state._confirmedSlideIndex == null) {
+          state._confirmedSlideIndex = state.slideIndex;
+        }
       } else {
         state._expectingPossibleWrap = false;
       }

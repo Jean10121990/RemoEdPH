@@ -228,11 +228,12 @@ async function ensurePptxPreviewPdf({ sourcePath, fileName }) {
       method = 'libreoffice';
     } catch (libreErr) {
       const msg =
-        'Could not convert PPTX for localhost preview. ' +
-        (cloudErr.message || '') +
+        'Could not convert this PowerPoint to PDF for preview. ' +
+        'Set CLOUDMERSIVE_API_KEY on the server (Cloud Run secret), or install LibreOffice (soffice). ' +
+        'Details: ' +
+        (cloudErr && cloudErr.message ? cloudErr.message : 'Cloudmersive unavailable') +
         ' / ' +
-        (libreErr.message || '') +
-        '. Install LibreOffice or set CLOUDMERSIVE_API_KEY.';
+        (libreErr && libreErr.message ? libreErr.message : 'LibreOffice unavailable');
       throw new Error(msg);
     }
   }

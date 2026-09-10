@@ -1179,12 +1179,20 @@ router.get('/presentation/:fileId/local-preview', authenticateToken, async (req,
       });
     }
     if (pType === 'office_embed' && file.embedUrl) {
-      return res.json({
-        success: true,
-        mode: 'office_embed',
-        previewUrl: file.embedUrl,
-        fileName: file.fileName
-      });
+      // If the embed wraps our private /uploads PPTX, Office Online cannot auth — convert instead.
+      const emb = String(file.embedUrl || '');
+      const wrapsPrivate =
+        /\/uploads\//i.test(emb) ||
+        (/officeapps\.live\.com/i.test(emb) &&
+          /(remoedph\.com|localhost|127\.0\.0\.1)/i.test(emb));
+      if (!wrapsPrivate) {
+        return res.json({
+          success: true,
+          mode: 'office_embed',
+          previewUrl: file.embedUrl,
+          fileName: file.fileName
+        });
+      }
     }
 
     // Prefer converted slide images / PDF when available (reliable live-class follow-mode).

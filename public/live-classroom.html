@@ -377,7 +377,7 @@
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script src="js/student-badges.js?v=1"></script>
     <script src="js/teacher-badge-award.js?v=1"></script>
-    <script src="js/presentation-overlay.js?v=lc-slide-stack-2"></script>
+    <script src="js/presentation-overlay.js?v=lc-slide-stack-3"></script>
     <script src="js/virtual-background.js"></script>
     <script src="js/classroom-qa-recording.js?v=lc-polish-3" defer></script>
     <script>
@@ -2377,26 +2377,15 @@
         );
       }
 
-      function officeOnlineCanReachThisHost() {
-        try {
-          const host = window.location.hostname || '';
-          if (window.location.protocol !== 'https:') return false;
-          if (/localhost|127\.0\.0\.1|\.local$/i.test(host)) return false;
-          if (/^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[0-1])\.)/.test(host)) return false;
-          return true;
-        } catch (_e) {
-          return false;
-        }
-      }
-
       /**
        * Prefer converted slide images / PDF for reliable follow-mode.
-       * Office Online is only kept when no slide stack exists and the host is publicly reachable.
+       * Never hand auth-gated /uploads PPTX to Microsoft Office Online — that produces the
+       * generic "An error occurred… we can't open this for you" page and unknown slide totals.
        */
       async function resolvePresentationMaterialForViewer(material) {
         if (!material) return material;
         const pType = material.presentationType || '';
-        if (pType === 'slide_stack' || pType === 'html5_zip' || pType === 'office_embed') {
+        if (pType === 'slide_stack' || pType === 'html5_zip') {
           return material;
         }
         // Upload-time conversion already produced PNGs — use image stack (skip Office Online).
@@ -2412,25 +2401,28 @@
         if (pType === 'pdf_preview') {
           return material;
         }
+        // True public Office/OneDrive embeds (not wrapping our private /uploads) can stay as-is.
+        if (pType === 'office_embed' && material.embedUrl) {
+          const emb = String(material.embedUrl);
+          const wrapsPrivateUpload =
+            /\/uploads\//i.test(emb) ||
+            (/officeapps\.live\.com/i.test(emb) &&
+              /remoedph\.com|localhost|127\.0\.0\.1/i.test(emb));
+          if (!wrapsPrivateUpload && !/\/uploads\/.+\.pptx?/i.test(String(material.html5EntryUrl || ''))) {
+            return material;
+          }
+        }
         const fileName = String(material.name || material.html5EntryUrl || '');
         const isPptLike =
           /\.(ppt|pptx)(\?|#|$)/i.test(fileName) ||
           String(material.type || '').toLowerCase().includes('ppt') ||
-          /\.(ppt|pptx)(\?|#|$)/i.test(String(material.html5EntryUrl || ''));
+          /\.(ppt|pptx)(\?|#|$)/i.test(String(material.html5EntryUrl || '')) ||
+          pType === 'office_embed' ||
+          pType === 'office_online';
         if (!isPptLike) return material;
 
         const fileId = material.id || material.materialId || '';
         if (!fileId) return material;
-
-        // Public HTTPS without slide images: try Office Online first.
-        if (
-          officeOnlineCanReachThisHost() &&
-          material.html5EntryUrl &&
-          /^https:\/\//i.test(window.location.origin) &&
-          !(Array.isArray(material.slideUrls) && material.slideUrls.length)
-        ) {
-          return material;
-        }
 
         const token = classroomAuthToken();
         if (!token) return material;
@@ -2444,15 +2436,15 @@
           if (!resp.ok || !data.success) {
             throw new Error(data.error || 'Could not prepare presentation preview');
           }
-          if (data.mode === 'html5_zip' || data.mode === 'office_embed') {
+          if (data.mode === 'html5_zip') {
             return Object.assign({}, material, {
               presentationType: data.mode,
               html5EntryUrl: data.previewUrl || material.html5EntryUrl,
               embedUrl: data.previewUrl || material.embedUrl
             });
           }
-          if (data.mode === 'office_online' && data.embedUrl) {
-            // Prefer local slide stack when conversion assets already exist on the lesson file.
+          // Never mount Office Online for private lesson files — require PDF / slide images.
+          if (data.mode === 'office_embed' || data.mode === 'office_online') {
             if (Array.isArray(data.slideUrls) && data.slideUrls.length) {
               return Object.assign({}, material, {
                 presentationType: 'slide_stack',
@@ -2462,10 +2454,9 @@
                 convertedPdfUrl: data.convertedPdfUrl || material.convertedPdfUrl || ''
               });
             }
-            return Object.assign({}, material, {
-              presentationType: 'office_embed',
-              embedUrl: data.embedUrl
-            });
+            throw new Error(
+              'This PowerPoint is not converted yet. Open Lessons Library once to convert it, or ensure Cloudmersive/LibreOffice is configured on the server.'
+            );
           }
           if (data.mode === 'pdf') {
             const slideUrls =
@@ -2533,14 +2524,15 @@
         const needsPptResolve =
           material.presentationType !== 'pdf_preview' &&
           material.presentationType !== 'slide_stack' &&
+          material.presentationType !== 'html5_zip' &&
           !(Array.isArray(material.slideUrls) && material.slideUrls.length > 0) &&
           (/\.(ppt|pptx)$/i.test(material.name || '') ||
             String(material.type || '').toLowerCase().includes('ppt') ||
             /\.(ppt|pptx)(\?|$)/i.test(material.html5EntryUrl || '') ||
             material.presentationType === 'office_embed' ||
-            material.presentationType === 'html5_zip');
+            material.presentationType === 'office_online');
 
-        if (needsPptResolve && material.presentationType !== 'html5_zip' && material.presentationType !== 'office_embed') {
+        if (needsPptResolve) {
           lessonFileViewer.innerHTML =
             '<div style="display:flex;align-items:center;justify-content:center;height:100%;min-height:240px;color:#334155;font-family:Segoe UI,sans-serif;padding:24px;text-align:center;">' +
             '<div><p style="font-weight:700;margin:0 0 8px;">Preparing lesson slides…</p>' +
@@ -2553,11 +2545,11 @@
               '<div style="display:flex;align-items:center;justify-content:center;height:100%;min-height:280px;padding:28px;text-align:center;font-family:Segoe UI,sans-serif;color:#334155;">' +
               '<div style="max-width:480px;">' +
               '<p style="font-weight:800;font-size:1.15rem;margin:0 0 10px;color:#b91c1c;">Could not open lesson slides</p>' +
-              '<p style="margin:0 0 12px;line-height:1.55;color:#475569;">Microsoft Office Online cannot load PowerPoint from localhost. RemoEd tried to convert this file to PDF but conversion failed.</p>' +
+              '<p style="margin:0 0 12px;line-height:1.55;color:#475569;">RemoEd converts PowerPoint to PDF/slides for live class. Microsoft Office Online cannot open private lesson files, so conversion is required.</p>' +
               '<p style="margin:0 0 14px;font-size:0.92rem;color:#64748b;">' +
               escapeHtml(material.__pptPreviewError) +
               '</p>' +
-              '<p style="margin:0;font-size:0.9rem;color:#64748b;">Install LibreOffice on this PC, or set <code>CLOUDMERSIVE_API_KEY</code> in the server environment, then reload the class.</p>' +
+              '<p style="margin:0;font-size:0.9rem;color:#64748b;">Ensure <code>CLOUDMERSIVE_API_KEY</code> (or LibreOffice) is configured on the server, then reload. First conversion of a large PPTX can take up to a minute.</p>' +
               '</div></div>';
             return;
           }
