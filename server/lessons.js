@@ -29,6 +29,26 @@ const {
   publicPreviewUrl
 } = require('./utils/pptxLocalPreview');
 
+/** Strict 24-hex ObjectId check (avoids Mongoose CastError spam in logs). */
+function isMongoObjectId(value) {
+  const s = String(value == null ? '' : value).trim();
+  if (!/^[a-fA-F0-9]{24}$/.test(s)) return false;
+  return mongoose.Types.ObjectId.isValid(s);
+}
+
+function respondInvalidObjectId(res, label = 'id') {
+  return res.status(400).json({ success: false, error: `Invalid ${label}` });
+}
+
+function respondLessonRouteError(res, error, fallbackMessage) {
+  if (error && error.name === 'CastError') {
+    console.warn('⚠️ Invalid ObjectId in lessons route:', error.path || '', error.value);
+    return res.status(400).json({ success: false, error: 'Invalid id' });
+  }
+  console.error(fallbackMessage || 'Lesson route error:', error);
+  return res.status(500).json({ error: fallbackMessage || 'Internal server error' });
+}
+
 const LESSON_UPLOAD_MAX_BYTES = 50 * 1024 * 1024;
 const lessonUploadTmp = path.join(__dirname, '../uploads/tmp-lesson-uploads');
 fs.mkdirSync(lessonUploadTmp, { recursive: true });
@@ -232,6 +252,9 @@ async function handleLessonPdfRaw(req, res) {
   let tmpPath = null;
   try {
     const { fileId } = req.params;
+    if (!isMongoObjectId(fileId)) {
+      return respondInvalidObjectId(res, 'file id');
+    }
     const asDownload = req.query.download === '1' || req.query.download === 'true';
 
     const lesson = await Lesson.findOne(
@@ -600,6 +623,9 @@ router.get('/curriculum/:curriculumId/lessons', authenticateToken, async (req, r
 router.get('/lesson/:lessonId', authenticateToken, async (req, res) => {
   try {
     const { lessonId } = req.params;
+    if (!isMongoObjectId(lessonId)) {
+      return respondInvalidObjectId(res, 'lesson id');
+    }
     const lesson = await Lesson.findById(lessonId)
       .select('_id title description lessonNumber order estimatedDuration teacherNotes')
       .lean();
@@ -612,8 +638,7 @@ router.get('/lesson/:lessonId', authenticateToken, async (req, res) => {
     }
     res.json(lesson);
   } catch (error) {
-    console.error('Error fetching lesson:', error);
-    res.status(500).json({ error: 'Failed to fetch lesson' });
+    return respondLessonRouteError(res, error, 'Failed to fetch lesson');
   }
 });
 
@@ -662,6 +687,10 @@ router.delete('/lesson/:lessonId', authenticateToken, requireTeacher, async (req
     }
 
     console.log(`🗑️ [DELETE] Deleting lesson: ${lessonId}`);
+
+    if (!isMongoObjectId(lessonId)) {
+      return respondInvalidObjectId(res, 'lesson id');
+    }
 
     const lesson = await Lesson.findById(lessonId);
     if (!lesson) {
@@ -746,6 +775,9 @@ router.put(
 router.get('/lesson/:lessonId/files', authenticateToken, async (req, res) => {
   try {
     const { lessonId } = req.params;
+    if (!isMongoObjectId(lessonId)) {
+      return respondInvalidObjectId(res, 'lesson id');
+    }
     const withData = req.query.withData === 'true';
     console.log(`📚 [GET FILES] Fetching files for lesson: ${lessonId}, withData: ${withData}`);
     
@@ -797,8 +829,7 @@ router.get('/lesson/:lessonId/files', authenticateToken, async (req, res) => {
     
     res.json(files);
   } catch (error) {
-    console.error('❌ [GET FILES] Error fetching lesson files:', error);
-    res.status(500).json({ error: 'Failed to fetch lesson files' });
+    return respondLessonRouteError(res, error, 'Failed to fetch lesson files');
   }
 });
 
@@ -810,6 +841,9 @@ router.head('/lesson-file/:fileId/raw', authenticateToken, handleLessonPdfRaw);
 router.get('/lesson-file/:fileId', authenticateToken, async (req, res) => {
   try {
     const { fileId } = req.params;
+    if (!isMongoObjectId(fileId)) {
+      return respondInvalidObjectId(res, 'file id');
+    }
     console.log(`📄 [GET FILE] Fetching file data for file ID: ${fileId}`);
 
     const lesson = await Lesson.findOne(
@@ -847,8 +881,7 @@ router.get('/lesson-file/:fileId', authenticateToken, async (req, res) => {
       ...presentationPublicFields(file)
     });
   } catch (error) {
-    console.error('❌ [GET FILE] Error fetching lesson file:', error);
-    res.status(500).json({ error: 'Failed to fetch lesson file' });
+    return respondLessonRouteError(res, error, 'Failed to fetch lesson file');
   }
 });
 
@@ -858,6 +891,9 @@ router.post('/lesson/:lessonId/upload-file', authenticateToken, requireTeacher, 
   let tmpCleanupPath = null;
   try {
     const { lessonId } = req.params;
+    if (!isMongoObjectId(lessonId)) {
+      return respondInvalidObjectId(res, 'lesson id');
+    }
     const body = req.body || {};
     const fileName = body.fileName || (req.file && req.file.originalname) || '';
     const fileType = body.fileType || '';
@@ -1033,6 +1069,9 @@ router.post('/lesson/:lessonId/upload-file', authenticateToken, requireTeacher, 
 router.get('/presentation/:fileId/view', authenticateToken, async (req, res) => {
   try {
     const { fileId } = req.params;
+    if (!isMongoObjectId(fileId)) {
+      return respondInvalidObjectId(res, 'file id');
+    }
     const lesson = await Lesson.findOne({ 'files._id': fileId }).select('files');
     if (!lesson) {
       return res.status(404).json({ error: 'Presentation not found' });
@@ -1076,8 +1115,7 @@ router.get('/presentation/:fileId/view', authenticateToken, async (req, res) => 
     }
     return res.status(404).json({ error: 'No viewable presentation source' });
   } catch (error) {
-    console.error('Presentation view error:', error);
-    res.status(500).json({ error: 'Failed to resolve presentation' });
+    return respondLessonRouteError(res, error, 'Failed to resolve presentation');
   }
 });
 
@@ -1088,6 +1126,9 @@ router.get('/presentation/:fileId/view', authenticateToken, async (req, res) => 
 router.get('/presentation/:fileId/secure-embed', authenticateToken, async (req, res) => {
   try {
     const { fileId } = req.params;
+    if (!isMongoObjectId(fileId)) {
+      return respondInvalidObjectId(res, 'file id');
+    }
     const lesson = await Lesson.findOne({ 'files._id': fileId }).select('files');
     if (!lesson) {
       return res.status(404).json({ error: 'Presentation not found' });
@@ -1148,8 +1189,7 @@ router.get('/presentation/:fileId/secure-embed', authenticateToken, async (req, 
       });
     }
   } catch (error) {
-    console.error('Presentation secure-embed error:', error);
-    res.status(500).json({ error: 'Failed to resolve secure embed' });
+    return respondLessonRouteError(res, error, 'Failed to resolve secure embed');
   }
 });
 
@@ -1160,6 +1200,9 @@ router.get('/presentation/:fileId/secure-embed', authenticateToken, async (req, 
 router.get('/presentation/:fileId/local-preview', authenticateToken, async (req, res) => {
   try {
     const { fileId } = req.params;
+    if (!isMongoObjectId(fileId)) {
+      return respondInvalidObjectId(res, 'file id');
+    }
     const lesson = await Lesson.findOne({ 'files._id': fileId }).select('files');
     if (!lesson) {
       return res.status(404).json({ error: 'Presentation not found' });
@@ -1236,6 +1279,10 @@ router.get('/presentation/:fileId/local-preview', authenticateToken, async (req,
       convertedPdfUrl: file.convertedPdfUrl || previewUrl
     });
   } catch (error) {
+    if (error && error.name === 'CastError') {
+      console.warn('⚠️ Invalid ObjectId in local-preview:', error.value);
+      return res.status(400).json({ success: false, error: 'Invalid file id' });
+    }
     console.error('Presentation local-preview error:', error);
     res.status(500).json({
       error: error.message || 'Failed to build lesson preview'
@@ -1247,6 +1294,9 @@ router.get('/presentation/:fileId/local-preview', authenticateToken, async (req,
 router.get('/presentation/:fileId/preview.pdf', authenticateToken, async (req, res) => {
   try {
     const { fileId } = req.params;
+    if (!isMongoObjectId(fileId)) {
+      return respondInvalidObjectId(res, 'file id');
+    }
     const lesson = await Lesson.findOne({ 'files._id': fileId }).select('files');
     if (!lesson) {
       return res.status(404).json({ error: 'Presentation not found' });
@@ -1266,8 +1316,7 @@ router.get('/presentation/:fileId/preview.pdf', authenticateToken, async (req, r
     res.setHeader('Cache-Control', 'private, max-age=300');
     return res.sendFile(result.previewPath);
   } catch (error) {
-    console.error('Presentation preview.pdf error:', error);
-    res.status(500).json({ error: error.message || 'Failed to open lesson preview' });
+    return respondLessonRouteError(res, error, error.message || 'Failed to open lesson preview');
   }
 });
 
@@ -1275,6 +1324,9 @@ router.get('/presentation/:fileId/preview.pdf', authenticateToken, async (req, r
 router.delete('/lesson-file/:fileId', authenticateToken, requireTeacher, async (req, res) => {
   try {
     const { fileId } = req.params;
+    if (!isMongoObjectId(fileId)) {
+      return respondInvalidObjectId(res, 'file id');
+    }
     const teacherId = req.user.teacherId || req.user.userId;
     // Check for admin - be more explicit about the check
     const isAdmin = req.user && (

@@ -2422,7 +2422,7 @@
         if (!isPptLike) return material;
 
         const fileId = material.id || material.materialId || '';
-        if (!fileId) return material;
+        if (!fileId || !/^[a-fA-F0-9]{24}$/.test(String(fileId))) return material;
 
         const token = classroomAuthToken();
         if (!token) return material;
@@ -6100,11 +6100,17 @@
       /** BSON / string safe lesson id for /api/lessons/lesson/:id/... */
       function normalizeLessonIdForApi(lessonId) {
         if (lessonId == null || lessonId === '') return '';
+        let s = '';
         if (typeof lessonId === 'object' && lessonId !== null) {
-          if (lessonId.$oid) return String(lessonId.$oid);
-          return String(lessonId._id || lessonId.id || '');
+          if (lessonId.$oid) s = String(lessonId.$oid);
+          else s = String(lessonId._id || lessonId.id || '');
+        } else {
+          s = String(lessonId).trim();
         }
-        return String(lessonId);
+        // Reject non-ObjectId values so we don't spam the API with CastErrors
+        if (!s || s === 'undefined' || s === 'null') return '';
+        if (!/^[a-fA-F0-9]{24}$/.test(s)) return '';
+        return s;
       }
 
       /** Same lesson the student booked: stored lessonId, server resolvedLessonId (level+title), or populated lesson. */

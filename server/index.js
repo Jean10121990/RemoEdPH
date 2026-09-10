@@ -1769,6 +1769,15 @@ app.use((err, req, res, next) => {
         'If this happens for small files on production, Nginx/Apache in front of Node is likely limiting the body (default often 1m). Raise client_max_body_size (Nginx) or LimitRequestBody (Apache). See RemoEdPH/deploy/nginx-increase-body-size.conf',
     });
   }
+  // Invalid Mongo ObjectId in params/query — client bug, not a server crash.
+  if (err && err.name === 'CastError') {
+    console.warn('⚠️ CastError:', req.method, req.originalUrl, err.path, err.value);
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid id',
+      path: err.path || undefined
+    });
+  }
   const status = Number(err && (err.statusCode || err.status)) || 500;
   const msg = err && err.message ? String(err.message) : 'Internal server error';
   const safeMsg = msg.replace(/\/\/([^:]+):([^@]+)@/g, '//$1:***@');
