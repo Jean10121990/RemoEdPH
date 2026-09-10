@@ -100,16 +100,75 @@
   <script src="timezone-utils.js"></script>
   <script>
     (function () {
-      const userType = localStorage.getItem('userType');
-      if (userType !== 'teacher') {
+      function storageRole() {
+        try {
+          return String(
+            localStorage.getItem('userType') || localStorage.getItem('userRole') || ''
+          )
+            .trim()
+            .toLowerCase();
+        } catch (e) {
+          return '';
+        }
+      }
+
+      function decodeJwtRole(token) {
+        try {
+          if (!token || String(token).split('.').length < 2) return '';
+          var payload = JSON.parse(
+            atob(String(token).split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))
+          );
+          var r = String(
+            payload.userRole || payload.userType || payload.role || ''
+          )
+            .trim()
+            .toLowerCase();
+          if (r === 'teacher') return 'teacher';
+          if (payload.teacherId && !payload.studentId) return 'teacher';
+          return r;
+        } catch (e) {
+          return '';
+        }
+      }
+
+      function token() {
+        try {
+          if (window.RemoedUserSession && typeof window.RemoedUserSession.getUserToken === 'function') {
+            var t = window.RemoedUserSession.getUserToken();
+            if (t) return t;
+          }
+        } catch (e) {}
+        try {
+          return (
+            localStorage.getItem('remoed_teacher_token') ||
+            sessionStorage.getItem('remoed_teacher_token') ||
+            localStorage.getItem('remoed_teacher_auth') ||
+            sessionStorage.getItem('remoed_teacher_auth') ||
+            localStorage.getItem('remoed_user_token') ||
+            localStorage.getItem('token') ||
+            sessionStorage.getItem('token') ||
+            ''
+          );
+        } catch (e2) {
+          return '';
+        }
+      }
+
+      var tok = token();
+      var role = storageRole();
+      var jwtRole = decodeJwtRole(tok);
+      if (role !== 'teacher' && jwtRole !== 'teacher') {
         alert('Access denied. Teachers only.');
         window.location.href = '/login/';
         return;
       }
-
-      function token() {
-        return localStorage.getItem('token') || '';
-      }
+      // Heal stale/missing role so other teacher pages keep working
+      try {
+        if (role !== 'teacher' && jwtRole === 'teacher') {
+          localStorage.setItem('userType', 'teacher');
+          localStorage.setItem('userRole', 'teacher');
+        }
+      } catch (e3) {}
 
       function fmtPeso(n) {
         const v = Number(n || 0) || 0;
