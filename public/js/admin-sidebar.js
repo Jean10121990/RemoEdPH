@@ -173,8 +173,8 @@
         if (!nav) return;
         nav.classList.toggle('sidebar-collapsed', !!collapsed);
         document.body.classList.toggle('admin-sidebar-collapsed', !!collapsed);
-        // Drop dual off-canvas model used by floating portal chrome.
-        document.body.classList.remove('remoed-desktop-sidebar-collapsed', 'remoed-portal-sidebar-mounted', 'remoed-drawer-open');
+        // Clear legacy floating desktop-chrome flags only; keep remoed-drawer-open for portal-layout.
+        document.body.classList.remove('remoed-desktop-sidebar-collapsed', 'remoed-portal-sidebar-mounted');
     }
 
     function removeLegacyFloatingChrome() {
@@ -183,13 +183,44 @@
             if (legacy) legacy.remove();
             var closeBtn = document.getElementById('sidebarClose');
             if (closeBtn) closeBtn.remove();
+            // Keep portal-layout.js chrome (.remoed-mobile-topbar, #remoed-nav-toggle, bottom nav).
             document.querySelectorAll(
-                '.mobile-hamburger, .mobile-sidebar-overlay, .remoed-mobile-topbar, .portal-sidebar-toggle, #remoed-nav-toggle'
+                '.mobile-hamburger, .mobile-sidebar-overlay, .portal-sidebar-toggle'
             ).forEach(function (el) {
                 try { el.remove(); } catch (_e) {}
             });
-            document.body.classList.remove('remoed-desktop-sidebar-collapsed', 'remoed-portal-sidebar-mounted', 'remoed-drawer-open');
+            document.body.classList.remove('remoed-desktop-sidebar-collapsed', 'remoed-portal-sidebar-mounted');
         } catch (_e) {}
+    }
+
+    function queuePortalLayoutMount() {
+        if (global.__ADMIN_EMBED__) return;
+        if (typeof global.RemoedPortalLayout !== 'undefined' && global.RemoedPortalLayout.mount) {
+            global.RemoedPortalLayout.mount();
+            return;
+        }
+        if (document.querySelector('script[data-remoed-portal-layout]')) {
+            document.addEventListener('remoed-portal-layout-ready', function once() {
+                document.removeEventListener('remoed-portal-layout-ready', once);
+                if (global.RemoedPortalLayout && global.RemoedPortalLayout.mount) {
+                    global.RemoedPortalLayout.mount();
+                }
+            });
+            return;
+        }
+        var s = document.createElement('script');
+        s.src = 'js/portal-layout.js?v=lb-nav-3';
+        s.async = true;
+        s.setAttribute('data-remoed-portal-layout', '1');
+        s.onload = function () {
+            if (global.RemoedPortalLayout && global.RemoedPortalLayout.mount) {
+                global.RemoedPortalLayout.mount();
+            }
+            try {
+                document.dispatchEvent(new Event('remoed-portal-layout-ready'));
+            } catch (e1) { /* ignore */ }
+        };
+        document.head.appendChild(s);
     }
 
     function render(containerIdOrElement, activePageId) {
@@ -302,8 +333,9 @@
 
         applyGreetingFromStorage();
         loadProfileIntoSidebar();
-        // Mini-sidebar collapse is handled locally (.sidebar-collapse-toggle); no floating portal chrome.
+        // Mini-sidebar collapse is local; mobile hamburger/drawer via portal-layout.js.
         removeLegacyFloatingChrome();
+        queuePortalLayoutMount();
 
         // Shared top header (black 18px title) on full admin pages — skip hub embeds.
         try {

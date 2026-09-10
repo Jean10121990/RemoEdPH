@@ -147,8 +147,24 @@
     return '';
   }
 
+  function syncMediaAuthCookie(token) {
+    try {
+      var secure = String(window.location.protocol) === 'https:' ? '; Secure' : '';
+      if (token) {
+        document.cookie =
+          'remoed_media_token=' +
+          encodeURIComponent(String(token)) +
+          '; path=/; SameSite=Lax' +
+          secure;
+      } else {
+        document.cookie = 'remoed_media_token=; path=/; Max-Age=0; SameSite=Lax' + secure;
+      }
+    } catch (_e) {}
+  }
+
   function clearAuthStorage() {
     try {
+      syncMediaAuthCookie('');
       if (window.RemoedUserSession && typeof window.RemoedUserSession.clearUserToken === 'function') {
         window.RemoedUserSession.clearUserToken();
         return;
@@ -455,11 +471,16 @@
 
   enforceClassroomRoleVsUrl();
 
+  try {
+    syncMediaAuthCookie(getTokenForPortal(portalKindFromPath()));
+  } catch (_mediaCookie) {}
+
   window.RemoedSecurityGuard = {
     getToken: function () {
       return getTokenForPortal(portalKindFromPath());
     },
     getSessionRole: getSessionRoleFromStorage,
     decodeJwtPayload: decodeJwtPayload,
+    syncMediaAuthCookie: syncMediaAuthCookie,
   };
 })();

@@ -356,6 +356,8 @@ router.post('/create-link', optionalVerifyStudent, async (req, res) => {
 /**
  * After PayMongo redirects / student revisits credits, client calls this to apply credits
  * when the webhook never reached the server (common on Dev Tunnel / local).
+ * Always verifies payment status with PayMongo before crediting — never trusts the client alone.
+ * Primary fulfillment path remains POST /api/webhooks/paymongo.
  */
 router.post('/confirm-checkout', requireVerifyStudent, async (req, res) => {
   try {

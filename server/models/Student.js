@@ -57,6 +57,7 @@ const studentSchema = new mongoose.Schema({
   subscriptionEndDate: { type: Date },
   subscriptionStatus: { type: String, enum: ['pending', 'active', 'expired', 'cancelled'], default: 'pending' },
   paymentStatus: { type: String, enum: ['unpaid', 'pending', 'paid'], default: 'unpaid' },
+  /** Historical: bank/gcash/paypal from retired manual form; new purchases use paymongo only. */
   paymentMethod: { type: String, enum: ['bank', 'gcash', 'paypal', 'paymongo', null], default: null },
   paymentReference: { type: String, default: '' },
   paymentDetails: {
@@ -66,6 +67,7 @@ const studentSchema = new mongoose.Schema({
     paypalEmail: { type: String, default: '' }
   },
   paymentPaidAt: { type: Date, default: null },
+  /** Legacy manual checkout session (retired). Kept for historical documents only. */
   pendingCheckout: {
     sessionId: { type: String, default: '' },
     createdAt: { type: Date, default: null }
@@ -91,6 +93,8 @@ const studentSchema = new mongoose.Schema({
   assessmentTrialGrantedAt: { type: Date, default: null },
   /** Set when the gentle 'book your trial' reminder email was sent. */
   trialBookingReminderSentAt: { type: Date, default: null },
+  /** Set when in-app trial-ending notification was sent. */
+  trialEndingNotifiedAt: { type: Date, default: null },
   /** Paid active subscription (synced with PayMongo webhooks / login self-heal). */
   isSubscribed: { type: Boolean, default: false },
   /**
@@ -148,6 +152,19 @@ const studentSchema = new mongoose.Schema({
   referredByTeacherId: { type: String, default: null }, // legacy (teacher only)
   referredByOwnerType: { type: String, enum: ['teacher', 'admin', null], default: null },
   referredByOwnerId: { type: String, default: null }, // teacherId or admin username
+  /**
+   * In-app notification preferences (student).
+   * quietHours* uses Asia/Manila wall-clock hours (0–23).
+   */
+  notificationPrefs: {
+    reminders: { type: Boolean, default: true },
+    announcements: { type: Boolean, default: true },
+    credits: { type: Boolean, default: true },
+    digestEmail: { type: Boolean, default: false },
+    quietHoursEnabled: { type: Boolean, default: false },
+    quietHoursStart: { type: Number, default: 22 },
+    quietHoursEnd: { type: Number, default: 7 },
+  },
   createdAt: { type: Date, default: Date.now }
 }, {
   timestamps: true,

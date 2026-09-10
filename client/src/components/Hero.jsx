@@ -1,6 +1,12 @@
 export default function Hero() {
   return (
-    <section className="hero japandi-hero">
+    <section
+      className="hero japandi-hero hero-fullbleed"
+      aria-label="RemoEdPH introduction"
+    >
+      <div className="hero-fullbleed__stage" aria-hidden="true">
+        <div className="hero-fullbleed__glow" />
+      </div>
       <div className="hero-grid">
         <div className="hero-copy">
           <p className="brand-kicker">RemoEdPH</p>
@@ -18,14 +24,17 @@ export default function Hero() {
           </div>
         </div>
         <div className="hero-media">
-          <img
-            src="/images/hero-remoed-family.png"
-            alt="RemoEdPH teacher and students with Remo mascot waving hello"
-            className="hero-illustration"
-            width="960"
-            height="720"
-            decoding="async"
-          />
+          <div className="hero-media__frame">
+            <img
+              src="/images/hero-remoed-family.png"
+              alt="RemoEdPH teacher and students with Remo mascot waving hello"
+              className="hero-illustration"
+              width="960"
+              height="720"
+              decoding="async"
+              fetchPriority="high"
+            />
+          </div>
         </div>
       </div>
     </section>

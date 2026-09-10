@@ -375,6 +375,15 @@ body.student-portal.student-sidebar-collapsed .remoed-content {
         padding: 12px 16px;
         font-size: 0.875rem;
     }
+
+    /* Drawer layout: never reserve mini-rail margin on small screens */
+    body.teacher-sidebar-collapsed .remoed-content,
+    body.student-sidebar-collapsed .remoed-content,
+    body.admin-sidebar-collapsed .remoed-content,
+    body.student-portal.student-sidebar-collapsed .remoed-content {
+        margin-left: 0 !important;
+        max-width: 100% !important;
+    }
 }
 
 /* —— Admin portal only: medium blue nav text (reference UI), not slate grey —— */

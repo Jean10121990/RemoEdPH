@@ -52,22 +52,39 @@
     }
   }
 
+  /** Cookie so <img>/<video>/iframe can load /uploads without Authorization headers. */
+  function syncMediaAuthCookie(token) {
+    try {
+      var secure =
+        global.location && String(global.location.protocol) === 'https:' ? '; Secure' : '';
+      if (token) {
+        global.document.cookie =
+          'remoed_media_token=' +
+          encodeURIComponent(String(token)) +
+          '; path=/; SameSite=Lax' +
+          secure;
+      } else {
+        global.document.cookie =
+          'remoed_media_token=; path=/; Max-Age=0; SameSite=Lax' + secure;
+      }
+    } catch (_e) {}
+  }
+
   function getUserToken() {
     try {
       var kind = portalKindFromLocation();
+      var token = '';
       if (kind === 'admin') {
-        return (
+        token =
           global.localStorage.getItem('remoed_admin_auth') ||
           global.sessionStorage.getItem('remoed_admin_auth') ||
           global.localStorage.getItem(LS_ADMIN) ||
           global.sessionStorage.getItem(LS_ADMIN) ||
           global.localStorage.getItem('adminToken') ||
           global.sessionStorage.getItem('adminToken') ||
-          ''
-        );
-      }
-      if (kind === 'teacher') {
-        return (
+          '';
+      } else if (kind === 'teacher') {
+        token =
           global.localStorage.getItem(LS_TEACHER) ||
           global.sessionStorage.getItem(LS_TEACHER) ||
           global.localStorage.getItem('remoed_teacher_auth') ||
@@ -76,11 +93,9 @@
           global.sessionStorage.getItem('remoed_user_token') ||
           global.localStorage.getItem('token') ||
           global.sessionStorage.getItem('token') ||
-          ''
-        );
-      }
-      if (kind === 'student') {
-        return (
+          '';
+      } else if (kind === 'student') {
+        token =
           global.localStorage.getItem(LS_STUDENT) ||
           global.sessionStorage.getItem(LS_STUDENT) ||
           global.localStorage.getItem('remoed_student_auth') ||
@@ -89,18 +104,19 @@
           global.sessionStorage.getItem('remoed_user_token') ||
           global.localStorage.getItem('token') ||
           global.sessionStorage.getItem('token') ||
-          ''
-        );
+          '';
+      } else {
+        token =
+          global.localStorage.getItem('remoed_user_token') ||
+          global.sessionStorage.getItem('remoed_user_token') ||
+          global.localStorage.getItem('token') ||
+          global.sessionStorage.getItem('token') ||
+          global.localStorage.getItem(LS_TEACHER) ||
+          global.localStorage.getItem(LS_STUDENT) ||
+          '';
       }
-      return (
-        global.localStorage.getItem('remoed_user_token') ||
-        global.sessionStorage.getItem('remoed_user_token') ||
-        global.localStorage.getItem('token') ||
-        global.sessionStorage.getItem('token') ||
-        global.localStorage.getItem(LS_TEACHER) ||
-        global.localStorage.getItem(LS_STUDENT) ||
-        ''
-      );
+      syncMediaAuthCookie(token);
+      return token;
     } catch (_e) {
       return '';
     }
@@ -108,6 +124,7 @@
 
   function clearUserToken() {
     try {
+      syncMediaAuthCookie('');
       var kind = portalKindFromLocation();
       if (kind === 'admin') {
         global.localStorage.removeItem(LS_ADMIN);
@@ -204,14 +221,19 @@
     return res;
   }
 
-  // Optional: inject token automatically for same-origin /api/* requests.
+  // Optional: inject token automatically for same-origin /api/* and /uploads/* requests.
   (function patchFetch() {
     if (!realFetch || global.__REMOED_FETCH_PATCHED__) return;
     global.__REMOED_FETCH_PATCHED__ = true;
     global.fetch = function (input, init) {
       try {
         var url = typeof input === 'string' ? input : (input && input.url) || '';
-        if (typeof url === 'string' && url.indexOf('/api/') === 0) {
+        if (
+          typeof url === 'string' &&
+          (url.indexOf('/api/') === 0 ||
+            url.indexOf('/uploads/') === 0 ||
+            url.indexOf('/api/media/') === 0)
+        ) {
           return apiFetch(url, init);
         }
       } catch (_e) {}
@@ -219,11 +241,17 @@
     };
   })();
 
+  // Seed media cookie for <img>/<video> as soon as the script loads.
+  try {
+    getUserToken();
+  } catch (_seed) {}
+
   global.RemoedUserSession = {
     getUserToken: getUserToken,
     clearUserToken: clearUserToken,
     logoutToUnifiedLogin: logoutToUnifiedLogin,
     apiFetch: apiFetch,
+    syncMediaAuthCookie: syncMediaAuthCookie,
     portalKindFromLocation: portalKindFromLocation,
     LS_ADMIN: LS_ADMIN,
     LS_TEACHER: LS_TEACHER,

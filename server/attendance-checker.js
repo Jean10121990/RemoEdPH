@@ -118,20 +118,24 @@ class AttendanceChecker {
 
   async createAbsentNotification(booking, absentType) {
     try {
-      const Notification = require('./models/Notification');
+      const { notifyTeacher, notifyStudent } = require('./services/notifyService');
       
-      let message = '';
+      let teacherMsg = '';
+      let studentMsg = '';
       if (absentType === 'student') {
-        message = `Student was absent for class on ${booking.date} at ${booking.time}. Class marked as absent.`;
+        teacherMsg = `Student was absent for class on ${booking.date} at ${booking.time}. Class marked as absent.`;
+        studentMsg = `You were marked absent for class on ${booking.date} at ${booking.time}.`;
       } else if (absentType === 'teacher') {
-        message = `Teacher was absent for class on ${booking.date} at ${booking.time}. Class marked as absent.`;
+        teacherMsg = `Teacher was absent for class on ${booking.date} at ${booking.time}. Class marked as absent.`;
+        studentMsg = `Your teacher was absent for class on ${booking.date} at ${booking.time}. Please check for a reschedule option.`;
       }
 
-      await Notification.create({
-        teacherId: booking.teacherId,
-        type: 'absent',
-        message: message,
-        read: false
+      await notifyTeacher(booking.teacherId, 'absent', teacherMsg, {
+        bookingId: String(booking._id),
+      });
+      await notifyStudent(booking.studentId, 'absent', studentMsg, {
+        bookingId: String(booking._id),
+        actionUrl: '/student-dashboard.html',
       });
 
       console.log(`📢 Created absent notification for booking ${booking._id}`);

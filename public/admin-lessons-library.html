@@ -626,6 +626,214 @@
             background: #f8fafc;
             border-top: 1px solid #e5e7eb;
         }
+
+        .upload-mode-tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        .upload-mode-tab {
+            flex: 1;
+            min-width: 7rem;
+            padding: 0.55rem 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            background: #fff;
+            color: #374151;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s, color 0.15s;
+        }
+        .upload-mode-tab:hover {
+            border-color: #667eea;
+            color: #4338ca;
+        }
+        .upload-mode-tab.active {
+            background: #eef2ff;
+            border-color: #667eea;
+            color: #4338ca;
+        }
+        .upload-mode-panel {
+            display: none;
+        }
+        .upload-mode-panel.active {
+            display: block;
+        }
+        .upload-selected-list {
+            margin-top: 0.75rem;
+            font-size: 0.85rem;
+            color: #4338ca;
+            text-align: left;
+        }
+        .upload-selected-list li {
+            margin: 0.2rem 0;
+            word-break: break-word;
+        }
+        .upload-progress {
+            display: none;
+            margin-top: 1rem;
+            padding: 0.85rem 1rem;
+            background: #f0f4ff;
+            border: 1px solid #c7d2fe;
+            border-radius: 8px;
+        }
+        .upload-progress.visible {
+            display: block;
+        }
+        .upload-progress-label {
+            display: flex;
+            justify-content: space-between;
+            gap: 0.75rem;
+            font-size: 0.85rem;
+            color: #3730a3;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        .upload-progress-track {
+            height: 8px;
+            background: #e0e7ff;
+            border-radius: 999px;
+            overflow: hidden;
+        }
+        .upload-progress-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #667eea, #4338ca);
+            border-radius: 999px;
+            transition: width 0.2s ease;
+        }
+        .upload-progress-detail {
+            margin-top: 0.4rem;
+            font-size: 0.78rem;
+            color: #64748b;
+        }
+        .office-embed-form label {
+            display: block;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 0.35rem;
+            font-size: 0.9rem;
+        }
+        .office-embed-form .form-control {
+            width: 100%;
+            padding: 0.6rem 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            box-sizing: border-box;
+        }
+        .office-embed-form small {
+            display: block;
+            margin-top: 0.35rem;
+            color: #64748b;
+            font-size: 0.8rem;
+            line-height: 1.4;
+        }
+        .file-badge {
+            display: inline-block;
+            margin-left: 0.4rem;
+            padding: 0.1rem 0.45rem;
+            border-radius: 999px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            vertical-align: middle;
+            text-transform: uppercase;
+        }
+        .file-badge-file { background: #e0e7ff; color: #3730a3; }
+        .file-badge-office { background: #dbeafe; color: #1e40af; }
+        .file-badge-html5 { background: #dcfce7; color: #166534; }
+        .file-badge-slides { background: #fef3c7; color: #92400e; }
+
+        .slide-preview-wrap {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            height: 100%;
+            min-height: 0;
+            background: #0f172a;
+        }
+        .slide-preview-main {
+            flex: 1 1 auto;
+            min-height: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            position: relative;
+        }
+        .slide-preview-main img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            border-radius: 4px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+            background: #fff;
+        }
+        .slide-preview-nav {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            pointer-events: none;
+            padding: 0 0.5rem;
+        }
+        .slide-preview-nav button {
+            pointer-events: auto;
+            width: 40px;
+            height: 40px;
+            border: none;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.92);
+            color: #1e293b;
+            font-size: 1.25rem;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        .slide-preview-nav button:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+        }
+        .slide-preview-meta {
+            flex-shrink: 0;
+            text-align: center;
+            color: #cbd5e1;
+            font-size: 0.8rem;
+            padding: 0.35rem 0.75rem;
+            background: #1e293b;
+        }
+        .slide-preview-thumbs {
+            flex-shrink: 0;
+            display: flex;
+            gap: 0.5rem;
+            overflow-x: auto;
+            padding: 0.65rem 0.75rem;
+            background: #1e293b;
+            border-top: 1px solid #334155;
+        }
+        .slide-preview-thumbs button {
+            flex: 0 0 auto;
+            width: 72px;
+            height: 48px;
+            padding: 0;
+            border: 2px solid transparent;
+            border-radius: 4px;
+            overflow: hidden;
+            cursor: pointer;
+            background: #0f172a;
+        }
+        .slide-preview-thumbs button.active {
+            border-color: #60a5fa;
+        }
+        .slide-preview-thumbs img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
         
         .preview-overlay {
             position: fixed;
@@ -792,12 +1000,12 @@
                         <div class="form-group" style="margin-bottom: 1rem;">
                             <label for="new-lesson-file">Lesson File *</label>
                             <div style="display: flex; gap: 0.5rem; align-items: center;">
-                                <input type="file" id="new-lesson-file" required accept=".pdf,.doc,.docx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.mp4,.avi,.mov" style="flex: 1; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 6px; background: white; cursor: pointer;">
+                                <input type="file" id="new-lesson-file" required accept=".pdf,.doc,.docx,.ppt,.pptx,.zip,.jpg,.jpeg,.png,.gif,.mp4,.avi,.mov" style="flex: 1; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 6px; background: white; cursor: pointer;">
                                 <button type="button" onclick="document.getElementById('new-lesson-file').click()" class="btn-icon view" style="padding: 0.5rem 1rem; white-space: nowrap;">
                                     📁 Browse
                                 </button>
                             </div>
-                            <small style="color: #64748b; display: block; margin-top: 0.25rem;">Required. Max 50MB. Supported: PDF, DOC, PPT, Images, Videos</small>
+                            <small style="color: #64748b; display: block; margin-top: 0.25rem;">Required. Max 50MB. Supported: PDF, DOC, PPT, HTML5 ZIP, Images, Videos</small>
                             <div id="new-lesson-file-name" style="margin-top: 0.5rem; font-size: 0.9rem; color: #667eea; font-weight: 500; display: none;"></div>
                         </div>
                         <button class="upload-btn" onclick="createNewLesson()" id="create-lesson-btn">Create Lesson</button>
@@ -852,16 +1060,61 @@
 
                     <div class="upload-section" id="upload-section" style="display: none;">
                         <h3 style="margin: 0 0 1rem 0; color: #667eea; font-weight: 600;">Upload File</h3>
-                        <div class="upload-area" id="upload-area" onclick="document.getElementById('file-input').click()">
-                            <svg class="upload-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                <polyline points="17 8 12 3 7 8"></polyline>
-                                <line x1="12" y1="3" x2="12" y2="15"></line>
-                            </svg>
-                            <div class="upload-text">Click to upload or drag and drop</div>
-                            <div class="upload-hint">PDF, DOC, PPT, Images, Videos (Max 50MB)</div>
+                        <div class="upload-mode-tabs" role="tablist" aria-label="Upload mode">
+                            <button type="button" class="upload-mode-tab active" id="upload-mode-file" data-mode="file" onclick="setUploadMode('file')">File</button>
+                            <button type="button" class="upload-mode-tab" id="upload-mode-office" data-mode="office_embed" onclick="setUploadMode('office_embed')">Office Embed</button>
+                            <button type="button" class="upload-mode-tab" id="upload-mode-html5" data-mode="html5_zip" onclick="setUploadMode('html5_zip')">HTML5 ZIP</button>
                         </div>
-                        <input type="file" id="file-input" class="file-input" multiple accept=".pdf,.doc,.docx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.mp4,.avi,.mov">
+
+                        <div class="upload-mode-panel active" id="upload-panel-file" data-mode="file">
+                            <div class="upload-area" id="upload-area" onclick="document.getElementById('file-input').click()">
+                                <svg class="upload-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="17 8 12 3 7 8"></polyline>
+                                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                                </svg>
+                                <div class="upload-text" id="upload-text">Click to upload or drag and drop</div>
+                                <div class="upload-hint" id="upload-hint">PDF, DOC, PPT, ZIP, Images, Videos (Max 50MB)</div>
+                            </div>
+                            <input type="file" id="file-input" class="file-input" multiple accept=".pdf,.doc,.docx,.ppt,.pptx,.zip,.jpg,.jpeg,.png,.gif,.mp4,.avi,.mov">
+                            <ul class="upload-selected-list" id="upload-selected-list" style="display:none;"></ul>
+                        </div>
+
+                        <div class="upload-mode-panel" id="upload-panel-office" data-mode="office_embed">
+                            <div class="office-embed-form">
+                                <label for="office-embed-name">Display name</label>
+                                <input type="text" id="office-embed-name" class="form-control" placeholder="e.g. Unit 3 Presentation" style="margin-bottom: 0.75rem;">
+                                <label for="office-embed-url">Microsoft Office / OneDrive embed URL</label>
+                                <input type="url" id="office-embed-url" class="form-control" placeholder="https://view.officeapps.live.com/op/embed.aspx?src=...">
+                                <small>Paste a public HTTPS Office Online, OneDrive, or SharePoint embed link. The live classroom will open this URL in an iframe.</small>
+                            </div>
+                        </div>
+
+                        <div class="upload-mode-panel" id="upload-panel-html5" data-mode="html5_zip">
+                            <div class="upload-area" id="upload-area-zip" onclick="document.getElementById('zip-file-input').click()">
+                                <svg class="upload-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="17 8 12 3 7 8"></polyline>
+                                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                                </svg>
+                                <div class="upload-text">Click to upload HTML5 package ZIP</div>
+                                <div class="upload-hint">Storyline / iSpring / SCORM-style ZIP with index.html (Max 50MB)</div>
+                            </div>
+                            <input type="file" id="zip-file-input" class="file-input" accept=".zip,application/zip,application/x-zip-compressed">
+                            <ul class="upload-selected-list" id="zip-selected-list" style="display:none;"></ul>
+                        </div>
+
+                        <div class="upload-progress" id="upload-progress" aria-live="polite">
+                            <div class="upload-progress-label">
+                                <span id="upload-progress-title">Uploading…</span>
+                                <span id="upload-progress-pct">0%</span>
+                            </div>
+                            <div class="upload-progress-track">
+                                <div class="upload-progress-bar" id="upload-progress-bar"></div>
+                            </div>
+                            <div class="upload-progress-detail" id="upload-progress-detail"></div>
+                        </div>
+
                         <button class="upload-btn" id="upload-btn" onclick="uploadFiles()" disabled>Upload Files</button>
                     </div>
                 </div>
@@ -910,6 +1163,8 @@
         let selectedFiles = [];
         let currentLessonId = null;
         let curriculaCache = [];
+        let currentUploadMode = 'file';
+        let slidePreviewState = null;
 
         // Role-based access control
         const userType = localStorage.getItem('userType');
@@ -1208,6 +1463,7 @@
             displayLessonInfo(lesson);
             document.getElementById('lesson-info').style.display = 'block';
             document.getElementById('upload-section').style.display = 'block';
+            setUploadMode(currentUploadMode || 'file');
 
             // Load files
             fetchLessonFiles(lesson._id);
@@ -1245,7 +1501,34 @@
                 return;
             }
 
-            filesList.innerHTML = files.map(file => `
+            function escapeHtml(s) {
+                return String(s == null ? '' : s)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
+            }
+
+            filesList.innerHTML = files.map(file => {
+                const pType = file.presentationType || 'file';
+                let badgeClass = 'file-badge-file';
+                let badgeLabel = 'File';
+                if (pType === 'office_embed') {
+                    badgeClass = 'file-badge-office';
+                    badgeLabel = 'Office';
+                } else if (pType === 'html5_zip') {
+                    badgeClass = 'file-badge-html5';
+                    badgeLabel = 'HTML5';
+                }
+                const slideCount = file.slideCount != null && Number(file.slideCount) > 0
+                    ? Number(file.slideCount)
+                    : (Array.isArray(file.slideUrls) ? file.slideUrls.length : 0);
+                const slideBadge = slideCount > 0
+                    ? `<span class="file-badge file-badge-slides">${slideCount} slide${slideCount === 1 ? '' : 's'}</span>`
+                    : '';
+                const sizeLabel = Number(file.fileSize) > 0 ? formatFileSize(file.fileSize) : (pType === 'office_embed' ? 'Embed link' : '—');
+                const dateLabel = file.uploadedAt ? new Date(file.uploadedAt).toLocaleDateString() : '';
+                return `
                 <div class="file-item">
                     <div class="file-info">
                         <div class="file-icon">
@@ -1255,8 +1538,8 @@
                             </svg>
                         </div>
                         <div class="file-details">
-                            <div class="file-name">${file.fileName}</div>
-                            <div class="file-meta">${file.fileType} • ${formatFileSize(file.fileSize)} • ${new Date(file.uploadedAt).toLocaleDateString()}</div>
+                            <div class="file-name">${escapeHtml(file.fileName)} <span class="file-badge ${badgeClass}">${badgeLabel}</span>${slideBadge}</div>
+                            <div class="file-meta">${escapeHtml(file.fileType || pType)} • ${sizeLabel}${dateLabel ? ' • ' + dateLabel : ''}</div>
                         </div>
                     </div>
                     <div class="file-actions">
@@ -1274,7 +1557,8 @@
                         </button>
                     </div>
                 </div>
-            `).join('');
+            `;
+            }).join('');
         }
 
         function formatFileSize(bytes) {
@@ -1285,56 +1569,211 @@
             return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
         }
 
+        function getAdminAuthToken() {
+            return (window.RemoedAdminSession && RemoedAdminSession.getAuthToken ? RemoedAdminSession.getAuthToken() : (localStorage.getItem('remoed_admin_token')||localStorage.getItem('remoed_admin_auth')||localStorage.getItem('adminToken')||'')) || localStorage.getItem('token') || '';
+        }
+
+        function setUploadMode(mode) {
+            currentUploadMode = mode === 'office_embed' || mode === 'html5_zip' ? mode : 'file';
+            document.querySelectorAll('.upload-mode-tab').forEach((tab) => {
+                tab.classList.toggle('active', tab.getAttribute('data-mode') === currentUploadMode);
+            });
+            document.querySelectorAll('.upload-mode-panel').forEach((panel) => {
+                panel.classList.toggle('active', panel.getAttribute('data-mode') === currentUploadMode);
+            });
+
+            selectedFiles = [];
+            const fileInput = document.getElementById('file-input');
+            const zipInput = document.getElementById('zip-file-input');
+            if (fileInput) fileInput.value = '';
+            if (zipInput) zipInput.value = '';
+            updateSelectedFileList([], 'upload-selected-list');
+            updateSelectedFileList([], 'zip-selected-list');
+
+            const uploadBtn = document.getElementById('upload-btn');
+            if (currentUploadMode === 'office_embed') {
+                uploadBtn.disabled = false;
+                uploadBtn.textContent = 'Save Embed Link';
+                const urlInput = document.getElementById('office-embed-url');
+                const nameInput = document.getElementById('office-embed-name');
+                if (urlInput && !urlInput.dataset.boundOffice) {
+                    urlInput.dataset.boundOffice = '1';
+                    urlInput.addEventListener('input', syncOfficeEmbedUploadButton);
+                    if (nameInput) nameInput.addEventListener('input', syncOfficeEmbedUploadButton);
+                }
+                syncOfficeEmbedUploadButton();
+            } else if (currentUploadMode === 'html5_zip') {
+                uploadBtn.disabled = true;
+                uploadBtn.textContent = 'Upload HTML5 ZIP';
+            } else {
+                uploadBtn.disabled = true;
+                uploadBtn.textContent = 'Upload Files';
+            }
+            hideUploadProgress();
+        }
+
+        function syncOfficeEmbedUploadButton() {
+            if (currentUploadMode !== 'office_embed') return;
+            const url = (document.getElementById('office-embed-url') || {}).value || '';
+            const uploadBtn = document.getElementById('upload-btn');
+            if (uploadBtn) uploadBtn.disabled = !String(url).trim();
+        }
+
+        function updateSelectedFileList(files, listId) {
+            const list = document.getElementById(listId);
+            if (!list) return;
+            if (!files || files.length === 0) {
+                list.style.display = 'none';
+                list.innerHTML = '';
+                return;
+            }
+            list.style.display = 'block';
+            list.innerHTML = files.map((f) => {
+                const name = String(f.name || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                return `<li>${name} (${formatFileSize(f.size || 0)})</li>`;
+            }).join('');
+        }
+
+        function showUploadProgress(title, pct, detail) {
+            const wrap = document.getElementById('upload-progress');
+            const bar = document.getElementById('upload-progress-bar');
+            const pctEl = document.getElementById('upload-progress-pct');
+            const titleEl = document.getElementById('upload-progress-title');
+            const detailEl = document.getElementById('upload-progress-detail');
+            if (!wrap) return;
+            wrap.classList.add('visible');
+            const clamped = Math.max(0, Math.min(100, Math.round(pct || 0)));
+            if (bar) bar.style.width = clamped + '%';
+            if (pctEl) pctEl.textContent = clamped + '%';
+            if (titleEl) titleEl.textContent = title || 'Uploading…';
+            if (detailEl) detailEl.textContent = detail || '';
+        }
+
+        function hideUploadProgress() {
+            const wrap = document.getElementById('upload-progress');
+            if (wrap) wrap.classList.remove('visible');
+            const bar = document.getElementById('upload-progress-bar');
+            if (bar) bar.style.width = '0%';
+        }
+
         function setupFileUpload() {
             const uploadArea = document.getElementById('upload-area');
             const fileInput = document.getElementById('file-input');
+            const zipArea = document.getElementById('upload-area-zip');
+            const zipInput = document.getElementById('zip-file-input');
 
-            // Drag and drop
-            uploadArea.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                uploadArea.classList.add('dragover');
-            });
+            function wireDropZone(area, onFiles) {
+                if (!area || area.dataset.boundDrop) return;
+                area.dataset.boundDrop = '1';
+                area.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    area.classList.add('dragover');
+                });
+                area.addEventListener('dragleave', () => {
+                    area.classList.remove('dragover');
+                });
+                area.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    area.classList.remove('dragover');
+                    onFiles(Array.from(e.dataTransfer.files || []));
+                });
+            }
 
-            uploadArea.addEventListener('dragleave', () => {
-                uploadArea.classList.remove('dragover');
-            });
+            wireDropZone(uploadArea, (files) => handleFileSelection(files, 'file'));
+            wireDropZone(zipArea, (files) => handleFileSelection(files, 'html5_zip'));
 
-            uploadArea.addEventListener('drop', (e) => {
-                e.preventDefault();
-                uploadArea.classList.remove('dragover');
-                const files = Array.from(e.dataTransfer.files);
-                handleFileSelection(files);
-            });
+            if (fileInput && !fileInput.dataset.boundChange) {
+                fileInput.dataset.boundChange = '1';
+                fileInput.addEventListener('change', (e) => {
+                    handleFileSelection(Array.from(e.target.files || []), 'file');
+                });
+            }
+            if (zipInput && !zipInput.dataset.boundChange) {
+                zipInput.dataset.boundChange = '1';
+                zipInput.addEventListener('change', (e) => {
+                    handleFileSelection(Array.from(e.target.files || []), 'html5_zip');
+                });
+            }
 
-            fileInput.addEventListener('change', (e) => {
-                const files = Array.from(e.target.files);
-                handleFileSelection(files);
-            });
+            setUploadMode('file');
         }
 
-        function handleFileSelection(files) {
-            selectedFiles = files.filter(file => {
-                const maxSize = 50 * 1024 * 1024; // 50MB
+        function handleFileSelection(files, mode) {
+            const expectedMode = mode || currentUploadMode;
+            if (expectedMode !== currentUploadMode && expectedMode !== 'file' && expectedMode !== 'html5_zip') {
+                return;
+            }
+            if (expectedMode === 'html5_zip' || currentUploadMode === 'html5_zip') {
+                selectedFiles = (files || []).filter((file) => {
+                    const maxSize = 50 * 1024 * 1024;
+                    if (file.size > maxSize) {
+                        showAlert('error', `File "${file.name}" is too large. Maximum size is 50MB.`);
+                        return false;
+                    }
+                    if (!/\.zip$/i.test(file.name) && !/zip/i.test(file.type || '')) {
+                        showAlert('error', `"${file.name}" is not a ZIP package.`);
+                        return false;
+                    }
+                    return true;
+                }).slice(0, 1);
+                updateSelectedFileList(selectedFiles, 'zip-selected-list');
+                const uploadBtn = document.getElementById('upload-btn');
+                uploadBtn.disabled = selectedFiles.length === 0;
+                uploadBtn.textContent = 'Upload HTML5 ZIP';
+                if (selectedFiles.length > 0) {
+                    showAlert('info', `Selected ${selectedFiles[0].name}. Click "Upload HTML5 ZIP" to upload.`);
+                }
+                return;
+            }
+
+            selectedFiles = (files || []).filter((file) => {
+                const maxSize = 50 * 1024 * 1024;
                 if (file.size > maxSize) {
                     showAlert('error', `File "${file.name}" is too large. Maximum size is 50MB.`);
                     return false;
                 }
                 return true;
             });
+            updateSelectedFileList(selectedFiles, 'upload-selected-list');
 
             if (selectedFiles.length > 0) {
                 document.getElementById('upload-btn').disabled = false;
+                document.getElementById('upload-btn').textContent = 'Upload Files';
                 showAlert('info', `${selectedFiles.length} file(s) selected. Click "Upload Files" to upload.`);
             }
         }
 
+        function uploadWithProgress(url, formData, token, onProgress) {
+            return new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', url);
+                xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+                xhr.upload.addEventListener('progress', (e) => {
+                    if (!e.lengthComputable) return;
+                    const pct = (e.loaded / e.total) * 100;
+                    if (typeof onProgress === 'function') onProgress(pct, e.loaded, e.total);
+                });
+                xhr.onload = () => {
+                    let data = {};
+                    try { data = JSON.parse(xhr.responseText || '{}'); } catch (_e) { data = {}; }
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        resolve(data);
+                    } else {
+                        reject(new Error(data.error || data.hint || ('Upload failed (' + xhr.status + ')')));
+                    }
+                };
+                xhr.onerror = () => reject(new Error('Network error during upload'));
+                xhr.send(formData);
+            });
+        }
+
         async function uploadFiles() {
-            if (!currentLessonId || selectedFiles.length === 0) {
-                showAlert('error', 'Please select a lesson and files to upload.');
+            if (!currentLessonId) {
+                showAlert('error', 'Please select a lesson first.');
                 return;
             }
 
-            const token = (window.RemoedAdminSession && RemoedAdminSession.getAuthToken ? RemoedAdminSession.getAuthToken() : (localStorage.getItem('remoed_admin_token')||localStorage.getItem('remoed_admin_auth')||localStorage.getItem('adminToken')||'')) || localStorage.getItem('token');
+            const token = getAdminAuthToken();
             if (!token) {
                 showAlert('error', 'Authentication required. Please log in again.');
                 return;
@@ -1342,42 +1781,104 @@
 
             const uploadBtn = document.getElementById('upload-btn');
             uploadBtn.disabled = true;
-            uploadBtn.textContent = 'Uploading...';
 
             try {
-                for (const file of selectedFiles) {
+                if (currentUploadMode === 'office_embed') {
+                    const embedUrl = String((document.getElementById('office-embed-url') || {}).value || '').trim();
+                    const fileName = String((document.getElementById('office-embed-name') || {}).value || '').trim() || 'Office Presentation';
+                    if (!embedUrl) {
+                        showAlert('error', 'Paste a Microsoft Office embed URL.');
+                        uploadBtn.disabled = false;
+                        return;
+                    }
+                    uploadBtn.textContent = 'Saving…';
+                    showUploadProgress('Saving embed link…', 40, fileName);
+                    const form = new FormData();
+                    form.append('fileName', fileName);
+                    form.append('fileType', 'office_embed');
+                    form.append('fileSize', '0');
+                    form.append('embedUrl', embedUrl);
+                    form.append('presentationType', 'office_embed');
+                    await uploadWithProgress(
+                        `/api/lessons/lesson/${currentLessonId}/upload-file`,
+                        form,
+                        token,
+                        (pct) => showUploadProgress('Saving embed link…', Math.max(40, pct), fileName)
+                    );
+                    showUploadProgress('Saved', 100, fileName);
+                    showAlert('success', 'Office embed link saved!');
+                    document.getElementById('office-embed-url').value = '';
+                    document.getElementById('office-embed-name').value = '';
+                    fetchLessonFiles(currentLessonId);
+                    setUploadMode('office_embed');
+                    return;
+                }
+
+                if (selectedFiles.length === 0) {
+                    showAlert('error', currentUploadMode === 'html5_zip'
+                        ? 'Please select a ZIP package to upload.'
+                        : 'Please select files to upload.');
+                    uploadBtn.disabled = false;
+                    return;
+                }
+
+                const isHtml5 = currentUploadMode === 'html5_zip';
+                uploadBtn.textContent = isHtml5 ? 'Uploading ZIP…' : 'Uploading...';
+                const total = selectedFiles.length;
+
+                for (let i = 0; i < selectedFiles.length; i++) {
+                    const file = selectedFiles[i];
                     const fileType = getFileType(file.name);
-                    // Multipart avoids 413 from base64 JSON (50MB file ≈ 67MB JSON body).
                     const form = new FormData();
                     form.append('file', file, file.name);
                     form.append('fileName', file.name);
-                    form.append('fileType', fileType);
+                    form.append('fileType', isHtml5 ? (fileType === 'zip' ? 'zip' : fileType) : fileType);
                     form.append('fileSize', String(file.size));
-
-                    const response = await fetch(`/api/lessons/lesson/${currentLessonId}/upload-file`, {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${token}`
-                        },
-                        body: form
-                    });
-
-                    if (!response.ok) {
-                        const error = await response.json().catch(() => ({ error: 'Upload failed (' + response.status + ')' }));
-                        throw new Error(error.error || error.hint || 'Upload failed');
+                    if (isHtml5 || /\.zip$/i.test(file.name)) {
+                        form.append('presentationType', 'html5_zip');
                     }
+
+                    const label = total > 1
+                        ? `Uploading file ${i + 1} of ${total}`
+                        : (isHtml5 ? 'Uploading HTML5 ZIP…' : (/\.pptx?$/i.test(file.name) ? 'Uploading & converting slides…' : 'Uploading…'));
+                    showUploadProgress(label, 0, file.name);
+
+                    await uploadWithProgress(
+                        `/api/lessons/lesson/${currentLessonId}/upload-file`,
+                        form,
+                        token,
+                        (pct) => {
+                            const overall = ((i + pct / 100) / total) * 100;
+                            const convertingHint = /\.pptx?$/i.test(file.name) && pct >= 99
+                                ? 'Server may convert PPTX to slide previews…'
+                                : file.name;
+                            showUploadProgress(label, overall, convertingHint);
+                        }
+                    );
+                    showUploadProgress(label, ((i + 1) / total) * 100, file.name);
                 }
 
-                showAlert('success', `Successfully uploaded ${selectedFiles.length} file(s)!`);
+                showUploadProgress('Complete', 100, `${total} file(s) uploaded`);
+                showAlert('success', isHtml5
+                    ? 'HTML5 ZIP uploaded successfully!'
+                    : `Successfully uploaded ${total} file(s)!`);
                 selectedFiles = [];
-                document.getElementById('file-input').value = '';
-                uploadBtn.textContent = 'Upload Files';
-                uploadBtn.disabled = true;
+                const fileInput = document.getElementById('file-input');
+                const zipInput = document.getElementById('zip-file-input');
+                if (fileInput) fileInput.value = '';
+                if (zipInput) zipInput.value = '';
+                updateSelectedFileList([], 'upload-selected-list');
+                updateSelectedFileList([], 'zip-selected-list');
                 fetchLessonFiles(currentLessonId);
+                setUploadMode(currentUploadMode);
             } catch (error) {
                 showAlert('error', 'Upload failed: ' + error.message);
                 uploadBtn.disabled = false;
-                uploadBtn.textContent = 'Upload Files';
+                uploadBtn.textContent = currentUploadMode === 'office_embed'
+                    ? 'Save Embed Link'
+                    : (currentUploadMode === 'html5_zip' ? 'Upload HTML5 ZIP' : 'Upload Files');
+            } finally {
+                setTimeout(hideUploadProgress, 1200);
             }
         }
 
@@ -1396,6 +1897,7 @@
                 'pdf': 'pdf',
                 'doc': 'doc', 'docx': 'doc',
                 'ppt': 'ppt', 'pptx': 'ppt',
+                'zip': 'zip',
                 'jpg': 'image', 'jpeg': 'image', 'png': 'image', 'gif': 'image',
                 'mp4': 'video', 'avi': 'video', 'mov': 'video'
             };
@@ -1404,7 +1906,7 @@
 
         async function viewFile(fileId) {
             try {
-                const token = (window.RemoedAdminSession && RemoedAdminSession.getAuthToken ? RemoedAdminSession.getAuthToken() : (localStorage.getItem('remoed_admin_token')||localStorage.getItem('remoed_admin_auth')||localStorage.getItem('adminToken')||'')) || localStorage.getItem('token');
+                const token = getAdminAuthToken();
                 if (!token) {
                     showAlert('error', 'Authentication required. Please log in again.');
                     return;
@@ -1441,7 +1943,7 @@
                     .replace(/"/g, '&quot;');
             }
 
-            async function loadSecurePptPreview(fileId, name, fallbackUrl, embedUrl, presentationType, mountEl) {
+            async function loadSecurePptPreview(fileId, name, fallbackUrl, embedUrl, presentationType, mountEl, slideMeta) {
                 mountEl.innerHTML = `
                     <div class="preview-unsupported">
                         <div class="preview-unsupported-icon">⏳</div>
@@ -1449,11 +1951,7 @@
                         <p>This can take a moment the first time.</p>
                     </div>
                 `;
-                const token = (window.RemoedAdminSession && RemoedAdminSession.getAuthToken ? RemoedAdminSession.getAuthToken() : null)
-                    || localStorage.getItem('remoed_admin_token')
-                    || localStorage.getItem('adminToken')
-                    || localStorage.getItem('token')
-                    || '';
+                const token = getAdminAuthToken();
                 function absUrl(u) {
                     if (!u) return '';
                     return String(u).startsWith('http') ? String(u) : (window.location.origin + (String(u).startsWith('/') ? u : '/' + u));
@@ -1470,7 +1968,21 @@
                         <p class="secure-ppt-hint">${escapeHtml(hint || 'Read-only preview for class prep.')}</p>
                     `;
                 }
+                function showSlideStack(urls, hint) {
+                    const slides = (urls || []).map(absUrl).filter(Boolean);
+                    if (!slides.length) return false;
+                    slidePreviewState = { slides, index: 0, mountEl };
+                    renderSlidePreview(0, hint);
+                    return true;
+                }
                 try {
+                    const existingSlides = slideMeta && Array.isArray(slideMeta.slideUrls)
+                        ? slideMeta.slideUrls.filter(Boolean)
+                        : [];
+                    if (existingSlides.length > 0) {
+                        showSlideStack(existingSlides, 'Converted slide preview (read-only).');
+                        return;
+                    }
                     if (presentationType === 'office_embed' && embedUrl) {
                         showFrame(embedUrl, 'Read-only PowerPoint preview.');
                         return;
@@ -1482,6 +1994,42 @@
                     if (!fileId || !token) {
                         throw new Error('Sign in again to preview this lesson.');
                     }
+
+                    // Prefer local slide/PDF conversion when available
+                    try {
+                        const localRes = await fetch('/api/lessons/presentation/' + encodeURIComponent(fileId) + '/local-preview', {
+                            headers: { Authorization: 'Bearer ' + token },
+                            credentials: 'include'
+                        });
+                        const localData = await localRes.json().catch(() => ({}));
+                        if (localRes.ok) {
+                            if (Array.isArray(localData.slideUrls) && localData.slideUrls.length > 0) {
+                                showSlideStack(localData.slideUrls, 'Converted slide preview (read-only).');
+                                return;
+                            }
+                            if (localData.mode === 'office_embed' || localData.mode === 'office_online') {
+                                const src = localData.embedUrl || localData.previewUrl || '';
+                                if (src) {
+                                    showFrame(src, localData.hint || 'Read-only PowerPoint preview.');
+                                    return;
+                                }
+                            }
+                            if (localData.mode === 'html5_zip' && localData.previewUrl) {
+                                showFrame(absUrl(localData.previewUrl), 'Read-only lesson package.');
+                                return;
+                            }
+                            if (localData.previewPdfPath || localData.previewUrl) {
+                                const pdfSrc = localData.previewPdfPath
+                                    ? absUrl(localData.previewPdfPath) + (String(localData.previewPdfPath).includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(token)
+                                    : absUrl(localData.previewUrl);
+                                showFrame(pdfSrc, 'Converted PDF preview (read-only).');
+                                return;
+                            }
+                        }
+                    } catch (_localErr) {
+                        // Fall through to secure-embed
+                    }
+
                     const res = await fetch('/api/lessons/presentation/' + encodeURIComponent(fileId) + '/secure-embed', {
                         headers: { Authorization: 'Bearer ' + token },
                         credentials: 'include'
@@ -1506,6 +2054,33 @@
                     `;
                 }
             }
+
+            function renderSlidePreview(index, hint) {
+                if (!slidePreviewState || !slidePreviewState.mountEl) return;
+                const slides = slidePreviewState.slides || [];
+                if (!slides.length) return;
+                const i = Math.max(0, Math.min(slides.length - 1, index | 0));
+                slidePreviewState.index = i;
+                const mountEl = slidePreviewState.mountEl;
+                const thumbs = slides.map((url, idx) => `
+                    <button type="button" class="${idx === i ? 'active' : ''}" onclick="goToSlidePreview(${idx})" title="Slide ${idx + 1}">
+                        <img src="${String(url).replace(/"/g, '&quot;')}" alt="Slide ${idx + 1}">
+                    </button>
+                `).join('');
+                mountEl.innerHTML = `
+                    <div class="slide-preview-wrap">
+                        <div class="slide-preview-main">
+                            <img src="${String(slides[i]).replace(/"/g, '&quot;')}" alt="Slide ${i + 1}">
+                            <div class="slide-preview-nav">
+                                <button type="button" onclick="goToSlidePreview(${i - 1})" ${i <= 0 ? 'disabled' : ''} aria-label="Previous slide">‹</button>
+                                <button type="button" onclick="goToSlidePreview(${i + 1})" ${i >= slides.length - 1 ? 'disabled' : ''} aria-label="Next slide">›</button>
+                            </div>
+                        </div>
+                        <div class="slide-preview-meta">Slide ${i + 1} of ${slides.length}${hint ? ' · ' + escapeHtml(hint) : ''}</div>
+                        <div class="slide-preview-thumbs">${thumbs}</div>
+                    </div>
+                `;
+            }
             
             previewTitle.textContent = file.fileName || 'Preview';
             previewOverlay.classList.add('show');
@@ -1522,9 +2097,17 @@
             const fileName = file.fileName || '';
             let fileData = file.fileData || '';
             const fileUrl = file.fileUrl || file.html5EntryUrl || '';
-            const isPpt = /\.(ppt|pptx)$/i.test(fileName) || String(fileType).includes('ppt') || String(file.presentationType || '').includes('office') || String(file.presentationType || '') === 'html5_zip';
+            const isPpt = /\.(ppt|pptx)$/i.test(fileName) || String(fileType).includes('ppt') || String(file.presentationType || '').includes('office') || String(file.presentationType || '') === 'html5_zip' || (Array.isArray(file.slideUrls) && file.slideUrls.length > 0);
             if (isPpt) {
-                loadSecurePptPreview(file._id || file.id || '', fileName, fileUrl, file.embedUrl || '', file.presentationType || '', previewContent);
+                loadSecurePptPreview(
+                    file._id || file.id || '',
+                    fileName,
+                    fileUrl,
+                    file.embedUrl || '',
+                    file.presentationType || '',
+                    previewContent,
+                    { slideUrls: file.slideUrls || [], slideCount: file.slideCount }
+                );
                 return;
             }
 
@@ -1536,10 +2119,10 @@
             }
 
             if (!fileData && fileUrl) {
-                const isPpt = /\.(ppt|pptx)$/i.test(fileName) || String(fileType).includes('ppt') || String(file.presentationType || '').includes('office') || String(file.presentationType || '') === 'html5_zip';
+                const isPptUrl = /\.(ppt|pptx)$/i.test(fileName) || String(fileType).includes('ppt') || String(file.presentationType || '').includes('office') || String(file.presentationType || '') === 'html5_zip';
                 const fileId = file._id || file.id || '';
-                if (isPpt) {
-                    loadSecurePptPreview(fileId, fileName, fileUrl, file.embedUrl || '', file.presentationType || '', previewContent);
+                if (isPptUrl) {
+                    loadSecurePptPreview(fileId, fileName, fileUrl, file.embedUrl || '', file.presentationType || '', previewContent, { slideUrls: file.slideUrls || [] });
                     return;
                 }
                 previewContent.innerHTML = `
@@ -1566,6 +2149,45 @@
             }
 
             renderPreviewContent(file, fileType, fileName, fileData, previewContent);
+        }
+
+        function goToSlidePreview(index) {
+            if (!slidePreviewState) return;
+            renderSlidePreviewStandalone(index);
+        }
+
+        function renderSlidePreviewStandalone(index) {
+            if (!slidePreviewState || !slidePreviewState.mountEl) return;
+            const slides = slidePreviewState.slides || [];
+            if (!slides.length) return;
+            const i = Math.max(0, Math.min(slides.length - 1, index | 0));
+            slidePreviewState.index = i;
+            const mountEl = slidePreviewState.mountEl;
+            function escapeHtml(s) {
+                return String(s == null ? '' : s)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
+            }
+            const thumbs = slides.map((url, idx) => `
+                <button type="button" class="${idx === i ? 'active' : ''}" onclick="goToSlidePreview(${idx})" title="Slide ${idx + 1}">
+                    <img src="${String(url).replace(/"/g, '&quot;')}" alt="Slide ${idx + 1}">
+                </button>
+            `).join('');
+            mountEl.innerHTML = `
+                <div class="slide-preview-wrap">
+                    <div class="slide-preview-main">
+                        <img src="${String(slides[i]).replace(/"/g, '&quot;')}" alt="Slide ${i + 1}">
+                        <div class="slide-preview-nav">
+                            <button type="button" onclick="goToSlidePreview(${i - 1})" ${i <= 0 ? 'disabled' : ''} aria-label="Previous slide">‹</button>
+                            <button type="button" onclick="goToSlidePreview(${i + 1})" ${i >= slides.length - 1 ? 'disabled' : ''} aria-label="Next slide">›</button>
+                        </div>
+                    </div>
+                    <div class="slide-preview-meta">Slide ${i + 1} of ${slides.length} · Converted slide preview (read-only).</div>
+                    <div class="slide-preview-thumbs">${thumbs}</div>
+                </div>
+            `;
         }
 
         function getMimeType(fileName, fileType) {
@@ -1769,6 +2391,7 @@
                 delete previewContent.dataset.blobUrl;
             }
 
+            slidePreviewState = null;
             previewPanel.classList.remove('open');
             previewOverlay.classList.remove('show');
 
@@ -2048,6 +2671,9 @@
                     form.append('fileName', file.name);
                     form.append('fileType', fileType);
                     form.append('fileSize', String(file.size));
+                    if (/\.zip$/i.test(file.name) || fileType === 'zip') {
+                        form.append('presentationType', 'html5_zip');
+                    }
 
                     const uploadResponse = await fetch(`/api/lessons/lesson/${newLessonId}/upload-file`, {
                         method: 'POST',

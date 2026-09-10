@@ -123,7 +123,7 @@
       referrerpolicy="no-referrer"
     />
     <link rel="stylesheet" href="/style.css" />
-    <link rel="stylesheet" href="/landing-brand.css?v=logo-brand-9" />
+    <link rel="stylesheet" href="/landing-brand.css?v=logo-brand-10" />
     <link rel="stylesheet" href="/css/site-i18n.css" />
   </head>
   <!-- Google tag (gtag.js) -->
@@ -156,8 +156,11 @@
       <button type="button" class="nav-menu-toggle" id="nav-menu-toggle" aria-label="Open menu" aria-expanded="false">☰</button>
     </nav>
 
-    <!-- Hero Section -->
-    <section class="hero japandi-hero">
+    <!-- Hero: full-bleed visual plane + left copy band -->
+    <section class="hero japandi-hero hero-fullbleed" aria-label="RemoEdPH introduction">
+      <div class="hero-fullbleed__stage" aria-hidden="true">
+        <div class="hero-fullbleed__glow"></div>
+      </div>
       <div class="hero-grid">
         <div class="hero-copy">
           <p class="brand-kicker">RemoEdPH</p>
@@ -176,15 +179,18 @@
           </div>
         </div>
         <div class="hero-media">
-          <img
-            src="/images/hero-remoed-family.png"
-            alt="RemoEdPH teacher and students with Remo mascot waving hello"
-            class="hero-illustration"
-            width="960"
-            height="720"
-            decoding="async"
-            onerror="this.onerror=null;this.src='/images/forbidden-image.png'"
-          />
+          <div class="hero-media__frame">
+            <img
+              src="/images/hero-remoed-family.png"
+              alt="RemoEdPH teacher and students with Remo mascot waving hello"
+              class="hero-illustration"
+              width="960"
+              height="720"
+              decoding="async"
+              fetchpriority="high"
+              onerror="this.onerror=null;this.src='/images/forbidden-image.png'"
+            />
+          </div>
         </div>
       </div>
     </section>

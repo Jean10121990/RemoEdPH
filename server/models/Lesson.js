@@ -81,6 +81,19 @@ const lessonSchema = new mongoose.Schema({
       type: String,
       default: ''
     },
+    /** PPTX conversion artifacts (PDF + slide images) for reliable live-class sync. */
+    slideCount: {
+      type: Number,
+      default: null
+    },
+    slideUrls: {
+      type: [String],
+      default: undefined
+    },
+    convertedPdfUrl: {
+      type: String,
+      default: ''
+    },
     uploadedBy: {
       type: String, // teacherId
       required: true

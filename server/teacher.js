@@ -27,6 +27,13 @@ const {
   resolvePeerRole,
   adminPeerId,
 } = require('./utils/peerMessageAuth');
+const {
+  peerMessageAttachUpload,
+  attachmentFromMulterFile,
+  serializeAttachment,
+  snippetForChatList,
+} = require('./utils/peerMessageAttachment');
+const { isCancelledStatus } = require('./utils/bookingStatus');
 const Admin = require('./models/Admin');
 const Referral = require('./models/Referral');
 const PortalVideo = require('./models/PortalVideo');
@@ -102,15 +109,11 @@ async function ensureDir(dirPath) {
   await fsp.mkdir(dirPath, { recursive: true });
 }
 
-// Helper function to create notifications
-async function createNotification(teacherId, type, message) {
+// Helper function to create notifications (teachers / admin username bucket)
+async function createNotification(teacherId, type, message, extra = {}) {
   try {
-    await Notification.create({
-      teacherId: teacherId.toString(),
-      type,
-      message,
-      read: false
-    });
+    const { notifyTeacher } = require('./services/notifyService');
+    await notifyTeacher(teacherId, type, message, extra);
   } catch (error) {
     console.error('Error creating notification:', error);
   }
@@ -513,64 +516,155 @@ router.get('/public/directory', async (req, res) => {
   }
 });
 
-// Peer message - must be early to avoid being shadowed by param routes
-router.post('/peer-message', verifyToken, requireTeacher, async (req, res) => {
-  try {
-    const senderId = req.user.teacherId;
-    const { recipientId, message } = req.body;
-    if (!recipientId || !message || !message.trim()) {
-      return res.status(400).json({ error: 'Recipient and message are required' });
-    }
-    const rid = String(recipientId).trim();
-    const allowed = await teacherMayMessageRecipient(rid);
-    if (!allowed) {
-      return res.status(403).json({
-        success: false,
-        error: DENY_TEACHER_STUDENT_MSG,
-      });
-    }
-    const recipientRole = await resolvePeerRole(rid);
-    const canonicalRecipient =
-      recipientRole === 'admin' && !rid.startsWith('admin:')
-        ? adminPeerId(rid)
-        : rid;
-
-    const sender = await Teacher.findOne({ teacherId: senderId });
-    const senderName = publicTeacherLabel(sender, 'A teacher');
-    const savedMessage = await PeerMessage.create({
-      senderId,
-      recipientId: canonicalRecipient,
-      message: message.trim()
+// Peer message - must be early to avoid being shadowed by param routes (JSON or multipart with attachment)
+router.post(
+  '/peer-message',
+  verifyToken,
+  requireTeacher,
+  (req, res, next) => {
+    peerMessageAttachUpload.single('attachment')(req, res, (err) => {
+      if (err) {
+        return res.status(400).json({ success: false, error: err.message || 'Invalid attachment' });
+      }
+      next();
     });
-    if (recipientRole === 'teacher') {
-      await Notification.create({
-        teacherId: canonicalRecipient,
-        type: 'peer-message',
-        message: `${senderName}: ${message.trim()}`,
-        senderId: senderId,
-        read: false
+  },
+  async (req, res) => {
+    try {
+      const senderId = req.user.teacherId;
+      const recipientId = req.body && req.body.recipientId;
+      const messageText = String((req.body && req.body.message) || '').trim();
+      const attachment = attachmentFromMulterFile(req.file);
+      if (!recipientId || (!messageText && !attachment)) {
+        return res.status(400).json({ error: 'Recipient and a message or attachment are required' });
+      }
+      const rid = String(recipientId).trim();
+      const allowed = await teacherMayMessageRecipient(rid);
+      if (!allowed) {
+        return res.status(403).json({
+          success: false,
+          error: DENY_TEACHER_STUDENT_MSG,
+        });
+      }
+      const recipientRole = await resolvePeerRole(rid);
+      const canonicalRecipient =
+        recipientRole === 'admin' && !rid.startsWith('admin:')
+          ? adminPeerId(rid)
+          : rid;
+
+      const sender = await Teacher.findOne({ teacherId: senderId });
+      const senderName = publicTeacherLabel(sender, 'A teacher');
+      const bodyForNotif = snippetForChatList(messageText, attachment);
+      const savedMessage = await PeerMessage.create({
+        senderId,
+        recipientId: canonicalRecipient,
+        message: messageText,
+        attachment: attachment || undefined,
       });
+      if (recipientRole === 'teacher') {
+        await createNotification(canonicalRecipient, 'peer-message', `${senderName}: ${bodyForNotif}`, {
+          senderId,
+          actionUrl: '/teacher-messages.html',
+        });
+      }
+      const payload = {
+        id: savedMessage._id.toString(),
+        senderId,
+        recipientId: canonicalRecipient,
+        message: savedMessage.message || '',
+        attachment: serializeAttachment(savedMessage.attachment),
+        createdAt: savedMessage.createdAt,
+        readAt: savedMessage.readAt || null,
+      };
+      const io = realtime.getIo();
+      if (io) {
+        io.to(`teacher-msg:${canonicalRecipient}`).emit('peer-message:new', payload);
+        io.to(`teacher-msg:${senderId}`).emit('peer-message:new', payload);
+        if (canonicalRecipient.startsWith('admin:')) {
+          io.to(`admin-msg:${canonicalRecipient.slice(6)}`).emit('peer-message:new', payload);
+        }
+      }
+      res.json({ success: true, message: 'Message sent successfully', peerMessage: payload });
+    } catch (err) {
+      console.error('Error sending peer message:', err);
+      res.status(500).json({ error: 'Failed to send message' });
     }
-    const payload = {
-      id: savedMessage._id.toString(),
-      senderId,
-      recipientId: canonicalRecipient,
-      message: savedMessage.message,
-      createdAt: savedMessage.createdAt,
-      readAt: savedMessage.readAt || null
-    };
-    const io = realtime.getIo();
-    if (io) {
-      io.to(`teacher-msg:${canonicalRecipient}`).emit('peer-message:new', payload);
-      io.to(`teacher-msg:${senderId}`).emit('peer-message:new', payload);
-      if (canonicalRecipient.startsWith('admin:')) {
-        io.to(`admin-msg:${canonicalRecipient.slice(6)}`).emit('peer-message:new', payload);
+  }
+);
+
+/** Teacher-initiated class reminder to the student (dashboard "Remind" button). */
+const MANUAL_REMINDER_COOLDOWN_MS = 6 * 60 * 60 * 1000;
+
+router.post('/booking/:bookingId/send-reminder', verifyToken, requireTeacher, async (req, res) => {
+  try {
+    const teacherId = req.user.teacherId;
+    const { bookingId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(bookingId)) {
+      return res.status(400).json({ success: false, error: 'Invalid booking id' });
+    }
+
+    const booking = await Booking.findById(bookingId);
+    if (!booking) {
+      return res.status(404).json({ success: false, error: 'Booking not found' });
+    }
+    if (String(booking.teacherId) !== String(teacherId)) {
+      return res.status(403).json({ success: false, error: 'This booking does not belong to you.' });
+    }
+    if (isCancelledStatus(booking.status)) {
+      return res.status(400).json({ success: false, error: 'Cannot remind for a cancelled class.' });
+    }
+    if (booking.finishedAt || ['completed', 'Completed', 'absent', 'pending_feedback'].includes(String(booking.status))) {
+      return res.status(400).json({ success: false, error: 'Class is already finished.' });
+    }
+
+    const start = getBookingStartAsDate(booking);
+    if (!start) {
+      return res.status(400).json({ success: false, error: 'Could not determine class start time.' });
+    }
+    const now = Date.now();
+    if (start.getTime() <= now) {
+      return res.status(400).json({ success: false, error: 'Class has already started. Ask the student to join from their dashboard.' });
+    }
+
+    if (booking.manualReminderSentAt) {
+      const elapsed = now - new Date(booking.manualReminderSentAt).getTime();
+      if (elapsed < MANUAL_REMINDER_COOLDOWN_MS) {
+        const hoursLeft = Math.ceil((MANUAL_REMINDER_COOLDOWN_MS - elapsed) / (60 * 60 * 1000));
+        return res.status(429).json({
+          success: false,
+          error: `You already sent a reminder recently. Try again in about ${hoursLeft} hour(s).`,
+        });
       }
     }
-    res.json({ success: true, message: 'Message sent successfully', peerMessage: payload });
+
+    const when = start.toLocaleString('en-PH', {
+      timeZone: 'Asia/Manila',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+    const bid = String(booking._id);
+    const { notifyStudent } = require('./services/notifyService');
+    await notifyStudent(
+      booking.studentId,
+      'reminder',
+      `Reminder from your teacher: class on ${when}. Please join on time.`,
+      {
+        bookingId: bid,
+        actionUrl: '/student-waiting-room.html?bookingId=' + encodeURIComponent(bid),
+        importance: 'actionable',
+        skipDedupe: true,
+      }
+    );
+
+    booking.manualReminderSentAt = new Date();
+    await booking.save();
+
+    res.json({ success: true, message: 'Reminder sent to the student.' });
   } catch (err) {
-    console.error('Error sending peer message:', err);
-    res.status(500).json({ error: 'Failed to send message' });
+    console.error('send-reminder:', err);
+    res.status(500).json({ success: false, error: 'Failed to send reminder' });
   }
 });
 
@@ -931,62 +1025,6 @@ router.get('/dashboard-stats', verifyToken, async (req, res) => {
   }
 });
 
-// Mark individual notification as read
-router.patch('/notifications/:notificationId/mark-read', verifyToken, async (req, res) => {
-  try {
-    const { notificationId } = req.params;
-    
-    // Try multiple ways to get teacher ID
-    let teacherId = req.user.teacherId || req.user.id || req.user._id;
-    
-    // If we still don't have a teacher ID, try to get it from the query parameter
-    if (!teacherId) {
-      teacherId = req.query.teacherId;
-    }
-
-    console.log('🔔 Mark notification as read request:', {
-      notificationId,
-      teacherId,
-      user: req.user
-    });
-
-    if (!notificationId) {
-      return res.status(400).json({ error: 'Notification ID is required' });
-    }
-
-    if (!teacherId) {
-      return res.status(400).json({ error: 'Teacher ID is required' });
-    }
-
-    // First, let's find the notification to see what teacherId it has
-    const existingNotification = await Notification.findById(notificationId);
-    console.log('🔔 Existing notification:', existingNotification);
-
-    if (!existingNotification) {
-      return res.status(404).json({ error: 'Notification not found' });
-    }
-
-    // Update the notification - try with the stored teacherId first
-    const notification = await Notification.findOneAndUpdate(
-      { _id: notificationId, teacherId: existingNotification.teacherId },
-      { read: true },
-      { new: true }
-    );
-
-    console.log('🔔 Notification update result:', notification);
-
-    if (!notification) {
-      return res.status(404).json({ error: 'Notification not found or access denied' });
-    }
-
-    res.json({ success: true, notification });
-
-  } catch (error) {
-    console.error('Error marking notification as read:', error);
-    res.status(500).json({ error: 'Failed to mark notification as read' });
-  }
-});
-
 // Simple test route for booking data
 router.get('/booking-test/:classroomId', async (req, res) => {
   try {
@@ -1140,7 +1178,7 @@ async function handleTeacherOpenSlots(req, res) {
       const weekStart = new Date(newSlots[0].date);
       const weekEnd = new Date(weekStart);
       weekEnd.setDate(weekStart.getDate() + 6);
-      await createNotification(actualTeacherId, 'salary', `${newSlots.length} slots opened for week of ${weekStart.toLocaleDateString()} - ${weekEnd.toLocaleDateString()}.`);
+      // Quiet success — no inbox noise for opening weekly slots.
     }
 
     console.log('Successfully saved slots:', newSlots.length);
@@ -1757,7 +1795,21 @@ router.post('/cancel-slot', verifyToken, requireTeacher, requireOwnTeacherData, 
       // Create notification for cancelled class
       const student = await Student.findOne({ username: booking.studentId });
       const studentName = student ? `${student.firstName} ${student.lastName}` : booking.studentId;
-      await createNotification(teacherId, 'cancel', `Class with ${studentName} on ${date} at ${time} was cancelled.`);
+      await createNotification(teacherId, 'cancel', `Class with ${studentName} on ${date} at ${time} was cancelled.`, {
+        bookingId: String(booking._id),
+        actionUrl: '/teacher-class-table.html',
+      });
+      try {
+        const { notifyStudent } = require('./services/notifyService');
+        await notifyStudent(
+          booking.studentId,
+          'cancel',
+          `Your class on ${date} at ${time} was cancelled by the teacher.`,
+          { bookingId: String(booking._id), actionUrl: '/student-book.html' }
+        );
+      } catch (snErr) {
+        console.warn('Student cancel notify failed:', snErr.message);
+      }
       
       // (You can add penalty logic here, e.g., increment a penalty counter)
       return res.json({ success: true, penalty: true, message: 'Slot was booked. Penalty applied.' });
@@ -1795,60 +1847,11 @@ router.get('/student/bookings', verifyToken, requireStudent, logAccess, async (r
   }
 });
 
-// Remove teacher's open slots
-router.post('/remove-slot', async (req, res) => {
-  try {
-    const { teacherId, slots } = req.body;
-    
-    console.log('Received remove request body:', req.body);
-    console.log('Teacher ID from request:', teacherId);
-    console.log('Slots to remove:', slots);
-    
-    if (!teacherId) {
-      return res.status(400).json({ error: 'Missing teacher ID' });
-    }
-    
-    if (!slots || !Array.isArray(slots) || slots.length === 0) {
-      return res.status(400).json({ error: 'Missing or invalid slots data' });
-    }
+// Remove teacher's open slots — same auth + identity as /close-slot
+router.post('/remove-slot', verifyToken, requireTeacher, handleTeacherCloseSlots);
 
-    // Convert email to teacher ObjectId if needed
-    let actualTeacherId = teacherId;
-    if (teacherId.includes('@')) {
-      const teacher = await Teacher.findOne({ 
-        $or: [
-          { email: teacherId },
-          { username: teacherId }
-        ]
-      });
-      if (!teacher) {
-        return res.status(404).json({ error: 'Teacher not found' });
-      }
-      actualTeacherId = teacher._id;
-      console.log('Converted email to teacher ObjectId for removal:', actualTeacherId);
-    }
-    
-    // Remove each slot
-    const removePromises = slots.map(slot => 
-      TeacherSlot.deleteOne({ 
-        teacherId: actualTeacherId, 
-        date: slot.date, 
-        time: slot.time 
-      })
-    );
-    
-    await Promise.all(removePromises);
-    
-    console.log('Successfully removed slots:', slots.length);
-    res.json({ success: true, message: `Successfully removed ${slots.length} slots` });
-  } catch (error) {
-    console.error('Error removing slots:', error);
-    res.status(500).json({ error: 'Failed to remove slots' });
-  }
-});
-
-// Update class details (code and classroom) for a booking
-router.post('/update-class-details', async (req, res) => {
+// Update class details (code and classroom) for a booking — teacher must own the booking
+router.post('/update-class-details', verifyToken, requireTeacher, async (req, res) => {
   try {
     const { bookingId, classCode, classroomId } = req.body;
     
@@ -1857,10 +1860,19 @@ router.post('/update-class-details', async (req, res) => {
     if (!bookingId || !classCode || !classroomId) {
       return res.status(400).json({ error: 'Missing booking ID, class code, or classroom ID' });
     }
+
+    if (!req.teacher || !req.teacher.teacherId) {
+      return res.status(401).json({ error: 'Teacher session required.' });
+    }
     
     const booking = await Booking.findById(bookingId);
     if (!booking) {
       return res.status(404).json({ error: 'Booking not found' });
+    }
+
+    const actualTeacherId = normalizeId(req.teacher.teacherId);
+    if (normalizeId(booking.teacherId) !== actualTeacherId) {
+      return res.status(403).json({ error: 'Access denied. You can only update your own bookings.' });
     }
     
     booking.classCode = classCode;
@@ -2000,87 +2012,184 @@ router.get('/booking/:bookingId', verifyToken, requireTeacher, async (req, res) 
   }
 });
 
-// Get notifications for a teacher (last 31 days only)
-router.get('/notifications', async (req, res) => {
-  const { teacherId } = req.query;
-  if (!teacherId) return res.status(400).json({ error: 'Missing teacherId' });
+// Get notifications for the authenticated teacher (last 31 days + identity aliases)
+router.get('/notifications', verifyToken, requireTeacher, async (req, res) => {
   try {
-    const cutoff = new Date(Date.now() - 31 * 24 * 60 * 60 * 1000);
-    const notifications = await Notification.find({
-      teacherId,
+    const {
+      resolveTeacherNotificationRecipientIds,
+      enrichNotificationList,
+      countActionableUnread,
+      RETENTION_DAYS,
+      mergePrefs,
+      DEFAULT_PREFS,
+    } = require('./services/notifyService');
+    const recipientIds = await resolveTeacherNotificationRecipientIds(req.user);
+    if (!recipientIds.length) {
+      return res.json({
+        success: true,
+        notifications: [],
+        unreadCount: 0,
+        actionableUnreadCount: 0,
+        retentionDays: RETENTION_DAYS,
+        prefs: DEFAULT_PREFS,
+      });
+    }
+    const cutoff = new Date(Date.now() - RETENTION_DAYS * 24 * 60 * 60 * 1000);
+    const raw = await Notification.find({
+      teacherId: { $in: recipientIds },
       createdAt: { $gte: cutoff },
-    }).sort({ createdAt: -1 });
-    res.json(notifications);
+    })
+      .sort({ createdAt: -1 })
+      .limit(100)
+      .lean();
+    const notifications = enrichNotificationList(raw);
+    const unreadCount = notifications.filter((n) => !n.read).length;
+    const actionableUnreadCount = countActionableUnread(notifications);
+    let prefs = DEFAULT_PREFS;
+    try {
+      const Teacher = require('./models/Teacher');
+      const me = await Teacher.findOne({ teacherId: req.user.teacherId }).select('notificationPrefs').lean();
+      prefs = mergePrefs(me && me.notificationPrefs);
+    } catch (_e) { /* ignore */ }
+    res.json({
+      success: true,
+      notifications,
+      unreadCount,
+      actionableUnreadCount,
+      retentionDays: RETENTION_DAYS,
+      prefs,
+    });
   } catch (err) {
+    console.error('GET /teacher/notifications:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// Mark all notifications as read for a teacher
-router.patch('/notifications/mark-read', async (req, res) => {
-  const { teacherId } = req.body;
-  if (!teacherId) return res.status(400).json({ error: 'Missing teacherId' });
+// Mark all notifications as read for the authenticated teacher
+router.patch('/notifications/mark-read', verifyToken, requireTeacher, async (req, res) => {
   try {
-    await Notification.updateMany({ teacherId, read: false }, { $set: { read: true } });
-    res.json({ success: true });
+    const { resolveTeacherNotificationRecipientIds } = require('./services/notifyService');
+    const recipientIds = await resolveTeacherNotificationRecipientIds(req.user);
+    const result = await Notification.updateMany(
+      { teacherId: { $in: recipientIds }, read: false },
+      { $set: { read: true } }
+    );
+    res.json({ success: true, modifiedCount: result.modifiedCount });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
 // Mark individual notification as read
-router.patch('/notifications/:notificationId/mark-read', verifyToken, async (req, res) => {
+router.patch('/notifications/:notificationId/mark-read', verifyToken, requireTeacher, async (req, res) => {
   try {
     const { notificationId } = req.params;
-    
-    // Try multiple ways to get teacher ID
-    let teacherId = req.user.teacherId || req.user.id || req.user._id;
-    
-    // If we still don't have a teacher ID, try to get it from the query parameter
-    if (!teacherId) {
-      teacherId = req.query.teacherId;
-    }
-
-    console.log('🔔 Mark notification as read request:', {
-      notificationId,
-      teacherId,
-      user: req.user
-    });
-
+    const { resolveTeacherNotificationRecipientIds } = require('./services/notifyService');
+    const recipientIds = await resolveTeacherNotificationRecipientIds(req.user);
     if (!notificationId) {
       return res.status(400).json({ error: 'Notification ID is required' });
     }
-
-    if (!teacherId) {
-      return res.status(400).json({ error: 'Teacher ID is required' });
-    }
-
-    // First, let's find the notification to see what teacherId it has
-    const existingNotification = await Notification.findById(notificationId);
-    console.log('🔔 Existing notification:', existingNotification);
-
-    if (!existingNotification) {
-      return res.status(404).json({ error: 'Notification not found' });
-    }
-
-    // Update the notification - try with the stored teacherId first
     const notification = await Notification.findOneAndUpdate(
-      { _id: notificationId, teacherId: existingNotification.teacherId },
+      { _id: notificationId, teacherId: { $in: recipientIds } },
       { read: true },
       { new: true }
     );
-
-    console.log('🔔 Notification update result:', notification);
-
     if (!notification) {
       return res.status(404).json({ error: 'Notification not found or access denied' });
     }
-
     res.json({ success: true, notification });
-
   } catch (error) {
     console.error('Error marking notification as read:', error);
     res.status(500).json({ error: 'Failed to mark notification as read' });
+  }
+});
+
+// Dismiss / delete a notification
+router.delete('/notifications/:notificationId', verifyToken, requireTeacher, async (req, res) => {
+  try {
+    const { resolveTeacherNotificationRecipientIds } = require('./services/notifyService');
+    const recipientIds = await resolveTeacherNotificationRecipientIds(req.user);
+    const result = await Notification.deleteOne({
+      _id: req.params.notificationId,
+      teacherId: { $in: recipientIds },
+    });
+    if (!result.deletedCount) {
+      return res.status(404).json({ error: 'Notification not found' });
+    }
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/notification-prefs', verifyToken, requireTeacher, async (req, res) => {
+  try {
+    const { mergePrefs, DEFAULT_PREFS } = require('./services/notifyService');
+    const me = await Teacher.findOne({ teacherId: req.user.teacherId }).select('notificationPrefs').lean();
+    res.json({ success: true, prefs: mergePrefs(me && me.notificationPrefs) || DEFAULT_PREFS });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to load preferences' });
+  }
+});
+
+router.patch('/notification-prefs', verifyToken, requireTeacher, async (req, res) => {
+  try {
+    const { mergePrefs } = require('./services/notifyService');
+    const allowed = [
+      'reminders',
+      'announcements',
+      'peerMessages',
+      'salary',
+      'digestEmail',
+      'quietHoursEnabled',
+      'quietHoursStart',
+      'quietHoursEnd',
+    ];
+    const patch = {};
+    for (const key of allowed) {
+      if (req.body && Object.prototype.hasOwnProperty.call(req.body, key)) {
+        patch[`notificationPrefs.${key}`] = req.body[key];
+      }
+    }
+    if (!Object.keys(patch).length) {
+      return res.status(400).json({ error: 'No preference fields provided' });
+    }
+    const me = await Teacher.findOneAndUpdate(
+      { teacherId: req.user.teacherId },
+      { $set: patch },
+      { new: true }
+    )
+      .select('notificationPrefs')
+      .lean();
+    res.json({ success: true, prefs: mergePrefs(me && me.notificationPrefs) });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update preferences' });
+  }
+});
+
+router.post('/notifications/:notificationId/snooze', verifyToken, requireTeacher, async (req, res) => {
+  try {
+    const { resolveTeacherNotificationRecipientIds } = require('./services/notifyService');
+    const recipientIds = await resolveTeacherNotificationRecipientIds(req.user);
+    const minutes = Math.min(30, Math.max(5, Number(req.body && req.body.minutes) || 5));
+    const notif = await Notification.findOne({
+      _id: req.params.notificationId,
+      teacherId: { $in: recipientIds },
+      type: 'reminder',
+    });
+    if (!notif) return res.status(404).json({ error: 'Reminder notification not found' });
+    if (!notif.bookingId) return res.status(400).json({ error: 'No booking linked' });
+    const until = new Date(Date.now() + minutes * 60 * 1000);
+    await Booking.updateOne(
+      { _id: notif.bookingId },
+      { $set: { classReminderSentAt: null, reminderSnoozeUntil: until } }
+    );
+    notif.read = true;
+    notif.meta = { ...(notif.meta && typeof notif.meta === 'object' ? notif.meta : {}), snoozedUntil: until };
+    await notif.save();
+    res.json({ success: true, snoozeUntil: until, minutes });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to snooze reminder' });
   }
 });
 
@@ -2126,6 +2235,19 @@ router.post('/mark-absent', verifyToken, requireTeacher, requireOwnTeacherData, 
       `Student ${studentName} was absent on ${booking.date} at ${booking.time}.`;
     
     await createNotification(teacherId, 'absent', absentMessage);
+    try {
+      const { notifyStudent } = require('./services/notifyService');
+      await notifyStudent(
+        booking.studentId,
+        'absent',
+        reason
+          ? `You were marked absent for ${booking.date} at ${booking.time}. Reason: ${reason}`
+          : `You were marked absent for ${booking.date} at ${booking.time}.`,
+        { bookingId: String(booking._id), actionUrl: '/student-dashboard.html' }
+      );
+    } catch (snErr) {
+      console.warn('Student absent notify failed:', snErr.message);
+    }
 
     res.json({ success: true, message: 'Student marked as absent' });
   } catch (err) {
@@ -2829,7 +2951,7 @@ router.post('/time-tracking/clock-in', verifyToken, requireTeacher, async (req, 
     console.log('Time log created:', timeLog);
     
     // Create notification
-    await createNotification(teacherId, 'time-tracking', `Clocked in at ${currentTime}`);
+    // Clock-in is operational; skip inbox noise.
     
     res.json({
       success: true,
@@ -2879,7 +3001,7 @@ router.post('/time-tracking/clock-out', verifyToken, requireTeacher, async (req,
     await timeLog.save();
     
     // Create notification
-    await createNotification(teacherId, 'time-tracking', `Clocked out at ${currentTime} (${timeLog.totalHours} hours worked)`);
+    // Clock-out is operational; skip inbox noise.
     
     res.json({
       success: true,
@@ -3065,13 +3187,37 @@ router.post('/mark-class-finished', verifyToken, requireTeacher, async (req, res
 
     await booking.save();
     
+    try {
+      const { safeUpsertLessonProgressFromBooking } = require('./services/lessonProgressFromBooking');
+      await safeUpsertLessonProgressFromBooking(booking, {
+        status: 'in_progress',
+        teacherId,
+        notes: !studentEntered
+          ? 'Class finished pending feedback (student technical issues)'
+          : 'Class finished pending feedback',
+      });
+    } catch (_progErr) {
+      /* non-blocking */
+    }
+
     // Create notification with technical issue note if applicable
     const notificationMessage = !studentEntered 
       ? `Class marked as finished for ${booking.date} at ${booking.time} (Student had technical issues)`
       : `Class marked as finished for ${booking.date} at ${booking.time}`;
     
-    await createNotification(teacherId, 'class-completed', notificationMessage);
-    
+    await createNotification(teacherId, 'class-completed', notificationMessage, {
+      bookingId: String(booking._id),
+    });
+    try {
+      const { notifyStudent } = require('./services/notifyService');
+      await notifyStudent(
+        booking.studentId,
+        'class-completed',
+        `Your class on ${booking.date} at ${booking.time} was marked completed.`,
+        { bookingId: String(booking._id), actionUrl: '/student-dashboard.html' }
+      );
+    } catch (_e) { /* non-fatal */ }
+
     res.json({
       success: true,
       message: 'Class marked as finished successfully',
@@ -3279,6 +3425,17 @@ router.post('/mark-student-absent', verifyToken, requireTeacher, async (req, res
     // Create notification
     const notificationMessage = `Student marked as absent for ${booking.date} at ${booking.time}`;
     await createNotification(teacherId, 'student-absent', notificationMessage);
+    try {
+      const { notifyStudent } = require('./services/notifyService');
+      await notifyStudent(
+        booking.studentId,
+        'absent',
+        `You were marked absent for ${booking.date} at ${booking.time}.`,
+        { bookingId: String(booking._id), actionUrl: '/student-dashboard.html' }
+      );
+    } catch (snErr) {
+      console.warn('Student absent notify failed:', snErr.message);
+    }
     
     res.json({
       success: true,
@@ -3587,8 +3744,21 @@ router.post('/request-cancellation', verifyToken, requireTeacher, async (req, re
     
     await cancellationRequest.save();
     
-    // Create notification for admin
-    await createNotification(teacherId, 'cancellation-request', `Cancellation request submitted for ${booking.date} at ${booking.time}`);
+    // Notify admins (not the teacher) about the pending cancellation request
+    try {
+      const { notifyAdmin } = require('./services/notifyService');
+      await notifyAdmin(
+        'cancellation-request',
+        `Teacher ${teacherId} requested cancellation for ${booking.date} at ${booking.time} (${booking.studentId}).`,
+        {
+          bookingId: String(bookingId),
+          actionUrl: '/admin-cancellations.html',
+          meta: { teacherId, studentId: booking.studentId },
+        }
+      );
+    } catch (adminNotifErr) {
+      console.warn('Admin cancellation-request notify failed:', adminNotifErr.message);
+    }
     
     res.json({
       success: true,
@@ -5337,7 +5507,18 @@ router.post('/booking/:bookingId/complete', verifyToken, requireTeacher, async (
     const fresh = await Booking.findById(bookingId);
 
     const notificationMessage = `Class completed for ${fresh.date} at ${fresh.time}`;
-    await createNotification(teacherId, 'class-completed', notificationMessage);
+    await createNotification(teacherId, 'class-completed', notificationMessage, {
+      bookingId: String(fresh._id),
+    });
+    try {
+      const { notifyStudent } = require('./services/notifyService');
+      await notifyStudent(
+        fresh.studentId,
+        'class-completed',
+        `Great work — your class on ${fresh.date} at ${fresh.time} is complete. Feedback may be available on your dashboard.`,
+        { bookingId: String(fresh._id), actionUrl: '/student-dashboard.html' }
+      );
+    } catch (_e) { /* non-fatal */ }
 
     res.json({
       success: true,
@@ -5446,9 +5627,20 @@ router.post('/booking/:bookingId/mark-student-absent', verifyToken, requireTeach
     
     console.log('✅ Student marked as absent successfully');
     
-    // Create notification for admin
+    // Create notification for admin + student
     const notificationMessage = `Student marked as absent for class on ${booking.date} at ${booking.time}`;
     await createNotification('admin', 'student-absent', notificationMessage);
+    try {
+      const { notifyStudent } = require('./services/notifyService');
+      await notifyStudent(
+        booking.studentId,
+        'absent',
+        `You were marked absent for ${booking.date} at ${booking.time}.`,
+        { bookingId: String(booking._id), actionUrl: '/student-dashboard.html' }
+      );
+    } catch (snErr) {
+      console.warn('Student absent notify failed:', snErr.message);
+    }
     
     res.json({
       success: true,
@@ -5538,11 +5730,11 @@ router.post('/report-issue', verifyToken, requireTeacher, issueScreenshotUpload.
       studentPaymentImpact = 'normal';
     }
     
-    // Create issue report
+    // Create issue report — always persist booking.studentId (username), never UI Mongo _id
     const issueReport = new IssueReport({
       bookingId,
-      teacherId,
-      studentId,
+      teacherId: String(teacherId || booking.teacherId || req.user.teacherId || '').trim(),
+      studentId: String(booking.studentId || '').trim() || String(studentId || '').trim(),
       issueType,
       description,
       screenshotPath,

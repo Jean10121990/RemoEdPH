@@ -19,7 +19,7 @@
 <script src="teacher-tour.js"></script>
 <script src="js/user-session.js"></script>
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="css/portal-chrome-compact.css?v=mint-forest-1">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css?v=notif-bell-2">
 </head>
 <body class="page-teacher-dashboard teacher-portal">
     <!-- Main Layout: Sidebar + Content -->
@@ -82,7 +82,7 @@
         
         <div id="teacher-sidebar-root"></div>
         <script src="js/teacher-sidebar.js?v=lb-nav-2"></script>
-        <script src="js/teacher-page-header.js?v=mint-forest-1"></script>
+        <script src="js/teacher-page-header.js?v=notif-ux-3"></script>
         <script>
             TeacherSidebar.render('teacher-sidebar-root', 'dashboard');
             TeacherPageHeader.polishExisting('dashboard');
@@ -411,7 +411,11 @@
                 notificationsDropdown.classList.toggle('show');
                 // Hide other dropdowns
                 document.getElementById('upcoming-classes-dropdown').classList.remove('show');
+                if (notificationsDropdown.classList.contains('show')) {
+                    loadNotificationsDropdown();
+                }
             });
+            notificationsIcon.setAttribute('data-notif-click', '1');
             
             // Upcoming classes dropdown
             const upcomingClassesIcon = document.getElementById('upcoming-classes-icon');
@@ -425,7 +429,9 @@
             });
             
             // Close dropdowns when clicking outside
-            document.addEventListener('click', function() {
+            document.addEventListener('click', function(e) {
+                if (notificationsIcon.contains(e.target) || notificationsDropdown.contains(e.target)) return;
+                if (upcomingClassesIcon.contains(e.target) || upcomingClassesDropdown.contains(e.target)) return;
                 notificationsDropdown.classList.remove('show');
                 upcomingClassesDropdown.classList.remove('show');
             });
@@ -646,69 +652,57 @@
         }
         
         // Load notifications for dropdown
-        async function loadNotificationsDropdown() {
-            try {
-                const teacherId = localStorage.getItem('teacherId');
-                if (!teacherId) return;
-                
-                const response = await fetch(`/api/teacher/notifications?teacherId=${teacherId}`);
-                const notifications = await response.json();
-                
-                console.log('🔔 Loaded notifications:', notifications);
-                
-                const dropdownContent = document.getElementById('notifications-dropdown-content');
-                const badge = document.getElementById('notifications-badge');
-                
-                // Check if elements exist before updating
-                if (!dropdownContent || !badge) {
-                    console.warn('Notifications dropdown elements not found');
-                    return;
-                }
-                
-                // Update badge count
-                const unreadCount = notifications.filter(n => !n.read).length;
-                badge.textContent = unreadCount;
-                badge.style.display = unreadCount > 0 ? 'flex' : 'none';
-                
-                if (notifications.length === 0) {
-                    dropdownContent.innerHTML = '<div class="nav-dropdown-item">No notifications</div>';
-                } else {
-                    const latest = notifications.slice(0, 10); // Show more notifications
-                    let notificationsHTML = latest.map((n, index) => {
-                        const TU = window.TimezoneUtils || {};
-                        const time = n.createdAt && TU.formatTime12hPhilippines
-                            ? TU.formatTime12hPhilippines(new Date(n.createdAt))
-                            : (n.createdAt ? new Date(n.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : '');
-                        
-                        const readClass = n.read ? 'read' : '';
-                        
-                        console.log('🔔 Creating notification item:', n._id, 'read:', n.read);
-                        
-                        return `<div class="nav-dropdown-item ${readClass}" data-notification-id="${n._id}" data-notification-index="${index}" onclick="markNotificationAsRead('${n._id}', ${index})">
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                <span>${getNotifIcon(n.type)}</span>
-                                <div style="flex: 1;">
-                                    <div style="font-size: 0.9rem;">${n.message}</div>
-                                    <div style="font-size: 0.8rem; color: #666;">${time}</div>
-                                </div>
-                            </div>
-                        </div>`;
-                    }).join('');
-                    
-                    // Add "View All" option if there are more notifications
-                    if (notifications.length > 10) {
-                        notificationsHTML += `<div class="nav-dropdown-item" style="text-align: center; color: #47BC3E; font-weight: 500; border-top: 1px solid #e2e8f0; margin-top: 8px; padding-top: 12px; cursor: pointer;" onclick="viewAllNotifications()">
-                            View All ${notifications.length} Notifications
-                        </div>`;
-                    }
-                    
-                    dropdownContent.innerHTML = notificationsHTML;
-                }
-            } catch (error) {
-                console.error('Error loading notifications dropdown:', error);
+                async function loadNotificationsDropdown() {
+          try {
+            const token = localStorage.getItem('token');
+            const dropdownContent = document.getElementById('notifications-dropdown-content');
+            const badge = document.getElementById('notifications-badge');
+            const dropdown = document.getElementById('notifications-dropdown');
+            if (!dropdownContent || !badge) return;
+            if (!token) {
+              dropdownContent.innerHTML = '<div class="nav-dropdown-item">Sign in to see notifications</div>';
+              return;
             }
+            if (window.RemoedNotifications && window.RemoedNotifications.bindDropdownExtras) {
+              window.RemoedNotifications.bindDropdownExtras(dropdown, {
+                role: 'teacher',
+                getToken: function () { return localStorage.getItem('token') || ''; },
+                onRefresh: loadNotificationsDropdown,
+              });
+            }
+            const response = await fetch('/api/teacher/notifications', { headers: { Authorization: 'Bearer ' + token } });
+            const data = await response.json().catch(function () { return {}; });
+            if (!response.ok) {
+              dropdownContent.innerHTML = '<div class="nav-dropdown-item">Could not load notifications</div>';
+              return;
+            }
+            const list = (window.RemoedNotifications && window.RemoedNotifications.unwrapList)
+              ? window.RemoedNotifications.unwrapList(data)
+              : (data.notifications || []);
+            const unread = (window.RemoedNotifications && window.RemoedNotifications.badgeCountFromPayload)
+              ? window.RemoedNotifications.badgeCountFromPayload(data, list)
+              : (typeof data.actionableUnreadCount === 'number' ? data.actionableUnreadCount : list.filter(function (n) { return !n.read; }).length);
+            if (window.RemoedNotifications && window.RemoedNotifications.setBadge) {
+              window.RemoedNotifications.setBadge(badge, unread);
+            } else {
+              badge.textContent = String(unread);
+              badge.style.display = unread > 0 ? 'flex' : 'none';
+            }
+            if (window.RemoedNotifications && window.RemoedNotifications.renderItems) {
+              window.RemoedNotifications.renderItems(dropdownContent, list, {
+                limit: 12,
+                role: 'teacher',
+                retentionDays: data.retentionDays || 31,
+                filter: window.RemoedNotifications.getFilter ? window.RemoedNotifications.getFilter() : 'all',
+              });
+            } else if (!list.length) {
+              dropdownContent.innerHTML = '<div class="nav-dropdown-item">No notifications yet</div>';
+            }
+          } catch (error) {
+            console.error('Error loading notifications dropdown:', error);
+          }
         }
-        
+
         // Mark notification as read
         async function markNotificationAsRead(notificationId, index) {
             try {
@@ -724,7 +718,7 @@
                 
                 // Mark as read in backend
                 const teacherId = localStorage.getItem('teacherId');
-                const response = await fetch(`/api/teacher/notifications/${notificationId}/mark-read?teacherId=${teacherId}`, {
+                const response = await fetch(`/api/teacher/notifications/${notificationId}/mark-read`, {
                     method: 'PATCH',
                     headers: {
                         'Authorization': `Bearer ${token}`,
@@ -787,7 +781,7 @@
                         'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ teacherId: teacherId })
+                    body: JSON.stringify({})
                 });
                 
                 console.log('🔔 Mark all as read API Response status:', response.status);
@@ -883,11 +877,13 @@
         // Load all notifications for the modal
         async function loadAllNotifications() {
             try {
-                const teacherId = localStorage.getItem('teacherId');
-                if (!teacherId) return;
-                
-                const response = await fetch(`/api/teacher/notifications?teacherId=${teacherId}`);
-                const notifications = await response.json();
+                const token = localStorage.getItem('token');
+                if (!token) return;
+                const response = await fetch('/api/teacher/notifications', {
+                    headers: { Authorization: 'Bearer ' + token },
+                });
+                const data = await response.json();
+                const notifications = Array.isArray(data) ? data : (data.notifications || []);
                 
                 const notificationsList = document.getElementById('all-notifications-list');
                 if (!notificationsList) return;
@@ -1298,10 +1294,7 @@
             }
           }
         }, 2000); // Check every 2 seconds
-        
-        // Check for daily notification reset
-        checkAndResetDailyNotifications();
-        
+        // Daily auto mark-all-read disabled
       } catch (error) {
         console.error('Error initializing dashboard:', error);
       }
@@ -1551,10 +1544,28 @@
     }
   }
 
-  // Send reminder function (placeholder)
-  function sendReminder(bookingId) {
-    alert('Reminder sent!');
-    // TODO: Implement actual reminder functionality
+  // Send reminder to student for an upcoming class
+  async function sendReminder(bookingId) {
+    if (!bookingId) return;
+    const token = localStorage.getItem('token') || '';
+    try {
+      const response = await fetch('/api/teacher/booking/' + encodeURIComponent(bookingId) + '/send-reminder', {
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer ' + token,
+          'Content-Type': 'application/json',
+        },
+      });
+      const data = await response.json().catch(function () { return {}; });
+      if (!response.ok || !data.success) {
+        alert((data && data.error) || 'Could not send reminder. Please try again.');
+        return;
+      }
+      alert(data.message || 'Reminder sent to the student.');
+    } catch (err) {
+      console.error('sendReminder:', err);
+      alert('Network error while sending reminder.');
+    }
   }
 
   // Notification panel logic (dynamic)
@@ -1569,14 +1580,10 @@
       statusElement.style.color = '#1ca7e7';
     }
     
-    // Check if it's a new day and reset notifications
-    await checkAndResetDailyNotifications();
-    
     try {
-      const response = await fetch(`/api/teacher/notifications?teacherId=${teacherId}`, {
-        signal: AbortSignal.timeout(5000) // 5 second timeout
-      });
-      const notifications = await response.json();
+      const response = await fetch('/api/teacher/notifications', { headers: { Authorization: 'Bearer ' + (localStorage.getItem('token') || '') }, signal: AbortSignal.timeout(5000) });
+      const __notifData = await response.json();
+      const notifications = Array.isArray(__notifData) ? __notifData : (__notifData.notifications || []);
       console.log('🔔 Loaded notifications:', notifications);
       
       const notificationList = document.getElementById('notification-list');
@@ -1643,6 +1650,7 @@
   
   // Check if it's a new day and reset notifications to 0
   async function checkAndResetDailyNotifications() {
+    return;
     const today = new Date().toDateString();
     const lastResetDate = localStorage.getItem('notification_last_reset_date');
     

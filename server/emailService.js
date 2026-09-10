@@ -1172,6 +1172,73 @@ async function sendTeacherPipelineFailEmail(email, fullName, reapplyEligibleAt, 
   }
 }
 
+/** Gentle reminder to book free trial (assessment / welcome trial flow). */
+async function sendTrialBookingReminderEmail(email, greetName) {
+  const targetEmail = String(email || '').trim().toLowerCase();
+  if (!targetEmail) return { success: false, error: 'Missing recipient email' };
+  const name = String(greetName || 'there').trim() || 'there';
+  const subject = 'Your RemoEdPH free trial class is waiting';
+  const text =
+    `Hi ${name},\n\n` +
+    `You still have a free trial Lesson 1 available. Log in to your student dashboard and book a class when you're ready.\n\n` +
+    `— RemoEdPH`;
+  const html =
+    `<p>Hi ${name},</p>` +
+    `<p>You still have a <strong>free trial Lesson 1</strong> available. Log in to your student dashboard and book a class when you're ready.</p>` +
+    `<p>— RemoEdPH</p>`;
+  try {
+    if (!isEmailConfigured) {
+      return { success: false, fallback: true, error: 'Email service not configured' };
+    }
+    if (activeEmailService === 'mailgun') {
+      return await sendEmailViaMailgun(targetEmail, subject, html, text);
+    }
+    if (activeEmailService === 'smtp') {
+      const info = await smtpSendMail({ to: targetEmail, subject, html, text });
+      return { success: true, messageId: info.messageId, provider: info.provider };
+    }
+    return { success: false, error: 'No email service configured' };
+  } catch (error) {
+    console.error('[sendTrialBookingReminderEmail]', error.message || error);
+    return { success: false, error: error.message || 'Failed to send trial reminder' };
+  }
+}
+
+/** Lesson 1 feedback ready — invite student to view dashboard / plans. */
+async function sendLesson1FeedbackReadyEmail(email, greetName, dashboardUrl, plansUrl) {
+  const targetEmail = String(email || '').trim().toLowerCase();
+  if (!targetEmail) return { success: false, error: 'Missing recipient email' };
+  const name = String(greetName || 'there').trim() || 'there';
+  const dash = String(dashboardUrl || '/student-dashboard.html').trim();
+  const plans = String(plansUrl || '/#plans').trim();
+  const subject = 'Your RemoEdPH Lesson 1 feedback is ready';
+  const text =
+    `Hi ${name},\n\n` +
+    `Your teacher has shared feedback from Lesson 1. Open your dashboard to review it, and explore plans when you're ready to continue.\n` +
+    `Dashboard: ${dash}\nPlans: ${plans}\n\n— RemoEdPH`;
+  const html =
+    `<p>Hi ${name},</p>` +
+    `<p>Your teacher has shared feedback from <strong>Lesson 1</strong>.</p>` +
+    `<p><a href="${dash}">Open your dashboard</a> · <a href="${plans}">View plans</a></p>` +
+    `<p>— RemoEdPH</p>`;
+  try {
+    if (!isEmailConfigured) {
+      return { success: false, fallback: true, error: 'Email service not configured' };
+    }
+    if (activeEmailService === 'mailgun') {
+      return await sendEmailViaMailgun(targetEmail, subject, html, text);
+    }
+    if (activeEmailService === 'smtp') {
+      const info = await smtpSendMail({ to: targetEmail, subject, html, text });
+      return { success: true, messageId: info.messageId, provider: info.provider };
+    }
+    return { success: false, error: 'No email service configured' };
+  } catch (error) {
+    console.error('[sendLesson1FeedbackReadyEmail]', error.message || error);
+    return { success: false, error: error.message || 'Failed to send lesson feedback email' };
+  }
+}
+
 // Diagnostic function to check email configuration (without exposing credentials)
 function getEmailConfigStatus() {
   const status = {
@@ -1238,6 +1305,34 @@ async function testEmailSending(testEmail) {
   }
 }
 
+/** Daily digest of unread in-app notifications (opt-in). */
+async function sendNotificationDigestEmail(toEmail, displayName, lines, role) {
+  const targetEmail = String(toEmail || '').trim();
+  if (!targetEmail) return { success: false, error: 'Missing email' };
+  const name = String(displayName || 'there').trim() || 'there';
+  const bodyLines = Array.isArray(lines) ? lines.filter(Boolean) : [];
+  if (!bodyLines.length) return { success: false, error: 'No lines' };
+  const portal =
+    role === 'teacher' ? 'https://remoedph.com/teacher-dashboard.html' : 'https://remoedph.com/student-dashboard.html';
+  const subject = `RemoEdPH: ${bodyLines.length} unread notification${bodyLines.length === 1 ? '' : 's'}`;
+  const text =
+    `Hi ${name},\n\nYou have unread in-app notifications:\n\n` +
+    bodyLines.join('\n') +
+    `\n\nOpen your portal: ${portal}\n\nYou can turn digest emails off in notification preferences.\n— RemoEdPH`;
+  const html =
+    `<p>Hi ${name},</p>` +
+    `<p>You have unread in-app notifications:</p>` +
+    `<ul>${bodyLines.map((l) => `<li>${String(l).replace(/^•\s*/, '')}</li>`).join('')}</ul>` +
+    `<p><a href="${portal}">Open portal</a></p>` +
+    `<p style="color:#64748b;font-size:12px;">Turn digest emails off in notification preferences.</p>` +
+    `<p>— RemoEdPH</p>`;
+  try {
+    return await sendEmailViaMailgun(targetEmail, subject, html, text);
+  } catch (error) {
+    return { success: false, error: error.message || 'Failed to send digest email' };
+  }
+}
+
 module.exports = {
   sendPasswordResetEmail,
   sendTeacherRegistrationEmail,
@@ -1245,6 +1340,9 @@ module.exports = {
   sendAssessmentEmail,
   sendTeacherPipelineWelcomeEmail,
   sendTeacherPipelineFailEmail,
+  sendTrialBookingReminderEmail,
+  sendLesson1FeedbackReadyEmail,
+  sendNotificationDigestEmail,
   sendEmail,
   getEmailConfigStatus,
   testEmailSending

@@ -31,6 +31,11 @@ const {
   requireSuperAdminDb,
 } = require('./authMiddleware');
 const { getIo } = require('./realtime');
+const {
+  peerMessageAttachUpload,
+  attachmentFromMulterFile,
+  serializeAttachment,
+} = require('./utils/peerMessageAttachment');
 const { getAverageApiLatencyMs, getSampleCount } = require('./middleware/apiLatencyTracker');
 const { getCpuLoadPercent, getMemoryMetrics, getDiskForCwd } = require('./utils/hostMetrics');
 const {
@@ -993,18 +998,11 @@ const {
   consumeReservedCreditForBooking,
 } = require('./services/bookingCreditLedger');
 
-// Function to create notifications
-async function createNotification(userId, type, message) {
+// Function to create notifications (teacher / admin username bucket)
+async function createNotification(userId, type, message, extra = {}) {
   try {
-    // Notification model uses teacherId for all recipients (teachers, students, admin username, etc.)
-    const notification = new Notification({
-      teacherId: String(userId),
-      type,
-      message,
-      read: false,
-      createdAt: new Date()
-    });
-    await notification.save();
+    const { notifyTeacher } = require('./services/notifyService');
+    await notifyTeacher(String(userId), type, message, extra);
     console.log(`✅ Notification created for ${userId}: ${type}`);
   } catch (error) {
     console.error('❌ Error creating notification:', error);
@@ -1244,20 +1242,50 @@ router.get('/time-tracking/history', verifyAdminApiAuth, requireAdmin, async (re
 // ——— Admin notifications (same Notification collection; teacherId = admin username) ———
 router.get('/notifications', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
+    const { enrichNotificationList, countActionableUnread, RETENTION_DAYS } = require('./services/notifyService');
     const username = req.user.username;
-    const cutoff = new Date(Date.now() - 31 * 24 * 60 * 60 * 1000);
-    const notifications = await Notification.find({
+    const cutoff = new Date(Date.now() - RETENTION_DAYS * 24 * 60 * 60 * 1000);
+    const raw = await Notification.find({
       teacherId: username,
       createdAt: { $gte: cutoff },
     })
       .sort({ createdAt: -1 })
       .limit(50)
       .lean();
+    const notifications = enrichNotificationList(raw);
     const unreadCount = notifications.filter(n => !n.read).length;
-    res.json({ success: true, notifications, unreadCount });
+    res.json({
+      success: true,
+      notifications,
+      unreadCount,
+      actionableUnreadCount: countActionableUnread(notifications),
+      retentionDays: RETENTION_DAYS,
+    });
   } catch (err) {
     console.error('Admin notifications list error:', err);
     res.status(500).json({ error: 'Failed to load notifications' });
+  }
+});
+
+/** Delivery health: last 24h sent / skipped / failed counts */
+router.get('/notification-health', verifyAdminApiAuth, requireAdmin, async (req, res) => {
+  try {
+    const NotificationDeliveryLog = require('./models/NotificationDeliveryLog');
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const rows = await NotificationDeliveryLog.aggregate([
+      { $match: { createdAt: { $gte: since } } },
+      { $group: { _id: { status: '$status', type: '$type' }, count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+    ]);
+    const byStatus = {};
+    for (const r of rows) {
+      const st = r._id.status;
+      byStatus[st] = (byStatus[st] || 0) + r.count;
+    }
+    res.json({ success: true, since, byStatus, breakdown: rows });
+  } catch (err) {
+    console.error('notification-health:', err);
+    res.status(500).json({ error: 'Failed to load notification health' });
   }
 });
 
@@ -1897,6 +1925,33 @@ router.post('/save-global-rate', async (req, res) => {
   }
 });
 
+/** Completed booking statuses used by admin reports (legacy capitalized values included). */
+const REPORT_COMPLETED_STATUSES = ['completed', 'Completed'];
+
+function isReportCompletedStatus(status) {
+  return String(status || '').toLowerCase() === 'completed';
+}
+
+function isReportCancelledStatus(status) {
+  const s = String(status || '').toLowerCase();
+  return s === 'cancelled' || s === 'cancelled_by_student_emergency' || s.startsWith('cancelled');
+}
+
+/** Prefer YYYY-MM from booking.date string; fall back to Date parse. */
+function monthKeyFromBookingDate(dateStr) {
+  const s = String(dateStr || '').trim();
+  if (/^\d{4}-\d{2}/.test(s)) return s.slice(0, 7);
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return 'unknown';
+  return d.toISOString().slice(0, 7);
+}
+
+function studentDisplayName(student) {
+  if (!student) return 'Unknown';
+  const full = `${student.firstName || ''} ${student.lastName || ''}`.trim();
+  return full || student.username || student.email || 'Unknown';
+}
+
 // GET user activity report
 router.get('/reports/user-activity', async (req, res) => {
   try {
@@ -1908,26 +1963,35 @@ router.get('/reports/user-activity', async (req, res) => {
     
     const recentBookings = await Booking.find()
       .sort({ createdAt: -1 })
-      .limit(10);
+      .limit(10)
+      .lean();
     
-    // Get teacher and student data separately since teacherId and studentId are strings
-    const teacherIds = [...new Set(recentBookings.map(b => b.teacherId))];
-    const studentIds = [...new Set(recentBookings.map(b => b.studentId))];
+    const teacherIds = [...new Set(recentBookings.map((b) => b.teacherId).filter(Boolean))];
+    const studentIds = [...new Set(recentBookings.map((b) => b.studentId).filter(Boolean))];
     
     const [teachersData, studentsData] = await Promise.all([
-      Teacher.find({ teacherId: { $in: teacherIds } }, 'teacherId username fullname'),
-      Student.find({ username: { $in: studentIds } }, 'username firstName lastName')
+      Teacher.find({ teacherId: { $in: teacherIds } }, 'teacherId username fullname').lean(),
+      Student.find(
+        {
+          $or: [
+            { username: { $in: studentIds } },
+            { email: { $in: studentIds } },
+          ],
+        },
+        'username email firstName lastName'
+      ).lean(),
     ]);
     
-    // Create lookup maps
     const teacherMap = {};
-    teachersData.forEach(teacher => {
+    teachersData.forEach((teacher) => {
       teacherMap[teacher.teacherId] = teacher.fullname || teacher.username;
     });
     
     const studentMap = {};
-    studentsData.forEach(student => {
-      studentMap[student.username] = `${student.firstName || ''} ${student.lastName || ''}`.trim() || student.username;
+    studentsData.forEach((student) => {
+      const name = studentDisplayName(student);
+      if (student.username) studentMap[student.username] = name;
+      if (student.email) studentMap[student.email] = name;
     });
     
     res.json({
@@ -1937,10 +2001,10 @@ router.get('/reports/user-activity', async (req, res) => {
         totalTeachers: teachers,
         totalStudents: students,
         totalBookings: bookings,
-        recentBookings: recentBookings.map(booking => ({
+        recentBookings: recentBookings.map((booking) => ({
           id: booking._id,
           teacher: teacherMap[booking.teacherId] || 'Unknown',
-          student: studentMap[booking.studentId] || 'Unknown',
+          student: studentMap[booking.studentId] || booking.studentId || 'Unknown',
           date: booking.date,
           time: booking.time,
           status: booking.status,
@@ -1960,15 +2024,17 @@ router.get('/reports/user-activity', async (req, res) => {
 // GET financial report
 router.get('/reports/financial', async (req, res) => {
   try {
-    const settings = await GlobalSettings.findOne();
+    const settings = await GlobalSettings.findOne().lean();
     const globalRate = settings?.globalRate || 100;
     
-    const bookings = await Booking.find({ status: 'completed' });
+    const bookings = await Booking.find({ status: { $in: REPORT_COMPLETED_STATUSES } })
+      .select('date status')
+      .lean();
     const totalEarnings = bookings.length * globalRate;
     
     const monthlyEarnings = {};
-    bookings.forEach(booking => {
-      const month = new Date(booking.date).toISOString().slice(0, 7);
+    bookings.forEach((booking) => {
+      const month = monthKeyFromBookingDate(booking.date);
       monthlyEarnings[month] = (monthlyEarnings[month] || 0) + globalRate;
     });
     
@@ -1994,35 +2060,59 @@ router.get('/reports/financial', async (req, res) => {
 // GET class performance report
 router.get('/reports/class-performance', async (req, res) => {
   try {
-    const bookings = await Booking.find();
-    const teachers = await Teacher.find();
-    
-    // Create a map of teacherId to teacher data for lookup
-    const teacherMap = {};
-    teachers.forEach(teacher => {
-      teacherMap[teacher.teacherId] = teacher;
+    const Feedback = require('./models/Feedback');
+    const [bookings, teachers, ratingAgg] = await Promise.all([
+      Booking.find().select('teacherId status').lean(),
+      Teacher.find().select('teacherId username fullname averageRating').lean(),
+      Feedback.aggregate([
+        { $match: { feedbackRole: 'student_to_teacher', rating: { $gte: 1 } } },
+        {
+          $group: {
+            _id: '$teacherId',
+            averageRating: { $avg: '$rating' },
+            ratingCount: { $sum: 1 },
+          },
+        },
+      ]),
+    ]);
+
+    const ratingMap = {};
+    ratingAgg.forEach((row) => {
+      ratingMap[String(row._id)] = {
+        averageRating: Number(row.averageRating.toFixed(2)),
+        ratingCount: row.ratingCount,
+      };
     });
     
-    const performanceData = teachers.map(teacher => {
-      const teacherBookings = bookings.filter(b => b.teacherId === teacher.teacherId);
-      const completed = teacherBookings.filter(b => b.status === 'completed').length;
+    const performanceData = teachers.map((teacher) => {
+      const tid = teacher.teacherId;
+      const teacherBookings = bookings.filter((b) => b.teacherId === tid);
+      const completed = teacherBookings.filter((b) => isReportCompletedStatus(b.status)).length;
       const total = teacherBookings.length;
+      const fromFeedback = ratingMap[String(tid)];
       
       return {
         teacher: teacher.fullname || teacher.username,
         totalClasses: total,
         completedClasses: completed,
         completionRate: total > 0 ? (completed / total * 100).toFixed(2) : 0,
-        averageRating: teacher.averageRating || 0
+        averageRating: fromFeedback
+          ? fromFeedback.averageRating
+          : (teacher.averageRating || 0),
+        ratingCount: fromFeedback ? fromFeedback.ratingCount : 0,
       };
     });
+
+    const completedClasses = bookings.filter((b) => isReportCompletedStatus(b.status)).length;
+    const cancelledClasses = bookings.filter((b) => isReportCancelledStatus(b.status)).length;
     
     const overallStats = {
       totalClasses: bookings.length,
-      completedClasses: bookings.filter(b => b.status === 'completed').length,
-      cancelledClasses: bookings.filter(b => b.status === 'cancelled').length,
-      averageCompletionRate: bookings.length > 0 ? 
-        (bookings.filter(b => b.status === 'completed').length / bookings.length * 100).toFixed(2) : 0
+      completedClasses,
+      cancelledClasses,
+      averageCompletionRate: bookings.length > 0
+        ? ((completedClasses / bookings.length) * 100).toFixed(2)
+        : 0
     };
     
     res.json({
@@ -2049,17 +2139,16 @@ router.get('/reports/weekly-summary', async (req, res) => {
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
     
-    const [newTeachers, newStudents, newBookings, newAnnouncements] = await Promise.all([
+    const [newTeachers, newStudents, newBookings, newAnnouncements, completedBookings] = await Promise.all([
       Teacher.countDocuments({ createdAt: { $gte: oneWeekAgo } }),
       Student.countDocuments({ createdAt: { $gte: oneWeekAgo } }),
       Booking.countDocuments({ createdAt: { $gte: oneWeekAgo } }),
-      Announcement.countDocuments({ createdAt: { $gte: oneWeekAgo } })
+      Announcement.countDocuments({ createdAt: { $gte: oneWeekAgo } }),
+      Booking.countDocuments({
+        status: { $in: REPORT_COMPLETED_STATUSES },
+        createdAt: { $gte: oneWeekAgo }
+      }),
     ]);
-    
-    const completedBookings = await Booking.countDocuments({
-      status: 'completed',
-      createdAt: { $gte: oneWeekAgo }
-    });
     
     res.json({
       success: true,
@@ -2154,15 +2243,29 @@ router.post('/reports/custom', async (req, res) => {
         message: 'Start date and end date are required'
       });
     }
+
+    const startDateStr = String(startDate).slice(0, 10);
+    const endDateStr = String(endDate).slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(startDateStr) || !/^\d{4}-\d{2}-\d{2}$/.test(endDateStr)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Dates must be YYYY-MM-DD'
+      });
+    }
+    if (startDateStr > endDateStr) {
+      return res.status(400).json({
+        success: false,
+        message: 'Start date must be on or before end date'
+      });
+    }
     
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    end.setHours(23, 59, 59, 999);
+    const start = new Date(`${startDateStr}T00:00:00.000Z`);
+    const end = new Date(`${endDateStr}T23:59:59.999Z`);
     
     let data = {};
     
     switch (reportType) {
-      case 'user-activity':
+      case 'user-activity': {
         const [teachers, students, bookings] = await Promise.all([
           Teacher.countDocuments({ createdAt: { $gte: start, $lte: end } }),
           Student.countDocuments({ createdAt: { $gte: start, $lte: end } }),
@@ -2173,60 +2276,53 @@ router.post('/reports/custom', async (req, res) => {
           newTeachers: teachers,
           newStudents: students,
           newBookings: bookings,
-          period: `${startDate} to ${endDate}`
+          period: `${startDateStr} to ${endDateStr}`
         };
         break;
+      }
         
-      case 'financial':
+      case 'financial': {
         const financialCompletedBookings = await Booking.find({
-          status: 'completed',
-          date: { $gte: startDate, $lte: endDate }
-        });
+          status: { $in: REPORT_COMPLETED_STATUSES },
+          date: { $gte: startDateStr, $lte: endDateStr }
+        }).select('_id').lean();
         
-        const settings = await GlobalSettings.findOne();
+        const settings = await GlobalSettings.findOne().lean();
         const rate = settings?.globalRate || 100;
         
         data = {
           completedClasses: financialCompletedBookings.length,
           totalEarnings: financialCompletedBookings.length * rate,
           rate,
-          period: `${startDate} to ${endDate}`
+          period: `${startDateStr} to ${endDateStr}`
         };
         break;
+      }
         
-      case 'class-performance':
+      case 'class-performance': {
         const allBookings = await Booking.find({
-          date: { $gte: startDate, $lte: endDate }
-        });
+          date: { $gte: startDateStr, $lte: endDateStr }
+        }).select('teacherId status').lean();
         
-        // Get teacher data for lookup
-        const teacherIds = [...new Set(allBookings.map(b => b.teacherId))];
-        const teacherData = await Teacher.find({ teacherId: { $in: teacherIds } }, 'teacherId username fullname');
+        const teacherIds = [...new Set(allBookings.map((b) => b.teacherId).filter(Boolean))];
+        const teacherData = await Teacher.find(
+          { teacherId: { $in: teacherIds } },
+          'teacherId username fullname'
+        ).lean();
         
-        // Debug logging
-        console.log('Debug - All teacher IDs from bookings:', teacherIds);
-        console.log('Debug - Found teachers:', teacherData.map(t => ({ teacherId: t.teacherId, name: t.fullname || t.username })));
-        
-        // Create teacher lookup map
         const teacherMap = {};
-        teacherData.forEach(teacher => {
+        teacherData.forEach((teacher) => {
           teacherMap[teacher.teacherId] = teacher.fullname || teacher.username;
         });
         
-        // Find missing teacher IDs
-        const missingTeacherIds = teacherIds.filter(id => !teacherMap[id]);
-        if (missingTeacherIds.length > 0) {
-          console.log('Debug - Missing teacher IDs:', missingTeacherIds);
-        }
-        
         const teacherStats = {};
-        allBookings.forEach(booking => {
+        allBookings.forEach((booking) => {
           const teacherName = teacherMap[booking.teacherId] || 'Unknown';
           if (!teacherStats[teacherName]) {
             teacherStats[teacherName] = { total: 0, completed: 0 };
           }
           teacherStats[teacherName].total++;
-          if (booking.status === 'completed') {
+          if (isReportCompletedStatus(booking.status)) {
             teacherStats[teacherName].completed++;
           }
         });
@@ -2234,29 +2330,32 @@ router.post('/reports/custom', async (req, res) => {
         data = {
           teacherStats,
           totalBookings: allBookings.length,
-          period: `${startDate} to ${endDate}`
+          period: `${startDateStr} to ${endDateStr}`
         };
         break;
+      }
         
-      case 'weekly-summary':
-        const [newUsers, newBookings, weeklyCompletedBookings] = await Promise.all([
-          Teacher.countDocuments({ createdAt: { $gte: start, $lte: end } }) +
+      case 'weekly-summary': {
+        const [newTeachers, newStudents, newBookings, weeklyCompletedBookings] = await Promise.all([
+          Teacher.countDocuments({ createdAt: { $gte: start, $lte: end } }),
           Student.countDocuments({ createdAt: { $gte: start, $lte: end } }),
           Booking.countDocuments({ createdAt: { $gte: start, $lte: end } }),
           Booking.countDocuments({
-            status: 'completed',
-            date: { $gte: startDate, $lte: endDate }
+            status: { $in: REPORT_COMPLETED_STATUSES },
+            date: { $gte: startDateStr, $lte: endDateStr }
           })
         ]);
+        const newUsers = newTeachers + newStudents;
         
         data = {
           newUsers,
           newBookings,
           completedBookings: weeklyCompletedBookings,
           completionRate: newBookings > 0 ? (weeklyCompletedBookings / newBookings * 100).toFixed(2) : 0,
-          period: `${startDate} to ${endDate}`
+          period: `${startDateStr} to ${endDateStr}`
         };
         break;
+      }
         
       default:
         return res.status(400).json({
@@ -3416,6 +3515,7 @@ router.get('/messages/thread/:userId', verifyAdminApiAuth, requireAdmin, async (
         senderId: String(m.senderId || ''),
         recipientId: String(m.recipientId || ''),
         message: String(m.message || ''),
+        attachment: serializeAttachment(m.attachment),
         createdAt: m.createdAt,
         readAt: m.readAt || null,
       })),
@@ -3426,39 +3526,72 @@ router.get('/messages/thread/:userId', verifyAdminApiAuth, requireAdmin, async (
   }
 });
 
-// Admin sends a direct message to a teacher/student userId
-router.post('/messages/send', verifyAdminApiAuth, requireAdmin, async (req, res) => {
-  try {
-    const rawRecipient = String(req.body?.recipientId || '').trim();
-    const message = String(req.body?.message || '').trim();
-    if (!rawRecipient || !message) {
-      return res.status(400).json({ success: false, message: 'recipientId and message are required' });
-    }
-
-    const recipientId = await canonicalPeerRecipientId(rawRecipient);
-
-    const adminId = getAdminMessengerId(req);
-    const saved = await PeerMessage.create({
-      senderId: adminId,
-      recipientId,
-      message,
+// Admin sends a direct message to a teacher/student userId (optional file attachment)
+router.post(
+  '/messages/send',
+  verifyAdminApiAuth,
+  requireAdmin,
+  (req, res, next) => {
+    peerMessageAttachUpload.single('attachment')(req, res, (err) => {
+      if (err) {
+        return res.status(400).json({ success: false, message: err.message || 'Invalid attachment' });
+      }
+      next();
     });
+  },
+  async (req, res) => {
+    try {
+      const rawRecipient = String(req.body?.recipientId || '').trim();
+      const message = String(req.body?.message || '').trim();
+      const attachment = attachmentFromMulterFile(req.file);
+      if (!rawRecipient || (!message && !attachment)) {
+        return res.status(400).json({
+          success: false,
+          message: 'recipientId and a message or attachment are required',
+        });
+      }
 
-    res.json({
-      success: true,
-      messageRecord: {
+      const recipientId = await canonicalPeerRecipientId(rawRecipient);
+
+      const adminId = getAdminMessengerId(req);
+      const saved = await PeerMessage.create({
+        senderId: adminId,
+        recipientId,
+        message,
+        attachment: attachment || undefined,
+      });
+
+      const messageRecord = {
         id: String(saved._id),
         senderId: adminId,
         recipientId,
-        message: saved.message,
-        createdAt: saved.createdAt
+        message: saved.message || '',
+        attachment: serializeAttachment(saved.attachment),
+        createdAt: saved.createdAt,
+      };
+
+      try {
+        const io = getIo();
+        if (io) {
+          io.to(`teacher-msg:${recipientId}`).emit('peer-message:new', messageRecord);
+          if (adminId.startsWith('admin:')) {
+            io.to(`admin-msg:${adminId.slice(6)}`).emit('peer-message:new', messageRecord);
+          }
+        }
+      } catch (_e) {
+        /* non-fatal */
       }
-    });
-  } catch (error) {
-    console.error('Error sending admin message:', error);
-    res.status(500).json({ success: false, message: 'Failed to send message' });
+
+      res.json({
+        success: true,
+        messageRecord,
+      });
+    } catch (error) {
+      console.error('Error sending admin message:', error);
+      res.status(500).json({ success: false, message: 'Failed to send message' });
+    }
   }
-});
+);
 
 // Cleanup invalid records
 router.post('/cleanup-invalid-records', async (req, res) => {
@@ -3581,6 +3714,48 @@ router.post('/review-cancellation', async (req, res) => {
           { available: true }
         );
         console.log('✅ Slot marked as available after cancellation:', slotUpdateResult.modifiedCount > 0);
+
+        try {
+          const { notifyTeacher, notifyStudent } = require('./services/notifyService');
+          const note = adminNotes ? ` Admin notes: ${adminNotes}` : '';
+          await notifyTeacher(
+            booking.teacherId,
+            'cancel',
+            `Your cancellation request for ${booking.date} at ${booking.time} was approved.${note}`,
+            { bookingId: String(booking._id), actionUrl: '/teacher-class-table.html' }
+          );
+          await notifyStudent(
+            booking.studentId,
+            'cancel',
+            `Your class on ${booking.date} at ${booking.time} was cancelled.${note}`,
+            { bookingId: String(booking._id), actionUrl: '/student-book.html' }
+          );
+        } catch (nErr) {
+          console.warn('Cancellation approve notify failed:', nErr.message);
+        }
+      }
+    } else if (status === 'rejected') {
+      try {
+        const booking = await Booking.findById(cancellationRequest.bookingId);
+        const { notifyTeacher } = require('./services/notifyService');
+        const note = adminNotes ? ` Notes: ${adminNotes}` : '';
+        await notifyTeacher(
+          cancellationRequest.requesterId || (booking && booking.teacherId),
+          'cancellation-rejected',
+          `Your cancellation request was rejected.${note}`,
+          { bookingId: String(cancellationRequest.bookingId || ''), actionUrl: '/teacher-class-table.html' }
+        );
+        if (booking) {
+          const { notifyStudent } = require('./services/notifyService');
+          await notifyStudent(
+            booking.studentId,
+            'booking',
+            `Your class on ${booking.date} at ${booking.time} remains scheduled (teacher cancellation was not approved).`,
+            { bookingId: String(booking._id) }
+          );
+        }
+      } catch (nErr) {
+        console.warn('Cancellation reject notify failed:', nErr.message);
       }
     }
     
@@ -5489,7 +5664,25 @@ router.post('/issues/review', verifyAdminApiAuth, requireAdmin, async (req, res)
     // Create notification for student if reschedule is allowed
     if (issue.canReschedule) {
       const notificationMessage = `Your class issue has been reviewed. You can reschedule your class within 15 minutes due to teacher technical issues.`;
-      await createNotification(issue.studentId, 'reschedule-available', notificationMessage);
+      try {
+        const { notifyStudent, resolveStudentUsername } = require('./services/notifyService');
+        // Canonicalize stored studentId to username so list/auth match JWT keys.
+        const booking = await Booking.findById(issue.bookingId).select('studentId').lean();
+        const canonical =
+          (await resolveStudentUsername(booking && booking.studentId)) ||
+          (await resolveStudentUsername(issue.studentId)) ||
+          String(issue.studentId || '').trim();
+        if (canonical && canonical !== String(issue.studentId || '').trim()) {
+          issue.studentId = canonical;
+          await issue.save();
+        }
+        await notifyStudent(canonical, 'reschedule-available', notificationMessage, {
+          bookingId: String(issue.bookingId || ''),
+          actionUrl: '/student-dashboard.html',
+        });
+      } catch (snErr) {
+        console.warn('Student reschedule-available notify failed:', snErr.message);
+      }
     }
     
     // Create notification for teacher

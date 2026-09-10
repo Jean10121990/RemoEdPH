@@ -94,7 +94,9 @@
   }
 
   function labelFromMenuLi(li) {
-    var lab = li.querySelector && li.querySelector('.remoed-menu-label');
+    var lab =
+      li.querySelector &&
+      (li.querySelector('.remoed-menu-label') || li.querySelector('.menu-label'));
     if (lab && lab.textContent) {
       var t = lab.textContent.replace(/\s+/g, ' ').trim();
       if (t.length > 14) return t.slice(0, 13) + '\u2026';

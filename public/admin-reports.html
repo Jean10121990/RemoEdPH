@@ -61,6 +61,59 @@
             alert('Access denied. This page is for administrators only.');
             window.location.href = 'index.html';
         }
+
+        /** Admin APIs accept session cookie and/or Bearer admin token. */
+        function getAdminToken() {
+            if (window.RemoedAdminSession && typeof RemoedAdminSession.getAuthToken === 'function') {
+                return RemoedAdminSession.getAuthToken() || '';
+            }
+            try {
+                return (
+                    localStorage.getItem('remoed_admin_token') ||
+                    localStorage.getItem('remoed_admin_auth') ||
+                    localStorage.getItem('adminToken') ||
+                    ''
+                );
+            } catch (_e) {
+                return '';
+            }
+        }
+
+        function redirectToAdminLogin() {
+            if (window.RemoedAdminSession && typeof RemoedAdminSession.redirectToAdminLogin === 'function') {
+                RemoedAdminSession.redirectToAdminLogin();
+                return;
+            }
+            window.location.replace('admin-login.html');
+        }
+
+        async function adminApiFetch(url, init) {
+            const cfg = init && typeof init === 'object' ? Object.assign({}, init) : {};
+            const headers = new Headers(cfg.headers || {});
+            const token = getAdminToken();
+            if (token && !headers.has('Authorization')) {
+                headers.set('Authorization', 'Bearer ' + token);
+            }
+            if (!headers.has('Content-Type') && cfg.body) {
+                headers.set('Content-Type', 'application/json');
+            }
+            cfg.headers = headers;
+            cfg.credentials = 'include';
+            const res = await fetch(url, cfg);
+            if (res.status === 401 || res.status === 403) {
+                redirectToAdminLogin();
+            }
+            return res;
+        }
+
+        async function parseReportError(response, fallback) {
+            try {
+                const body = await response.json();
+                return (body && (body.message || body.error)) || fallback;
+            } catch (_e) {
+                return fallback;
+            }
+        }
         
         async function generateReport(reportType, event) {
             let button = null;
@@ -107,29 +160,22 @@
                         throw new Error('Invalid report type');
                 }
                 
-                const response = await fetch(endpoint, {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
+                const response = await adminApiFetch(endpoint, { method: 'GET' });
                 
                 if (response.ok) {
                     const data = await response.json();
                     displayReport(data, reportName);
-                    // Reset button state after successful report generation
                     if (button) {
                         button.textContent = originalText;
                         button.disabled = false;
                     }
                 } else {
-                    throw new Error('Failed to generate report');
+                    throw new Error(await parseReportError(response, 'Failed to generate report'));
                 }
                 
             } catch (error) {
                 console.error('Error generating report:', error);
-                alert(`Error generating ${reportType} report. Please try again.`);
-                // Reset button state on error
+                alert(error && error.message ? error.message : `Error generating ${reportType} report. Please try again.`);
                 if (button && originalText) {
                     button.textContent = originalText;
                     button.disabled = false;
@@ -245,11 +291,8 @@
             }
             
             try {
-                const response = await fetch('/api/admin/reports/custom', {
+                const response = await adminApiFetch('/api/admin/reports/custom', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
                     body: JSON.stringify({
                         reportType,
                         startDate,
@@ -262,12 +305,12 @@
                     closeCustomReportModal();
                     displayReport(data, `Custom ${reportType} Report`);
                 } else {
-                    throw new Error('Failed to generate custom report');
+                    throw new Error(await parseReportError(response, 'Failed to generate custom report'));
                 }
                 
             } catch (error) {
                 console.error('Error generating custom report:', error);
-                alert('Error generating custom report. Please try again.');
+                alert(error && error.message ? error.message : 'Error generating custom report. Please try again.');
             }
         }
         

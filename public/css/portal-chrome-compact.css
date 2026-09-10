@@ -580,6 +580,89 @@ body[class*="page-admin-"] .nav-header .nav-dropdown-content {
   cursor: pointer;
   transition: background 0.15s ease, transform 0.15s ease;
   box-shadow: none !important;
+  overflow: visible !important;
+  z-index: 2;
+  pointer-events: auto !important;
+}
+
+.nav-header .nav-icon > svg,
+.student-page-nav-header .nav-icon > svg {
+  pointer-events: none;
+}
+
+/* Shared notification dropdown (student + teacher headers outside dashboard-only CSS) */
+.nav-header .nav-dropdown,
+.student-page-nav-header .nav-dropdown,
+.teacher-page-nav-header .nav-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.16);
+  min-width: min(360px, 86vw);
+  max-height: 420px;
+  overflow-y: auto;
+  z-index: 1300;
+  display: none;
+  pointer-events: auto;
+}
+
+.nav-header .nav-dropdown.show,
+.student-page-nav-header .nav-dropdown.show,
+.teacher-page-nav-header .nav-dropdown.show {
+  display: block;
+}
+
+.nav-header .nav-dropdown-header,
+.student-page-nav-header .nav-dropdown-header,
+.teacher-page-nav-header .nav-dropdown-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  font-weight: 700;
+}
+
+.nav-header .nav-dropdown-content,
+.student-page-nav-header .nav-dropdown-content,
+.teacher-page-nav-header .nav-dropdown-content {
+  padding: 8px 0;
+}
+
+.nav-header .nav-dropdown-item,
+.student-page-nav-header .nav-dropdown-item,
+.teacher-page-nav-header .nav-dropdown-item {
+  padding: 10px 16px;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.nav-header .nav-dropdown-footer,
+.teacher-page-nav-header .nav-dropdown-footer {
+  padding: 10px 16px;
+  border-top: 1px solid #e2e8f0;
+  font-size: 0.85rem;
+}
+
+.nav-header .nav-badge,
+.student-page-nav-header .nav-badge,
+.teacher-page-nav-header .nav-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 3;
 }
 
 .nav-header .nav-icon:hover,

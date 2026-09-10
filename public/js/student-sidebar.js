@@ -366,7 +366,7 @@
             return;
         }
         var s = document.createElement('script');
-        s.src = 'js/portal-layout.js?v=lb-nav-2';
+        s.src = 'js/portal-layout.js?v=lb-nav-3';
         s.async = true;
         s.setAttribute('data-remoed-portal-layout', '1');
         s.onload = function () {

@@ -64,11 +64,19 @@ function extractHtml5Zip(buffer, destDir) {
 
 function presentationPublicFields(file) {
   if (!file) return {};
+  const slideCountRaw = file.slideCount;
+  const slideCount =
+    slideCountRaw != null && Number.isFinite(Number(slideCountRaw)) && Number(slideCountRaw) >= 1
+      ? Math.floor(Number(slideCountRaw))
+      : null;
   return {
     presentationType: file.presentationType || 'file',
     embedUrl: file.embedUrl || '',
     html5EntryUrl: file.html5EntryUrl || '',
-    html5PackagePath: file.html5PackagePath ? '(stored)' : ''
+    html5PackagePath: file.html5PackagePath ? '(stored)' : '',
+    slideCount,
+    slideUrls: Array.isArray(file.slideUrls) ? file.slideUrls.filter(Boolean) : [],
+    convertedPdfUrl: file.convertedPdfUrl || ''
   };
 }
 

@@ -1,6 +1,7 @@
 const { consumeReservedCreditForBooking } = require('./bookingCreditLedger');
 const realtime = require('../realtime');
 const mongoose = require('mongoose');
+const { safeUpsertLessonProgressFromBooking } = require('./lessonProgressFromBooking');
 
 const FEEDBACK_ROLE_TEACHER_TO_STUDENT = 'teacher_to_student';
 
@@ -96,6 +97,14 @@ async function finalizeBookingAfterTeacherFeedbackWrap(booking, teacherId) {
     }
     await booking.save();
   }
+
+  // Persist LessonProgress so student journey / dashboard stay in sync with finalized classes
+  await safeUpsertLessonProgressFromBooking(booking, {
+    status: 'completed',
+    teacherId,
+    notes: 'Class finalized after teacher wrap-up feedback',
+  });
+
   await emitBookingsUpdatedForTeacher(teacherId, booking);
 }
 

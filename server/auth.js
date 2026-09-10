@@ -36,6 +36,7 @@ const {
 const { decryptTotpSecret, encryptTotpSecret } = require('./utils/twoFactorSecretCrypto');
 const { authenticator } = require('otplib');
 const QRCode = require('qrcode');
+const { verifyAdminApiAuth, requireAdmin } = require('./authMiddleware');
 
 // TOTP tolerance window (number of 30s steps allowed before/after).
 // VPS/phone time drift is common; keep modest tolerance to reduce false "Invalid authentication code".
@@ -1476,8 +1477,8 @@ router.post('/student-reset-password', passwordResetLimiter, async (req, res) =>
   res.json({ success: true });
 });
 
-// Get users by role
-router.get('/users', async (req, res) => {
+// Get users by role (admin only — previously unauthenticated)
+router.get('/users', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   const role = req.query.role;
   if (role === 'teacher') {
     const teachers = await Teacher.find({}, 'username');
@@ -1493,8 +1494,8 @@ router.get('/users', async (req, res) => {
   }
 });
 
-// Change user role (move between Teacher / Student / Admin collections)
-router.post('/user-role', async (req, res) => {
+// Change user role (move between Teacher / Student / Admin collections) — admin only
+router.post('/user-role', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
     const { username, fromRole, toRole, userId } = req.body;
     const allowed = ['teacher', 'student', 'admin'];
@@ -1682,8 +1683,8 @@ router.post('/user-role', async (req, res) => {
   }
 });
 
-// Migration endpoint to add hasGeneratedPassword field to all users
-router.post('/migrate-generated-password-field', async (req, res) => {
+// Migration endpoint to add hasGeneratedPassword field to all users — admin only
+router.post('/migrate-generated-password-field', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
     // Update all teachers
     const teacherResult = await Teacher.updateMany(
@@ -1716,8 +1717,8 @@ router.post('/migrate-generated-password-field', async (req, res) => {
   }
 });
 
-// Test endpoint to set hasGeneratedPassword flag for testing
-router.post('/test-set-generated-password', async (req, res) => {
+// Test endpoint to set hasGeneratedPassword flag for testing — admin only
+router.post('/test-set-generated-password', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
     const { username, userType } = req.body;
     

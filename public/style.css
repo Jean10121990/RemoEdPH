@@ -12768,7 +12768,7 @@ body.page-teacher-messages, body.page-student-messages{ font-family: 'Segoe UI',
             font-size: 0.75rem;
             color: #94a3b8;
             margin-top: 4px;
-        }.page-teacher-messages .composer, .page-student-messages .composer{
+        }.page-teacher-messages .composer, .page-student-messages .composer, .page-admin-messages .composer{
             position: sticky;
             bottom: 0;
             padding: 12px 14px;
@@ -12777,7 +12777,8 @@ body.page-teacher-messages, body.page-student-messages{ font-family: 'Segoe UI',
             display: flex;
             gap: 10px;
             align-items: flex-end;
-        }.page-teacher-messages .attach-btn, .page-student-messages .attach-btn{
+            flex-wrap: wrap;
+        }.page-teacher-messages .attach-btn, .page-student-messages .attach-btn, .page-admin-messages .attach-btn{
             width: 42px; height: 42px;
             border-radius: 999px;
             border: 2px solid #e8f4fd;
@@ -12788,7 +12789,23 @@ body.page-teacher-messages, body.page-student-messages{ font-family: 'Segoe UI',
             justify-content: center;
             color: #00aeef;
             flex-shrink: 0;
-        }.page-teacher-messages .attach-btn:hover, .page-student-messages .attach-btn:hover{ border-color: #00aeef; }.page-teacher-messages .composer textarea, .page-student-messages .composer textarea{
+        }.page-teacher-messages .attach-btn:hover, .page-student-messages .attach-btn:hover, .page-admin-messages .attach-btn:hover{ border-color: #00aeef; }
+        .page-teacher-messages .attach-preview, .page-admin-messages .attach-preview{
+            font-size: 0.8rem; color: #475569; align-self: center; max-width: 160px;
+        }
+        .page-teacher-messages .attach-clear, .page-admin-messages .attach-clear{
+            border: none; background: transparent; color: #00aeef; cursor: pointer; text-decoration: underline; padding: 0;
+        }
+        .page-teacher-messages .msg-attach, .page-student-messages .msg-attach, .page-admin-messages .msg-attach{
+            margin-top: 6px;
+        }
+        .page-teacher-messages .msg-attach-img, .page-student-messages .msg-attach-img, .page-admin-messages .msg-attach-img{
+            display: block; max-width: min(220px, 100%); max-height: 180px; border-radius: 8px;
+        }
+        .page-teacher-messages .msg-attach-file, .page-student-messages .msg-attach-file, .page-admin-messages .msg-attach-file{
+            color: inherit; text-decoration: underline; word-break: break-word;
+        }
+        .page-teacher-messages .composer textarea, .page-student-messages .composer textarea, .page-admin-messages .composer textarea{
             flex: 1;
             min-height: 42px;
             max-height: 120px;

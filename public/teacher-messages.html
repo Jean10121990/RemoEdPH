@@ -57,11 +57,13 @@
                         <div class="empty-pane">Choose a conversation on the left to start chatting.</div>
                     </div>
                     <div class="composer" id="composer" style="display:none;">
-                        <button class="attach-btn" title="Attach (coming soon)" aria-label="Attach">
+                        <input type="file" id="attach-input" accept="image/jpeg,image/png,image/gif,image/webp,application/pdf,.jpg,.jpeg,.png,.gif,.webp,.pdf" hidden />
+                        <button type="button" class="attach-btn" id="attach-btn" title="Attach image or PDF" aria-label="Attach file">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.2a2 2 0 11-2.83-2.83l8.49-8.48"/>
                             </svg>
                         </button>
+                        <div id="attach-preview" class="attach-preview" hidden></div>
                         <textarea id="composer-text" placeholder="Type a message..."></textarea>
                         <button class="send-btn" id="send-btn">Send</button>
                     </div>
@@ -86,6 +88,9 @@
             const composerEl = document.getElementById('composer');
             const composerTextEl = document.getElementById('composer-text');
             const sendBtnEl = document.getElementById('send-btn');
+            const attachBtnEl = document.getElementById('attach-btn');
+            const attachInputEl = document.getElementById('attach-input');
+            const attachPreviewEl = document.getElementById('attach-preview');
             const chatFilterEl = document.getElementById('chat-filter');
             const userSearchEl = document.getElementById('user-search');
             const backBtnEl = document.getElementById('back-btn');
@@ -94,6 +99,7 @@
             let userSearchHits = [];
             let userSearchTimer = null;
             let activePeerId = null;
+            let pendingAttachFile = null;
             const seenMessageIds = new Set();
             const threadCursor = { hasMore: false, nextBefore: null, loadingOlder: false };
             const __skTok = (window.RemoedSecurityGuard && typeof window.RemoedSecurityGuard.getToken === 'function')
@@ -134,6 +140,46 @@
                 if (Number.isNaN(d.getTime())) return 'Offline';
                 const TU = window.TimezoneUtils || {};
                 return `Last seen ${TU.formatDateTimePhilippines ? TU.formatDateTimePhilippines(d) : d.toLocaleString()}`;
+            }
+            function messageSnippet(m) {
+                const text = String((m && m.message) || '').trim();
+                if (text) return text;
+                const name = m && m.attachment && m.attachment.originalName;
+                return name ? ('📎 ' + name) : (m && m.attachment ? '📎 Attachment' : '');
+            }
+            function attachmentHtml(att) {
+                if (!att || !att.url) return '';
+                const url = normalizeImg(att.url);
+                const name = esc(att.originalName || 'Attachment');
+                const isImg = /^image\//i.test(String(att.mimeType || ''));
+                if (isImg) {
+                    return `<div class="msg-attach"><a href="${esc(url)}" target="_blank" rel="noopener"><img class="msg-attach-img" src="${esc(url)}" alt="${name}"></a></div>`;
+                }
+                return `<div class="msg-attach"><a class="msg-attach-file" href="${esc(url)}" target="_blank" rel="noopener">📎 ${name}</a></div>`;
+            }
+            function bubbleInnerHtml(m) {
+                const text = String((m && m.message) || '').trim();
+                return (text ? esc(text) : '') + attachmentHtml(m && m.attachment);
+            }
+            function clearPendingAttach() {
+                pendingAttachFile = null;
+                if (attachInputEl) attachInputEl.value = '';
+                if (attachPreviewEl) {
+                    attachPreviewEl.hidden = true;
+                    attachPreviewEl.textContent = '';
+                }
+            }
+            function setPendingAttach(file) {
+                pendingAttachFile = file || null;
+                if (!attachPreviewEl) return;
+                if (!file) {
+                    clearPendingAttach();
+                    return;
+                }
+                attachPreviewEl.hidden = false;
+                attachPreviewEl.innerHTML = 'Attached: <strong>' + esc(file.name) + '</strong> <button type="button" id="attach-clear" class="attach-clear">Remove</button>';
+                const clearBtn = document.getElementById('attach-clear');
+                if (clearBtn) clearBtn.addEventListener('click', clearPendingAttach);
             }
 
             function renderChatList() {
@@ -223,7 +269,7 @@
                     const metaClass = isMe ? 'meta-sent' : 'meta-received';
                     return `
                         <div class="message-wrap">
-                            <div class="bubble ${bubbleClass}">${esc(m.message)}</div>
+                            <div class="bubble ${bubbleClass}">${bubbleInnerHtml(m)}</div>
                             <div class="bubble-meta ${metaClass}">${fmtTime(m.createdAt)}</div>
                         </div>
                     `;
@@ -243,16 +289,17 @@
                 const metaClass = isMe ? 'meta-sent' : 'meta-received';
                 const row = document.createElement('div');
                 row.className = 'message-wrap';
-                row.innerHTML = `<div class="bubble ${bubbleClass}">${esc(m.message)}</div><div class="bubble-meta ${metaClass}">${fmtTime(m.createdAt)}</div>`;
+                row.innerHTML = `<div class="bubble ${bubbleClass}">${bubbleInnerHtml(m)}</div><div class="bubble-meta ${metaClass}">${fmtTime(m.createdAt)}</div>`;
                 chatScrollEl.appendChild(row);
                 scrollToBottom();
             }
 
             function upsertChatFromIncoming(m) {
                 const peerId = String(m.senderId) === String(me) ? String(m.recipientId) : String(m.senderId);
+                const snippet = messageSnippet(m);
                 const current = chats.find(c => String(c.peerId) === peerId);
                 if (current) {
-                    current.lastMessage = m.message;
+                    current.lastMessage = snippet;
                     current.lastAt = m.createdAt || new Date().toISOString();
                     if (String(m.senderId) !== String(me) && peerId !== String(activePeerId || '')) {
                         current.unreadCount = (Number(current.unreadCount) || 0) + 1;
@@ -264,7 +311,7 @@
                         peerId,
                         name: peerId,
                         profilePicture: null,
-                        lastMessage: m.message,
+                        lastMessage: snippet,
                         lastAt: m.createdAt || new Date().toISOString(),
                         unreadCount: String(m.senderId) !== String(me) ? 1 : 0
                     });
@@ -339,7 +386,7 @@
                     const metaClass = isMe ? 'meta-sent' : 'meta-received';
                     const wrap = document.createElement('div');
                     wrap.className = 'message-wrap';
-                    wrap.innerHTML = `<div class="bubble ${bubbleClass}">${esc(m.message)}</div><div class="bubble-meta ${metaClass}">${fmtTime(m.createdAt)}</div>`;
+                    wrap.innerHTML = `<div class="bubble ${bubbleClass}">${bubbleInnerHtml(m)}</div><div class="bubble-meta ${metaClass}">${fmtTime(m.createdAt)}</div>`;
                     frag.appendChild(wrap);
                 });
                 chatScrollEl.insertBefore(frag, chatScrollEl.firstChild);
@@ -366,24 +413,40 @@
 
             async function sendMessage() {
                 const msg = (composerTextEl.value || '').trim();
-                if (!msg || !activePeerId) return;
+                if ((!msg && !pendingAttachFile) || !activePeerId) return;
                 sendBtnEl.disabled = true;
-                const res = await fetch('/api/teacher/peer-message', {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ recipientId: activePeerId, message: msg })
-                });
-                const data = await res.json();
-                sendBtnEl.disabled = false;
-                if (!res.ok || !data.success) throw new Error(data.error || 'Failed to send');
+                try {
+                    let res;
+                    if (pendingAttachFile) {
+                        const fd = new FormData();
+                        fd.append('recipientId', activePeerId);
+                        fd.append('message', msg);
+                        fd.append('attachment', pendingAttachFile);
+                        res = await fetch('/api/teacher/peer-message', {
+                            method: 'POST',
+                            headers: { 'Authorization': `Bearer ${token}` },
+                            body: fd
+                        });
+                    } else {
+                        res = await fetch('/api/teacher/peer-message', {
+                            method: 'POST',
+                            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ recipientId: activePeerId, message: msg })
+                        });
+                    }
+                    const data = await res.json();
+                    if (!res.ok || !data.success) throw new Error(data.error || 'Failed to send');
 
-                composerTextEl.value = '';
-                if (data.peerMessage) {
-                    appendSingleMessage(data.peerMessage);
-                    upsertChatFromIncoming(data.peerMessage);
-                } else {
-                    // Fallback: keep legacy behavior if payload shape changes
-                    await openChat(activePeerId);
+                    composerTextEl.value = '';
+                    clearPendingAttach();
+                    if (data.peerMessage) {
+                        appendSingleMessage(data.peerMessage);
+                        upsertChatFromIncoming(data.peerMessage);
+                    } else {
+                        await openChat(activePeerId);
+                    }
+                } finally {
+                    sendBtnEl.disabled = false;
                 }
             }
 
@@ -405,6 +468,19 @@
                 if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage().catch(err => alert(err.message)); }
             });
             backBtnEl.addEventListener('click', () => messengerEl.classList.remove('show-chat'));
+            if (attachBtnEl && attachInputEl) {
+                attachBtnEl.addEventListener('click', () => attachInputEl.click());
+                attachInputEl.addEventListener('change', () => {
+                    const f = attachInputEl.files && attachInputEl.files[0];
+                    if (!f) return;
+                    if (f.size > 5 * 1024 * 1024) {
+                        alert('Attachment must be 5 MB or smaller.');
+                        attachInputEl.value = '';
+                        return;
+                    }
+                    setPendingAttach(f);
+                });
+            }
 
             if (socket) {
                 socket.on('connect', () => {

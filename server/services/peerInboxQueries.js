@@ -1,4 +1,5 @@
 const PeerMessage = require('../models/PeerMessage');
+const { serializeAttachment, snippetForChatList } = require('../utils/peerMessageAttachment');
 
 /**
  * Chats with at least one message involving `me`, newest first.
@@ -19,6 +20,7 @@ async function aggregateActiveChats(me) {
       $group: {
         _id: '$otherId',
         lastMessage: { $first: '$message' },
+        lastAttachment: { $first: '$attachment' },
         lastAt: { $first: '$createdAt' },
       },
     },
@@ -39,7 +41,7 @@ async function aggregateActiveChats(me) {
 
   return lastPerPeer.map((row) => ({
     peerId: row._id,
-    lastMessage: row.lastMessage,
+    lastMessage: snippetForChatList(row.lastMessage, row.lastAttachment),
     lastAt: row.lastAt,
     unreadCount: unreadMap.get(row._id) || 0,
   }));
@@ -70,7 +72,8 @@ async function fetchPeerMessagesPage({ me, peerId, before, limit }) {
     id: m._id.toString(),
     senderId: m.senderId,
     recipientId: m.recipientId,
-    message: m.message,
+    message: m.message || '',
+    attachment: serializeAttachment(m.attachment),
     createdAt: m.createdAt,
     readAt: m.readAt,
   }));

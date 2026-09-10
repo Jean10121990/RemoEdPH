@@ -5,6 +5,22 @@
 (function (global) {
     'use strict';
 
+    // Ensure shared helpers + soft realtime refresh are available
+    (function ensureNotifAssets() {
+        try {
+            if (!document.querySelector('script[src*="remoed-notifications.js"]')) {
+                var s = document.createElement('script');
+                s.src = '/js/remoed-notifications.js';
+                document.head.appendChild(s);
+            }
+            if (!global.io && !document.querySelector('script[src*="socket.io"]')) {
+                var s2 = document.createElement('script');
+                s2.src = '/socket.io/socket.io.js';
+                document.head.appendChild(s2);
+            }
+        } catch (_e) {}
+    })();
+
     var SVG = {
         gamepad:
             '<svg class="nav-title-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">' +
@@ -108,7 +124,9 @@
                 h1.innerHTML = iconHtml + '<span class="nav-title-text">' + escapeHtml(title) + '</span>';
             }
             document.body.classList.add('has-student-page-header');
-            bindNotificationBell(existing);
+            if (!existing.querySelector('#upcoming-classes-icon')) {
+                bindNotificationBell(existing);
+            }
             return existing;
         }
 
@@ -197,32 +215,75 @@
     }
 
     function bindNotificationBell(header) {
-        if (!header || header.getAttribute('data-notif-bound') === '1') return;
+        if (!header) return;
         var icon = header.querySelector('#notifications-icon');
         var dropdown = header.querySelector('#notifications-dropdown');
         var content = header.querySelector('#notifications-dropdown-content');
         var badge = header.querySelector('#notifications-badge');
         if (!icon || !dropdown) return;
+        if (icon.getAttribute('data-notif-click') === '1' || header.getAttribute('data-notif-bound') === '1') {
+            return;
+        }
+        icon.setAttribute('data-notif-click', '1');
         header.setAttribute('data-notif-bound', '1');
+
+        function refresh() {
+            loadStudentNotifications(content, badge);
+        }
 
         icon.addEventListener('click', function (e) {
             e.preventDefault();
             e.stopPropagation();
             var open = dropdown.classList.toggle('show');
-            if (open) loadStudentNotifications(content, badge);
+            if (open) refresh();
         });
         dropdown.addEventListener('click', function (e) {
             e.stopPropagation();
+            var item = e.target.closest('[data-id]');
+            if (!item) return;
+            var id = item.getAttribute('data-id');
+            if (!id) return;
+            var token = studentAuthToken();
+            if (!token) return;
+            fetch('/api/student/notifications/' + encodeURIComponent(id) + '/mark-read', {
+                method: 'PATCH',
+                headers: { Authorization: 'Bearer ' + token },
+            }).then(function () {
+                refresh();
+            }).catch(function () {});
         });
-        document.addEventListener('click', function () {
+        document.addEventListener('click', function (e) {
+            if (icon.contains(e.target) || dropdown.contains(e.target)) return;
             dropdown.classList.remove('show');
         });
-        loadStudentNotifications(content, badge);
+        refresh();
+        setInterval(refresh, 60 * 1000);
+
+        try {
+            var uname =
+                localStorage.getItem('username') ||
+                localStorage.getItem('studentUsername') ||
+                '';
+            if (window.RemoedNotifications && uname) {
+                var sock = window.RemoedNotifications.joinNotificationSocket('student', uname);
+                if (sock) sock.on('notification:new', refresh);
+            }
+        } catch (_e) {}
     }
 
     function loadStudentNotifications(content, badge) {
         var token = studentAuthToken();
         if (!token || !content) return;
+        var dropdown = content.closest('.nav-dropdown') || content.parentElement;
+        if (window.RemoedNotifications && window.RemoedNotifications.bindDropdownExtras) {
+            window.RemoedNotifications.bindDropdownExtras(dropdown, {
+                role: 'student',
+                getToken: studentAuthToken,
+                onRefresh: function () {
+                    loadStudentNotifications(content, badge);
+                },
+            });
+        }
         fetch('/api/student/notifications', {
             headers: { Authorization: 'Bearer ' + token }
         })
@@ -230,38 +291,36 @@
                 return r.json();
             })
             .then(function (data) {
-                var list = (data && data.notifications) || [];
-                var unread = list.filter(function (n) {
-                    return !n.read;
-                }).length;
-                if (badge) {
+                var list =
+                    window.RemoedNotifications && window.RemoedNotifications.unwrapList
+                        ? window.RemoedNotifications.unwrapList(data)
+                        : (data && data.notifications) || [];
+                var unread =
+                    window.RemoedNotifications && window.RemoedNotifications.badgeCountFromPayload
+                        ? window.RemoedNotifications.badgeCountFromPayload(data, list)
+                        : data && typeof data.actionableUnreadCount === 'number'
+                          ? data.actionableUnreadCount
+                          : list.filter(function (n) {
+                                return !n.read;
+                            }).length;
+                if (window.RemoedNotifications && window.RemoedNotifications.setBadge) {
+                    window.RemoedNotifications.setBadge(badge, unread);
+                } else if (badge) {
                     badge.textContent = String(unread);
                     badge.style.display = unread > 0 ? 'flex' : 'none';
                 }
-                if (!list.length) {
+                if (window.RemoedNotifications && window.RemoedNotifications.renderItems) {
+                    window.RemoedNotifications.renderItems(content, list, {
+                        limit: 12,
+                        role: 'student',
+                        retentionDays: (data && data.retentionDays) || 31,
+                        filter: window.RemoedNotifications.getFilter
+                            ? window.RemoedNotifications.getFilter()
+                            : 'all',
+                    });
+                } else if (!list.length) {
                     content.innerHTML = '<div class="nav-dropdown-item">No notifications</div>';
-                    return;
                 }
-                content.innerHTML = list
-                    .slice(0, 10)
-                    .map(function (n) {
-                        var msg = String(n.message || 'Notification')
-                            .replace(/&/g, '&amp;')
-                            .replace(/</g, '&lt;');
-                        var time = n.createdAt
-                            ? new Date(n.createdAt).toLocaleString('en-PH', { hour: '2-digit', minute: '2-digit' })
-                            : '';
-                        return (
-                            '<div class="nav-dropdown-item' +
-                            (n.read ? ' read' : '') +
-                            '"><div style="font-size:0.9rem;">' +
-                            msg +
-                            '</div><div style="font-size:0.78rem;color:#64748b;">' +
-                            time +
-                            '</div></div>'
-                        );
-                    })
-                    .join('');
             })
             .catch(function () {
                 content.innerHTML = '<div class="nav-dropdown-item">Could not load notifications</div>';

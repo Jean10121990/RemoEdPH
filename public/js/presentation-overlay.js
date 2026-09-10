@@ -1,13 +1,16 @@
 /**
- * Stacked presentation viewer: responsive iframe (bottom) + annotation canvas (top).
- * - Default: Interact (canvas pointer-events: none) so clicks/audio reach the PPT iframe.
- * - Draw toggles ON/OFF for teacher and student; strokes sync via Socket.io annotation-sync.
- * - Teacher Prev/Next in the RemoEd toolbar sync the student (Office iframe Next cannot).
+ * Stacked presentation viewer: slide image stack (preferred) or iframe + annotation canvas.
+ * - Prefer material.slideUrls (PPTX→PNG) for reliable teacher Prev/Next + student follow.
+ * - Fallback: Office/HTML5 iframe when no slide images (toolbar still drives sync).
+ * - Draw toggles ON/OFF; strokes sync via Socket.io annotation-sync.
+ * - Teacher Prev/Next emit presentation-slide-changed (Office iframe chrome cannot sync).
  */
 (function (global) {
   'use strict';
 
   var pptOverlayState = {};
+  /** Applied when a student receives slide sync before the overlay has mounted. */
+  var pendingSlideSync = null;
 
   function escapeHtml(s) {
     if (s == null) return '';
@@ -23,6 +26,55 @@
       'padding:6px 12px;border-radius:8px;border:1px solid #cbd5e1;background:#fff;cursor:pointer;font-size:0.8rem;' +
       (extra || '')
     );
+  }
+
+  function getAuthToken() {
+    try {
+      if (global.RemoedUserSession && typeof global.RemoedUserSession.getUserToken === 'function') {
+        var t = global.RemoedUserSession.getUserToken();
+        if (t) return t;
+      }
+    } catch (_e) {}
+    try {
+      var ls = global.localStorage;
+      if (!ls) return '';
+      return (
+        ls.getItem('remoed_teacher_token') ||
+        ls.getItem('remoed_student_token') ||
+        ls.getItem('remoed_user_token') ||
+        ls.getItem('teacherToken') ||
+        ls.getItem('token') ||
+        ''
+      );
+    } catch (_e2) {
+      return '';
+    }
+  }
+
+  /** Append ?token= for auth-gated /uploads and /api media (img/iframe cannot send Bearer). */
+  function withMediaAuth(url) {
+    if (!url || typeof url !== 'string') return url;
+    if (url.startsWith('data:') || /^blob:/i.test(url)) return url;
+    if (/[?&]token=/.test(url)) return url;
+    if (!/\/(uploads|api)\//i.test(url) && !/^\/uploads\//i.test(url) && !/^\/api\//i.test(url)) {
+      return url;
+    }
+    var token = getAuthToken();
+    if (!token) return url;
+    return url + (url.indexOf('?') >= 0 ? '&' : '?') + 'token=' + encodeURIComponent(token);
+  }
+
+  function resolveSlideImageUrls(material) {
+    if (!material) return [];
+    var raw = material.slideUrls;
+    if (!Array.isArray(raw) || !raw.length) return [];
+    var out = [];
+    for (var i = 0; i < raw.length; i++) {
+      var u = raw[i];
+      if (!u) continue;
+      out.push(withMediaAuth(absoluteUrl(String(u))));
+    }
+    return out;
   }
 
   function createRewardsMenu() {
@@ -335,7 +387,18 @@
     var room = options.room;
     var isTeacher = !!options.isTeacher;
     var startIndex = Math.max(0, Number(options.slideIndex) || 0);
+    var slideImageUrls = resolveSlideImageUrls(material);
+    var useImageStack =
+      slideImageUrls.length > 0 ||
+      material.presentationType === 'slide_stack' ||
+      options.renderMode === 'images';
     var knownTotalSlides = resolveTotalSlides(material, options);
+    // Image stack length is authoritative — never allow nav past real PNGs
+    // (upload slideCount from PPTX XML can exceed rendered images).
+    if (slideImageUrls.length > 0) {
+      knownTotalSlides = slideImageUrls.length;
+      useImageStack = true;
+    }
 
     container.innerHTML = '';
     container.className = (container.className ? container.className + ' ' : '') + 'remoed-ppt-mount';
@@ -343,6 +406,7 @@
       'width:100%;max-width:100%;position:relative;border-radius:8px;overflow:hidden;background:#f5f5f5;display:flex;flex-direction:column;' +
       'flex:1 1 auto;min-height:0;max-height:100%;height:100%;';
     container.id = 'ppt-container-' + materialId;
+    container.setAttribute('data-remoed-render-mode', useImageStack ? 'images' : 'iframe');
 
     var toolbar = document.createElement('div');
     toolbar.className = 'remoed-ppt-toolbar';
@@ -354,6 +418,16 @@
       'font-weight:600;font-size:0.85rem;color:#334155;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
     titleSpan.textContent = material.name || 'Presentation';
     toolbar.appendChild(titleSpan);
+
+    if (!isTeacher) {
+      var followBadge = document.createElement('span');
+      followBadge.className = 'remoed-ppt-follow-badge';
+      followBadge.textContent = 'Following teacher';
+      followBadge.title = 'Slides sync automatically with the teacher';
+      followBadge.style.cssText =
+        'font-size:0.72rem;font-weight:700;color:#166534;background:#dcfce7;border:1px solid #86efac;border-radius:999px;padding:3px 10px;';
+      toolbar.appendChild(followBadge);
+    }
 
     var toggleDraw = document.createElement('button');
     toggleDraw.type = 'button';
@@ -377,37 +451,40 @@
     var prevSlideBtn = null;
     var nextSlideBtn = null;
     var slideLabel = null;
-    if (isTeacher) {
-      var navGroup = document.createElement('div');
-      navGroup.className = 'remoed-ppt-nav';
-      navGroup.style.cssText = 'display:inline-flex;align-items:center;gap:4px;';
+    // Teacher drives navigation; students follow via socket (label only for status).
+    var navGroup = document.createElement('div');
+    navGroup.className = 'remoed-ppt-nav';
+    navGroup.style.cssText = 'display:inline-flex;align-items:center;gap:4px;';
 
+    if (isTeacher) {
       prevSlideBtn = document.createElement('button');
       prevSlideBtn.type = 'button';
       prevSlideBtn.textContent = '◀';
-      prevSlideBtn.title = 'Previous slide (syncs student — not Office Next)';
+      prevSlideBtn.title = 'Previous slide (syncs students)';
+      prevSlideBtn.setAttribute('aria-label', 'Previous slide');
       prevSlideBtn.style.cssText = btnStyle(
         'min-width:36px;font-weight:700;background:#47BC3E;color:#fff;border-color:#2E9A28;'
       );
 
-      slideLabel = document.createElement('span');
-      slideLabel.className = 'remoed-ppt-slide-label';
-      slideLabel.style.cssText =
-        'font-size:0.8rem;font-weight:700;color:#0f172a;min-width:64px;text-align:center;padding:4px 8px;background:#f1f5f9;border-radius:8px;';
-
       nextSlideBtn = document.createElement('button');
       nextSlideBtn.type = 'button';
       nextSlideBtn.textContent = '▶';
-      nextSlideBtn.title = 'Next slide (syncs student — not Office Next)';
+      nextSlideBtn.title = 'Next slide (syncs students)';
+      nextSlideBtn.setAttribute('aria-label', 'Next slide');
       nextSlideBtn.style.cssText = btnStyle(
         'min-width:36px;font-weight:700;background:#47BC3E;color:#fff;border-color:#2E9A28;'
       );
-
-      navGroup.appendChild(prevSlideBtn);
-      navGroup.appendChild(slideLabel);
-      navGroup.appendChild(nextSlideBtn);
-      toolbar.appendChild(navGroup);
     }
+
+    slideLabel = document.createElement('span');
+    slideLabel.className = 'remoed-ppt-slide-label';
+    slideLabel.style.cssText =
+      'font-size:0.8rem;font-weight:700;color:#0f172a;min-width:64px;text-align:center;padding:4px 8px;background:#f1f5f9;border-radius:8px;';
+
+    if (prevSlideBtn) navGroup.appendChild(prevSlideBtn);
+    navGroup.appendChild(slideLabel);
+    if (nextSlideBtn) navGroup.appendChild(nextSlideBtn);
+    toolbar.appendChild(navGroup);
 
     toolbar.appendChild(toggleDraw);
     toolbar.appendChild(colorInput);
@@ -427,14 +504,28 @@
 
     var iframeWrap = document.createElement('div');
     iframeWrap.className = 'remoed-ppt-iframe-wrap';
-    iframeWrap.style.cssText = 'position:absolute;inset:0;z-index:1;';
+    iframeWrap.style.cssText = 'position:absolute;inset:0;z-index:1;display:flex;align-items:center;justify-content:center;';
 
-    var iframe = document.createElement('iframe');
-    iframe.id = 'ppt-iframe-' + materialId;
-    iframe.setAttribute('allowfullscreen', 'true');
-    iframe.setAttribute('allow', 'autoplay; fullscreen');
-    iframe.title = material.name || 'Presentation';
-    iframe.style.cssText = 'width:100%;height:100%;border:none;background:#fff;display:block;';
+    var iframe = null;
+    var slideImg = null;
+    if (useImageStack) {
+      slideImg = document.createElement('img');
+      slideImg.id = 'ppt-slide-img-' + materialId;
+      slideImg.className = 'remoed-ppt-slide-img';
+      slideImg.alt = material.name || 'Slide';
+      slideImg.decoding = 'async';
+      slideImg.style.cssText =
+        'max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;display:block;background:#fff;user-select:none;-webkit-user-drag:none;';
+      iframeWrap.appendChild(slideImg);
+    } else {
+      iframe = document.createElement('iframe');
+      iframe.id = 'ppt-iframe-' + materialId;
+      iframe.setAttribute('allowfullscreen', 'true');
+      iframe.setAttribute('allow', 'autoplay; fullscreen');
+      iframe.title = material.name || 'Presentation';
+      iframe.style.cssText = 'width:100%;height:100%;border:none;background:#fff;display:block;';
+      iframeWrap.appendChild(iframe);
+    }
 
     var canvas = document.createElement('canvas');
     canvas.id = 'ppt-annotation-canvas-' + materialId;
@@ -442,7 +533,6 @@
     canvas.style.cssText =
       'position:absolute;inset:0;z-index:2;width:100%;height:100%;max-width:100%;max-height:100%;touch-action:none;pointer-events:none;';
 
-    iframeWrap.appendChild(iframe);
     stack.appendChild(iframeWrap);
     stack.appendChild(canvas);
     container.appendChild(toolbar);
@@ -455,6 +545,9 @@
       canvas: canvas,
       ctx: ctx,
       iframe: iframe,
+      slideImg: slideImg,
+      slideImageUrls: slideImageUrls,
+      renderMode: useImageStack ? 'images' : 'iframe',
       strokesBySlide: {},
       activeStroke: null,
       drawing: false,
@@ -468,6 +561,10 @@
     pptOverlayState[materialId] = state;
 
     function getMaxIndex() {
+      // Prefer concrete asset count over metadata that may be stale/inflated.
+      if (state.renderMode === 'images' && state.slideImageUrls && state.slideImageUrls.length) {
+        return state.slideImageUrls.length - 1;
+      }
       var total = Number(state.totalSlides);
       if (Number.isFinite(total) && total >= 1) return Math.floor(total) - 1;
       return null;
@@ -484,6 +581,10 @@
       var n = Number(total);
       if (!Number.isFinite(n) || n < 1) return;
       n = Math.floor(n);
+      // Never inflate past the real image stack.
+      if (state.renderMode === 'images' && state.slideImageUrls && state.slideImageUrls.length) {
+        n = Math.min(n, state.slideImageUrls.length);
+      }
       if (state.totalSlides === n) {
         state.slideIndex = clampSlideIndex(state.slideIndex);
         updateSlideLabel();
@@ -536,8 +637,18 @@
     }
 
     function updateSlideLabel() {
+      state.slideIndex = clampSlideIndex(state.slideIndex);
       var current = state.slideIndex + 1;
       var total = state.totalSlides;
+      if (
+        state.renderMode === 'images' &&
+        state.slideImageUrls &&
+        state.slideImageUrls.length &&
+        (total == null || total !== state.slideImageUrls.length)
+      ) {
+        total = state.slideImageUrls.length;
+        state.totalSlides = total;
+      }
       if (slideLabel) {
         slideLabel.textContent =
           Number.isFinite(total) && total >= 1 ? current + ' / ' + total : 'Slide ' + current;
@@ -546,10 +657,9 @@
       if (nextSlideBtn) {
         var maxIdx = getMaxIndex();
         var atEnd = maxIdx != null && state.slideIndex >= maxIdx;
+        if (maxIdx == null && state._lockedAtEnd) atEnd = true;
         nextSlideBtn.disabled = atEnd;
-        nextSlideBtn.title = atEnd
-          ? 'Last slide'
-          : 'Next slide (syncs student — not Office Next)';
+        nextSlideBtn.title = atEnd ? 'Last slide' : 'Next slide (syncs students)';
       }
       var headerInfo = document.getElementById('pdf-page-info');
       if (headerInfo) {
@@ -563,13 +673,25 @@
       }
     }
 
+    function currentSlideUrl() {
+      if (state.renderMode === 'images' && state.slideImageUrls && state.slideImageUrls.length) {
+        return state.slideImageUrls[state.slideIndex] || null;
+      }
+      if (iframe && iframe.src) return iframe.src;
+      return null;
+    }
+
     function emitSlideChanged(index, slideUrl) {
       if (!socket || !socket.connected || !isTeacher) return;
       var payload = {
         room: room,
         materialId: materialId,
         currentSlideIndex: index,
-        slideUrl: slideUrl || null
+        slideIndex: index,
+        page: index + 1,
+        totalSlides: state.totalSlides,
+        slideUrl: slideUrl || currentSlideUrl() || null,
+        renderMode: state.renderMode
       };
       socket.emit('presentation-slide-changed', payload);
       socket.emit('slide-changed', payload);
@@ -577,24 +699,84 @@
         room: room,
         materialId: materialId,
         page: index + 1,
-        slideIndex: index
+        slideIndex: index,
+        totalSlides: state.totalSlides
       });
+    }
+
+    function prefetchAdjacentSlides(index) {
+      if (state.renderMode !== 'images' || !state.slideImageUrls) return;
+      [index - 1, index + 1].forEach(function (i) {
+        if (i < 0 || i >= state.slideImageUrls.length) return;
+        var src = state.slideImageUrls[i];
+        if (!src) return;
+        var img = new Image();
+        img.decoding = 'async';
+        img.src = src;
+      });
+    }
+
+    function showUnavailableMessage(detailHtml) {
+      iframeWrap.innerHTML =
+        '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#334155;padding:24px;text-align:center;font-family:Segoe UI,sans-serif;">' +
+        '<div style="max-width:420px;">' +
+        '<p style="font-weight:700;font-size:1.05rem;margin:0 0 8px;">Presentation preview unavailable</p>' +
+        (detailHtml || '') +
+        '<p style="margin:8px 0 0;color:#94a3b8;font-size:0.9rem;">' +
+        escapeHtml(material.name || '') +
+        '</p></div></div>';
     }
 
     function loadIframeAt(index, opts) {
       opts = opts || {};
       var i = clampSlideIndex(index);
       state.slideIndex = i;
+
+      if (state.renderMode === 'images') {
+        if (!state.slideImageUrls || !state.slideImageUrls.length) {
+          showUnavailableMessage(
+            '<p style="margin:0 0 8px;color:#64748b;line-height:1.5;">No converted slide images are available for this lesson yet.</p>'
+          );
+          return;
+        }
+        var imgSrc = state.slideImageUrls[i];
+        if (!imgSrc) {
+          showUnavailableMessage(
+            '<p style="margin:0 0 8px;color:#64748b;line-height:1.5;">Slide ' +
+              (i + 1) +
+              ' is missing from the converted image stack.</p>'
+          );
+          return;
+        }
+        if (!opts.keepDraw) setDrawMode(state, false);
+        if (!slideImg || !slideImg.isConnected) {
+          iframeWrap.innerHTML = '';
+          slideImg = document.createElement('img');
+          slideImg.id = 'ppt-slide-img-' + materialId;
+          slideImg.className = 'remoed-ppt-slide-img';
+          slideImg.alt = material.name || 'Slide';
+          slideImg.decoding = 'async';
+          slideImg.style.cssText =
+            'max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;display:block;background:#fff;user-select:none;-webkit-user-drag:none;';
+          iframeWrap.appendChild(slideImg);
+          state.slideImg = slideImg;
+        }
+        if (slideImg.src !== imgSrc) {
+          slideImg.src = imgSrc;
+        }
+        slideImg.alt = (material.name || 'Slide') + ' — ' + (i + 1);
+        prefetchAdjacentSlides(i);
+        updateSlideLabel();
+        redrawAnnotations(state);
+        if (opts.broadcast) emitSlideChanged(i, imgSrc);
+        return;
+      }
+
       var src = buildIframeSrc(material, i);
       if (!src) {
-        iframeWrap.innerHTML =
-          '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#334155;padding:24px;text-align:center;font-family:Segoe UI,sans-serif;">' +
-          '<div style="max-width:420px;">' +
-          '<p style="font-weight:700;font-size:1.05rem;margin:0 0 8px;">Presentation preview unavailable</p>' +
-          '<p style="margin:0 0 8px;color:#64748b;line-height:1.5;">Microsoft Office Online cannot open PowerPoint files from localhost. RemoEd will convert this lesson to PDF for class.</p>' +
-          '<p style="margin:0;color:#94a3b8;font-size:0.9rem;">' +
-          escapeHtml(material.name || '') +
-          '</p></div></div>';
+        showUnavailableMessage(
+          '<p style="margin:0 0 8px;color:#64748b;line-height:1.5;">Microsoft Office Online cannot open PowerPoint files from localhost. RemoEd will convert this lesson to PDF for class.</p>'
+        );
         return;
       }
       if (!opts.keepDraw) setDrawMode(state, false);
@@ -602,7 +784,18 @@
       if (opts.forceReload && src.indexOf('view.officeapps.live.com') !== -1) {
         src += (src.indexOf('?') >= 0 ? '&' : '?') + '_remoedSlide=' + (i + 1) + '&_t=' + Date.now();
       }
-      iframe.src = src;
+      if (!iframe || !iframe.isConnected) {
+        iframeWrap.innerHTML = '';
+        iframe = document.createElement('iframe');
+        iframe.id = 'ppt-iframe-' + materialId;
+        iframe.setAttribute('allowfullscreen', 'true');
+        iframe.setAttribute('allow', 'autoplay; fullscreen');
+        iframe.title = material.name || 'Presentation';
+        iframe.style.cssText = 'width:100%;height:100%;border:none;background:#fff;display:block;';
+        iframeWrap.appendChild(iframe);
+        state.iframe = iframe;
+      }
+      iframe.src = withMediaAuth(src);
       updateSlideLabel();
       redrawAnnotations(state);
       if (opts.broadcast) emitSlideChanged(i, src);
@@ -615,11 +808,13 @@
     loadIframe();
 
     function onFrameMessage(evt) {
+      // Image stack does not use Office postMessage; ignore frame events in that mode.
+      if (state.renderMode === 'images') return;
       if (!isTeacher || state._applyingRemoteSlide) return;
       // Ignore our own remoed broadcasts echoed back
       if (evt && evt.data && evt.data.source === 'remoed-presentation' && evt.data.fromSync) return;
       // Prefer messages that look like they came from the presentation iframe
-      if (iframe.contentWindow && evt.source && evt.source !== iframe.contentWindow) {
+      if (iframe && iframe.contentWindow && evt.source && evt.source !== iframe.contentWindow) {
         // Still accept Office/WOPI messages that may bubble via nested frames without matching source
         var origin = String(evt.origin || '');
         if (!/officeapps\.live\.com|office\.com|sharepoint\.com|onedrive\.live\.com|localhost|127\.0\.0\.1/i.test(origin)) {
@@ -642,11 +837,13 @@
         state._expectingPossibleWrap = false;
         // state.slideIndex is already the invalid/beyond index → true count is that index (1-based)
         setTotalSlides(Math.max(1, state.slideIndex));
+        state._lockedAtEnd = true;
         state.slideIndex = clampSlideIndex(state.slideIndex - 1);
         loadIframeAt(state.slideIndex, { broadcast: true, forceReload: true, keepDraw: false });
         return;
       }
       state._expectingPossibleWrap = false;
+      state._lockedAtEnd = false;
 
       nextIdx = clampSlideIndex(nextIdx);
       if (nextIdx === state.slideIndex) {
@@ -656,7 +853,7 @@
       state.slideIndex = nextIdx;
       updateSlideLabel();
       redrawAnnotations(state);
-      emitSlideChanged(nextIdx, iframe.src || null);
+      emitSlideChanged(nextIdx, iframe && iframe.src ? iframe.src : null);
     }
     global.addEventListener('message', onFrameMessage);
     state._onFrameMessage = onFrameMessage;
@@ -738,13 +935,21 @@
 
     function goToSlide(index, broadcast) {
       var i = clampSlideIndex(index);
-      if (!broadcast && i === state.slideIndex) return;
+      if (!broadcast && i === state.slideIndex) {
+        updateSlideLabel();
+        redrawAnnotations(state);
+        return;
+      }
       if (broadcast && i === state.slideIndex) {
         updateSlideLabel();
+        // Re-broadcast so late-joining students catch the current slide
+        if (broadcast) emitSlideChanged(i, currentSlideUrl());
         return;
       }
       state._applyingRemoteSlide = !broadcast;
-      loadIframeAt(i, { broadcast: !!broadcast, forceReload: true, keepDraw: false });
+      // Image stack swaps instantly; Office iframe needs forceReload so wdStartOn applies.
+      var forceReload = state.renderMode !== 'images';
+      loadIframeAt(i, { broadcast: !!broadcast, forceReload: forceReload, keepDraw: false });
       state._applyingRemoteSlide = false;
     }
     state.goToSlide = goToSlide;
@@ -752,22 +957,44 @@
 
     function stepSlide(delta) {
       var maxIdx = getMaxIndex();
-      var next = state.slideIndex + (Number(delta) || 0);
-      if (next < 0) {
+      var deltaN = Number(delta) || 0;
+      if (!deltaN) {
         updateSlideLabel();
         return;
       }
-      if (maxIdx != null && next > maxIdx) {
+      // Hard stop at bounds — never walk past the last presented slide.
+      if (maxIdx == null) {
+        // Unknown total (Office iframe): only allow a single speculative step forward;
+        // wrap detection locks totalSlides. Still never go below 0.
+        if (deltaN < 0 && state.slideIndex <= 0) {
+          updateSlideLabel();
+          return;
+        }
+        if (deltaN > 0 && state._lockedAtEnd) {
+          updateSlideLabel();
+          return;
+        }
+      } else {
+        var next = state.slideIndex + deltaN;
+        if (next < 0 || next > maxIdx) {
+          state.slideIndex = clampSlideIndex(state.slideIndex);
+          updateSlideLabel();
+          return;
+        }
+      }
+      var nextIdx = clampSlideIndex(state.slideIndex + deltaN);
+      if (nextIdx === state.slideIndex) {
         updateSlideLabel();
         return;
       }
-      // If total is unknown, mark that the next Office wrap message may mean we passed the end
-      if (maxIdx == null && delta > 0) {
+      if (deltaN < 0) state._lockedAtEnd = false;
+      // If total is unknown (Office iframe), next wrap message may mean we passed the end
+      if (state.renderMode !== 'images' && maxIdx == null && deltaN > 0) {
         state._expectingPossibleWrap = true;
       } else {
         state._expectingPossibleWrap = false;
       }
-      goToSlide(next, true);
+      goToSlide(nextIdx, true);
     }
     state.stepSlide = stepSlide;
 
@@ -786,22 +1013,19 @@
     // Prefer PDF preview page count when available (authoritative for PPT→PDF lessons).
     (function discoverTotalFromPreviewPdf() {
       if (state.totalSlides != null) return;
+      if (state.renderMode === 'images' && state.slideImageUrls.length) {
+        setTotalSlides(state.slideImageUrls.length);
+        return;
+      }
       var preview =
         material.previewPdfPath ||
+        material.convertedPdfUrl ||
         material.previewPdfUrl ||
         (material.presentationType === 'pdf_preview' ? material.data : null);
       if (!preview || typeof global.pdfjsLib === 'undefined') return;
-      var url = absoluteUrl(String(preview).split('?')[0]);
+      var url = withMediaAuth(absoluteUrl(String(preview).split('?')[0]));
       if (!url) return;
       try {
-        var token =
-          global.localStorage &&
-          (global.localStorage.getItem('token') ||
-            global.localStorage.getItem('teacherToken') ||
-            global.localStorage.getItem('remoed_user_token'));
-        if (token && /\/api\//.test(url) && !/[?&]token=/.test(url)) {
-          url += (url.indexOf('?') >= 0 ? '&' : '?') + 'token=' + encodeURIComponent(token);
-        }
         global.pdfjsLib
           .getDocument({ url: url, withCredentials: true })
           .promise.then(function (pdf) {
@@ -811,8 +1035,28 @@
       } catch (_e) {}
     })();
 
+    // Apply slide sync that arrived before this overlay finished mounting (late student join).
+    if (
+      pendingSlideSync &&
+      (!pendingSlideSync.materialId || String(pendingSlideSync.materialId) === String(materialId))
+    ) {
+      var pending = pendingSlideSync;
+      pendingSlideSync = null;
+      var pendingIdx = pending.currentSlideIndex;
+      if (pendingIdx == null && pending.slideIndex != null) pendingIdx = pending.slideIndex;
+      if (pendingIdx == null && pending.page != null) pendingIdx = Number(pending.page) - 1;
+      if (pending.totalSlides != null) setTotalSlides(pending.totalSlides);
+      if (pendingIdx != null && isFinite(Number(pendingIdx))) {
+        goToSlide(Number(pendingIdx), false);
+      }
+    } else if (isTeacher && socket && socket.connected) {
+      // Announce starting slide so students who already have the material stay aligned.
+      emitSlideChanged(state.slideIndex, currentSlideUrl());
+    }
+
     return {
       materialId: materialId,
+      renderMode: state.renderMode,
       goToSlide: goToSlide,
       stepSlide: stepSlide,
       setMode: function (mode) {
@@ -864,13 +1108,36 @@
     if (idx == null && data.slideIndex != null) idx = data.slideIndex;
     if (idx == null && data.page != null) idx = Number(data.page) - 1;
     if (idx == null || !isFinite(Number(idx))) return;
+
     var state = data.materialId ? pptOverlayState[data.materialId] : null;
     if (!state) {
       var keys = Object.keys(pptOverlayState);
       if (keys.length === 1) state = pptOverlayState[keys[0]];
     }
-    if (!state || typeof state.goToSlide !== 'function') return;
-    state.goToSlide(Number(idx));
+    if (!state || typeof state.goToSlide !== 'function') {
+      pendingSlideSync = data;
+      return;
+    }
+    if (state.isTeacher) return;
+    if (data.totalSlides != null && typeof state.setTotalSlides === 'function') {
+      state.setTotalSlides(data.totalSlides);
+    }
+    // Prefer explicit slideUrl when following an image stack (avoids index/url mismatch).
+    if (
+      state.renderMode === 'images' &&
+      data.slideUrl &&
+      state.slideImageUrls &&
+      state.slideImageUrls.length
+    ) {
+      var want = String(data.slideUrl).split('?')[0];
+      for (var si = 0; si < state.slideImageUrls.length; si++) {
+        if (String(state.slideImageUrls[si]).split('?')[0] === want) {
+          idx = si;
+          break;
+        }
+      }
+    }
+    state.goToSlide(Number(idx), false);
   }
 
   global.RemoedPresentationOverlay = {
@@ -879,6 +1146,7 @@
     handlePresentationSlideChanged: handlePresentationSlideChanged,
     buildIframeSrc: buildIframeSrc,
     buildSecureOfficeEmbedUrl: buildSecureOfficeEmbedUrl,
-    absoluteUrl: absoluteUrl
+    absoluteUrl: absoluteUrl,
+    resolveSlideImageUrls: resolveSlideImageUrls
   };
 })(typeof window !== 'undefined' ? window : globalThis);

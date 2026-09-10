@@ -5,6 +5,21 @@
 (function (global) {
     'use strict';
 
+    (function ensureNotifAssets() {
+        try {
+            if (!document.querySelector('script[src*="remoed-notifications.js"]')) {
+                var s = document.createElement('script');
+                s.src = '/js/remoed-notifications.js';
+                document.head.appendChild(s);
+            }
+            if (!global.io && !document.querySelector('script[src*="socket.io"]')) {
+                var s2 = document.createElement('script');
+                s2.src = '/socket.io/socket.io.js';
+                document.head.appendChild(s2);
+            }
+        } catch (_e) {}
+    })();
+
     var SVG = {
         home:
             '<svg class="nav-title-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>',
@@ -114,6 +129,9 @@
                 h1e.innerHTML = iconHtml + '<span class="nav-title-text">' + escapeHtml(title) + '</span>';
             }
             document.body.classList.add('has-teacher-page-header');
+            if (!existing.querySelector('#upcoming-classes-icon')) {
+                bindTeacherNotificationBell(existing);
+            }
             return existing;
         }
 
@@ -130,9 +148,15 @@
             '<div class="nav-icon" onclick="window.location.href=\'teacher-profile.html\'" title="My Profile">' +
             ACTION.person +
             '</div>' +
-            '<div class="nav-icon primary" onclick="window.location.href=\'teacher-dashboard.html\'" title="Notifications">' +
+            '<div class="nav-icon primary" id="notifications-icon" title="Notifications">' +
             ACTION.bell +
-            '</div>' +
+            '<div class="nav-badge" id="notifications-badge" style="display:none;">0</div>' +
+            '<div class="nav-dropdown" id="notifications-dropdown">' +
+            '<div class="nav-dropdown-header">Notifications</div>' +
+            '<div class="nav-dropdown-content" id="notifications-dropdown-content">' +
+            '<div class="nav-dropdown-item">Loading…</div></div>' +
+            '<div class="nav-dropdown-footer"><a href="teacher-dashboard.html">Open dashboard</a></div>' +
+            '</div></div>' +
             '<div class="nav-icon" onclick="window.location.href=\'teacher-class-table.html\'" title="Class Schedule">' +
             ACTION.calendar +
             '</div></div>';
@@ -142,7 +166,107 @@
         else main.insertBefore(header, main.firstChild);
 
         document.body.classList.add('has-teacher-page-header');
+        bindTeacherNotificationBell(header);
         return header;
+    }
+
+    function teacherToken() {
+        try {
+            return (
+                localStorage.getItem('token') ||
+                localStorage.getItem('remoed_teacher_token') ||
+                sessionStorage.getItem('token') ||
+                ''
+            );
+        } catch (_e) {
+            return '';
+        }
+    }
+
+    function bindTeacherNotificationBell(header) {
+        if (!header) return;
+        var icon = header.querySelector('#notifications-icon');
+        var dropdown = header.querySelector('#notifications-dropdown');
+        var content = header.querySelector('#notifications-dropdown-content');
+        var badge = header.querySelector('#notifications-badge');
+        if (!icon || !dropdown) return;
+        if (icon.getAttribute('data-notif-click') === '1' || header.getAttribute('data-notif-bound') === '1') {
+            return;
+        }
+        icon.setAttribute('data-notif-click', '1');
+        header.setAttribute('data-notif-bound', '1');
+
+        function refresh() {
+            var token = teacherToken();
+            if (!token || !content) return;
+            if (window.RemoedNotifications && window.RemoedNotifications.bindDropdownExtras) {
+                window.RemoedNotifications.bindDropdownExtras(dropdown, {
+                    role: 'teacher',
+                    getToken: teacherToken,
+                    onRefresh: refresh,
+                });
+            }
+            fetch('/api/teacher/notifications', {
+                headers: { Authorization: 'Bearer ' + token },
+            })
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (data) {
+                    var list =
+                        window.RemoedNotifications && window.RemoedNotifications.unwrapList
+                            ? window.RemoedNotifications.unwrapList(data)
+                            : (data && data.notifications) || [];
+                    var unread =
+                        window.RemoedNotifications && window.RemoedNotifications.badgeCountFromPayload
+                            ? window.RemoedNotifications.badgeCountFromPayload(data, list)
+                            : typeof data.actionableUnreadCount === 'number'
+                              ? data.actionableUnreadCount
+                              : list.filter(function (n) {
+                                    return !n.read;
+                                }).length;
+                    if (window.RemoedNotifications && window.RemoedNotifications.setBadge) {
+                        window.RemoedNotifications.setBadge(badge, unread);
+                    } else if (badge) {
+                        badge.textContent = String(unread);
+                        badge.style.display = unread > 0 ? 'flex' : 'none';
+                    }
+                    if (window.RemoedNotifications && window.RemoedNotifications.renderItems) {
+                        window.RemoedNotifications.renderItems(content, list, {
+                            limit: 12,
+                            role: 'teacher',
+                            retentionDays: (data && data.retentionDays) || 31,
+                            filter: window.RemoedNotifications.getFilter
+                                ? window.RemoedNotifications.getFilter()
+                                : 'all',
+                        });
+                    }
+                })
+                .catch(function () {
+                    content.innerHTML = '<div class="nav-dropdown-item">Could not load notifications</div>';
+                });
+        }
+
+        icon.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var open = dropdown.classList.toggle('show');
+            if (open) refresh();
+        });
+        document.addEventListener('click', function (e) {
+            if (icon.contains(e.target) || dropdown.contains(e.target)) return;
+            dropdown.classList.remove('show');
+        });
+        refresh();
+        setInterval(refresh, 60 * 1000);
+
+        try {
+            var tid = localStorage.getItem('teacherId') || '';
+            if (window.RemoedNotifications && tid) {
+                var sock = window.RemoedNotifications.joinNotificationSocket('teacher', tid);
+                if (sock) sock.on('notification:new', refresh);
+            }
+        } catch (_e) {}
     }
 
     function polishExisting(pageId, opts) {
@@ -158,6 +282,10 @@
             h1.innerHTML = iconHtml + '<span class="nav-title-text">' + escapeHtml(title) + '</span>';
         }
         document.body.classList.add('has-teacher-page-header');
+        // Dashboard already wires the bell in-page — skip to avoid open+close on one click.
+        if (!header.querySelector('#upcoming-classes-icon')) {
+            bindTeacherNotificationBell(header);
+        }
         return header;
     }
 

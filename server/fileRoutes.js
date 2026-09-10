@@ -5,8 +5,65 @@ const fs = require('fs');
 const crypto = require('crypto');
 const File = require('./models/File');
 const { fileUploadLimiter } = require('./middleware/apiRateLimits');
+const { verifyToken } = require('./authMiddleware');
+const { getCookieValue } = require('./middleware/uploadsAccess');
 
 const router = express.Router();
+
+/** Allow <a target=_blank> / window.open downloads to auth via remoed_media_token cookie. */
+function attachMediaTokenFromCookie(req, res, next) {
+  const hasAuth =
+    (req.headers && req.headers.authorization) ||
+    (req.query && req.query.token) ||
+    (req.body && req.body.token);
+  if (!hasAuth) {
+    const cookieToken = getCookieValue(req, 'remoed_media_token');
+    if (cookieToken) {
+      req.headers.authorization = 'Bearer ' + cookieToken;
+    }
+  }
+  next();
+}
+
+function normRole(v) {
+  return String(v == null ? '' : v).trim().toLowerCase();
+}
+
+function isAdminUser(user) {
+  if (!user) return false;
+  if (user.isAdmin === true) return true;
+  return normRole(user.role) === 'admin';
+}
+
+function isTeacherUser(user) {
+  if (!user) return false;
+  if (user.teacherId) return true;
+  return (
+    normRole(user.userType) === 'teacher' ||
+    normRole(user.userRole) === 'teacher' ||
+    normRole(user.role) === 'teacher'
+  );
+}
+
+function actorLabel(user) {
+  if (!user) return '';
+  return String(
+    user.username ||
+      user.email ||
+      user.teacherId ||
+      user.studentId ||
+      user.adminId ||
+      ''
+  ).trim();
+}
+
+function canDeleteFile(user, file) {
+  if (!user || !file) return false;
+  if (isAdminUser(user) || isTeacherUser(user)) return true;
+  const actor = actorLabel(user);
+  if (!actor) return false;
+  return String(file.uploader || '') === actor;
+}
 
 function getAllowedExtension(fileName) {
   const name = String(fileName || '').toLowerCase();
@@ -104,6 +161,10 @@ const upload = multer({
   }
 });
 
+// All classroom file APIs require a valid JWT (header, query, body, or media cookie).
+router.use(attachMediaTokenFromCookie);
+router.use(verifyToken);
+
 // Upload file (limiter on handler so all mount prefixes share one cap, e.g. /api/upload and /api/files/upload)
 router.post('/upload', fileUploadLimiter, upload.single('file'), async (req, res) => {
   try {
@@ -111,7 +172,8 @@ router.post('/upload', fileUploadLimiter, upload.single('file'), async (req, res
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
-    const { room, uploader } = req.body;
+    const { room } = req.body;
+    const uploader = actorLabel(req.user) || String(req.body.uploader || '').trim();
     
     if (!room || !uploader) {
       return res.status(400).json({ error: 'Room and uploader are required' });
@@ -189,6 +251,8 @@ router.get('/download/:fileId', async (req, res) => {
       return res.status(404).json({ error: 'File not found on disk' });
     }
 
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
     res.download(filePath, file.originalName);
 
   } catch (error) {
@@ -216,7 +280,8 @@ router.get('/preview/:fileId', async (req, res) => {
     // Set appropriate headers for inline viewing
     res.setHeader('Content-Type', file.mimeType);
     res.setHeader('Content-Disposition', 'inline; filename="' + file.originalName + '"');
-    res.setHeader('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
+    res.setHeader('Cache-Control', 'private, max-age=300');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
     
     // Stream the file
     const fileStream = fs.createReadStream(filePath);
@@ -236,6 +301,10 @@ router.delete('/files/:fileId', async (req, res) => {
     
     if (!file) {
       return res.status(404).json({ error: 'File not found' });
+    }
+
+    if (!canDeleteFile(req.user, file)) {
+      return res.status(403).json({ error: 'Not allowed to delete this file' });
     }
 
     // Delete file from disk
@@ -281,4 +350,4 @@ router.use((error, req, res, next) => {
   });
 });
 
-module.exports = router; 
+module.exports = router;

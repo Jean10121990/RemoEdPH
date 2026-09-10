@@ -1,15 +1,17 @@
 /**
- * Convert a .ppt/.pptx file to a cached preview.pdf for in-app viewing.
- * Microsoft Office Online cannot fetch localhost or login-gated URLs, so the
- * Lessons Library preview uses a same-origin PDF instead.
+ * Convert a .ppt/.pptx file to a cached preview.pdf (+ optional slide PNGs)
+ * for in-app viewing. Microsoft Office Online cannot fetch localhost or
+ * login-gated URLs, so Lessons Library / live class use same-origin assets.
  */
 const fs = require('fs');
 const fsp = require('fs').promises;
 const path = require('path');
+const os = require('os');
 const { promisify } = require('util');
 const FormData = require('form-data');
 const axios = require('axios');
 const libre = require('libreoffice-convert');
+const AdmZip = require('adm-zip');
 const { PRESENTATIONS_ROOT } = require('./presentationUpload');
 
 const libreConvertAsync = promisify(libre.convert);
@@ -230,11 +232,227 @@ function publicPreviewUrl(fileId) {
   return '/uploads/presentations/' + encodeURIComponent(String(fileId)) + '/preview.pdf';
 }
 
+function publicSlideUrl(fileId, slideFileName) {
+  return (
+    '/uploads/presentations/' +
+    encodeURIComponent(String(fileId)) +
+    '/slides/' +
+    encodeURIComponent(String(slideFileName))
+  );
+}
+
+/**
+ * Count slides inside a .pptx by enumerating ppt/slides/slideN.xml entries.
+ * Returns 0 for .ppt (binary) or unreadable archives.
+ */
+function countSlidesInPptx(sourcePath) {
+  if (!sourcePath || !/\.pptx$/i.test(sourcePath)) return 0;
+  try {
+    const zip = new AdmZip(sourcePath);
+    let count = 0;
+    zip.getEntries().forEach((entry) => {
+      const name = String(entry.entryName || '').replace(/\\/g, '/');
+      if (/^ppt\/slides\/slide\d+\.xml$/i.test(name)) count += 1;
+    });
+    return count;
+  } catch (err) {
+    console.warn('[pptxLocalPreview] PPTX slide count failed:', err.message || err);
+    return 0;
+  }
+}
+
+/** pdf-poppler calls process.exit on unsupported platforms — never require it there. */
+function loadPdfPopplerSafe() {
+  const platform = os.platform();
+  if (platform !== 'win32' && platform !== 'darwin') return null;
+  try {
+    return require('pdf-poppler');
+  } catch (err) {
+    console.warn('[pptxLocalPreview] pdf-poppler unavailable:', err.message || err);
+    return null;
+  }
+}
+
+async function countPdfPages(pdfPath) {
+  const poppler = loadPdfPopplerSafe();
+  if (poppler && typeof poppler.info === 'function') {
+    try {
+      const info = await poppler.info(pdfPath);
+      const pages = parseInt(info.pages, 10);
+      if (Number.isFinite(pages) && pages >= 1) return pages;
+    } catch (err) {
+      console.warn('[pptxLocalPreview] pdfinfo failed:', err.message || err);
+    }
+  }
+  try {
+    const buf = await fsp.readFile(pdfPath);
+    const text = buf.toString('latin1');
+    const matches = text.match(/\/Type\s*\/Page(?!\s*s)/g);
+    if (matches && matches.length >= 1) return matches.length;
+  } catch (_e) {
+    /* ignore */
+  }
+  return 0;
+}
+
+async function collectExistingSlideUrls(slidesDir, fileId) {
+  try {
+    const names = await fsp.readdir(slidesDir);
+    const pngs = names
+      .filter((n) => /^slide[-_]?\d+\.png$/i.test(n))
+      .sort((a, b) => {
+        const na = parseInt(String(a).replace(/\D+/g, ''), 10) || 0;
+        const nb = parseInt(String(b).replace(/\D+/g, ''), 10) || 0;
+        return na - nb;
+      });
+    return pngs.map((n) => publicSlideUrl(fileId, n));
+  } catch (_e) {
+    return [];
+  }
+}
+
+async function normalizeSlideFileNames(slidesDir) {
+  const names = await fsp.readdir(slidesDir);
+  const candidates = names.filter((n) => /\.png$/i.test(n));
+  const mapped = [];
+  for (const name of candidates) {
+    const m = String(name).match(/(\d+)\.png$/i);
+    if (!m) continue;
+    const idx = parseInt(m[1], 10);
+    if (!Number.isFinite(idx) || idx < 1) continue;
+    const destName = `slide-${idx}.png`;
+    const from = path.join(slidesDir, name);
+    const to = path.join(slidesDir, destName);
+    if (name !== destName) {
+      try {
+        if (await fileExists(to)) await fsp.unlink(to).catch(() => {});
+        await fsp.rename(from, to);
+      } catch (_e) {
+        try {
+          await fsp.copyFile(from, to);
+          await fsp.unlink(from).catch(() => {});
+        } catch (_c) {
+          /* keep original name */
+          mapped.push({ idx, name });
+          continue;
+        }
+      }
+    }
+    mapped.push({ idx, name: destName });
+  }
+  mapped.sort((a, b) => a.idx - b.idx);
+  return mapped;
+}
+
+/**
+ * Render PDF pages to PNGs under destDir/slides using pdf-poppler (win/mac)
+ * or pdf2pic (needs GraphicsMagick). Returns public slide URLs.
+ */
+async function renderPdfPagesToPngs(pdfPath, slidesDir, fileId) {
+  await fsp.mkdir(slidesDir, { recursive: true });
+
+  const existing = await collectExistingSlideUrls(slidesDir, fileId);
+  if (existing.length) return existing;
+
+  const poppler = loadPdfPopplerSafe();
+  if (poppler && typeof poppler.convert === 'function') {
+    await poppler.convert(pdfPath, {
+      format: 'png',
+      out_dir: slidesDir,
+      out_prefix: 'slide',
+      scale: 1280
+    });
+    const normalized = await normalizeSlideFileNames(slidesDir);
+    if (normalized.length) {
+      return normalized.map((s) => publicSlideUrl(fileId, s.name));
+    }
+  }
+
+  try {
+    const { fromPath } = require('pdf2pic');
+    const converter = fromPath(pdfPath, {
+      density: 120,
+      saveFilename: 'slide',
+      savePath: slidesDir,
+      format: 'png',
+      width: 1280,
+      height: 720
+    });
+    const pageCount = (await countPdfPages(pdfPath)) || 50;
+    const results = await converter.bulk(-1, { responseType: 'image' }).catch(async () => {
+      const out = [];
+      for (let i = 1; i <= pageCount; i++) {
+        try {
+          out.push(await converter(i, { responseType: 'image' }));
+        } catch (_pageErr) {
+          break;
+        }
+      }
+      return out;
+    });
+    if (Array.isArray(results) && results.length) {
+      const normalized = await normalizeSlideFileNames(slidesDir);
+      if (normalized.length) {
+        return normalized.map((s) => publicSlideUrl(fileId, s.name));
+      }
+    }
+  } catch (pdf2picErr) {
+    console.warn('[pptxLocalPreview] pdf2pic failed:', pdf2picErr.message || pdf2picErr);
+  }
+
+  return collectExistingSlideUrls(slidesDir, fileId);
+}
+
+/**
+ * On PPTX upload: convert to PDF + slide images and return Lesson.files metadata.
+ */
+async function convertPptxUploadAssets({ sourcePath, fileName, fileId, destDir }) {
+  const id = String(fileId || '');
+  if (!id) throw new Error('Missing presentation id');
+  if (!sourcePath) throw new Error('Missing source path');
+
+  const dir = destDir || path.join(PRESENTATIONS_ROOT, id);
+  await fsp.mkdir(dir, { recursive: true });
+
+  const pdfResult = await ensurePptxPreviewPdf({ sourcePath, fileName });
+  const previewPath = path.join(dir, 'preview.pdf');
+  if (pdfResult.previewPath !== previewPath) {
+    await fsp.copyFile(pdfResult.previewPath, previewPath);
+  }
+
+  let slideCount = countSlidesInPptx(sourcePath);
+
+  const slidesDir = path.join(dir, 'slides');
+  let slideUrls = [];
+  try {
+    slideUrls = await renderPdfPagesToPngs(previewPath, slidesDir, id);
+    if (slideUrls.length) slideCount = slideUrls.length;
+  } catch (imgErr) {
+    console.warn('[pptxLocalPreview] Slide image render failed:', imgErr.message || imgErr);
+  }
+
+  if (!slideCount) {
+    slideCount = await countPdfPages(previewPath);
+  }
+
+  return {
+    convertedPdfUrl: publicPreviewUrl(id),
+    slideUrls,
+    slideCount: slideCount >= 1 ? slideCount : null,
+    previewPath,
+    method: pdfResult.method || (pdfResult.cached ? 'cached' : null),
+    cached: !!pdfResult.cached
+  };
+}
+
 module.exports = {
   diskPathFromHtml5EntryUrl,
   ensurePptxPreviewPdf,
   materializePptxSource,
   buildLessonPptxPreviewPdf,
+  convertPptxUploadAssets,
+  countSlidesInPptx,
   publicPreviewUrl,
+  publicSlideUrl,
   fileExists
 };

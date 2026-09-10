@@ -159,13 +159,17 @@
         }
         if (!container) return;
 
-        // Hard cleanup: remove any legacy floating toggles/overlays injected by older scripts or cached JS.
+        // Hard cleanup: remove legacy floating toggles/overlays only.
+        // Keep portal-layout.js chrome (.remoed-mobile-topbar, #remoed-nav-toggle, bottom nav).
         try {
             var legacy = document.getElementById('sidebarToggle');
             if (legacy) legacy.remove();
-            document.querySelectorAll('.mobile-hamburger, .mobile-sidebar-overlay, .remoed-mobile-topbar').forEach(function (el) {
+            var closeBtn = document.getElementById('sidebarClose');
+            if (closeBtn) closeBtn.remove();
+            document.querySelectorAll('.mobile-hamburger, .mobile-sidebar-overlay, .portal-sidebar-toggle').forEach(function (el) {
                 try { el.remove(); } catch (_e) {}
             });
+            document.body.classList.remove('remoed-desktop-sidebar-collapsed', 'remoed-portal-sidebar-mounted');
         } catch (_e) {}
 
         var active = activePageId || getActiveFromPath();
@@ -267,7 +271,37 @@
 
         loadProfileIntoSidebar(container);
         updatePendingFeedbackDots(container);
-        // Mini-sidebar collapse is handled locally; no floating toggle buttons.
+        // Mini-sidebar collapse is handled locally; mobile hamburger/drawer via portal-layout.js.
+        queuePortalLayoutMount();
+    }
+
+    function queuePortalLayoutMount() {
+        if (typeof global.RemoedPortalLayout !== 'undefined' && global.RemoedPortalLayout.mount) {
+            global.RemoedPortalLayout.mount();
+            return;
+        }
+        if (document.querySelector('script[data-remoed-portal-layout]')) {
+            document.addEventListener('remoed-portal-layout-ready', function once() {
+                document.removeEventListener('remoed-portal-layout-ready', once);
+                if (global.RemoedPortalLayout && global.RemoedPortalLayout.mount) {
+                    global.RemoedPortalLayout.mount();
+                }
+            });
+            return;
+        }
+        var s = document.createElement('script');
+        s.src = 'js/portal-layout.js?v=lb-nav-3';
+        s.async = true;
+        s.setAttribute('data-remoed-portal-layout', '1');
+        s.onload = function () {
+            if (global.RemoedPortalLayout && global.RemoedPortalLayout.mount) {
+                global.RemoedPortalLayout.mount();
+            }
+            try {
+                document.dispatchEvent(new Event('remoed-portal-layout-ready'));
+            } catch (e1) { /* ignore */ }
+        };
+        document.head.appendChild(s);
     }
 
     function setClassSchedulePendingBadge(n) {

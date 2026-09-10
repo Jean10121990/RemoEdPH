@@ -11,7 +11,11 @@
     "client:install": "npm install --prefix client",
     "client:dev": "npm run dev --prefix client",
     "client:build": "npm run build --prefix client",
-    "repair:credit-ledgers": "node server/scripts/repair-all-credit-ledgers.js"
+    "repair:credit-ledgers": "node server/scripts/repair-all-credit-ledgers.js",
+    "lint": "node scripts/check-syntax.js",
+    "audit:ci": "npm audit --audit-level=high",
+    "test:smoke": "node scripts/smoke-health.js",
+    "ci": "npm run lint && npm run audit:ci && npm run test:smoke"
   },
   "keywords": [],
   "author": "",
@@ -23,7 +27,7 @@
   "dependencies": {
     "@sentry/browser": "^10.49.0",
     "@sentry/node": "^10.49.0",
-    "adm-zip": "^0.5.16",
+    "adm-zip": "^0.6.0",
     "axios": "^1.11.0",
     "bcrypt": "^6.0.0",
     "body-parser": "^2.2.0",
@@ -47,17 +51,21 @@
     "mongodb": "^7.5.0",
     "mongoose": "^8.16.4",
     "multer": "^2.0.2",
-    "nodemailer": "^7.0.5",
+    "nodemailer": "^10.0.2",
     "office-to-pdf": "^4.0.0",
     "otplib": "^12.0.1",
     "pdf-poppler": "^0.2.1",
     "pdf2pic": "^3.2.0",
     "qrcode": "^1.5.4",
     "redis": "^4.7.1",
-    "sharp": "^0.34.5",
+    "sharp": "^0.35.4",
     "socket.io": "^4.8.1"
   },
   "devDependencies": {
     "npm-run-all": "^4.1.5"
+  },
+  "overrides": {
+    "tmp": "^0.2.7",
+    "qs": "^6.16.0"
   }
 }

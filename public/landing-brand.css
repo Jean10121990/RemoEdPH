@@ -283,54 +283,132 @@ body.page-teachers .logo-section img {
   max-height: 56px;
 }
 
-/* Hero: brand-led, left-aligned copy + dominant image */
-body.page-index .hero.japandi-hero {
+/* Hero: full-bleed visual plane + left copy band */
+body.page-index .hero.japandi-hero.hero-fullbleed {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  width: 100%;
+  max-width: none !important;
+  min-height: min(92vh, 900px);
+  margin: 0 !important;
+  padding: clamp(48px, 8vh, 96px) 0 !important;
+  display: flex;
+  align-items: center;
   text-align: left !important;
+  background:
+    radial-gradient(ellipse 70% 80% at 78% 45%, rgba(0, 174, 239, 0.16) 0%, transparent 58%),
+    radial-gradient(ellipse 55% 60% at 12% 70%, rgba(0, 168, 45, 0.1) 0%, transparent 55%),
+    linear-gradient(115deg, #ffffff 0%, #f3fbff 38%, #e8f8ec 100%) !important;
 }
 
-body.page-index .hero-grid {
-  max-width: 1200px;
-  margin: 0 auto;
+body.page-index .hero-fullbleed__stage {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+body.page-index .hero-fullbleed__glow {
+  position: absolute;
+  right: -8%;
+  top: 8%;
+  width: min(62vw, 720px);
+  height: min(72vh, 640px);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(253, 216, 53, 0.22) 0%,
+    rgba(0, 174, 239, 0.12) 42%,
+    transparent 72%
+  );
+  filter: blur(8px);
+  animation: heroGlowDrift 14s ease-in-out infinite alternate;
+}
+
+@keyframes heroGlowDrift {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(-3%, 4%, 0) scale(1.06);
+  }
+}
+
+body.page-index .hero-fullbleed .hero-grid {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0 clamp(20px, 5vw, 72px);
   display: grid;
-  grid-template-columns: 1.15fr 0.85fr;
-  gap: 40px;
+  grid-template-columns: minmax(280px, 0.95fr) minmax(280px, 1.05fr);
+  gap: clamp(24px, 4vw, 56px);
   align-items: center;
   text-align: left;
 }
 
-body.page-index .hero-copy {
+body.page-index .hero-fullbleed .hero-copy {
+  position: relative;
+  z-index: 2;
   text-align: left !important;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  max-width: 34rem;
+  padding: clamp(20px, 3vw, 36px) clamp(18px, 2.5vw, 32px);
+  border-radius: 20px;
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.88) 0%,
+    rgba(255, 255, 255, 0.72) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 0 18px 48px rgba(26, 58, 74, 0.08);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  animation: heroCopyIn 0.9s ease-out both;
 }
 
-body.page-index .hero-copy .brand-kicker {
+@keyframes heroCopyIn {
+  from {
+    opacity: 0;
+    transform: translate3d(-18px, 10px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+body.page-index .hero-fullbleed .hero-copy .brand-kicker {
   display: inline-block;
-  font-size: 0.85rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
+  font-family: Fredoka, Quicksand, sans-serif;
+  font-size: clamp(1.05rem, 2.2vw, 1.35rem);
+  font-weight: 700;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--remo-logo-blue-deep);
-  margin: 0 0 10px;
+  color: var(--remo-logo-blue);
+  margin: 0 0 12px;
 }
 
-body.page-index .hero-copy h1 {
-  font-size: clamp(2.15rem, 4.2vw, 3.25rem) !important;
+body.page-index .hero-fullbleed .hero-copy h1 {
+  font-size: clamp(2.25rem, 4.6vw, 3.5rem) !important;
   color: var(--remo-ink) !important;
-  max-width: 18ch;
+  max-width: 14ch;
   margin: 0 0 16px !important;
-  line-height: 1.15 !important;
+  line-height: 1.12 !important;
   text-align: left !important;
   text-shadow: none !important;
 }
 
-body.page-index .hero-copy > p,
-body.page-index .hero-copy p[data-i18n="hero_lead"] {
+body.page-index .hero-fullbleed .hero-copy > p,
+body.page-index .hero-fullbleed .hero-copy p[data-i18n="hero_lead"] {
   color: var(--remo-ink-muted) !important;
-  max-width: 34rem !important;
+  max-width: 32rem !important;
   width: 100%;
-  font-size: 1.12rem !important;
+  font-size: clamp(1.02rem, 1.6vw, 1.15rem) !important;
   margin: 0 0 28px !important;
   margin-left: 0 !important;
   margin-right: 0 !important;
@@ -373,13 +451,54 @@ body.page-index .assessment-cta-cluster .cta-btn.primary {
   font-size: 1.05rem;
 }
 
-body.page-index .hero-media {
+body.page-index .hero-fullbleed .hero-media {
   position: relative;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  min-height: min(58vh, 520px);
+  margin-right: clamp(-20px, -3vw, 0px);
 }
 
-body.page-index .hero-illustration {
-  border-radius: 24px;
-  box-shadow: 0 20px 48px rgba(0, 143, 196, 0.18);
+body.page-index .hero-fullbleed .hero-media__frame {
+  position: relative;
+  width: min(100%, 640px);
+  overflow: hidden;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+body.page-index .hero-fullbleed .hero-illustration {
+  width: 100%;
+  max-width: none !important;
+  height: auto;
+  display: block;
+  object-fit: contain;
+  object-position: right center;
+  background: transparent !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  filter: drop-shadow(0 22px 40px rgba(19, 38, 58, 0.14));
+  transform-origin: 65% 55%;
+  animation: heroKenBurns 18s ease-in-out infinite alternate;
+}
+
+@keyframes heroKenBurns {
+  from {
+    transform: scale(1) translate3d(0, 0, 0);
+  }
+  to {
+    transform: scale(1.06) translate3d(-1.5%, -1%, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.page-index .hero-fullbleed__glow,
+  body.page-index .hero-fullbleed .hero-illustration,
+  body.page-index .hero-fullbleed .hero-copy {
+    animation: none !important;
+  }
 }
 
 /* Benefits: white section, logo-only tints */
@@ -810,7 +929,7 @@ body.page-index .hero-copy h1 {
   color: var(--remo-ink) !important;
 }
 
-/* Hero right column: full-width RemoEd illustration */
+/* Legacy non-fullbleed fallbacks (kept for older markup) */
 body.page-index .hero-media {
   display: flex;
   justify-content: center;
@@ -828,12 +947,33 @@ body.page-index .hero-illustration {
 }
 
 @media (max-width: 900px) {
-  body.page-index .hero-illustration {
-    max-width: min(420px, 92vw);
+  body.page-index .hero-fullbleed .hero-grid {
+    grid-template-columns: 1fr !important;
+    gap: 20px;
+  }
+
+  body.page-index .hero-fullbleed .hero-media {
+    justify-content: center;
+    min-height: 0;
+    margin-right: 0;
+    order: -1;
+  }
+
+  body.page-index .hero-fullbleed .hero-media__frame {
+    width: min(100%, 480px);
+  }
+
+  body.page-index .hero-fullbleed .hero-illustration {
+    max-width: min(480px, 92vw) !important;
   }
 }
 
 @media (max-width: 720px) {
+  body.page-index .hero.japandi-hero.hero-fullbleed {
+    min-height: auto;
+    padding: 36px 0 48px !important;
+  }
+
   body.page-index .assessment-cta-cluster .cta-btn.primary {
     width: 100%;
     max-width: 320px;
@@ -841,27 +981,25 @@ body.page-index .hero-illustration {
     box-sizing: border-box;
   }
 
-  body.page-index .hero-grid {
-    grid-template-columns: 1fr !important;
-    text-align: center;
-  }
-
-  body.page-index .hero-copy {
+  body.page-index .hero-fullbleed .hero-copy {
     align-items: center;
     text-align: center !important;
+    max-width: none;
+    width: 100%;
+    box-sizing: border-box;
   }
 
-  body.page-index .hero-copy h1,
-  body.page-index .hero-copy > p,
-  body.page-index .hero-copy p[data-i18n="hero_lead"] {
+  body.page-index .hero-fullbleed .hero-copy h1,
+  body.page-index .hero-fullbleed .hero-copy > p,
+  body.page-index .hero-fullbleed .hero-copy p[data-i18n="hero_lead"] {
     text-align: center !important;
     max-width: none;
     margin-left: auto !important;
     margin-right: auto !important;
   }
 
-  body.page-index .cta-buttons,
-  body.page-index .assessment-cta-wrap {
+  body.page-index .hero-fullbleed .cta-buttons,
+  body.page-index .hero-fullbleed .assessment-cta-wrap {
     justify-content: center !important;
     width: 100%;
   }
@@ -1403,7 +1541,7 @@ body.page-index .navbar .site-lang-switcher {
   body.page-index .nav-buttons.is-open {
     display: flex;
   }
-  body.page-index .hero-grid {
+  body.page-index .hero-fullbleed .hero-grid {
     grid-template-columns: 1fr !important;
   }
 }

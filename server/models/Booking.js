@@ -52,6 +52,15 @@ const bookingSchema = new mongoose.Schema({
   creditsFinalized: { type: Boolean, default: false },
   /** Booking used the single free trial credit from the public level assessment flow. */
   isAssessmentFreeTrialBooking: { type: Boolean, default: false },
+  /** Set when starting-soon reminder notifications were sent. */
+  classReminderSentAt: { type: Date, default: null },
+  /** After student snoozes a reminder; classReminderService waits until this time. */
+  reminderSnoozeUntil: { type: Date, default: null },
+  /** Last time the teacher manually sent a class reminder from the dashboard. */
+  manualReminderSentAt: { type: Date, default: null },
+  /** Idempotent flags for schedule-presence notifications. */
+  teacherJoinedNotifiedAt: { type: Date, default: null },
+  teacherLateNotifiedAt: { type: Date, default: null },
   // Cancellation tracking
   cancellationTime: { type: Date },
   cancellationReason: {

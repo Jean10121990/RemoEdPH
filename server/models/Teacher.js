@@ -351,7 +351,21 @@ const teacherSchema = new mongoose.Schema({
     effectiveDate: { type: Date, default: null },
     legalName: { type: String, default: '' },
     version: { type: String, default: '' }
-  }
+  },
+  /**
+   * In-app notification preferences (teacher).
+   * quietHours* uses Asia/Manila wall-clock hours (0–23).
+   */
+  notificationPrefs: {
+    reminders: { type: Boolean, default: true },
+    announcements: { type: Boolean, default: true },
+    peerMessages: { type: Boolean, default: true },
+    salary: { type: Boolean, default: true },
+    digestEmail: { type: Boolean, default: false },
+    quietHoursEnabled: { type: Boolean, default: false },
+    quietHoursStart: { type: Number, default: 22 },
+    quietHoursEnd: { type: Number, default: 7 },
+  },
 }, {
   timestamps: true,
   toJSON: { getters: true },

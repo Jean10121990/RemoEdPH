@@ -377,7 +377,7 @@
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script src="js/student-badges.js?v=1"></script>
     <script src="js/teacher-badge-award.js?v=1"></script>
-    <script src="js/presentation-overlay.js?v=lc-slide-fix-2"></script>
+    <script src="js/presentation-overlay.js?v=lc-slide-stack-2"></script>
     <script src="js/virtual-background.js"></script>
     <script src="js/classroom-qa-recording.js?v=lc-polish-3" defer></script>
     <script>
@@ -2353,7 +2353,8 @@
 
       function materialHasRenderablePayload(material) {
         if (!material) return false;
-        if (material.html5EntryUrl || material.embedUrl || material.previewUrl) return true;
+        if (Array.isArray(material.slideUrls) && material.slideUrls.length > 0) return true;
+        if (material.html5EntryUrl || material.embedUrl || material.previewUrl || material.previewPdfPath) return true;
         const d = material.data;
         if (!d) return false;
         if (d.startsWith('/') || d.startsWith('http') || d.startsWith('data:')) return true;
@@ -2389,13 +2390,26 @@
       }
 
       /**
-       * On localhost / private hosts, convert PPTX → same-origin PDF so class can view slides.
-       * On public HTTPS, keep Office Online when available.
+       * Prefer converted slide images / PDF for reliable follow-mode.
+       * Office Online is only kept when no slide stack exists and the host is publicly reachable.
        */
       async function resolvePresentationMaterialForViewer(material) {
         if (!material) return material;
         const pType = material.presentationType || '';
-        if (pType === 'pdf_preview' || pType === 'html5_zip' || pType === 'office_embed') {
+        if (pType === 'slide_stack' || pType === 'html5_zip' || pType === 'office_embed') {
+          return material;
+        }
+        // Upload-time conversion already produced PNGs — use image stack (skip Office Online).
+        if (Array.isArray(material.slideUrls) && material.slideUrls.length > 0) {
+          return Object.assign({}, material, {
+            presentationType: 'slide_stack',
+            slideCount:
+              material.slideCount != null && Number(material.slideCount) >= 1
+                ? Number(material.slideCount)
+                : material.slideUrls.length
+          });
+        }
+        if (pType === 'pdf_preview') {
           return material;
         }
         const fileName = String(material.name || material.html5EntryUrl || '');
@@ -2408,10 +2422,13 @@
         const fileId = material.id || material.materialId || '';
         if (!fileId) return material;
 
-        // Public HTTPS: try Office Online path first (overlay builds embed URL).
-        // Still prefer PDF conversion when Office cannot reach this origin.
-        if (officeOnlineCanReachThisHost() && material.html5EntryUrl && /^https:\/\//i.test(window.location.origin)) {
-          // Keep PPT for Office Online
+        // Public HTTPS without slide images: try Office Online first.
+        if (
+          officeOnlineCanReachThisHost() &&
+          material.html5EntryUrl &&
+          /^https:\/\//i.test(window.location.origin) &&
+          !(Array.isArray(material.slideUrls) && material.slideUrls.length)
+        ) {
           return material;
         }
 
@@ -2435,12 +2452,39 @@
             });
           }
           if (data.mode === 'office_online' && data.embedUrl) {
+            // Prefer local slide stack when conversion assets already exist on the lesson file.
+            if (Array.isArray(data.slideUrls) && data.slideUrls.length) {
+              return Object.assign({}, material, {
+                presentationType: 'slide_stack',
+                slideUrls: data.slideUrls,
+                slideCount: data.slideCount != null ? data.slideCount : data.slideUrls.length,
+                previewPdfPath: data.previewPdfPath || material.previewPdfPath || '',
+                convertedPdfUrl: data.convertedPdfUrl || material.convertedPdfUrl || ''
+              });
+            }
             return Object.assign({}, material, {
               presentationType: 'office_embed',
               embedUrl: data.embedUrl
             });
           }
           if (data.mode === 'pdf') {
+            const slideUrls =
+              Array.isArray(data.slideUrls) && data.slideUrls.length
+                ? data.slideUrls
+                : material.slideUrls || [];
+            if (slideUrls.length) {
+              return Object.assign({}, material, {
+                presentationType: 'slide_stack',
+                slideUrls: slideUrls,
+                slideCount: data.slideCount != null ? data.slideCount : slideUrls.length,
+                previewPdfPath:
+                  data.previewPdfPath ||
+                  `/api/lessons/presentation/${encodeURIComponent(fileId)}/preview.pdf`,
+                convertedPdfUrl: data.convertedPdfUrl || material.convertedPdfUrl || '',
+                // Keep a downloadable PDF path for fallback tooling
+                data: material.data || material.html5EntryUrl || ''
+              });
+            }
             const pdfPath =
               data.previewPdfPath ||
               (data.previewUrl && String(data.previewUrl).startsWith('/api/')
@@ -2455,7 +2499,10 @@
               data: pdfPath.split('?')[0],
               html5EntryUrl: '',
               embedUrl: '',
-              previewPdfPath: pdfPath.split('?')[0]
+              previewPdfPath: pdfPath.split('?')[0],
+              convertedPdfUrl: data.convertedPdfUrl || material.convertedPdfUrl || '',
+              slideCount: data.slideCount != null ? data.slideCount : material.slideCount,
+              slideUrls: []
             });
           }
         } catch (err) {
@@ -2485,6 +2532,8 @@
 
         const needsPptResolve =
           material.presentationType !== 'pdf_preview' &&
+          material.presentationType !== 'slide_stack' &&
+          !(Array.isArray(material.slideUrls) && material.slideUrls.length > 0) &&
           (/\.(ppt|pptx)$/i.test(material.name || '') ||
             String(material.type || '').toLowerCase().includes('ppt') ||
             /\.(ppt|pptx)(\?|$)/i.test(material.html5EntryUrl || '') ||
@@ -2535,16 +2584,25 @@
         // Check file type - support both MIME type and file extension
         const fileType = (material.type || '').toLowerCase();
         const fileName = (material.name || '').toLowerCase();
+        const hasSlideStack =
+          material.presentationType === 'slide_stack' ||
+          (Array.isArray(material.slideUrls) && material.slideUrls.length > 0);
         const isImage = fileType.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp)$/i.test(fileName);
-        const isPDF = fileType.includes('pdf') || fileType.includes('application/pdf') || fileName.endsWith('.pdf') || material.presentationType === 'pdf_preview';
+        const isPDF =
+          !hasSlideStack &&
+          (fileType.includes('pdf') ||
+            fileType.includes('application/pdf') ||
+            fileName.endsWith('.pdf') ||
+            material.presentationType === 'pdf_preview');
         const isVideo = fileType.includes('video') || /\.(mp4|webm|ogg)$/i.test(fileName);
         const isPpt =
-          !isPDF &&
-          (fileType.includes('ppt') ||
-          /\.(ppt|pptx)$/i.test(fileName) ||
-          material.presentationType === 'office_embed' ||
-          material.presentationType === 'html5_zip' ||
-          (!!material.html5EntryUrl && /\.(ppt|pptx)(\?|$)/i.test(material.html5EntryUrl || '')));
+          hasSlideStack ||
+          (!isPDF &&
+            (fileType.includes('ppt') ||
+              /\.(ppt|pptx)$/i.test(fileName) ||
+              material.presentationType === 'office_embed' ||
+              material.presentationType === 'html5_zip' ||
+              (!!material.html5EntryUrl && /\.(ppt|pptx)(\?|$)/i.test(material.html5EntryUrl || ''))));
 
         if (isImage) {
           console.log('🖼️ [CLIENT] Displaying as image');
@@ -3603,7 +3661,7 @@
                 socket.emit('presenter-mode-start', { room });
               }
             }
-            // Broadcast presentation (URL-based, not base64) to students
+            // Broadcast presentation (URL + slide stack metadata) to students for follow-mode
             if (socket && socket.connected) {
               setTimeout(() => {
                 const payload = {
@@ -3616,9 +3674,18 @@
                   html5EntryUrl: material.html5EntryUrl || '',
                   embedUrl: material.embedUrl || '',
                   presentationType: material.presentationType || 'file',
+                  slideCount: material.slideCount != null ? material.slideCount : null,
+                  slideUrls: Array.isArray(material.slideUrls) ? material.slideUrls : [],
+                  previewPdfPath: material.previewPdfPath || '',
+                  convertedPdfUrl: material.convertedPdfUrl || '',
                   uploader: material.uploader || 'Teacher'
                 };
-                if (payload.html5EntryUrl || payload.embedUrl || (payload.data && payload.data.length > 8)) {
+                if (
+                  payload.html5EntryUrl ||
+                  payload.embedUrl ||
+                  (payload.slideUrls && payload.slideUrls.length) ||
+                  (payload.data && payload.data.length > 8)
+                ) {
                   socket.emit('lesson-file-select', { room, materialId: material.id, material: payload });
                 }
               }, 400);
@@ -3934,7 +4001,15 @@
         }
         
         // Validate material has required fields
-        if (!material.id || (!material.data && !material.html5EntryUrl && !material.embedUrl && !material.previewUrl && !material.previewPdfPath)) {
+        if (
+          !material.id ||
+          (!material.data &&
+            !material.html5EntryUrl &&
+            !material.embedUrl &&
+            !material.previewUrl &&
+            !material.previewPdfPath &&
+            !(Array.isArray(material.slideUrls) && material.slideUrls.length > 0))
+        ) {
           console.error('⚠️ Invalid material received - missing id or data:', { hasId: !!material.id, hasData: !!material.data, material });
           // Try to get from lessonState if available
           const existingMaterial = lessonState.get(materialId);
@@ -6369,7 +6444,10 @@
               uploadedAt: file.uploadedAt ? new Date(file.uploadedAt).getTime() : Date.now(),
               presentationType: file.presentationType || 'file',
               embedUrl: file.embedUrl || '',
-              html5EntryUrl: file.html5EntryUrl || file.fileUrl || ''
+              html5EntryUrl: file.html5EntryUrl || file.fileUrl || '',
+              slideCount: file.slideCount != null ? file.slideCount : null,
+              slideUrls: Array.isArray(file.slideUrls) ? file.slideUrls : [],
+              convertedPdfUrl: file.convertedPdfUrl || ''
             };
             
             // Only log first file details, summarize others
@@ -6660,6 +6738,22 @@
                 console.warn('Badge award:', awardErr);
               }
               alert(data.message || 'Feedback saved and class finalized.');
+              try {
+                await fetch('/api/lessons/progress/update', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: 'Bearer ' + token
+                  },
+                  body: JSON.stringify({
+                    bookingId: bid,
+                    status: 'completed',
+                    notes: 'Class finalized after wrap-up feedback'
+                  })
+                });
+              } catch (progErr) {
+                console.warn('lesson progress finalize:', progErr);
+              }
               window.location.href = 'teacher-class-table.html';
             } catch (err) {
               console.error(err);
@@ -6747,6 +6841,24 @@
                     return;
                   }
                   console.warn('end-session:', ed.error || endRes.status);
+                } else {
+                  // Wire LessonProgress API (server also upserts on end-session / finalize)
+                  try {
+                    await fetch('/api/lessons/progress/update', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: 'Bearer ' + token
+                      },
+                      body: JSON.stringify({
+                        bookingId: bookingId,
+                        status: 'in_progress',
+                        notes: 'Class finish from live classroom'
+                      })
+                    });
+                  } catch (progErr) {
+                    console.warn('lesson progress update:', progErr);
+                  }
                 }
               } catch (endErr) {
                 console.warn('end-session request failed:', endErr);

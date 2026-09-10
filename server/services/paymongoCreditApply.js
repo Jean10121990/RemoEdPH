@@ -193,6 +193,38 @@ async function applyExistingStudentPurchase({
   }
 
   const availableBalance = balanceAfterPurchase;
+
+  try {
+    const { notifyStudent } = require('./notifyService');
+    const uname = student.username || student.email;
+    if (uname && creditsToAdd > 0) {
+      await notifyStudent(
+        uname,
+        'credits-topup',
+        `Payment received: +${creditsToAdd} lesson credit${creditsToAdd === 1 ? '' : 's'}. Balance: ${availableBalance}.`,
+        {
+          actionUrl: '/student-credits.html',
+          importance: 'actionable',
+          meta: { creditsAdded: creditsToAdd, availableBalance, plan: normalizedPlanId },
+        }
+      );
+      if (availableBalance <= 3) {
+        await notifyStudent(
+          uname,
+          'credits-low',
+          `Your credit balance is low (${availableBalance} left). Top up to keep booking classes.`,
+          {
+            actionUrl: '/student-credits.html',
+            importance: 'actionable',
+            meta: { availableBalance },
+          }
+        );
+      }
+    }
+  } catch (nErr) {
+    console.warn('[paymongoCreditApply] credit notify failed:', nErr.message || nErr);
+  }
+
   return {
     ok: true,
     duplicate: false,

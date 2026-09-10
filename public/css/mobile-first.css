@@ -204,6 +204,33 @@ canvas {
     margin: 0 !important;
   }
 
+  /* Mobile drawer: ignore desktop mini-rail collapse so labels stay readable */
+  html body .remoed-main > [id$="-sidebar-root"] > nav.remoed-sidebar.sidebar-collapsed .sidebar-brand,
+  html body .remoed-main > [id$="-sidebar-root"] > nav.remoed-sidebar.sidebar-collapsed .sidebar-subtitle,
+  html body .remoed-main > [id$="-sidebar-root"] > nav.remoed-sidebar.sidebar-collapsed .remoed-username,
+  html body .remoed-main > [id$="-sidebar-root"] > nav.remoed-sidebar.sidebar-collapsed .remoed-menu .menu-label,
+  html body .remoed-main > [id$="-sidebar-root"] > nav.remoed-sidebar.sidebar-collapsed .remoed-menu .remoed-menu-label {
+    display: block !important;
+  }
+
+  html body .remoed-main > [id$="-sidebar-root"] > nav.remoed-sidebar.sidebar-collapsed .sidebar-header-inner {
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    gap: 12px !important;
+    padding: 10px 15px !important;
+  }
+
+  html body .remoed-main > [id$="-sidebar-root"] > nav.remoed-sidebar.sidebar-collapsed .sidebar-user-inner {
+    justify-content: flex-start !important;
+  }
+
+  html body .remoed-main > [id$="-sidebar-root"] > nav.remoed-sidebar.sidebar-collapsed .remoed-menu li {
+    justify-content: flex-start !important;
+    padding: 12px 16px !important;
+    gap: 12px !important;
+  }
+
   body.remoed-drawer-open .remoed-main > [id$="-sidebar-root"] > nav.remoed-sidebar {
     transform: translate3d(0, 0, 0);
   }

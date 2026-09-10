@@ -186,6 +186,10 @@
             <span class="cim-field-label">Lesson</span>
             <span class="cim-field-value" id="class-lesson"></span>
           </div>
+          <div class="cim-field">
+            <span class="cim-field-label">Lesson progress</span>
+            <span class="cim-field-value" id="class-lesson-progress">—</span>
+          </div>
           <div class="cim-field cim-field--wide">
             <span class="cim-field-label">Classroom ID</span>
             <span class="cim-field-value cim-field-value--id" id="classroom-id"></span>
@@ -1511,6 +1515,7 @@
       document.getElementById('class-level').textContent = booking.studentLevel || 'Not specified';
       document.getElementById('class-lesson').textContent = booking.lesson || 'Not specified';
       document.getElementById('classroom-id').textContent = booking.classroomId || 'Not set';
+      loadClassLessonProgressStatus(booking);
       
       // Check if class management buttons should be shown
       const classManagementButtons = document.getElementById('class-management-buttons');
@@ -1615,6 +1620,63 @@
       
       // Show modal
       document.getElementById('class-info-modal').classList.add('show');
+    }
+
+    async function loadClassLessonProgressStatus(booking) {
+      const el = document.getElementById('class-lesson-progress');
+      if (!el) return;
+      const st = String(booking && booking.status || '').toLowerCase();
+      if (st === 'completed' || (booking.attendance && booking.attendance.classCompleted)) {
+        el.textContent = 'Completed';
+      } else if (st === 'pending_feedback') {
+        el.textContent = 'In progress (awaiting feedback)';
+      } else {
+        el.textContent = 'Not started';
+      }
+      try {
+        const sid =
+          (typeof booking.studentId === 'string' && booking.studentId) ||
+          booking.studentId?.username ||
+          booking.studentId?.email ||
+          booking.studentUsername ||
+          '';
+        const lessonId =
+          (booking.lessonId && (booking.lessonId._id || booking.lessonId)) ||
+          booking.resolvedLessonId ||
+          '';
+        if (!sid) return;
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        const resp = await fetch('/api/lessons/progress/' + encodeURIComponent(sid), {
+          headers: { Authorization: 'Bearer ' + token },
+        });
+        if (!resp.ok) return;
+        const list = await resp.json().catch(() => []);
+        if (!Array.isArray(list) || !list.length) return;
+        let match = null;
+        if (lessonId) {
+          match = list.find(function (p) {
+            const pid = p.lessonId && (p.lessonId._id || p.lessonId);
+            return String(pid) === String(lessonId);
+          });
+        }
+        if (!match && booking._id) {
+          match = list.find(function (p) {
+            return String(p.bookingId || '') === String(booking._id);
+          });
+        }
+        if (!match) return;
+        const status = String(match.status || '').toLowerCase();
+        if (status === 'completed') {
+          el.textContent = 'Completed' + (match.completedAt ? ' · ' + new Date(match.completedAt).toLocaleDateString() : '');
+        } else if (status === 'in_progress') {
+          el.textContent = 'In progress';
+        } else {
+          el.textContent = 'Not started';
+        }
+      } catch (err) {
+        console.warn('Lesson progress status:', err);
+      }
     }
 
     function closeClassInfo(opts) {

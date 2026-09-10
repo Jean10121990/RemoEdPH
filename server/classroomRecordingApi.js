@@ -19,18 +19,18 @@ const ClassroomRecording = require('./models/ClassroomRecording');
 const Booking = require('./models/Booking');
 const {
   verifyToken,
-  requireAdmin,
   verifyAdminApiAuth,
   requireAdminTwoFactorSatisfied,
   requireAdminSessionValid,
+  requireAdminQaOrSuper,
 } = require('./authMiddleware');
 
-/** Admin list/download/delete for recordings — same auth as /api/admin (session cookie or Bearer JWT). */
+/** Admin list/download/delete for recordings — QA + Super-Admin only (matches QA Hub UI). */
 const adminRecordingAuthChain = [
   verifyAdminApiAuth,
   requireAdminTwoFactorSatisfied,
   requireAdminSessionValid,
-  requireAdmin,
+  requireAdminQaOrSuper,
 ];
 
 const UPLOAD_DIR = path.join(__dirname, '../uploads/classroom-recordings');

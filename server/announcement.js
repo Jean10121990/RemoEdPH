@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 
-// Import Announcement model
 const Announcement = require('./models/Announcement');
+const { verifyAdminApiAuth, requireAdmin } = require('./authMiddleware');
 
-// Get announcements (optionally filtered by role)
+// Get announcements (optionally filtered by role) — public read for portal dashboards
 router.get('/announcement', async (req, res) => {
   try {
     const role = req.query.role;
@@ -50,10 +50,9 @@ function roleFromAudience(audience) {
 }
 
 // Post new announcement (admin only)
-router.post('/announcement', async (req, res) => {
+router.post('/announcement', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
     const { content, audience } = req.body;
-    // (In production, check admin token here)
     if (!content || !audience) {
       return res.status(400).json({ success: false, message: 'Content and audience required' });
     }
@@ -66,24 +65,34 @@ router.post('/announcement', async (req, res) => {
     const ann = new Announcement({ content, role, updatedAt: new Date() });
     await ann.save();
     
-    // Create notifications for teachers if announcement is for teachers or all
-    if (audience === 'teachers' || audience === 'all') {
-      try {
-        const Notification = require('./models/Notification');
-        const Teacher = require('./models/Teacher');
-        const teachers = await Teacher.find({});
-        
+    // Create notifications for teachers / students based on audience
+    try {
+      const { notifyTeacher, notifyStudent } = require('./services/notifyService');
+      const Teacher = require('./models/Teacher');
+      const Student = require('./models/Student');
+      const preview = `New announcement: "${content.substring(0, 50)}${content.length > 50 ? '...' : ''}"`;
+
+      if (audience === 'teachers' || audience === 'all') {
+        const teachers = await Teacher.find({}).select('teacherId').lean();
         for (const teacher of teachers) {
-          await Notification.create({
-            teacherId: teacher._id.toString(),
-            type: 'announcement',
-            message: `New announcement: "${content.substring(0, 50)}${content.length > 50 ? '...' : ''}"`,
-            read: false
+          if (!teacher.teacherId) continue;
+          await notifyTeacher(teacher.teacherId, 'announcement', preview, {
+            actionUrl: '/teacher-dashboard.html',
           });
         }
-      } catch (error) {
-        console.error('Error creating announcement notifications:', error);
       }
+
+      if (audience === 'students' || audience === 'all') {
+        const students = await Student.find({}).select('username').limit(5000).lean();
+        for (const student of students) {
+          if (!student.username) continue;
+          await notifyStudent(student.username, 'announcement', preview, {
+            actionUrl: '/student-dashboard.html',
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error creating announcement notifications:', error);
     }
     
     res.json({ success: true, announcement: { ...ann.toObject(), audience: audienceFromRole(ann.role) } });
@@ -94,7 +103,7 @@ router.post('/announcement', async (req, res) => {
 });
 
 // Update existing announcement (admin only)
-router.put('/announcement/:id', async (req, res) => {
+router.put('/announcement/:id', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { content, audience } = req.body;
@@ -126,7 +135,7 @@ router.put('/announcement/:id', async (req, res) => {
 });
 
 // Delete announcement (admin only) - POST for robustness
-router.post('/announcement/delete', async (req, res) => {
+router.post('/announcement/delete', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
     const { id } = req.body;
 

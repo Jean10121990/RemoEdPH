@@ -64,6 +64,38 @@
         </div>
     </div>
 
+    <div id="feedback-modal" class="feedback-modal" hidden aria-hidden="true" role="dialog" aria-labelledby="feedback-modal-title">
+        <div class="feedback-modal-backdrop" data-close-feedback></div>
+        <div class="feedback-modal-panel">
+            <div class="feedback-modal-header">
+                <h2 id="feedback-modal-title">Teacher feedback</h2>
+                <button type="button" class="feedback-modal-close" data-close-feedback aria-label="Close">&times;</button>
+            </div>
+            <div id="feedback-modal-body" class="feedback-modal-body"></div>
+        </div>
+    </div>
+    <style>
+        .page-student-booking-history .table-actions .action-link {
+            background: none; border: none; padding: 0; color: #00aeef; cursor: pointer;
+            font: inherit; text-decoration: underline; margin-right: 8px;
+        }
+        .feedback-modal { position: fixed; inset: 0; z-index: 10000; display: flex; align-items: center; justify-content: center; padding: 16px; }
+        .feedback-modal[hidden] { display: none !important; }
+        .feedback-modal-backdrop { position: absolute; inset: 0; background: rgba(15, 23, 42, 0.45); }
+        .feedback-modal-panel {
+            position: relative; z-index: 1; width: min(420px, 100%);
+            background: #fff; border-radius: 12px; box-shadow: 0 16px 40px rgba(15, 23, 42, 0.2);
+            padding: 20px 22px;
+        }
+        .feedback-modal-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+        .feedback-modal-header h2 { margin: 0; font-size: 1.15rem; color: #0f172a; }
+        .feedback-modal-close { border: none; background: transparent; font-size: 1.5rem; line-height: 1; cursor: pointer; color: #64748b; }
+        .feedback-modal-stars { color: #f59e0b; font-size: 1.25rem; margin: 8px 0; }
+        .feedback-modal-stars span { color: #64748b; font-size: 0.9rem; }
+        .feedback-modal-comment { color: #334155; white-space: pre-wrap; margin: 8px 0 4px; }
+        .feedback-modal-date, .feedback-modal-teacher, .feedback-modal-empty { color: #64748b; font-size: 0.9rem; }
+    </style>
+
          <!-- Same-origin Luxon avoids Brave/Edge tracking-prevention blocking third-party CDNs -->
          <script src="/vendor/luxon.min.js"></script>
          <script src="timezone-utils.js"></script>
@@ -158,6 +190,12 @@
              
              loadBookingHistory();
              setupFilterTabs();
+             document.querySelectorAll('[data-close-feedback]').forEach(function (el) {
+                 el.addEventListener('click', closeFeedbackModal);
+             });
+             document.addEventListener('keydown', function (e) {
+                 if (e.key === 'Escape') closeFeedbackModal();
+             });
          });
 
         // Load booking history from API (paginated recent rows; 10s client timeout + Retry UI)
@@ -366,6 +404,7 @@
         // Get table actions
         function getTableActions(booking, status) {
             const actions = [];
+            const bid = String(booking._id || '').replace(/'/g, "\\'");
             
             if (status === 'Upcoming') {
                 if (booking.classroomId) {
@@ -373,8 +412,14 @@
                 }
             } else if (status === 'Completed' || status === 'Finished') {
                 actions.push(`<a href="student-class-table.html" class="action-link">View</a>`);
+                if (booking.teacherFeedback) {
+                    actions.push(`<button type="button" class="action-link" onclick="viewFeedback('${bid}')">Feedback</button>`);
+                }
             } else if (status === 'Past' && booking.status !== 'completed' && booking.status !== 'cancelled') {
                 actions.push(`<a href="student-class-table.html" class="action-link">View</a>`);
+                if (booking.teacherFeedback) {
+                    actions.push(`<button type="button" class="action-link" onclick="viewFeedback('${bid}')">Feedback</button>`);
+                }
             }
             
             return actions.join('') || '-';
@@ -548,10 +593,47 @@
             }
         }
 
-        // View feedback
+        // View teacher→student feedback for a booking
         function viewFeedback(bookingId) {
-            // This would open a modal or navigate to feedback page
-            alert('Feedback feature coming soon!');
+            const booking = (allBookings || []).find(function (b) {
+                return String(b._id) === String(bookingId);
+            });
+            const fb = booking && booking.teacherFeedback;
+            const modal = document.getElementById('feedback-modal');
+            const body = document.getElementById('feedback-modal-body');
+            if (!modal || !body) {
+                if (!fb) {
+                    alert('No teacher feedback is available for this class yet.');
+                } else {
+                    alert('Rating: ' + fb.rating + '/5\n\n' + (fb.comment || 'No comment.'));
+                }
+                return;
+            }
+            if (!fb) {
+                body.innerHTML = '<p class="feedback-modal-empty">No teacher feedback is available for this class yet.</p>';
+            } else {
+                const stars = '★'.repeat(Math.max(0, Math.min(5, Number(fb.rating) || 0))) +
+                    '☆'.repeat(Math.max(0, 5 - Math.min(5, Number(fb.rating) || 0)));
+                const when = fb.submittedAt
+                    ? new Date(fb.submittedAt).toLocaleString('en-PH', { timeZone: 'Asia/Manila' })
+                    : '';
+                const teacherName = booking ? getTeacherName(booking) : 'Your teacher';
+                body.innerHTML =
+                    '<p class="feedback-modal-teacher">From <strong>' + escapeHtml(teacherName) + '</strong></p>' +
+                    '<p class="feedback-modal-stars" aria-label="Rating ' + (fb.rating || 0) + ' of 5">' + stars +
+                    ' <span>(' + (fb.rating || 0) + '/5)</span></p>' +
+                    '<p class="feedback-modal-comment">' + escapeHtml(fb.comment || 'No written comments.') + '</p>' +
+                    (when ? '<p class="feedback-modal-date">' + escapeHtml(when) + '</p>' : '');
+            }
+            modal.hidden = false;
+            modal.setAttribute('aria-hidden', 'false');
+        }
+
+        function closeFeedbackModal() {
+            const modal = document.getElementById('feedback-modal');
+            if (!modal) return;
+            modal.hidden = true;
+            modal.setAttribute('aria-hidden', 'true');
         }
 
         // Show success message

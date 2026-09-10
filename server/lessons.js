@@ -24,6 +24,8 @@ const {
 } = require('./utils/presentationUpload');
 const {
   buildLessonPptxPreviewPdf,
+  convertPptxUploadAssets,
+  countSlidesInPptx,
   publicPreviewUrl
 } = require('./utils/pptxLocalPreview');
 
@@ -202,6 +204,39 @@ function isPptPresentation(fileName, fileType) {
   const n = String(fileName || '').toLowerCase();
   const t = String(fileType || '').toLowerCase();
   return /\.(ppt|pptx)$/.test(n) || t.includes('powerpoint') || t.includes('presentation');
+}
+
+/**
+ * Convert PPT/PPTX to PDF + slide PNGs and attach metadata on the lesson file.
+ * Upload still succeeds if conversion tooling is unavailable.
+ */
+async function attachPptxConversionMetadata(newFile, sourcePath) {
+  if (!newFile || !sourcePath) return newFile;
+  if (!isPptPresentation(newFile.fileName, newFile.fileType)) return newFile;
+
+  try {
+    const assets = await convertPptxUploadAssets({
+      sourcePath,
+      fileName: newFile.fileName,
+      fileId: newFile._id,
+      destDir: newFile.html5PackagePath || path.join(PRESENTATIONS_ROOT, String(newFile._id))
+    });
+    newFile.convertedPdfUrl = assets.convertedPdfUrl || '';
+    newFile.slideUrls = Array.isArray(assets.slideUrls) ? assets.slideUrls : [];
+    newFile.slideCount = assets.slideCount != null ? assets.slideCount : null;
+    console.log(
+      `[UPLOAD] PPTX converted file=${newFile._id} slides=${newFile.slideCount || 0} images=${newFile.slideUrls.length} method=${assets.method || 'n/a'}`
+    );
+  } catch (err) {
+    console.warn('[UPLOAD] PPTX conversion skipped:', err.message || err);
+    try {
+      const n = countSlidesInPptx(sourcePath);
+      if (n >= 1) newFile.slideCount = n;
+    } catch (_countErr) {
+      /* ignore */
+    }
+  }
+  return newFile;
 }
 
 /** HTTP Range: bytes=start-end (PDF.js / browsers may request partial content) */
@@ -977,9 +1012,16 @@ router.post('/lesson/:lessonId/upload-file', authenticateToken, requireTeacher, 
         embedUrl: '',
         html5PackagePath: destDir,
         html5EntryUrl: entryUrl,
+        slideCount: null,
+        slideUrls: [],
+        convertedPdfUrl: '',
         uploadedBy,
         isPermanent: false
       };
+
+      if (isPptPresentation(fileName, fileType)) {
+        await attachPptxConversionMetadata(newFile, destPath);
+      }
     } else {
       if (!fileData) {
         return res.status(400).json({ error: 'Missing file data' });
@@ -1174,6 +1216,25 @@ router.get('/presentation/:fileId/local-preview', authenticateToken, async (req,
       });
     }
 
+    // Prefer converted slide images / PDF when available (reliable live-class follow-mode).
+    // Office Online only when no local slide assets exist and Microsoft can fetch the file.
+    const existingSlideUrls = Array.isArray(file.slideUrls) ? file.slideUrls.filter(Boolean) : [];
+    if (existingSlideUrls.length > 0) {
+      const previewUrl = publicPreviewUrl(fileId);
+      return res.json({
+        success: true,
+        mode: 'pdf',
+        previewUrl,
+        previewPdfPath: `/api/lessons/presentation/${encodeURIComponent(fileId)}/preview.pdf`,
+        cached: true,
+        method: 'slide_stack',
+        fileName: (file.fileName || 'presentation').replace(/\.(ppt|pptx)$/i, '.pdf'),
+        slideCount: file.slideCount != null ? file.slideCount : existingSlideUrls.length,
+        slideUrls: existingSlideUrls,
+        convertedPdfUrl: file.convertedPdfUrl || previewUrl
+      });
+    }
+
     // Prefer Office Online only when the PPTX is on a public HTTPS host Microsoft can fetch.
     const officePreview = resolveLessonPptxPreview(file);
     if (!officePreview.error && officePreview.mode === 'office_online' && officePreview.embedUrl) {
@@ -1182,7 +1243,9 @@ router.get('/presentation/:fileId/local-preview', authenticateToken, async (req,
         mode: 'office_online',
         previewUrl: officePreview.embedUrl,
         embedUrl: officePreview.embedUrl,
-        fileName: file.fileName
+        fileName: file.fileName,
+        slideCount: file.slideCount != null ? file.slideCount : null,
+        slideUrls: []
       });
     }
 
@@ -1202,7 +1265,10 @@ router.get('/presentation/:fileId/local-preview', authenticateToken, async (req,
       previewPdfPath: `/api/lessons/presentation/${encodeURIComponent(fileId)}/preview.pdf`,
       cached: !!result.cached,
       method: result.method || null,
-      fileName: (file.fileName || 'presentation').replace(/\.(ppt|pptx)$/i, '.pdf')
+      fileName: (file.fileName || 'presentation').replace(/\.(ppt|pptx)$/i, '.pdf'),
+      slideCount: file.slideCount != null ? file.slideCount : null,
+      slideUrls: Array.isArray(file.slideUrls) ? file.slideUrls : [],
+      convertedPdfUrl: file.convertedPdfUrl || previewUrl
     });
   } catch (error) {
     console.error('Presentation local-preview error:', error);
@@ -1328,11 +1394,29 @@ router.get('/progress/:studentId', authenticateToken, async (req, res) => {
   }
 });
 
-// Update lesson progress (teacher marks as completed)
+// Update lesson progress (teacher marks as completed / in_progress)
+// Accepts either explicit studentId+lessonId+curriculumId, or bookingId (auto-resolves).
 router.post('/progress/update', authenticateToken, requireTeacher, async (req, res) => {
   try {
     const { studentId, lessonId, curriculumId, bookingId, status, notes } = req.body;
     const teacherId = req.user.teacherId || req.user.userId;
+    const normalizedStatus = status || 'completed';
+
+    if (bookingId && (!studentId || !lessonId || !curriculumId)) {
+      const { upsertLessonProgressFromBooking } = require('./services/lessonProgressFromBooking');
+      const result = await upsertLessonProgressFromBooking(bookingId, {
+        status: normalizedStatus,
+        teacherId,
+        notes: notes || '',
+      });
+      if (!result.progress) {
+        return res.status(400).json({
+          error: 'Could not resolve lesson progress from booking',
+          reason: result.skipped || 'unknown',
+        });
+      }
+      return res.json({ message: 'Progress updated successfully', progress: result.progress });
+    }
 
     if (!studentId || !lessonId || !curriculumId) {
       return res.status(400).json({ error: 'Missing required fields' });
@@ -1345,8 +1429,8 @@ router.post('/progress/update', authenticateToken, requireTeacher, async (req, r
         lessonId,
         curriculumId,
         bookingId,
-        status: status || 'completed',
-        completedAt: status === 'completed' ? new Date() : null,
+        status: normalizedStatus,
+        completedAt: normalizedStatus === 'completed' ? new Date() : null,
         teacherId,
         notes: notes || ''
       },

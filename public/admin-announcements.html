@@ -80,6 +80,23 @@
             loadAnnouncements();
         });
 
+        function adminApiFetchInit(init) {
+            const cfg = Object.assign({ credentials: 'include' }, init || {});
+            const headers = Object.assign({}, cfg.headers || {});
+            const token =
+                (window.RemoedAdminSession && RemoedAdminSession.getAuthToken
+                    ? RemoedAdminSession.getAuthToken()
+                    : (localStorage.getItem('remoed_admin_token') ||
+                        localStorage.getItem('remoed_admin_auth') ||
+                        localStorage.getItem('adminToken') ||
+                        '')) || '';
+            if (token && !headers.Authorization && !headers.authorization) {
+                headers.Authorization = 'Bearer ' + token;
+            }
+            cfg.headers = headers;
+            return cfg;
+        }
+
         document.getElementById('announcement-form').onsubmit = async function(e) {
             e.preventDefault();
             
@@ -96,11 +113,11 @@
                 const url = isEditing ? `/api/announcement/${editingAnnouncementId}` : '/api/announcement';
                 const method = isEditing ? 'PUT' : 'POST';
 
-                const response = await fetch(url, {
+                const response = await fetch(url, adminApiFetchInit({
                     method,
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ content, audience })
-                });
+                }));
                 
                 const data = await response.json();
                 
@@ -111,7 +128,7 @@
                     editingAnnouncementId = null;
                     loadAnnouncements(); // Reload the list
                 } else {
-                    alert(data.message || 'Failed to save announcement.');
+                    alert(data.message || data.error || 'Failed to save announcement.');
                 }
             } catch (error) {
                 console.error('Error saving announcement:', error);
@@ -121,7 +138,7 @@
 
         async function loadAnnouncements() {
             try {
-                const response = await fetch('/api/announcement');
+                const response = await fetch('/api/announcement', adminApiFetchInit());
                 const announcements = await response.json();
                 
                 // Cache announcements globally so we can edit by ID without embedding content in onclick
@@ -129,7 +146,7 @@
 
                 const container = document.getElementById('announcements-container');
                 
-                if (!announcements.length) {
+                if (!Array.isArray(announcements) || !announcements.length) {
                     container.innerHTML = '<p style="color: #888; text-align: center;">No announcements yet.</p>';
                     return;
                 }
@@ -175,11 +192,11 @@
             }
 
             try {
-                const response = await fetch('/api/announcement/delete', {
+                const response = await fetch('/api/announcement/delete', adminApiFetchInit({
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ id })
-                });
+                }));
                 const data = await response.json();
 
                 if (data.success) {
@@ -192,7 +209,7 @@
                     }
                     loadAnnouncements();
                 } else {
-                    alert(data.message || 'Failed to delete announcement.');
+                    alert(data.message || data.error || 'Failed to delete announcement.');
                 }
             } catch (error) {
                 console.error('Error deleting announcement:', error);

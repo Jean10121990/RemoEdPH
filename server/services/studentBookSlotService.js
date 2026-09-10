@@ -11,6 +11,7 @@ const Notification = require('../models/Notification');
 const slotsRedisCache = require('./slotsRedisCache');
 const slotBookingLock = require('./slotBookingLock');
 const realtime = require('../realtime');
+const { notifyTeacher, notifyStudent } = require('./notifyService');
 const {
   getAvailableBookingCredits,
   getCreditPoolTotal,
@@ -99,14 +100,9 @@ function normalizeBookingStartToUtcIso(raw) {
   return dt.toUTC().toISO();
 }
 
-async function createBookingNotification(teacherId, type, message) {
+async function createBookingNotification(teacherId, type, message, extra = {}) {
   try {
-    await Notification.create({
-      teacherId: teacherId.toString(),
-      type,
-      message,
-      read: false
-    });
+    await notifyTeacher(teacherId, type, message, extra);
   } catch (error) {
     console.error('Error creating notification:', error);
   }
@@ -503,11 +499,48 @@ async function runBookSlot(req, res) {
 
       const studentName = studentDisplayNameForNotification(student, studentId);
       const whenLabel = bookingWhenLabelForNotification(canonicalUtc, existingSlot, timezone || 'Asia/Manila');
-      await createBookingNotification(
-        chosenTeacherId,
-        'booking',
-        `New class booked for ${whenLabel} with ${studentName}.`
-      );
+      try {
+        await createBookingNotification(
+          chosenTeacherId,
+          'booking',
+          `New class booked for ${whenLabel} with ${studentName}.`,
+          {
+            bookingId: String(booking._id),
+            actionUrl: '/teacher-class-table.html',
+          }
+        );
+        await notifyStudent(
+          studentId,
+          'booking',
+          `Your class is confirmed for ${whenLabel}.`,
+          {
+            bookingId: String(booking._id),
+            actionUrl: '/student-dashboard.html',
+            meta: { teacherId: chosenTeacherId, lesson },
+          }
+        );
+      } catch (notifErr) {
+        console.warn('Booking notify failed:', notifErr && notifErr.message ? notifErr.message : notifErr);
+      }
+
+      try {
+        const refreshedForCredits = await Student.findById(req.user.studentId).lean();
+        const bal = getAvailableBookingCredits(refreshedForCredits);
+        if (typeof bal === 'number' && bal <= 2 && bal >= 0) {
+          await notifyStudent(
+            studentId,
+            'credits-low',
+            `Only ${bal} lesson credit${bal === 1 ? '' : 's'} left after this booking. Consider topping up soon.`,
+            {
+              actionUrl: '/student-credits.html',
+              importance: 'actionable',
+              meta: { availableBalance: bal },
+            }
+          );
+        }
+      } catch (_lowErr) {
+        /* non-fatal */
+      }
 
       try {
         const payload = {

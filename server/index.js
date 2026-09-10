@@ -1,3 +1,5 @@
+// Sentry first (auto-instrumentation); no-op without SENTRY_DSN.
+const { Sentry, isSentryEnabled } = require('./instrument');
 require('dotenv').config();
 // Patch Express to forward async handler rejections to error middleware (Sonar Reliability).
 require('express-async-errors');
@@ -39,7 +41,7 @@ const { DateTime } = require('luxon');
 // LessonSlides model removed - PPTX conversion still works but slides are not saved to database
 const fs = require('fs');
 // AdmZip removed - no longer needed for file conversion
-const { verifyToken, requireTeacher } = require('./authMiddleware');
+const { verifyToken, requireTeacher, requireAdmin, verifyAdminApiAuth } = require('./authMiddleware');
 const jwt = require('jsonwebtoken');
 const { isTokenBlacklisted } = require('./services/jwtBlacklist');
 const SOCKET_AUTH_JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
@@ -343,8 +345,11 @@ ensurePdfjsAssets();
 // Serve PDF.js assets from node_modules to avoid third-party CDN warnings
 app.use('/vendor/pdfjs', express.static(path.join(__dirname, '../node_modules/pdfjs-dist/build')));
 
-// Serve uploaded files
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+// Auth-gated uploads (no public static directory listing / anonymous file fetch).
+// Public marketing avatars under teacher-profiles remain readable without a token.
+const { uploadsAccessHandlers } = require('./middleware/uploadsAccess');
+app.get(['/uploads', '/uploads/*', '/api/media', '/api/media/*'], ...uploadsAccessHandlers);
+app.head(['/uploads', '/uploads/*', '/api/media', '/api/media/*'], ...uploadsAccessHandlers);
 
 // Public student/teacher login portal (NOT under /admin)
 const portalLoginDir = path.join(__dirname, '../login');
@@ -360,6 +365,60 @@ app.get(['/admin', '/admin/', '/admin/index.html'], noStoreProtectedResponse, (r
 });
 // Admin UI (including hub iframes) must not be HTTP-cached: stale HTML/JS causes iframe parse errors.
 app.use('/admin', noStoreProtectedResponse, express.static(path.join(__dirname, '../public'), { index: false }));
+
+// Public probes — register BEFORE any /api router that applies auth (e.g. fileRoutes verifyToken).
+// Cloud Run + GitHub Actions smoke tests hit these without a JWT.
+app.get('/api/health', (req, res) => {
+  try {
+    const dbInfo = getDbConnectionInfo();
+    res.json({
+      status: 'OK',
+      message: 'Server is running',
+      database: db.readyState === 1 ? 'Connected' : 'Disconnected',
+      databaseMode: dbInfo.mode,
+      databaseTarget: dbInfo.target,
+      databaseName: dbInfo.database,
+      port: PORT,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'ERROR',
+      message:
+        process.env.NODE_ENV === 'production'
+          ? 'Internal server error'
+          : String(error && error.message ? error.message : 'Internal server error'),
+      timestamp: new Date().toISOString(),
+    });
+  }
+});
+
+app.get('/api', (req, res) => {
+  try {
+    res.json({
+      status: 'OK',
+      message: 'API is running',
+      version: '1.0.0',
+      endpoints: {
+        health: '/api/health',
+        auth: '/api/auth',
+        teacher: '/api/teacher',
+        student: '/api/student',
+        admin: '/api/admin',
+      },
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'ERROR',
+      message:
+        process.env.NODE_ENV === 'production'
+          ? 'Internal server error'
+          : String(error && error.message ? error.message : 'Internal server error'),
+      timestamp: new Date().toISOString(),
+    });
+  }
+});
 
 // API Routes (no-store on role-protected APIs)
 app.use('/api/auth', noStoreProtectedResponse, authRoutes);
@@ -600,6 +659,11 @@ app.get(
     res.redirect(302, '/login/');
   }
 );
+
+// Legacy manual student payment form → PayMongo Credits checkout only
+app.get(['/student-payment', '/student-payment.html'], noStoreProtectedResponse, (req, res) => {
+  res.redirect(301, '/student-credits.html');
+});
 
 // Back-compat: old unified login path
 app.get(['/login.html'], noStoreProtectedResponse, (req, res) => {
@@ -886,6 +950,17 @@ app.post('/api/booking/:bookingId/end-session', verifyToken, requireTeacher, asy
     booking.status = 'pending_feedback';
     await booking.save();
     await emitBookingsUpdatedForTeacher(teacherId, booking);
+
+    try {
+      const { safeUpsertLessonProgressFromBooking } = require('./services/lessonProgressFromBooking');
+      await safeUpsertLessonProgressFromBooking(booking, {
+        status: 'in_progress',
+        teacherId,
+        notes: 'Live session ended; awaiting teacher feedback finalize',
+      });
+    } catch (_progErr) {
+      /* non-blocking */
+    }
 
     try {
       const { rebuildMonth, currentMonthKey } = require('./services/leaderboardService');
@@ -1225,54 +1300,6 @@ app.post('/api/feedback/submit', verifyToken, requireTeacher, async (req, res) =
   }
 });
 
-// API base endpoint - returns API status (for Cloud Run health checks)
-app.get('/api', (req, res) => {
-  try {
-    res.json({ 
-      status: 'OK', 
-      message: 'API is running',
-      version: '1.0.0',
-      endpoints: {
-        health: '/api/health',
-        auth: '/api/auth',
-        teacher: '/api/teacher',
-        student: '/api/student',
-        admin: '/api/admin'
-      },
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    res.status(500).json({
-      status: 'ERROR',
-      message: process.env.NODE_ENV === 'production' ? 'Internal server error' : String(error && error.message ? error.message : 'Internal server error'),
-      timestamp: new Date().toISOString()
-    });
-  }
-});
-
-// Health check endpoint - MUST respond quickly for Cloud Run
-app.get('/api/health', (req, res) => {
-  try {
-    const dbInfo = getDbConnectionInfo();
-    res.json({ 
-      status: 'OK', 
-      message: 'Server is running',
-      database: db.readyState === 1 ? 'Connected' : 'Disconnected',
-      databaseMode: dbInfo.mode,
-      databaseTarget: dbInfo.target,
-      databaseName: dbInfo.database,
-      port: PORT,
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    res.status(500).json({
-      status: 'ERROR',
-      message: process.env.NODE_ENV === 'production' ? 'Internal server error' : String(error && error.message ? error.message : 'Internal server error'),
-      timestamp: new Date().toISOString()
-    });
-  }
-});
-
 // Manual trigger for absent student check (for testing)
 app.post('/api/admin/check-absent-students', async (req, res) => {
   try {
@@ -1297,8 +1324,8 @@ app.get('/api/test', (req, res) => {
   res.json({ message: 'API is working!' });
 });
 
-// REST API Signaling endpoints
-app.post('/api/signaling/send', (req, res) => {
+// REST API Signaling endpoints (authenticated; debug dumps are admin-only)
+app.post('/api/signaling/send', verifyToken, (req, res) => {
   try {
     const { room, userType, type, data, timestamp } = req.body;
     
@@ -1340,7 +1367,7 @@ app.post('/api/signaling/send', (req, res) => {
   }
 });
 
-app.get('/api/signaling/messages', (req, res) => {
+app.get('/api/signaling/messages', verifyToken, (req, res) => {
   try {
     const { room, userType, timestamp } = req.query;
     
@@ -1367,7 +1394,7 @@ app.get('/api/signaling/messages', (req, res) => {
   }
 });
 
-app.get('/api/signaling/room-status', (req, res) => {
+app.get('/api/signaling/room-status', verifyToken, (req, res) => {
   try {
     const { room } = req.query;
     
@@ -1427,14 +1454,19 @@ app.get('/api/signaling/room-status', (req, res) => {
   }
 });
 
-// Manual teacher presence endpoint for testing
-app.post('/api/signaling/teacher-present', (req, res) => {
+// Manual teacher presence endpoint — teacher session required
+app.post('/api/signaling/teacher-present', verifyToken, requireTeacher, (req, res) => {
   try {
     const { room, teacherId, username } = req.body;
     
     if (!room) {
       return res.status(400).json({ error: 'Missing room parameter' });
     }
+
+    const resolvedTeacherId =
+      (req.teacher && req.teacher.teacherId) ||
+      (req.user && req.user.teacherId) ||
+      teacherId;
     
     // Store a teacher presence message
     const message = {
@@ -1442,7 +1474,7 @@ app.post('/api/signaling/teacher-present', (req, res) => {
       room: room,
       userType: 'teacher',
       type: 'teacher-present',
-      data: { teacherId, username },
+      data: { teacherId: resolvedTeacherId, username: username || (req.user && req.user.username) },
       timestamp: Date.now(),
       createdAt: new Date().toISOString()
     };
@@ -1459,8 +1491,8 @@ app.post('/api/signaling/teacher-present', (req, res) => {
       success: true, 
       message: 'Teacher presence recorded',
       room,
-      teacherId,
-      username
+      teacherId: resolvedTeacherId,
+      username: username || (req.user && req.user.username)
     });
   } catch (error) {
     console.error('🌐 REST: Error recording teacher presence:', error);
@@ -1468,8 +1500,8 @@ app.post('/api/signaling/teacher-present', (req, res) => {
   }
 });
 
-// Get all rooms for debugging
-app.get('/api/signaling/all-rooms', (req, res) => {
+// Get all rooms for debugging — admin only (leaks all room participants + signaling)
+app.get('/api/signaling/all-rooms', verifyAdminApiAuth, requireAdmin, (req, res) => {
   try {
     const rooms = Array.from(io.sockets.adapter.rooms.keys());
     const roomData = {};
@@ -1499,8 +1531,8 @@ app.get('/api/signaling/all-rooms', (req, res) => {
   }
 });
 
-// Clear room data for debugging
-app.post('/api/signaling/clear-room', (req, res) => {
+// Clear room data for debugging — admin only
+app.post('/api/signaling/clear-room', verifyAdminApiAuth, requireAdmin, (req, res) => {
   try {
     const { room } = req.body;
     
@@ -1625,8 +1657,8 @@ app.get('/api/student/booking/:bookingId', verifyToken, async (req, res) => {
   }
 });
 
-// Mark attendance for live classroom
-app.post('/api/attendance/mark', async (req, res) => {
+// Mark attendance for live classroom — authenticated participant only
+app.post('/api/attendance/mark', verifyToken, async (req, res) => {
   try {
     const { bookingId, userType, enteredAt } = req.body;
     
@@ -1634,25 +1666,51 @@ app.post('/api/attendance/mark', async (req, res) => {
       return res.status(400).json({ error: 'Missing booking ID or user type' });
     }
 
-    const Booking = require('./models/Booking');
-    const booking = await Booking.findById(bookingId);
+    const allowedTypes = new Set(['teacher', 'student']);
+    const role = String(userType || '').trim().toLowerCase();
+    if (!allowedTypes.has(role)) {
+      return res.status(400).json({ error: 'Invalid user type' });
+    }
+
+    const BookingModel = require('./models/Booking');
+    const booking = await BookingModel.findById(bookingId);
     
     if (!booking) {
       return res.status(404).json({ error: 'Booking not found' });
     }
 
-    // Update attendance based on user type
-    if (userType === 'teacher') {
+    const u = req.user || {};
+    if (role === 'teacher') {
+      const tokenTeacher = String(u.teacherId || '').trim().toLowerCase();
+      const bookingTeacher = String(booking.teacherId || '').trim().toLowerCase();
+      if (!tokenTeacher || tokenTeacher !== bookingTeacher) {
+        return res.status(403).json({ error: 'Access denied. Teacher must own this booking.' });
+      }
       booking.attendance.teacherEntered = true;
-      booking.attendance.teacherEnteredAt = new Date(enteredAt);
-    } else if (userType === 'student') {
+      booking.attendance.teacherEnteredAt = new Date(enteredAt || Date.now());
+    } else {
+      // Booking.studentId is username/email; JWT studentId is usually Mongo ObjectId
+      const bookingStudent = String(booking.studentId || '').trim().toLowerCase();
+      const tokenUser = String(u.username || '').trim().toLowerCase();
+      let studentMatch = !!(tokenUser && bookingStudent && tokenUser === bookingStudent);
+      if (!studentMatch && u.studentId) {
+        const Student = require('./models/Student');
+        const student = await Student.findById(u.studentId).select('username email').lean();
+        const aliases = [student && student.username, student && student.email]
+          .map((s) => String(s || '').trim().toLowerCase())
+          .filter(Boolean);
+        studentMatch = aliases.includes(bookingStudent);
+      }
+      if (!studentMatch) {
+        return res.status(403).json({ error: 'Access denied. Student must own this booking.' });
+      }
       booking.attendance.studentEntered = true;
-      booking.attendance.studentEnteredAt = new Date(enteredAt);
+      booking.attendance.studentEnteredAt = new Date(enteredAt || Date.now());
     }
 
     await booking.save();
     
-    console.log(`✅ Attendance marked for booking ${bookingId}: ${userType} entered at ${enteredAt}`);
+    console.log(`✅ Attendance marked for booking ${bookingId}: ${role} entered at ${enteredAt}`);
     
     res.json({ 
       success: true, 
@@ -1687,33 +1745,12 @@ app.get('/student-waiting-room', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/student-waiting-room.html'));
 });
 
-/**
- * Legacy issue screenshots: DB may store /uploads/slides/screenshot-T-R.ext while the file was
- * saved under uploads/issue-screenshots/issue-T-R.ext (same timestamp/random suffix). Static /uploads
- * 404s when the slides path has no file — resolve the real file here before the JSON 404.
- */
-app.get('/uploads/slides/:filename', (req, res, next) => {
-  try {
-    const uploadRoot = path.join(__dirname, '../uploads');
-    const raw = String(req.params.filename || '');
-    const safe = path.basename(raw);
-    if (!safe || safe !== raw || safe.includes('..')) return next();
-    const slidesPath = path.join(uploadRoot, 'slides', safe);
-    if (fs.existsSync(slidesPath) && fs.statSync(slidesPath).isFile()) {
-      return res.sendFile(slidesPath);
-    }
-    const m = /^screenshot-(.+)$/i.exec(safe);
-    if (m) {
-      const issuePath = path.join(uploadRoot, 'issue-screenshots', 'issue-' + m[1]);
-      if (fs.existsSync(issuePath) && fs.statSync(issuePath).isFile()) {
-        return res.sendFile(issuePath);
-      }
-    }
-    return next();
-  } catch (e) {
-    return next();
-  }
-});
+/* Legacy /uploads/slides/screenshot-* → issue-screenshots remapping lives in uploadsAccess middleware. */
+
+// Sentry Express error handler (before other error middleware) — no-op if DSN unset.
+if (isSentryEnabled()) {
+  Sentry.setupExpressErrorHandler(app);
+}
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -1822,6 +1859,26 @@ io.on('connection', socket => {
             console.warn('join-student-messages error:', e.message);
         }
     });
+
+    socket.on('join-notifications', (data = {}) => {
+        try {
+            const role = String(data.role || data.userType || '').toLowerCase();
+            if (role === 'teacher') {
+                const teacherId = String(data.teacherId || data.userId || '').trim();
+                if (!teacherId) return;
+                socket.join(`notif:teacher:${teacherId}`);
+            } else if (role === 'student') {
+                const username = String(data.username || data.userId || '').trim();
+                if (!username) return;
+                socket.join(`notif:student:${username}`);
+            } else if (role === 'admin') {
+                const username = String(data.username || data.userId || 'admin').trim();
+                socket.join(`notif:admin:${username}`);
+            }
+        } catch (e) {
+            console.warn('join-notifications error:', e.message);
+        }
+    });
     
     socket.on('join', async (data) => {
         const { room, userType, userId, username } = data;
@@ -1926,6 +1983,35 @@ io.on('connection', socket => {
             signalingMessages.get(room).push(message);
             
             console.log(`👨‍🏫 Teacher joined message stored for room ${room}`);
+
+            // In-app notify student once when teacher enters the classroom
+            try {
+              const Booking = require('./models/Booking');
+              const { notifyStudent } = require('./services/notifyService');
+              const booking = await Booking.findOneAndUpdate(
+                {
+                  $or: [{ classroomId: room }, { classroomId: String(room) }],
+                  teacherJoinedNotifiedAt: null,
+                  status: { $nin: ['cancelled', 'cancelled_by_student_emergency', 'completed', 'Completed', 'absent'] },
+                },
+                { $set: { teacherJoinedNotifiedAt: new Date(), 'attendance.teacherEntered': true, 'attendance.teacherEnteredAt': new Date() } },
+                { new: true }
+              );
+              if (booking && booking.studentId) {
+                await notifyStudent(
+                  booking.studentId,
+                  'teacher-joined',
+                  'Your teacher has joined the classroom. You can enter now.',
+                  {
+                    bookingId: String(booking._id),
+                    actionUrl: '/student-waiting-room.html?bookingId=' + encodeURIComponent(String(booking._id)),
+                    importance: 'actionable',
+                  }
+                );
+              }
+            } catch (tjErr) {
+              console.warn('teacher-joined notify failed:', tjErr.message || tjErr);
+            }
         }
         
         if (clients.size === 1) {
@@ -2093,6 +2179,34 @@ io.on('connection', socket => {
             signalingMessages.get(room).push(message);
             
             console.log(`👨‍🏫 Teacher joined message stored for room ${room}`);
+
+            try {
+              const Booking = require('./models/Booking');
+              const { notifyStudent } = require('./services/notifyService');
+              const booking = await Booking.findOneAndUpdate(
+                {
+                  $or: [{ classroomId: room }, { classroomId: String(room) }],
+                  teacherJoinedNotifiedAt: null,
+                  status: { $nin: ['cancelled', 'cancelled_by_student_emergency', 'completed', 'Completed', 'absent'] },
+                },
+                { $set: { teacherJoinedNotifiedAt: new Date(), 'attendance.teacherEntered': true, 'attendance.teacherEnteredAt': new Date() } },
+                { new: true }
+              );
+              if (booking && booking.studentId) {
+                await notifyStudent(
+                  booking.studentId,
+                  'teacher-joined',
+                  'Your teacher has joined the classroom. You can enter now.',
+                  {
+                    bookingId: String(booking._id),
+                    actionUrl: '/student-waiting-room.html?bookingId=' + encodeURIComponent(String(booking._id)),
+                    importance: 'actionable',
+                  }
+                );
+              }
+            } catch (tjErr) {
+              console.warn('teacher-joined notify failed:', tjErr.message || tjErr);
+            }
         }
         
         if (clients.size === 1) {
@@ -2330,35 +2444,35 @@ io.on('connection', socket => {
     
     socket.on('presentation-slide-changed', (data) => {
         console.log('🎬 Presentation slide changed in room:', data.room);
-        socket.to(data.room).emit('presentation-slide-changed', {
+        const slidePayload = {
             currentSlideIndex: data.currentSlideIndex,
+            slideIndex: data.slideIndex != null ? data.slideIndex : data.currentSlideIndex,
+            page: data.page != null ? data.page : (data.currentSlideIndex != null ? data.currentSlideIndex + 1 : undefined),
             materialId: data.materialId,
             slideUrl: data.slideUrl || null,
+            totalSlides: data.totalSlides != null ? data.totalSlides : null,
+            renderMode: data.renderMode || null,
             room: data.room
-        });
+        };
+        socket.to(data.room).emit('presentation-slide-changed', slidePayload);
         // Alias for clients that listen for slide-changed
-        socket.to(data.room).emit('slide-changed', {
-            currentSlideIndex: data.currentSlideIndex,
-            materialId: data.materialId,
-            slideUrl: data.slideUrl || null,
-            room: data.room
-        });
+        socket.to(data.room).emit('slide-changed', slidePayload);
     });
 
     socket.on('slide-changed', (data) => {
         if (!data || !data.room) return;
-        socket.to(data.room).emit('presentation-slide-changed', {
+        const slidePayload = {
             currentSlideIndex: data.currentSlideIndex,
+            slideIndex: data.slideIndex != null ? data.slideIndex : data.currentSlideIndex,
+            page: data.page != null ? data.page : (data.currentSlideIndex != null ? data.currentSlideIndex + 1 : undefined),
             materialId: data.materialId,
             slideUrl: data.slideUrl || null,
+            totalSlides: data.totalSlides != null ? data.totalSlides : null,
+            renderMode: data.renderMode || null,
             room: data.room
-        });
-        socket.to(data.room).emit('slide-changed', {
-            currentSlideIndex: data.currentSlideIndex,
-            materialId: data.materialId,
-            slideUrl: data.slideUrl || null,
-            room: data.room
-        });
+        };
+        socket.to(data.room).emit('presentation-slide-changed', slidePayload);
+        socket.to(data.room).emit('slide-changed', slidePayload);
     });
     
     socket.on('presentation-ended', (data) => {
@@ -3072,6 +3186,45 @@ const startServer = () => {
           // Run initial check for any students who should already be marked as absent
           setTimeout(checkAndMarkAbsentStudents, 5000); // Run after 5 seconds
           console.log(`⏰ Initial absent student check scheduled (in 5 seconds)`);
+
+          const { runClassNotificationJobs } = require('./services/classReminderService');
+          setInterval(() => {
+            runClassNotificationJobs().catch((e) =>
+              console.warn('[class-reminder] interval error:', e.message || e)
+            );
+          }, 60 * 1000);
+          setTimeout(() => {
+            runClassNotificationJobs().catch(() => {});
+          }, 8000);
+          console.log(`⏰ Class reminder + teacher-late jobs scheduled (every minute)`);
+
+          // Daily notification digest (opt-in) — run shortly after Manila midnight-ish via 6h tick check
+          let lastDigestDay = '';
+          setInterval(async () => {
+            try {
+              const dayKey = new Intl.DateTimeFormat('en-CA', {
+                timeZone: 'Asia/Manila',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+              }).format(new Date());
+              const hour = Number(
+                new Intl.DateTimeFormat('en-US', {
+                  timeZone: 'Asia/Manila',
+                  hour: 'numeric',
+                  hour12: false,
+                }).formatToParts(new Date()).find((p) => p.type === 'hour')?.value || 0
+              );
+              if (hour === 8 && lastDigestDay !== dayKey) {
+                lastDigestDay = dayKey;
+                const { sendDailyNotificationDigests } = require('./services/notificationDigestService');
+                await sendDailyNotificationDigests();
+              }
+            } catch (e) {
+              console.warn('[digest] tick error:', e.message || e);
+            }
+          }, 30 * 60 * 1000);
+          console.log(`📧 Notification digest scheduler armed (Manila 08:00)`);
           
           // Schedule cleanup jobs only after DB is connected
           cleanupExpiredMaterials(); // Run once immediately
@@ -3130,11 +3283,17 @@ const startServer = () => {
 process.on('uncaughtException', (error) => {
   console.error('❌ Uncaught Exception:', error);
   console.error('Stack:', error.stack);
+  if (isSentryEnabled()) {
+    Sentry.captureException(error);
+  }
   // Don't exit - let the server try to continue
 });
 
 process.on('unhandledRejection', (reason, promise) => {
   console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+  if (isSentryEnabled()) {
+    Sentry.captureException(reason instanceof Error ? reason : new Error(String(reason)));
+  }
   // Don't exit - let the server try to continue
 });
 
@@ -3170,27 +3329,30 @@ try {
   }
 }
 
-// Graceful shutdown
-process.on('SIGINT', async () => {
-  console.log('\n🛑 Shutting down server...');
+async function gracefulShutdown(signal) {
+  console.log(`\n🛑 Shutting down server (${signal})...`);
   try {
     await db.close();
     console.log('📊 Database connection closed.');
   } catch (error) {
     console.error('Error closing database connection:', error);
   }
+  if (isSentryEnabled()) {
+    try {
+      await Sentry.close(2000);
+    } catch (_) {
+      /* ignore flush errors on shutdown */
+    }
+  }
   process.exit(0);
+}
+
+process.on('SIGINT', () => {
+  gracefulShutdown('SIGINT');
 });
 
-process.on('SIGTERM', async () => {
-  console.log('\n🛑 Shutting down server...');
-  try {
-    await db.close();
-    console.log('📊 Database connection closed.');
-  } catch (error) {
-    console.error('Error closing database connection:', error);
-  }
-  process.exit(0);
+process.on('SIGTERM', () => {
+  gracefulShutdown('SIGTERM');
 });
 
 module.exports = { app, io };

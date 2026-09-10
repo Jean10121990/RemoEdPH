@@ -703,7 +703,7 @@
     <link rel="stylesheet" href="css/teacher-sidebar.css">
     <link rel="stylesheet" href="css/student-portal-layout.css?v=slide-match-1">
     <link rel="stylesheet" href="css/student-sidebar.css?v=slide-match-1">
-    <link rel="stylesheet" href="css/portal-chrome-compact.css">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css?v=notif-bell-2">
 </head>
   <body class="student-portal page-student-dashboard">
     <!-- Main Layout: Sidebar + Content -->
@@ -773,8 +773,9 @@
         </div>
         
         <div id="student-sidebar-root"></div>
+        <script src="js/student-lesson-progress-api.js"></script>
         <script src="js/student-sidebar.js?v=lb-nav-2"></script>
-        <script src="js/student-page-header.js"></script>
+        <script src="js/student-page-header.js?v=notif-ux-3"></script>
         <script>
             StudentSidebar.render('student-sidebar-root', 'dashboard');
             StudentPageHeader.polishExisting('dashboard');
@@ -893,6 +894,19 @@
                     <p class="dash-stat__value" id="total-stars">0</p>
                 </div>
             </div>
+
+            <section class="dash-journey-progress" id="dash-journey-progress" aria-labelledby="dash-journey-heading" style="margin: 0 0 1.25rem; padding: 16px 18px; border-radius: 16px; background: linear-gradient(135deg, #f0fdf4 0%, #ecfeff 100%); border: 1px solid rgba(0, 168, 45, 0.22);">
+                <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;">
+                    <div style="flex: 1; min-width: 200px;">
+                        <p class="dash-next-class__label" id="dash-journey-heading" style="margin: 0 0 4px;">Learning journey</p>
+                        <p id="dash-journey-summary" style="margin: 0; color: #334155; font-size: 0.95rem; line-height: 1.5;">Loading your lesson progress…</p>
+                        <div id="dash-journey-bar-wrap" style="margin-top: 10px; height: 8px; border-radius: 999px; background: rgba(15, 23, 42, 0.08); overflow: hidden;" hidden>
+                            <div id="dash-journey-bar" style="height: 100%; width: 0%; background: linear-gradient(90deg, #00a82d, #00aeef); border-radius: 999px; transition: width 0.35s ease;"></div>
+                        </div>
+                    </div>
+                    <a class="dash-btn dash-btn--secondary" href="student-learning-journey.html" style="flex-shrink: 0;">Open journey</a>
+                </div>
+            </section>
 
             <!-- Hidden legacy metric nodes kept for loadChartData compatibility -->
             <div class="charts-grid" aria-hidden="true">
@@ -1114,6 +1128,7 @@
             // Always load profile (level + avatar) when authenticated — studentId optional
             loadProfilePicture(studentId);
             loadChartData();
+            if (typeof loadJourneyProgressWidget === 'function') loadJourneyProgressWidget();
             if (typeof loadUpcomingClasses === 'function') loadUpcomingClasses();
             if (typeof loadUpcomingClassesDropdown === 'function') loadUpcomingClassesDropdown();
 
@@ -1158,7 +1173,11 @@
         e.stopPropagation();
         notificationsDropdown.classList.toggle('show');
         upcomingClassesDropdown.classList.remove('show');
+        if (notificationsDropdown.classList.contains('show')) {
+          loadNotificationsDropdown();
+        }
       });
+      notificationsIcon.setAttribute('data-notif-click', '1');
       
       upcomingClassesIcon.addEventListener('click', function(e) {
         e.stopPropagation();
@@ -1166,7 +1185,9 @@
         notificationsDropdown.classList.remove('show');
       });
       
-      document.addEventListener('click', function() {
+      document.addEventListener('click', function(e) {
+        if (notificationsIcon.contains(e.target) || notificationsDropdown.contains(e.target)) return;
+        if (upcomingClassesIcon.contains(e.target) || upcomingClassesDropdown.contains(e.target)) return;
         notificationsDropdown.classList.remove('show');
         upcomingClassesDropdown.classList.remove('show');
       });
@@ -1230,73 +1251,102 @@
         console.error('Error loading chart data:', error);
       }
     }
+
+    function loadJourneyProgressWidget() {
+      var summaryEl = document.getElementById('dash-journey-summary');
+      var barWrap = document.getElementById('dash-journey-bar-wrap');
+      var bar = document.getElementById('dash-journey-bar');
+      if (!summaryEl || !window.RemoEdLessonProgress) {
+        if (summaryEl) summaryEl.textContent = 'Open Learning journey to see completed lessons.';
+        return;
+      }
+      RemoEdLessonProgress.loadProgressSummary()
+        .then(function (s) {
+          var done = s.completedCount || 0;
+          var total = s.levelTotal || 220;
+          var lvl = s.primaryLevel || 'Little Seeds';
+          var lvlDone = s.primaryCompleted || 0;
+          var inProg = s.inProgressCount || 0;
+          var parts = [
+            done === 0
+              ? 'No completed lessons yet — finish a class to light up your path.'
+              : done + ' lesson' + (done === 1 ? '' : 's') + ' completed overall.',
+            lvl + ': ' + lvlDone + ' / ' + total,
+          ];
+          if (inProg > 0) {
+            parts.push(inProg + ' in progress');
+          }
+          summaryEl.textContent = parts.join(' · ');
+          if (barWrap && bar) {
+            barWrap.hidden = false;
+            var pct = Math.max(0, Math.min(100, Math.round((lvlDone / total) * 100)));
+            bar.style.width = pct + '%';
+            barWrap.setAttribute('aria-valuenow', String(pct));
+            barWrap.setAttribute('role', 'progressbar');
+            barWrap.setAttribute('aria-valuemin', '0');
+            barWrap.setAttribute('aria-valuemax', '100');
+            barWrap.setAttribute('aria-label', lvl + ' progress ' + pct + ' percent');
+          }
+        })
+        .catch(function (e) {
+          summaryEl.textContent =
+            (e && e.message) || 'Could not load lesson progress. Try Learning journey.';
+          if (barWrap) barWrap.hidden = true;
+        });
+    }
     
     // Load notifications for dropdown
-    async function loadNotificationsDropdown() {
+        async function loadNotificationsDropdown() {
       try {
         const token = localStorage.getItem('token');
-        if (!token) return;
-        
-        const response = await fetch('/api/student/notifications', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        const data = await response.json();
-        
         const dropdownContent = document.getElementById('notifications-dropdown-content');
         const badge = document.getElementById('notifications-badge');
-        
-        // Check if elements exist before updating
-        if (!dropdownContent || !badge) {
-          console.warn('Notifications dropdown elements not found');
+        const dropdown = document.getElementById('notifications-dropdown');
+        if (!dropdownContent || !badge) return;
+        if (!token) {
+          dropdownContent.innerHTML = '<div class="nav-dropdown-item">Sign in to see notifications</div>';
           return;
         }
-        
-        // Update badge count
-        const unreadCount = data.notifications ? data.notifications.filter(n => !n.read).length : 0;
-        badge.textContent = unreadCount;
-        badge.style.display = unreadCount > 0 ? 'flex' : 'none';
-        
-        if (!data.notifications || data.notifications.length === 0) {
-          dropdownContent.innerHTML = '<div class="nav-dropdown-item">No notifications</div>';
+        if (window.RemoedNotifications && window.RemoedNotifications.bindDropdownExtras) {
+          window.RemoedNotifications.bindDropdownExtras(dropdown, {
+            role: 'student',
+            getToken: function () { return localStorage.getItem('token') || ''; },
+            onRefresh: loadNotificationsDropdown,
+          });
+        }
+        const response = await fetch('/api/student/notifications', { headers: { Authorization: 'Bearer ' + token } });
+        const data = await response.json().catch(function () { return {}; });
+        if (!response.ok) {
+          dropdownContent.innerHTML = '<div class="nav-dropdown-item">Could not load notifications</div>';
+          return;
+        }
+        const list = (window.RemoedNotifications && window.RemoedNotifications.unwrapList)
+          ? window.RemoedNotifications.unwrapList(data)
+          : (data.notifications || []);
+        const unread = (window.RemoedNotifications && window.RemoedNotifications.badgeCountFromPayload)
+          ? window.RemoedNotifications.badgeCountFromPayload(data, list)
+          : (typeof data.actionableUnreadCount === 'number' ? data.actionableUnreadCount : list.filter(function (n) { return !n.read; }).length);
+        if (window.RemoedNotifications && window.RemoedNotifications.setBadge) {
+          window.RemoedNotifications.setBadge(badge, unread);
         } else {
-          const latest = data.notifications.slice(0, 10);
-          let notificationsHTML = latest.map((n, index) => {
-            const time = n.createdAt ? new Date(n.createdAt).toLocaleTimeString('en-US', { 
-              hour: '2-digit', 
-              minute: '2-digit',
-              hour12: true 
-            }) : '';
-            
-            const readClass = n.read ? 'read' : '';
-            
-            return `<div class="nav-dropdown-item ${readClass}" data-notification-id="${n._id || n.id}" data-notification-index="${index}" onclick="markNotificationAsRead('${n._id || n.id}', ${index})">
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <span>${getNotificationIcon(n.type)}</span>
-                <div style="flex: 1;">
-                  <div style="font-size: 0.9rem;">${n.message}</div>
-                  <div style="font-size: 0.8rem; color: #666;">${time}</div>
-                </div>
-                ${!n.read ? '<span style="background: #00aeef; color: white; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem;">New</span>' : ''}
-              </div>
-            </div>`;
-          }).join('');
-          
-          // Add "View All" option if there are more notifications
-          if (data.notifications.length > 10) {
-            notificationsHTML += `<div class="nav-dropdown-item" style="text-align: center; color: #00aeef; font-weight: 500; border-top: 1px solid #e2e8f0; margin-top: 8px; padding-top: 12px; cursor: pointer;" onclick="viewAllNotifications()">
-                View All ${data.notifications.length} Notifications
-            </div>`;
-          }
-          
-          dropdownContent.innerHTML = notificationsHTML;
+          badge.textContent = String(unread);
+          badge.style.display = unread > 0 ? 'flex' : 'none';
+        }
+        if (window.RemoedNotifications && window.RemoedNotifications.renderItems) {
+          window.RemoedNotifications.renderItems(dropdownContent, list, {
+            limit: 12,
+            role: 'student',
+            retentionDays: data.retentionDays || 31,
+            filter: window.RemoedNotifications.getFilter ? window.RemoedNotifications.getFilter() : 'all',
+          });
+        } else if (!list.length) {
+          dropdownContent.innerHTML = '<div class="nav-dropdown-item">No notifications yet</div>';
         }
       } catch (error) {
         console.error('Error loading notifications dropdown:', error);
       }
     }
-    
+
     // Load upcoming classes for dropdown
     async function loadUpcomingClassesDropdown() {
       try {

@@ -42,6 +42,8 @@ Click **"ADD VARIABLE"** for each of the following:
 | Variable Name | Value | Description |
 |--------------|-------|-------------|
 | `CLOUDMERSIVE_API_KEY` | `your-cloudmersive-api-key` | API key for PPTX to PNG conversion (get from [Cloudmersive](https://www.cloudmersive.com/)) |
+| `SENTRY_DSN` | `https://…@o….ingest.sentry.io/…` | Optional Sentry DSN for server error tracking (`@sentry/node`) |
+| `SENTRY_ENVIRONMENT` | `production` | Optional Sentry environment label (defaults to `NODE_ENV`) |
 | `SMTP_HOST` | `smtp.gmail.com` | SMTP server hostname for email sending |
 | `SMTP_PORT` | `587` | SMTP server port (usually 587 for TLS) |
 
