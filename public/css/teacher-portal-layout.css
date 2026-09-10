@@ -245,10 +245,17 @@ body[class*="page-teacher-"] .remoed-sidebar .remoed-menu li.active svg {
   stroke: #fdd835 !important;
 }
 
+body.teacher-portal .remoed-sidebar .sidebar-logout-footer,
+body[class*="page-teacher-"] .remoed-sidebar .sidebar-logout-footer {
+  border-top-color: rgba(255, 255, 255, 0.18);
+  background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.08) 40%);
+}
+
 body.teacher-portal .remoed-sidebar .remoed-menu li#logout-nav,
 body[class*="page-teacher-"] .remoed-sidebar .remoed-menu li#logout-nav {
   color: #ffe4e4 !important;
-  margin-top: auto;
+  margin-top: 0;
+  position: static;
 }
 
 body.teacher-portal .remoed-sidebar .remoed-menu li#logout-nav svg,

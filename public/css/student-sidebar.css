@@ -172,19 +172,29 @@ body.student-portal .remoed-sidebar .remoed-menu {
   flex-direction: column;
 }
 
-/* Keep Log out pinned at the bottom of the rail */
+/* Keep Log out pinned at the bottom of the rail (outside scrollable menu) */
+body.student-portal .remoed-sidebar .sidebar-logout-footer {
+  flex-shrink: 0;
+  margin-top: auto;
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+  background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.12) 45%);
+  padding: 4px 0 10px;
+}
+
+body.student-portal .remoed-sidebar .remoed-menu-logout {
+  flex: none;
+  overflow: visible;
+  margin: 0;
+  padding: 4px 0 0;
+}
+
 body.student-portal .remoed-sidebar .remoed-menu li#logout-nav {
-  position: sticky;
-  bottom: 0;
+  position: static;
+  bottom: auto;
   z-index: 2;
-  margin-top: auto !important;
-  background: linear-gradient(
-    180deg,
-    transparent 0%,
-    #007db0 28%,
-    #007db0 100%
-  );
-  padding-top: 14px;
+  margin-top: 0 !important;
+  background: transparent;
+  padding-top: 12px;
   padding-bottom: 12px;
 }
 

@@ -78,7 +78,7 @@ body.student-portal .remoed-sidebar .remoed-menu {
 }
 
 body.student-portal .remoed-sidebar .remoed-menu li#logout-nav {
-  margin-top: auto;
+  margin-top: 0;
   flex-shrink: 0;
 }
 

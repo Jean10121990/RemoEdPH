@@ -174,13 +174,11 @@
 
         var active = activePageId || getActiveFromPath();
 
-        var menuHtml = MENU_ITEMS.map(function (item) {
-            var activeClass = (item.id === active && !item.isLogout) ? ' class="active"' : '';
-            var idAttr = item.id === 'logout' ? ' id="logout-nav"' : '';
+        var navItemsHtml = MENU_ITEMS.filter(function (item) {
+            return !item.isLogout;
+        }).map(function (item) {
+            var activeClass = (item.id === active) ? ' class="active"' : '';
             var dataNav = ' data-nav="' + item.id + '"';
-            if (item.isLogout) {
-                return '<li title="' + item.label + '"' + idAttr + activeClass + dataNav + ' data-logout="1">' + item.icon + '<span class="menu-label">' + item.label + '</span></li>';
-            }
             var badgeOrDot = '';
             if (item.id === 'class-schedule') {
                 badgeOrDot = '<span class="remoed-schedule-count-badge" aria-hidden="true"></span>';
@@ -189,6 +187,21 @@
             }
             return '<li title="' + item.label + '"' + activeClass + dataNav + ' onclick="window.location.href=\'' + item.href + '\'">' + item.icon + badgeOrDot + '<span class="menu-label">' + item.label + '</span></li>';
         }).join('');
+
+        var logoutItem = null;
+        for (var i = 0; i < MENU_ITEMS.length; i++) {
+            if (MENU_ITEMS[i].isLogout) {
+                logoutItem = MENU_ITEMS[i];
+                break;
+            }
+        }
+        var logoutHtml = logoutItem
+            ? '<li title="' + logoutItem.label + '" id="logout-nav" data-nav="logout" data-logout="1">' +
+              logoutItem.icon +
+              '<span class="menu-label">' +
+              logoutItem.label +
+              '</span></li>'
+            : '';
 
         var html =
             '<nav class="remoed-sidebar">' +
@@ -213,7 +226,10 @@
             '      <span class="remoed-username" id="remoed-username">Hi, Teacher</span>' +
             '    </div>' +
             '  </div>' +
-            '  <ul class="remoed-menu">' + menuHtml + '</ul>' +
+            '  <ul class="remoed-menu">' + navItemsHtml + '</ul>' +
+            '  <div class="sidebar-logout-footer" aria-label="Account">' +
+            '    <ul class="remoed-menu remoed-menu-logout">' + logoutHtml + '</ul>' +
+            '  </div>' +
             '</nav>';
 
         container.innerHTML = html;

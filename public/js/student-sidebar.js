@@ -248,12 +248,12 @@
 
         var active = activePageId || getActiveFromPath();
         var showJourney = shouldShowLearningJourneyNav();
-        var menuHtml = MENU_ITEMS.filter(function (item) {
+        var navItemsHtml = MENU_ITEMS.filter(function (item) {
+            if (item.isLogout) return false;
             if (item.studentOnly && !showJourney) return false;
             return true;
         }).map(function (item) {
-            var activeClass = (item.id === active && !item.isLogout) ? ' class="active"' : '';
-            var idAttr = item.id === 'logout' ? ' id="logout-nav"' : '';
+            var activeClass = (item.id === active) ? ' class="active"' : '';
             var dataNav = ' data-nav="' + item.id + '"';
             var label = item.label;
             var bookSpec = null;
@@ -263,14 +263,28 @@
             }
             var titleAttr = ' title="' + escapeLabel(label) + '"';
             var inner = item.icon + '<span class="menu-label">' + escapeLabel(label) + '</span>';
-            if (item.isLogout) {
-                return '<li' + titleAttr + idAttr + activeClass + dataNav + ' data-logout="1">' + inner + '</li>';
-            }
             if (item.id === 'book') {
                 return '<li' + titleAttr + activeClass + dataNav + ' onclick="window.location.href=\'' + bookSpec.href + '\'">' + inner + '</li>';
             }
             return '<li' + titleAttr + activeClass + dataNav + ' onclick="window.location.href=\'' + item.href + '\'">' + inner + '</li>';
         }).join('');
+
+        var logoutItem = null;
+        for (var i = 0; i < MENU_ITEMS.length; i++) {
+            if (MENU_ITEMS[i].isLogout) {
+                logoutItem = MENU_ITEMS[i];
+                break;
+            }
+        }
+        var logoutHtml = logoutItem
+            ? '<li title="' +
+              escapeLabel(logoutItem.label) +
+              '" id="logout-nav" data-nav="logout" data-logout="1">' +
+              logoutItem.icon +
+              '<span class="menu-label">' +
+              escapeLabel(logoutItem.label) +
+              '</span></li>'
+            : '';
 
         container.innerHTML =
             '<nav class="remoed-sidebar student-sidebar">' +
@@ -295,7 +309,10 @@
             '      <span class="remoed-username" id="remoed-username">Hi, Student</span>' +
             '    </div>' +
             '  </div>' +
-            '  <ul class="remoed-menu">' + menuHtml + '</ul>' +
+            '  <ul class="remoed-menu">' + navItemsHtml + '</ul>' +
+            '  <div class="sidebar-logout-footer" aria-label="Account">' +
+            '    <ul class="remoed-menu remoed-menu-logout">' + logoutHtml + '</ul>' +
+            '  </div>' +
             '</nav>';
 
         injectStudentNoMotionStyles();
