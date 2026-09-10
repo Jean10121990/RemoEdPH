@@ -408,6 +408,43 @@
       return `${hh}:${mm}`;
     }
 
+    /** Display name for schedule cells / class modal (booking.studentId is a username string). */
+    function bookingStudentDisplayName(booking, fallback) {
+      if (!booking) return fallback || 'Student';
+      const name = String(booking.studentName || '').trim();
+      if (name && name.toLowerCase() !== 'unknown student') return name;
+      const sid = booking.studentId;
+      if (sid && typeof sid === 'object') {
+        const fromObj =
+          `${sid.firstName || ''} ${sid.lastName || ''}`.trim() ||
+          sid.username ||
+          sid.id ||
+          '';
+        if (fromObj) return String(fromObj);
+      }
+      if (typeof sid === 'string' && sid.trim()) return sid.trim();
+      const nested = booking.student;
+      if (nested && typeof nested === 'object') {
+        const fromNested =
+          `${nested.firstName || ''} ${nested.lastName || ''}`.trim() || nested.username || '';
+        if (fromNested) return String(fromNested);
+      }
+      return fallback || 'Student';
+    }
+
+    function bookingStudentKey(booking) {
+      if (!booking) return '';
+      const sid = booking.studentId;
+      if (typeof sid === 'string' && sid.trim()) return sid.trim();
+      if (sid && typeof sid === 'object') {
+        return String(sid.username || sid._id || sid.id || '').trim();
+      }
+      if (booking.student && typeof booking.student === 'object') {
+        return String(booking.student.username || booking.student._id || '').trim();
+      }
+      return '';
+    }
+
     let pendingFeedbackCount = 0;
     window.pendingFeedbackCount = 0;
     /** Guards concurrent loadScheduleData → only latest seq paints */
@@ -1083,7 +1120,7 @@
             if (slotPassed) {
               skipDefaultSlotLabel = true;
               slotElement.classList.add('remoed-pending-feedback-actions');
-              const stuRaw = booking.studentId?.firstName || booking.studentId?.username || 'Unknown';
+              const stuRaw = bookingStudentDisplayName(booking, 'Student');
               const stuEsc = String(stuRaw)
                 .replace(/&/g, '&amp;')
                 .replace(/</g, '&lt;')
@@ -1197,7 +1234,7 @@
           }
           
           // Set embossed label (indicator + student name + enter cue)
-          const studentFirstName = booking.studentId?.firstName || booking.studentId?.username || 'Unknown';
+          const studentFirstName = bookingStudentDisplayName(booking, 'Student');
           if (!skipDefaultSlotLabel) {
             setEmbossedSlotLabel(slotElement, `${indicator} - ${studentFirstName}`);
           }
@@ -1226,7 +1263,7 @@
             statusText = 'Booked Class';
           }
           slotElement.title =
-            `${statusText} - ${booking.studentId?.firstName || booking.studentId?.username || 'Unknown Student'} — Click to open class / enter classroom`;
+            `${statusText} - ${bookingStudentDisplayName(booking, 'Student')} — Click to open class / enter classroom`;
           if (!skipDefaultSlotLabel) {
             slotElement.style.cursor = 'pointer';
             slotElement.style.removeProperty('font-weight');
@@ -1452,11 +1489,23 @@
           
           if (freshBookingResp.ok) {
             const freshData = await freshBookingResp.json();
-            if (freshData.booking) {
+          if (freshData.booking) {
               const prevPic = booking.studentProfilePicture;
+              const prevName = booking.studentName;
+              const prevKey = bookingStudentKey(booking);
               booking = { ...booking, ...freshData.booking };
               if (prevPic && !booking.studentProfilePicture) {
                 booking.studentProfilePicture = prevPic;
+              }
+              const freshName = String(booking.studentName || '').trim();
+              if (
+                prevName &&
+                (!freshName || freshName.toLowerCase() === 'unknown student')
+              ) {
+                booking.studentName = prevName;
+              }
+              if (!bookingStudentKey(booking) && prevKey) {
+                booking.studentId = prevKey;
               }
               currentBooking = booking;
             }
@@ -1501,10 +1550,7 @@
       document.getElementById('class-date').textContent = formattedDate;
       document.getElementById('class-time').textContent = formatClassModalTime12h(booking);
       document.getElementById('class-student').textContent =
-        booking.studentName ||
-        booking.studentId?.firstName ||
-        booking.studentId?.username ||
-        'Unknown Student';
+        bookingStudentDisplayName(booking, 'Student');
       const rosterPic =
         booking.studentProfilePicture ||
         (booking.studentId && (booking.studentId.profilePicture || booking.studentId.photo)) ||
@@ -2148,16 +2194,12 @@
             showNotification('No class selected', 'error');
             return;
         }
-        let studentId = currentBooking.studentId;
-        if (typeof studentId === 'object' && studentId !== null) {
-            studentId = studentId._id || studentId.id || studentId.username || '';
-        }
-        studentId = String(studentId || '').trim();
+        const studentId = bookingStudentKey(currentBooking);
         if (!studentId) {
             showNotification('Missing student id for progress letter', 'error');
             return;
         }
-        const name = encodeURIComponent(currentBooking.studentName || 'Student');
+        const name = encodeURIComponent(bookingStudentDisplayName(currentBooking, 'Student'));
         window.open(
             'teacher-progress-report.html?studentId=' + encodeURIComponent(studentId) + '&studentName=' + name,
             '_blank'
@@ -2228,7 +2270,7 @@
         
         // Set class info in feedback modal
         document.getElementById('feedback-class-info').textContent = `${formatClassModalDateLong(currentBooking)} at ${formatClassModalTime12h(currentBooking)}`;
-        document.getElementById('feedback-student-info').textContent = currentBooking.studentName || 'Unknown Student';
+        document.getElementById('feedback-student-info').textContent = bookingStudentDisplayName(currentBooking, 'Student');
         
         // Reset star rating
         selectedRating = 0;
@@ -2572,7 +2614,7 @@
 
         // Set class info in issue modal before closing Class Info
         document.getElementById('issue-class-info').textContent = `${formatClassModalDateLong(currentBooking)} at ${formatClassModalTime12h(currentBooking)}`;
-        document.getElementById('issue-student-info').textContent = currentBooking.studentName || 'Unknown Student';
+        document.getElementById('issue-student-info').textContent = bookingStudentDisplayName(currentBooking, 'Student');
 
         // Clear form
         document.getElementById('issue-type').value = '';

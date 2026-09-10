@@ -1645,18 +1645,22 @@ router.get('/slots', async (req, res) => {
         const studentProfilePicture = student
           ? student.profilePicture || student.photo || null
           : null;
+        // Keep booking.studentId as the original string (username/email) for APIs;
+        // expose display fields separately so the UI does not lose the key.
         return {
           ...bookingObj,
           studentName,
           studentProfilePicture,
           lessonTopic: booking.lesson || '',
-          studentId: student
+          studentId: String(booking.studentId || ''),
+          student: student
             ? {
+                _id: String(student._id),
                 username: student.username,
                 firstName: student.firstName,
                 lastName: student.lastName,
               }
-            : { username: booking.studentId },
+            : null,
           hasResolvedIssue: resolvedIssues.length > 0,
         };
       })
@@ -1958,17 +1962,16 @@ router.get('/booking/:bookingId', verifyToken, requireTeacher, async (req, res) 
         : 'No student data'
     );
 
-    let studentName = 'Unknown Student';
     const studentProfilePicture = student
       ? student.profilePicture || student.photo || null
       : null;
-    if (student) {
-      if (student.firstName) {
-        studentName = student.firstName;
-      } else if (student.username) {
-        studentName = student.username;
-      }
-    }
+    // Prefer real name; never invent "Unknown Student" when booking has a username/email key
+    const studentName = student
+      ? `${student.firstName || ''} ${student.lastName || ''}`.trim() ||
+        student.nickname ||
+        student.username ||
+        String(booking.studentId || 'Student')
+      : String(booking.studentId || 'Student');
     
     // Get teacher information
     const teacher = await Teacher.findOne({ teacherId: booking.teacherId });
@@ -5032,7 +5035,8 @@ router.post('/progress-reports', verifyToken, requireTeacher, async (req, res) =
       attendanceRate,
     } = req.body || {};
 
-    const sid = studentBadgeService.normalizeStudentId(studentId);
+    // Canonicalize to booking username so student portal (JWT ObjectId) can still find via aliases
+    const sid = await studentBadgeService.canonicalBookingStudentId(studentId);
     const q = String(quarter || '').toUpperCase();
     const y = Number(year);
     if (!sid || !['Q1', 'Q2', 'Q3', 'Q4'].includes(q) || !Number.isFinite(y)) {
@@ -5050,21 +5054,35 @@ router.post('/progress-reports', verifyToken, requireTeacher, async (req, res) =
       skills[k] = levels.includes(v) ? v : 'Exploring';
     });
 
-    const report = await ProgressReport.findOneAndUpdate(
-      { studentId: sid, year: y, quarter: q },
-      {
-        $set: {
-          skillsAssessment: skills,
-          teacherSummary: String(teacherSummary || '').trim().slice(0, 4000),
-          attendanceRate:
-            attendanceRate == null || attendanceRate === ''
-              ? null
-              : Math.max(0, Math.min(100, Number(attendanceRate))),
-          createdByTeacherId: teacherId,
-        },
-      },
-      { upsert: true, new: true }
-    );
+    const aliases = await studentBadgeService.resolveStudentIdAliases(sid);
+    const existing = await ProgressReport.findOne({
+      studentId: { $in: aliases.length ? aliases : [sid] },
+      year: y,
+      quarter: q,
+    });
+
+    const setFields = {
+      skillsAssessment: skills,
+      teacherSummary: String(teacherSummary || '').trim().slice(0, 4000),
+      attendanceRate:
+        attendanceRate == null || attendanceRate === ''
+          ? null
+          : Math.max(0, Math.min(100, Number(attendanceRate))),
+      createdByTeacherId: teacherId,
+      studentId: sid,
+    };
+
+    let report;
+    if (existing) {
+      Object.assign(existing, setFields);
+      report = await existing.save();
+    } else {
+      report = await ProgressReport.findOneAndUpdate(
+        { studentId: sid, year: y, quarter: q },
+        { $set: setFields },
+        { upsert: true, new: true }
+      );
+    }
 
     res.json({
       success: true,
@@ -5092,7 +5110,12 @@ router.get('/progress-reports/:studentId/:year/:quarter', verifyToken, requireTe
     if (!sid || !['Q1', 'Q2', 'Q3', 'Q4'].includes(quarter) || !Number.isFinite(year)) {
       return res.status(400).json({ success: false, error: 'Invalid studentId, year, or quarter' });
     }
-    const report = await ProgressReport.findOne({ studentId: sid, year, quarter }).lean();
+    const aliases = await studentBadgeService.resolveStudentIdAliases(sid);
+    const report = await ProgressReport.findOne({
+      studentId: { $in: aliases.length ? aliases : [sid] },
+      year,
+      quarter,
+    }).lean();
     const badges = await studentBadgeService.getBadgesInQuarter(sid, year, quarter);
     res.json({
       success: true,

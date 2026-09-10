@@ -1,9 +1,11 @@
 /**
  * Seed + helpers for RemoEdKids growth badges (MongoDB).
  */
+const mongoose = require('mongoose');
 const Badge = require('../models/Badge');
 const StudentBadge = require('../models/StudentBadge');
 const ProgressReport = require('../models/ProgressReport');
+const Student = require('../models/Student');
 
 const DEFAULT_BADGES = [
   {
@@ -167,6 +169,53 @@ function normalizeStudentId(raw) {
   return String(raw).trim();
 }
 
+const OID_RE = /^[a-fA-F0-9]{24}$/;
+
+async function findStudentByAnyId(raw) {
+  const sid = normalizeStudentId(raw);
+  if (!sid) return null;
+  const select =
+    '_id username email firstName lastName nickname profilePicture photo level leveling education';
+  if (OID_RE.test(sid) && mongoose.Types.ObjectId.isValid(sid)) {
+    const byId = await Student.findById(sid).select(select).lean();
+    if (byId) return byId;
+  }
+  return Student.findOne({
+    $or: [{ username: sid }, { email: sid }, { email: sid.toLowerCase() }],
+  })
+    .select(select)
+    .lean();
+}
+
+/**
+ * All identity keys used across bookings (username/email) and JWT (Mongo _id).
+ * Progress reports / badges must query with $in of these aliases.
+ */
+async function resolveStudentIdAliases(raw) {
+  const sid = normalizeStudentId(raw);
+  if (!sid) return [];
+  const aliases = new Set([sid]);
+  const student = await findStudentByAnyId(sid);
+  if (student) {
+    aliases.add(String(student._id));
+    if (student.username) aliases.add(String(student.username));
+    if (student.email) {
+      aliases.add(String(student.email));
+      aliases.add(String(student.email).toLowerCase());
+    }
+  }
+  return [...aliases].filter(Boolean);
+}
+
+/** Prefer Booking.studentId convention (username) when storing reports/badges. */
+async function canonicalBookingStudentId(raw) {
+  const sid = normalizeStudentId(raw);
+  if (!sid) return '';
+  const student = await findStudentByAnyId(sid);
+  if (student && student.username) return String(student.username);
+  return sid;
+}
+
 function quarterDateRange(year, quarter) {
   const q = String(quarter || '').toUpperCase();
   const y = Number(year);
@@ -184,9 +233,12 @@ function quarterDateRange(year, quarter) {
 }
 
 async function getStudentBadgeCabinet(studentId) {
-  const sid = normalizeStudentId(studentId);
+  const aliases = await resolveStudentIdAliases(studentId);
+  const sid = aliases[0] || normalizeStudentId(studentId);
   const catalog = await ensureBadgeCatalog();
-  const earned = await StudentBadge.find({ studentId: sid })
+  const earned = await StudentBadge.find(
+    aliases.length ? { studentId: { $in: aliases } } : { studentId: sid }
+  )
     .sort({ awardedAt: -1 })
     .lean();
 
@@ -236,7 +288,7 @@ async function awardBadgesToStudent({
   teacherNote,
   bookingId,
 }) {
-  const sid = normalizeStudentId(studentId);
+  const sid = await canonicalBookingStudentId(studentId);
   const tid = String(teacherId || '').trim();
   const keys = [...new Set((badgeKeys || []).map((k) => String(k || '').trim()).filter(Boolean))];
   if (!sid || !tid || !keys.length) {
@@ -289,9 +341,10 @@ async function awardBadgesToStudent({
 async function getBadgesInQuarter(studentId, year, quarter) {
   const range = quarterDateRange(year, quarter);
   if (!range) return [];
-  const sid = normalizeStudentId(studentId);
+  const aliases = await resolveStudentIdAliases(studentId);
+  const sid = aliases[0] || normalizeStudentId(studentId);
   const rows = await StudentBadge.find({
-    studentId: sid,
+    studentId: aliases.length ? { $in: aliases } : sid,
     awardedAt: { $gte: range.start, $lte: range.end },
   })
     .sort({ awardedAt: -1 })
@@ -321,6 +374,9 @@ module.exports = {
   DEFAULT_BADGES,
   ensureBadgeCatalog,
   normalizeStudentId,
+  findStudentByAnyId,
+  resolveStudentIdAliases,
+  canonicalBookingStudentId,
   quarterDateRange,
   getStudentBadgeCabinet,
   awardBadgesToStudent,

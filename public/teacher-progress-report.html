@@ -167,8 +167,11 @@
         return;
       }
       var params = new URLSearchParams(location.search);
-      var studentId = params.get('studentId') || '';
-      var studentName = params.get('studentName') || 'Student';
+      var studentId = (params.get('studentId') || '').trim();
+      var studentName = (params.get('studentName') || '').trim();
+      if (!studentName || studentName.toLowerCase() === 'unknown student') {
+        studentName = studentId || 'Student';
+      }
       var skills = ['Vocabulary', 'Grammar', 'Reading', 'Writing', 'Spelling', 'Pronunciation'];
       var levels = ['Exploring', 'Growing', 'Mastering'];
       var now = new Date();
@@ -275,7 +278,9 @@
             }),
           });
           var data = await res.json().catch(function () { return {}; });
-          if (!res.ok || !data.success) throw new Error(data.error || 'Save failed');
+          if (!res.ok || !data.success) {
+            throw new Error(data.error || ('Save failed (' + res.status + ')'));
+          }
           status.textContent = 'Saved! Parents can view it from the student’s My Badges tab.';
         } catch (err) {
           status.textContent = err.message || 'Save failed.';

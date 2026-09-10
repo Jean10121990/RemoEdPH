@@ -2618,8 +2618,13 @@ router.get('/badges', verifyToken, requireStudent, async (req, res) => {
 
 router.get('/progress-reports', verifyToken, requireStudent, async (req, res) => {
   try {
-    const studentId = String(req.user.studentId || req.user.username);
-    const rows = await ProgressReport.find({ studentId }).sort({ year: -1, quarter: -1 }).lean();
+    const studentId = String(req.user.studentId || req.user.username || '');
+    const aliases = await studentBadgeService.resolveStudentIdAliases(studentId);
+    const rows = await ProgressReport.find(
+      aliases.length ? { studentId: { $in: aliases } } : { studentId }
+    )
+      .sort({ year: -1, quarter: -1 })
+      .lean();
     res.json({
       success: true,
       reports: rows.map((r) => ({
@@ -2642,18 +2647,21 @@ router.get('/progress-reports', verifyToken, requireStudent, async (req, res) =>
 
 router.get('/progress-reports/:year/:quarter', verifyToken, requireStudent, async (req, res) => {
   try {
-    const studentId = String(req.user.studentId || req.user.username);
+    const studentId = String(req.user.studentId || req.user.username || '');
     const year = Number(req.params.year);
     const quarter = String(req.params.quarter || '').toUpperCase();
     if (!['Q1', 'Q2', 'Q3', 'Q4'].includes(quarter) || !Number.isFinite(year)) {
       return res.status(400).json({ success: false, error: 'Invalid year or quarter' });
     }
 
-    const report = await ProgressReport.findOne({ studentId, year, quarter }).lean();
+    const aliases = await studentBadgeService.resolveStudentIdAliases(studentId);
+    const report = await ProgressReport.findOne({
+      studentId: { $in: aliases.length ? aliases : [studentId] },
+      year,
+      quarter,
+    }).lean();
     const badges = await studentBadgeService.getBadgesInQuarter(studentId, year, quarter);
-    const student = await Student.findById(studentId).select(
-      'firstName lastName username profilePicture photo level leveling education'
-    ).lean();
+    const student = await studentBadgeService.findStudentByAnyId(studentId);
 
     const displayName =
       (student &&
