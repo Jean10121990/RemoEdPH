@@ -255,22 +255,30 @@
 
 .tb-award-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
-  max-height: 220px;
-  overflow: auto;
+  max-height: none;
+  overflow: visible;
+}
+
+@media (max-width: 560px) {
+  .tb-award-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 .tb-award-chip {
   border: 2px solid #e2e8f0;
   background: #fff;
   border-radius: 12px;
-  padding: 8px 6px;
+  padding: 10px 8px;
   cursor: pointer;
   text-align: center;
-  font-size: 0.72rem;
+  font-size: 0.78rem;
   font-weight: 700;
   color: #334155;
+  line-height: 1.25;
+  word-break: break-word;
   transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
@@ -286,7 +294,7 @@
 
 .tb-award-chip .tb-ico {
   display: block;
-  font-size: 1.25rem;
+  font-size: 1.3rem;
   margin-bottom: 4px;
 }
 
@@ -296,8 +304,11 @@
   box-sizing: border-box;
   border: 1px solid #cbd5e1;
   border-radius: 8px;
-  padding: 8px;
-  font-size: 0.85rem;
+  padding: 8px 10px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  line-height: 1.4;
+  color: #0f172a;
   resize: vertical;
   min-height: 56px;
 }

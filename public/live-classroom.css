@@ -549,10 +549,12 @@ body[data-classroom-role="student"] .left-rail {
   z-index: 120000;
   background: rgba(15, 23, 42, 0.88);
   display: none;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: 20px;
+  padding: 24px 20px 32px;
   box-sizing: border-box;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .post-class-feedback-layer.is-visible {
@@ -561,24 +563,32 @@ body[data-classroom-role="student"] .left-rail {
 
 .post-class-feedback-card {
   width: 100%;
-  max-width: 440px;
+  max-width: 680px;
+  margin: auto 0;
   background: #fff;
   border-radius: 16px;
-  padding: 24px 26px;
+  padding: 28px 28px 18px;
   box-shadow: 0 25px 50px rgba(0, 0, 0, 0.35);
+  box-sizing: border-box;
+  max-height: min(92vh, 920px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .post-class-feedback-title {
-  margin: 0 0 10px;
-  font-size: 1.35rem;
+  margin: 0 0 8px;
+  font-size: 1.4rem;
+  font-weight: 800;
   color: #0f172a;
+  letter-spacing: -0.02em;
 }
 
 .post-class-feedback-lead {
-  margin: 0 0 18px;
+  margin: 0 0 20px;
   color: #64748b;
-  font-size: 0.92rem;
-  line-height: 1.5;
+  font-size: 0.95rem;
+  line-height: 1.55;
 }
 
 .post-class-feedback-label {
@@ -586,22 +596,26 @@ body[data-classroom-role="student"] .left-rail {
   font-size: 0.8rem;
   font-weight: 700;
   color: #334155;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .lc-feedback-stars {
   display: flex;
-  gap: 6px;
-  margin-bottom: 8px;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 6px;
 }
 
 .lc-feedback-star {
-  flex: 1;
-  min-height: 44px;
+  flex: 0 0 auto;
+  width: 48px;
+  height: 48px;
+  min-height: 48px;
   border: 2px solid #e2e8f0;
-  border-radius: 10px;
+  border-radius: 12px;
   background: #f8fafc;
-  font-size: 1.35rem;
+  font-size: 1.4rem;
+  line-height: 1;
   color: #cbd5e1;
   cursor: pointer;
   transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
@@ -615,7 +629,7 @@ body[data-classroom-role="student"] .left-rail {
 
 .post-class-feedback-hint {
   min-height: 1.2em;
-  margin: 0 0 14px;
+  margin: 0 0 16px;
   font-size: 0.85rem;
   color: #64748b;
 }
@@ -627,14 +641,55 @@ body[data-classroom-role="student"] .left-rail {
   border-radius: 10px;
   padding: 10px 12px;
   font-size: 0.95rem;
+  font-family: inherit;
+  line-height: 1.45;
+  color: #0f172a;
   margin-bottom: 16px;
   resize: vertical;
+  min-height: 88px;
+}
+
+.post-class-feedback-card .tb-award {
+  margin-top: 0;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+
+.post-class-feedback-card .tb-award-grid {
+  max-height: none;
+  overflow: visible;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+@media (max-width: 560px) {
+  .post-class-feedback-card {
+    padding: 20px 16px 14px;
+    max-height: none;
+  }
+
+  .post-class-feedback-card .tb-award-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 .post-class-feedback-actions {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  position: sticky;
+  bottom: 0;
+  margin: 8px -28px -18px;
+  padding: 14px 28px 18px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, #fff 28%);
+  border-top: 1px solid #e2e8f0;
+  z-index: 2;
+}
+
+@media (max-width: 560px) {
+  .post-class-feedback-actions {
+    margin: 8px -16px -14px;
+    padding: 12px 16px 14px;
+  }
 }
 
 .post-class-feedback-primary {
