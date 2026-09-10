@@ -51,6 +51,7 @@ const {
   EARLY_ENTRY_MINUTES,
 } = require('./services/classroomEntryWindow');
 const { primeRedisConnection } = require('./utils/redisClient');
+const { isMongoObjectId, isBsonOrCastIdError } = require('./utils/mongoObjectId');
 
 const app = express();
 // Reduce fingerprinting: hide Express signature header.
@@ -788,6 +789,10 @@ app.post('/api/booking/:bookingId/mark-student-absent', verifyToken, requireTeac
     const teacherId = req.user.teacherId;
     
     console.log('🚫 Marking student as absent for booking:', bookingId, 'by teacher:', teacherId);
+
+    if (!isMongoObjectId(bookingId)) {
+      return res.status(400).json({ success: false, error: 'Invalid booking ID' });
+    }
     
     // Find the booking and verify it belongs to this teacher
     const booking = await Booking.findById(bookingId);
@@ -1576,6 +1581,9 @@ app.post('/api/class/check-time-access', async (req, res) => {
     if (!bookingId) {
       return res.status(400).json({ error: 'Missing booking ID' });
     }
+    if (!isMongoObjectId(bookingId)) {
+      return res.status(400).json({ error: 'Invalid booking ID' });
+    }
     
     // Get booking from database
     const Booking = require('./models/Booking');
@@ -1634,6 +1642,10 @@ app.get('/api/student/booking/:bookingId', verifyToken, async (req, res) => {
     if (!bookingId) {
       return res.status(400).json({ success: false, error: 'Missing booking ID' });
     }
+    if (!isMongoObjectId(bookingId)) {
+      console.warn('⚠️ [STUDENT BOOKING] Invalid booking id (not ObjectId):', String(bookingId).slice(0, 64));
+      return res.status(400).json({ success: false, error: 'Invalid booking ID' });
+    }
 
     const booking = await Booking.findById(bookingId);
     
@@ -1652,6 +1664,10 @@ app.get('/api/student/booking/:bookingId', verifyToken, async (req, res) => {
     console.log('✅ [STUDENT BOOKING] Booking found:', bookingId);
     res.json({ success: true, booking: bookingObj });
   } catch (error) {
+    if (isBsonOrCastIdError(error)) {
+      console.warn('⚠️ [STUDENT BOOKING] Invalid id:', error.message);
+      return res.status(400).json({ success: false, error: 'Invalid booking ID' });
+    }
     console.error('❌ [STUDENT BOOKING] Error fetching student booking:', error);
     res.status(500).json({ success: false, error: 'Failed to fetch booking information' });
   }
@@ -1664,6 +1680,9 @@ app.post('/api/attendance/mark', verifyToken, async (req, res) => {
     
     if (!bookingId || !userType) {
       return res.status(400).json({ error: 'Missing booking ID or user type' });
+    }
+    if (!isMongoObjectId(bookingId)) {
+      return res.status(400).json({ error: 'Invalid booking ID' });
     }
 
     const allowedTypes = new Set(['teacher', 'student']);
@@ -1770,12 +1789,18 @@ app.use((err, req, res, next) => {
     });
   }
   // Invalid Mongo ObjectId in params/query — client bug, not a server crash.
-  if (err && err.name === 'CastError') {
-    console.warn('⚠️ CastError:', req.method, req.originalUrl, err.path, err.value);
+  if (isBsonOrCastIdError(err)) {
+    console.warn(
+      '⚠️ Invalid ObjectId:',
+      req.method,
+      req.originalUrl,
+      err.path || '',
+      err.value != null ? String(err.value).slice(0, 64) : err.message
+    );
     return res.status(400).json({
       success: false,
       error: 'Invalid id',
-      path: err.path || undefined
+      path: err.path || undefined,
     });
   }
   const status = Number(err && (err.statusCode || err.status)) || 500;

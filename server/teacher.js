@@ -12,6 +12,7 @@ const TeacherSlot = require('./models/TeacherSlot');
 const Booking = require('./models/Booking');
 const { DateTime } = require('luxon');
 const { getScheduledStartTime, getBookingStartAsDate } = require('./utils/bookingScheduledStart');
+const { isMongoObjectId } = require('./utils/mongoObjectId');
 const Notification = require('./models/Notification');
 const TimeLog = require('./models/TimeLog');
 const CancellationRequest = require('./models/CancellationRequest');
@@ -599,7 +600,7 @@ router.post('/booking/:bookingId/send-reminder', verifyToken, requireTeacher, as
   try {
     const teacherId = req.user.teacherId;
     const { bookingId } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(bookingId)) {
+    if (!mongoose.Types.ObjectId.isValid(bookingId) || !isMongoObjectId(bookingId)) {
       return res.status(400).json({ success: false, error: 'Invalid booking id' });
     }
 
@@ -1896,6 +1897,13 @@ router.get('/booking/:bookingId', verifyToken, requireTeacher, async (req, res) 
     const teacherId = req.user.teacherId;
     
     console.log('🔍 Fetching booking by ID:', bookingId);
+
+    if (!isMongoObjectId(bookingId)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid booking ID',
+      });
+    }
     
     const booking = await Booking.findById(bookingId);
     console.log('🔍 Booking found:', booking ? 'YES' : 'NO');

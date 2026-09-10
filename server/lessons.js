@@ -28,21 +28,15 @@ const {
   countSlidesInPptx,
   publicPreviewUrl
 } = require('./utils/pptxLocalPreview');
-
-/** Strict 24-hex ObjectId check (avoids Mongoose CastError spam in logs). */
-function isMongoObjectId(value) {
-  const s = String(value == null ? '' : value).trim();
-  if (!/^[a-fA-F0-9]{24}$/.test(s)) return false;
-  return mongoose.Types.ObjectId.isValid(s);
-}
+const { isMongoObjectId, isBsonOrCastIdError } = require('./utils/mongoObjectId');
 
 function respondInvalidObjectId(res, label = 'id') {
   return res.status(400).json({ success: false, error: `Invalid ${label}` });
 }
 
 function respondLessonRouteError(res, error, fallbackMessage) {
-  if (error && error.name === 'CastError') {
-    console.warn('⚠️ Invalid ObjectId in lessons route:', error.path || '', error.value);
+  if (isBsonOrCastIdError(error)) {
+    console.warn('⚠️ Invalid ObjectId in lessons route:', error.path || '', error.value || error.message);
     return res.status(400).json({ success: false, error: 'Invalid id' });
   }
   console.error(fallbackMessage || 'Lesson route error:', error);

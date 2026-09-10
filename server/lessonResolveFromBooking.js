@@ -4,6 +4,7 @@ const {
   normalizeCurriculumLevel,
   curriculumLevelQueryValues,
 } = require('./config/curriculumLevels');
+const { isMongoObjectId } = require('./utils/mongoObjectId');
 
 function normalizeCurriculumLevelFromStudentLevel(raw) {
   return normalizeCurriculumLevel(raw);
@@ -39,8 +40,19 @@ async function resolveLessonIdFromBooking(booking) {
   const lidRaw = booking.lessonId;
   if (lidRaw) {
     const idStr = lidRaw._id ? String(lidRaw._id) : String(lidRaw);
-    const exists = await Lesson.findById(idStr).select('_id').lean();
-    if (exists) return exists._id;
+    if (isMongoObjectId(idStr)) {
+      try {
+        const exists = await Lesson.findById(idStr).select('_id').lean();
+        if (exists) return exists._id;
+      } catch (err) {
+        console.warn('resolveLessonIdFromBooking findById skipped:', err && err.message);
+      }
+    } else {
+      console.warn(
+        'resolveLessonIdFromBooking: ignoring non-ObjectId lessonId:',
+        idStr.slice(0, 48)
+      );
+    }
   }
 
   const level = normalizeCurriculumLevelFromStudentLevel(booking.studentLevel);

@@ -2,6 +2,7 @@ const Lesson = require('../models/Lesson');
 const LessonProgress = require('../models/LessonProgress');
 const Booking = require('../models/Booking');
 const { resolveLessonIdFromBooking } = require('../lessonResolveFromBooking');
+const { isMongoObjectId } = require('../utils/mongoObjectId');
 
 /**
  * Upsert LessonProgress for a booking after class end / finalize.
@@ -17,6 +18,9 @@ async function upsertLessonProgressFromBooking(bookingOrId, opts = {}) {
 
   let booking = bookingOrId;
   if (!booking || !booking._id) {
+    if (!isMongoObjectId(bookingOrId)) {
+      return { progress: null, skipped: 'invalid_booking_id' };
+    }
     booking = await Booking.findById(bookingOrId);
   }
   if (!booking) {
@@ -29,6 +33,9 @@ async function upsertLessonProgressFromBooking(bookingOrId, opts = {}) {
   }
 
   let lessonId = booking.lessonId || null;
+  if (lessonId && !isMongoObjectId(lessonId._id || lessonId)) {
+    lessonId = null;
+  }
   if (!lessonId) {
     try {
       lessonId = await resolveLessonIdFromBooking(booking);
@@ -41,6 +48,9 @@ async function upsertLessonProgressFromBooking(bookingOrId, opts = {}) {
   }
 
   let curriculumId = null;
+  if (!isMongoObjectId(lessonId._id || lessonId)) {
+    return { progress: null, skipped: 'invalid_lesson_id' };
+  }
   const lesson = await Lesson.findById(lessonId).select('curriculumId').lean();
   if (lesson && lesson.curriculumId) {
     curriculumId = lesson.curriculumId;
