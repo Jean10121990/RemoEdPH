@@ -161,7 +161,22 @@
     max-width: 170px;
 }
 
-/* Menu list – standard vertical gap between items */
+/* Menu list – only the direct child menu scrolls; logout lives in footer */
+.remoed-sidebar > .remoed-menu {
+    list-style: none;
+    padding: 8px 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Legacy selector kept for pages that nest menus differently */
 .remoed-menu {
     list-style: none;
     padding: 8px 0;
@@ -169,8 +184,6 @@
     display: flex;
     flex-direction: column;
     gap: 2px;
-    flex: 1;
-    overflow-y: auto;
 }
 
 .remoed-menu li {
@@ -337,34 +350,61 @@
     stroke: white;
 }
 
-/* Logout at bottom – pinned footer (not inside scrollable menu) */
+/* Logout at bottom – pinned footer (outside scrollable menu; not a .remoed-menu child) */
 .remoed-sidebar .sidebar-logout-footer {
+    flex: 0 0 auto;
     flex-shrink: 0;
-    margin-top: auto;
+    margin-top: 0;
     border-top: 1px solid rgba(15, 23, 42, 0.08);
     background: inherit;
-    padding: 4px 0 10px;
+    padding: 6px 8px 12px;
+    box-sizing: border-box;
+    width: 100%;
 }
-.remoed-sidebar .remoed-menu-logout {
-    flex: none;
-    overflow: visible;
+.remoed-sidebar .sidebar-logout-btn,
+.remoed-sidebar #logout-nav.sidebar-logout-btn {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    box-sizing: border-box;
     margin: 0;
-    padding: 4px 0 0;
-    gap: 0;
-}
-.remoed-menu li#logout-nav {
-    position: static;
-    z-index: 2;
-    margin-top: 0;
+    padding: 12px 16px;
+    border: none;
+    border-left: 4px solid transparent;
+    border-radius: 0 8px 8px 0;
+    background: transparent;
     color: #e74c3c;
+    font: inherit;
+    font-weight: 700;
+    font-size: 0.95rem;
+    line-height: 1.2;
+    text-align: left;
+    cursor: pointer;
     overflow: visible;
 }
-.remoed-menu li#logout-nav svg {
+.remoed-sidebar .sidebar-logout-btn svg {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    stroke-width: 2;
     stroke: #e74c3c;
+    fill: none;
 }
-.remoed-menu li#logout-nav:hover {
-    background: rgba(231, 76, 60, 0.1);
+.remoed-sidebar .sidebar-logout-btn:hover,
+.remoed-sidebar .sidebar-logout-btn:focus-visible {
+    background: rgba(231, 76, 60, 0.12);
     color: #c0392b;
+    outline: none;
+}
+.remoed-sidebar.sidebar-collapsed .sidebar-logout-btn {
+    justify-content: center;
+    padding: 12px 0;
+    gap: 0;
+    border-left-width: 0;
+}
+.remoed-sidebar.sidebar-collapsed .sidebar-logout-btn .menu-label {
+    display: none !important;
 }
 
 /* Content area offset when sidebar is present */

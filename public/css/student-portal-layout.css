@@ -55,11 +55,13 @@ body.page-student-credits button {
 
 /* --- Sidebar: full-height flex chrome; menu colors/active states from teacher-sidebar.css --- */
 body.student-portal nav.remoed-sidebar.remoed-sidebar {
-  height: 100vh;
-  max-height: 100vh;
+  height: 100dvh;
+  max-height: 100dvh;
   min-height: 0;
   overflow: hidden;
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
   /* Inset whole column below notches; header padding handles space above the logo. */
   padding-top: env(safe-area-inset-top, 0px);
 }
@@ -69,21 +71,21 @@ body.student-portal .remoed-sidebar .sidebar-user {
   flex-shrink: 0;
 }
 
-body.student-portal .remoed-sidebar .remoed-menu {
-  flex: 1 1 auto;
+body.student-portal .remoed-sidebar > .remoed-menu {
+  flex: 1 1 0;
   min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
 
-body.student-portal .remoed-sidebar .remoed-menu li#logout-nav {
+body.student-portal .remoed-sidebar .sidebar-logout-footer {
+  flex: 0 0 auto;
   margin-top: 0;
-  flex-shrink: 0;
 }
 
 @media (max-height: 580px) {
-  body.student-portal .remoed-sidebar .remoed-menu {
+  body.student-portal .remoed-sidebar > .remoed-menu {
     overflow-y: auto;
   }
 }
@@ -166,15 +168,18 @@ body.student-portal nav.remoed-sidebar .remoed-menu li.active svg {
   stroke: #fff;
 }
 
-body.student-portal nav.remoed-sidebar .remoed-menu li#logout-nav {
+body.student-portal nav.remoed-sidebar .remoed-menu li#logout-nav,
+body.student-portal nav.remoed-sidebar .sidebar-logout-btn {
   color: #e74c3c;
 }
 
-body.student-portal nav.remoed-sidebar .remoed-menu li#logout-nav svg {
+body.student-portal nav.remoed-sidebar .remoed-menu li#logout-nav svg,
+body.student-portal nav.remoed-sidebar .sidebar-logout-btn svg {
   stroke: #e74c3c;
 }
 
-body.student-portal nav.remoed-sidebar .remoed-menu li#logout-nav:hover {
+body.student-portal nav.remoed-sidebar .remoed-menu li#logout-nav:hover,
+body.student-portal nav.remoed-sidebar .sidebar-logout-btn:hover {
   background: rgba(231, 76, 60, 0.1);
   color: #c0392b;
 }

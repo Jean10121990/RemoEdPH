@@ -7,10 +7,10 @@
   <script src="js/user-session.js"></script>
   <title>Quarterly Progress Report — RemoEd</title>
   <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
-  <link rel="stylesheet" href="css/teacher-sidebar.css?v=logout-pin-1">
+  <link rel="stylesheet" href="css/teacher-sidebar.css?v=logout-pin-2">
   <link rel="stylesheet" href="css/portal-chrome-compact.css">
-  <link rel="stylesheet" href="css/student-portal-layout.css?v=logout-pin-1">
-  <link rel="stylesheet" href="css/student-sidebar.css?v=logout-pin-1">
+  <link rel="stylesheet" href="css/student-portal-layout.css?v=logout-pin-2">
+  <link rel="stylesheet" href="css/student-sidebar.css?v=logout-pin-2">
   <link rel="stylesheet" href="css/student-badges.css?v=2">
   <style>
     :root {
@@ -26,9 +26,21 @@
       background: #f0f9ff;
       color: var(--pr-ink);
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      overflow-x: hidden;
+    }
+    body.page-progress-report .remoed-main {
+      width: 100%;
+      max-width: 100vw;
+      overflow-x: hidden;
+      box-sizing: border-box;
+    }
+    body.page-progress-report .remoed-content {
+      box-sizing: border-box;
+      overflow-x: hidden;
     }
     body.page-progress-report .pr-wrap {
       max-width: 760px;
+      width: 100%;
       margin: 0 auto;
       padding: 0.75rem 1rem 2.5rem;
       box-sizing: border-box;
@@ -321,7 +333,7 @@
 <body class="student-portal page-progress-report">
   <div class="remoed-main">
     <div id="student-sidebar-root" class="no-print"></div>
-    <script src="js/student-sidebar.js?v=logout-pin-1"></script>
+    <script src="js/student-sidebar.js?v=logout-pin-2"></script>
     <script src="js/student-page-header.js"></script>
     <script>
       try {

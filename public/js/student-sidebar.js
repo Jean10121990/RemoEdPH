@@ -277,13 +277,13 @@
             }
         }
         var logoutHtml = logoutItem
-            ? '<li title="' +
+            ? '<button type="button" class="sidebar-logout-btn" id="logout-nav" data-nav="logout" data-logout="1" title="' +
               escapeLabel(logoutItem.label) +
-              '" id="logout-nav" data-nav="logout" data-logout="1">' +
+              '">' +
               logoutItem.icon +
               '<span class="menu-label">' +
               escapeLabel(logoutItem.label) +
-              '</span></li>'
+              '</span></button>'
             : '';
 
         container.innerHTML =
@@ -310,9 +310,7 @@
             '    </div>' +
             '  </div>' +
             '  <ul class="remoed-menu">' + navItemsHtml + '</ul>' +
-            '  <div class="sidebar-logout-footer" aria-label="Account">' +
-            '    <ul class="remoed-menu remoed-menu-logout">' + logoutHtml + '</ul>' +
-            '  </div>' +
+            '  <div class="sidebar-logout-footer">' + logoutHtml + '</div>' +
             '</nav>';
 
         injectStudentNoMotionStyles();

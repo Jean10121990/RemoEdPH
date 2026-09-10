@@ -204,9 +204,13 @@ body[class*="page-teacher-"] .remoed-sidebar #avatar-text {
   font-weight: 800;
 }
 
-body.teacher-portal .remoed-sidebar .remoed-menu,
-body[class*="page-teacher-"] .remoed-sidebar .remoed-menu {
+body.teacher-portal .remoed-sidebar > .remoed-menu,
+body[class*="page-teacher-"] .remoed-sidebar > .remoed-menu {
   padding: 10px 8px 16px;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 body.teacher-portal .remoed-sidebar .remoed-menu li,
@@ -248,9 +252,14 @@ body[class*="page-teacher-"] .remoed-sidebar .remoed-menu li.active svg {
 body.teacher-portal .remoed-sidebar .sidebar-logout-footer,
 body[class*="page-teacher-"] .remoed-sidebar .sidebar-logout-footer {
   border-top-color: rgba(255, 255, 255, 0.18);
-  background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.08) 40%);
+  background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.1) 45%);
+  flex: 0 0 auto;
+  margin-top: 0;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
 }
 
+body.teacher-portal .remoed-sidebar .sidebar-logout-btn,
+body[class*="page-teacher-"] .remoed-sidebar .sidebar-logout-btn,
 body.teacher-portal .remoed-sidebar .remoed-menu li#logout-nav,
 body[class*="page-teacher-"] .remoed-sidebar .remoed-menu li#logout-nav {
   color: #ffe4e4 !important;
@@ -258,12 +267,16 @@ body[class*="page-teacher-"] .remoed-sidebar .remoed-menu li#logout-nav {
   position: static;
 }
 
+body.teacher-portal .remoed-sidebar .sidebar-logout-btn svg,
+body[class*="page-teacher-"] .remoed-sidebar .sidebar-logout-btn svg,
 body.teacher-portal .remoed-sidebar .remoed-menu li#logout-nav svg,
 body[class*="page-teacher-"] .remoed-sidebar .remoed-menu li#logout-nav svg {
   color: #ffb4b4 !important;
   stroke: #ffb4b4 !important;
 }
 
+body.teacher-portal .remoed-sidebar .sidebar-logout-btn:hover,
+body[class*="page-teacher-"] .remoed-sidebar .sidebar-logout-btn:hover,
 body.teacher-portal .remoed-sidebar .remoed-menu li#logout-nav:hover,
 body[class*="page-teacher-"] .remoed-sidebar .remoed-menu li#logout-nav:hover {
   background: rgba(220, 38, 38, 0.28) !important;

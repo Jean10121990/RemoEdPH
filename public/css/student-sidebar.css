@@ -166,36 +166,67 @@ body.student-portal .remoed-sidebar #avatar-text {
 }
 
 /* Menu */
-body.student-portal .remoed-sidebar .remoed-menu {
+body.student-portal .remoed-sidebar > .remoed-menu {
   padding: 10px 8px 16px;
   display: flex;
   flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 /* Keep Log out pinned at the bottom of the rail (outside scrollable menu) */
 body.student-portal .remoed-sidebar .sidebar-logout-footer {
-  flex-shrink: 0;
-  margin-top: auto;
+  flex: 0 0 auto;
+  margin-top: 0;
   border-top: 1px solid rgba(255, 255, 255, 0.18);
-  background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.12) 45%);
-  padding: 4px 0 10px;
+  background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.14) 55%);
+  padding: 6px 8px calc(12px + env(safe-area-inset-bottom, 0px));
+  width: 100%;
+  box-sizing: border-box;
 }
 
-body.student-portal .remoed-sidebar .remoed-menu-logout {
-  flex: none;
-  overflow: visible;
-  margin: 0;
-  padding: 4px 0 0;
-}
-
-body.student-portal .remoed-sidebar .remoed-menu li#logout-nav {
-  position: static;
-  bottom: auto;
-  z-index: 2;
-  margin-top: 0 !important;
+body.student-portal .remoed-sidebar .sidebar-logout-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 2px 0;
+  padding: 12px 14px;
+  border: none;
+  border-left: 3px solid transparent;
+  border-radius: 10px;
   background: transparent;
-  padding-top: 12px;
-  padding-bottom: 12px;
+  color: #ffe4e4 !important;
+  font: inherit;
+  font-weight: 800;
+  font-size: 0.95rem;
+  line-height: 1.2;
+  text-align: left;
+  cursor: pointer;
+}
+
+body.student-portal .remoed-sidebar .sidebar-logout-btn svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: #ffb4b4 !important;
+  stroke: currentColor;
+  fill: none;
+}
+
+body.student-portal .remoed-sidebar .sidebar-logout-btn .menu-label {
+  color: inherit !important;
+}
+
+body.student-portal .remoed-sidebar .sidebar-logout-btn:hover,
+body.student-portal .remoed-sidebar .sidebar-logout-btn:focus-visible {
+  background: rgba(220, 38, 38, 0.28) !important;
+  color: #ffffff !important;
+  border-left-color: #fecaca;
+  outline: none;
 }
 
 body.student-portal .remoed-sidebar .remoed-menu li {
@@ -234,21 +265,6 @@ body.student-portal .remoed-sidebar .remoed-menu .menu-label,
 body.student-portal .remoed-sidebar .remoed-menu .remoed-menu-label {
   color: inherit !important;
   text-shadow: none !important;
-}
-
-body.student-portal .remoed-sidebar .remoed-menu li#logout-nav {
-  color: #ffe4e4 !important;
-  margin-top: auto;
-}
-
-body.student-portal .remoed-sidebar .remoed-menu li#logout-nav svg {
-  color: #ffb4b4 !important;
-}
-
-body.student-portal .remoed-sidebar .remoed-menu li#logout-nav:hover {
-  background: rgba(220, 38, 38, 0.28) !important;
-  color: #ffffff !important;
-  border-left-color: #fecaca;
 }
 
 /* Kill white heading glow from child-friendly-styles on sidebar */
@@ -399,6 +415,31 @@ body.student-portal nav.remoed-sidebar.sidebar-collapsed .remoed-menu li {
 body.student-portal nav.remoed-sidebar.sidebar-collapsed .remoed-menu li svg {
   margin: 0 !important;
   display: block;
+}
+
+body.student-portal nav.remoed-sidebar.sidebar-collapsed .sidebar-logout-footer {
+  width: 100%;
+  padding-left: 0;
+  padding-right: 0;
+  display: flex;
+  justify-content: center;
+}
+
+body.student-portal nav.remoed-sidebar.sidebar-collapsed .sidebar-logout-btn {
+  width: 40px !important;
+  min-width: 40px !important;
+  max-width: 40px !important;
+  height: 40px !important;
+  margin: 2px auto !important;
+  padding: 0 !important;
+  gap: 0 !important;
+  justify-content: center !important;
+  border-left: none !important;
+  border-radius: 10px !important;
+}
+
+body.student-portal nav.remoed-sidebar.sidebar-collapsed .sidebar-logout-btn .menu-label {
+  display: none !important;
 }
 
 body.student-portal nav.remoed-sidebar.sidebar-collapsed .remoed-menu li:not(#logout-nav):not(.active):hover {

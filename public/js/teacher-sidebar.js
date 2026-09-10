@@ -196,11 +196,13 @@
             }
         }
         var logoutHtml = logoutItem
-            ? '<li title="' + logoutItem.label + '" id="logout-nav" data-nav="logout" data-logout="1">' +
+            ? '<button type="button" class="sidebar-logout-btn" id="logout-nav" data-nav="logout" data-logout="1" title="' +
+              logoutItem.label +
+              '">' +
               logoutItem.icon +
               '<span class="menu-label">' +
               logoutItem.label +
-              '</span></li>'
+              '</span></button>'
             : '';
 
         var html =
@@ -227,9 +229,7 @@
             '    </div>' +
             '  </div>' +
             '  <ul class="remoed-menu">' + navItemsHtml + '</ul>' +
-            '  <div class="sidebar-logout-footer" aria-label="Account">' +
-            '    <ul class="remoed-menu remoed-menu-logout">' + logoutHtml + '</ul>' +
-            '  </div>' +
+            '  <div class="sidebar-logout-footer">' + logoutHtml + '</div>' +
             '</nav>';
 
         container.innerHTML = html;
