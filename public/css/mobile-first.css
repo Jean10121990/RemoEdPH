@@ -24,11 +24,6 @@ canvas {
   height: auto;
 }
 
-.remoed-sidebar .sidebar-logo-img,
-.remoed-sidebar #profile-image {
-  max-width: 100%;
-}
-
 /* Keep brand mark square — height:auto + narrow rail stretches it into a tall pill */
 .remoed-sidebar .sidebar-logo-img {
   width: 40px;
@@ -37,6 +32,15 @@ canvas {
   max-height: 40px;
   object-fit: contain;
   flex-shrink: 0;
+}
+
+/* Avatar photo must fill the circle; never inherit global img { height:auto } */
+.remoed-sidebar #remoed-avatar #profile-image,
+.remoed-sidebar #profile-image {
+  max-width: none;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 /* --- Portal shell: full-width content + desktop cap --- */

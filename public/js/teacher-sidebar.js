@@ -222,7 +222,7 @@
             '  <div class="sidebar-user">' +
             '    <div class="sidebar-user-inner">' +
             '      <div id="remoed-avatar" onclick="window.location.href=\'teacher-profile.html\'" style="cursor:pointer;">' +
-            '        <img id="profile-image" src="" alt="Profile" style="width:100%;height:100%;border-radius:50%;object-fit:cover;display:none;">' +
+            '        <img id="profile-image" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover;display:none;">' +
             '        <span id="avatar-text">T</span>' +
             '      </div>' +
             '      <span class="remoed-username" id="remoed-username">Hi, Teacher</span>' +
@@ -382,6 +382,31 @@
         });
     }
 
+    function showAvatarLetter(avatarTextEl, profileImageEl) {
+        if (profileImageEl) {
+            profileImageEl.style.display = 'none';
+            profileImageEl.removeAttribute('src');
+            profileImageEl.onload = null;
+            profileImageEl.onerror = null;
+        }
+        if (avatarTextEl) avatarTextEl.style.display = '';
+    }
+
+    function showAvatarPhoto(profileImageEl, avatarTextEl, url) {
+        if (!profileImageEl || !url) {
+            showAvatarLetter(avatarTextEl, profileImageEl);
+            return;
+        }
+        profileImageEl.onload = function () {
+            profileImageEl.style.display = 'block';
+            if (avatarTextEl) avatarTextEl.style.display = 'none';
+        };
+        profileImageEl.onerror = function () {
+            showAvatarLetter(avatarTextEl, profileImageEl);
+        };
+        profileImageEl.src = url;
+    }
+
     function loadProfileIntoSidebar(container) {
         var token =
             (typeof RemoedUserSession !== 'undefined' && RemoedUserSession.getUserToken && RemoedUserSession.getUserToken()) ||
@@ -412,15 +437,15 @@
                 'Teacher';
             if (usernameEl) usernameEl.textContent = 'Hi, ' + greet;
             if (avatarTextEl) avatarTextEl.textContent = greet[0].toUpperCase();
-            if (data.profile.profilePicture && profileImageEl) {
-                profileImageEl.src = data.profile.profilePicture;
-                profileImageEl.style.display = 'block';
-                if (avatarTextEl) avatarTextEl.style.display = 'none';
-            } else if (avatarTextEl) {
-                avatarTextEl.style.display = '';
+            var pic = String(data.profile.profilePicture || data.profile.photo || '').trim();
+            if (pic && pic !== 'null' && pic !== 'undefined') {
+                showAvatarPhoto(profileImageEl, avatarTextEl, pic);
+            } else {
+                showAvatarLetter(avatarTextEl, profileImageEl);
             }
         }).catch(function () {
             if (usernameEl) usernameEl.textContent = (raw.indexOf('Hi,') === 0) ? raw : 'Hi, ' + raw;
+            showAvatarLetter(avatarTextEl, profileImageEl);
         });
     }
 

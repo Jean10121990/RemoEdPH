@@ -23,8 +23,8 @@
   </script>
   <title>Leaderboard - RemoEdPH</title>
   <link rel="stylesheet" href="modern-styles.css" id="modern-styles-css" />
-  <link rel="stylesheet" href="css/teacher-sidebar.css?v=lb-nav-2" />
-  <link rel="stylesheet" href="css/portal-chrome-compact.css?v=lb-nav-2" />
+  <link rel="stylesheet" href="css/teacher-sidebar.css?v=logout-pin-2" />
+  <link rel="stylesheet" href="css/portal-chrome-compact.css?v=logout-pin-2" />
   <link rel="stylesheet" href="css/student-portal-layout.css?v=lb-sidebar-1" id="student-layout-css" />
   <link rel="stylesheet" href="css/student-sidebar.css?v=lb-sidebar-1" id="student-sidebar-css" />
   <link rel="stylesheet" href="css/teacher-brand-overrides.css?v=mint-forest-1" id="teacher-brand-css" />
@@ -32,12 +32,20 @@
   <style>
     body.page-leaderboard {
       overflow-x: hidden;
+      margin: 0;
     }
     body.page-leaderboard .remoed-main {
       width: 100%;
       max-width: 100vw;
       overflow-x: hidden;
       box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body.page-leaderboard.teacher-portal nav.remoed-sidebar {
+      left: 0 !important;
+      margin: 0 !important;
+      transform: none !important;
     }
     body.page-leaderboard .remoed-content {
       min-width: 0;
@@ -55,18 +63,23 @@
       var studentLayout = document.getElementById('student-layout-css');
       var studentSide = document.getElementById('student-sidebar-css');
       var teacherBrand = document.getElementById('teacher-brand-css');
+      var modern = document.getElementById('modern-styles-css');
       if (role === 'admin') {
         if (studentLayout) studentLayout.disabled = true;
         if (studentSide) studentSide.disabled = true;
         if (teacherBrand) teacherBrand.disabled = true;
+        if (modern) modern.disabled = false;
       } else if (role === 'teacher') {
         if (studentLayout) studentLayout.disabled = true;
         if (studentSide) studentSide.disabled = true;
         if (teacherBrand) teacherBrand.disabled = false;
+        /* modern-styles fights teacher rail left:0 / avatar sizing */
+        if (modern) modern.disabled = true;
       } else {
         if (studentLayout) studentLayout.disabled = false;
         if (studentSide) studentSide.disabled = false;
         if (teacherBrand) teacherBrand.disabled = true;
+        if (modern) modern.disabled = true;
       }
     })();
   </script>
@@ -386,11 +399,11 @@
       body.classList.remove('student-portal', 'admin-portal');
       root.id = 'teacher-sidebar-root';
       var ts = document.createElement('script');
-      ts.src = 'js/teacher-sidebar.js?v=lb-nav-2';
+      ts.src = 'js/teacher-sidebar.js?v=logout-pin-2';
       ts.onload = function () {
         TeacherSidebar.render('teacher-sidebar-root', 'leaderboard');
         var h = document.createElement('script');
-        h.src = 'js/teacher-page-header.js?v=lb-nav-2';
+        h.src = 'js/teacher-page-header.js?v=logout-pin-2';
         h.onload = function () {
           if (window.TeacherPageHeader) TeacherPageHeader.render('leaderboard');
         };

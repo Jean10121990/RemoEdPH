@@ -205,12 +205,23 @@
             if (usernameEl) usernameEl.textContent = 'Hi, ' + display;
             if (avatarTextEl) avatarTextEl.textContent = (display[0] || 'S').toUpperCase();
 
-            var imgSrc = data.profile.profilePicture || data.profile.photo || '';
-            if (imgSrc && profileImageEl) {
+            var imgSrc = String(data.profile.profilePicture || data.profile.photo || '').trim();
+            if (imgSrc && imgSrc !== 'null' && imgSrc !== 'undefined' && profileImageEl) {
+                profileImageEl.onload = function () {
+                    profileImageEl.style.display = 'block';
+                    if (avatarTextEl) avatarTextEl.style.display = 'none';
+                };
+                profileImageEl.onerror = function () {
+                    profileImageEl.style.display = 'none';
+                    profileImageEl.removeAttribute('src');
+                    if (avatarTextEl) avatarTextEl.style.display = '';
+                };
                 profileImageEl.src = imgSrc;
-                profileImageEl.style.display = 'block';
-                if (avatarTextEl) avatarTextEl.style.display = 'none';
             } else if (avatarTextEl) {
+                if (profileImageEl) {
+                    profileImageEl.style.display = 'none';
+                    profileImageEl.removeAttribute('src');
+                }
                 avatarTextEl.style.display = '';
             }
 
@@ -303,7 +314,7 @@
             '  <div class="sidebar-user">' +
             '    <div class="sidebar-user-inner">' +
             '      <div id="remoed-avatar" onclick="window.location.href=\'student-profile.html\'" style="cursor:pointer;">' +
-            '        <img id="profile-image" src="" alt="Profile" style="width:100%;height:100%;border-radius:50%;object-fit:cover;display:none;">' +
+            '        <img id="profile-image" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover;display:none;">' +
             '        <span id="avatar-text">S</span>' +
             '      </div>' +
             '      <span class="remoed-username" id="remoed-username">Hi, Student</span>' +
