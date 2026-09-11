@@ -7,10 +7,29 @@
 
   function authToken() {
     try {
+      if (global.RemoedSecurityGuard && typeof global.RemoedSecurityGuard.getToken === 'function') {
+        var viaGuard = global.RemoedSecurityGuard.getToken();
+        if (viaGuard) return viaGuard;
+      }
+    } catch (e0) {}
+    try {
+      if (global.RemoedUserSession && typeof global.RemoedUserSession.getUserToken === 'function') {
+        var viaSession = global.RemoedUserSession.getUserToken();
+        if (viaSession) return viaSession;
+      }
+    } catch (e1) {}
+    try {
       return (
-        global.localStorage.getItem('studentToken') ||
-        global.localStorage.getItem('token') ||
         global.localStorage.getItem('remoed_student_token') ||
+        global.sessionStorage.getItem('remoed_student_token') ||
+        global.localStorage.getItem('remoed_student_auth') ||
+        global.sessionStorage.getItem('remoed_student_auth') ||
+        global.localStorage.getItem('studentToken') ||
+        global.sessionStorage.getItem('studentToken') ||
+        global.localStorage.getItem('remoed_user_token') ||
+        global.sessionStorage.getItem('remoed_user_token') ||
+        global.localStorage.getItem('token') ||
+        global.sessionStorage.getItem('token') ||
         ''
       );
     } catch (e) {
@@ -77,6 +96,9 @@
           primaryLevel = lvl;
         }
       });
+      if (data.profileLevel && (byLevel[data.profileLevel] || 0) > 0) {
+        primaryLevel = data.profileLevel;
+      }
       return {
         completedKeys: keys,
         completedCount:

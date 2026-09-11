@@ -10,25 +10,60 @@ function normalizeCurriculumLevelFromStudentLevel(raw) {
   return normalizeCurriculumLevel(raw);
 }
 
-/** Same rules as student lesson-progress: Batch/Lesson in title or linear 1–220. */
-function parseBatchLessonFromTitle(lessonTitle) {
+const LEVEL_BY_L_CODE = {
+  1: 'Little Seeds',
+  2: 'Sprouts',
+  3: 'Saplings',
+  4: 'Young Stewards',
+};
+
+/**
+ * Parse booking lesson titles such as "RemoEd L1M1 Lesson 3", "L2 M1 - Lesson 1",
+ * "Batch 2 Lesson 5", or a linear "Lesson 40" (1–220).
+ */
+function parseBookingLessonRef(lessonTitle) {
   const t = String(lessonTitle || '');
+  if (!t.trim()) return null;
+
+  let level = null;
+  const lm = t.match(/\bL\s*([1-4])(?:\s*M\s*([1-9]|10))?\b/i);
+  if (lm) {
+    level = LEVEL_BY_L_CODE[parseInt(lm[1], 10)] || null;
+  }
+
   let batch = null;
   let lessonNum = null;
   const bMatch = t.match(/batch\s*(\d+)/i);
   const lMatch = t.match(/lesson\s*(\d+)/i);
   if (bMatch) batch = parseInt(bMatch[1], 10);
+  else if (lm && lm[2]) batch = parseInt(lm[2], 10);
+  else {
+    const moduleOnly = t.match(/\bM\s*([1-9]|10)\b/i);
+    if (moduleOnly) batch = parseInt(moduleOnly[1], 10);
+  }
   if (lMatch) lessonNum = parseInt(lMatch[1], 10);
+
   if (batch != null && lessonNum != null && batch >= 1 && batch <= 10 && lessonNum >= 1 && lessonNum <= 22) {
-    return { batch, lessonNum };
+    return { batch, lessonNum, level };
   }
   if (lMatch && batch == null) {
     const n = parseInt(lMatch[1], 10);
     if (n >= 1 && n <= 220) {
-      return { batch: Math.ceil(n / 22), lessonNum: ((n - 1) % 22) + 1 };
+      return {
+        batch: Math.ceil(n / 22),
+        lessonNum: ((n - 1) % 22) + 1,
+        level,
+      };
     }
   }
-  return null;
+  return level ? { batch: null, lessonNum: null, level } : null;
+}
+
+/** Same rules as student lesson-progress: Batch/Lesson in title or linear 1–220. */
+function parseBatchLessonFromTitle(lessonTitle) {
+  const parsed = parseBookingLessonRef(lessonTitle);
+  if (!parsed || parsed.batch == null || parsed.lessonNum == null) return null;
+  return { batch: parsed.batch, lessonNum: parsed.lessonNum };
 }
 
 /**
@@ -99,5 +134,6 @@ async function resolveLessonIdFromBooking(booking) {
 module.exports = {
   resolveLessonIdFromBooking,
   parseBatchLessonFromTitle,
+  parseBookingLessonRef,
   normalizeCurriculumLevelFromStudentLevel,
 };

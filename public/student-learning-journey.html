@@ -17,7 +17,7 @@
 <body class="student-portal page-student-learning-journey">
     <div class="remoed-main">
         <div id="student-sidebar-root"></div>
-        <script src="js/student-lesson-progress-api.js"></script>
+        <script src="js/student-lesson-progress-api.js?v=journey-sync-1"></script>
         <script src="js/student-sidebar.js?v=logout-pin-2"></script>
         <script src="js/student-page-header.js"></script>
         <script>
@@ -114,8 +114,8 @@
                 '</svg>';
 
             function getPortalToken() {
-                if (window.RemoedUserSession && typeof window.RemoedUserSession.getUserToken === 'function') {
-                    return window.RemoedUserSession.getUserToken() || '';
+                if (window.RemoEdLessonProgress && typeof window.RemoEdLessonProgress.authToken === 'function') {
+                    return window.RemoEdLessonProgress.authToken() || '';
                 }
                 try {
                     return (

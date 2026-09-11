@@ -18,6 +18,10 @@ const PortalVideo = require('./models/PortalVideo');
 const Lesson = require('./models/Lesson');
 const Curriculum = require('./models/Curriculum');
 const LessonProgress = require('./models/LessonProgress');
+const {
+  resolveLessonIdFromBooking,
+  parseBookingLessonRef,
+} = require('./lessonResolveFromBooking');
 const { verifyToken, requireStudent } = require('./authMiddleware');
 
 /** Public teacher label for students — prefers nickname over legal name. */
@@ -942,38 +946,14 @@ function normalizeProgressLevel(raw) {
   return normalizeCurriculumLevel(raw);
 }
 
-/** Parse "Batch X" / "Lesson Y" from stored booking title; or linear lesson index 1–220. */
-function levelFromLessonTitle(lessonTitle) {
-  const t = String(lessonTitle || '');
-  const m = t.match(/RemoEd\s+([A-Za-z]+)\s+English/i);
-  if (!m) return null;
-  return normalizeProgressLevel(m[1]);
-}
-
-function parseBatchLessonFromTitle(lessonTitle) {
-  const t = String(lessonTitle || '');
-  let batch = null;
-  let lessonNum = null;
-  const bMatch = t.match(/batch\s*(\d+)/i);
-  const lMatch = t.match(/lesson\s*(\d+)/i);
-  if (bMatch) batch = parseInt(bMatch[1], 10);
-  if (lMatch) lessonNum = parseInt(lMatch[1], 10);
-  if (batch != null && lessonNum != null && batch >= 1 && batch <= 10 && lessonNum >= 1 && lessonNum <= 22) {
-    return { batch, lessonNum };
-  }
-  if (lMatch && batch == null) {
-    const n = parseInt(lMatch[1], 10);
-    if (n >= 1 && n <= 220) {
-      return { batch: Math.ceil(n / 22), lessonNum: ((n - 1) % 22) + 1 };
-    }
-  }
-  return null;
-}
-
 function isBookingLessonCompleted(b) {
   const st = String(b.status || '').toLowerCase();
-  if (st === 'completed') return true;
+  if (st === 'cancelled' || st === 'canceled' || st.indexOf('cancelled') === 0 || st === 'absent') {
+    return false;
+  }
+  if (st === 'completed' || st === 'pending_feedback') return true;
   if (b.attendance && b.attendance.classCompleted) return true;
+  if (b.sessionEndedAt || b.finishedAt) return true;
   return false;
 }
 
@@ -985,17 +965,27 @@ function isBookingLessonCompleted(b) {
  */
 router.get('/lesson-progress', verifyToken, requireStudent, async (req, res) => {
   try {
-    const uniqueIdentifiers = collectStudentIdentifiers(req);
+    let uniqueIdentifiers = collectStudentIdentifiers(req);
     if (uniqueIdentifiers.length === 0) {
       return res.status(400).json({ error: 'Student identifier missing' });
     }
+    try {
+      const studentBadgeService = require('./services/studentBadgeService');
+      const extra = await studentBadgeService.resolveStudentIdAliases(uniqueIdentifiers[0]);
+      if (extra && extra.length) {
+        uniqueIdentifiers = [...new Set(uniqueIdentifiers.concat(extra))];
+      }
+    } catch (aliasErr) {
+      console.warn('lesson-progress aliases:', aliasErr && aliasErr.message);
+    }
 
     const { cancelledStatusValues } = require('./utils/bookingStatus');
+    const { resolveStudentCurriculumLevel } = require('./config/curriculumLevels');
     const bookings = await Booking.find({
       studentId: { $in: uniqueIdentifiers },
       status: { $nin: cancelledStatusValues() },
     })
-      .select('lesson studentLevel status attendance lessonId classroomId')
+      .select('lesson studentLevel status attendance lessonId classroomId finishedAt sessionEndedAt')
       .lean();
 
     const completed = bookings.filter(isBookingLessonCompleted);
@@ -1006,16 +996,10 @@ router.get('/lesson-progress', verifyToken, requireStudent, async (req, res) => 
       .select('lessonId curriculumId completedAt status')
       .lean();
 
-    const lessonIds = [
-      ...new Set([
-        ...completed.map((b) => b.lessonId).filter(Boolean),
-        ...lessonProgressDocs.map((p) => p.lessonId).filter(Boolean),
-      ].map(String)),
-    ];
-
-    let lessonMap = {};
-    if (lessonIds.length > 0) {
-      const lessons = await Lesson.find({ _id: { $in: lessonIds } })
+    async function hydrateLessonMap(ids) {
+      const uniqueIds = [...new Set(ids.filter(Boolean).map(String))];
+      if (!uniqueIds.length) return {};
+      const lessons = await Lesson.find({ _id: { $in: uniqueIds } })
         .select('lessonNumber order curriculumId')
         .lean();
       const curIds = [...new Set(lessons.map((l) => l.curriculumId).filter(Boolean).map(String))];
@@ -1024,10 +1008,15 @@ router.get('/lesson-progress', verifyToken, requireStudent, async (req, res) => 
           ? await Curriculum.find({ _id: { $in: curIds } }).select('level').lean()
           : [];
       const curById = Object.fromEntries(curricula.map((c) => [String(c._id), c]));
-      lessonMap = Object.fromEntries(
+      return Object.fromEntries(
         lessons.map((l) => [String(l._id), { ...l, curriculum: curById[String(l.curriculumId)] }])
       );
     }
+
+    let lessonMap = await hydrateLessonMap([
+      ...completed.map((b) => b.lessonId),
+      ...lessonProgressDocs.map((p) => p.lessonId),
+    ]);
 
     const completedKeys = new Set();
 
@@ -1044,6 +1033,7 @@ router.get('/lesson-progress', verifyToken, requireStudent, async (req, res) => 
       return true;
     }
 
+    const unresolved = [];
     for (const b of completed) {
       let level = normalizeProgressLevel(b.studentLevel);
       let batch = null;
@@ -1061,19 +1051,52 @@ router.get('/lesson-progress', verifyToken, requireStudent, async (req, res) => 
       }
 
       if (batch == null || lessonNum == null) {
-        const parsed = parseBatchLessonFromTitle(b.lesson);
-        if (parsed) {
+        const parsed = parseBookingLessonRef(b.lesson);
+        if (parsed && parsed.batch != null && parsed.lessonNum != null) {
           batch = parsed.batch;
           lessonNum = parsed.lessonNum;
+          if (!level && parsed.level) level = parsed.level;
         }
       }
 
+      if (!level) {
+        const parsed = parseBookingLessonRef(b.lesson);
+        if (parsed && parsed.level) level = parsed.level;
+      }
       if (!level) level = normalizeProgressLevel(b.studentLevel);
-      if (!level) level = levelFromLessonTitle(b.lesson);
-      if (!level || batch == null || lessonNum == null) continue;
-      if (batch < 1 || batch > 10 || lessonNum < 1 || lessonNum > 22) continue;
+      if (!level || batch == null || lessonNum == null) {
+        unresolved.push(b);
+        continue;
+      }
+      if (batch < 1 || batch > 10 || lessonNum < 1 || lessonNum > 22) {
+        unresolved.push(b);
+        continue;
+      }
 
       completedKeys.add(`${level}:${batch}:${lessonNum}`);
+    }
+
+    if (unresolved.length) {
+      const extraIds = [];
+      const resolvedPairs = [];
+      for (const b of unresolved) {
+        try {
+          const lid = await resolveLessonIdFromBooking(b);
+          if (lid) {
+            extraIds.push(lid);
+            resolvedPairs.push({ booking: b, lessonId: lid });
+          }
+        } catch (resolveErr) {
+          console.warn('lesson-progress resolveLessonId:', resolveErr && resolveErr.message);
+        }
+      }
+      if (extraIds.length) {
+        const extraMap = await hydrateLessonMap(extraIds);
+        lessonMap = { ...lessonMap, ...extraMap };
+        for (const pair of resolvedPairs) {
+          addKeyFromLessonId(pair.lessonId, normalizeProgressLevel(pair.booking.studentLevel));
+        }
+      }
     }
 
     // Merge LessonProgress model completions (written on class finish / finalize)
@@ -1086,11 +1109,14 @@ router.get('/lesson-progress', verifyToken, requireStudent, async (req, res) => 
       status: 'in_progress',
     });
 
+    const profileLevel = resolveStudentCurriculumLevel(req.student) || null;
+
     res.json({
       success: true,
       completedKeys: [...completedKeys],
       completedCount: completedKeys.size,
       inProgressCount,
+      profileLevel,
       levels: require('./config/curriculumLevels').CURRICULUM_LEVELS,
       batchesPerLevel: 10,
       lessonsPerBatch: 22,
