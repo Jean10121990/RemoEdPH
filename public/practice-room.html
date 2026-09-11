@@ -7,44 +7,46 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Practice Room - RemoEdPH</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/practice-room.css?v=mint-forest-3">
 </head>
 <body class="page-practice-room">
     <div class="container">
-        <div class="header">
-            <div class="practice-info">
-                <h1>🎯 Practice Room</h1>
-                <div class="practice-timer" id="practice-timer">Practice Time: 00:00</div>
+        <header class="header pr-top-bar">
+            <div class="practice-info pr-top-bar__left">
+                <h1 class="pr-top-bar__title">Practice Room</h1>
+                <span class="pr-top-bar__dot" aria-hidden="true"></span>
+                <span class="pr-top-bar__time">Practice time <strong id="practice-timer">00:00</strong></span>
             </div>
-            <button class="back-btn" id="back-dashboard-btn">Back to Dashboard</button>
-        </div>
+            <button type="button" class="back-btn pr-leave-btn" id="back-dashboard-btn">Back to Dashboard</button>
+        </header>
         
-        <div class="main-content">
-            <div class="video-section">
+        <div class="main-content pr-main">
+            <div class="video-section pr-stage">
                 <div class="video-grid">
                     <div class="video-container">
                         <video id="local-video" autoplay playsinline muted></video>
-                        <div class="video-label">Your Camera Preview</div>
+                        <div class="video-label">Your camera preview</div>
                         <div class="controls">
-                            <button class="control-btn" id="toggle-camera">📹</button>
-                            <button class="control-btn" id="toggle-mic">🎤</button>
+                            <button type="button" class="control-btn" id="toggle-camera" title="Toggle camera" aria-label="Toggle camera">📹</button>
+                            <button type="button" class="control-btn" id="toggle-mic" title="Toggle microphone" aria-label="Toggle microphone">🎤</button>
                         </div>
                     </div>
                 </div>
             </div>
             
-            <div class="sidebar">
+            <div class="sidebar pr-rail">
                 <div class="tab-container">
                     <div class="tab-buttons">
-                        <button class="tab-button active" data-tab="controls">🎛️ Controls</button>
-                        <button class="tab-button" data-tab="tools">🛠️ Tools</button>
-                        <button class="tab-button" data-tab="whiteboard">📝 Whiteboard</button>
-                        <button class="tab-button" data-tab="info">📋 Info</button>
+                        <button type="button" class="tab-button active" data-tab="controls">Controls</button>
+                        <button type="button" class="tab-button" data-tab="tools">Tools</button>
+                        <button type="button" class="tab-button" data-tab="whiteboard">Board</button>
+                        <button type="button" class="tab-button" data-tab="info">Info</button>
                     </div>
                     
                     <!-- Controls Tab -->
                     <div class="tab-content active" id="controls-tab">
                         <div class="control-group">
-                            <h3>🎨 Camera Controls</h3>
+                            <h3>Camera</h3>
                             <div class="control-row">
                                 <label class="control-label">Brightness:</label>
                                 <input type="range" id="brightness-slider" class="control-input" min="0.5" max="2" step="0.01" value="1">
@@ -63,7 +65,7 @@
                         </div>
                         
                         <div class="control-group">
-                            <h3>🎤 Audio Controls</h3>
+                            <h3>Audio</h3>
                             <div class="control-row">
                                 <label class="control-label">Volume:</label>
                                 <input type="range" id="volume-slider" class="control-input" min="0" max="100" step="1" value="50">
@@ -96,7 +98,7 @@
                     
                     <!-- Tools Tab -->
                     <div class="tab-content" id="tools-tab">
-                        <h3>🛠️ Tools</h3>
+                        <h3>Tools</h3>
                         <div class="tools-grid">
                             <button class="tool-btn" id="file-upload-btn">Upload File</button>
                         </div>
@@ -104,7 +106,7 @@
                     
                     <!-- Whiteboard Tab -->
                     <div class="tab-content" id="whiteboard-tab">
-                        <h3>📝 Whiteboard</h3>
+                        <h3>Board</h3>
                         <canvas id="whiteboard" width="400" height="400"></canvas>
                         <div style="margin-top: 10px;">
                             <button class="tool-btn" id="clear-whiteboard">Clear</button>
@@ -113,14 +115,10 @@
                     
                     <!-- Info Tab -->
                     <div class="tab-content" id="info-tab">
-                        <h3>📋 Practice Room Info</h3>
+                        <h3>Practice room</h3>
                         <div class="status-message status-info">
-                            <strong>Practice Room Instructions:</strong><br>
-                            • This is a practice room for testing your devices<br>
-                            • No other participants will join<br>
-                            • Use the controls to adjust your settings<br>
-                            • Audio feedback uses simple mode for stability<br>
-                            • When satisfied, return to dashboard
+                            <strong>Device check only.</strong><br>
+                            No one else will join this room. Adjust camera and mic, then go back when you are ready.
                         </div>
                         <div class="control-row">
                             <button id="back-device-check-btn" class="btn btn-secondary">← Back to Device Check</button>
@@ -270,7 +268,7 @@
                 const elapsedMinutes = Math.floor(elapsed / 60000);
                 const elapsedSeconds = Math.floor((elapsed % 60000) / 1000);
                 
-                timerElement.textContent = `Practice Time: ${elapsedMinutes.toString().padStart(2, '0')}:${elapsedSeconds.toString().padStart(2, '0')}`;
+                timerElement.textContent = `${elapsedMinutes.toString().padStart(2, '0')}:${elapsedSeconds.toString().padStart(2, '0')}`;
             }
             
             updateTimer();
@@ -805,7 +803,9 @@
         });
 
         document.getElementById('back-dashboard-btn').addEventListener('click', function() {
-            window.location.href = 'teacher-dashboard.html';
+            var role = '';
+            try { role = String(localStorage.getItem('userType') || '').toLowerCase(); } catch (e) {}
+            window.location.href = role === 'student' ? 'student-dashboard.html' : 'teacher-dashboard.html';
         });
 
         // Initialize when page loads

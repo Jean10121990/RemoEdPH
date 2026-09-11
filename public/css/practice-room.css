@@ -1,0 +1,353 @@
+/**
+ * Practice Room chrome — mint/forest shell aligned with live classroom.
+ * Load AFTER style.css so it replaces the purple theme.
+ */
+
+body.page-practice-room {
+  --pr-green: #47BC3E;
+  --pr-green-deep: #2E9A28;
+  --pr-green-soft: #8DF97C;
+  --pr-green-mist: #EEFCEB;
+  --pr-ink: #1a2e26;
+  --pr-muted: #5b6f66;
+  --pr-border: #d7e5dd;
+  --pr-surface: #ffffff;
+  --pr-shadow: 0 12px 32px -20px rgba(31, 74, 56, 0.4);
+  --pr-danger: #dc2626;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: var(--pr-ink);
+  min-height: 100vh;
+  margin: 0;
+  background:
+    radial-gradient(ellipse 55% 42% at 8% -8%, rgba(141, 249, 124, 0.2), transparent 58%),
+    radial-gradient(ellipse 45% 38% at 96% 0%, rgba(71, 188, 62, 0.12), transparent 52%),
+    linear-gradient(180deg, #f5faf7 0%, #eef5f1 48%, #f8fbf9 100%) !important;
+}
+
+body.page-practice-room .container {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+body.page-practice-room .pr-top-bar,
+body.page-practice-room .header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 8px 16px 8px 18px;
+  margin: 0;
+  border-radius: 0;
+  position: relative;
+  background:
+    linear-gradient(90deg, rgba(71, 188, 62, 0.12) 0%, rgba(255, 255, 255, 0.96) 32%, #ffffff 100%) !important;
+  border-bottom: 1px solid var(--pr-border);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.85), var(--pr-shadow);
+}
+
+body.page-practice-room .pr-top-bar::before,
+body.page-practice-room .header::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(180deg, var(--pr-green-soft), var(--pr-green-deep));
+}
+
+body.page-practice-room .practice-info,
+body.page-practice-room .pr-top-bar__left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+body.page-practice-room .pr-top-bar__title,
+body.page-practice-room .practice-info h1 {
+  margin: 0;
+  color: var(--pr-green-deep);
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+body.page-practice-room .pr-top-bar__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--pr-green-soft);
+  box-shadow: 0 0 0 3px rgba(141, 249, 124, 0.35);
+}
+
+body.page-practice-room .pr-top-bar__time,
+body.page-practice-room .practice-timer {
+  background: transparent !important;
+  color: var(--pr-muted) !important;
+  padding: 0 !important;
+  border-radius: 0;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+body.page-practice-room .pr-top-bar__time strong,
+body.page-practice-room #practice-timer {
+  color: var(--pr-green-deep);
+  font-weight: 800;
+}
+
+body.page-practice-room .back-btn,
+body.page-practice-room .pr-leave-btn {
+  background: #fff !important;
+  color: var(--pr-ink) !important;
+  border: 1px solid var(--pr-border) !important;
+  box-shadow: none !important;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+body.page-practice-room .back-btn:hover,
+body.page-practice-room .pr-leave-btn:hover {
+  background: var(--pr-green-mist) !important;
+  border-color: rgba(71, 188, 62, 0.35) !important;
+}
+
+body.page-practice-room .main-content,
+body.page-practice-room .pr-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+  gap: 16px;
+  flex: 1;
+  height: auto;
+  min-height: calc(100vh - 56px);
+  padding: 16px;
+  box-sizing: border-box;
+  align-items: start;
+}
+
+body.page-practice-room .video-section,
+body.page-practice-room .pr-stage {
+  background: #fff;
+  border: 1px solid var(--pr-border);
+  border-radius: 14px;
+  padding: 12px;
+  box-shadow: var(--pr-shadow);
+  min-width: 0;
+}
+
+body.page-practice-room .video-grid {
+  height: auto;
+  min-height: 0;
+}
+
+body.page-practice-room .video-container {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  max-height: calc(100vh - 120px);
+  max-width: min(100%, calc((100vh - 120px) * 16 / 9));
+  margin-inline: auto;
+  border-radius: 14px;
+  border: 1px solid var(--pr-border);
+  background: #0f1f18;
+  box-shadow: 0 8px 20px -14px rgba(15, 23, 42, 0.45);
+}
+
+body.page-practice-room .video-label {
+  top: 0;
+  left: 0;
+  right: auto;
+  border-radius: 0;
+  padding: 7px 10px;
+  background: linear-gradient(90deg, rgba(46, 154, 40, 0.92), rgba(71, 188, 62, 0.85));
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+body.page-practice-room .controls {
+  bottom: 12px;
+  gap: 8px;
+}
+
+body.page-practice-room .control-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: rgba(15, 31, 24, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #fff;
+  font-size: 1.05rem;
+}
+
+body.page-practice-room .control-btn:hover {
+  background: var(--pr-green-deep);
+}
+
+body.page-practice-room .sidebar,
+body.page-practice-room .pr-rail {
+  min-width: 0;
+}
+
+body.page-practice-room .tab-container {
+  background:
+    linear-gradient(180deg, #f7fbf8 0%, #ffffff 18%, #ffffff 100%);
+  border: 1px solid var(--pr-border);
+  border-radius: 14px;
+  box-shadow: var(--pr-shadow);
+  overflow: hidden;
+}
+
+body.page-practice-room .tab-buttons {
+  background: rgba(255, 255, 255, 0.72);
+  border-radius: 0;
+  border-bottom: 1px solid var(--pr-border);
+  padding: 0 8px;
+  gap: 2px;
+}
+
+body.page-practice-room .tab-button {
+  flex: 1;
+  padding: 12px 8px;
+  border-radius: 0;
+  color: var(--pr-muted);
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+
+body.page-practice-room .tab-button.active {
+  background: transparent;
+  color: var(--pr-green-deep);
+  border-bottom: 3px solid var(--pr-green);
+  font-weight: 800;
+}
+
+body.page-practice-room .tab-button:hover {
+  background: rgba(71, 188, 62, 0.06);
+  color: var(--pr-green-deep);
+}
+
+body.page-practice-room .tab-content {
+  padding: 16px;
+}
+
+body.page-practice-room .control-group h3,
+body.page-practice-room .tab-content h3 {
+  color: var(--pr-green-deep);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+body.page-practice-room .control-row {
+  margin-bottom: 12px;
+  gap: 8px;
+}
+
+body.page-practice-room .control-label {
+  color: var(--pr-muted);
+  font-size: 0.82rem;
+  min-width: 108px;
+}
+
+body.page-practice-room .control-value {
+  color: var(--pr-green-deep);
+  min-width: 44px;
+  font-size: 0.8rem;
+}
+
+body.page-practice-room .control-input {
+  accent-color: var(--pr-green);
+}
+
+body.page-practice-room .btn {
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+body.page-practice-room .btn-success {
+  background: linear-gradient(135deg, var(--pr-green-deep), var(--pr-green));
+  color: #fff;
+}
+
+body.page-practice-room .btn-success:hover {
+  filter: brightness(1.04);
+}
+
+body.page-practice-room .btn-secondary {
+  background: #fff;
+  color: var(--pr-ink);
+  border: 1px solid var(--pr-border);
+}
+
+body.page-practice-room .btn-secondary:hover {
+  background: var(--pr-green-mist);
+}
+
+body.page-practice-room .mic-bar {
+  background: #e8f3eb;
+  border: 1px solid var(--pr-border);
+}
+
+body.page-practice-room .mic-level {
+  background: linear-gradient(90deg, var(--pr-green), var(--pr-green-soft));
+}
+
+body.page-practice-room .status-info {
+  background: var(--pr-green-mist);
+  color: var(--pr-ink);
+  border: 1px dashed rgba(71, 188, 62, 0.28);
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+body.page-practice-room .tool-btn {
+  background: linear-gradient(135deg, var(--pr-green-deep), var(--pr-green));
+  border-radius: 10px;
+}
+
+body.page-practice-room .tool-btn:hover {
+  background: var(--pr-green-deep);
+}
+
+body.page-practice-room #whiteboard {
+  border: 1px solid var(--pr-border);
+  border-radius: 12px;
+  height: min(320px, 42vh);
+}
+
+body.page-practice-room .notification.success {
+  background: var(--pr-green-deep);
+}
+
+body.page-practice-room .notification.info {
+  background: #008fc4;
+}
+
+@media (max-width: 960px) {
+  body.page-practice-room .main-content,
+  body.page-practice-room .pr-main {
+    grid-template-columns: 1fr;
+    height: auto;
+    min-height: 0;
+  }
+
+  body.page-practice-room .video-container {
+    aspect-ratio: 16 / 9;
+    max-height: none;
+    max-width: 100%;
+  }
+}
