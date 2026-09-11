@@ -3316,7 +3316,18 @@ const startServer = () => {
             }
           }, 30 * 60 * 1000);
           console.log(`📧 Notification digest scheduler armed (Manila 08:00)`);
-          
+
+          const { runCreditExpiryJobs } = require('./services/creditExpiry');
+          setInterval(() => {
+            runCreditExpiryJobs().catch((e) =>
+              console.warn('[credit-expiry] interval error:', e.message || e)
+            );
+          }, 6 * 60 * 60 * 1000);
+          setTimeout(() => {
+            runCreditExpiryJobs().catch(() => {});
+          }, 20000);
+          console.log(`⏰ Credit expiry + 10/5/2-day notices scheduled (every 6 hours)`);
+
           // Schedule cleanup jobs only after DB is connected
           cleanupExpiredMaterials(); // Run once immediately
           cleanupOldNotifications();

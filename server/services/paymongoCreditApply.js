@@ -8,6 +8,7 @@ const {
   normalizePlanId,
   getPlanDurationMonths,
 } = require('../config/planCredits');
+const { emptyNoticeFlags } = require('./creditExpiry');
 
 /** True if any idempotency key is already stored on the student (PayMongo retries / alternate ids). */
 function paymongoKeysOverlap(processedIds, keys) {
@@ -110,6 +111,7 @@ async function applyExistingStudentPurchase({
         subscriptionEndDate: endDate,
         accountStatus: 'active_subscriber',
         isSubscribed: true,
+        creditExpiryNotices: emptyNoticeFlags(),
       },
       $inc: {
         creditBalance: creditsToAdd,

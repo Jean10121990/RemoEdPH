@@ -126,6 +126,15 @@ const studentSchema = new mongoose.Schema({
     'Young Stewards (Age 6)': { type: Number, default: 0 },
   },
   usedCredits: { type: Number, default: 0 }, // lifetime credits spent on bookings
+  /** Unused credits zeroed when the validity window ended (not class consumption). */
+  expiredCredits: { type: Number, default: 0 },
+  /** Once-per-window flags for 10 / 5 / 2 day and expired notices. Reset on repurchase. */
+  creditExpiryNotices: {
+    d10: { type: Date, default: null },
+    d5: { type: Date, default: null },
+    d2: { type: Date, default: null },
+    expired: { type: Date, default: null },
+  },
   /** Optional explicit pool size; booking math falls back to creditBalance when unset. */
   totalCredits: { type: Number, default: null },
   /** Idempotency for PayMongo / multi-step payments */
@@ -137,7 +146,7 @@ const studentSchema = new mongoose.Schema({
     amountPaid: { type: Number, default: 0 },
     paymentId: { type: String, default: '' },
     /** purchase = top-up; usage = lesson consumed after teacher marks class finished; adjustment = refund/credit restore */
-    entryType: { type: String, enum: ['purchase', 'usage', 'adjustment'], default: 'purchase' },
+    entryType: { type: String, enum: ['purchase', 'usage', 'adjustment', 'expiry'], default: 'purchase' },
     balanceAfter: { type: Number, default: null }
   }],
   creditTransactions: [{

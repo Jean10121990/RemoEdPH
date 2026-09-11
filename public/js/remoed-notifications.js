@@ -41,6 +41,8 @@
       t === 'absent' ||
       t === 'credits-low' ||
       t === 'credits-topup' ||
+      t === 'credits-expiring' ||
+      t === 'credits-expired' ||
       t === 'trial-ending' ||
       t === 'teacher-joined' ||
       t === 'teacher-late' ||

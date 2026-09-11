@@ -131,6 +131,11 @@ async function runBookSlot(req, res) {
     if (!student) {
       return res.status(400).json({ error: 'Student not found' });
     }
+    const { applyExpiredCreditsIfNeeded } = require('./creditExpiry');
+    const expiryResult = await applyExpiredCreditsIfNeeded(req.user.studentId, student.toObject());
+    if (expiryResult.applied) {
+      student = await Student.findById(req.user.studentId);
+    }
     if (await reconcileStudentCreditBalanceIfDrifted(req.user.studentId, student.toObject())) {
       student = await Student.findById(req.user.studentId);
     }
@@ -151,7 +156,15 @@ async function runBookSlot(req, res) {
       });
     }
     if (availableCredits <= 0 && !canUseTrial) {
-      return res.status(400).json({ error: 'Insufficient credits. Please top up your plan.' });
+      const expired =
+        String(student.subscriptionStatus || '') === 'expired' ||
+        (expiryResult && expiryResult.applied);
+      return res.status(400).json({
+        error: expired
+          ? 'Your unused credits expired. Please purchase a new plan to book.'
+          : 'Insufficient credits. Please top up your plan.',
+        code: expired ? 'CREDITS_EXPIRED' : 'INSUFFICIENT_CREDITS',
+      });
     }
 
     // Free trial: only Lesson 1 (any curriculum level) may be booked.

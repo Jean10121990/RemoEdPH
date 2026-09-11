@@ -855,6 +855,16 @@
                 </div>
             </div>
 
+            <div id="credits-expiry-banner" style="display: none; margin: 0 0 16px 0; padding: 14px 18px; border-radius: 12px; border: 1px solid #d7e5dd; background: #f0fdf4; color: #14532d;">
+                <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;">
+                    <p style="margin: 0; flex: 1; min-width: 220px; line-height: 1.5; font-size: 0.95rem;">
+                        <strong id="credits-expiry-banner-count">Credits validity</strong>
+                        <span id="credits-expiry-banner-text" style="display: block; margin-top: 4px; font-weight: 500;"></span>
+                    </p>
+                    <a href="student-credits.html" style="display: inline-block; padding: 10px 20px; background: #15803d; color: #fff; font-weight: 700; border-radius: 10px; text-decoration: none; flex-shrink: 0;">View credits</a>
+                </div>
+            </div>
+
             <div id="post-assessment-enroll-banner" style="display: none; margin: 0 0 16px 0; padding: 14px 18px; border-radius: 16px; background: linear-gradient(135deg, #f0f9ff 0%, #ecfeff 100%); border: 1px solid rgba(0, 174, 239, 0.35); color: #0c4a6e; box-shadow: 0 2px 10px rgba(0, 174, 239, 0.12);">
                 <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;">
                     <p id="post-assessment-enroll-text" style="margin: 0; flex: 1; min-width: 220px; line-height: 1.55; font-size: 0.95rem;">
@@ -1053,6 +1063,37 @@
                 var enrollBanner = document.getElementById('post-assessment-enroll-banner');
                 var enrollText = document.getElementById('post-assessment-enroll-text');
                 var enrollCta = document.getElementById('post-assessment-enroll-cta');
+                var creditExpiryBanner = document.getElementById('credits-expiry-banner');
+                var creditExpiryCount = document.getElementById('credits-expiry-banner-count');
+                var creditExpiryText = document.getElementById('credits-expiry-banner-text');
+
+                if (creditExpiryBanner && creditExpiryCount && creditExpiryText) {
+                    var expiredCredits = profile.creditsExpired === true;
+                    var daysLeft = profile.daysUntilExpiry;
+                    var showExpiry = expiredCredits || (daysLeft != null && daysLeft <= 10 && profile.subscriptionStatus === 'active');
+                    if (showExpiry) {
+                        creditExpiryBanner.style.display = 'block';
+                        creditExpiryCount.textContent = profile.expiryCountdownLabel || (expiredCredits ? 'Expired' : 'Credits validity');
+                        if (expiredCredits) {
+                            creditExpiryBanner.style.background = '#fef2f2';
+                            creditExpiryBanner.style.borderColor = '#fecaca';
+                            creditExpiryBanner.style.color = '#991b1b';
+                            creditExpiryText.textContent = 'Unused lesson credits returned to 0. Renew a plan to keep booking.';
+                        } else if (daysLeft != null && daysLeft <= 2) {
+                            creditExpiryBanner.style.background = '#fef2f2';
+                            creditExpiryBanner.style.borderColor = '#fecaca';
+                            creditExpiryBanner.style.color = '#991b1b';
+                            creditExpiryText.textContent = 'Unused credits return to 0 on ' + (profile.creditsExpireOnLabel || 'the end date') + '.';
+                        } else {
+                            creditExpiryBanner.style.background = '#fffbeb';
+                            creditExpiryBanner.style.borderColor = '#fde68a';
+                            creditExpiryBanner.style.color = '#92400e';
+                            creditExpiryText.textContent = 'Unused credits return to 0 on ' + (profile.creditsExpireOnLabel || 'the end date') + '.';
+                        }
+                    } else {
+                        creditExpiryBanner.style.display = 'none';
+                    }
+                }
 
                 if (acct === 'trial_completed' && !sub) {
                     if (trialBanner) trialBanner.style.display = 'none';

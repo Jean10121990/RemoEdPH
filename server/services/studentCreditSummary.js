@@ -6,7 +6,8 @@
  * - creditBalance: unreserved slice of the lesson pool (reserve moves 1 from here into reservedCredits)
  * - totalCredits: optional override for pool size (same precedence as Mongo $expr in book-class)
  * - reservedCredits: held for upcoming bookings
- * - usedCredits: lifetime consumed count
+ * - usedCredits: lifetime consumed count (classes, not expiry)
+ * - expiredCredits: unused credits zeroed after the validity window
  * - totalCreditsEarned: lifetime purchased / credited top-ups
  */
 
@@ -44,10 +45,13 @@ function buildUnifiedDedupedLedger(student) {
   const histRows = hist.map((h) => {
     const c = Number(h.credits);
     const entryType = String(h.entryType || '');
-    const isUsage = entryType === 'usage' || c < 0;
+    const isExpiry = entryType === 'expiry';
+    const isUsage = !isExpiry && (entryType === 'usage' || c < 0);
     const isAdjustment = entryType === 'adjustment';
     let description;
-    if (isAdjustment) {
+    if (isExpiry) {
+      description = h.plan || h.description || 'Unused credits expired';
+    } else if (isAdjustment) {
       description = h.plan || h.description || 'Adjustment';
     } else if (c >= 0) {
       description = `Plan purchase (${h.plan || 'Subscription'})`;
@@ -56,7 +60,7 @@ function buildUnifiedDedupedLedger(student) {
     }
     return {
       date: h.date,
-      type: isUsage ? 'use' : isAdjustment ? 'adjustment' : 'purchase',
+      type: isExpiry ? 'expiry' : isUsage ? 'use' : isAdjustment ? 'adjustment' : 'purchase',
       plan: h.plan,
       description,
       credits: c,
@@ -99,7 +103,8 @@ function assignDisplayBalancesForLedger(rows, endPoolTotal) {
 }
 
 /**
- * Invariant (when totalCredits is not set): creditBalance + reservedCredits === totalCreditsEarned - usedCredits.
+ * Invariant (when totalCredits is not set):
+ * creditBalance + reservedCredits === totalCreditsEarned - usedCredits - expiredCredits.
  * Heal creditBalance if history/earned drifted (e.g. partial updates).
  */
 async function reconcileStudentCreditBalanceIfDrifted(studentId, studentLean) {
@@ -113,10 +118,11 @@ async function reconcileStudentCreditBalanceIfDrifted(studentId, studentLean) {
 
   const earned = Math.max(0, Number(studentLean.totalCreditsEarned) || 0);
   const used = Math.max(0, Number(studentLean.usedCredits) || 0);
+  const expired = Math.max(0, Number(studentLean.expiredCredits) || 0);
   const reserved = Math.max(0, Number(studentLean.reservedCredits) || 0);
   const cb = Math.max(0, Number(studentLean.creditBalance) || 0);
 
-  const expectedRemaining = Math.max(0, earned - used);
+  const expectedRemaining = Math.max(0, earned - used - expired);
   const sumParts = cb + reserved;
   if (sumParts === expectedRemaining) return false;
 
@@ -167,8 +173,9 @@ function buildStudentCreditApiResponse(student) {
   const totalPurchased =
     totalEarned > 0 ? totalEarned : Math.max(used + pool, pool);
 
-  const usages = unified.filter((r) => Number(r.credits) < 0);
+  const usages = unified.filter((r) => Number(r.credits) < 0 && r.type !== 'expiry');
   const purchases = unified.filter((r) => Number(r.credits) > 0);
+  const expiries = unified.filter((r) => r.type === 'expiry');
   const adjustments = unified.filter(
     (r) =>
       String(r.type || '') === 'adjustment' ||
@@ -188,6 +195,7 @@ function buildStudentCreditApiResponse(student) {
 
   const creditHistory = purchases
     .concat(adjustments)
+    .concat(expiries)
     .map((c) => ({
       date: c.date,
       plan: c.plan,
@@ -199,6 +207,9 @@ function buildStudentCreditApiResponse(student) {
       balanceAfter: c._displayBalanceAfter != null ? c._displayBalanceAfter : c.balanceAfter,
     }));
 
+  const { buildExpiryPayload } = require('./creditExpiry');
+  const expiry = buildExpiryPayload(student);
+
   return {
     success: true,
     balance: pool,
@@ -209,9 +220,16 @@ function buildStudentCreditApiResponse(student) {
     totalEarned: totalPurchased,
     used,
     usedCredits: used,
+    expiredCredits: Math.max(0, Number(student.expiredCredits) || 0),
     subscriptionPlan: student.subscriptionPlan || null,
     subscriptionStatus: student.subscriptionStatus || null,
+    subscriptionEndDate: student.subscriptionEndDate || null,
     paymentStatus: student.paymentStatus || null,
+    creditsExpireAt: expiry.creditsExpireAt,
+    daysUntilExpiry: expiry.daysUntilExpiry,
+    expiryCountdownLabel: expiry.expiryCountdownLabel,
+    creditsExpireOnLabel: expiry.creditsExpireOnLabel || null,
+    creditsExpired: expiry.creditsExpired,
     creditHistory,
     credits,
   };

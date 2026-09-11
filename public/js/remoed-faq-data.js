@@ -195,6 +195,22 @@
               '• **RemoSummit (Ultimate)** — 12 months · **264 lessons** · valid 24 months · **$1,596.00**\n\n' +
               'Families can review live plan cards on the RemoEd home page (#plans) or during student registration.',
           },
+          {
+            id: 'plans-validity',
+            q: 'Do unused lesson credits expire?',
+            keywords: [
+              'expire',
+              'expiration',
+              'validity',
+              'unused credits',
+              'credits expire',
+              'valid for',
+            ],
+            weight: 4,
+            a:
+              'Yes. Each plan has a validity window (Spark 3 months, Steady 6, Scholar 12, Summit 24). Unused lesson credits return to **0** when that date passes. Classes you already booked are not cancelled.\n\n' +
+              'You will see a countdown on **My Credits**, and we send reminders **10 days**, **5 days**, and **2 days** before expiry.',
+          },
         ],
       },
     ],

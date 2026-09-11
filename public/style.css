@@ -6412,7 +6412,40 @@ body.page-student-credits{
       border-radius:999px;
       font-size:.75rem;
       font-weight:700;
-    }.page-student-credits .badge.green{background:#ecfdf3;color:#15803d;}.page-student-credits .badge.yellow{background:#fffbeb;color:#92400e;}
+    }.page-student-credits .badge.green{background:#ecfdf3;color:#15803d;}.page-student-credits .badge.yellow{background:#fffbeb;color:#92400e;}.page-student-credits .badge.red{background:#fef2f2;color:#b91c1c;}
+    .page-student-credits .credits-expiry-banner{
+      margin-top:12px;
+      padding:12px 14px;
+      border-radius:12px;
+      border:1px solid #d7e5dd;
+      background:#f0fdf4;
+      color:#14532d;
+    }
+    .page-student-credits .credits-expiry-count{
+      font-size:1.05rem;
+      font-weight:800;
+      letter-spacing:-0.01em;
+    }
+    .page-student-credits .credits-expiry-sub{
+      margin-top:4px;
+      font-size:0.85rem;
+      line-height:1.45;
+      color:#3f6212;
+    }
+    .page-student-credits .credits-expiry-banner.is-soon{
+      background:#fffbeb;
+      border-color:#fde68a;
+      color:#92400e;
+    }
+    .page-student-credits .credits-expiry-banner.is-soon .credits-expiry-sub{color:#a16207;}
+    .page-student-credits .credits-expiry-banner.is-urgent,
+    .page-student-credits .credits-expiry-banner.is-expired{
+      background:#fef2f2;
+      border-color:#fecaca;
+      color:#991b1b;
+    }
+    .page-student-credits .credits-expiry-banner.is-urgent .credits-expiry-sub,
+    .page-student-credits .credits-expiry-banner.is-expired .credits-expiry-sub{color:#b91c1c;}
 
     .page-student-credits .checkout-order-card{
       margin-top:0;

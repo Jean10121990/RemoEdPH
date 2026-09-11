@@ -43,6 +43,10 @@
           <h2>Current Balance</h2>
           <div class="balance" id="credits-balance">0</div>
           <div class="muted" id="credits-balance-note">Lesson credits remaining on your account.</div>
+          <div id="credits-expiry-banner" class="credits-expiry-banner" hidden>
+            <div class="credits-expiry-count" id="credits-expiry-count"></div>
+            <div class="credits-expiry-sub" id="credits-expiry-sub"></div>
+          </div>
           <div class="credits-progress-track" aria-hidden="true">
             <div class="credits-progress-fill" id="credits-progress-fill"></div>
           </div>
@@ -397,20 +401,24 @@
       // Server splits: deductions in `credits`, top-ups in `creditHistory` (no overlap) — avoids double rows.
       const fromHist = hist.map(function (item) {
         const c = Number(item.credits);
+        const isExpiry = String(item.type || '') === 'expiry' || String(item.entryType || '') === 'expiry';
         const isAdjust =
+          !isExpiry && (
           String(item.type || '') === 'adjustment' ||
-          String(item.plan || '').indexOf('Emergency Cancellation') === 0;
+          String(item.plan || '').indexOf('Emergency Cancellation') === 0);
         return {
           date: item.date,
-          type: isAdjust ? 'adjustment' : c >= 0 ? 'purchase' : 'use',
+          type: isExpiry ? 'expiry' : isAdjust ? 'adjustment' : c >= 0 ? 'purchase' : 'use',
           plan: item.plan,
           description:
             item.description ||
-            (isAdjust
-              ? item.plan || item.description || 'Emergency Cancellation (Credit Retained)'
-              : c >= 0
-                ? 'Plan purchase (' + (item.plan || 'Subscription') + ')'
-                : 'Lesson completed (' + (item.plan || 'Lesson') + ')'),
+            (isExpiry
+              ? item.plan || 'Unused credits expired'
+              : isAdjust
+                ? item.plan || item.description || 'Emergency Cancellation (Credit Retained)'
+                : c >= 0
+                  ? 'Plan purchase (' + (item.plan || 'Subscription') + ')'
+                  : 'Lesson completed (' + (item.plan || 'Lesson') + ')'),
           credits: item.credits,
           balanceAfter: item.balanceAfter != null ? item.balanceAfter : '',
           amountPaid: item.amountPaid || 0
@@ -485,7 +493,42 @@
 
         const noteEl = document.getElementById('credits-balance-note');
         if (noteEl) {
-          noteEl.textContent = 'Lesson credits remaining on your account.';
+          noteEl.textContent = data.creditsExpired
+            ? 'Unused credits returned to 0 when the plan validity ended.'
+            : 'Lesson credits remaining on your account.';
+        }
+
+        var expiryBanner = document.getElementById('credits-expiry-banner');
+        var expiryCount = document.getElementById('credits-expiry-count');
+        var expirySub = document.getElementById('credits-expiry-sub');
+        if (expiryBanner && expiryCount && expirySub) {
+          var hasWindow = !!(data.creditsExpireAt || data.subscriptionEndDate);
+          if (!hasWindow) {
+            expiryBanner.hidden = true;
+            expiryBanner.className = 'credits-expiry-banner';
+          } else {
+            var daysLeft = data.daysUntilExpiry;
+            var label = data.expiryCountdownLabel || '';
+            var onLabel = data.creditsExpireOnLabel || '';
+            expiryBanner.hidden = false;
+            expiryBanner.className = 'credits-expiry-banner';
+            if (data.creditsExpired) {
+              expiryBanner.classList.add('is-expired');
+              expiryCount.textContent = 'Expired';
+              expirySub.textContent = 'Unused credits returned to 0. Renew a plan to book again.';
+            } else if (daysLeft != null && daysLeft <= 2) {
+              expiryBanner.classList.add('is-urgent');
+              expiryCount.textContent = label;
+              expirySub.textContent = 'Unused credits return to 0 on ' + onLabel + '. Book soon or they will expire.';
+            } else if (daysLeft != null && daysLeft <= 10) {
+              expiryBanner.classList.add('is-soon');
+              expiryCount.textContent = label;
+              expirySub.textContent = 'Unused credits return to 0 on ' + onLabel + '.';
+            } else {
+              expiryCount.textContent = label;
+              expirySub.textContent = 'Valid until ' + onLabel + '. Unused credits return to 0 after this date.';
+            }
+          }
         }
 
         const fillEl = document.getElementById('credits-progress-fill');
@@ -513,7 +556,10 @@
             sp;
           pill.textContent = label + ' \u2022 ' + (data.subscriptionStatus || 'status unknown');
           pill.style.display = 'inline-flex';
-          pill.className = 'badge ' + ((data.subscriptionStatus === 'active') ? 'green' : 'yellow');
+          var pillTone = 'yellow';
+          if (data.subscriptionStatus === 'active') pillTone = 'green';
+          if (data.subscriptionStatus === 'expired' || data.creditsExpired) pillTone = 'red';
+          pill.className = 'badge ' + pillTone;
         } else {
           pill.style.display = 'none';
         }
@@ -537,6 +583,7 @@
           const typeLabel =
             row.type === 'purchase' ? 'Purchase' :
             row.type === 'use' ? 'Used' :
+            row.type === 'expiry' ? 'Expired' :
             row.type === 'adjustment' ? 'Adjust' :
             'Entry';
           const balCell = row.balanceAfter !== '' && row.balanceAfter != null ? row.balanceAfter : '\u2014';

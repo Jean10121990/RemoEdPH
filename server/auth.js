@@ -829,6 +829,11 @@ router.post('/student-login', authLoginLimiter, async (req, res) => {
       console.log('needsPasswordChange:', needsPasswordChange);
       
       let accountStatus = student.accountStatus || 'standard';
+      const { applyExpiredCreditsIfNeeded } = require('./services/creditExpiry');
+      const expiryAtLogin = await applyExpiredCreditsIfNeeded(student._id, student.toObject ? student.toObject() : student);
+      if (expiryAtLogin.applied) {
+        student = await Student.findById(student._id);
+      }
       if (student.paymentStatus === 'paid' && student.subscriptionStatus === 'active') {
         const subPatch = {};
         if (accountStatus !== 'active_subscriber') {

@@ -175,16 +175,28 @@ router.get('/profile', verifyToken, requireStudent, async (req, res) => {
 
     const cached = await studentController.getStudentProfileFromCache(req.user.studentId);
     if (cached) {
-      scheduleTrialBookingReminderSideEffect(req.user.studentId);
-      return res.json(cached);
+      const cachedEnd = cached.profile && cached.profile.subscriptionEndDate;
+      const cacheExpired = cachedEnd && new Date(cachedEnd).getTime() <= Date.now();
+      if (!cacheExpired) {
+        scheduleTrialBookingReminderSideEffect(req.user.studentId);
+        return res.json(cached);
+      }
+      await studentController.invalidateStudentProfileCache(req.user.studentId);
     }
 
-    const student = await Student.findById(req.user.studentId);
+    let student = await Student.findById(req.user.studentId);
     
     if (!student) {
       console.log('❌ Student not found with ID:', req.user.studentId);
       return res.status(404).json({ error: 'Student not found' });
     }
+
+    const { applyExpiredCreditsIfNeeded, buildExpiryPayload } = require('./services/creditExpiry');
+    const expiryApplied = await applyExpiredCreditsIfNeeded(student._id, student.toObject());
+    if (expiryApplied.applied) {
+      student = await Student.findById(req.user.studentId);
+    }
+    const creditExpiry = buildExpiryPayload(student);
 
     console.log('✅ Student found:', {
       id: student._id,
@@ -254,6 +266,12 @@ router.get('/profile', verifyToken, requireStudent, async (req, res) => {
         isSubscribed:
           student.isSubscribed === true ||
           (student.paymentStatus === 'paid' && student.subscriptionStatus === 'active'),
+        subscriptionEndDate: student.subscriptionEndDate || null,
+        creditsExpireAt: creditExpiry.creditsExpireAt,
+        daysUntilExpiry: creditExpiry.daysUntilExpiry,
+        expiryCountdownLabel: creditExpiry.expiryCountdownLabel,
+        creditsExpireOnLabel: creditExpiry.creditsExpireOnLabel || null,
+        creditsExpired: creditExpiry.creditsExpired,
       }
     };
     await studentController.setStudentProfileCache(req.user.studentId, body);
@@ -1639,6 +1657,12 @@ router.get('/credits', verifyToken, requireStudent, async (req, res) => {
     let student = await Student.findById(req.user.studentId).lean();
     if (!student) {
       return res.status(404).json({ success: false, error: 'Student not found' });
+    }
+
+    const { applyExpiredCreditsIfNeeded } = require('./services/creditExpiry');
+    const expiryApplied = await applyExpiredCreditsIfNeeded(req.user.studentId, student);
+    if (expiryApplied.applied) {
+      student = await Student.findById(req.user.studentId).lean();
     }
 
     const healed = await reconcileStudentCreditBalanceIfDrifted(req.user.studentId, student);

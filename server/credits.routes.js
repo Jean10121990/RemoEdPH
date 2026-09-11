@@ -8,6 +8,8 @@ const { creditsForPlan } = require('./config/planCredits');
 const { consumeReservedCreditForBooking } = require('./services/bookingCreditLedger');
 const { buildStudentCreditApiResponse } = require('./services/studentCreditSummary');
 const { logAdminAction } = require('./services/adminAudit');
+const { computeSubscriptionDates } = require('./services/paymongoCreditApply');
+const { emptyNoticeFlags } = require('./services/creditExpiry');
 
 const router = express.Router();
 
@@ -238,8 +240,19 @@ router.post(
       const balanceAfterPool = pool + creditsToAdd;
       const availableAfter = Math.max(balanceAfterPool - reserved, 0);
       const historyPaymentId = adminKey || `admin:${plan.planId}:${Date.now()}`;
+      const { startDate, endDate } = computeSubscriptionDates(plan.planId);
 
       const update = {
+        $set: {
+          paymentStatus: 'paid',
+          subscriptionStatus: 'active',
+          subscriptionPlan: plan.planId,
+          subscriptionStartDate: startDate,
+          subscriptionEndDate: endDate,
+          accountStatus: 'active_subscriber',
+          isSubscribed: true,
+          creditExpiryNotices: emptyNoticeFlags(),
+        },
         $inc: {
           creditBalance: creditsToAdd,
           totalCreditsEarned: creditsToAdd,

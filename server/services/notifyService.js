@@ -26,6 +26,8 @@ const ACTIONABLE_TYPES = new Set([
   'absent',
   'credits-low',
   'credits-topup',
+  'credits-expiring',
+  'credits-expired',
   'trial-ending',
   'teacher-joined',
   'teacher-late',
@@ -88,7 +90,14 @@ function prefAllows(prefs, type) {
   if (t === 'announcement' && p.announcements === false) return false;
   if (t === 'peer-message' && p.peerMessages === false) return false;
   if (t === 'salary' && p.salary === false) return false;
-  if ((t === 'credits-topup' || t === 'credits-low' || t === 'trial-ending') && p.credits === false) {
+  if (
+    (t === 'credits-topup' ||
+      t === 'credits-low' ||
+      t === 'credits-expiring' ||
+      t === 'credits-expired' ||
+      t === 'trial-ending') &&
+    p.credits === false
+  ) {
     return false;
   }
   return true;
