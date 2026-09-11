@@ -516,6 +516,11 @@
     return;
   }
 
+  // The verified token decides the role, so restore the storage keys that page-level gates
+  // read: logging out of another portal in the same browser removes userType while leaving
+  // this session valid, which otherwise makes every page here say "Access denied".
+  healSessionRole(portal);
+
   if (enforceStudentNotOnTeacherPortal()) {
     return;
   }

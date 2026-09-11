@@ -962,11 +962,12 @@
         </div>
     </div>
   <script>
-    // Role-based access control
+    // Role-based access control. Send denials to the login router, never to index.html:
+    // index.html forwards any valid token back here, which loops on the alert.
     const userType = localStorage.getItem('userType');
     if (userType !== 'student') {
       alert('Access denied. This page is for students only.');
-      window.location.replace('index.html');
+      window.location.replace('/login/');
     }
     
         document.addEventListener('DOMContentLoaded', function() {

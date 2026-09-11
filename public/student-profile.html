@@ -954,7 +954,7 @@
         const userType = localStorage.getItem('userType');
         if (userType !== 'student') {
             alert('Access denied. This page is for students only.');
-            window.location.href = 'index.html';
+            window.location.replace('/login/');
         }
 
         // Initialize profile
