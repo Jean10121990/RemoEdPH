@@ -7,6 +7,8 @@ const File = require('./models/File');
 const { fileUploadLimiter } = require('./middleware/apiRateLimits');
 const { verifyToken } = require('./authMiddleware');
 const { getCookieValue } = require('./middleware/uploadsAccess');
+const { createGridFsStorage } = require('./services/gridFsMulterStorage');
+const { findUpload, openDownloadStream, deleteUpload } = require('./services/uploadStore');
 
 const router = express.Router();
 
@@ -102,21 +104,39 @@ function resolveMimeType(fileName, providedMimeType) {
   return providedMimeType || 'application/octet-stream';
 }
 
-// Create uploads directory if it doesn't exist
 const uploadsDir = path.join(__dirname, '../uploads');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
+
+async function resolveStoredFile(filename) {
+  const name = path.basename(String(filename || ''));
+  if (!name || name.includes('..')) return null;
+  for (const rel of ['files/' + name, name]) {
+    const doc = await findUpload(rel);
+    if (doc) return { kind: 'gridfs', doc, rel };
+  }
+  const disk = path.join(uploadsDir, name);
+  if (fs.existsSync(disk)) return { kind: 'disk', disk };
+  return null;
 }
 
-// Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, uploadsDir);
-  },
+function pipeGridFs(doc, res) {
+  const stream = openDownloadStream(doc._id);
+  stream.on('error', (err) => {
+    if (!res.headersSent) {
+      res.status(404).json({ error: 'File not found' });
+    } else {
+      res.destroy();
+    }
+    console.warn('GridFS file stream:', err && err.message);
+  });
+  stream.pipe(res);
+}
+
+const storage = createGridFsStorage({
+  prefix: 'files',
   filename: function (req, file, cb) {
-    // Generate unique filename with timestamp
     const uniqueSuffix = Date.now() + '-' + crypto.randomInt(0, 1e9);
-    cb(null, uniqueSuffix + '-' + file.originalname);
+    const safe = String(file.originalname || 'upload').replace(/[^a-zA-Z0-9._-]/g, '_');
+    cb(null, uniqueSuffix + '-' + safe);
   }
 });
 
@@ -245,15 +265,23 @@ router.get('/download/:fileId', async (req, res) => {
       return res.status(404).json({ error: 'File not found' });
     }
 
-    const filePath = path.join(uploadsDir, file.filename);
-    
-    if (!fs.existsSync(filePath)) {
+    const stored = await resolveStoredFile(file.filename);
+    if (!stored) {
       return res.status(404).json({ error: 'File not found on disk' });
     }
 
     res.setHeader('Cache-Control', 'private, no-store');
     res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.download(filePath, file.originalName);
+    const safeName = String(file.originalName || file.filename).replace(/[\r\n"]/g, '');
+    res.setHeader('Content-Disposition', `attachment; filename="${safeName}"`);
+    if (stored.kind === 'gridfs') {
+      res.setHeader('Content-Type', file.mimeType || 'application/octet-stream');
+      if (Number.isFinite(Number(stored.doc.length))) {
+        res.setHeader('Content-Length', String(stored.doc.length));
+      }
+      return pipeGridFs(stored.doc, res);
+    }
+    res.download(stored.disk, file.originalName);
 
   } catch (error) {
     console.error('File download error:', error);
@@ -271,20 +299,20 @@ router.get('/preview/:fileId', async (req, res) => {
       return res.status(404).json({ error: 'File not found' });
     }
 
-    const filePath = path.join(uploadsDir, file.filename);
-    
-    if (!fs.existsSync(filePath)) {
+    const stored = await resolveStoredFile(file.filename);
+    if (!stored) {
       return res.status(404).json({ error: 'File not found on disk' });
     }
 
-    // Set appropriate headers for inline viewing
     res.setHeader('Content-Type', file.mimeType);
     res.setHeader('Content-Disposition', 'inline; filename="' + file.originalName + '"');
     res.setHeader('Cache-Control', 'private, max-age=300');
     res.setHeader('X-Content-Type-Options', 'nosniff');
-    
-    // Stream the file
-    const fileStream = fs.createReadStream(filePath);
+
+    if (stored.kind === 'gridfs') {
+      return pipeGridFs(stored.doc, res);
+    }
+    const fileStream = fs.createReadStream(stored.disk);
     fileStream.pipe(res);
 
   } catch (error) {
@@ -307,11 +335,12 @@ router.delete('/files/:fileId', async (req, res) => {
       return res.status(403).json({ error: 'Not allowed to delete this file' });
     }
 
-    // Delete file from disk
-    const filePath = path.join(uploadsDir, file.filename);
-    if (fs.existsSync(filePath)) {
+    const stored = await resolveStoredFile(file.filename);
+    if (stored && stored.kind === 'gridfs') {
+      await deleteUpload(stored.rel).catch(() => {});
+    } else if (stored && stored.kind === 'disk') {
       try {
-        fs.unlinkSync(filePath);
+        fs.unlinkSync(stored.disk);
       } catch (unlinkErr) {
         console.warn('File unlink failed (continuing DB delete):', unlinkErr && unlinkErr.message);
       }

@@ -6,6 +6,14 @@
       (function () {
         try {
           var tok =
+            localStorage.getItem('remoed_student_token') ||
+            sessionStorage.getItem('remoed_student_token') ||
+            localStorage.getItem('remoed_teacher_token') ||
+            sessionStorage.getItem('remoed_teacher_token') ||
+            localStorage.getItem('remoed_student_auth') ||
+            sessionStorage.getItem('remoed_student_auth') ||
+            localStorage.getItem('remoed_teacher_auth') ||
+            sessionStorage.getItem('remoed_teacher_auth') ||
             localStorage.getItem('remoed_user_token') ||
             sessionStorage.getItem('remoed_user_token') ||
             localStorage.getItem('token') ||

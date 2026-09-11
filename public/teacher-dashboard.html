@@ -1822,19 +1822,6 @@
     console.log('isClockedIn:', isClockedIn);
     
     try {
-      // Check if current time is beyond 07:00PM (19:00) - TEMPORARILY DISABLED FOR TESTING
-      const now = new Date();
-      const currentHour = now.getHours();
-      const currentMinute = now.getMinutes();
-      
-      // TEMPORARY: Allow time-in for testing purposes
-      if (currentHour >= 19) {
-        console.log('Time in attempted after 07:00PM - ALLOWING FOR TESTING');
-        // alert('You cannot time in after 07:00PM. Please try again tomorrow.');
-        // showTimeMessage('You cannot time in after 07:00PM. Please try again tomorrow.', 'warning');
-        // return;
-      }
-      
       // Check if daily log is already completed
       const status = window.timeTrackingStatus || {};
       console.log('Checking daily completion status:', status.dailyCompleted);

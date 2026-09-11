@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="js/security-guard.js?v=4"></script>
+    <script src="js/user-session.js"></script>
     <script src="js/dashboard-history-lock.js?v=1"></script>
     <title>Student Dashboard - RemoEdPH</title>
 <style>
@@ -962,6 +963,36 @@
         </div>
     </div>
   <script>
+    function getStudentAuthToken() {
+      try {
+        if (window.RemoedSecurityGuard && RemoedSecurityGuard.getToken) {
+          var viaGuard = RemoedSecurityGuard.getToken();
+          if (viaGuard) return viaGuard;
+        }
+      } catch (_e) {}
+      try {
+        if (window.RemoedUserSession && RemoedUserSession.getUserToken) {
+          var viaSession = RemoedUserSession.getUserToken();
+          if (viaSession) return viaSession;
+        }
+      } catch (_e2) {}
+      try {
+        return (
+          localStorage.getItem('remoed_student_token') ||
+          sessionStorage.getItem('remoed_student_token') ||
+          localStorage.getItem('remoed_student_auth') ||
+          sessionStorage.getItem('remoed_student_auth') ||
+          localStorage.getItem('remoed_user_token') ||
+          sessionStorage.getItem('remoed_user_token') ||
+          localStorage.getItem('token') ||
+          sessionStorage.getItem('token') ||
+          ''
+        );
+      } catch (_e3) {
+        return '';
+      }
+    }
+
     // Role-based access control. Send denials to the login router, never to index.html:
     // index.html forwards any valid token back here, which loops on the alert.
     const userType = localStorage.getItem('userType');
@@ -973,11 +1004,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             const username = localStorage.getItem('remoedUsername');
             const studentId = localStorage.getItem('studentId');
-            const token =
-                localStorage.getItem('token') ||
-                localStorage.getItem('remoed_student_token') ||
-                localStorage.getItem('remoed_student_auth') ||
-                '';
+            const token = getStudentAuthToken();
             
             if (username) {
                 const nameEl = document.getElementById('remoed-username');
@@ -1204,7 +1231,7 @@
     // Load chart data
     async function loadChartData() {
       try {
-        const token = localStorage.getItem('token');
+        const token = getStudentAuthToken();
         if (!token) return;
         
         console.log('📊 Loading dashboard chart data...');
@@ -1298,7 +1325,7 @@
     // Load notifications for dropdown
         async function loadNotificationsDropdown() {
       try {
-        const token = localStorage.getItem('token');
+        const token = getStudentAuthToken();
         const dropdownContent = document.getElementById('notifications-dropdown-content');
         const badge = document.getElementById('notifications-badge');
         const dropdown = document.getElementById('notifications-dropdown');
@@ -1310,7 +1337,7 @@
         if (window.RemoedNotifications && window.RemoedNotifications.bindDropdownExtras) {
           window.RemoedNotifications.bindDropdownExtras(dropdown, {
             role: 'student',
-            getToken: function () { return localStorage.getItem('token') || ''; },
+            getToken: function () { return getStudentAuthToken() || ''; },
             onRefresh: loadNotificationsDropdown,
           });
         }
@@ -1350,7 +1377,7 @@
     // Load upcoming classes for dropdown
     async function loadUpcomingClassesDropdown() {
       try {
-        const token = localStorage.getItem('token');
+        const token = getStudentAuthToken();
         if (!token) return;
         
         const response = await fetch('/api/student/upcoming-classes', {
@@ -1424,7 +1451,7 @@
     // Mark individual notification as read
     async function markNotificationAsRead(notificationId, index) {
       try {
-        const token = localStorage.getItem('token');
+        const token = getStudentAuthToken();
         if (!token || !notificationId || notificationId === 'undefined') {
           console.error('❌ Missing token or invalid notification ID:', notificationId);
           return;
@@ -1456,7 +1483,7 @@
       try {
         console.log('🔔 Marking all notifications as read...');
         
-        const token = localStorage.getItem('token');
+        const token = getStudentAuthToken();
         
         if (!token) {
           console.error('❌ Missing token');
@@ -1564,7 +1591,7 @@
     // Load all notifications for the modal
     async function loadAllNotifications() {
       try {
-        const token = localStorage.getItem('token');
+        const token = getStudentAuthToken();
         if (!token) return;
         
         const response = await fetch('/api/student/notifications', {
@@ -1618,7 +1645,7 @@
     // Load profile picture and CEFR level from backend
     async function loadProfilePicture(studentId) {
         try {
-            const token = localStorage.getItem('token');
+            const token = getStudentAuthToken();
             if (!token) {
                 console.log('🔍 No token found for profile picture');
                 return;
@@ -1823,7 +1850,7 @@
     // Load upcoming classes for student
     async function loadUpcomingClasses() {
       try {
-        const token = localStorage.getItem('token');
+        const token = getStudentAuthToken();
         const response = await fetch('/api/student/upcoming-classes', {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -1887,7 +1914,7 @@
     // Load reschedule notifications for the system
     async function loadRescheduleNotifications() {
       try {
-        const token = localStorage.getItem('token');
+        const token = getStudentAuthToken();
         const response = await fetch('/api/student/reschedule-issues', {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -1941,7 +1968,7 @@
       }
       
       try {
-        const token = localStorage.getItem('token');
+        const token = getStudentAuthToken();
         const response = await fetch('/api/student/decline-reschedule', {
           method: 'POST',
           headers: {

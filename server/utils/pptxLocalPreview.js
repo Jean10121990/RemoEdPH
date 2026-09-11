@@ -98,7 +98,7 @@ function resolveUploadsFetchToken() {
   if (mirror) return mirror;
   try {
     const jwt = require('jsonwebtoken');
-    const secret = process.env.JWT_SECRET || 'your_jwt_secret';
+    const secret = require('../config/jwtSecret').getJwtSecret();
     return jwt.sign(
       { purpose: 'uploads-fetch', role: 'admin', isAdmin: true, userType: 'admin' },
       secret,

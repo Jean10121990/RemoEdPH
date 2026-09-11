@@ -105,6 +105,7 @@ const {
   safeUnlinkPublicUpload,
 } = require('./utils/imageOptimizer');
 const { saveUpload, normalizeUploadReference } = require('./services/uploadStore');
+const { createGridFsStorage } = require('./services/gridFsMulterStorage');
 
 // Helper function to create notifications (teachers / admin username bucket)
 async function createNotification(teacherId, type, message, extra = {}) {
@@ -297,15 +298,9 @@ const upload = multer({
   }
 });
 
-/** Issue reports: store under uploads/issue-screenshots and save URL as /uploads/... for admin QA hub */
-const issueScreenshotStorage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    const uploadDir = path.join(__dirname, '../uploads/issue-screenshots');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
-  },
+/** Issue reports: store under uploads/issue-screenshots (GridFS) and save URL as /uploads/... for admin QA hub */
+const issueScreenshotStorage = createGridFsStorage({
+  prefix: 'issue-screenshots',
   filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + '-' + crypto.randomInt(0, 1e9);
     const ext = path.extname(file.originalname || '').toLowerCase() || '.png';
@@ -2921,6 +2916,14 @@ router.post('/time-tracking/clock-in', verifyToken, requireTeacher, async (req, 
       return res.status(404).json({ success: false, error: 'Teacher not found' });
     }
 
+    const phHour = getPhilippineHour();
+    if (phHour >= 19) {
+      return res.status(400).json({
+        success: false,
+        error: 'You cannot time in after 07:00 PM Philippine time. Please try again tomorrow.',
+      });
+    }
+
     // Check if already clocked in today
     const existingLog = await TimeLog.findOne({
       teacherId,
@@ -3957,7 +3960,7 @@ router.get('/classes', async (req, res) => {
     if (authHeader && authHeader.startsWith('Bearer ')) {
       try {
         const token = authHeader.substring(7);
-        if (isTokenBlacklisted(token)) {
+        if (await isTokenBlacklisted(token)) {
           throw new Error('revoked');
         }
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
@@ -5307,114 +5310,12 @@ router.get('/lesson-slides/:bookingId', verifyToken, requireTeacher, async (req,
   }
 });
 
-// Upload lesson slides
-router.post('/upload-slides', verifyToken, requireTeacher, upload.array('slides', 10), async (req, res) => {
-  try {
-    const { bookingId, title, description } = req.body;
-    const teacherId = req.user.teacherId;
-    const files = req.files;
-    
-    if (!bookingId || !title || !files || files.length === 0) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Missing required fields: bookingId, title, and at least one slide file' 
-      });
-    }
-    
-    // Verify booking exists and belongs to this teacher
-    const booking = await Booking.findById(bookingId);
-    if (!booking) {
-      return res.status(404).json({ 
-        success: false, 
-        error: 'Booking not found' 
-      });
-    }
-    
-    if (booking.teacherId !== teacherId) {
-      return res.status(403).json({ 
-        success: false, 
-        error: 'Not authorized to upload slides for this booking' 
-      });
-    }
-    
-    // LessonSlides collection removed - slides are no longer saved to database
-    console.log(`⚠️ LessonSlides collection removed - slides processing for booking ${bookingId}`);
-    
-    // Process uploaded files
-    let slides = [];
-
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      const fileExt = path.extname(file.originalname).toLowerCase();
-
-      console.log(`📁 Processing file ${i + 1}:`, {
-        originalname: file.originalname,
-        fileExt: fileExt,
-        filename: file.filename
-      });
-
-      if (['.ppt', '.pptx'].includes(fileExt)) {
-        // PPTX files are now displayed directly without conversion
-        console.log(`📁 File ${i + 1} identified as PowerPoint, storing as-is`);
-        slides.push({
-          slideNumber: slides.length + 1,
-          imageUrl: `/uploads/slides/${file.filename}`,
-          originalFile: `/uploads/slides/${file.filename}`,
-          fileName: file.originalname,
-          fileType: 'powerpoint',
-          title: `${path.basename(file.originalname, fileExt)}`,
-          notes: '',
-          needsConversion: false
-        });
-      } else if (fileExt === '.pdf') {
-        console.log(`📁 File ${i + 1} identified as PDF`);
-        slides.push({
-          slideNumber: slides.length + 1,
-          imageUrl: `/uploads/slides/${file.filename}`,
-          originalFile: `/uploads/slides/${file.filename}`,
-          fileName: file.originalname,
-          fileType: 'pdf',
-          title: `${path.basename(file.originalname, fileExt)}`,
-          notes: '',
-          needsConversion: false
-        });
-      } else {
-        console.log(`📁 File ${i + 1} identified as image`);
-        slides.push({
-          slideNumber: slides.length + 1,
-          imageUrl: `/uploads/slides/${file.filename}`,
-          originalFile: `/uploads/slides/${file.filename}`,
-          fileName: file.originalname,
-          fileType: 'image',
-          title: `${path.basename(file.originalname, fileExt)}`,
-          notes: '',
-          needsConversion: false
-        });
-      }
-    }
-    
-    // LessonSlides collection removed - slides are no longer saved to database
-    // Slides are still processed and returned in the response for immediate use
-    console.log(`⚠️ LessonSlides collection removed - ${slides.length} slides processed but not saved to database for booking ${bookingId}`);
-    
-    res.json({
-      success: true,
-      message: 'Lesson slides processed successfully (not saved to database)',
-      slides: {
-        count: slides.length,
-        title: title,
-        totalSlides: slides.length,
-        processedAt: new Date()
-      }
-    });
-    
-  } catch (error) {
-    console.error('Error uploading lesson slides:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Failed to upload lesson slides'
-    });
-  }
+// Upload lesson slides — LessonSlides collection was removed; live class stores materials in Mongo.
+router.post('/upload-slides', verifyToken, requireTeacher, (req, res) => {
+  return res.status(410).json({
+    success: false,
+    error: 'Lesson slide uploads are no longer stored. Present files in the live classroom instead.',
+  });
 });
 
 // Upload slide images endpoint removed - no longer needed without conversion

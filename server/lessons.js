@@ -30,6 +30,7 @@ const {
   publicPreviewUrl
 } = require('./utils/pptxLocalPreview');
 const { isMongoObjectId, isBsonOrCastIdError } = require('./utils/mongoObjectId');
+const { saveUploadTree } = require('./services/uploadStore');
 
 function respondInvalidObjectId(res, label = 'id') {
   return res.status(400).json({ success: false, error: `Invalid ${label}` });
@@ -45,7 +46,7 @@ function respondLessonRouteError(res, error, fallbackMessage) {
 }
 
 const LESSON_UPLOAD_MAX_BYTES = 50 * 1024 * 1024;
-const lessonUploadTmp = path.join(__dirname, '../uploads/tmp-lesson-uploads');
+const lessonUploadTmp = path.join(os.tmpdir(), 'remoed-lesson-uploads');
 fs.mkdirSync(lessonUploadTmp, { recursive: true });
 fs.mkdirSync(PRESENTATIONS_ROOT, { recursive: true });
 
@@ -83,7 +84,7 @@ function publicUrlForStoredPresentation(fileId, storedName) {
   return '/uploads/presentations/' + String(fileId) + '/' + encodeURIComponent(storedName);
 }
 
-const authenticateToken = (req, res, next) => {
+const authenticateToken = async (req, res, next) => {
   // Accept token from Authorization header, query, or body for flexibility (devtunnels)
   const authHeader = req.headers['authorization'];
   const headerToken = authHeader && authHeader.split(' ')[1];
@@ -92,11 +93,12 @@ const authenticateToken = (req, res, next) => {
   if (!token) {
     return res.status(401).json({ success: false, message: 'Access token required' });
   }
-  if (isTokenBlacklisted(token)) {
+  if (await isTokenBlacklisted(token)) {
     return res.status(403).json({ success: false, message: 'Token has been revoked' });
   }
   const jwt = require('jsonwebtoken');
-  const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
+  const { getJwtSecret } = require('./config/jwtSecret');
+  const JWT_SECRET = getJwtSecret();
   jwt.verify(token, JWT_SECRET, (err, user) => {
     if (err) {
       return res.status(403).json({ success: false, message: 'Invalid or expired token' });
@@ -946,6 +948,7 @@ router.post('/lesson/:lessonId/upload-file', authenticateToken, requireTeacher, 
         return res.status(400).json({ error: 'HTML5 zip package requires file upload' });
       }
       const entryRel = extractHtml5Zip(buffer, destDir);
+      await saveUploadTree(destDir, 'presentations/' + String(fileId));
       const html5EntryUrl = '/uploads/presentations/' + fileId + '/' + entryRel.split('/').map(encodeURIComponent).join('/');
       newFile = {
         _id: fileId,
@@ -1013,6 +1016,12 @@ router.post('/lesson/:lessonId/upload-file', authenticateToken, requireTeacher, 
 
       if (isPptPresentation(fileName, fileType)) {
         await attachPptxConversionMetadata(newFile, destPath);
+      }
+      try {
+        await saveUploadTree(destDir, 'presentations/' + String(fileId));
+      } catch (gridErr) {
+        console.warn('[UPLOAD] GridFS presentation store failed:', gridErr.message || gridErr);
+        if (String(process.env.NODE_ENV || '').toLowerCase() === 'production') throw gridErr;
       }
     } else {
       if (!fileData) {

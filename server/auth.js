@@ -15,7 +15,8 @@ const InvitationToken = require('./models/InvitationToken');
 const AssessmentTrial = require('./models/AssessmentTrial');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
-const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret'; // Use a strong secret in production
+const { getJwtSecret } = require('./config/jwtSecret');
+const JWT_SECRET = getJwtSecret();
 const { JWT_EXPIRES_IN, ADMIN_JWT_EXPIRES_IN } = require('./config/authTokens');
 const { blacklistToken, isTokenBlacklisted } = require('./services/jwtBlacklist');
 const {
@@ -72,7 +73,7 @@ function getAdminPasswordHashField(adminDoc) {
 }
 
 // Middleware to authenticate JWT token
-const authenticateToken = (req, res, next) => {
+const authenticateToken = async (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
@@ -80,7 +81,7 @@ const authenticateToken = (req, res, next) => {
     return res.status(401).json({ success: false, message: 'Access token required' });
   }
 
-  if (isTokenBlacklisted(token)) {
+  if (await isTokenBlacklisted(token)) {
     return res.status(403).json({ success: false, message: 'Token has been revoked' });
   }
 

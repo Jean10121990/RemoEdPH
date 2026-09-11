@@ -8,7 +8,8 @@ const Student = require('./models/Student');
 const PendingRegistration = require('./models/PendingRegistration');
 
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
+const { getJwtSecret } = require('./config/jwtSecret');
+const JWT_SECRET = getJwtSecret();
 const { isTokenBlacklisted } = require('./services/jwtBlacklist');
 const { normalizePlanId, PLAN_CREDITS } = require('./config/planCredits');
 const {
@@ -22,7 +23,7 @@ const {
  * If Authorization: Bearer is present, verify JWT. Student tokens populate req.studentFromToken;
  * teacher tokens return 403. Invalid token returns 401. No/invalid header → next() (guest flow).
  */
-function optionalVerifyStudent(req, res, next) {
+async function optionalVerifyStudent(req, res, next) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return next();
@@ -31,7 +32,7 @@ function optionalVerifyStudent(req, res, next) {
   if (!token) {
     return next();
   }
-  if (isTokenBlacklisted(token)) {
+  if (await isTokenBlacklisted(token)) {
     return res.status(401).json({ success: false, error: 'Session token has been revoked' });
   }
   try {
@@ -51,7 +52,7 @@ function optionalVerifyStudent(req, res, next) {
 }
 
 /** Require a valid student JWT (for confirm-checkout after PayMongo return). */
-function requireVerifyStudent(req, res, next) {
+async function requireVerifyStudent(req, res, next) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ success: false, error: 'Student login required' });
@@ -60,7 +61,7 @@ function requireVerifyStudent(req, res, next) {
   if (!token) {
     return res.status(401).json({ success: false, error: 'Student login required' });
   }
-  if (isTokenBlacklisted(token)) {
+  if (await isTokenBlacklisted(token)) {
     return res.status(401).json({ success: false, error: 'Session token has been revoked' });
   }
   try {

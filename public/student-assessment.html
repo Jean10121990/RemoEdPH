@@ -577,8 +577,30 @@
                 return;
             }
 
-            var userType = localStorage.getItem('userType');
-            var hasStudentToken = !!(localStorage.getItem('token') || localStorage.getItem('studentToken') || localStorage.getItem('remoed_user_token'));
+            var userType = localStorage.getItem('userType') || localStorage.getItem('userRole') || '';
+            var hasStudentToken = false;
+            try {
+                if (window.RemoedUserSession && RemoedUserSession.getUserToken) {
+                    hasStudentToken = !!RemoedUserSession.getUserToken();
+                }
+            } catch (_e) {}
+            if (!hasStudentToken) {
+                try {
+                    hasStudentToken = !!(
+                        localStorage.getItem('remoed_student_token') ||
+                        sessionStorage.getItem('remoed_student_token') ||
+                        localStorage.getItem('remoed_student_auth') ||
+                        sessionStorage.getItem('remoed_student_auth') ||
+                        localStorage.getItem('remoed_user_token') ||
+                        sessionStorage.getItem('remoed_user_token') ||
+                        localStorage.getItem('token') ||
+                        sessionStorage.getItem('token') ||
+                        localStorage.getItem('studentToken')
+                    );
+                } catch (_e2) {
+                    hasStudentToken = false;
+                }
+            }
             if (userType !== 'student' || !hasStudentToken) {
                 // Guests without prefill: send to landing assessment form instead of a hard deny.
                 window.location.href = 'index.html#assessment';

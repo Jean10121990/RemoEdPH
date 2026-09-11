@@ -21,7 +21,9 @@ const classroomRecordingSchema = new mongoose.Schema(
     status: { type: String, enum: ['uploading', 'complete', 'failed'], default: 'uploading' },
     /** Auto-delete after this time (TTL discipline for storage) */
     expiresAt: { type: Date, required: true, index: true },
-    errorMessage: { type: String, default: '' }
+    errorMessage: { type: String, default: '' },
+    /** Number of GridFS chunk parts received while status=uploading */
+    chunkCount: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

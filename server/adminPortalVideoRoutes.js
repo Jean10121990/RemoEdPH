@@ -9,6 +9,8 @@ const multer = require('multer');
 const crypto = require('crypto');
 const PortalVideo = require('./models/PortalVideo');
 const { verifyAdminApiAuth, requireAdmin } = require('./authMiddleware');
+const { createGridFsStorage } = require('./services/gridFsMulterStorage');
+const { deleteUpload } = require('./services/uploadStore');
 
 const router = express.Router();
 
@@ -19,12 +21,8 @@ router.use((req, res, next) => {
   });
 });
 
-const portalVideoStorage = multer.diskStorage({
-  destination(req, file, cb) {
-    const dir = path.join(__dirname, '../uploads/portal-videos');
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    cb(null, dir);
-  },
+const portalVideoStorage = createGridFsStorage({
+  prefix: 'portal-videos',
   filename(req, file, cb) {
     const unique = Date.now() + '-' + crypto.randomInt(0, 1e9);
     const ext = path.extname(file.originalname || '') || '.mp4';
@@ -137,6 +135,7 @@ router.delete('/portal-videos/:id/permanent', async (req, res) => {
       await PortalVideo.deleteOne({ _id: v._id });
       return res.json({ success: true, message: 'Record removed (file name was invalid).' });
     }
+    await deleteUpload('portal-videos/' + base);
     const abs = path.join(__dirname, '../uploads/portal-videos', base);
     if (fs.existsSync(abs)) {
       try {

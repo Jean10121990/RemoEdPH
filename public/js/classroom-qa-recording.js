@@ -17,6 +17,7 @@
     studentWaitTimer: null,
     startedAt: 0,
     chunkChain: Promise.resolve(),
+    chunkIndex: 0,
     autoStartTried: false,
     panel: null,
     statusEl: null,
@@ -419,12 +420,14 @@
   function queueChunk(blob) {
     if (!state.recordingId || !blob || blob.size === 0) return;
     var h = authHeaders();
+    var seq = state.chunkIndex++;
     state.chunkChain = state.chunkChain.then(function () {
       return fetch('/api/classroom-recording/session/' + state.recordingId + '/chunk', {
         method: 'PUT',
         headers: {
           Authorization: h.Authorization,
-          'Content-Type': 'application/octet-stream'
+          'Content-Type': 'application/octet-stream',
+          'X-Chunk-Index': String(seq)
         },
         body: blob
       }).then(function (r) {
@@ -537,6 +540,7 @@
     state.recordingId = null;
     state.mediaRecorder = null;
     state.chunkChain = Promise.resolve();
+    state.chunkIndex = 0;
     if (state.screenStream) {
       try {
         state.screenStream.getTracks().forEach(function (t) { t.stop(); });
@@ -569,6 +573,7 @@
     if (state.btnStart) state.btnStart.disabled = true;
     setStatus('Starting…');
     state.chunkChain = Promise.resolve();
+    state.chunkIndex = 0;
 
     var chooseStream = function () {
       // Teacher manual start: full-tab capture for QA archive (+ cropped clone for student slides).

@@ -9,7 +9,8 @@ const jwt = require('jsonwebtoken');
 const { isTokenBlacklisted } = require('../services/jwtBlacklist');
 const { findUpload, openDownloadStream } = require('../services/uploadStore');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
+const { getJwtSecret } = require('../config/jwtSecret');
+const JWT_SECRET = getJwtSecret();
 const UPLOADS_ROOT = path.resolve(path.join(__dirname, '../../uploads'));
 
 /** First path segment under /uploads that may be fetched without auth (public marketing assets). */
@@ -118,7 +119,7 @@ function resolveLegacyIssueScreenshot(relPath) {
 }
 
 function requireUploadAccess(req, res, next) {
-  try {
+  (async () => {
     const rel = relativeUploadPathFromReq(req);
     req.uploadRelativePath = rel;
 
@@ -148,15 +149,13 @@ function requireUploadAccess(req, res, next) {
       req.user = { role: 'service', isAdmin: true, purpose: 'uploads-fetch' };
       return next();
     }
-    if (isTokenBlacklisted(token)) {
+    if (await isTokenBlacklisted(token)) {
       return res.status(401).json({ error: 'Token has been revoked.' });
     }
     const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded;
     return next();
-  } catch (err) {
-    return res.status(401).json({ error: 'Invalid or expired token.' });
-  }
+  })().catch(() => res.status(401).json({ error: 'Invalid or expired token.' }));
 }
 
 function mimeFromPath(filePath) {

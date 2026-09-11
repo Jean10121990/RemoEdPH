@@ -4,8 +4,9 @@ const Teacher = require('./models/Teacher');
 const Student = require('./models/Student');
 const Admin = require('./models/Admin');
 const { isTokenBlacklisted } = require('./services/jwtBlacklist');
+const { getJwtSecret } = require('./config/jwtSecret');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
+const JWT_SECRET = getJwtSecret();
 
 const ADMIN_2FA_SETUP_PATHS = new Set(['/2fa-setup', '/2fa-verify']);
 
@@ -120,7 +121,7 @@ const requireAdminTwoFactorSatisfied = async (req, res, next) => {
 };
 
 // Middleware to verify JWT token
-const verifyToken = (req, res, next) => {
+const verifyToken = async (req, res, next) => {
   console.log('Verifying token...');
   console.log('Authorization header:', req.headers.authorization);
   
@@ -136,7 +137,7 @@ const verifyToken = (req, res, next) => {
   }
 
   try {
-    if (isTokenBlacklisted(token)) {
+    if (await isTokenBlacklisted(token)) {
       return res.status(401).json({ error: 'Token has been revoked.' });
     }
     const decoded = jwt.verify(token, JWT_SECRET);
@@ -200,7 +201,7 @@ const verifyToken = (req, res, next) => {
  * Admin API: accept httpOnly session cookie (set on POST /api/auth/admin-login)
  * or legacy Bearer JWT with isAdmin / role admin.
  */
-const verifyAdminApiAuth = (req, res, next) => {
+const verifyAdminApiAuth = async (req, res, next) => {
   if (req.session && req.session.adminAuth === true && req.session.adminUsername) {
     req.user = {
       username: req.session.adminUsername,
@@ -223,7 +224,7 @@ const verifyAdminApiAuth = (req, res, next) => {
   }
 
   try {
-    if (isTokenBlacklisted(token)) {
+    if (await isTokenBlacklisted(token)) {
       return res.status(401).json({ error: 'Token has been revoked.' });
     }
     const decoded = jwt.verify(token, JWT_SECRET);

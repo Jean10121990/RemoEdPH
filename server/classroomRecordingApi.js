@@ -8,6 +8,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const fsp = require('fs').promises;
 const path = require('path');
+const os = require('os');
 const { spawn } = require('child_process');
 let ffmpegStatic = null;
 try {
@@ -16,6 +17,7 @@ try {
   ffmpegStatic = null;
 }
 const ClassroomRecording = require('./models/ClassroomRecording');
+const RecordingDownloadTicket = require('./models/RecordingDownloadTicket');
 const Booking = require('./models/Booking');
 const {
   verifyToken,
@@ -24,6 +26,16 @@ const {
   requireAdminSessionValid,
   requireAdminQaOrSuper,
 } = require('./authMiddleware');
+const {
+  putUpload,
+  putUploadFromFile,
+  concatenateUploads,
+  listUploadsByPrefix,
+  downloadToFile,
+  findUpload,
+  openDownloadStream,
+  deleteUpload,
+} = require('./services/uploadStore');
 
 /** Admin list/download/delete for recordings — QA + Super-Admin only (matches QA Hub UI). */
 const adminRecordingAuthChain = [
@@ -40,44 +52,52 @@ const adminRecordingAuthChain = [
  * rather than one use, so a browser retry or resumed transfer still authenticates.
  */
 const DOWNLOAD_TICKET_TTL_MS = 2 * 60 * 1000;
-const MAX_DOWNLOAD_TICKETS = 500;
-const downloadTickets = new Map();
 
-function pruneDownloadTickets() {
-  const now = Date.now();
-  for (const [key, row] of downloadTickets) {
-    if (!row || row.expiresAt <= now) downloadTickets.delete(key);
-  }
-  while (downloadTickets.size > MAX_DOWNLOAD_TICKETS) {
-    downloadTickets.delete(downloadTickets.keys().next().value);
-  }
-}
-
-function issueDownloadTicket(recordingId) {
-  pruneDownloadTickets();
+async function issueDownloadTicket(recordingId) {
   const ticket = crypto.randomBytes(24).toString('hex');
-  downloadTickets.set(ticket, {
+  await RecordingDownloadTicket.create({
+    token: ticket,
     recordingId: String(recordingId),
-    expiresAt: Date.now() + DOWNLOAD_TICKET_TTL_MS
+    expiresAt: new Date(Date.now() + DOWNLOAD_TICKET_TTL_MS),
   });
   return ticket;
 }
 
-function downloadTicketValid(recordingId, ticket) {
+async function downloadTicketValid(recordingId, ticket) {
   const key = String(ticket || '');
   if (!key) return false;
-  const row = downloadTickets.get(key);
+  const row = await RecordingDownloadTicket.findOne({ token: key }).lean();
   if (!row) return false;
-  if (row.expiresAt <= Date.now()) {
-    downloadTickets.delete(key);
+  if (row.expiresAt <= new Date()) {
+    await RecordingDownloadTicket.deleteOne({ token: key }).catch(() => {});
     return false;
   }
   return row.recordingId === String(recordingId || '');
 }
 
-const UPLOAD_DIR = path.join(__dirname, '../uploads/classroom-recordings');
 const RETENTION_DAYS = Number(process.env.CLASSROOM_RECORDING_RETENTION_DAYS || 7);
 const MAX_FILE_BYTES = Number(process.env.CLASSROOM_RECORDING_MAX_MB || 120) * 1024 * 1024;
+
+function partsPrefix(recordingId) {
+  return `classroom-recordings/${String(recordingId)}/parts`;
+}
+
+function partRelativePath(recordingId, seq) {
+  return `${partsPrefix(recordingId)}/part-${String(seq).padStart(6, '0')}`;
+}
+
+async function deleteRecordingStorage(doc) {
+  if (!doc) return;
+  const rel = String(doc.relativePath || '').replace(/\\/g, '/').replace(/^\//, '');
+  if (rel) {
+    await deleteUpload(rel).catch(() => {});
+    await fsp.unlink(path.join(__dirname, '../uploads', rel)).catch(() => {});
+  }
+  const parts = await listUploadsByPrefix(partsPrefix(doc._id)).catch(() => []);
+  for (const p of parts) {
+    await deleteUpload(p.filename).catch(() => {});
+  }
+}
 
 const router = express.Router();
 
@@ -244,27 +264,37 @@ function scheduleRecordingPostProcess(recordingId, sourceMime) {
       try {
         const doc = await ClassroomRecording.findById(id);
         if (!doc || doc.status !== 'complete') return;
-        const currentAbs = path.join(__dirname, '../uploads', doc.relativePath);
-        if (!fs.existsSync(currentAbs)) return;
+        const currentAbs = path.join(os.tmpdir(), `remoed-rec-${id}${path.extname(doc.relativePath || '.webm')}`);
+        try {
+          await downloadToFile(doc.relativePath, currentAbs);
+        } catch (_missing) {
+          const diskAbs = path.join(__dirname, '../uploads', doc.relativePath);
+          if (!fs.existsSync(diskAbs)) return;
+          await fsp.copyFile(diskAbs, currentAbs);
+        }
 
         const mp4Abs = await transcodeWebmToMp4(currentAbs);
         if (mp4Abs) {
-          const oldAbs = currentAbs;
           const newRel = doc.relativePath.replace(/\.[^./\\]+$/, '.mp4');
+          await putUploadFromFile(newRel, mp4Abs, 'video/mp4');
+          if (newRel !== doc.relativePath) await deleteUpload(doc.relativePath).catch(() => {});
           doc.relativePath = newRel;
           doc.mimeType = 'video/mp4';
-          await doc.save();
           try {
-            await fsp.unlink(oldAbs);
-          } catch (e) {
-            /* ignore */
-          }
+            doc.sizeBytes = (await fsp.stat(mp4Abs)).size;
+          } catch (_e) {}
+          await doc.save();
+          await fsp.unlink(currentAbs).catch(() => {});
+          await fsp.unlink(mp4Abs).catch(() => {});
           return;
         }
         const remuxed = await remuxSeekableWebm(currentAbs);
-        if (!remuxed) {
+        if (remuxed) {
+          await putUploadFromFile(doc.relativePath, currentAbs, doc.mimeType || 'video/webm');
+        } else {
           console.warn('classroom-recording remux skipped/failed for', id);
         }
+        await fsp.unlink(currentAbs).catch(() => {});
       } catch (e) {
         console.warn('classroom-recording post-process', id, e.message);
       }
@@ -298,7 +328,6 @@ router.post(
       const expiresAt = new Date(Date.now() + RETENTION_DAYS * 86400000);
       const fileBase = `${Date.now()}-${crypto.randomBytes(6).toString('hex')}`;
       const relativePath = `classroom-recordings/${fileBase}.webm`;
-      const absPath = path.join(__dirname, '../uploads', relativePath);
 
       // Close any stale in-progress uploads for the same class/uploader.
       // This keeps one active recording session per class side (teacher/student)
@@ -312,16 +341,12 @@ router.post(
       const stale = await ClassroomRecording.find(staleFilter).lean();
       for (const s of stale) {
         try {
-          const staleAbs = path.join(__dirname, '../uploads', s.relativePath);
-          await fsp.unlink(staleAbs).catch(() => {});
+          await deleteRecordingStorage(s);
           await ClassroomRecording.deleteOne({ _id: s._id });
         } catch (e) {
           console.warn('Failed to clear stale recording session', s._id, e.message);
         }
       }
-
-      await fsp.mkdir(UPLOAD_DIR, { recursive: true });
-      await fsp.writeFile(absPath, Buffer.alloc(0));
 
       const doc = await ClassroomRecording.create({
         roomId: String(roomId).trim(),
@@ -333,7 +358,8 @@ router.post(
         mimeType: 'video/webm',
         expiresAt,
         status: 'uploading',
-        sizeBytes: 0
+        sizeBytes: 0,
+        chunkCount: 0
       });
 
       res.json({
@@ -370,18 +396,27 @@ router.put(
         return res.status(400).json({ success: false, message: 'Upload already finalized' });
       }
 
-      const abs = path.join(__dirname, '../uploads', doc.relativePath);
       const chunk = Buffer.isBuffer(req.body) ? req.body : Buffer.from(req.body || '');
       const nextSize = doc.sizeBytes + chunk.length;
       if (nextSize > MAX_FILE_BYTES) {
         return res.status(413).json({ success: false, message: 'Recording exceeds maximum size' });
       }
 
-      await fsp.appendFile(abs, chunk);
+      const headerSeq = Number(req.get('x-chunk-index'));
+      let seq;
+      if (Number.isFinite(headerSeq) && headerSeq >= 0) {
+        seq = Math.floor(headerSeq);
+        doc.chunkCount = Math.max(doc.chunkCount || 0, seq + 1);
+      } else {
+        seq = doc.chunkCount || 0;
+        doc.chunkCount = seq + 1;
+      }
+
+      await putUpload(partRelativePath(doc._id, seq), chunk, 'application/octet-stream');
       doc.sizeBytes = nextSize;
       await doc.save();
 
-      res.json({ success: true, bytesReceived: chunk.length, totalBytes: doc.sizeBytes });
+      res.json({ success: true, bytesReceived: chunk.length, totalBytes: doc.sizeBytes, seq });
     } catch (err) {
       console.error('classroom-recording chunk:', err);
       res.status(500).json({ success: false, message: err.message || 'Chunk failed' });
@@ -405,17 +440,30 @@ router.post(
       }
 
       const { durationSec, mimeType } = req.body || {};
-      const abs = path.join(__dirname, '../uploads', doc.relativePath);
-      let st;
-      try {
-        st = await fsp.stat(abs);
-      } catch (e) {
-        return res.status(400).json({ success: false, message: 'Recording file missing' });
+      const parts = await listUploadsByPrefix(partsPrefix(doc._id));
+      const partRels = parts
+        .map((p) => p.filename)
+        .filter((n) => /\/part-\d+$/.test(n) || /part-\d+$/.test(n))
+        .sort();
+      if (!partRels.length) {
+        const diskAbs = path.join(__dirname, '../uploads', doc.relativePath);
+        try {
+          const st = await fsp.stat(diskAbs);
+          if (!st.size) throw new Error('empty');
+        } catch (e) {
+          return res.status(400).json({ success: false, message: 'Recording file missing' });
+        }
+      } else {
+        await concatenateUploads(partRels, doc.relativePath, 'video/webm');
+        for (const rel of partRels) {
+          await deleteUpload(rel).catch(() => {});
+        }
       }
 
+      const stored = await findUpload(doc.relativePath);
       const sourceMime = String(mimeType || doc.mimeType || '');
       doc.status = 'complete';
-      doc.sizeBytes = st.size;
+      doc.sizeBytes = stored && stored.length ? stored.length : doc.sizeBytes;
       doc.durationSec = durationSec != null ? Number(durationSec) : null;
       if (!doc.mimeType && mimeType) doc.mimeType = String(mimeType);
       await doc.save();
@@ -442,12 +490,7 @@ router.post(
       if (doc.recordedByUploaderKey !== uploaderKey(req)) {
         return res.status(403).json({ success: false, message: 'Forbidden' });
       }
-      const abs = path.join(__dirname, '../uploads', doc.relativePath);
-      try {
-        await fsp.unlink(abs);
-      } catch (e) {
-        /* ignore */
-      }
+      await deleteRecordingStorage(doc);
       await ClassroomRecording.deleteOne({ _id: doc._id });
       res.json({ success: true });
     } catch (err) {
@@ -523,7 +566,7 @@ router.post(
       if (!doc) return res.status(404).json({ success: false, message: 'Not found' });
       res.json({
         success: true,
-        ticket: issueDownloadTicket(doc._id),
+        ticket: await issueDownloadTicket(doc._id),
         expiresInMs: DOWNLOAD_TICKET_TTL_MS
       });
     } catch (err) {
@@ -534,10 +577,12 @@ router.post(
 );
 
 /** A valid ticket stands in for the admin auth chain (it was issued to an authed admin). */
-const markValidDownloadTicket = (req, res, next) => {
-  if (downloadTicketValid(req.params.id, req.query.ticket)) {
-    req.recordingTicketOk = true;
-  }
+const markValidDownloadTicket = async (req, res, next) => {
+  try {
+    if (await downloadTicketValid(req.params.id, req.query.ticket)) {
+      req.recordingTicketOk = true;
+    }
+  } catch (_e) {}
   next();
 };
 const skipWhenTicketed = (mw) => (req, res, next) =>
@@ -553,11 +598,14 @@ router.get(
       if (!doc) return res.status(404).json({ success: false, message: 'Not found' });
       const rel = String(doc.relativePath || '').replace(/\\/g, '/').replace(/^\//, '');
       const abs = path.join(__dirname, '../uploads', rel);
-      let size = 0;
-      try {
-        size = (await fsp.stat(abs)).size;
-      } catch (statErr) {
-        return res.status(404).json({ success: false, message: 'File missing' });
+      const stored = await findUpload(rel);
+      let size = stored && Number(stored.length) ? Number(stored.length) : 0;
+      if (!size) {
+        try {
+          size = (await fsp.stat(abs)).size;
+        } catch (statErr) {
+          return res.status(404).json({ success: false, message: 'File missing' });
+        }
       }
       if (!size) {
         return res.status(409).json({ success: false, message: 'Recording file is empty.' });
@@ -567,13 +615,26 @@ router.get(
           ? 'mp4'
           : 'webm';
       const safeName = `classroom-${doc.roomId}-${doc._id}.${ext}`.replace(/[^a-zA-Z0-9._-]/g, '_');
-      // res.download sets Content-Length + Accept-Ranges, so the browser can show progress
-      // and resume — a bare pipe was chunked and died on proxy hiccups mid-transfer.
       res.setHeader('Content-Type', ext === 'mp4' ? 'video/mp4' : 'video/webm');
+      res.setHeader('Content-Disposition', `attachment; filename="${safeName}"`);
+      res.setHeader('Content-Length', String(size));
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.setHeader('Cache-Control', 'private, no-store');
+      if (stored) {
+        const stream = openDownloadStream(stored._id);
+        stream.on('error', (err) => {
+          console.error('admin download classroom-recording stream:', err);
+          if (!res.headersSent) {
+            res.status(500).json({ success: false, message: 'Could not read recording file.' });
+          } else {
+            res.destroy(err);
+          }
+        });
+        return stream.pipe(res);
+      }
       res.download(abs, safeName, (err) => {
         if (!err) return;
         const code = String(err.code || '');
-        // Client cancelled / navigated away — not a server fault
         if (code === 'ECONNABORTED' || code === 'EPIPE' || code === 'ERR_STREAM_PREMATURE_CLOSE') {
           return;
         }
@@ -597,13 +658,7 @@ router.delete('/admin/classroom-recordings/:id', ...adminRecordingAuthChain, asy
   try {
     const doc = await ClassroomRecording.findById(req.params.id);
     if (!doc) return res.status(404).json({ success: false, message: 'Not found' });
-    const relDel = String(doc.relativePath || '').replace(/\\/g, '/').replace(/^\//, '');
-    const abs = path.join(__dirname, '../uploads', relDel);
-    try {
-      await fsp.unlink(abs);
-    } catch (e) {
-      /* ignore */
-    }
+    await deleteRecordingStorage(doc);
     await ClassroomRecording.deleteOne({ _id: doc._id });
     res.json({ success: true });
   } catch (err) {
@@ -629,8 +684,7 @@ async function purgeExpiredClassroomRecordings() {
   let removed = 0;
   for (const r of expired) {
     try {
-      const abs = path.join(__dirname, '../uploads', r.relativePath);
-      await fsp.unlink(abs).catch(() => {});
+      await deleteRecordingStorage(r);
       await ClassroomRecording.deleteOne({ _id: r._id });
       removed += 1;
     } catch (e) {

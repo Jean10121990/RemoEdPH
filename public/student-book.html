@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="js/security-guard.js?v=1"></script>
+    <script src="js/user-session.js"></script>
     <title>Book a Class - RemoEdPH</title>
 <style>
         body { 
@@ -1221,15 +1222,45 @@
     <script src="timezone-utils.js"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script>
+        function getStudentAuthToken() {
+            try {
+                if (window.RemoedSecurityGuard && RemoedSecurityGuard.getToken) {
+                    var viaGuard = RemoedSecurityGuard.getToken();
+                    if (viaGuard) return viaGuard;
+                }
+            } catch (_e) {}
+            try {
+                if (window.RemoedUserSession && RemoedUserSession.getUserToken) {
+                    var viaSession = RemoedUserSession.getUserToken();
+                    if (viaSession) return viaSession;
+                }
+            } catch (_e2) {}
+            try {
+                return (
+                    localStorage.getItem('remoed_student_token') ||
+                    sessionStorage.getItem('remoed_student_token') ||
+                    localStorage.getItem('remoed_student_auth') ||
+                    sessionStorage.getItem('remoed_student_auth') ||
+                    localStorage.getItem('remoed_user_token') ||
+                    sessionStorage.getItem('remoed_user_token') ||
+                    localStorage.getItem('token') ||
+                    sessionStorage.getItem('token') ||
+                    ''
+                );
+            } catch (_e3) {
+                return '';
+            }
+        }
+
         // Role-based access control
         const userType = localStorage.getItem('userType');
-        const token = localStorage.getItem('token');
-        
+        const token = getStudentAuthToken();
+
         if (userType !== 'student') {
             alert('Access denied. This page is for students only.');
             window.location.replace('/login/');
         }
-        
+
         if (!token) {
             alert('Please log in to access this page.');
             window.location.href = '/login/';
@@ -1461,7 +1492,7 @@
 
         (function setupStudentBookingRealtime() {
             if (typeof io !== 'function') return;
-            const rt = localStorage.getItem('token');
+            const rt = getStudentAuthToken();
             if (!rt) return;
             try {
                 const socket = io(window.location.origin, { auth: { token: rt } });
@@ -1584,7 +1615,7 @@
         
         // Validate token with backend
         async function validateToken() {
-            const token = localStorage.getItem('token');
+            const token = getStudentAuthToken();
             if (!token) {
                 throw new Error('No token found');
             }
@@ -1827,7 +1858,7 @@
                 const weekStart = getWeekStartDate(currentWeek);
                 const weekString = getLocalDateString(weekStart); // Use consistent date formatting
                 
-                const token = localStorage.getItem('token');
+                const token = getStudentAuthToken();
                 console.log('🔍 Student booking - Token exists:', !!token);
                 console.log('🔍 Loading available slots for week:', weekString);
 
@@ -2957,7 +2988,7 @@
             bookBtn.disabled = true;
             bookBtnText.textContent = 'Booking...';
             
-            const token = localStorage.getItem('token');
+            const token = getStudentAuthToken();
             
             // Get the single selected slot
             const slot = Array.from(selectedSlots.values())[0];
@@ -3213,7 +3244,7 @@
         // Load profile picture from backend
         async function loadProfilePicture(studentId) {
             try {
-                const token = localStorage.getItem('token');
+                const token = getStudentAuthToken();
                 if (!token) {
                     console.log('🔍 No token found for profile picture - using avatar text');
                     ensureAvatarTextVisible();
@@ -3398,7 +3429,7 @@
 
         async function refreshTrialBookingFlag() {
             try {
-                const token = localStorage.getItem('token');
+                const token = getStudentAuthToken();
                 if (!token) return;
                 const res = await fetch('/api/student/profile', {
                     headers: { Authorization: `Bearer ${token}`, 'Cache-Control': 'no-cache' }
@@ -3479,7 +3510,7 @@
             }
             
             try {
-                const token = localStorage.getItem('token');
+                const token = getStudentAuthToken();
                 if (!token) {
                     throw new Error('Not authenticated');
                 }

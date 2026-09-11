@@ -521,7 +521,7 @@
               localStorage.removeItem('userRole');
             }
           } catch (_e) {}
-          window.location.replace('/index.html?error=socket_unauthorized');
+          window.location.replace('/login/?error=socket_unauthorized');
           return;
         }
         // NO_TOKEN / unknown: try one reconnect with a freshly resolved teacher/student token
@@ -594,7 +594,7 @@
       // In class the student is shown by nickname (or a stable "Student####"), never the legal name
       let classroomStudentLabel = '';
       let classroomTeacherLabel = '';
-      let myChatLabel = username;
+      let myChatLabel = userType === 'student' ? 'Student' : username;
       
       console.log('🔍 User Type Detection:', {
         userType,
@@ -6341,7 +6341,7 @@
           socket.emit('chat-message', {
             room,
             message,
-            sender: username,
+            sender: myChatLabel,
             senderLabel: myChatLabel,
             messageId,
             timestamp

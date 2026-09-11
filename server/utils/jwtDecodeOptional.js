@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
+const { getJwtSecret } = require('../config/jwtSecret');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
+const JWT_SECRET = getJwtSecret();
 
 /** Decode Bearer JWT without failing; returns null if missing/invalid. */
 function decodeBearerUser(req) {

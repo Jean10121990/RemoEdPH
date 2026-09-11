@@ -44,7 +44,9 @@ const fs = require('fs');
 const { verifyToken, requireTeacher, requireAdmin, verifyAdminApiAuth } = require('./authMiddleware');
 const jwt = require('jsonwebtoken');
 const { isTokenBlacklisted } = require('./services/jwtBlacklist');
-const SOCKET_AUTH_JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
+const { assertJwtSecretForBoot, getJwtSecret } = require('./config/jwtSecret');
+assertJwtSecretForBoot();
+const SOCKET_AUTH_JWT_SECRET = getJwtSecret();
 const {
   getClassroomEntryGate,
   getScheduledStartMs,
@@ -372,16 +374,22 @@ app.use('/admin', noStoreProtectedResponse, express.static(path.join(__dirname, 
 app.get('/api/health', (req, res) => {
   try {
     const dbInfo = getDbConnectionInfo();
-    res.json({
-      status: 'OK',
-      message: 'Server is running',
-      database: db.readyState === 1 ? 'Connected' : 'Disconnected',
+    const dbUp = db.readyState === 1;
+    const production = String(process.env.NODE_ENV || '').toLowerCase() === 'production';
+    const payload = {
+      status: dbUp ? 'OK' : production ? 'UNAVAILABLE' : 'OK',
+      message: dbUp ? 'Server is running' : 'Server is running (database disconnected)',
+      database: dbUp ? 'Connected' : 'Disconnected',
       databaseMode: dbInfo.mode,
       databaseTarget: dbInfo.target,
       databaseName: dbInfo.database,
       port: PORT,
       timestamp: new Date().toISOString(),
-    });
+    };
+    if (production && !dbUp) {
+      return res.status(503).json(payload);
+    }
+    res.json(payload);
   } catch (error) {
     res.status(500).json({
       status: 'ERROR',
@@ -749,7 +757,7 @@ app.get('/api/slides/:bookingId', verifyToken, async (req, res) => {
     
     // LessonSlides collection removed - this endpoint is no longer functional
     console.log(`⚠️ LessonSlides collection removed - slides endpoint disabled`);
-    return res.status(404).json({ 
+    return res.status(410).json({ 
       success: false, 
       error: 'LessonSlides collection removed. Slides are no longer stored in the database.' 
     });
@@ -1305,8 +1313,8 @@ app.post('/api/feedback/submit', verifyToken, requireTeacher, async (req, res) =
   }
 });
 
-// Manual trigger for absent student check (for testing)
-app.post('/api/admin/check-absent-students', async (req, res) => {
+// Manual trigger for absent student check (admin-only)
+app.post('/api/admin/check-absent-students', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
     console.log('🔍 Manual absent student check triggered');
     await checkAndMarkAbsentStudents();
@@ -1857,7 +1865,7 @@ function getSocketBearerToken(socket) {
 }
 
 /** Real classroom rooms require a valid JWT on the socket handshake. */
-function disconnectIfClassroomUnauthenticated(socket, room) {
+async function disconnectIfClassroomUnauthenticated(socket, room) {
   if (!room || room === 'default-room') return true;
   const token = getSocketBearerToken(socket);
   if (!token) {
@@ -1867,7 +1875,7 @@ function disconnectIfClassroomUnauthenticated(socket, room) {
     socket.disconnect(true);
     return false;
   }
-  if (isTokenBlacklisted(token)) {
+  if (await isTokenBlacklisted(token)) {
     try {
       socket.emit('auth-error', { code: 'TOKEN_REVOKED', message: 'Session was revoked. Please sign in again.' });
     } catch (_e2) {}
@@ -1939,7 +1947,7 @@ io.on('connection', socket => {
         const { room, userType, userId, username } = data;
         console.log('🚪 Client', socket.id, 'joining room:', room, 'as', userType, username);
 
-        if (!disconnectIfClassroomUnauthenticated(socket, room)) {
+        if (!(await disconnectIfClassroomUnauthenticated(socket, room))) {
             return;
         }
 
@@ -2151,7 +2159,7 @@ io.on('connection', socket => {
         
         console.log('🚪 Client', socket.id, 'joining room:', room, 'as', userType, username);
 
-        if (!disconnectIfClassroomUnauthenticated(socket, room)) {
+        if (!(await disconnectIfClassroomUnauthenticated(socket, room))) {
             return;
         }
 

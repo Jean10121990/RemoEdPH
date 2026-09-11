@@ -1,10 +1,16 @@
 const crypto = require('crypto');
+const JwtBlacklistEntry = require('../models/JwtBlacklist');
 
-/** fingerprint -> expiry time (ms since epoch) */
+/** In-process cache so hot-path checks stay sync. Mongo is the source of truth across instances. */
 const blacklist = new Map();
 
 function fingerprintToken(token) {
   return crypto.createHash('sha256').update(String(token), 'utf8').digest('hex');
+}
+
+function rememberLocal(fp, expMs) {
+  if (!fp || !expMs) return;
+  blacklist.set(fp, expMs);
 }
 
 /**
@@ -17,21 +23,38 @@ function blacklistToken(token) {
     if (!decoded || typeof decoded.exp !== 'number') return;
     const expMs = decoded.exp * 1000;
     if (expMs <= Date.now()) return;
-    blacklist.set(fingerprintToken(token), expMs);
+    const fp = fingerprintToken(token);
+    rememberLocal(fp, expMs);
+    JwtBlacklistEntry.updateOne(
+      { fingerprint: fp },
+      { $set: { fingerprint: fp, expiresAt: new Date(expMs) } },
+      { upsert: true }
+    ).catch(() => {});
   } catch {
     /* ignore malformed */
   }
 }
 
-function isTokenBlacklisted(token) {
+async function isTokenBlacklisted(token) {
   const fp = fingerprintToken(token);
   const expMs = blacklist.get(fp);
-  if (expMs == null) return false;
-  if (Date.now() > expMs) {
-    blacklist.delete(fp);
+  if (expMs != null) {
+    if (Date.now() > expMs) {
+      blacklist.delete(fp);
+      return false;
+    }
+    return true;
+  }
+  try {
+    const row = await JwtBlacklistEntry.findOne({ fingerprint: fp }).lean();
+    if (!row || !row.expiresAt) return false;
+    const until = new Date(row.expiresAt).getTime();
+    if (until <= Date.now()) return false;
+    rememberLocal(fp, until);
+    return true;
+  } catch {
     return false;
   }
-  return true;
 }
 
 /** Best-effort prune (called periodically from hot path) */

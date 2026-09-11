@@ -3,7 +3,7 @@
  * Copy files from the local uploads/ directory into GridFS so production can serve them
  * after a deploy (the container filesystem does not keep them).
  *
- *   node scripts/import-uploads-to-gridfs.js                          # avatars only
+ *   node scripts/import-uploads-to-gridfs.js                          # common portal dirs including recordings
  *   node scripts/import-uploads-to-gridfs.js --dirs=slides,issue-screenshots
  *   node scripts/import-uploads-to-gridfs.js --all
  *   node scripts/import-uploads-to-gridfs.js --dry-run
@@ -17,23 +17,24 @@ const fsp = fs.promises;
 const path = require('path');
 const mongoose = require('mongoose');
 
-const { findUpload, putUpload, UPLOADS_ROOT } = require('../server/services/uploadStore');
+const { findUpload, putUpload, putUploadFromFile, UPLOADS_ROOT, mimeFromPath } = require('../server/services/uploadStore');
 
-const DEFAULT_DIRS = ['teacher-profiles', 'student-profiles'];
-const SKIP_DIRS = new Set(['tmp-lesson-uploads', 'classroom-recordings']);
-
-const MIME = {
-  '.webp': 'image/webp',
-  '.png': 'image/png',
-  '.jpg': 'image/jpeg',
-  '.jpeg': 'image/jpeg',
-  '.gif': 'image/gif',
-  '.svg': 'image/svg+xml',
-  '.pdf': 'application/pdf',
-  '.mp4': 'video/mp4',
-  '.webm': 'video/webm',
-  '.mp3': 'audio/mpeg',
-};
+const DEFAULT_DIRS = [
+  'teacher-profiles',
+  'student-profiles',
+  'issue-screenshots',
+  'message-attachments',
+  'portal-videos',
+  'training-assets',
+  'training-videos',
+  'admin-profiles',
+  'presentations',
+  'files',
+  'classroom-recordings',
+  'slides',
+];
+const SKIP_DIRS = new Set(['tmp-lesson-uploads']);
+const STREAM_BYTES = 8 * 1024 * 1024;
 
 function arg(name) {
   const hit = process.argv.find((a) => a === '--' + name || a.startsWith('--' + name + '='));
@@ -94,13 +95,19 @@ async function listFiles(dir, base, out) {
         skipped++;
         continue;
       }
-      const buf = await fsp.readFile(file.abs);
+      const bufStat = await fsp.stat(file.abs);
       if (!dryRun) {
-        await putUpload(file.rel, buf, MIME[path.extname(file.abs).toLowerCase()] || 'application/octet-stream');
+        const mime = mimeFromPath(file.abs);
+        if (bufStat.size > STREAM_BYTES) {
+          await putUploadFromFile(file.rel, file.abs, mime);
+        } else {
+          const buf = await fsp.readFile(file.abs);
+          await putUpload(file.rel, buf, mime);
+        }
       }
       imported++;
-      bytes += buf.length;
-      console.log('  + ' + file.rel + '  (' + buf.length + ' bytes)');
+      bytes += bufStat.size;
+      console.log('  + ' + file.rel + '  (' + bufStat.size + ' bytes)');
     } catch (err) {
       failed++;
       console.error('  ! ' + file.rel + ': ' + ((err && err.message) || err));

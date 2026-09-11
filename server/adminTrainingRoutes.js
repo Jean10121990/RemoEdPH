@@ -6,6 +6,8 @@ const crypto = require('crypto');
 const TrainingCourse = require('./models/TrainingCourse');
 const TrainingModule = require('./models/TrainingModule');
 const { verifyAdminApiAuth, requireAdmin } = require('./authMiddleware');
+const { createGridFsStorage } = require('./services/gridFsMulterStorage');
+const { deleteUpload } = require('./services/uploadStore');
 
 const router = express.Router();
 
@@ -16,12 +18,9 @@ router.use((req, res, next) => {
   });
 });
 
-const trainingStorage = multer.diskStorage({
-  destination(req, file, cb) {
-    const sub = req.uploadSubdir || 'training-assets';
-    const dir = path.join(__dirname, '../uploads', sub);
-    fs.mkdirSync(dir, { recursive: true });
-    cb(null, dir);
+const trainingStorage = createGridFsStorage({
+  prefix(req) {
+    return req.uploadSubdir || 'training-assets';
   },
   filename(req, file, cb) {
     const unique = Date.now() + '-' + crypto.randomInt(0, 1e9);
@@ -128,7 +127,7 @@ router.post('/courses/with-presentation', (req, res) => {
         return res.status(400).json({ success: false, message: 'Title required' });
       }
       if (req.file && !isAllowedPresentationFile(req.file)) {
-        try { fs.unlinkSync(req.file.path); } catch (_e) { /* ignore */ }
+        try { await deleteUpload(req.file.gridFsFilename || req.file.path); } catch (_e) { /* ignore */ }
         return res.status(400).json({ success: false, message: 'Only .ppt, .pptx, or .pdf files are allowed' });
       }
       const publishedRaw = req.body.published;
@@ -179,7 +178,7 @@ router.post('/courses/:id/upload-presentation', (req, res) => {
     try {
       if (!req.file) return res.status(400).json({ success: false, message: 'No file' });
       if (!isAllowedPresentationFile(req.file)) {
-        try { fs.unlinkSync(req.file.path); } catch (_e) { /* ignore */ }
+        try { await deleteUpload(req.file.gridFsFilename || req.file.path); } catch (_e) { /* ignore */ }
         return res.status(400).json({ success: false, message: 'Only .ppt, .pptx, or .pdf files are allowed' });
       }
       const url = '/uploads/training-assets/' + req.file.filename;

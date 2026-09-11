@@ -2,25 +2,16 @@
  * Shared multer + helpers for peer-message file attachments (images + PDF).
  */
 const path = require('path');
-const fs = require('fs');
 const crypto = require('crypto');
 const multer = require('multer');
+const { createGridFsStorage } = require('../services/gridFsMulterStorage');
 
-const ATTACH_DIR = path.join(__dirname, '../../uploads/message-attachments');
+const ATTACH_PREFIX = 'message-attachments';
 const MAX_BYTES = 5 * 1024 * 1024;
 const ALLOWED_EXT = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.pdf']);
 
-function ensureAttachDir() {
-  if (!fs.existsSync(ATTACH_DIR)) {
-    fs.mkdirSync(ATTACH_DIR, { recursive: true });
-  }
-}
-
-const storage = multer.diskStorage({
-  destination(_req, _file, cb) {
-    ensureAttachDir();
-    cb(null, ATTACH_DIR);
-  },
+const storage = createGridFsStorage({
+  prefix: ATTACH_PREFIX,
   filename(_req, file, cb) {
     const ext = path.extname(file.originalname || '').toLowerCase() || '';
     const safeExt = ALLOWED_EXT.has(ext) ? ext : '';

@@ -59,9 +59,11 @@ const { resolveToCanonicalTeacherId } = require('./services/teacherSlotResolve')
 // Allow slight device clock drift during enrollment/verification.
 authenticator.options = { window: 2 };
 const path = require('path');
-const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
+const JWT_SECRET = require('./config/jwtSecret').getJwtSecret();
 const { ADMIN_JWT_EXPIRES_IN } = require('./config/authTokens');
 const multer = require('multer');
+const { createGridFsStorage } = require('./services/gridFsMulterStorage');
+const { deleteUpload } = require('./services/uploadStore');
 
 /** Safe substring match for Mongo $regex user search */
 function escapeRegexForSearch(str) {
@@ -549,8 +551,8 @@ try {
   /* ignore */
 }
 
-const adminProfileStorage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, adminProfileUploadDir),
+const adminProfileStorage = createGridFsStorage({
+  prefix: 'admin-profiles',
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname || '') || '.bin';
     const safe = String(req.user && req.user.username ? req.user.username : 'admin').replace(/[^a-zA-Z0-9_-]/g, '_');
