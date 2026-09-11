@@ -6,7 +6,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="js/security-guard.js?v=lc-token-2"></script>
-  <script src="js/user-session.js"></script>
+  <script src="js/user-session.js?v=lc-no-crossrole-logout-1"></script>
   <script src="js/teacher-session-gate.js?v=2"></script>
   <script src="js/remoed-auth-token.js?v=1"></script>
   <title>Live Classroom</title>
@@ -607,17 +607,38 @@
           if (!bid || room === 'default-room') return { allowed: true };
           const token = resolveLiveClassroomAuthToken();
           const headers = token ? { Authorization: 'Bearer ' + token } : {};
+          // Prefer the role-matching booking API. Hitting /api/student/* with a teacher
+          // token used to 401 and trigger RemoedUserSession's global logout patch.
           let booking = null;
-          const r1 = await fetch('/api/student/booking/' + encodeURIComponent(bid), { headers });
-          if (r1.ok) {
-            const d = await r1.json();
-            booking = d.booking || d;
-          }
-          if (!booking && room !== 'default-room') {
-            const r2 = await fetch('/api/teacher/booking/by-classroom/' + encodeURIComponent(room), { headers });
-            if (r2.ok) {
-              const d2 = await r2.json();
-              booking = d2.booking || d2;
+          if (userType === 'teacher') {
+            if (room && room !== 'default-room') {
+              const rTeacher = await fetch(
+                '/api/teacher/booking/by-classroom/' + encodeURIComponent(room),
+                { headers, remoedIgnoreAuthFailure: true }
+              );
+              if (rTeacher.ok) {
+                const dTeacher = await rTeacher.json();
+                booking = dTeacher.booking || dTeacher;
+              }
+            }
+          } else {
+            const rStudent = await fetch('/api/student/booking/' + encodeURIComponent(bid), {
+              headers,
+              remoedIgnoreAuthFailure: true,
+            });
+            if (rStudent.ok) {
+              const dStudent = await rStudent.json();
+              booking = dStudent.booking || dStudent;
+            }
+            if (!booking && room !== 'default-room') {
+              const rFallback = await fetch(
+                '/api/teacher/booking/by-classroom/' + encodeURIComponent(room),
+                { headers, remoedIgnoreAuthFailure: true }
+              );
+              if (rFallback.ok) {
+                const dFallback = await rFallback.json();
+                booking = dFallback.booking || dFallback;
+              }
             }
           }
           if (!booking) return { allowed: true };

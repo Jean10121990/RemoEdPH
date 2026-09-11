@@ -34,10 +34,34 @@
       }
       if (p.indexOf('live-classroom') !== -1 || p.indexOf('video-room') !== -1 || p.indexOf('whiteboard') !== -1) {
         try {
+          var typeParam = '';
+          try {
+            typeParam = String(new URLSearchParams(loc.search || '').get('type') || '')
+              .trim()
+              .toLowerCase();
+          } catch (_tp) {}
+          if (typeParam === 'teacher' || typeParam === 'student' || typeParam === 'admin') {
+            return typeParam;
+          }
           var ut = (global.localStorage.getItem('userType') || global.localStorage.getItem('userRole') || '').toLowerCase();
           if (ut === 'admin') return 'admin';
           if (ut === 'teacher') return 'teacher';
           if (ut === 'student') return 'student';
+          // Prefer role tokens when userType is missing (new classroom tab)
+          if (
+            global.localStorage.getItem(LS_TEACHER) ||
+            global.sessionStorage.getItem(LS_TEACHER) ||
+            global.localStorage.getItem('remoed_teacher_auth')
+          ) {
+            return 'teacher';
+          }
+          if (
+            global.localStorage.getItem(LS_STUDENT) ||
+            global.sessionStorage.getItem(LS_STUDENT) ||
+            global.localStorage.getItem('remoed_student_auth')
+          ) {
+            return 'student';
+          }
         } catch (_e) {}
       }
       try {
@@ -211,12 +235,35 @@
     }
     cfg.headers = headers;
     cfg.credentials = 'include';
+    var skipLogout = !!(cfg.remoedIgnoreAuthFailure || cfg.skipAuthLogout);
+    try {
+      delete cfg.remoedIgnoreAuthFailure;
+      delete cfg.skipAuthLogout;
+    } catch (_d) {}
     if (!realFetch) {
       throw new Error('fetch is not available');
     }
     var res = await realFetch(url, cfg);
     if (res && (res.status === 401 || res.status === 403)) {
-      logoutToUnifiedLogin();
+      // Never wipe session on intentional/expected cross-role probes (e.g. live-classroom
+      // entry gate accidentally hitting /api/student/* with a teacher JWT).
+      if (!skipLogout) {
+        try {
+          var kind = portalKindFromLocation();
+          var pathOnly = String(url || '').split('?')[0];
+          if (
+            (kind === 'teacher' && pathOnly.indexOf('/api/student/') !== -1) ||
+            (kind === 'student' && pathOnly.indexOf('/api/teacher/') !== -1) ||
+            (kind === 'admin' &&
+              (pathOnly.indexOf('/api/student/') !== -1 || pathOnly.indexOf('/api/teacher/') !== -1))
+          ) {
+            skipLogout = true;
+          }
+        } catch (_m) {}
+      }
+      if (!skipLogout) {
+        logoutToUnifiedLogin();
+      }
     }
     return res;
   }
