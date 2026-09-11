@@ -209,7 +209,7 @@
             weight: 4,
             a:
               'Yes. Each plan has a validity window (Spark 3 months, Steady 6, Scholar 12, Summit 24). Unused lesson credits return to **0** when that date passes. Classes you already booked are not cancelled.\n\n' +
-              'You will see a countdown on **My Credits**, and we send reminders **10 days**, **5 days**, and **2 days** before expiry.',
+              'You will see a countdown on **My Credits**, and we send in-app and email reminders **10 days**, **5 days**, and **2 days** before expiry.',
           },
         ],
       },

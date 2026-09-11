@@ -412,6 +412,9 @@
             border-radius: 6px;
             font-size: 0.9rem;
         }
+        #lesson option:disabled {
+            color: #94a3b8;
+        }
         .form-group input:focus, .form-group select:focus {
             outline: none;
             border-color: #00aeef;
@@ -1170,7 +1173,7 @@
                                         <option value="">Select level first</option>
                                     </select>
                                     <div class="error-message" id="lesson-error"></div>
-                                    <small style="color: #666; font-size: 0.8rem; margin-top: 4px; display: block;">Select your level above to see available lessons</small>
+                                    <small id="lesson-catalog-hint" style="color: #666; font-size: 0.8rem; margin-top: 4px; display: block;">Select your level above to see available lessons</small>
                                 </div>
 
                                 <div class="form-group" id="teacher-preference-group" style="display: none;">
@@ -2943,6 +2946,12 @@
                 console.log('❌ lessonId is empty or invalid');
                 highlightFieldError('lesson', 'Please select a lesson');
                 hasErrors = true;
+            } else if (lessonSelectEl && lessonSelectEl.selectedIndex >= 0) {
+                const picked = lessonSelectEl.options[lessonSelectEl.selectedIndex];
+                if (picked && picked.disabled) {
+                    highlightFieldError('lesson', 'This lesson unlocks after you enroll in a learning plan');
+                    hasErrors = true;
+                }
             }
             
             if (hasErrors) {
@@ -3406,6 +3415,7 @@
 
         // Load lessons for selected level
         let studentTrialBookingActive = false;
+        let studentHasPaidPlan = false;
 
         function curriculumLevelsMatch(a, b) {
             const normalize = (raw) => {
@@ -3437,10 +3447,15 @@
                 if (!res.ok) return;
                 const data = await res.json();
                 const p = data.profile || data;
-                const hasTrial =
-                    p.assessmentTrialCreditActive === true ||
-                    (p.hasFreeTrial === true && p.isSubscribed !== true);
-                studentTrialBookingActive = hasTrial;
+                studentHasPaidPlan =
+                    p.isSubscribed === true ||
+                    (p.paymentStatus === 'paid' && p.subscriptionStatus === 'active');
+                studentTrialBookingActive =
+                    !studentHasPaidPlan &&
+                    (p.assessmentTrialCreditActive === true || p.hasFreeTrial === true);
+                try {
+                    localStorage.setItem('studentIsSubscribed', studentHasPaidPlan ? '1' : '0');
+                } catch (_e) {}
                 if (p.hasFreeTrial != null) {
                     localStorage.setItem('studentHasFreeTrial', p.hasFreeTrial ? '1' : '0');
                 }
@@ -3451,9 +3466,15 @@
                     );
                 }
             } catch (e) {
+                try {
+                    studentHasPaidPlan = localStorage.getItem('studentIsSubscribed') === '1';
+                } catch (_e2) {
+                    studentHasPaidPlan = false;
+                }
                 studentTrialBookingActive =
-                    localStorage.getItem('studentHasFreeTrial') === '1' ||
-                    localStorage.getItem('studentAssessmentTrialActive') === '1';
+                    !studentHasPaidPlan &&
+                    (localStorage.getItem('studentHasFreeTrial') === '1' ||
+                        localStorage.getItem('studentAssessmentTrialActive') === '1');
             }
         }
 
@@ -3560,10 +3581,8 @@
                     }
                 }
 
-                // Free trial: only Lesson 1 is bookable for each level
-                if (studentTrialBookingActive) {
-                    allLessons = allLessons.filter(isLessonOne);
-                }
+                // Always show the full catalog. Trial / unpaid students can only pick Lesson 1;
+                // later lessons stay visible but disabled until a plan is purchased.
 
                 // De-dupe by lessonNumber + title
                 const seen = new Set();
@@ -3575,15 +3594,22 @@
                 });
                 allLessons.sort((a, b) => Number(a.lessonNumber || 0) - Number(b.lessonNumber || 0));
                 
+                const hintEl = document.getElementById('lesson-catalog-hint');
+                if (hintEl) {
+                    if (studentHasPaidPlan) {
+                        hintEl.textContent = 'Your plan is active — you can book any lesson in this level.';
+                    } else if (studentTrialBookingActive) {
+                        hintEl.textContent = 'Free trial: Lesson 1 is open. Other lessons are listed but locked until you enroll in a plan.';
+                    } else {
+                        hintEl.textContent = 'Lessons stay locked until you enroll in a learning plan.';
+                    }
+                }
+
                 // Populate lesson dropdown
                 if (allLessons.length === 0) {
-                    lessonSelect.innerHTML = studentTrialBookingActive
-                        ? '<option value="">No Lesson 1 found for this level</option>'
-                        : '<option value="">No lessons available for this level</option>';
+                    lessonSelect.innerHTML = '<option value="">No lessons available for this level</option>';
                 } else {
-                    lessonSelect.innerHTML = studentTrialBookingActive
-                        ? '<option value="">Select Lesson 1 (free trial)</option>'
-                        : '<option value="">Select a lesson</option>';
+                    lessonSelect.innerHTML = '<option value="">Select a lesson</option>';
                     allLessons.forEach(lesson => {
                         const option = document.createElement('option');
                         
@@ -3593,9 +3619,20 @@
                             return; // Skip this lesson
                         }
                         
+                        const lessonOne = isLessonOne(lesson);
+                        const locked = studentHasPaidPlan
+                            ? false
+                            : studentTrialBookingActive
+                              ? !lessonOne
+                              : true;
                         option.value = lesson._id.toString(); // Ensure it's a string
-                        option.textContent = `Lesson ${lesson.lessonNumber || '?'}: ${lesson.title || 'Untitled'}`;
-                        option.title = lesson.description || lesson.title || '';
+                        option.textContent = locked
+                            ? `Lesson ${lesson.lessonNumber || '?'}: ${lesson.title || 'Untitled'} (unlock with a plan)`
+                            : `Lesson ${lesson.lessonNumber || '?'}: ${lesson.title || 'Untitled'}`;
+                        option.title = locked
+                            ? 'Enroll in a learning plan to book this lesson'
+                            : (lesson.description || lesson.title || '');
+                        option.disabled = locked;
                         if (lesson.lessonNumber != null) {
                             option.dataset.lessonNumber = String(lesson.lessonNumber);
                         }
@@ -3604,11 +3641,18 @@
                     });
                     lessonSelect.disabled = false;
                     
-                    if (studentTrialBookingActive && allLessons.length === 1) {
-                        lessonSelect.value = allLessons[0]._id.toString();
+                    if (studentTrialBookingActive && !studentHasPaidPlan) {
+                        const firstOpen = Array.from(lessonSelect.options).find(
+                            (o) => o.value && !o.disabled
+                        );
+                        if (firstOpen) lessonSelect.value = firstOpen.value;
                     }
 
                     applyJourneyLessonPrefill(levelSelect, lessonSelect);
+                    const prefilled = lessonSelect.options[lessonSelect.selectedIndex];
+                    if (prefilled && prefilled.disabled) {
+                        lessonSelect.selectedIndex = 0;
+                    }
                 }
             } catch (error) {
                 console.error('Error loading lessons:', error);

@@ -1305,6 +1305,148 @@ async function testEmailSending(testEmail) {
   }
 }
 
+/** Lesson-credit validity: 10/5/2-day warning or unused credits returned to 0. */
+async function sendCreditExpiryEmail(opts) {
+  const student = opts && opts.student;
+  if (!student) return { success: false, error: 'Missing student' };
+  if (student.notificationPrefs && student.notificationPrefs.credits === false) {
+    return { success: false, skipped: true, error: 'Credits emails disabled' };
+  }
+
+  const recipients = [];
+  const seen = new Set();
+  function addAddr(raw) {
+    const e = String(raw || '').trim().toLowerCase();
+    if (!e || !e.includes('@') || seen.has(e)) return;
+    seen.add(e);
+    recipients.push(e);
+  }
+  addAddr(student.email);
+  addAddr(student.parentEmail);
+  if (!recipients.length) return { success: false, error: 'Missing recipient email' };
+
+  const name =
+    [student.firstName, student.lastName].filter(Boolean).join(' ').trim() ||
+    String(student.username || '').trim() ||
+    'there';
+  const unused = Math.max(0, Number(opts.unused) || 0);
+  const creditWord = unused === 1 ? 'credit' : 'credits';
+  const endLabel = String(opts.endLabel || '').trim() || 'the validity date';
+  const daysLeft = opts.daysLeft;
+  const kind = opts.kind === 'expired' ? 'expired' : 'expiring';
+  const base = String(process.env.FRONTEND_URL || 'https://remoedph.com').replace(/\/$/, '');
+  const creditsUrl = `${base}/student-credits.html`;
+  const plansUrl = `${base}/#plans`;
+  const safeName = escapeHtml(name);
+  const safeEnd = escapeHtml(endLabel);
+  const safeUrl = escapeHtml(creditsUrl);
+  const safePlans = escapeHtml(plansUrl);
+
+  let subject;
+  let headline;
+  let bodyHtml;
+  let bodyText;
+  if (kind === 'expired') {
+    subject = 'Your unused RemoEdPH lesson credits have expired';
+    headline = 'Credits expired';
+    bodyHtml =
+      `<p>Hello ${safeName},</p>` +
+      `<p><strong>${unused} unused lesson ${creditWord}</strong> returned to 0 because the plan validity ended on <strong>${safeEnd}</strong>.</p>` +
+      `<p>Classes you already booked are not cancelled. To book new classes, please renew a learning plan.</p>`;
+    bodyText =
+      `Hello ${name},\n\n` +
+      `${unused} unused lesson ${creditWord} returned to 0 because the plan validity ended on ${endLabel}.\n` +
+      `Classes you already booked are not cancelled. Renew a plan to book new classes.\n`;
+  } else {
+    let whenPhrase;
+    if (daysLeft === 0) whenPhrase = `today (${endLabel})`;
+    else if (daysLeft === 1) whenPhrase = `tomorrow (${endLabel})`;
+    else whenPhrase = `in ${daysLeft} days (${endLabel})`;
+    const safeWhen = escapeHtml(whenPhrase);
+    subject =
+      daysLeft === 0
+        ? 'Your RemoEdPH lesson credits expire today'
+        : daysLeft === 1
+          ? 'Your RemoEdPH lesson credits expire tomorrow'
+          : `Your RemoEdPH lesson credits expire in ${daysLeft} days`;
+    headline = 'Credits expiring soon';
+    bodyHtml =
+      `<p>Hello ${safeName},</p>` +
+      `<p>You have <strong>${unused} unused lesson ${creditWord}</strong>. They expire <strong>${safeWhen}</strong> and will return to 0 if unused.</p>` +
+      `<p>Classes you already booked are not affected. Book remaining classes, or renew before the date passes.</p>`;
+    bodyText =
+      `Hello ${name},\n\n` +
+      `You have ${unused} unused lesson ${creditWord}. They expire ${whenPhrase} and will return to 0 if unused.\n` +
+      `Classes you already booked are not affected.\n`;
+  }
+
+  const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>${escapeHtml(subject)}</title>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: #2E9A28; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
+            .box { background: #fff; border: 2px solid #47BC3E; border-radius: 8px; padding: 16px; margin: 18px 0; }
+            .label { color: #64748b; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; }
+            .value { font-weight: 800; font-size: 16px; color: #0f172a; margin-top: 4px; }
+            .btn { display: inline-block; background: #2E9A28; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 800; }
+            .footer { text-align: center; margin-top: 26px; color: #666; font-size: 14px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>${escapeHtml(headline)}</h1>
+              <p>RemoEdPH lesson credits</p>
+            </div>
+            <div class="content">
+              ${bodyHtml}
+              <div class="box">
+                <div class="label">Unused credits</div>
+                <div class="value">${unused}</div>
+              </div>
+              <div style="text-align:center; margin: 22px 0;">
+                <a class="btn" href="${safeUrl}">Open My Credits</a>
+              </div>
+              <p style="text-align:center;"><a href="${safePlans}">View learning plans</a></p>
+            </div>
+            <div class="footer">
+              <p>This is an automated message from RemoEdPH. Please do not reply.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+  const text = `${bodyText}\nMy Credits: ${creditsUrl}\nPlans: ${plansUrl}\n\nThis is an automated message from RemoEdPH. Please do not reply.`;
+
+  try {
+    if (!isEmailConfigured) {
+      return { success: false, fallback: true, error: 'Email service not configured' };
+    }
+    let last = { success: false, error: 'No recipients' };
+    for (const to of recipients) {
+      if (activeEmailService === 'mailgun') {
+        last = await sendEmailViaMailgun(to, subject, html, text);
+      } else if (activeEmailService === 'smtp') {
+        const info = await smtpSendMail({ to, subject, html, text });
+        last = { success: true, messageId: info.messageId, provider: info.provider };
+      } else {
+        last = { success: false, error: 'No email service configured' };
+      }
+    }
+    return last;
+  } catch (error) {
+    console.error('[sendCreditExpiryEmail]', error.message || error);
+    return { success: false, error: error.message || 'Failed to send credit expiry email' };
+  }
+}
+
 /** Daily digest of unread in-app notifications (opt-in). */
 async function sendNotificationDigestEmail(toEmail, displayName, lines, role) {
   const targetEmail = String(toEmail || '').trim();
@@ -1342,6 +1484,7 @@ module.exports = {
   sendTeacherPipelineFailEmail,
   sendTrialBookingReminderEmail,
   sendLesson1FeedbackReadyEmail,
+  sendCreditExpiryEmail,
   sendNotificationDigestEmail,
   sendEmail,
   getEmailConfigStatus,

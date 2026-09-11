@@ -219,10 +219,38 @@ async function applyExpiredCreditsIfNeeded(studentId, studentLean, now = new Dat
       } catch (e) {
         console.warn('[credit-expiry] expired notify failed:', e.message || e);
       }
+      await emailCreditExpiryNotice(claimed, 'expired', {
+        unused,
+        endLabel: DateTime.fromJSDate(end, { zone: 'utc' }).setZone(MANILA).toFormat('LLL d, yyyy'),
+      });
     }
   }
 
   return { applied: true, student: updated.toObject() };
+}
+
+function creditsEmailAllowed(student) {
+  if (!student || !student.notificationPrefs) return true;
+  return student.notificationPrefs.credits !== false;
+}
+
+async function emailCreditExpiryNotice(student, kind, details) {
+  if (!creditsEmailAllowed(student)) return;
+  try {
+    const { sendCreditExpiryEmail } = require('../emailService');
+    const result = await sendCreditExpiryEmail({
+      student,
+      kind,
+      unused: details.unused,
+      daysLeft: details.daysLeft,
+      endLabel: details.endLabel,
+    });
+    if (result && result.success === false && !result.skipped && !result.fallback) {
+      console.warn('[credit-expiry] email failed:', result.error);
+    }
+  } catch (e) {
+    console.warn('[credit-expiry] email failed:', e.message || e);
+  }
 }
 
 function noticeMessage(unused, daysLeft, endLabel) {
@@ -245,7 +273,7 @@ async function sendCreditExpiryNotices(now = new Date()) {
     subscriptionStatus: { $in: ['active', 'pending'] },
   })
     .select(
-      'username creditBalance subscriptionEndDate subscriptionStatus creditExpiryNotices'
+      'username email parentEmail firstName lastName creditBalance subscriptionEndDate subscriptionStatus creditExpiryNotices notificationPrefs'
     )
     .limit(200)
     .lean();
@@ -271,16 +299,25 @@ async function sendCreditExpiryNotices(now = new Date()) {
         { new: true }
       );
       if (!claimed) continue;
-      await notifyStudent(
-        claimed.username,
-        'credits-expiring',
-        noticeMessage(unused, payload.daysUntilExpiry, payload.creditsExpireOnLabel),
-        {
-          actionUrl: '/student-credits.html',
-          importance: 'actionable',
-          meta: { daysLeft: payload.daysUntilExpiry, milestone, unusedCredits: unused },
-        }
-      );
+      try {
+        await notifyStudent(
+          claimed.username,
+          'credits-expiring',
+          noticeMessage(unused, payload.daysUntilExpiry, payload.creditsExpireOnLabel),
+          {
+            actionUrl: '/student-credits.html',
+            importance: 'actionable',
+            meta: { daysLeft: payload.daysUntilExpiry, milestone, unusedCredits: unused },
+          }
+        );
+      } catch (nErr) {
+        console.warn('[credit-expiry] in-app notice failed:', claimed.username, nErr.message || nErr);
+      }
+      await emailCreditExpiryNotice(claimed, 'expiring', {
+        unused,
+        daysLeft: payload.daysUntilExpiry,
+        endLabel: payload.creditsExpireOnLabel,
+      });
       sent += 1;
     } catch (e) {
       console.warn('[credit-expiry] notice failed:', s.username, e.message || e);

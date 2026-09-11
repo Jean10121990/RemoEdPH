@@ -112,6 +112,8 @@ async function applyExistingStudentPurchase({
         accountStatus: 'active_subscriber',
         isSubscribed: true,
         creditExpiryNotices: emptyNoticeFlags(),
+        assessmentTrialCreditActive: false,
+        hasFreeTrial: false,
       },
       $inc: {
         creditBalance: creditsToAdd,

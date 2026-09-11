@@ -843,6 +843,12 @@ router.post('/student-login', authLoginLimiter, async (req, res) => {
         if (student.isSubscribed !== true) {
           subPatch.isSubscribed = true;
         }
+        if (student.assessmentTrialCreditActive === true) {
+          subPatch.assessmentTrialCreditActive = false;
+        }
+        if (student.hasFreeTrial === true) {
+          subPatch.hasFreeTrial = false;
+        }
         if (Object.keys(subPatch).length) {
           await Student.updateOne({ _id: student._id }, { $set: subPatch });
         }
