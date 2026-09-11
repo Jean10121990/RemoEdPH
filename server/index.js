@@ -2548,31 +2548,25 @@ io.on('connection', socket => {
 
     // Reward animation handler (teacher sends reward to students)
     socket.on('reward-animation', (data) => {
-        const { room, type } = data;
+        const { room, type } = data || {};
         console.log('🎁 [SERVER] Reward animation received:', type, 'in room:', room, 'from socket:', socket.id);
-        // Get user session to verify it's a teacher
         const userInfo = userSessions.get(socket.id);
-        console.log('🎁 [SERVER] User info:', userInfo);
+        const role = (userInfo && userInfo.userType) || socket.userType || '';
+        console.log('🎁 [SERVER] User info:', userInfo, 'role:', role);
         
-        if (userInfo && userInfo.userType === 'teacher') {
-            // Get all clients in the room
+        if (role === 'teacher' && room && (type === 'flag' || type === 'cookie' || type === 'star')) {
             const clients = io.sockets.adapter.rooms.get(room);
             const clientCount = clients ? clients.size : 0;
             console.log('🎁 [SERVER] Broadcasting reward animation to', clientCount, 'clients in room:', room);
-            
-            // Log all clients that will receive the event
-            if (clients) {
-                clients.forEach(clientId => {
-                    const clientInfo = userSessions.get(clientId);
-                    console.log('  - Broadcasting to:', clientId, 'User:', clientInfo ? `${clientInfo.userType} ${clientInfo.username}` : 'Unknown');
-                });
-            }
-            
-            // Broadcast reward animation to ALL users in the room (including sender for consistency)
             io.to(room).emit('reward-animation', { type, room });
             console.log('✅ [SERVER] Reward animation broadcasted to room:', room);
         } else {
-            console.warn('⚠️ [SERVER] Non-teacher attempted to send reward animation:', userInfo ? userInfo.userType : 'unknown');
+            console.warn('⚠️ [SERVER] Reward animation rejected:', {
+              role,
+              type,
+              room,
+              hasSession: !!userInfo,
+            });
         }
     });
 

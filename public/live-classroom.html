@@ -55,7 +55,7 @@
   </script>
     <link rel="stylesheet" href="style.css">
   <!-- After global styles so chat / layout rules are not overridden -->
-  <link rel="stylesheet" href="live-classroom.css?v=lc-feedback-layout-1" />
+  <link rel="stylesheet" href="live-classroom.css?v=lc-draw-fix-2" />
   <link rel="stylesheet" href="css/live-classroom-redesign.css?v=mint-forest-2" />
   <link rel="stylesheet" href="css/student-badges.css?v=2" />
 </head>
@@ -380,7 +380,7 @@
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script src="js/student-badges.js?v=1"></script>
     <script src="js/teacher-badge-award.js?v=1"></script>
-    <script src="js/presentation-overlay.js?v=lc-slide-stack-3"></script>
+    <script src="js/presentation-overlay.js?v=lc-draw-fix-2"></script>
     <script src="js/virtual-background.js"></script>
     <script src="js/classroom-qa-recording.js?v=lc-polish-3" defer></script>
     <script>
@@ -712,8 +712,11 @@
 
       // For QA lesson recording (classroom-qa-recording.js): teacher auto-start + Finish finalization
       window.__liveClassroomUserType = userType;
+      window.__liveClassroomRoom = room;
       try {
         document.body.dataset.classroomRole = userType === 'teacher' ? 'teacher' : 'student';
+        document.body.classList.toggle('lc-role-teacher', userType === 'teacher');
+        document.body.classList.toggle('lc-role-student', userType !== 'teacher');
       } catch (_e) {}
 
       // Update video labels so the local tile matches the current role
@@ -2730,21 +2733,24 @@
           fitToViewerBtn.id = 'pdf-fit-to-viewer-btn';
           fitToViewerBtn.title = 'Fit to viewer';
           
-          // Annotation controls (teacher draw, students view)
+          // Annotation controls — teacher opts into draw; students can draw immediately
           const annotateToggle = document.createElement('button');
           annotateToggle.id = 'pdf-annotate-toggle';
           annotateToggle.type = 'button';
           annotateToggle.textContent = 'Pen';
-          annotateToggle.title = 'Toggle drawing on the PDF';
+          annotateToggle.title = userType === 'teacher'
+            ? 'Turn drawing on (teacher draws first)'
+            : 'Drawing is on — you can annotate now';
           
           const annotationColorPicker = document.createElement('input');
           annotationColorPicker.type = 'color';
           annotationColorPicker.id = 'pdf-annotate-color';
-          annotationColorPicker.value = '#ff3b30';
+          annotationColorPicker.value = userType === 'teacher' ? '#ff3b30' : '#2563eb';
           annotationColorPicker.title = 'Pen color';
           
           const annotationSizeSelect = document.createElement('select');
           annotationSizeSelect.id = 'pdf-annotate-size';
+          annotationSizeSelect.title = 'Pen size';
           ['2','4','6','8','12'].forEach(size => {
             const option = document.createElement('option');
             option.value = size;
@@ -2822,14 +2828,27 @@
           const cookieBtn = document.createElement('button');
           cookieBtn.type = 'button';
           cookieBtn.className = 'action-btn cookie-btn';
-          cookieBtn.textContent = '🍪 Cookie';
+          cookieBtn.innerHTML = '<span aria-hidden="true">🍪</span><span>Cookie</span>';
           cookieBtn.title = 'Cookie reward';
           
           const starBtn = document.createElement('button');
           starBtn.type = 'button';
           starBtn.className = 'action-btn star-btn';
-          starBtn.textContent = '⭐ Star';
+          starBtn.innerHTML = '<span aria-hidden="true">⭐</span><span>Star</span>';
           starBtn.title = 'Star reward';
+
+          function wireRewardBtn(btn, type) {
+            btn.addEventListener('click', (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (typeof window.emitTeacherReward === 'function') {
+                window.emitTeacherReward(type);
+              }
+            });
+          }
+          wireRewardBtn(flagBtn, 'flag');
+          wireRewardBtn(cookieBtn, 'cookie');
+          wireRewardBtn(starBtn, 'star');
 
           const rewardsMenu = document.createElement('div');
           rewardsMenu.className = 'lc-rewards-menu';
@@ -2869,7 +2888,14 @@
           const annotatorControls = document.createElement('div');
           annotatorControls.className = 'pdf-annotator-controls pdf-annotator-controls--compact';
           annotatorControls.appendChild(drawMenu);
-          annotatorControls.appendChild(rewardsMenu);
+          // Only teachers send classroom rewards — never mount for students
+          if (String(userType || '').toLowerCase() === 'teacher') {
+            annotatorControls.appendChild(rewardsMenu);
+          } else {
+            try {
+              document.querySelectorAll('.lc-rewards-menu').forEach((el) => el.remove());
+            } catch (_e) {}
+          }
           annotatorControls.appendChild(annotatorIndicator);
           if (presenterStatusIndicator) {
             presenterStatusIndicator.style.marginLeft = '4px';
@@ -3009,10 +3035,11 @@
           // PDF annotation state (per page) - teacher draws, students follow
           const annotationState = new Map(); // pageNumber -> [strokes]
           const annotationLayers = new Map(); // pageNumber -> { canvas, ctx, viewport }
+          // Teacher opts into drawing; students can draw immediately
           const allowStudentAnnotations = true;
-          let annotationEnabled = isTeacher || (allowStudentAnnotations && isStudent);
+          let annotationEnabled = isStudent && allowStudentAnnotations;
           let annotationMode = 'pen';
-          let annotationColor = annotationColorPicker.value || '#ff3b30';
+          let annotationColor = annotationColorPicker.value || (isTeacher ? '#ff3b30' : '#2563eb');
           let annotationSize = parseInt(annotationSizeSelect.value, 10) || 4;
           let activeStroke = null;
           
@@ -3022,18 +3049,16 @@
               canvas.style.pointerEvents = annotationEnabled && (isTeacher || allowStudentAnnotations) ? 'auto' : 'none';
             });
             if (annotateToggle) {
-              annotateToggle.textContent = annotationEnabled ? 'Pen on' : 'Pen';
+              annotateToggle.textContent = annotationEnabled ? 'Pen on' : 'Pen off';
               annotateToggle.classList.toggle('active', annotationEnabled);
               drawToggle.classList.toggle('is-drawing', annotationEnabled);
               drawToggle.textContent = annotationEnabled ? 'Draw ✓' : 'Draw';
             }
             if (annotatorIndicator) {
-              annotatorIndicator.textContent = annotationEnabled
-                ? '●'
-                : '○';
+              annotatorIndicator.textContent = annotationEnabled ? '●' : '○';
               annotatorIndicator.title = annotationEnabled
-                ? (isTeacher ? 'Broadcasting annotations' : 'Following annotations')
-                : 'Annotations paused';
+                ? (isTeacher ? 'Drawing on — broadcasting to students' : 'Drawing on — you can annotate now')
+                : (isTeacher ? 'Drawing off — click Draw to start' : 'Drawing paused');
             }
           }
           
@@ -3208,10 +3233,10 @@
           
           if (isStudent) {
             annotatorIndicator.textContent = allowStudentAnnotations
-              ? 'Annotating with teacher'
+              ? 'Ready to draw'
               : 'Following teacher annotations';
           } else {
-            annotatorIndicator.textContent = 'Annotate and sync with students';
+            annotatorIndicator.textContent = 'Click Draw to start';
           }
           setAnnotationInteractivity();
           
@@ -7226,19 +7251,25 @@
         showRewardAnimation(type);
         if (socket && socket.connected) {
           socket.emit('reward-animation', { type, room });
+          console.log('🎁 [TEACHER] Sent reward-animation:', type, 'room:', room);
         } else {
           console.error('❌ [TEACHER] Socket not connected, cannot send reward animation');
         }
       }
+      window.emitTeacherReward = emitTeacherReward;
 
-      // Delegate so rewards work from PDF toolbar, PPT toolbar, and left rail
-      document.addEventListener('click', (e) => {
-        const btn = e.target && e.target.closest ? e.target.closest('.flag-btn, .cookie-btn, .star-btn') : null;
-        if (!btn || userType !== 'teacher') return;
-        if (btn.classList.contains('flag-btn')) emitTeacherReward('flag');
-        else if (btn.classList.contains('cookie-btn')) emitTeacherReward('cookie');
-        else if (btn.classList.contains('star-btn')) emitTeacherReward('star');
-      });
+      // Capture phase so dropdown stopPropagation cannot block reward clicks
+      document.addEventListener(
+        'click',
+        (e) => {
+          const btn = e.target && e.target.closest ? e.target.closest('.flag-btn, .cookie-btn, .star-btn') : null;
+          if (!btn || userType !== 'teacher') return;
+          if (btn.classList.contains('flag-btn')) emitTeacherReward('flag');
+          else if (btn.classList.contains('cookie-btn')) emitTeacherReward('cookie');
+          else if (btn.classList.contains('star-btn')) emitTeacherReward('star');
+        },
+        true
+      );
 
       // Direct handler for lessons button
       // Lessons tab removed - moved to admin side

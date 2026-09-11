@@ -874,6 +874,8 @@ body.page-live-classroom #pdf-annotate-toggle.active {
   position: relative;
   display: inline-flex;
   flex-shrink: 0;
+  overflow: visible !important;
+  z-index: 20;
 }
 
 .lc-draw-toggle,
@@ -905,9 +907,14 @@ body.page-live-classroom #pdf-annotate-toggle.active {
 .lc-rewards-dropdown {
   position: absolute;
   top: calc(100% + 4px);
-  right: 0;
-  z-index: 40;
-  min-width: 148px;
+  /* Anchor to the left of the toggle so the panel stays on-screen
+     (right:0 was pushing the menu off the left edge and clipping labels). */
+  left: 0;
+  right: auto;
+  z-index: 600;
+  min-width: 176px;
+  width: max-content;
+  max-width: min(240px, 80vw);
   padding: 8px;
   background: #fff;
   border: 1px solid var(--lc-border);
@@ -916,8 +923,9 @@ body.page-live-classroom #pdf-annotate-toggle.active {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  transform-origin: top right;
+  transform-origin: top left;
   animation: lc-toggle-slide-in 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: visible;
 }
 
 .lc-draw-dropdown[hidden],
@@ -936,14 +944,33 @@ body.page-live-classroom #pdf-annotate-toggle.active {
   }
 }
 
-.qa-recording-dock__body {
-  padding: 0 10px 10px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  overflow: hidden;
-  animation: lc-toggle-slide-in 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+.lc-draw-dropdown button,
+.lc-draw-dropdown select,
+.lc-draw-dropdown input[type='color'] {
+  width: 100%;
+  box-sizing: border-box;
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+  min-height: 32px;
+  font-size: 0.82rem !important;
+  font-weight: 600;
+  color: #0f172a !important;
+  background: #fff !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 8px !important;
+  padding: 4px 10px !important;
 }
 
-.qa-recording-dock__body[hidden] {
+.lc-draw-dropdown input[type='color'] {
+  padding: 2px 4px !important;
+  min-height: 34px;
+  cursor: pointer;
+}
+
+/* Students never see classroom rewards (teacher-only celebration tools) */
+body.page-live-classroom[data-classroom-role='student'] .lc-rewards-menu,
+body.page-live-classroom.lc-role-student .lc-rewards-menu {
   display: none !important;
 }
 
@@ -969,23 +996,51 @@ body.page-live-classroom #pdf-annotate-toggle.active {
   to { opacity: 1; }
 }
 
-.lc-draw-dropdown button,
-.lc-draw-dropdown select,
-.lc-draw-dropdown input[type='color'] {
-  width: 100%;
-  box-sizing: border-box;
-}
-
 .lc-rewards-dropdown .action-btn {
   width: 100% !important;
-  height: 34px !important;
+  min-width: 132px !important;
+  height: 36px !important;
   border-radius: 8px !important;
   box-shadow: none !important;
-  font-size: 0.8rem !important;
-  gap: 6px;
-  justify-content: flex-start;
-  padding: 0 10px !important;
+  font-size: 0.85rem !important;
+  font-weight: 700 !important;
+  gap: 8px !important;
+  justify-content: flex-start !important;
+  padding: 0 12px !important;
   transform: none !important;
+  /* pdf-viewer-controls sets white buttons; flag/cookie/star set color:white → invisible labels */
+  color: #0f172a !important;
+  background: #fff !important;
+  border: 1px solid #e2e8f0 !important;
+  overflow: visible !important;
+  white-space: nowrap !important;
+}
+
+.lc-rewards-dropdown .action-btn span {
+  color: inherit !important;
+  font-size: inherit !important;
+  font-weight: inherit !important;
+  display: inline !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.lc-rewards-dropdown .flag-btn:hover,
+.lc-rewards-dropdown .cookie-btn:hover,
+.lc-rewards-dropdown .star-btn:hover {
+  transform: none !important;
+  border-color: #47BC3E !important;
+  background: #f0fdf4 !important;
+  color: #166534 !important;
+}
+
+.page-live-classroom .pdf-viewer-controls .lc-rewards-dropdown .action-btn,
+.remoed-ppt-toolbar .lc-rewards-dropdown .action-btn {
+  width: 100% !important;
+  height: 36px !important;
+  font-size: 0.85rem !important;
+  color: #0f172a !important;
+  background: #fff !important;
 }
 
 .remoed-ppt-nav {
@@ -1336,18 +1391,25 @@ body.page-live-classroom #lesson-file-viewer.file-viewer {
 body.page-live-classroom #lesson-file-viewer .pdf-viewer-container {
   flex: 1 1 auto;
   align-self: stretch;
-}
   display: flex !important;
   flex-direction: column !important;
   width: 100% !important;
   height: 100% !important;
   min-height: 0 !important;
   max-height: 100% !important;
-  overflow: hidden !important;
+  /* visible so Draw/Rewards dropdowns are not clipped into the left gutter */
+  overflow: visible !important;
   border: 1px solid var(--lc-border, #d7e5dd);
   border-radius: 8px;
   background: #f5f5f5;
   position: relative;
+  z-index: 5;
+}
+
+body.page-live-classroom #lesson-file-viewer .pdf-viewer-controls {
+  position: relative;
+  z-index: 30;
+  overflow: visible !important;
 }
 
 body.page-live-classroom .pdf-canvas-container {

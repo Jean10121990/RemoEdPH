@@ -101,7 +101,29 @@
       btn.setAttribute('aria-label', title);
       if (html) btn.innerHTML = html;
       else btn.textContent = label;
-      btn.style.cssText = btnStyle('min-width:36px;width:100%;justify-content:flex-start;');
+      btn.style.cssText = btnStyle(
+        'min-width:132px;width:100%;justify-content:flex-start;color:#0f172a;font-weight:700;'
+      );
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var type = 'star';
+        if (cls.indexOf('flag') !== -1) type = 'flag';
+        else if (cls.indexOf('cookie') !== -1) type = 'cookie';
+        if (typeof global.emitTeacherReward === 'function') {
+          global.emitTeacherReward(type);
+        } else if (global.socket && global.socket.connected && global.__liveClassroomUserType === 'teacher') {
+          try {
+            global.socket.emit('reward-animation', {
+              type: type,
+              room: global.__liveClassroomRoom || undefined,
+            });
+          } catch (_e) {}
+        }
+        dropdown.hidden = true;
+        wrap.classList.remove('is-open');
+        toggle.setAttribute('aria-expanded', 'false');
+      });
       dropdown.appendChild(btn);
       return btn;
     }
@@ -110,10 +132,20 @@
       'flag-btn',
       '',
       'Flag reward',
-      '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="#666" d="M2 2h2v20H2z"/><path fill="#28a745" d="M4 2v10l10-5L4 2z"/></svg><span style="margin-left:8px">Flag</span>'
+      '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="#666" d="M2 2h2v20H2z"/><path fill="#28a745" d="M4 2v10l10-5L4 2z"/></svg><span style="margin-left:8px;color:#0f172a;font-weight:700;">Flag</span>'
     );
-    makeReward('cookie-btn', '🍪 Cookie', 'Cookie reward');
-    makeReward('star-btn', '⭐ Star', 'Star reward');
+    makeReward(
+      'cookie-btn',
+      '',
+      'Cookie reward',
+      '<span aria-hidden="true">🍪</span><span style="margin-left:8px;color:#0f172a;font-weight:700;">Cookie</span>'
+    );
+    makeReward(
+      'star-btn',
+      '',
+      'Star reward',
+      '<span aria-hidden="true">⭐</span><span style="margin-left:8px;color:#0f172a;font-weight:700;">Star</span>'
+    );
 
     toggle.addEventListener('click', function (e) {
       e.stopPropagation();
@@ -126,6 +158,9 @@
       dropdown.hidden = true;
       wrap.classList.remove('is-open');
       toggle.setAttribute('aria-expanded', 'false');
+    });
+    dropdown.addEventListener('click', function (e) {
+      e.stopPropagation();
     });
 
     wrap.appendChild(toggle);
@@ -618,7 +653,8 @@
       } catch (_e) {}
     }
 
-    setDrawMode(state, false);
+    // Students can draw immediately; teacher starts with draw off (opts in via Draw)
+    setDrawMode(state, !isTeacher);
 
     function emitAnnotation(payload) {
       if (!socket || !socket.connected) return;
