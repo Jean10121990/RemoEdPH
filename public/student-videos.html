@@ -7,12 +7,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="js/security-guard.js?v=1"></script>
   <title>Video library - RemoEdPH</title>
-  <link rel="stylesheet" href="modern-styles.css">
-  <link rel="stylesheet" href="css/teacher-sidebar.css">
+<link rel="stylesheet" href="css/teacher-sidebar.css">
     <link rel="stylesheet" href="css/portal-chrome-compact.css">
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="css/student-portal-layout.css?v=slide-match-1">
-  <link rel="stylesheet" href="css/student-sidebar.css?v=slide-match-1">
+  <link rel="stylesheet" href="css/student-sidebar.css?v=logout-pin-2">
   <script src="js/user-session.js"></script>
   <style>
     .page-student-videos .sv-wrap { max-width: 1200px; margin: 0 auto; padding: 0 16px 32px; }
@@ -70,10 +69,11 @@
       position: relative;
       width: 100%;
       aspect-ratio: 16 / 9;
+      min-height: 140px;
       height: auto;
       max-height: none;
       flex: 0 0 auto;
-      background: #0f172a;
+      background: #0f172a url('/images/remoed-favicon.png') center / 48px no-repeat;
       cursor: pointer;
       overflow: hidden;
     }
@@ -208,7 +208,7 @@
 <body class="student-portal page-student-videos">
   <div class="remoed-main">
     <div id="student-sidebar-root"></div>
-    <script src="js/student-sidebar.js?v=lb-nav-2"></script>
+    <script src="js/student-sidebar.js?v=logout-pin-2"></script>
     <script src="js/student-page-header.js"></script>
     <script>
       StudentSidebar.render('student-sidebar-root', 'videos');
@@ -316,7 +316,7 @@
           return (
             '<article class="sv-card" data-video-id="' + escHtml(id) + '">' +
               '<div class="sv-card-thumb" role="button" tabindex="0" data-action="modal" aria-label="Play ' + escHtml(title) + ' larger">' +
-                '<video muted playsinline preload="metadata" src="' + escHtml(thumbSrc(url)) + '"></video>' +
+                '<video muted playsinline preload="metadata" poster="/images/remoed-favicon.png" src="' + escHtml(thumbSrc(url)) + '"></video>' +
                 '<div class="sv-card-play" aria-hidden="true"><span>&#9654;</span></div>' +
               '</div>' +
               '<div class="sv-card-body">' +

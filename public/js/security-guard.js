@@ -35,7 +35,7 @@
       if (utCh === 'teacher') return 'teacher';
       if (utCh === 'student') return 'student';
     }
-    if (
+      if (
       p.indexOf('live-classroom') !== -1 ||
       p.indexOf('video-room') !== -1 ||
       p.indexOf('whiteboard') !== -1 ||
@@ -45,10 +45,9 @@
       if (ut === 'admin') return 'admin';
       if (ut === 'teacher') return 'teacher';
       if (ut === 'student') return 'student';
-      if (p.indexOf('live-classroom') !== -1 || p.indexOf('video-room') !== -1 || p.indexOf('whiteboard') !== -1) {
-        var inferred = inferPortalRoleForClassroom();
-        if (inferred) return inferred;
-      }
+      // JWT / URL infer when userType storage is missing (classroom + leaderboard)
+      var inferred = inferPortalRoleForClassroom();
+      if (inferred) return inferred;
     }
     var ut2 = (getSessionRoleFromStorage() || '').toLowerCase();
     if (ut2 === 'admin') return 'admin';

@@ -7,8 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="js/security-guard.js?v=1"></script>
     <title>Teacher Profile - RemoEdPH</title>
-    <link rel="stylesheet" href="modern-styles.css">
-    <link rel="stylesheet" href="css/teacher-sidebar.css?v=mint-forest-1">
+<link rel="stylesheet" href="css/teacher-sidebar.css?v=logout-pin-2">
     <link rel="stylesheet" href="css/global-portal.css">
 <!-- Remo AI Chatbot Styles -->
     <link rel="stylesheet" href="style.css">
@@ -756,12 +755,12 @@
             // Load sidebar (shared component)
             (function() {
                 var script = document.createElement('script');
-                script.src = 'js/teacher-sidebar.js?v=lb-nav-2';
+                script.src = 'js/teacher-sidebar.js?v=logout-pin-2';
                 script.onload = function() {
                     TeacherSidebar.render('teacher-sidebar-root', 'profile');
                     updateSidebarProfile();
                     var h = document.createElement('script');
-                    h.src = 'js/teacher-page-header.js?v=mint-forest-1';
+                    h.src = 'js/teacher-page-header.js?v=logout-pin-2';
                     h.onload = function() { TeacherPageHeader.render('profile'); };
                     document.head.appendChild(h);
                 };

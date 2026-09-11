@@ -47,7 +47,23 @@
   }
 
   function authHeaders() {
-    var token = localStorage.getItem('token');
+    var token = '';
+    try {
+      if (window.RemoedAuthToken && typeof window.RemoedAuthToken.resolveClassroomToken === 'function') {
+        token = window.RemoedAuthToken.resolveClassroomToken();
+      } else if (window.RemoedTeacherSession && typeof window.RemoedTeacherSession.getToken === 'function') {
+        token = window.RemoedTeacherSession.getToken() || '';
+      } else {
+        token =
+          localStorage.getItem('remoed_teacher_token') ||
+          localStorage.getItem('remoed_student_token') ||
+          localStorage.getItem('remoed_user_token') ||
+          localStorage.getItem('token') ||
+          '';
+      }
+    } catch (e) {
+      token = localStorage.getItem('token') || '';
+    }
     if (!token) return null;
     return { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' };
   }

@@ -8,6 +8,7 @@
   <script src="js/security-guard.js?v=lc-token-2"></script>
   <script src="js/user-session.js"></script>
   <script src="js/teacher-session-gate.js?v=2"></script>
+  <script src="js/remoed-auth-token.js?v=1"></script>
   <title>Live Classroom</title>
   <!-- PDF.js library for embedded free PDF viewer -->
   <script type="module">
@@ -389,6 +390,14 @@
       const SIGNALING_SERVER_URL = window.location.origin || '';
       function resolveLiveClassroomAuthToken() {
         try {
+          if (window.RemoedAuthToken && typeof window.RemoedAuthToken.resolveClassroomToken === 'function') {
+            const t = window.RemoedAuthToken.resolveClassroomToken();
+            if (t) return t;
+          }
+          if (window.RemoedSecurityGuard && typeof window.RemoedSecurityGuard.getToken === 'function') {
+            const t = window.RemoedSecurityGuard.getToken();
+            if (t) return t;
+          }
           const typeParam = String(new URLSearchParams(window.location.search).get('type') || '')
             .trim()
             .toLowerCase();
@@ -400,32 +409,6 @@
             const t = RemoedUserSession.getUserToken();
             if (t) return t;
           }
-          if (window.RemoedSecurityGuard && typeof window.RemoedSecurityGuard.getToken === 'function') {
-            const t = window.RemoedSecurityGuard.getToken();
-            if (t) return t;
-          }
-          if (typeParam === 'teacher') {
-            return (
-              localStorage.getItem('remoed_teacher_token') ||
-              sessionStorage.getItem('remoed_teacher_token') ||
-              localStorage.getItem('remoed_teacher_auth') ||
-              sessionStorage.getItem('remoed_teacher_auth') ||
-              localStorage.getItem('remoed_user_token') ||
-              localStorage.getItem('token') ||
-              ''
-            );
-          }
-          if (typeParam === 'student') {
-            return (
-              localStorage.getItem('remoed_student_token') ||
-              sessionStorage.getItem('remoed_student_token') ||
-              localStorage.getItem('remoed_student_auth') ||
-              sessionStorage.getItem('remoed_student_auth') ||
-              localStorage.getItem('remoed_user_token') ||
-              localStorage.getItem('token') ||
-              ''
-            );
-          }
           return (
             localStorage.getItem('remoed_teacher_token') ||
             localStorage.getItem('remoed_student_token') ||
@@ -434,7 +417,7 @@
             ''
           );
         } catch (_e) {
-          return localStorage.getItem('token') || '';
+          return localStorage.getItem('remoed_teacher_token') || localStorage.getItem('token') || '';
         }
       }
       const __lcAuthToken = resolveLiveClassroomAuthToken();
@@ -622,7 +605,7 @@
           if (!window.RemoedClassroomEntry) return { allowed: true, reason: 'no_script' };
           const bid = getQueryParam('bookingId') || getQueryParam('bookingid');
           if (!bid || room === 'default-room') return { allowed: true };
-          const token = localStorage.getItem('token');
+          const token = resolveLiveClassroomAuthToken();
           const headers = token ? { Authorization: 'Bearer ' + token } : {};
           let booking = null;
           const r1 = await fetch('/api/student/booking/' + encodeURIComponent(bid), { headers });
@@ -867,7 +850,7 @@
       function loadPortalVideosIfNeeded() {
         if (!portalVideosListEl) return;
         if (portalVideosLoaded) return;
-        const token = localStorage.getItem('token');
+        const token = resolveLiveClassroomAuthToken();
         if (!token) {
           portalVideosListEl.innerHTML = '<p style="color:#94a3b8;">Sign in to view videos.</p>';
           return;
@@ -4001,7 +3984,7 @@
       // Delete lesson file function
       async function deleteLessonFile(fileId, lessonId) {
         try {
-          const token = localStorage.getItem('token');
+          const token = resolveLiveClassroomAuthToken();
           if (!token) {
             alert('Error: Not authenticated');
             return;
@@ -6041,7 +6024,7 @@
           const bookingId = getQueryParam('bookingId') || getQueryParam('bookingid');
           const classroomId = getQueryParam('room') || getQueryParam('classroomId') || room;
           const slotParam = getQueryParam('slot');
-          const token = localStorage.getItem('token');
+          const token = resolveLiveClassroomAuthToken();
           let booking = null;
 
           window.__liveClassroomScheduledStartMs = undefined;
@@ -6249,7 +6232,7 @@
         try {
           const bookingId = getQueryParam('bookingId') || getQueryParam('bookingid');
           const classroomId = getQueryParam('room') || getQueryParam('classroomId') || room;
-          const token = localStorage.getItem('token');
+          const token = resolveLiveClassroomAuthToken();
           
           let booking = null;
           const headers = {};
@@ -6447,7 +6430,7 @@
         document.body.classList.remove('lc-notes-collapsed');
         body.textContent = 'Loading…';
         try {
-          const token = localStorage.getItem('token');
+          const token = resolveLiveClassroomAuthToken();
           const headers = {};
           if (token) headers['Authorization'] = `Bearer ${token}`;
           const res = await fetch(`/api/lessons/lesson/${encodeURIComponent(lessonId)}`, { headers });
@@ -6474,7 +6457,7 @@
           console.log('📚 [AUTO-LOAD] Loading lesson files for lessonId:', lid);
           loadTeacherNotesForClassroom(lid);
 
-          const token = localStorage.getItem('token');
+          const token = resolveLiveClassroomAuthToken();
           
           const headers = {};
           if (token) {
@@ -6588,7 +6571,7 @@
         if (!classInfoOverlay) return;
         const bookingId = getQueryParam('bookingId') || getQueryParam('bookingid');
         const classroomId = getQueryParam('room') || getQueryParam('classroomId') || room;
-        const token = localStorage.getItem('token');
+        const token = resolveLiveClassroomAuthToken();
 
         const setText = (id, value) => {
           const el = document.getElementById(id);
@@ -6757,7 +6740,7 @@
           lcSubmit.addEventListener('click', async () => {
             const bid =
               classroomBookingMongoId || getQueryParam('bookingId') || getQueryParam('bookingid');
-            const token = localStorage.getItem('token');
+            const token = resolveLiveClassroomAuthToken();
             const tid = localStorage.getItem('teacherId') || '';
             if (!bid || !token || !tid) {
               alert('Missing booking or login. Finish feedback from your class schedule instead.');
@@ -6891,7 +6874,7 @@
               return;
             }
 
-            const token = localStorage.getItem('token');
+            const token = resolveLiveClassroomAuthToken();
             if (token) {
               try {
                 const endRes = await fetch(
@@ -6982,7 +6965,7 @@
           ) {
             return;
           }
-          const token = localStorage.getItem('token');
+          const token = resolveLiveClassroomAuthToken();
           if (!token) {
             alert('Please log in again to mark absent.');
             return;

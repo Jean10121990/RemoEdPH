@@ -5055,11 +5055,26 @@ router.post('/progress-reports', verifyToken, requireTeacher, async (req, res) =
     });
 
     const aliases = await studentBadgeService.resolveStudentIdAliases(sid);
-    const existing = await ProgressReport.findOne({
-      studentId: { $in: aliases.length ? aliases : [sid] },
+    const aliasList = aliases.length ? aliases : [sid];
+    const canonicalSid = (await studentBadgeService.canonicalBookingStudentId(sid)) || sid;
+
+    const matches = await ProgressReport.find({
+      studentId: { $in: aliasList },
       year: y,
       quarter: q,
-    });
+    }).sort({ updatedAt: -1 });
+
+    let report = matches[0] || null;
+    // Collapse alias duplicates under the unique { studentId, year, quarter } index
+    if (matches.length > 1) {
+      for (let i = 1; i < matches.length; i++) {
+        try {
+          await ProgressReport.deleteOne({ _id: matches[i]._id });
+        } catch (delErr) {
+          console.warn('progress-report duplicate cleanup:', delErr && delErr.message);
+        }
+      }
+    }
 
     const setFields = {
       skillsAssessment: skills,
@@ -5069,16 +5084,28 @@ router.post('/progress-reports', verifyToken, requireTeacher, async (req, res) =
           ? null
           : Math.max(0, Math.min(100, Number(attendanceRate))),
       createdByTeacherId: teacherId,
-      studentId: sid,
+      studentId: canonicalSid,
     };
 
-    let report;
-    if (existing) {
-      Object.assign(existing, setFields);
-      report = await existing.save();
+    if (report) {
+      try {
+        Object.assign(report, setFields);
+        report = await report.save();
+      } catch (saveErr) {
+        if (saveErr && saveErr.code === 11000) {
+          // Another alias row won the unique index — update that row instead
+          report = await ProgressReport.findOneAndUpdate(
+            { studentId: canonicalSid, year: y, quarter: q },
+            { $set: setFields },
+            { new: true, upsert: true }
+          );
+        } else {
+          throw saveErr;
+        }
+      }
     } else {
       report = await ProgressReport.findOneAndUpdate(
-        { studentId: sid, year: y, quarter: q },
+        { studentId: canonicalSid, year: y, quarter: q },
         { $set: setFields },
         { upsert: true, new: true }
       );

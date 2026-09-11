@@ -6,8 +6,7 @@
     <script src="js/security-guard.js?v=1"></script>
     <script src="js/user-session.js"></script>
     <title>My Profile - RemoEdPH</title>
-    <link rel="stylesheet" href="modern-styles.css">
-    <style>
+<style>
         body { 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
             background: #f8fafc;
@@ -648,13 +647,13 @@
     <link rel="stylesheet" href="css/teacher-sidebar.css">
     <link rel="stylesheet" href="css/portal-chrome-compact.css">
     <link rel="stylesheet" href="css/student-portal-layout.css?v=slide-match-1">
-    <link rel="stylesheet" href="css/student-sidebar.css?v=slide-match-1">
+    <link rel="stylesheet" href="css/student-sidebar.css?v=logout-pin-2">
     <link rel="stylesheet" href="css/student-badges.css?v=1">
 </head>
 <body class="student-portal page-student-profile">
     <div class="remoed-main">
         <div id="student-sidebar-root"></div>
-        <script src="js/student-sidebar.js?v=lb-nav-2"></script>
+        <script src="js/student-sidebar.js?v=logout-pin-2"></script>
         <script src="js/student-page-header.js"></script>
         <script>
             StudentSidebar.render('student-sidebar-root', 'profile');
@@ -1182,6 +1181,9 @@
                     } catch (_c) {}
                 }
                 if (reportList) {
+                    if (!reportRes.ok || !reportData.success) {
+                        reportList.innerHTML = '<p class="sb-empty">Reports unavailable right now. Please try again soon.</p>';
+                    } else {
                     const reports = reportData.reports || [];
                     if (!reports.length) {
                         const y = new Date().getFullYear();
@@ -1200,6 +1202,7 @@
                                 '</div>'
                             );
                         }).join('');
+                    }
                     }
                 }
             } catch (err) {

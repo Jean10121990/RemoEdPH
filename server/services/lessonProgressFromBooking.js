@@ -3,6 +3,7 @@ const LessonProgress = require('../models/LessonProgress');
 const Booking = require('../models/Booking');
 const { resolveLessonIdFromBooking } = require('../lessonResolveFromBooking');
 const { isMongoObjectId } = require('../utils/mongoObjectId');
+const studentBadgeService = require('./studentBadgeService');
 
 /**
  * Upsert LessonProgress for a booking after class end / finalize.
@@ -27,10 +28,14 @@ async function upsertLessonProgressFromBooking(bookingOrId, opts = {}) {
     return { progress: null, skipped: 'booking_not_found' };
   }
 
-  const studentId = String(booking.studentId || '').trim();
-  if (!studentId) {
+  const rawStudentId = String(booking.studentId || '').trim();
+  if (!rawStudentId) {
     return { progress: null, skipped: 'missing_student' };
   }
+  const aliases = await studentBadgeService.resolveStudentIdAliases(rawStudentId);
+  const aliasList = aliases.length ? aliases : [rawStudentId];
+  const studentId =
+    (await studentBadgeService.canonicalBookingStudentId(rawStudentId)) || rawStudentId;
 
   let lessonId = booking.lessonId || null;
   if (lessonId && !isMongoObjectId(lessonId._id || lessonId)) {
@@ -72,7 +77,10 @@ async function upsertLessonProgressFromBooking(bookingOrId, opts = {}) {
     ? status
     : 'completed';
 
-  const existing = await LessonProgress.findOne({ studentId, lessonId }).lean();
+  const existing = await LessonProgress.findOne({
+    studentId: { $in: aliasList },
+    lessonId,
+  }).lean();
   // Never downgrade a completed lesson when session is ended again
   if (
     existing &&
@@ -98,7 +106,7 @@ async function upsertLessonProgressFromBooking(bookingOrId, opts = {}) {
   }
 
   const progress = await LessonProgress.findOneAndUpdate(
-    { studentId, lessonId },
+    existing ? { _id: existing._id } : { studentId, lessonId },
     update,
     { upsert: true, new: true, setDefaultsOnInsert: true }
   );

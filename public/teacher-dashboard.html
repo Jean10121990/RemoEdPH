@@ -8,8 +8,7 @@
     <script src="js/security-guard.js?v=4"></script>
     <script src="js/dashboard-history-lock.js?v=1"></script>
     <title>RemoEdPH Dashboard</title>
-    <link rel="stylesheet" href="modern-styles.css">
-    <link rel="stylesheet" href="css/teacher-sidebar.css?v=mint-forest-1">
+<link rel="stylesheet" href="css/teacher-sidebar.css?v=logout-pin-2">
     <link rel="stylesheet" href="css/global-portal.css">
 <!-- Remo AI Chatbot Styles -->
 <script src="https://cdn.jsdelivr.net/npm/luxon@3.5.0/build/global/luxon.min.js"></script>
@@ -19,6 +18,7 @@
 <script src="teacher-tour.js"></script>
 <script src="js/user-session.js"></script>
 <script src="js/teacher-session-gate.js?v=2"></script>
+<script src="js/remoed-auth-token.js?v=1"></script>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="css/portal-chrome-compact.css?v=notif-bell-2">
 </head>
@@ -82,7 +82,7 @@
         </div>
         
         <div id="teacher-sidebar-root"></div>
-        <script src="js/teacher-sidebar.js?v=lb-nav-2"></script>
+        <script src="js/teacher-sidebar.js?v=logout-pin-2"></script>
         <script src="js/teacher-page-header.js?v=notif-ux-3"></script>
         <script>
             TeacherSidebar.render('teacher-sidebar-root', 'dashboard');
@@ -375,9 +375,30 @@
     <script src="script.js"></script>
   <script src="avatar-helper.js"></script>
   <script>
+        /** Display name when API returns string studentId + studentName (not a populated object). */
+        function bookingStudentDisplayName(booking, fallback) {
+            if (!booking) return fallback || 'Student';
+            const name = String(booking.studentName || '').trim();
+            if (name && name.toLowerCase() !== 'unknown student') return name;
+            const sid = booking.studentId;
+            if (sid && typeof sid === 'object') {
+                const fromObj =
+                    `${sid.firstName || ''} ${sid.lastName || ''}`.trim() ||
+                    sid.username ||
+                    sid.id ||
+                    '';
+                if (fromObj) return String(fromObj);
+            }
+            if (typeof sid === 'string' && sid.trim()) return sid.trim();
+            if (booking.studentEmail) return String(booking.studentEmail);
+            return fallback || 'Student';
+        }
+
         async function loadTeacherReferralLinks() {
             try {
-                const token = localStorage.getItem('token');
+                const token = (window.RemoedTeacherSession && RemoedTeacherSession.getToken()) ||
+                    (window.RemoedAuthToken && RemoedAuthToken.getTeacherToken()) ||
+                    localStorage.getItem('token');
                 if (!token) return;
                 const res = await fetch('/api/teacher/referral-link', { headers: { Authorization: 'Bearer ' + token } });
                 const data = await res.json();
@@ -1004,7 +1025,7 @@
                             <div style="display: flex; justify-content: space-between; align-items: center;">
                                 <div>
                                     <div style="font-size: 0.9rem; font-weight: 500;">${timeDisplay}</div>
-                                    <div style="font-size: 0.8rem; color: #666;">${booking.studentId?.firstName || booking.studentId?.username || 'Unknown'}</div>
+                                    <div style="font-size: 0.8rem; color: #666;">${bookingStudentDisplayName(booking, 'Unknown')}</div>
                                 </div>
                                 <button onclick="RemoedClassroomEntry.hrefIfAllowed('live-classroom.html?room=${booking.classroomId}&type=teacher&bookingId=${booking._id}&slot=${encodeURIComponent(slotPh || booking.time)}', { date: '${booking.date}', time: '${booking.time}', scheduledStartTime: '${booking.scheduledStartTime || ''}', dateTimeUtc: '${booking.dateTimeUtc || ''}' })" 
                                         style="background: #47BC3E; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; cursor: pointer;">
@@ -1173,7 +1194,8 @@
       const token = RemoedTeacherSession.getToken();
       if (!token) {
         console.log('No token found, redirecting to login');
-        localStorage.clear();
+        if (window.RemoedAuthToken) RemoedAuthToken.clearSessionTokens();
+        else if (window.RemoedUserSession) RemoedUserSession.clearUserToken();
         window.location.replace('/login/');
         return false;
       }
@@ -1196,7 +1218,8 @@
 
         if (response.status === 401) {
           console.log('Token is invalid, redirecting to login');
-          localStorage.clear();
+          if (window.RemoedAuthToken) RemoedAuthToken.clearSessionTokens();
+          else if (window.RemoedUserSession) RemoedUserSession.clearUserToken();
           window.location.replace('/login/');
           return false;
         }
@@ -1387,7 +1410,7 @@
       }
     }
   
-  // Logout: handled by js/teacher-sidebar.js?v=lb-nav-2'/api/announcement')
+  // Logout: handled by js/teacher-sidebar.js?v=logout-pin-2'/api/announcement')
       .then(r => r.json())
       .then(data => {
         currentContent = data.content;
@@ -1530,7 +1553,7 @@
           <li class="remoed-upcoming-item">
             <div>
               <div class="remoed-upcoming-time">${timeDisplay}</div>
-              <div class="remoed-upcoming-student">Student: ${booking.studentId?.firstName || booking.studentId?.username || booking.studentEmail || 'Unknown'}</div>
+              <div class="remoed-upcoming-student">Student: ${bookingStudentDisplayName(booking, 'Unknown')}</div>
             </div>
             <button class="remoed-btn ${buttonClass}" onclick="${buttonAction}">${buttonText}</button>
           </li>
@@ -1819,7 +1842,8 @@
       } else if (response.status === 401) {
         // Only redirect on actual auth failure
         console.error('Token expired, redirecting to login');
-        localStorage.clear();
+        if (window.RemoedAuthToken) RemoedAuthToken.clearSessionTokens();
+        else if (window.RemoedUserSession) RemoedUserSession.clearUserToken();
         window.location.replace('/login/');
       } else {
         console.error('Failed to load time tracking status:', response.status);
@@ -1918,7 +1942,8 @@
       } else if (response.status === 401) {
         showTimeMessage('Session expired. Please log in again.', 'error');
         setTimeout(() => {
-          localStorage.clear();
+          if (window.RemoedAuthToken) RemoedAuthToken.clearSessionTokens();
+          else if (window.RemoedUserSession) RemoedUserSession.clearUserToken();
           window.location.replace('/login/');
         }, 2000);
       } else {
@@ -1976,7 +2001,8 @@
       } else if (response.status === 401) {
         showTimeMessage('Session expired. Please log in again.', 'error');
         setTimeout(() => {
-          localStorage.clear();
+          if (window.RemoedAuthToken) RemoedAuthToken.clearSessionTokens();
+          else if (window.RemoedUserSession) RemoedUserSession.clearUserToken();
           window.location.replace('/login/');
         }, 2000);
       } else {

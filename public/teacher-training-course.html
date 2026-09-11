@@ -8,11 +8,13 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <title>Training Course - RemoEdPH</title>
-    <link rel="stylesheet" href="modern-styles.css">
-    <link rel="stylesheet" href="css/teacher-sidebar.css?v=mint-forest-1">
+<link rel="stylesheet" href="css/teacher-sidebar.css?v=logout-pin-2">
     <link rel="stylesheet" href="css/global-portal.css">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="css/portal-chrome-compact.css?v=mint-forest-1">
+    <script src="js/user-session.js"></script>
+    <script src="js/teacher-session-gate.js?v=2"></script>
+    <script src="js/remoed-auth-token.js?v=1"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
     <style>
@@ -79,7 +81,7 @@
 <body class="page-teacher-training-course teacher-portal">
 <div class="remoed-main">
     <div id="teacher-sidebar-root"></div>
-    <script src="js/teacher-sidebar.js?v=lb-nav-2"></script>
+    <script src="js/teacher-sidebar.js?v=logout-pin-2"></script>
     <script src="js/teacher-page-header.js?v=mint-forest-1"></script>
     <script>
         TeacherSidebar.render('teacher-sidebar-root', 'professional-development');
@@ -99,10 +101,15 @@
 </div>
 <script>
 (function(){
+    if (!window.RemoedTeacherSession || !RemoedTeacherSession.requireTeacher({ redirect: '/login/' })) {
+        return;
+    }
     const params = new URLSearchParams(location.search);
     const courseId = params.get('id');
     function teacherToken() {
         return (
+            (window.RemoedAuthToken && RemoedAuthToken.getTeacherToken && RemoedAuthToken.getTeacherToken()) ||
+            (window.RemoedTeacherSession && RemoedTeacherSession.getToken && RemoedTeacherSession.getToken()) ||
             localStorage.getItem('remoed_teacher_token') ||
             sessionStorage.getItem('remoed_teacher_token') ||
             localStorage.getItem('remoed_teacher_auth') ||

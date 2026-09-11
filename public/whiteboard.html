@@ -7,6 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="js/user-session.js"></script>
     <script src="js/security-guard.js?v=3"></script>
+    <script src="js/remoed-auth-token.js?v=1"></script>
     <title>Whiteboard - RemoEdPH</title>
     <link rel="stylesheet" href="modern-styles.css">
     <link rel="stylesheet" href="style.css">
@@ -40,7 +41,31 @@
     <script>
         // --- Setup ---
         const SIGNALING_SERVER_URL = window.location.origin || '';
-        const socket = io(SIGNALING_SERVER_URL);
+        function resolveWhiteboardAuthToken() {
+            try {
+                if (window.RemoedAuthToken && RemoedAuthToken.resolveClassroomToken) {
+                    const t = RemoedAuthToken.resolveClassroomToken();
+                    if (t) return t;
+                }
+                if (window.RemoedSecurityGuard && RemoedSecurityGuard.getToken) {
+                    const t = RemoedSecurityGuard.getToken();
+                    if (t) return t;
+                }
+            } catch (_e) {}
+            return (
+                localStorage.getItem('remoed_teacher_token') ||
+                localStorage.getItem('remoed_student_token') ||
+                localStorage.getItem('remoed_user_token') ||
+                localStorage.getItem('token') ||
+                ''
+            );
+        }
+        const __wbAuthToken = resolveWhiteboardAuthToken();
+        const socket = io(SIGNALING_SERVER_URL, {
+            auth: { token: __wbAuthToken },
+            transports: ['websocket', 'polling'],
+            reconnection: true,
+        });
         
         const canvas = document.getElementById('whiteboard');
         const ctx = canvas.getContext('2d');
@@ -61,7 +86,11 @@
         const room = getQueryParam('room');
         if (room) {
             roomInfo.textContent = `Room: ${room}`;
-            socket.emit('join', room);
+            const userType = (localStorage.getItem('userType') || localStorage.getItem('userRole') ||
+                (localStorage.getItem('teacherId') ? 'teacher' : 'student')).toLowerCase();
+            const userId = localStorage.getItem('teacherId') || localStorage.getItem('studentId') || localStorage.getItem('username') || 'guest';
+            const username = localStorage.getItem('username') || userId;
+            socket.emit('join', { room, userType, userId, username });
         } else {
             roomInfo.textContent = 'Room: Not connected';
         }

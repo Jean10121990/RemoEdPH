@@ -7,10 +7,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="js/security-guard.js?v=1"></script>
     <title>Teaching Assessment - RemoEdPH</title>
-    <link rel="stylesheet" href="modern-styles.css">
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="css/teacher-sidebar.css?v=mint-forest-1">
-    <link rel="stylesheet" href="css/portal-chrome-compact.css?v=mint-forest-1">
+    <link rel="stylesheet" href="css/teacher-sidebar.css?v=logout-pin-2">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css?v=logout-pin-2">
     <link rel="stylesheet" href="css/teacher-brand-overrides.css?v=mint-forest-1">
     <script src="js/user-session.js"></script>
     <script src="js/teacher-session-gate.js?v=2"></script>
@@ -40,6 +39,15 @@
     </style>
 </head>
 <body class="page-teacher-assessment teacher-portal">
+    <div class="remoed-main">
+        <div id="teacher-sidebar-root"></div>
+        <script src="js/teacher-sidebar.js?v=logout-pin-2"></script>
+        <script src="js/teacher-page-header.js?v=logout-pin-2"></script>
+        <script>
+            TeacherSidebar.render('teacher-sidebar-root', 'professional-development');
+            if (window.TeacherPageHeader) TeacherPageHeader.render('professional-development');
+        </script>
+        <div class="remoed-content">
     <div class="assess-shell container">
         <div class="assess-topbar">
             <a href="teacher-professional-development.html">← Career Growth</a>
@@ -271,6 +279,8 @@
             </div>
         </div>
     </div>
+        </div><!-- remoed-content -->
+    </div><!-- remoed-main -->
     
     <script src="js/assessment-answer-key-data.js"></script>
     <script>

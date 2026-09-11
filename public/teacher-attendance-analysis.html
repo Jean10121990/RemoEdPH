@@ -7,18 +7,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="js/security-guard.js?v=1"></script>
     <title>Attendance Analysis - RemoEdPH</title>
-    <link rel="stylesheet" href="modern-styles.css">
-    <link rel="stylesheet" href="css/teacher-sidebar.css?v=mint-forest-1">
+<link rel="stylesheet" href="css/teacher-sidebar.css?v=logout-pin-2">
     <link rel="stylesheet" href="css/global-portal.css">
 <!-- Remo AI Chatbot Styles -->
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="css/portal-chrome-compact.css?v=mint-forest-1">
     <script src="js/user-session.js"></script>
+    <script src="js/teacher-session-gate.js?v=2"></script>
+    <script src="js/remoed-auth-token.js?v=1"></script>
 </head>
 <body class="page-teacher-attendance-analysis teacher-portal">
     <div class="remoed-main">
         <div id="teacher-sidebar-root"></div>
-        <script src="js/teacher-sidebar.js?v=lb-nav-2"></script>
+        <script src="js/teacher-sidebar.js?v=logout-pin-2"></script>
         <script src="js/teacher-page-header.js?v=mint-forest-1"></script>
         <script>
             TeacherSidebar.render('teacher-sidebar-root', 'performance-indicator');
@@ -56,11 +57,14 @@
     <script src="https://cdn.jsdelivr.net/npm/luxon@3.5.0/build/global/luxon.min.js"></script>
     <script src="timezone-utils.js"></script>
     <script>
+        if (!window.RemoedTeacherSession || !RemoedTeacherSession.requireTeacher({ redirect: '/login/' })) {
+            throw new Error('Teachers only');
+        }
         // Shared function to update sidebar username and profile
         async function updateSidebarProfile() {
             const username = localStorage.getItem('remoedUsername') || 'Teacher';
             const teacherId = localStorage.getItem('teacherId');
-            const token = localStorage.getItem('token');
+            const token = ((window.RemoedAuthToken&&RemoedAuthToken.getTeacherToken())||(window.RemoedTeacherSession&&RemoedTeacherSession.getToken())||localStorage.getItem('remoed_teacher_token')||'');
             
             // Get username element (could be remoed-username or sidebar-email depending on page)
             const usernameEl = document.getElementById('remoed-username') || document.getElementById('sidebar-email');
@@ -165,7 +169,7 @@
             
             try {
                 const teacherId = localStorage.getItem('teacherId');
-                const token = localStorage.getItem('token');
+                const token = ((window.RemoedAuthToken&&RemoedAuthToken.getTeacherToken())||(window.RemoedTeacherSession&&RemoedTeacherSession.getToken())||localStorage.getItem('remoed_teacher_token')||'');
                 
                 if (!teacherId || !token) {
                     throw new Error('Please log in to view attendance analysis');

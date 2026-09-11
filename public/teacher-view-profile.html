@@ -7,17 +7,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="js/security-guard.js?v=1"></script>
     <title>Teacher Profile - RemoEdPH</title>
-    <link rel="stylesheet" href="modern-styles.css">
-    <link rel="stylesheet" href="css/teacher-sidebar.css?v=mint-forest-1">
+<link rel="stylesheet" href="css/teacher-sidebar.css?v=logout-pin-2">
     <link rel="stylesheet" href="css/global-portal.css">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="css/portal-chrome-compact.css?v=mint-forest-1">
     <script src="js/user-session.js"></script>
+    <script src="js/teacher-session-gate.js?v=2"></script>
+    <script src="js/remoed-auth-token.js?v=1"></script>
 </head>
 <body class="page-teacher-view-profile teacher-portal">
     <div class="remoed-main">
         <div id="teacher-sidebar-root"></div>
-        <script src="js/teacher-sidebar.js?v=lb-nav-2"></script>
+        <script src="js/teacher-sidebar.js?v=logout-pin-2"></script>
         <script src="js/teacher-page-header.js?v=mint-forest-1"></script>
         <script>
             TeacherSidebar.render('teacher-sidebar-root', 'professional-development');
@@ -34,6 +35,9 @@
     </div>
     <script>
         (function() {
+            if (!window.RemoedTeacherSession || !RemoedTeacherSession.requireTeacher({ redirect: '/login/' })) {
+                return;
+            }
             const params = new URLSearchParams(window.location.search);
             const teacherId = params.get('teacherId');
             const container = document.getElementById('profile-content');
@@ -43,7 +47,12 @@
                 return;
             }
 
-            fetch(`/api/teacher/public-profile/${encodeURIComponent(teacherId)}`)
+            const tok = (window.RemoedAuthToken && RemoedAuthToken.getTeacherToken && RemoedAuthToken.getTeacherToken()) ||
+                RemoedTeacherSession.getToken() ||
+                '';
+            fetch(`/api/teacher/public-profile/${encodeURIComponent(teacherId)}`, {
+                headers: tok ? { Authorization: 'Bearer ' + tok } : {},
+            })
                 .then(async (r) => {
                     const text = await r.text().catch(() => '');
                     let data = {};

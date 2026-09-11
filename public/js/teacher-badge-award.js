@@ -13,7 +13,19 @@
   }
 
   function getToken() {
-    return localStorage.getItem('token') || '';
+    if (global.RemoedAuthToken && typeof global.RemoedAuthToken.getTeacherToken === 'function') {
+      return global.RemoedAuthToken.getTeacherToken() || '';
+    }
+    if (global.RemoedTeacherSession && typeof global.RemoedTeacherSession.getToken === 'function') {
+      return global.RemoedTeacherSession.getToken() || '';
+    }
+    return (
+      localStorage.getItem('remoed_teacher_token') ||
+      localStorage.getItem('remoed_teacher_auth') ||
+      localStorage.getItem('remoed_user_token') ||
+      localStorage.getItem('token') ||
+      ''
+    );
   }
 
   async function loadCatalog() {

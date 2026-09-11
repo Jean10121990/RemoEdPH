@@ -7,6 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="js/user-session.js"></script>
     <script src="js/security-guard.js?v=3"></script>
+    <script src="js/remoed-auth-token.js?v=1"></script>
     <title>Online Classroom</title>
     <link rel="stylesheet" href="modern-styles.css">
     <!-- PDF.js library for custom PDF viewer -->
@@ -180,7 +181,51 @@
     <script>
     // --- Setup ---
     const SIGNALING_SERVER_URL = window.location.origin || '';
-    const socket = io(SIGNALING_SERVER_URL);
+    function resolveVideoRoomAuthToken() {
+      try {
+        if (window.RemoedAuthToken && RemoedAuthToken.resolveClassroomToken) {
+          const t = RemoedAuthToken.resolveClassroomToken();
+          if (t) return t;
+        }
+        if (window.RemoedSecurityGuard && RemoedSecurityGuard.getToken) {
+          const t = RemoedSecurityGuard.getToken();
+          if (t) return t;
+        }
+      } catch (_e) {}
+      return (
+        localStorage.getItem('remoed_teacher_token') ||
+        localStorage.getItem('remoed_student_token') ||
+        localStorage.getItem('remoed_user_token') ||
+        localStorage.getItem('token') ||
+        ''
+      );
+    }
+    function resolveVideoRoomRole() {
+      try {
+        const typeParam = String(new URLSearchParams(window.location.search).get('type') || '')
+          .trim()
+          .toLowerCase();
+        if (typeParam === 'teacher' || typeParam === 'student') return typeParam;
+      } catch (_e) {}
+      const ut = String(localStorage.getItem('userType') || localStorage.getItem('userRole') || '')
+        .trim()
+        .toLowerCase();
+      if (ut === 'teacher' || ut === 'student') return ut;
+      if (localStorage.getItem('remoed_teacher_token') && !localStorage.getItem('remoed_student_token')) {
+        return 'teacher';
+      }
+      if (localStorage.getItem('studentId') || localStorage.getItem('remoed_student_token')) {
+        return 'student';
+      }
+      if (localStorage.getItem('teacherId')) return 'teacher';
+      return 'student';
+    }
+    const __vrAuthToken = resolveVideoRoomAuthToken();
+    const socket = io(SIGNALING_SERVER_URL, {
+      auth: { token: __vrAuthToken },
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+    });
     const localVideo = document.getElementById('local-video');
     const remoteVideo = document.getElementById('remote-video');
     const chatMessages = document.getElementById('chat-messages');
@@ -216,7 +261,7 @@
         try {
             localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
             localVideo.srcObject = localStream;
-            const joinUserType = localStorage.getItem('userType') || 'teacher';
+            const joinUserType = resolveVideoRoomRole();
             const joinUserId = localStorage.getItem('teacherId') || localStorage.getItem('studentId') || localStorage.getItem('username') || 'guest';
             const joinUsername = localStorage.getItem('username') || joinUserId;
             socket.emit('join', { room, userType: joinUserType, userId: joinUserId, username: joinUsername });
@@ -1230,7 +1275,7 @@
                 window.currentPptOverlay.destroy();
             }
             if (typeof RemoedPresentationOverlay !== 'undefined') {
-                const role = (localStorage.getItem('userType') || 'teacher').toLowerCase();
+                const role = resolveVideoRoomRole();
                 window.currentPptOverlay = RemoedPresentationOverlay.mountStackedPresentation(viewer, {
                     material: material,
                     socket: socket,

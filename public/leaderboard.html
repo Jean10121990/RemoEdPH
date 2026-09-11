@@ -14,6 +14,38 @@
         var ut = (localStorage.getItem('userType') || localStorage.getItem('userRole') || '').toLowerCase();
         if (ut === 'admin') role = 'admin';
         else if (ut === 'teacher') role = 'teacher';
+        else if (ut === 'student') role = 'student';
+        else if (window.RemoedSecurityGuard && typeof window.RemoedSecurityGuard.getToken === 'function') {
+          // JWT-infer when userType missing (SecurityGuard portalKind heals storage)
+          var tok = window.RemoedSecurityGuard.getToken() || '';
+          var teacherTok = localStorage.getItem('remoed_teacher_token') || '';
+          var studentTok = localStorage.getItem('remoed_student_token') || '';
+          function roleFromJwt(token) {
+            try {
+              if (!token || String(token).split('.').length < 2) return '';
+              var json = String(token).split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+              while (json.length % 4) json += '=';
+              var pl = JSON.parse(atob(json));
+              var r = String(pl.userRole || pl.userType || pl.role || '').trim().toLowerCase();
+              if (r === 'teacher' || (pl.teacherId && !pl.studentId)) return 'teacher';
+              if (r === 'student' || (pl.studentId && !pl.teacherId)) return 'student';
+              if (pl.isAdmin === true || r === 'admin') return 'admin';
+              return r;
+            } catch (e) { return ''; }
+          }
+          var inferred =
+            roleFromJwt(teacherTok) ||
+            roleFromJwt(studentTok) ||
+            roleFromJwt(tok) ||
+            '';
+          if (inferred === 'admin' || inferred === 'teacher' || inferred === 'student') {
+            role = inferred;
+            try {
+              localStorage.setItem('userType', role);
+              localStorage.setItem('userRole', role);
+            } catch (e2) {}
+          }
+        }
       } catch (e) {}
       window.__LB_ROLE__ = role;
       document.documentElement.classList.add(
@@ -26,7 +58,7 @@
   <link rel="stylesheet" href="css/teacher-sidebar.css?v=logout-pin-2" />
   <link rel="stylesheet" href="css/portal-chrome-compact.css?v=logout-pin-2" />
   <link rel="stylesheet" href="css/student-portal-layout.css?v=lb-sidebar-1" id="student-layout-css" />
-  <link rel="stylesheet" href="css/student-sidebar.css?v=lb-sidebar-1" id="student-sidebar-css" />
+  <link rel="stylesheet" href="css/student-sidebar.css?v=logout-pin-2" id="student-sidebar-css" />
   <link rel="stylesheet" href="css/teacher-brand-overrides.css?v=mint-forest-1" id="teacher-brand-css" />
   <link rel="stylesheet" href="css/leaderboard.css?v=lb-admin-2" />
   <style>
@@ -415,11 +447,11 @@
       body.classList.remove('teacher-portal', 'admin-portal');
       root.id = 'student-sidebar-root';
       var ss = document.createElement('script');
-      ss.src = 'js/student-sidebar.js?v=lb-nav-2';
+      ss.src = 'js/student-sidebar.js?v=logout-pin-2';
       ss.onload = function () {
         StudentSidebar.render('student-sidebar-root', 'leaderboard');
         var h = document.createElement('script');
-        h.src = 'js/student-page-header.js?v=lb-nav-2';
+        h.src = 'js/student-page-header.js?v=logout-pin-2';
         h.onload = function () {
           if (window.StudentPageHeader) StudentPageHeader.render('leaderboard');
         };

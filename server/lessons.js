@@ -14,6 +14,7 @@ const Curriculum = require('./models/Curriculum');
 const Lesson = require('./models/Lesson');
 // LessonFile model removed - files are now embedded in Lesson model
 const LessonProgress = require('./models/LessonProgress');
+const studentBadgeService = require('./services/studentBadgeService');
 // Import auth middleware
 const { isTokenBlacklisted } = require('./services/jwtBlacklist');
 const {
@@ -1394,7 +1395,10 @@ router.delete('/lesson-file/:fileId', authenticateToken, requireTeacher, async (
 router.get('/progress/:studentId', authenticateToken, async (req, res) => {
   try {
     const { studentId } = req.params;
-    const progress = await LessonProgress.find({ studentId })
+    const aliases = await studentBadgeService.resolveStudentIdAliases(studentId);
+    const progress = await LessonProgress.find({
+      studentId: { $in: aliases.length ? aliases : [studentId] },
+    })
       .populate('lessonId', 'title lessonNumber')
       .populate('curriculumId', 'title level')
       .sort({ createdAt: -1 });
@@ -1433,10 +1437,20 @@ router.post('/progress/update', authenticateToken, requireTeacher, async (req, r
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
+    const aliases = await studentBadgeService.resolveStudentIdAliases(studentId);
+    const aliasList = aliases.length ? aliases : [studentId];
+    const canonicalSid =
+      (await studentBadgeService.canonicalBookingStudentId(studentId)) || String(studentId);
+
+    const existingProgress = await LessonProgress.findOne({
+      studentId: { $in: aliasList },
+      lessonId,
+    }).select('_id');
+
     const progress = await LessonProgress.findOneAndUpdate(
-      { studentId, lessonId },
+      existingProgress ? { _id: existingProgress._id } : { studentId: canonicalSid, lessonId },
       {
-        studentId,
+        studentId: canonicalSid,
         lessonId,
         curriculumId,
         bookingId,
@@ -1471,9 +1485,10 @@ router.get('/curriculum/:curriculumId/full', authenticateToken, async (req, res)
 
     let progress = [];
     if (studentId) {
-      progress = await LessonProgress.find({ 
-        studentId, 
-        curriculumId 
+      const aliases = await studentBadgeService.resolveStudentIdAliases(studentId);
+      progress = await LessonProgress.find({
+        studentId: { $in: aliases.length ? aliases : [studentId] },
+        curriculumId,
       }).select('lessonId status completedAt');
     }
 

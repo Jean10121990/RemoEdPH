@@ -74,14 +74,23 @@
 
   function handleMissingAuth() {
     try {
-      if (global.RemoedUserSession && typeof global.RemoedUserSession.clearUserToken === 'function') {
+      if (global.RemoedAuthToken && typeof global.RemoedAuthToken.clearSessionTokens === 'function') {
+        global.RemoedAuthToken.clearSessionTokens();
+      } else if (global.RemoedUserSession && typeof global.RemoedUserSession.clearUserToken === 'function') {
         global.RemoedUserSession.clearUserToken();
+      } else {
+        try {
+          global.localStorage.removeItem('remoed_teacher_token');
+          global.localStorage.removeItem('remoed_teacher_auth');
+          global.localStorage.removeItem('remoed_user_token');
+          global.localStorage.removeItem('token');
+          global.localStorage.removeItem('userType');
+          global.localStorage.removeItem('userRole');
+          global.sessionStorage.removeItem('remoed_teacher_token');
+          global.sessionStorage.removeItem('token');
+        } catch (_e0) {}
       }
     } catch (_e) {}
-    try {
-      global.localStorage.clear();
-      global.sessionStorage.clear();
-    } catch (_e2) {}
     try {
       global.location.replace('index.html');
     } catch (_e3) {

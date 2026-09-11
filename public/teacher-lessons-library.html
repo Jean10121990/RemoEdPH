@@ -7,13 +7,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="js/security-guard.js?v=1"></script>
     <title>Lessons Library - RemoEdPH</title>
-    <link rel="stylesheet" href="modern-styles.css">
-    <link rel="stylesheet" href="css/teacher-sidebar.css?v=mint-forest-1">
+<link rel="stylesheet" href="css/teacher-sidebar.css?v=logout-pin-2">
     <link rel="stylesheet" href="css/global-portal.css">
 <!-- Remo AI Chatbot Styles -->
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="css/portal-chrome-compact.css?v=mint-forest-1">
     <script src="js/user-session.js"></script>
+    <script src="js/teacher-session-gate.js?v=2"></script>
+    <script src="js/remoed-auth-token.js?v=1"></script>
     <style>
         .page-teacher-lessons-library .preview-skeleton {
             min-height: 280px;
@@ -108,7 +109,7 @@
 <body class="page-teacher-lessons-library teacher-portal">
     <div class="remoed-main">
     <div id="teacher-sidebar-root"></div>
-    <script src="js/teacher-sidebar.js?v=lb-nav-2"></script>
+    <script src="js/teacher-sidebar.js?v=logout-pin-2"></script>
     <script src="js/teacher-page-header.js?v=mint-forest-1"></script>
         <script>
             TeacherSidebar.render('teacher-sidebar-root', 'lessons-library');
@@ -259,10 +260,19 @@
         let lastLessonFilesList = [];
         let pdfPreviewLoadTimer = null;
         let lastPreviewViewBtn = null;
-        const token = localStorage.getItem('token');
+        const token = ((window.RemoedAuthToken&&RemoedAuthToken.getTeacherToken())||(window.RemoedTeacherSession&&RemoedTeacherSession.getToken())||localStorage.getItem('remoed_teacher_token')||'');
         const teacherId = localStorage.getItem('teacherId');
 
         const lessonFileJsonInflight = new Map();
+
+        // Check authentication
+        if (!window.RemoedTeacherSession || !RemoedTeacherSession.requireTeacher({ redirect: '/login/' })) {
+            throw new Error('Teachers only');
+        }
+        if (!token || !teacherId) {
+            if (window.RemoedAuthToken) RemoedAuthToken.clearSessionTokens();
+            window.location.href = '/login/';
+        }
 
         function normalizeLessonFileId(raw) {
             if (raw == null || raw === '') return '';
@@ -318,7 +328,7 @@
         async function fetchLessonFileJson(fileId) {
             const id = normalizeLessonFileId(fileId);
             if (lessonFileJsonInflight.has(id)) return lessonFileJsonInflight.get(id);
-            const currentToken = localStorage.getItem('token') || token;
+            const currentToken = ((window.RemoedAuthToken&&RemoedAuthToken.getTeacherToken())||(window.RemoedTeacherSession&&RemoedTeacherSession.getToken())||localStorage.getItem('remoed_teacher_token')||'') || token;
             const p = (async () => {
                 const response = await fetch(`/api/lessons/lesson-file/${id}?token=${encodeURIComponent(currentToken)}`, {
                     headers: {
@@ -347,7 +357,7 @@
 
         function buildLessonFileRawUrl(fileId, opts) {
             const id = normalizeLessonFileId(fileId);
-            const currentToken = localStorage.getItem('token') || token;
+            const currentToken = ((window.RemoedAuthToken&&RemoedAuthToken.getTeacherToken())||(window.RemoedTeacherSession&&RemoedTeacherSession.getToken())||localStorage.getItem('remoed_teacher_token')||'') || token;
             const download = opts && opts.download;
             let u = `/api/lessons/lesson-file/${encodeURIComponent(id)}/raw?token=${encodeURIComponent(currentToken)}`;
             if (download) u += '&download=1';
@@ -519,11 +529,6 @@
             });
         }
 
-        // Check authentication
-        if (!token || !teacherId) {
-            window.location.href = '/login/';
-        }
-
         // Load user info
         document.addEventListener('DOMContentLoaded', () => {
             loadUserInfo();
@@ -588,7 +593,7 @@
             if (!lessonId) throw new Error('No lesson selected');
             if (!trimmed) throw new Error('Lesson title is required');
 
-            const currentToken = localStorage.getItem('token') || token;
+            const currentToken = ((window.RemoedAuthToken&&RemoedAuthToken.getTeacherToken())||(window.RemoedTeacherSession&&RemoedTeacherSession.getToken())||localStorage.getItem('remoed_teacher_token')||'') || token;
             if (!currentToken) throw new Error('Authentication required. Please log in again.');
 
             const response = await fetch(`/api/lessons/lesson/${encodeURIComponent(lessonId)}`, {
@@ -781,7 +786,7 @@
             saveBtn.textContent = 'Saving...';
 
             try {
-                const currentToken = localStorage.getItem('token') || token;
+                const currentToken = ((window.RemoedAuthToken&&RemoedAuthToken.getTeacherToken())||(window.RemoedTeacherSession&&RemoedTeacherSession.getToken())||localStorage.getItem('remoed_teacher_token')||'') || token;
                 if (!currentToken) {
                     showAlert('error', 'Authentication required. Please log in again.');
                     return;
@@ -823,7 +828,7 @@
         async function loadUserInfo() {
             // First, try to load from API to get the actual firstName
             try {
-                const token = localStorage.getItem('token');
+                const token = ((window.RemoedAuthToken&&RemoedAuthToken.getTeacherToken())||(window.RemoedTeacherSession&&RemoedTeacherSession.getToken())||localStorage.getItem('remoed_teacher_token')||'');
                 if (token) {
                     const response = await fetch('/api/teacher/profile', {
                         method: 'GET',
@@ -881,7 +886,7 @@
         async function loadCurricula() {
             try {
                 // Get fresh token in case it was updated
-                const currentToken = localStorage.getItem('token') || token;
+                const currentToken = ((window.RemoedAuthToken&&RemoedAuthToken.getTeacherToken())||(window.RemoedTeacherSession&&RemoedTeacherSession.getToken())||localStorage.getItem('remoed_teacher_token')||'') || token;
                 if (!currentToken) {
                     showAlert('error', 'Authentication required. Please log in again.');
                     return;
@@ -933,7 +938,7 @@
             }
 
             try {
-                const currentToken = localStorage.getItem('token') || token;
+                const currentToken = ((window.RemoedAuthToken&&RemoedAuthToken.getTeacherToken())||(window.RemoedTeacherSession&&RemoedTeacherSession.getToken())||localStorage.getItem('remoed_teacher_token')||'') || token;
                 const response = await fetch(`/api/lessons/curriculum/${curriculumId}/lessons?token=${encodeURIComponent(currentToken)}`, {
                     headers: {
                         'Authorization': `Bearer ${currentToken}`,
@@ -989,7 +994,7 @@
 
         async function fetchLessonFiles(lessonId) {
             try {
-                const currentToken = localStorage.getItem('token') || token;
+                const currentToken = ((window.RemoedAuthToken&&RemoedAuthToken.getTeacherToken())||(window.RemoedTeacherSession&&RemoedTeacherSession.getToken())||localStorage.getItem('remoed_teacher_token')||'') || token;
                 const response = await fetch(`/api/lessons/lesson/${lessonId}/files?token=${encodeURIComponent(currentToken)}`, {
                     headers: {
                         'Authorization': `Bearer ${currentToken}`,
@@ -1115,7 +1120,7 @@
             try {
                 for (const file of selectedFiles) {
                     const fileType = getFileType(file.name);
-                    const currentToken = localStorage.getItem('token') || token;
+                    const currentToken = ((window.RemoedAuthToken&&RemoedAuthToken.getTeacherToken())||(window.RemoedTeacherSession&&RemoedTeacherSession.getToken())||localStorage.getItem('remoed_teacher_token')||'') || token;
                     const form = new FormData();
                     form.append('file', file, file.name);
                     form.append('fileName', file.name);
@@ -1226,7 +1231,7 @@
                         <p>This can take a moment the first time.</p>
                     </div>
                 `;
-                const tok = localStorage.getItem('token') || '';
+                const tok = ((window.RemoedAuthToken&&RemoedAuthToken.getTeacherToken())||(window.RemoedTeacherSession&&RemoedTeacherSession.getToken())||localStorage.getItem('remoed_teacher_token')||'') || '';
                 function absUrl(u) {
                     if (!u) return '';
                     return String(u).startsWith('http') ? String(u) : (window.location.origin + (String(u).startsWith('/') ? u : '/' + u));
@@ -1550,7 +1555,7 @@
                     return;
                 }
 
-                const currentToken = localStorage.getItem('token') || token;
+                const currentToken = ((window.RemoedAuthToken&&RemoedAuthToken.getTeacherToken())||(window.RemoedTeacherSession&&RemoedTeacherSession.getToken())||localStorage.getItem('remoed_teacher_token')||'') || token;
                 const response = await fetch(`/api/lessons/lesson-file/${fileId}?token=${encodeURIComponent(currentToken)}`, {
                     headers: {
                         'Authorization': `Bearer ${currentToken}`,
@@ -1593,7 +1598,12 @@
 
         // Logout
         document.getElementById('logout-nav').addEventListener('click', () => {
-            localStorage.clear();
+            if (window.RemoedUserSession && typeof RemoedUserSession.logoutToUnifiedLogin === 'function') {
+                RemoedUserSession.logoutToUnifiedLogin();
+                return;
+            }
+            if (window.RemoedAuthToken) RemoedAuthToken.clearSessionTokens();
+            else if (window.RemoedUserSession) RemoedUserSession.clearUserToken();
             window.location.href = '/login/';
         });
     </script>
