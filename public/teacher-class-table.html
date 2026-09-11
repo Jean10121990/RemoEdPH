@@ -19,6 +19,27 @@
     
     const username = localStorage.getItem('remoedUsername') || 'Teacher';
     const teacherId = localStorage.getItem('teacherId');
+
+    function resolveTeacherPortalToken() {
+      try {
+        if (window.RemoedAuthToken && typeof window.RemoedAuthToken.getTeacherToken === 'function') {
+          const t = window.RemoedAuthToken.getTeacherToken();
+          if (t) return t;
+        }
+      } catch (_e) {}
+      try {
+        if (window.RemoedTeacherSession && typeof window.RemoedTeacherSession.getToken === 'function') {
+          const t = window.RemoedTeacherSession.getToken();
+          if (t) return t;
+        }
+      } catch (_e2) {}
+      return (
+        localStorage.getItem('remoed_teacher_token') ||
+        localStorage.getItem('remoed_user_token') ||
+        localStorage.getItem('token') ||
+        ''
+      );
+    }
     
       const avatarTextEl = document.getElementById('avatar-text');
       if (avatarTextEl) avatarTextEl.textContent = username[0].toUpperCase();
@@ -550,7 +571,7 @@
       const wrap = document.getElementById('ctf-pending-feedback-banner');
       const textEl = document.getElementById('ctf-pending-feedback-banner-text');
       if (!wrap || !textEl) return;
-      const token = localStorage.getItem('token');
+      const token = resolveTeacherPortalToken();
       const tid = localStorage.getItem('teacherId');
       if (!token || !tid) {
         pendingFeedbackCount = 0;
@@ -2479,7 +2500,7 @@
         
         // Check if feedback already exists for this booking
         try {
-            const token = localStorage.getItem('token');
+            const token = resolveTeacherPortalToken();
             if (token) {
                 const response = await fetch(`/api/feedback/check/${currentBooking._id}`, {
                     headers: {
@@ -2510,7 +2531,7 @@
         const comment = document.getElementById('feedback-comment').value.trim();
         
         try {
-            const token = localStorage.getItem('token');
+            const token = resolveTeacherPortalToken();
             if (!token) {
                 showNotification('Authentication required', 'error');
                 return;

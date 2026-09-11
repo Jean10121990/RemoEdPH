@@ -790,6 +790,37 @@ const {
   finalizeBookingAfterTeacherFeedbackWrap,
 } = require('./services/teacherClassFinalize');
 
+function resolveLessonDateFromBooking(booking) {
+  if (!booking) return new Date();
+  if (booking.dateTimeUtc) {
+    const fromUtc = new Date(booking.dateTimeUtc);
+    if (!Number.isNaN(fromUtc.getTime())) return fromUtc;
+  }
+  const dateStr = String(booking.date || '').trim();
+  const dateOnly = /^\d{4}-\d{2}-\d{2}/.test(dateStr) ? dateStr.slice(0, 10) : dateStr;
+  let timeStr = String(booking.time || '12:00').trim();
+  if (/^\d{1,2}:\d{2}$/.test(timeStr)) timeStr += ':00';
+  if (!/^\d{1,2}:\d{2}:\d{2}/.test(timeStr)) timeStr = '12:00:00';
+  const parsed = new Date(`${dateOnly}T${timeStr}`);
+  if (!Number.isNaN(parsed.getTime())) return parsed;
+  return new Date();
+}
+
+function teacherOwnsBooking(req, booking) {
+  const bid = String((booking && booking.teacherId) || '').trim();
+  if (!bid) return false;
+  const ids = [
+    req.teacher && req.teacher.teacherId,
+    req.teacher && req.teacher.username,
+    req.teacher && req.teacher.email,
+    req.user && req.user.teacherId,
+    req.user && req.user.username,
+  ]
+    .map((v) => String(v || '').trim())
+    .filter(Boolean);
+  return ids.includes(bid);
+}
+
 // Mark student as absent (legacy route)
 app.post('/api/booking/:bookingId/mark-student-absent', verifyToken, requireTeacher, async (req, res) => {
   try {
@@ -1129,7 +1160,7 @@ app.get('/api/feedback/check/:bookingId', verifyToken, requireTeacher, async (re
     if (!booking) {
       return res.status(404).json({ success: false, error: 'Booking not found' });
     }
-    if (booking.teacherId !== req.user.teacherId) {
+    if (!teacherOwnsBooking(req, booking)) {
       return res.status(403).json({ success: false, error: 'Access denied' });
     }
 
@@ -1169,7 +1200,7 @@ app.get('/api/feedback/check/:bookingId', verifyToken, requireTeacher, async (re
 // Submit teacher→student wrap-up feedback; then finalize credits + fee eligibility in one transaction path
 app.post('/api/feedback/submit', verifyToken, requireTeacher, async (req, res) => {
   try {
-    const { bookingId, teacherId, studentId, rating, comment, submittedAt } = req.body;
+    const { bookingId, studentId, rating, comment, submittedAt } = req.body;
 
     if (!bookingId || !rating || rating < 1 || rating > 5) {
       return res.status(400).json({
@@ -1177,15 +1208,6 @@ app.post('/api/feedback/submit', verifyToken, requireTeacher, async (req, res) =
         error: 'Missing required fields or invalid rating',
       });
     }
-
-    console.log('📝 Teacher feedback submission:', {
-      bookingId,
-      teacherId,
-      studentId,
-      rating,
-      comment: comment ? comment.substring(0, 50) + '...' : 'No comment',
-      submittedAt,
-    });
 
     const booking = await Booking.findById(bookingId);
     if (!booking) {
@@ -1195,14 +1217,16 @@ app.post('/api/feedback/submit', verifyToken, requireTeacher, async (req, res) =
       });
     }
 
-    if (booking.teacherId !== teacherId) {
+    if (!teacherOwnsBooking(req, booking)) {
       return res.status(403).json({
         success: false,
         error: 'Access denied. This booking does not belong to you.',
       });
     }
 
-    const effectiveStudentId = String(studentId || booking.studentId || '').trim();
+    const teacherId = String(booking.teacherId || '').trim();
+
+    const effectiveStudentId = String(booking.studentId || studentId || '').trim();
     if (!effectiveStudentId) {
       return res.status(400).json({
         success: false,
@@ -1217,16 +1241,19 @@ app.post('/api/feedback/submit', verifyToken, requireTeacher, async (req, res) =
       });
     }
 
-    const timePart =
-      booking.time && String(booking.time).trim().length <= 5
-        ? `${String(booking.time).trim()}:00`
-        : String(booking.time || '12:00:00');
-    const lessonDate = new Date(`${booking.date}T${timePart}`);
+    const lessonDate = resolveLessonDateFromBooking(booking);
 
     let existingTeacherFeedback = await Feedback.findOne({
       bookingId: String(bookingId),
       feedbackRole: FEEDBACK_ROLE_TEACHER_TO_STUDENT,
     });
+    if (!existingTeacherFeedback) {
+      existingTeacherFeedback = await Feedback.findOne({
+        bookingId: String(bookingId),
+        teacherId,
+        $or: [{ feedbackRole: { $exists: false } }, { feedbackRole: null }],
+      });
+    }
 
     let feedback;
     if (existingTeacherFeedback) {
@@ -1234,6 +1261,9 @@ app.post('/api/feedback/submit', verifyToken, requireTeacher, async (req, res) =
       existingTeacherFeedback.comment = comment || '';
       existingTeacherFeedback.submittedAt = submittedAt || new Date();
       existingTeacherFeedback.studentId = effectiveStudentId;
+      existingTeacherFeedback.teacherId = teacherId;
+      existingTeacherFeedback.lessonDate = lessonDate;
+      existingTeacherFeedback.feedbackRole = FEEDBACK_ROLE_TEACHER_TO_STUDENT;
       feedback = await existingTeacherFeedback.save();
       console.log('✅ Teacher feedback updated successfully');
     } else {
@@ -1306,9 +1336,15 @@ app.post('/api/feedback/submit', verifyToken, requireTeacher, async (req, res) =
     });
   } catch (error) {
     console.error('❌ Error submitting teacher feedback:', error);
-    res.status(500).json({
+    const msg = String((error && error.message) || '');
+    const validation = error && (error.name === 'ValidationError' || error.name === 'CastError');
+    res.status(validation ? 400 : 500).json({
       success: false,
-      error: 'Failed to submit feedback',
+      error: validation
+        ? 'Could not save feedback. Check the rating and try again.'
+        : msg && msg !== 'Failed to submit feedback'
+          ? msg
+          : 'Failed to submit feedback',
     });
   }
 });

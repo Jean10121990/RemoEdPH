@@ -30,6 +30,19 @@ async function emitBookingsUpdatedForTeacher(teacherId, booking) {
   }
 }
 
+async function saveBookingForFinalize(booking, session) {
+  try {
+    return session ? await booking.save({ session }) : await booking.save();
+  } catch (err) {
+    if (err && err.name === 'ValidationError' && err.errors && err.errors.studentLevel) {
+      const { normalizeCurriculumLevel, DEFAULT_CURRICULUM_LEVEL } = require('../config/curriculumLevels');
+      booking.studentLevel = normalizeCurriculumLevel(booking.studentLevel) || DEFAULT_CURRICULUM_LEVEL;
+      return session ? await booking.save({ session }) : await booking.save();
+    }
+    throw err;
+  }
+}
+
 /**
  * Marks booking completed for fees and consumes reserved credit — only after teacher wrap-up feedback exists.
  */
@@ -73,7 +86,7 @@ async function finalizeBookingAfterTeacherFeedbackWrap(booking, teacherId) {
           actorType: 'teacher',
           actorId: String(teacherId || ''),
         });
-        await booking.save({ session });
+        await saveBookingForFinalize(booking, session);
       });
     } catch (txnErr) {
       if (isTransactionUnsupportedError(txnErr)) {
@@ -81,7 +94,7 @@ async function finalizeBookingAfterTeacherFeedbackWrap(booking, teacherId) {
           actorType: 'teacher',
           actorId: String(teacherId || ''),
         });
-        await booking.save();
+        await saveBookingForFinalize(booking);
       } else {
         throw txnErr;
       }
@@ -95,7 +108,7 @@ async function finalizeBookingAfterTeacherFeedbackWrap(booking, teacherId) {
         actorId: String(teacherId || ''),
       });
     }
-    await booking.save();
+    await saveBookingForFinalize(booking);
   }
 
   // Persist LessonProgress so student journey / dashboard stay in sync with finalized classes

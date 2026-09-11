@@ -1,16 +1,24 @@
 const Student = require('../models/Student');
 const CreditAudit = require('../models/CreditAudit');
+const { isMongoObjectId } = require('../utils/mongoObjectId');
 
 async function findStudentForBooking(booking) {
   if (!booking || !booking.studentId) return null;
-  return Student.findOne({
-    $or: [{ username: booking.studentId }, { email: booking.studentId }],
-  });
+  const raw = String(booking.studentId).trim();
+  if (!raw || raw === 'undefined' || raw === 'null') return null;
+  const or = [{ username: raw }, { email: raw }, { email: raw.toLowerCase() }];
+  if (isMongoObjectId(raw)) or.push({ _id: raw });
+  return Student.findOne({ $or: or });
+}
+
+function attachSession(query, session) {
+  return session ? query.session(session) : query;
 }
 
 /**
- * Deduct exactly 1 credit when a class is completed or student is marked absent.
- * No reserve-on-book: deducts directly from creditBalance.
+ * Deduct 1 unused credit when a class is completed or marked absent.
+ * If unused balance is already 0 (expiry, trial, race), still mark the booking
+ * consumed so teacher wrap-up is never blocked for a class that already ran.
  * Mutates booking in memory; caller must persist the booking document.
  */
 async function deductCreditOnClassOutcome(booking, descriptionPrefix = 'Class finished', opts = {}) {
@@ -22,18 +30,16 @@ async function deductCreditOnClassOutcome(booking, descriptionPrefix = 'Class fi
   const now = new Date();
   const isTrial = !!booking.isAssessmentFreeTrialBooking;
   const balance = Math.max(0, Number(student.creditBalance) || 0);
-
-  if (!isTrial && balance < 1) {
-    const err = new Error('No credits available for this booking');
-    err.code = 'NO_CREDITS';
-    throw err;
-  }
-
+  const session = opts && opts.session ? opts.session : undefined;
   const planLabel = student.subscriptionPlan || '';
   const desc = `${descriptionPrefix} (${booking.date} ${booking.time})`;
-  const balanceAfter = Math.max(0, balance - (isTrial && balance < 1 ? 0 : 1));
 
-  const session = opts && opts.session ? opts.session : undefined;
+  /**
+   * Booked classes must still finalize after unused credits expire (balance 0).
+   * Do not block teacher wrap-up / absent marking — the lesson already happened.
+   */
+  const skipBalanceDecrement = balance < 1;
+  const balanceAfter = skipBalanceDecrement ? balance : Math.max(0, balance - 1);
 
   if (isTrial && balance < 1) {
     // Trial class with no paid balance: finalize booking flags only, no balance decrement.
@@ -43,7 +49,41 @@ async function deductCreditOnClassOutcome(booking, descriptionPrefix = 'Class fi
       assessmentTrialCreditActive: false,
       hasFreeTrial: false,
     };
-    await Student.updateOne({ _id: student._id }, { $set: trialSet }).session(session || null);
+    await attachSession(Student.updateOne({ _id: student._id }, { $set: trialSet }), session);
+  } else if (balance < 1) {
+    console.warn(
+      '[credits] wrap-up with 0 unused credits; finalizing booking without deduct',
+      String(booking._id || '')
+    );
+    await attachSession(
+      Student.updateOne(
+        { _id: student._id },
+        {
+          $inc: { usedCredits: 1 },
+          $push: {
+            creditTransactions: {
+              date: now,
+              type: 'use',
+              plan: planLabel,
+              description: `${desc} (booked class; unused credits already 0)`,
+              credits: 0,
+              balanceAfter: 0,
+              amountPaid: 0,
+            },
+            creditHistory: {
+              date: now,
+              plan: desc,
+              credits: 0,
+              amountPaid: 0,
+              paymentId: '',
+              entryType: 'usage',
+              balanceAfter: 0,
+            },
+          },
+        }
+      ),
+      session
+    );
   } else {
     const update = {
       $inc: { creditBalance: -1, usedCredits: 1 },
@@ -77,15 +117,16 @@ async function deductCreditOnClassOutcome(booking, descriptionPrefix = 'Class fi
       };
     }
 
-    const result = await Student.updateOne(
-      { _id: student._id, creditBalance: { $gte: 1 } },
-      update
-    ).session(session || null);
+    const result = await attachSession(
+      Student.updateOne({ _id: student._id, creditBalance: { $gte: 1 } }, update),
+      session
+    );
 
     if (!result || result.modifiedCount === 0) {
-      const err = new Error('No credits available for this booking');
-      err.code = 'NO_CREDITS';
-      throw err;
+      console.warn(
+        '[credits] deduct raced to 0 balance; finalizing without decrement',
+        String(booking._id || '')
+      );
     }
   }
 
@@ -97,7 +138,7 @@ async function deductCreditOnClassOutcome(booking, descriptionPrefix = 'Class fi
         {
           studentId: student._id,
           bookingId: booking._id || null,
-          deltaCredits: isTrial && balance < 1 ? 0 : -1,
+          deltaCredits: skipBalanceDecrement ? 0 : -1,
           reason: descriptionPrefix,
           description: desc,
           actorType,
@@ -106,6 +147,7 @@ async function deductCreditOnClassOutcome(booking, descriptionPrefix = 'Class fi
             date: booking.date,
             time: booking.time,
             wasTrial: !!booking.isAssessmentFreeTrialBooking,
+            skippedDecrement: !!skipBalanceDecrement,
           },
         },
       ],

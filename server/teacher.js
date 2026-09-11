@@ -1997,6 +1997,7 @@ router.get('/booking/:bookingId', verifyToken, requireTeacher, async (req, res) 
         lessonId: booking.lessonId,
         ...(resolvedLessonId ? { resolvedLessonId } : {}),
         studentId: booking.studentId,
+        teacherId: booking.teacherId,
         studentLevel: booking.studentLevel,
         studentName: studentName,
         studentNickname: (student && student.nickname) || '',
