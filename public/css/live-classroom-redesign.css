@@ -447,6 +447,15 @@ body.page-live-classroom .remoed-ppt-toolbar {
   filter: brightness(1.04);
 }
 
+body.page-live-classroom .lc-stage-video-close {
+  background: linear-gradient(135deg, var(--lc-green-deep), var(--lc-green)) !important;
+  box-shadow: 0 8px 18px -10px rgba(46, 154, 40, 0.55);
+}
+
+body.page-live-classroom .lc-stage-video-toolbar {
+  background: #1a2e26 !important;
+}
+
 @media (max-width: 768px) {
   body.page-live-classroom .top-bar {
     padding-left: 14px !important;

@@ -1139,12 +1139,75 @@ body.page-live-classroom.lc-role-student .lc-rewards-menu {
   position: relative;
   width: 100%;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
   background: #0b1220;
   border-radius: 10px;
   overflow: hidden;
   min-height: 220px;
+}
+
+.lc-stage-video-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  background: #132033;
+  flex-shrink: 0;
+}
+
+.lc-stage-video-title {
+  color: #fff;
+  font-size: 0.88rem;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.lc-stage-video-close {
+  appearance: none;
+  border: none;
+  flex-shrink: 0;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  color: #fff;
+  background: #47bc3e;
+}
+
+.lc-stage-video-close:hover {
+  filter: brightness(0.96);
+}
+
+.lc-stage-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 280px;
+  padding: 28px;
+  text-align: center;
+  color: #334155;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.lc-stage-empty__title {
+  font-weight: 800;
+  font-size: 1.1rem;
+  margin: 0 0 8px;
+}
+
+.lc-stage-empty__lead {
+  margin: 0;
+  color: #64748b;
+  line-height: 1.5;
+  max-width: 420px;
 }
 
 .lc-stage-video {

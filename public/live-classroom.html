@@ -55,8 +55,8 @@
   </script>
     <link rel="stylesheet" href="style.css">
   <!-- After global styles so chat / layout rules are not overridden -->
-  <link rel="stylesheet" href="live-classroom.css?v=lc-role-tiles-1" />
-  <link rel="stylesheet" href="css/live-classroom-redesign.css?v=mint-forest-2" />
+  <link rel="stylesheet" href="live-classroom.css?v=lc-video-close-1" />
+  <link rel="stylesheet" href="css/live-classroom-redesign.css?v=mint-forest-3" />
   <link rel="stylesheet" href="css/student-badges.css?v=2" />
 </head>
 <body class="page-live-classroom">
@@ -810,6 +810,8 @@
       // Lesson-stage video follow-mode (teacher drives play/pause/seek)
       window.__lcVideoSyncState = window.__lcVideoSyncState || null;
       window.__lcLastVideoMaterial = window.__lcLastVideoMaterial || null;
+      window.__lcMaterialBeforeVideo = window.__lcMaterialBeforeVideo || null;
+      window.__lcStageVideoClosedAt = window.__lcStageVideoClosedAt || 0;
       let lcVideoSyncApplying = false;
       let lcVideoLastTimeEmitAt = 0;
       
@@ -910,6 +912,7 @@
           uploader: 'Portal',
           __forceReload: true
         };
+        rememberMaterialBeforeStageVideo(material);
         renderLessonMaterial(material);
         window.__lcLastVideoMaterial = material;
         setActiveTab('lesson-content');
@@ -2674,6 +2677,79 @@
         return document.getElementById('lc-stage-video');
       }
 
+      function isLessonVideoMaterial(material) {
+        if (!material) return false;
+        const id = String(material.id || '');
+        const fileType = String(material.type || '').toLowerCase();
+        const fileName = String(material.name || '').toLowerCase();
+        return (
+          id.startsWith('portal-video-') ||
+          id === 'synced-video' ||
+          fileType.includes('video') ||
+          /\.(mp4|webm|ogg)$/i.test(fileName)
+        );
+      }
+
+      function rememberMaterialBeforeStageVideo(nextMaterial) {
+        const current = lessonState.get(currentDisplayedMaterialId) || null;
+        if (isLessonVideoMaterial(current) && window.__lcMaterialBeforeVideo) return;
+        const prevId = currentDisplayedMaterialId;
+        if (!prevId || (nextMaterial && String(prevId) === String(nextMaterial.id))) return;
+        const prev = lessonState.get(prevId);
+        if (prev && !isLessonVideoMaterial(prev) && materialHasRenderablePayload(prev)) {
+          window.__lcMaterialBeforeVideo = prev;
+        }
+      }
+
+      function unloadStageVideo() {
+        const video = getStageVideoEl();
+        if (!video) return;
+        try {
+          video.pause();
+        } catch (_pauseErr) {}
+        try {
+          video.removeAttribute('src');
+          video.load();
+        } catch (_unloadErr) {}
+      }
+
+      function showEmptyLessonStage() {
+        currentDisplayedMaterialId = null;
+        window.__lcLastVideoMaterial = null;
+        window.__lcVideoSyncState = null;
+        showStudentVideoFollowIndicator(false);
+        hideTapToFollowOverlay();
+        if (!lessonFileViewer) return;
+        lessonFileViewer.innerHTML =
+          '<div class="lc-stage-empty">' +
+          '<p class="lc-stage-empty__title">Lesson stage</p>' +
+          '<p class="lc-stage-empty__lead">Video closed. Open the lesson again or play another clip from Videos.</p>' +
+          '</div>';
+      }
+
+      function closeStageVideoAndRestoreLesson() {
+        if (userType !== 'teacher') return;
+        const playingId = currentDisplayedMaterialId;
+        unloadStageVideo();
+        window.__lcLastVideoMaterial = null;
+        window.__lcVideoSyncState = null;
+        window.__lcStageVideoClosedAt = Date.now();
+        if (playingId && String(playingId).startsWith('portal-video-')) {
+          lessonState.delete(playingId);
+        }
+        const prev = window.__lcMaterialBeforeVideo;
+        window.__lcMaterialBeforeVideo = null;
+        if (prev && !isLessonVideoMaterial(prev) && materialHasRenderablePayload(prev)) {
+          prev.__forceReload = true;
+          showLessonFile(prev);
+          return;
+        }
+        showEmptyLessonStage();
+        if (socket && socket.connected) {
+          socket.emit('lesson-file-select', { room, materialId: null, material: null });
+        }
+      }
+
       function showStudentVideoFollowIndicator(show) {
         let indicator = document.getElementById('lc-video-follow-indicator');
         if (show) {
@@ -2792,6 +2868,10 @@
 
       function applyLessonVideoSync(data) {
         if (userType !== 'student' || !data || !data.src) return;
+        const closedAt = Number(window.__lcStageVideoClosedAt) || 0;
+        const updatedAt = Number(data.updatedAt) || 0;
+        if (closedAt && updatedAt && updatedAt < closedAt) return;
+        window.__lcStageVideoClosedAt = 0;
         window.__lcVideoSyncState = data;
         let video = getStageVideoEl();
         if (!video) {
@@ -2910,6 +2990,26 @@
         if (material.id) video.dataset.videoId = String(material.id);
         if (userType === 'teacher') {
           video.controls = true;
+          const toolbar = document.createElement('div');
+          toolbar.className = 'lc-stage-video-toolbar';
+          const title = document.createElement('span');
+          title.className = 'lc-stage-video-title';
+          title.textContent = material.name || 'Class video';
+          const closeBtn = document.createElement('button');
+          closeBtn.type = 'button';
+          closeBtn.className = 'lc-stage-video-close';
+          closeBtn.textContent = window.__lcMaterialBeforeVideo ? 'Back to lesson' : 'Close video';
+          closeBtn.title = window.__lcMaterialBeforeVideo
+            ? 'Remove this video and return to the lesson'
+            : 'Remove this video from the lesson stage';
+          closeBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            closeStageVideoAndRestoreLesson();
+          });
+          toolbar.appendChild(title);
+          toolbar.appendChild(closeBtn);
+          wrap.appendChild(toolbar);
         } else {
           video.controls = false;
           video.setAttribute('controlslist', 'nodownload noplaybackrate');
@@ -2945,6 +3045,10 @@
         // Prevent duplicate rendering of the same material (stops blinking from repeated sync/broadcast)
         if (currentDisplayedMaterialId === material.id && !material.__forceReload) {
           return;
+        }
+
+        if (isLessonVideoMaterial(material)) {
+          rememberMaterialBeforeStageVideo(material);
         }
         
         // Mark as rendering
@@ -2994,16 +3098,17 @@
           presentationType: material.presentationType
         });
         
+        const nextIsVideo = isLessonVideoMaterial(material);
+
         lessonFileViewer.innerHTML = '';
         hideTapToFollowOverlay();
         showStudentVideoFollowIndicator(false);
-        const nextIsVideo =
-          material &&
-          (((material.type || '').toLowerCase().includes('video') ||
-            /\.(mp4|webm|ogg)$/i.test(material.name || '')));
         if (!nextIsVideo) {
           window.__lcLastVideoMaterial = null;
           window.__lcVideoSyncState = null;
+          window.__lcStageVideoClosedAt = Date.now();
+        } else {
+          window.__lcStageVideoClosedAt = 0;
         }
         if (pdfNavControls) pdfNavControls.style.display = 'none';
         if (window.currentPptOverlay && window.currentPptOverlay.destroy) {
@@ -4476,7 +4581,13 @@
         }
         if (!materialId || !material) {
           console.log('📚 Clearing lesson viewer');
-          // Clear the viewer
+          unloadStageVideo();
+          window.__lcLastVideoMaterial = null;
+          window.__lcVideoSyncState = null;
+          window.__lcStageVideoClosedAt = Date.now();
+          currentDisplayedMaterialId = null;
+          showStudentVideoFollowIndicator(false);
+          hideTapToFollowOverlay();
           if (lessonFileViewer) lessonFileViewer.innerHTML = '';
           return;
         }

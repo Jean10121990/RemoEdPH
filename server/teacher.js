@@ -1610,7 +1610,7 @@ router.get('/slots', async (req, res) => {
         if (booking.studentId && isMongoObjectId(booking.studentId)) {
           try {
             student = await Student.findById(booking.studentId).select(
-              'username email firstName lastName profilePicture photo'
+              'username email firstName lastName nickname profilePicture photo'
             );
           } catch (err) {
             console.log('Error finding student by ID:', err.message);
@@ -1630,9 +1630,10 @@ router.get('/slots', async (req, res) => {
         });
         
         const bookingObj = booking.toObject();
-        const studentName = student
-          ? `${student.firstName || ''} ${student.lastName || ''}`.trim() || student.username
-          : String(booking.studentId);
+        const { studentClassroomLabel } = require('./utils/studentDisplayName');
+        const studentDisplayName = studentClassroomLabel(student, booking.studentId);
+        const studentNickname = student ? String(student.nickname || '').trim() : '';
+        const studentName = studentDisplayName;
         const studentProfilePicture = student
           ? student.profilePicture || student.photo || null
           : null;
@@ -1641,6 +1642,8 @@ router.get('/slots', async (req, res) => {
         return {
           ...bookingObj,
           studentName,
+          studentNickname,
+          studentDisplayName,
           studentProfilePicture,
           lessonTopic: booking.lesson || '',
           studentId: String(booking.studentId || ''),
@@ -1648,6 +1651,7 @@ router.get('/slots', async (req, res) => {
             ? {
                 _id: String(student._id),
                 username: student.username,
+                nickname: studentNickname,
                 firstName: student.firstName,
                 lastName: student.lastName,
               }
@@ -1955,15 +1959,10 @@ router.get('/booking/:bookingId', verifyToken, requireTeacher, async (req, res) 
     const studentProfilePicture = student
       ? student.profilePicture || student.photo || null
       : null;
-    // Prefer real name; never invent "Unknown Student" when booking has a username/email key
-    const studentName = student
-      ? `${student.firstName || ''} ${student.lastName || ''}`.trim() ||
-        student.nickname ||
-        student.username ||
-        String(booking.studentId || 'Student')
-      : String(booking.studentId || 'Student');
+    // Classroom label: nickname, else stable Student#### — never legal first+last
     const { studentClassroomLabel } = require('./utils/studentDisplayName');
     const studentDisplayName = studentClassroomLabel(student, booking.studentId);
+    const studentName = studentDisplayName;
     
     // Get teacher information
     const teacher = await Teacher.findOne({ teacherId: booking.teacherId });
@@ -2320,14 +2319,9 @@ router.get('/booking/by-classroom/:classroomId', async (req, res) => {
     // studentId on bookings is usually a username, not a Mongo ObjectId — never findById blindly
     const studentBadgeService = require('./services/studentBadgeService');
     const student = await studentBadgeService.findStudentByAnyId(booking.studentId);
-    const studentName = student
-      ? `${student.firstName || ''} ${student.lastName || ''}`.trim() ||
-        student.nickname ||
-        student.username ||
-        String(booking.studentId || 'Student')
-      : String(booking.studentId && booking.studentId !== 'undefined' ? booking.studentId : 'Student');
     const { studentClassroomLabel } = require('./utils/studentDisplayName');
     const studentDisplayName = studentClassroomLabel(student, booking.studentId);
+    const studentName = studentDisplayName;
     
     console.log('👤 API: Student found:', student ? 'YES' : 'NO');
 
@@ -3833,11 +3827,12 @@ async function buildStudentLookupForBookingIds(studentIdValues) {
 
   const byKey = new Map();
   for (const st of students) {
-    const display =
-      `${st.firstName || ''} ${st.lastName || ''}`.trim() || st.username || 'Unknown';
+    const { studentClassroomLabel } = require('./utils/studentDisplayName');
+    const display = studentClassroomLabel(st, st.username || st.email || st._id);
     const row = {
       firstName: st.firstName,
       lastName: st.lastName,
+      nickname: st.nickname || '',
       username: st.username,
       display,
       profilePicture: st.profilePicture || st.photo || null,

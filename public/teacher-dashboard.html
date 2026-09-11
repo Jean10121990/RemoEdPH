@@ -402,21 +402,28 @@
         }
         window.teacherAuthToken = teacherAuthToken;
 
-        /** Display name when API returns string studentId + studentName (not a populated object). */
+        /** Classroom label: nickname (never legal first + last). */
         function bookingStudentDisplayName(booking, fallback) {
             if (!booking) return fallback || 'Student';
-            const name = String(booking.studentName || '').trim();
-            if (name && name.toLowerCase() !== 'unknown student') return name;
-            const sid = booking.studentId;
-            if (sid && typeof sid === 'object') {
-                const fromObj =
-                    `${sid.firstName || ''} ${sid.lastName || ''}`.trim() ||
-                    sid.username ||
-                    sid.id ||
-                    '';
-                if (fromObj) return String(fromObj);
+            const candidates = [
+                booking.studentNickname,
+                booking.studentDisplayName,
+                booking.student && booking.student.nickname,
+                typeof booking.studentId === 'object' && booking.studentId && booking.studentId.nickname,
+                booking.studentName,
+            ];
+            for (let i = 0; i < candidates.length; i += 1) {
+                const name = String(candidates[i] || '').trim();
+                if (!name) continue;
+                if (name.toLowerCase() === 'unknown student') continue;
+                return name;
             }
+            const sid = booking.studentId;
             if (typeof sid === 'string' && sid.trim()) return sid.trim();
+            if (sid && typeof sid === 'object') {
+                const fromObj = String(sid.username || sid.id || '').trim();
+                if (fromObj) return fromObj;
+            }
             if (booking.studentEmail) return String(booking.studentEmail);
             return fallback || 'Student';
         }
