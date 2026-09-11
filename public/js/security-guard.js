@@ -45,6 +45,10 @@
       if (ut === 'admin') return 'admin';
       if (ut === 'teacher') return 'teacher';
       if (ut === 'student') return 'student';
+      if (p.indexOf('live-classroom') !== -1 || p.indexOf('video-room') !== -1 || p.indexOf('whiteboard') !== -1) {
+        var inferred = inferPortalRoleForClassroom();
+        if (inferred) return inferred;
+      }
     }
     var ut2 = (getSessionRoleFromStorage() || '').toLowerCase();
     if (ut2 === 'admin') return 'admin';
@@ -60,6 +64,49 @@
     } catch (_e) {
       return '';
     }
+  }
+
+  function healSessionRole(role) {
+    try {
+      var r = String(role || '').trim().toLowerCase();
+      if (r !== 'teacher' && r !== 'student' && r !== 'admin') return;
+      localStorage.setItem('userType', r);
+      localStorage.setItem('userRole', r);
+    } catch (_e) {}
+  }
+
+  /** Infer portal role from JWT / URL when userType storage is missing (common on live-classroom). */
+  function inferPortalRoleForClassroom() {
+    try {
+      var sp = new URLSearchParams(window.location.search || '');
+      var typeParam = String(sp.get('type') || '').trim().toLowerCase();
+      var teacherTok = getTokenForPortal('teacher');
+      var studentTok = getTokenForPortal('student');
+      var teacherRole = roleFromJwt(decodeJwtPayload(teacherTok));
+      var studentRole = roleFromJwt(decodeJwtPayload(studentTok));
+
+      if (typeParam === 'teacher') {
+        if (teacherTok && !isJwtExpired(teacherTok) && teacherRole === 'teacher') {
+          healSessionRole('teacher');
+          return 'teacher';
+        }
+      }
+      if (typeParam === 'student') {
+        if (studentTok && !isJwtExpired(studentTok) && studentRole === 'student') {
+          healSessionRole('student');
+          return 'student';
+        }
+      }
+      if (teacherTok && !isJwtExpired(teacherTok) && teacherRole === 'teacher') {
+        healSessionRole('teacher');
+        return 'teacher';
+      }
+      if (studentTok && !isJwtExpired(studentTok) && studentRole === 'student') {
+        healSessionRole('student');
+        return 'student';
+      }
+    } catch (_e) {}
+    return '';
   }
 
   function getTokenForPortal(portal) {
@@ -279,8 +326,21 @@
 
     var sessionRole = getSessionRoleFromStorage().toLowerCase();
     if (!sessionRole) {
-      clearAuthStorage();
-      replaceToIndex();
+      sessionRole = inferPortalRoleForClassroom();
+    }
+    if (!sessionRole) {
+      // No recoverable teacher/student session — send to home without wiping other tabs' keys
+      // only after we already know there is no valid JWT for the requested classroom role.
+      var tok =
+        typeParam === 'teacher'
+          ? getTokenForPortal('teacher')
+          : typeParam === 'student'
+            ? getTokenForPortal('student')
+            : '';
+      if (!tok || isJwtExpired(tok)) {
+        clearAuthStorage();
+        replaceToIndex();
+      }
       return;
     }
 

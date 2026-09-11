@@ -5,7 +5,7 @@
     <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/security-guard.js?v=1"></script>
+  <script src="js/security-guard.js?v=lc-token-2"></script>
   <script src="js/user-session.js"></script>
   <script src="js/teacher-session-gate.js?v=2"></script>
   <title>Live Classroom</title>
@@ -383,14 +383,61 @@
     <script src="js/virtual-background.js"></script>
     <script src="js/classroom-qa-recording.js?v=lc-polish-3" defer></script>
     <script>
-    // Collaborative annotation client
+      // Collaborative annotation client
     (function(){
       // Use the current origin (includes protocol, host, and port)
       const SIGNALING_SERVER_URL = window.location.origin || '';
-      const __lcAuthToken =
-        (window.RemoedSecurityGuard && typeof window.RemoedSecurityGuard.getToken === 'function')
-          ? window.RemoedSecurityGuard.getToken()
-          : (localStorage.getItem('remoed_user_token') || localStorage.getItem('token') || '');
+      function resolveLiveClassroomAuthToken() {
+        try {
+          const typeParam = String(new URLSearchParams(window.location.search).get('type') || '')
+            .trim()
+            .toLowerCase();
+          if (typeParam === 'teacher' && window.RemoedTeacherSession && RemoedTeacherSession.getToken) {
+            const t = RemoedTeacherSession.getToken();
+            if (t) return t;
+          }
+          if (typeof RemoedUserSession !== 'undefined' && RemoedUserSession.getUserToken) {
+            const t = RemoedUserSession.getUserToken();
+            if (t) return t;
+          }
+          if (window.RemoedSecurityGuard && typeof window.RemoedSecurityGuard.getToken === 'function') {
+            const t = window.RemoedSecurityGuard.getToken();
+            if (t) return t;
+          }
+          if (typeParam === 'teacher') {
+            return (
+              localStorage.getItem('remoed_teacher_token') ||
+              sessionStorage.getItem('remoed_teacher_token') ||
+              localStorage.getItem('remoed_teacher_auth') ||
+              sessionStorage.getItem('remoed_teacher_auth') ||
+              localStorage.getItem('remoed_user_token') ||
+              localStorage.getItem('token') ||
+              ''
+            );
+          }
+          if (typeParam === 'student') {
+            return (
+              localStorage.getItem('remoed_student_token') ||
+              sessionStorage.getItem('remoed_student_token') ||
+              localStorage.getItem('remoed_student_auth') ||
+              sessionStorage.getItem('remoed_student_auth') ||
+              localStorage.getItem('remoed_user_token') ||
+              localStorage.getItem('token') ||
+              ''
+            );
+          }
+          return (
+            localStorage.getItem('remoed_teacher_token') ||
+            localStorage.getItem('remoed_student_token') ||
+            localStorage.getItem('remoed_user_token') ||
+            localStorage.getItem('token') ||
+            ''
+          );
+        } catch (_e) {
+          return localStorage.getItem('token') || '';
+        }
+      }
+      const __lcAuthToken = resolveLiveClassroomAuthToken();
       console.log('🔌 Connecting to Socket.IO server at:', SIGNALING_SERVER_URL);
       const socket = io(SIGNALING_SERVER_URL, {
         auth: { token: __lcAuthToken },
@@ -476,11 +523,34 @@
 
       socket.on('auth-error', (payload) => {
         console.error('❌ Socket auth rejected:', payload);
+        const code = payload && payload.code ? String(payload.code) : '';
+        // Only wipe session on real invalid/revoked tokens — never on a transient empty handshake.
+        if (code === 'INVALID_TOKEN' || code === 'TOKEN_REVOKED') {
+          try {
+            if (window.RemoedUserSession && typeof window.RemoedUserSession.clearUserToken === 'function') {
+              window.RemoedUserSession.clearUserToken();
+            } else {
+              localStorage.removeItem('remoed_teacher_token');
+              localStorage.removeItem('remoed_student_token');
+              localStorage.removeItem('remoed_user_token');
+              localStorage.removeItem('token');
+              localStorage.removeItem('userType');
+              localStorage.removeItem('userRole');
+            }
+          } catch (_e) {}
+          window.location.replace('/index.html?error=socket_unauthorized');
+          return;
+        }
+        // NO_TOKEN / unknown: try one reconnect with a freshly resolved teacher/student token
         try {
-          localStorage.clear();
-          sessionStorage.clear();
-        } catch (_e) {}
-        window.location.replace('/index.html?error=socket_unauthorized');
+          const retryTok = resolveLiveClassroomAuthToken();
+          if (retryTok && retryTok !== __lcAuthToken) {
+            socket.auth = { token: retryTok };
+            socket.connect();
+            return;
+          }
+        } catch (_e2) {}
+        alert((payload && payload.message) || 'Could not authenticate the live classroom connection. Please refresh and try again.');
       });
       
       // Handle disconnects gracefully
