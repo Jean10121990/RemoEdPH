@@ -166,7 +166,10 @@ function normalizeStudentId(raw) {
   if (typeof raw === 'object') {
     return String(raw._id || raw.id || raw.username || raw.studentId || '').trim();
   }
-  return String(raw).trim();
+  const s = String(raw).trim();
+  // Guard against template-string bugs that persist "undefined"/"null" as IDs
+  if (!s || s === 'undefined' || s === 'null') return '';
+  return s;
 }
 
 const OID_RE = /^[a-fA-F0-9]{24}$/;

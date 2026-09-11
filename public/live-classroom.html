@@ -6056,9 +6056,9 @@
 
           const hdrTimer = token ? { 'Authorization': `Bearer ${token}` } : {};
 
-          if (userType === 'teacher' && bookingId) {
+          if (userType === 'teacher' && bookingId && bookingId !== 'undefined' && /^[a-fA-F0-9]{24}$/.test(String(bookingId))) {
             try {
-              const resp = await fetch(`/api/teacher/booking/${encodeURIComponent(bookingId)}`, { headers: hdrTimer });
+              const resp = await fetch(`/api/teacher/booking/${encodeURIComponent(bookingId)}`, { headers: hdrTimer, remoedIgnoreAuthFailure: true });
               if (resp.ok) {
                 const data = await resp.json();
                 booking = data.booking || data;
@@ -6068,9 +6068,9 @@
             }
           }
 
-          if (!booking && bookingId) {
+          if (!booking && bookingId && bookingId !== 'undefined' && userType !== 'teacher' && /^[a-fA-F0-9]{24}$/.test(String(bookingId))) {
             try {
-              const resp = await fetch(`/api/student/booking/${encodeURIComponent(bookingId)}`, { headers: hdrTimer });
+              const resp = await fetch(`/api/student/booking/${encodeURIComponent(bookingId)}`, { headers: hdrTimer, remoedIgnoreAuthFailure: true });
               if (resp.ok) {
                 const data = await resp.json();
                 booking = data.booking || data;
@@ -6079,9 +6079,9 @@
               console.warn('Failed to fetch booking via student endpoint (timer):', e);
             }
           }
-          if (!booking && classroomId && classroomId !== 'default-room') {
+          if (!booking && classroomId && classroomId !== 'default-room' && classroomId !== 'undefined') {
             try {
-              const resp = await fetch(`/api/teacher/booking/by-classroom/${encodeURIComponent(classroomId)}`, { headers: hdrTimer });
+              const resp = await fetch(`/api/teacher/booking/by-classroom/${encodeURIComponent(classroomId)}`, { headers: hdrTimer, remoedIgnoreAuthFailure: true });
               if (resp.ok) {
                 const data = await resp.json();
                 booking = data.booking || data;
@@ -6259,9 +6259,9 @@
           const headers = {};
           if (token) headers['Authorization'] = `Bearer ${token}`;
 
-          if (userType === 'teacher' && bookingId) {
+          if (userType === 'teacher' && bookingId && bookingId !== 'undefined' && /^[a-fA-F0-9]{24}$/.test(String(bookingId))) {
             try {
-              const resp = await fetch(`/api/teacher/booking/${encodeURIComponent(bookingId)}`, { headers });
+              const resp = await fetch(`/api/teacher/booking/${encodeURIComponent(bookingId)}`, { headers, remoedIgnoreAuthFailure: true });
               if (resp.ok) {
                 const data = await resp.json();
                 booking = data.booking || data;
@@ -6271,9 +6271,9 @@
             }
           }
 
-          if (!booking && bookingId) {
+          if (!booking && bookingId && bookingId !== 'undefined' && userType !== 'teacher' && /^[a-fA-F0-9]{24}$/.test(String(bookingId))) {
             try {
-              const resp = await fetch(`/api/student/booking/${encodeURIComponent(bookingId)}`, { headers });
+              const resp = await fetch(`/api/student/booking/${encodeURIComponent(bookingId)}`, { headers, remoedIgnoreAuthFailure: true });
               if (resp.ok) {
                 const data = await resp.json();
                 booking = data.booking || data;
@@ -6284,9 +6284,9 @@
           }
           
           // If no booking yet, try classroom endpoint
-          if (!booking && classroomId && classroomId !== 'default-room') {
+          if (!booking && classroomId && classroomId !== 'default-room' && classroomId !== 'undefined') {
             try {
-              const resp = await fetch(`/api/teacher/booking/by-classroom/${encodeURIComponent(classroomId)}`, { headers });
+              const resp = await fetch(`/api/teacher/booking/by-classroom/${encodeURIComponent(classroomId)}`, { headers, remoedIgnoreAuthFailure: true });
               if (resp.ok) {
                 const data = await resp.json();
                 booking = data.booking || data;
@@ -6608,22 +6608,34 @@
 
         let booking = null;
         try {
-          if (bookingId) {
+          const sidOk =
+            bookingId &&
+            bookingId !== 'undefined' &&
+            bookingId !== 'null' &&
+            /^[a-fA-F0-9]{24}$/.test(String(bookingId));
+          if (sidOk) {
             try {
               const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-              const resp = await fetch(`/api/student/booking/${bookingId}`, { headers });
+              const path =
+                userType === 'teacher'
+                  ? `/api/teacher/booking/${encodeURIComponent(bookingId)}`
+                  : `/api/student/booking/${encodeURIComponent(bookingId)}`;
+              const resp = await fetch(path, { headers, remoedIgnoreAuthFailure: true });
               if (resp.ok) {
                 const data = await resp.json();
                 booking = data.booking || data;
               }
             } catch (e) {
-              console.warn('Failed to fetch booking via student endpoint:', e);
+              console.warn('Failed to fetch booking by id:', e);
             }
           }
-          if (!booking && classroomId && classroomId !== 'default-room') {
+          if (!booking && classroomId && classroomId !== 'default-room' && classroomId !== 'undefined') {
             try {
               const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-              const resp = await fetch(`/api/teacher/booking/by-classroom/${classroomId}`, { headers });
+              const resp = await fetch(`/api/teacher/booking/by-classroom/${encodeURIComponent(classroomId)}`, {
+                headers,
+                remoedIgnoreAuthFailure: true,
+              });
               if (resp.ok) {
                 const data = await resp.json();
                 booking = data.booking || data;

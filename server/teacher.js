@@ -12,7 +12,7 @@ const TeacherSlot = require('./models/TeacherSlot');
 const Booking = require('./models/Booking');
 const { DateTime } = require('luxon');
 const { getScheduledStartTime, getBookingStartAsDate } = require('./utils/bookingScheduledStart');
-const { isMongoObjectId } = require('./utils/mongoObjectId');
+const { isMongoObjectId, isBsonOrCastIdError } = require('./utils/mongoObjectId');
 const Notification = require('./models/Notification');
 const TimeLog = require('./models/TimeLog');
 const CancellationRequest = require('./models/CancellationRequest');
@@ -1616,7 +1616,7 @@ router.get('/slots', async (req, res) => {
         let student = null;
         
         // Try to find student by ID first (if studentId is an ObjectId)
-        if (booking.studentId && booking.studentId.length === 24) {
+        if (booking.studentId && isMongoObjectId(booking.studentId)) {
           try {
             student = await Student.findById(booking.studentId).select(
               'username email firstName lastName profilePicture photo'
@@ -1626,7 +1626,7 @@ router.get('/slots', async (req, res) => {
           }
         }
 
-        if (!student) {
+        if (!student && booking.studentId && String(booking.studentId) !== 'undefined' && String(booking.studentId) !== 'null') {
           student = await Student.findOne({
             $or: [{ username: booking.studentId }, { email: booking.studentId }],
           }).select('username email firstName lastName nickname profilePicture photo');
@@ -1935,20 +1935,19 @@ router.get('/booking/:bookingId', verifyToken, requireTeacher, async (req, res) 
       time: booking.time
     });
     
-    let student = await Student.findOne({
-      $or: [{ username: booking.studentId }, { email: booking.studentId }],
-    })
-      .select('firstName lastName nickname username profilePicture photo')
-      .lean();
-    if (
-      !student &&
-      booking.studentId &&
-      String(booking.studentId).length === 24 &&
-      mongoose.Types.ObjectId.isValid(booking.studentId)
-    ) {
-      student = await Student.findById(booking.studentId)
+    let student = null;
+    const sidRaw = String(booking.studentId || '').trim();
+    if (sidRaw && sidRaw !== 'undefined' && sidRaw !== 'null') {
+      student = await Student.findOne({
+        $or: [{ username: sidRaw }, { email: sidRaw }],
+      })
         .select('firstName lastName nickname username profilePicture photo')
         .lean();
+      if (!student && isMongoObjectId(sidRaw)) {
+        student = await Student.findById(sidRaw)
+          .select('firstName lastName nickname username profilePicture photo')
+          .lean();
+      }
     }
     console.log('🔍 Student found:', student ? 'YES' : 'NO');
     console.log(
@@ -2300,8 +2299,8 @@ router.get('/booking/by-classroom/:classroomId', async (req, res) => {
     
     console.log('🔍 API: Looking for booking with classroomId:', classroomId);
     
-    if (!classroomId) {
-      console.log('❌ API: Missing classroom ID');
+    if (!classroomId || classroomId === 'undefined' || classroomId === 'null' || classroomId === 'default-room') {
+      console.log('❌ API: Missing/invalid classroom ID');
       return res.status(400).json({ error: 'Missing classroom ID' });
     }
 
@@ -2320,42 +2319,26 @@ router.get('/booking/by-classroom/:classroomId', async (req, res) => {
     
     if (!booking) {
       console.log('❌ API: No booking found for classroomId:', classroomId);
-      
-      // Let's also check what bookings exist in the database
-      const allBookings = await Booking.find({}).limit(5);
-      console.log('🔍 API: Sample of all bookings in database:', allBookings.map(b => ({
-        _id: b._id,
-        classroomId: b.classroomId,
-        date: b.date,
-        time: b.time
-      })));
-      
       return res.status(404).json({ error: 'Booking not found' });
     }
 
-    // Get student information
-    const student = await Student.findById(booking.studentId);
-    const studentName = student ? `${student.firstName} ${student.lastName}` : 'Unknown Student';
+    // studentId on bookings is usually a username, not a Mongo ObjectId — never findById blindly
+    const studentBadgeService = require('./services/studentBadgeService');
+    const student = await studentBadgeService.findStudentByAnyId(booking.studentId);
+    const studentName = student
+      ? `${student.firstName || ''} ${student.lastName || ''}`.trim() ||
+        student.nickname ||
+        student.username ||
+        String(booking.studentId || 'Student')
+      : String(booking.studentId && booking.studentId !== 'undefined' ? booking.studentId : 'Student');
     
     console.log('👤 API: Student found:', student ? 'YES' : 'NO');
-    if (student) {
-      console.log('👤 API: Student data:', {
-        firstName: student.firstName,
-        lastName: student.lastName
-      });
-    }
 
     // Get teacher information
     const teacher = await Teacher.findOne({ teacherId: booking.teacherId });
     const teacherName = teacher ? `${teacher.firstName} ${teacher.lastName}` : 'Unknown Teacher';
     
     console.log('👨‍🏫 API: Teacher found:', teacher ? 'YES' : 'NO');
-    if (teacher) {
-      console.log('👨‍🏫 API: Teacher data:', {
-        firstName: teacher.firstName,
-        lastName: teacher.lastName
-      });
-    }
 
     let resolvedLessonId = null;
     if (!booking.lessonId) {
@@ -2380,6 +2363,9 @@ router.get('/booking/by-classroom/:classroomId', async (req, res) => {
     });
   } catch (err) {
     console.error('❌ API: Error fetching booking by classroom ID:', err);
+    if (isBsonOrCastIdError(err)) {
+      return res.status(400).json({ error: 'Invalid id in booking lookup' });
+    }
     res.status(500).json({ error: 'Failed to fetch booking data' });
   }
 });
