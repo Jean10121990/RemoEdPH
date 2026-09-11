@@ -10,6 +10,8 @@ const studentSchema = new mongoose.Schema({
   firstName: { type: String, required: false },
   middleName: { type: String },
   lastName: { type: String, required: false },
+  /** Class-facing name shown in live classroom instead of the legal name (child privacy). */
+  nickname: { type: String, default: '' },
   gender: { type: String },
   birthday: { type: Date },
   age: { type: Number },

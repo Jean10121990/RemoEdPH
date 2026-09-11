@@ -10,7 +10,7 @@ const { withRedis } = require('./utils/redisClient');
 const PROFILE_TTL_SEC = 120;
 
 function studentProfileCacheKey(studentId) {
-  return `student:profile:v3:${String(studentId || '').trim()}`;
+  return `student:profile:v4:${String(studentId || '').trim()}`;
 }
 
 function teacherSlotsCacheKey(teacherId) {

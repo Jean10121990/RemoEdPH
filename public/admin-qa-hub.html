@@ -57,8 +57,8 @@
                     <p class="muted" style="margin-top:0;">Low-quality WebM clips from live class. Teachers should enable <strong>Share tab audio</strong> when starting capture; otherwise the client merges classroom WebRTC or microphone audio when possible so playback usually has sound. Retention is set on the server; use <strong>Purge expired</strong> anytime.</p>
                     <div class="filters">
                         <div>
-                            <label for="rec-date">Day (UTC)</label>
-                            <input type="date" id="rec-date" />
+                            <label for="rec-date">Day (PH time)</label>
+                            <input type="date" id="rec-date" title="Philippine calendar day (Asia/Manila)" />
                         </div>
                         <button type="button" class="btn btn-primary" id="rec-refresh">Load</button>
                         <button type="button" class="btn btn-secondary" id="rec-all" title="Last 300 recordings, any day">All dates</button>
@@ -69,13 +69,13 @@
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Created (UTC)</th>
+                                    <th>Created (PH time)</th>
                                     <th>Room</th>
                                     <th>Booking</th>
                                     <th>By</th>
                                     <th>Status</th>
                                     <th>Size</th>
-                                    <th>Expires</th>
+                                    <th>Expires (PH time)</th>
                                     <th></th>
                                 </tr>
                             </thead>
@@ -128,8 +128,8 @@
                             </select>
                         </div>
                         <div class="filter-group">
-                            <label>Date Range</label>
-                            <input type="date" id="date-filter" title="Issue submitted date (UTC). Same calendar day for cancellation requests.">
+                            <label>Date Range (PH time)</label>
+                            <input type="date" id="date-filter" title="Issue submitted date, Philippine calendar day (Asia/Manila). Same day applies to cancellation requests.">
                         </div>
                         <div class="filter-group">
                             <button class="btn btn-primary" onclick="loadIssues()">Apply Filters</button>
@@ -306,6 +306,87 @@
             return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
         }
 
+        // Admins work in Philippine time; timestamps are stored as UTC instants.
+        const PH_TZ = 'Asia/Manila';
+
+        function phDateTime(value) {
+            if (!value) return '—';
+            try {
+                return new Date(value).toLocaleString('en-PH', {
+                    timeZone: PH_TZ,
+                    dateStyle: 'medium',
+                    timeStyle: 'short'
+                });
+            } catch (e) {
+                return '—';
+            }
+        }
+
+        function phDate(value) {
+            if (!value) return '—';
+            try {
+                return new Date(value).toLocaleDateString('en-PH', {
+                    timeZone: PH_TZ,
+                    dateStyle: 'medium'
+                });
+            } catch (e) {
+                return '—';
+            }
+        }
+
+        /** Calendar YYYY-MM-DD as seen in Manila for the given instant (default: now). */
+        function phYmd(value) {
+            const parts = new Intl.DateTimeFormat('en-US', {
+                timeZone: PH_TZ,
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            }).formatToParts(value ? new Date(value) : new Date());
+            const pick = function (type) {
+                const hit = parts.find(function (p) { return p.type === type; });
+                return hit ? hit.value : '';
+            };
+            return pick('year') + '-' + pick('month') + '-' + pick('day');
+        }
+
+        /** Manila offset (ms ahead of UTC) at a given instant. */
+        function phOffsetMs(atMs) {
+            const parts = new Intl.DateTimeFormat('en-US', {
+                timeZone: PH_TZ,
+                hour12: false,
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            }).formatToParts(new Date(atMs));
+            const v = {};
+            parts.forEach(function (p) { v[p.type] = p.value; });
+            const asUtc = Date.UTC(
+                Number(v.year),
+                Number(v.month) - 1,
+                Number(v.day),
+                Number(v.hour) % 24,
+                Number(v.minute),
+                Number(v.second)
+            );
+            return asUtc - atMs;
+        }
+
+        /** UTC instants bounding one Philippine calendar day, for server-side range queries. */
+        function phDayRangeUtc(ymd) {
+            const bits = String(ymd || '').split('-').map(Number);
+            const midnightAsUtc = Date.UTC(bits[0], bits[1] - 1, bits[2], 0, 0, 0);
+            // Two passes so the offset is read at the actual start instant, not the UTC guess
+            const firstPass = midnightAsUtc - phOffsetMs(midnightAsUtc);
+            const startMs = midnightAsUtc - phOffsetMs(firstPass);
+            return {
+                from: new Date(startMs).toISOString(),
+                to: new Date(startMs + 86400000 - 1).toISOString()
+            };
+        }
+
         async function loadList() {
             const tbody = document.getElementById('rec-tbody');
             const msg = document.getElementById('rec-msg');
@@ -319,7 +400,13 @@
             tbody.innerHTML = '<tr><td colspan="8" class="muted">Loading…</td></tr>';
 
             var url = '/api/admin/classroom-recordings?limit=300';
-            if (d) url += '&date=' + encodeURIComponent(d);
+            if (d) {
+                // Ask for the Philippine calendar day, not the UTC one
+                const range = phDayRangeUtc(d);
+                url +=
+                    '&from=' + encodeURIComponent(range.from) +
+                    '&to=' + encodeURIComponent(range.to);
+            }
 
             try {
                 const hdr = {};
@@ -339,8 +426,8 @@
                 }
                 tbody.innerHTML = rows.map(function (rec) {
                     const st = rec.status === 'complete' ? 'pill pill-ok' : 'pill pill-warn';
-                    const created = rec.createdAt ? new Date(rec.createdAt).toISOString().replace('T', ' ').slice(0, 19) : '—';
-                    const exp = rec.expiresAt ? new Date(rec.expiresAt).toISOString().slice(0, 10) : '—';
+                    const created = phDateTime(rec.createdAt);
+                    const exp = phDate(rec.expiresAt);
                     return (
                         '<tr>' +
                         '<td>' + esc(created) + '</td>' +
@@ -374,31 +461,82 @@
             }
         }
 
+        function adminAuthToken() {
+            return (window.RemoedAdminSession && RemoedAdminSession.getAuthToken
+                ? RemoedAdminSession.getAuthToken()
+                : (localStorage.getItem('remoed_admin_token') || localStorage.getItem('remoed_admin_auth') || localStorage.getItem('adminToken') || ''));
+        }
+
+        function clickHiddenLink(href, filename) {
+            const a = document.createElement('a');
+            a.href = href;
+            if (filename) a.download = filename;
+            a.rel = 'noopener';
+            a.style.display = 'none';
+            // Must be in the document for Firefox to honour the click
+            document.body.appendChild(a);
+            a.click();
+            return a;
+        }
+
+        /**
+         * Hand the URL to the browser's own downloader instead of buffering the whole
+         * video in memory: recordings are tens of MB and a dropped connection during
+         * fetch()/blob() surfaces only as "Failed to fetch" with nothing saved.
+         */
         async function downloadRec(id) {
-            const token = (window.RemoedAdminSession && RemoedAdminSession.getAuthToken ? RemoedAdminSession.getAuthToken() : (localStorage.getItem('remoed_admin_token')||localStorage.getItem('remoed_admin_auth')||localStorage.getItem('adminToken')||''));
+            const token = adminAuthToken();
+            const base = '/api/admin/classroom-recordings/' + encodeURIComponent(id);
             try {
-                const dlHdr = {};
-                if (token) dlHdr['Authorization'] = 'Bearer ' + token;
-                const r = await fetch('/api/admin/classroom-recordings/' + encodeURIComponent(id) + '/download', {
+                const hdr = { 'Content-Type': 'application/json' };
+                if (token) hdr['Authorization'] = 'Bearer ' + token;
+                const r = await fetch(base + '/download-ticket', {
+                    method: 'POST',
                     credentials: 'include',
-                    headers: dlHdr
+                    headers: hdr
                 });
-                if (!r.ok) {
-                    const t = await r.text();
-                    alert('Download failed: ' + t);
+                const j = await r.json().catch(function () { return {}; });
+                if (r.ok && j && j.ticket) {
+                    const a = clickHiddenLink(base + '/download?ticket=' + encodeURIComponent(j.ticket));
+                    setTimeout(function () { a.remove(); }, 1000);
                     return;
                 }
-                const blob = await r.blob();
-                const ct = String(r.headers.get('content-type') || '').toLowerCase();
-                const ext = ct.indexOf('mp4') !== -1 ? 'mp4' : 'webm';
-                const a = document.createElement('a');
-                a.href = URL.createObjectURL(blob);
-                a.download = 'classroom-' + id + '.' + ext;
-                a.click();
-                URL.revokeObjectURL(a.href);
+                if (r.status === 401 || r.status === 403) {
+                    alert('Download failed: ' + (j.message || j.error || 'admin session expired — sign in again.'));
+                    return;
+                }
+                // Older server without ticket support: fall back to the in-memory path
+                await downloadRecViaBlob(id, token);
             } catch (e) {
-                alert(e.message || String(e));
+                alert(
+                    'Download failed: ' + (e && e.message ? e.message : String(e)) +
+                    '\nThe connection dropped mid-transfer. Please try again.'
+                );
             }
+        }
+
+        async function downloadRecViaBlob(id, token) {
+            const dlHdr = {};
+            if (token) dlHdr['Authorization'] = 'Bearer ' + token;
+            const r = await fetch('/api/admin/classroom-recordings/' + encodeURIComponent(id) + '/download', {
+                credentials: 'include',
+                headers: dlHdr
+            });
+            if (!r.ok) {
+                const t = await r.text();
+                alert('Download failed: ' + t);
+                return;
+            }
+            const blob = await r.blob();
+            const ct = String(r.headers.get('content-type') || '').toLowerCase();
+            const ext = ct.indexOf('mp4') !== -1 ? 'mp4' : 'webm';
+            const objectUrl = URL.createObjectURL(blob);
+            const a = clickHiddenLink(objectUrl, 'classroom-' + id + '.' + ext);
+            // Revoking right after click() can cancel the save before it starts
+            setTimeout(function () {
+                URL.revokeObjectURL(objectUrl);
+                a.remove();
+            }, 60000);
         }
 
         async function deleteRec(id) {
@@ -452,9 +590,8 @@
             if (!dateYmd) return true;
             var t = new Date(createdAt).getTime();
             if (Number.isNaN(t)) return false;
-            var start = new Date(dateYmd + 'T00:00:00.000Z').getTime();
-            var end = new Date(dateYmd + 'T23:59:59.999Z').getTime();
-            return t >= start && t <= end;
+            var range = phDayRangeUtc(dateYmd);
+            return t >= new Date(range.from).getTime() && t <= new Date(range.to).getTime();
         }
 
         function cancellationMatchesFilters(req, statusFilter, validityFilter, issueTypeFilter, dateYmd) {
@@ -512,7 +649,7 @@
                 classLine +
                 '</span></div>' +
                 '<div class="issue-detail"><label>Submitted</label><span>' +
-                esc(new Date(req.createdAt).toLocaleString()) +
+                esc(phDateTime(req.createdAt)) +
                 '</span></div></div>' +
                 '<div class="issue-description"><h4>Reason</h4><p>' +
                 esc(req.reason || '') +
@@ -563,7 +700,12 @@
                 if (issueTypeFilter && issueTypeFilter !== 'cancellation') {
                     params.append('issueType', issueTypeFilter);
                 }
-                if (dateFilter) params.append('date', dateFilter);
+                if (dateFilter) {
+                    // Ask for the Philippine calendar day, not the UTC one
+                    const range = phDayRangeUtc(dateFilter);
+                    params.append('from', range.from);
+                    params.append('to', range.to);
+                }
                 if (params.toString()) url += '?' + params.toString();
 
                 try {
@@ -684,7 +826,7 @@
                         <div class="issue-detail"><label>Issue Type</label><span>${issue.issueType}</span></div>
                         <div class="issue-detail"><label>Teacher ID</label><span>${issue.teacherId}</span></div>
                         <div class="issue-detail"><label>Student ID</label><span>${issue.studentId}</span></div>
-                        <div class="issue-detail"><label>Submitted</label><span>${new Date(issue.submittedAt).toLocaleString()}</span></div>
+                        <div class="issue-detail"><label>Submitted</label><span>${phDateTime(issue.submittedAt)}</span></div>
                         <div class="issue-detail"><label>Payment Impact</label><span>Teacher: ${issue.teacherPaymentImpact}, Student: ${issue.studentPaymentImpact}</span></div>
                     </div>
                     <div class="issue-description"><h4>Description:</h4><p>${issue.description}</p></div>
@@ -706,7 +848,7 @@
                     ${issue.canReschedule ? `
                         <div class="reschedule-info">
                             <h4>Reschedule Option Available</h4>
-                            <p>Student can reschedule this class until ${new Date(issue.rescheduleDeadline).toLocaleString()}</p>
+                            <p>Student can reschedule this class until ${phDateTime(issue.rescheduleDeadline)}</p>
                             ${issue.rescheduleRequested ? '<p><strong>Reschedule has been requested by student</strong></p>' : ''}
                         </div>
                     ` : ''}
@@ -805,11 +947,7 @@
 
             const dateEl = document.getElementById('rec-date');
             if (dateEl) {
-                const t = new Date();
-                const y = t.getUTCFullYear();
-                const m = String(t.getUTCMonth() + 1).padStart(2, '0');
-                const d = String(t.getUTCDate()).padStart(2, '0');
-                dateEl.value = y + '-' + m + '-' + d;
+                dateEl.value = phYmd();
             }
             document.getElementById('rec-refresh').addEventListener('click', loadList);
             document.getElementById('rec-all').addEventListener('click', function () {

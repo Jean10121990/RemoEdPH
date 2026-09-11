@@ -55,7 +55,7 @@
   </script>
     <link rel="stylesheet" href="style.css">
   <!-- After global styles so chat / layout rules are not overridden -->
-  <link rel="stylesheet" href="live-classroom.css?v=lc-draw-fix-2" />
+  <link rel="stylesheet" href="live-classroom.css?v=lc-role-tiles-1" />
   <link rel="stylesheet" href="css/live-classroom-redesign.css?v=mint-forest-2" />
   <link rel="stylesheet" href="css/student-badges.css?v=2" />
 </head>
@@ -164,16 +164,16 @@
     <!-- Right Sidebar -->
     <div class="right-panel">
       <div class="video-container">
-        <div class="video teacher is-waiting-peer" id="peer-video-tile">
+        <div class="video teacher is-peer is-waiting-peer" id="peer-video-tile">
           <div class="video-header">
-            <p>Teacher</p>
+            <p id="peer-video-label">Peer</p>
           </div>
           <video id="remote-video" autoplay playsinline muted></video>
           <div class="video-empty-hint" id="peer-video-empty">Waiting for peer…</div>
         </div>
-        <div class="video student">
+        <div class="video student is-local" id="local-video-tile">
           <div class="video-header">
-            <p>Student (You)</p>
+            <p id="local-video-label">You</p>
           </div>
           <video id="local-video" autoplay muted playsinline></video>
           <div id="camera-error-message" style="display:none; padding:8px; background:#fee; color:#c33; font-size:0.85rem; text-align:center; margin:4px 0; border-radius:4px;">
@@ -591,6 +591,10 @@
       
       const userId = localStorage.getItem('studentId') || localStorage.getItem('teacherId') || null;
       const username = localStorage.getItem('remoedUsername') || 'Anon';
+      // In class the student is shown by nickname (or a stable "Student####"), never the legal name
+      let classroomStudentLabel = '';
+      let classroomTeacherLabel = '';
+      let myChatLabel = username;
       
       console.log('🔍 User Type Detection:', {
         userType,
@@ -719,27 +723,45 @@
         document.body.classList.toggle('lc-role-student', userType !== 'teacher');
       } catch (_e) {}
 
-      // Update video labels so the local tile matches the current role
-      try {
-        const teacherLabelEl = document.querySelector('.video.teacher .video-header p');
-        const studentLabelEl = document.querySelector('.video.student .video-header p');
-        const peerEmptyHint = document.getElementById('peer-video-empty');
-        if (teacherLabelEl && studentLabelEl) {
-          if (userType === 'teacher') {
-            // You are the teacher: your local camera tile should say Teacher (You)
-            teacherLabelEl.textContent = 'Student';
-            studentLabelEl.textContent = 'Teacher (You)';
-            if (peerEmptyHint) peerEmptyHint.textContent = 'Waiting for student…';
-          } else {
-            // You are the student: keep default labels
-            teacherLabelEl.textContent = 'Teacher';
-            studentLabelEl.textContent = 'Student (You)';
-            if (peerEmptyHint) peerEmptyHint.textContent = 'Waiting for teacher…';
+      /**
+       * Name the camera tiles for whoever is actually in them: the peer tile carries the
+       * other participant (student label for a teacher, teacher label for a student) and
+       * the local tile is always "you". Safe to call again as names resolve from booking.
+       */
+      function applyVideoTileLabels() {
+        try {
+          const peerLabelEl =
+            document.getElementById('peer-video-label') ||
+            document.querySelector('#peer-video-tile .video-header p');
+          const localLabelEl =
+            document.getElementById('local-video-label') ||
+            document.querySelector('#local-video-tile .video-header p');
+          const peerEmptyHint = document.getElementById('peer-video-empty');
+          const isTeacher = userType === 'teacher';
+          const studentLabel = classroomStudentLabel || 'Student';
+          const teacherLabel = classroomTeacherLabel || 'Teacher';
+
+          if (peerLabelEl) {
+            peerLabelEl.textContent = isTeacher ? studentLabel : teacherLabel;
+            peerLabelEl.title = peerLabelEl.textContent;
           }
+          if (localLabelEl) {
+            localLabelEl.textContent = isTeacher
+              ? 'Teacher (You)'
+              : `${studentLabel} (You)`;
+            localLabelEl.title = localLabelEl.textContent;
+          }
+          if (peerEmptyHint) {
+            peerEmptyHint.textContent = isTeacher
+              ? `Waiting for ${studentLabel}…`
+              : `Waiting for ${teacherLabel}…`;
+          }
+        } catch (e) {
+          console.warn('Could not update video labels based on user type:', e);
         }
-      } catch (e) {
-        console.warn('Could not update video labels based on user type:', e);
       }
+
+      applyVideoTileLabels();
 
       function setPeerVideoWaiting(waiting) {
         const tile = document.getElementById('peer-video-tile');
@@ -784,6 +806,12 @@
       let lastBroadcastMaterialId = null; // avoid duplicate lesson-file-select for same material
       let presenterSyncInterval = null;
       let lastSyncState = { page: null, scrollTop: null, scrollLeft: null, zoom: null };
+
+      // Lesson-stage video follow-mode (teacher drives play/pause/seek)
+      window.__lcVideoSyncState = window.__lcVideoSyncState || null;
+      window.__lcLastVideoMaterial = window.__lcLastVideoMaterial || null;
+      let lcVideoSyncApplying = false;
+      let lcVideoLastTimeEmitAt = 0;
       
       // Initialize Presenter Mode UI
       const presenterModeControls = document.getElementById('presenter-mode-controls');
@@ -871,6 +899,23 @@
         return escapePortalVid(s).replace(/"/g, '&quot;');
       }
 
+      function playPortalVideoInLesson(videoMeta) {
+        if (!videoMeta || !videoMeta.url) return;
+        const id = 'portal-video-' + String(videoMeta.id || videoMeta._id || Date.now());
+        const material = {
+          id,
+          name: videoMeta.title || 'Class video',
+          type: 'video/mp4',
+          data: videoMeta.url,
+          uploader: 'Portal',
+          __forceReload: true
+        };
+        renderLessonMaterial(material);
+        window.__lcLastVideoMaterial = material;
+        setActiveTab('lesson-content');
+        showLessonFile(material);
+      }
+
       function loadPortalVideosIfNeeded() {
         if (!portalVideosListEl) return;
         if (portalVideosLoaded) return;
@@ -878,6 +923,13 @@
         if (!token) {
           portalVideosListEl.innerHTML = '<p style="color:#94a3b8;">Sign in to view videos.</p>';
           return;
+        }
+        const leadEl = document.querySelector('.lc-videos-panel__lead');
+        if (leadEl) {
+          leadEl.textContent =
+            userType === 'teacher'
+              ? 'Pick a clip and use Play in lesson so the class follows on the lesson stage.'
+              : 'School clips available during class. When the teacher plays one, it opens on the lesson stage.';
         }
         const apiUrl = userType === 'teacher' ? '/api/teacher/portal-videos' : '/api/student/portal-videos';
         portalVideosListEl.innerHTML = '<p style="color:#94a3b8;">Loading videos…</p>';
@@ -896,14 +948,48 @@
             }
             portalVideosListEl.innerHTML = list.map((v) => {
               const src = v.url || '';
+              const vidId = escapePortalVidAttr(String(v.id || v._id || ''));
+              const title = escapePortalVid(v.title || 'Video');
+              const playBtn =
+                userType === 'teacher'
+                  ? '<div class="portal-video-card__actions">' +
+                    '<button type="button" class="btn-play-in-lesson" data-play-in-lesson="1" data-video-id="' +
+                    vidId +
+                    '" data-video-url="' +
+                    escapePortalVidAttr(src) +
+                    '" data-video-title="' +
+                    escapePortalVidAttr(v.title || 'Class video') +
+                    '">Play in lesson</button></div>'
+                  : '';
               return (
-                '<div class="portal-video-card" style="margin-bottom:16px;padding:12px;background:#fff;border-radius:8px;border:1px solid #e2e8f0;">' +
-                '<div style="font-weight:600;margin-bottom:4px;">' + escapePortalVid(v.title) + '</div>' +
-                (v.description ? '<div style="font-size:0.875rem;color:#64748b;margin-bottom:8px;">' + escapePortalVid(v.description) + '</div>' : '') +
-                '<video controls preload="metadata" playsinline style="width:100%;max-height:360px;border-radius:6px;" src="' + escapePortalVidAttr(src) + '"></video>' +
+                '<div class="portal-video-card">' +
+                '<div class="portal-video-card__title">' +
+                title +
+                '</div>' +
+                (v.description
+                  ? '<div class="portal-video-card__desc">' + escapePortalVid(v.description) + '</div>'
+                  : '') +
+                '<video controls preload="metadata" playsinline class="portal-video-card__preview" src="' +
+                escapePortalVidAttr(src) +
+                '"></video>' +
+                playBtn +
                 '</div>'
               );
             }).join('');
+
+            if (!portalVideosListEl._playInLessonBound) {
+              portalVideosListEl._playInLessonBound = true;
+              portalVideosListEl.addEventListener('click', (e) => {
+                const btn = e.target && e.target.closest ? e.target.closest('[data-play-in-lesson]') : null;
+                if (!btn || userType !== 'teacher') return;
+                e.preventDefault();
+                playPortalVideoInLesson({
+                  id: btn.getAttribute('data-video-id') || '',
+                  url: btn.getAttribute('data-video-url') || '',
+                  title: btn.getAttribute('data-video-title') || 'Class video'
+                });
+              });
+            }
           })
           .catch(() => {
             portalVideosListEl.innerHTML = '<p style="color:#e11d48;">Failed to load videos.</p>';
@@ -2584,6 +2670,271 @@
         return material;
       }
 
+      function getStageVideoEl() {
+        return document.getElementById('lc-stage-video');
+      }
+
+      function showStudentVideoFollowIndicator(show) {
+        let indicator = document.getElementById('lc-video-follow-indicator');
+        if (show) {
+          if (!indicator) {
+            indicator = document.createElement('div');
+            indicator.id = 'lc-video-follow-indicator';
+            indicator.className = 'lc-video-follow-indicator';
+            indicator.textContent = 'Following teacher video';
+            document.body.appendChild(indicator);
+          }
+          indicator.hidden = false;
+        } else if (indicator) {
+          indicator.hidden = true;
+        }
+      }
+
+      function hideTapToFollowOverlay() {
+        const overlay = document.getElementById('lc-video-tap-follow');
+        if (overlay) overlay.hidden = true;
+      }
+
+      function showTapToFollowOverlay(video) {
+        if (userType !== 'student' || !video) return;
+        const wrap = video.closest('.lc-stage-video-wrap') || lessonFileViewer;
+        if (!wrap) return;
+        let overlay = document.getElementById('lc-video-tap-follow');
+        if (!overlay) {
+          overlay = document.createElement('button');
+          overlay.id = 'lc-video-tap-follow';
+          overlay.type = 'button';
+          overlay.className = 'lc-video-tap-follow';
+          overlay.textContent = 'Tap to follow video';
+          overlay.addEventListener('click', () => {
+            const v = getStageVideoEl();
+            const state = window.__lcVideoSyncState;
+            if (!v) return;
+            lcVideoSyncApplying = true;
+            try {
+              if (state && Number.isFinite(Number(state.currentTime))) {
+                v.currentTime = Number(state.currentTime);
+              }
+            } catch (_seekErr) {}
+            const finish = () => {
+              lcVideoSyncApplying = false;
+              hideTapToFollowOverlay();
+            };
+            const playPromise = v.play();
+            if (playPromise && typeof playPromise.then === 'function') {
+              playPromise
+                .then(finish)
+                .catch(() => {
+                  try {
+                    v.muted = true;
+                  } catch (_muteErr) {}
+                  const mutedPlay = v.play();
+                  if (mutedPlay && typeof mutedPlay.then === 'function') {
+                    mutedPlay.then(finish).catch(() => {
+                      lcVideoSyncApplying = false;
+                    });
+                  } else {
+                    finish();
+                  }
+                });
+            } else {
+              finish();
+            }
+          });
+          wrap.appendChild(overlay);
+        } else if (overlay.parentElement !== wrap) {
+          wrap.appendChild(overlay);
+        }
+        overlay.hidden = false;
+      }
+
+      function stageVideoSrcMatches(video, src) {
+        if (!video || !src) return !src;
+        const a = String(video.getAttribute('src') || '');
+        const b = String(src);
+        if (a === b) return true;
+        try {
+          const full = String(video.currentSrc || video.src || '');
+          if (full === b || full.endsWith(b) || b.endsWith(a)) return true;
+        } catch (_e) {}
+        return false;
+      }
+
+      function buildLessonVideoSyncPayload(video, extras) {
+        extras = extras || {};
+        const material = extras.material || window.__lcLastVideoMaterial || {};
+        return {
+          room,
+          videoId: extras.videoId || material.id || (video && video.dataset && video.dataset.videoId) || '',
+          src: extras.src || (video && (video.getAttribute('src') || video.currentSrc || video.src)) || '',
+          playing:
+            extras.playing != null
+              ? !!extras.playing
+              : !!(video && !video.paused && !video.ended),
+          currentTime: Number.isFinite(Number(extras.currentTime))
+            ? Number(extras.currentTime)
+            : video && Number.isFinite(video.currentTime)
+              ? video.currentTime
+              : 0,
+          rate:
+            video && Number.isFinite(video.playbackRate) ? video.playbackRate : Number(extras.rate) || 1,
+          updatedAt: Date.now()
+        };
+      }
+
+      function emitLessonVideoSync(video, extras) {
+        if (userType !== 'teacher' || !socket || !socket.connected || !video) return;
+        if (lcVideoSyncApplying) return;
+        const payload = buildLessonVideoSyncPayload(video, extras);
+        window.__lcVideoSyncState = payload;
+        socket.emit('lesson-video-sync', payload);
+      }
+
+      function applyLessonVideoSync(data) {
+        if (userType !== 'student' || !data || !data.src) return;
+        window.__lcVideoSyncState = data;
+        let video = getStageVideoEl();
+        if (!video) {
+          const material = {
+            id: data.videoId || 'synced-video',
+            name: 'Class video',
+            type: 'video/mp4',
+            data: data.src,
+            __forceReload: true
+          };
+          window.__lcLastVideoMaterial = material;
+          renderLessonMaterial(material);
+          setActiveTab('lesson-content');
+          showLessonFile(material);
+          setTimeout(() => applyLessonVideoSync(data), 200);
+          return;
+        }
+
+        lcVideoSyncApplying = true;
+        showStudentVideoFollowIndicator(true);
+
+        const finishApply = () => {
+          lcVideoSyncApplying = false;
+        };
+
+        const afterSrcReady = () => {
+          if (Number.isFinite(Number(data.rate)) && data.rate > 0) {
+            try {
+              video.playbackRate = Number(data.rate);
+            } catch (_rateErr) {}
+          }
+          const target = Number(data.currentTime);
+          if (Number.isFinite(target) && Math.abs((video.currentTime || 0) - target) > 0.75) {
+            try {
+              video.currentTime = target;
+            } catch (_seekErr) {}
+          }
+          if (data.playing) {
+            const playPromise = video.play();
+            if (playPromise && typeof playPromise.then === 'function') {
+              playPromise
+                .then(() => {
+                  hideTapToFollowOverlay();
+                  finishApply();
+                })
+                .catch(() => {
+                  showTapToFollowOverlay(video);
+                  finishApply();
+                });
+            } else {
+              finishApply();
+            }
+          } else {
+            try {
+              video.pause();
+            } catch (_pauseErr) {}
+            hideTapToFollowOverlay();
+            finishApply();
+          }
+        };
+
+        if (!stageVideoSrcMatches(video, data.src)) {
+          video.src = data.src;
+          const onMeta = () => {
+            video.removeEventListener('loadedmetadata', onMeta);
+            afterSrcReady();
+          };
+          video.addEventListener('loadedmetadata', onMeta);
+          try {
+            video.load();
+          } catch (_loadErr) {}
+          return;
+        }
+        afterSrcReady();
+      }
+
+      function wireTeacherStageVideoSync(video, material) {
+        if (!video || userType !== 'teacher') return;
+        const onPlay = () => emitLessonVideoSync(video, { material, playing: true });
+        const onPause = () => emitLessonVideoSync(video, { material, playing: false });
+        const onSeeked = () =>
+          emitLessonVideoSync(video, {
+            material,
+            playing: !video.paused && !video.ended,
+            currentTime: video.currentTime
+          });
+        const onTimeUpdate = () => {
+          if (video.paused || video.ended) return;
+          const now = Date.now();
+          if (now - lcVideoLastTimeEmitAt < 1000) return;
+          lcVideoLastTimeEmitAt = now;
+          emitLessonVideoSync(video, { material, playing: true, currentTime: video.currentTime });
+        };
+        video.addEventListener('play', onPlay);
+        video.addEventListener('pause', onPause);
+        video.addEventListener('seeked', onSeeked);
+        video.addEventListener('timeupdate', onTimeUpdate);
+        // Snapshot for late joiners even before first play
+        window.__lcVideoSyncState = buildLessonVideoSyncPayload(video, {
+          material,
+          playing: false,
+          currentTime: 0
+        });
+      }
+
+      function mountStageVideoPlayer(material) {
+        const wrap = document.createElement('div');
+        wrap.className = 'lc-stage-video-wrap';
+        const video = document.createElement('video');
+        video.id = 'lc-stage-video';
+        video.className = 'lc-stage-video';
+        video.src = material.data;
+        video.playsInline = true;
+        video.setAttribute('playsinline', '');
+        video.preload = 'auto';
+        if (material.id) video.dataset.videoId = String(material.id);
+        if (userType === 'teacher') {
+          video.controls = true;
+        } else {
+          video.controls = false;
+          video.setAttribute('controlslist', 'nodownload noplaybackrate');
+        }
+        wrap.appendChild(video);
+        lessonFileViewer.appendChild(wrap);
+        window.__lcLastVideoMaterial = {
+          id: material.id,
+          name: material.name,
+          type: material.type || 'video/mp4',
+          data: material.data,
+          uploader: material.uploader || 'Teacher'
+        };
+        if (userType === 'teacher') {
+          wireTeacherStageVideoSync(video, material);
+          showStudentVideoFollowIndicator(false);
+        } else {
+          showStudentVideoFollowIndicator(true);
+          if (window.__lcVideoSyncState && window.__lcVideoSyncState.src) {
+            setTimeout(() => applyLessonVideoSync(window.__lcVideoSyncState), 50);
+          }
+        }
+        return video;
+      }
+
       function showLessonFile(material) {
         void showLessonFileAsync(material);
       }
@@ -2644,6 +2995,16 @@
         });
         
         lessonFileViewer.innerHTML = '';
+        hideTapToFollowOverlay();
+        showStudentVideoFollowIndicator(false);
+        const nextIsVideo =
+          material &&
+          (((material.type || '').toLowerCase().includes('video') ||
+            /\.(mp4|webm|ogg)$/i.test(material.name || '')));
+        if (!nextIsVideo) {
+          window.__lcLastVideoMaterial = null;
+          window.__lcVideoSyncState = null;
+        }
         if (pdfNavControls) pdfNavControls.style.display = 'none';
         if (window.currentPptOverlay && window.currentPptOverlay.destroy) {
           try {
@@ -3786,12 +4147,39 @@
           }
           console.log('✅ Presentation overlay mounted:', material.name);
         } else if (isVideo) {
-          const video = document.createElement('video');
-          video.src = material.data;
-          video.controls = true;
-          video.style.cssText = 'max-width:100%;max-height:800px;border-radius:8px;';
-          lessonFileViewer.appendChild(video);
+          console.log('🎬 [CLIENT] Displaying stage video:', material.name);
+          showStudentVideoFollowIndicator(userType === 'student');
+          mountStageVideoPlayer(material);
+          if (socket && socket.connected && userType === 'teacher') {
+            lastBroadcastMaterialId = material.id;
+            setTimeout(() => {
+              if (!materialHasRenderablePayload(material)) return;
+              const materialToBroadcast = {
+                id: material.id,
+                materialId: material.id,
+                name: material.name,
+                type: material.type || 'video/mp4',
+                size: material.size || 0,
+                data: material.data,
+                uploader: material.uploader || 'Teacher'
+              };
+              socket.emit('lesson-file-select', {
+                room,
+                materialId: material.id,
+                material: materialToBroadcast
+              });
+              const stageVideo = getStageVideoEl();
+              if (stageVideo) {
+                emitLessonVideoSync(stageVideo, {
+                  material,
+                  playing: !stageVideo.paused && !stageVideo.ended,
+                  currentTime: stageVideo.currentTime || 0
+                });
+              }
+            }, 200);
+          }
         } else {
+          showStudentVideoFollowIndicator(false);
           const previewCard = document.createElement('div');
           previewCard.style.cssText = 'text-align:center;padding:40px;color:#666;';
           previewCard.innerHTML = `
@@ -4409,13 +4797,51 @@
       let studentPdfIframe = null;
       let studentPdfContainer = null;
       
-      // When a student joins, teacher re-broadcasts presenter mode so the new student gets it
+      // When a student joins, teacher re-broadcasts presenter mode + video follow so late joiners catch up
       socket.on('user-joined', ({ userType: joinedUserType, room: eventRoom } = {}) => {
         if (userType !== 'teacher' || eventRoom !== room || joinedUserType !== 'student') return;
         if (presenterModeActive && socket && socket.connected) {
           socket.emit('presenter-mode-start', { room });
           console.log('📺 [TEACHER] Re-sent presenter-mode-start for new student');
         }
+        if (!socket || !socket.connected) return;
+        const videoMat = window.__lcLastVideoMaterial;
+        const syncState = window.__lcVideoSyncState;
+        const stageVideo = getStageVideoEl();
+        // Only rebroadcast while a stage video is actually mounted
+        if (stageVideo && videoMat && materialHasRenderablePayload(videoMat)) {
+          const materialToBroadcast = {
+            id: videoMat.id,
+            materialId: videoMat.id,
+            name: videoMat.name,
+            type: videoMat.type || 'video/mp4',
+            size: videoMat.size || 0,
+            data: videoMat.data,
+            uploader: videoMat.uploader || 'Teacher'
+          };
+          socket.emit('lesson-file-select', {
+            room,
+            materialId: videoMat.id,
+            material: materialToBroadcast
+          });
+          setTimeout(() => {
+            if (stageVideo) {
+              emitLessonVideoSync(stageVideo, {
+                material: videoMat,
+                playing: !stageVideo.paused && !stageVideo.ended,
+                currentTime: stageVideo.currentTime || 0
+              });
+            } else if (syncState && syncState.src) {
+              socket.emit('lesson-video-sync', Object.assign({}, syncState, { room, updatedAt: Date.now() }));
+            }
+          }, 400);
+        }
+      });
+
+      socket.on('lesson-video-sync', (data = {}) => {
+        if (userType !== 'student') return;
+        if (data.room && data.room !== room) return;
+        applyLessonVideoSync(data);
       });
       
       socket.on('presenter-mode-start', ({ room: eventRoom } = {}) => {
@@ -5904,7 +6330,7 @@
           console.log('💬 Sending chat message:', { message, messageId, room, username });
           
           // Add message locally first for immediate feedback
-          addChatMessage(message, username, true, timestamp);
+          addChatMessage(message, myChatLabel, true, timestamp);
           
           // Mark as sent and displayed
           sentMessageIds.add(messageId);
@@ -5912,7 +6338,14 @@
           displayedMessages.add(displayKey);
           
           // Send to server
-          socket.emit('chat-message', { room, message, sender: username, messageId, timestamp });
+          socket.emit('chat-message', {
+            room,
+            message,
+            sender: username,
+            senderLabel: myChatLabel,
+            messageId,
+            timestamp
+          });
           
           // Clear input
           chatInput.value = '';
@@ -5971,15 +6404,21 @@
         }, 30000);
         
         const isOwn = sender === username;
+        const senderLabel = payload.senderLabel || sender;
         console.log('💬 Adding chat message to UI:', { message, sender, isOwn, timestamp });
-        addChatMessage(message, sender, isOwn, timestamp);
+        addChatMessage(message, senderLabel, isOwn, timestamp);
       });
       
       // Also listen for chat messages with different event names (for compatibility)
       socket.on('message', (data) => {
         console.log('💬 Received message event:', data);
         if (data && data.message) {
-          addChatMessage(data.message, data.sender || data.username || 'Unknown', false, data.timestamp);
+          addChatMessage(
+            data.message,
+            data.senderLabel || data.sender || data.username || 'Unknown',
+            false,
+            data.timestamp
+          );
         }
       });
 
@@ -6241,25 +6680,40 @@
         const levelPill = document.getElementById('lc-student-level-pill');
         if (!booking) return;
 
-        const studentName =
+        const hasStudent = !!(
           booking.studentName ||
-          (booking.student && (booking.student.firstName || booking.student.username)) ||
-          '';
+          booking.studentDisplayName ||
+          booking.studentNickname ||
+          booking.studentId ||
+          booking.student
+        );
+        // Server sends the class-facing label; degrade to plain "Student" rather than a legal name
+        const studentLabel =
+          booking.studentDisplayName ||
+          booking.studentNickname ||
+          (hasStudent ? 'Student' : '');
         const teacherName =
           booking.teacherName ||
           (booking.teacher && (booking.teacher.firstName || booking.teacher.username)) ||
           '';
 
+        if (studentLabel) {
+          classroomStudentLabel = studentLabel;
+          if (userType === 'student') myChatLabel = studentLabel;
+        }
+        if (teacherName) classroomTeacherLabel = teacherName;
+        applyVideoTileLabels();
+
         if (identityEl) {
-          if (userType === 'teacher' && studentName) {
-            identityEl.textContent = studentName;
-            identityEl.title = studentName;
+          if (userType === 'teacher' && studentLabel) {
+            identityEl.textContent = studentLabel;
+            identityEl.title = studentLabel;
           } else if (userType === 'student' && teacherName) {
             identityEl.textContent = teacherName;
             identityEl.title = teacherName;
-          } else if (studentName) {
-            identityEl.textContent = studentName;
-            identityEl.title = studentName;
+          } else if (studentLabel) {
+            identityEl.textContent = studentLabel;
+            identityEl.title = studentLabel;
           }
         }
 
@@ -6271,6 +6725,30 @@
           } else {
             levelPill.hidden = true;
           }
+        }
+      }
+
+      /** Students: own class label for chat when no booking payload supplied one. */
+      async function ensureStudentClassroomLabel() {
+        if (userType !== 'student' || classroomStudentLabel) return;
+        const token = resolveLiveClassroomAuthToken();
+        if (!token) return;
+        try {
+          const resp = await fetch('/api/student/profile', {
+            headers: { Authorization: 'Bearer ' + token },
+            remoedIgnoreAuthFailure: true
+          });
+          if (!resp.ok) return;
+          const data = await resp.json();
+          const profile = (data && (data.profile || data.student)) || data || {};
+          const label = profile.classroomDisplayName || profile.nickname || '';
+          if (label) {
+            classroomStudentLabel = label;
+            myChatLabel = label;
+            applyVideoTileLabels();
+          }
+        } catch (err) {
+          console.warn('Could not resolve student class label:', err.message);
         }
       }
 
@@ -6594,6 +7072,7 @@
       // This ensures lesson loads as fast as possible, even before class starts
       // Load immediately - don't wait for socket or delays
       loadLessonFromBooking();
+      void ensureStudentClassroomLabel();
       
       // Also load when socket connects (in case booking data needs socket)
       if (socket && socket.connected) {

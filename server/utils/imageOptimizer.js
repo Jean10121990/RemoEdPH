@@ -1,6 +1,7 @@
 const sharp = require('sharp');
 const path = require('path');
 const fsp = require('fs').promises;
+const { deleteUpload } = require('../services/uploadStore');
 
 const MAX_INPUT_BYTES = 20 * 1024 * 1024;
 
@@ -78,6 +79,7 @@ async function safeUnlinkPublicUpload(publicPath, allowedSubdirs) {
   const top = rel.split('/')[0];
   if (!allowedSubdirs.includes(top)) return;
   await fsp.unlink(abs).catch(() => {});
+  await deleteUpload(rel).catch(() => {});
 }
 
 module.exports = {

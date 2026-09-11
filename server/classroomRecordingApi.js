@@ -33,6 +33,48 @@ const adminRecordingAuthChain = [
   requireAdminQaOrSuper,
 ];
 
+/**
+ * Short-lived download tickets. These let the browser pull a recording with a plain
+ * navigation (native progress bar, resumable, no in-memory buffering) without putting the
+ * admin JWT in a URL where it would land in proxy/access logs. Valid for the whole TTL
+ * rather than one use, so a browser retry or resumed transfer still authenticates.
+ */
+const DOWNLOAD_TICKET_TTL_MS = 2 * 60 * 1000;
+const MAX_DOWNLOAD_TICKETS = 500;
+const downloadTickets = new Map();
+
+function pruneDownloadTickets() {
+  const now = Date.now();
+  for (const [key, row] of downloadTickets) {
+    if (!row || row.expiresAt <= now) downloadTickets.delete(key);
+  }
+  while (downloadTickets.size > MAX_DOWNLOAD_TICKETS) {
+    downloadTickets.delete(downloadTickets.keys().next().value);
+  }
+}
+
+function issueDownloadTicket(recordingId) {
+  pruneDownloadTickets();
+  const ticket = crypto.randomBytes(24).toString('hex');
+  downloadTickets.set(ticket, {
+    recordingId: String(recordingId),
+    expiresAt: Date.now() + DOWNLOAD_TICKET_TTL_MS
+  });
+  return ticket;
+}
+
+function downloadTicketValid(recordingId, ticket) {
+  const key = String(ticket || '');
+  if (!key) return false;
+  const row = downloadTickets.get(key);
+  if (!row) return false;
+  if (row.expiresAt <= Date.now()) {
+    downloadTickets.delete(key);
+    return false;
+  }
+  return row.recordingId === String(recordingId || '');
+}
+
 const UPLOAD_DIR = path.join(__dirname, '../uploads/classroom-recordings');
 const RETENTION_DAYS = Number(process.env.CLASSROOM_RECORDING_RETENTION_DAYS || 7);
 const MAX_FILE_BYTES = Number(process.env.CLASSROOM_RECORDING_MAX_MB || 120) * 1024 * 1024;
@@ -429,9 +471,14 @@ router.get('/classroom-recording/config', (req, res) => {
 
 router.get('/admin/classroom-recordings', ...adminRecordingAuthChain, async (req, res) => {
   try {
-    const { date, limit } = req.query || {};
+    const { date, limit, from, to } = req.query || {};
     const q = {};
-    if (date && /^\d{4}-\d{2}-\d{2}$/.test(String(date))) {
+    // from/to are explicit UTC instants — lets the client ask for a local (e.g. Manila) day
+    const fromDate = from ? new Date(String(from)) : null;
+    const toDate = to ? new Date(String(to)) : null;
+    if (fromDate && !Number.isNaN(fromDate.getTime()) && toDate && !Number.isNaN(toDate.getTime())) {
+      q.createdAt = { $gte: fromDate, $lte: toDate };
+    } else if (date && /^\d{4}-\d{2}-\d{2}$/.test(String(date))) {
       const d = String(date);
       q.createdAt = {
         $gte: new Date(`${d}T00:00:00.000Z`),
@@ -466,34 +513,85 @@ router.get('/admin/classroom-recordings', ...adminRecordingAuthChain, async (req
   }
 });
 
-router.get('/admin/classroom-recordings/:id/download', ...adminRecordingAuthChain, async (req, res) => {
-  try {
-    const doc = await ClassroomRecording.findById(req.params.id);
-    if (!doc) return res.status(404).json({ success: false, message: 'Not found' });
-    const rel = String(doc.relativePath || '').replace(/\\/g, '/').replace(/^\//, '');
-    const abs = path.join(__dirname, '../uploads', rel);
-    if (!fs.existsSync(abs)) return res.status(404).json({ success: false, message: 'File missing' });
-    const ext = /mp4/i.test(String(doc.mimeType || '')) || /\.mp4$/i.test(doc.relativePath || '') ? 'mp4' : 'webm';
-    const safeName = `classroom-${doc.roomId}-${doc._id}.${ext}`.replace(/[^a-zA-Z0-9._-]/g, '_');
-    res.setHeader('Content-Type', doc.mimeType || (ext === 'mp4' ? 'video/mp4' : 'video/webm'));
-    res.setHeader('Content-Disposition', `attachment; filename="${safeName}"`);
-    const stream = fs.createReadStream(abs);
-    stream.on('error', (streamErr) => {
-      console.error('admin download classroom-recording stream:', streamErr);
-      if (!res.headersSent) {
-        res.status(500).json({ success: false, message: 'Could not read recording file.' });
-      } else {
-        res.destroy(streamErr);
-      }
-    });
-    stream.pipe(res);
-  } catch (err) {
-    console.error('admin download classroom-recording:', err);
-    if (!res.headersSent) {
-      res.status(500).json({ success: false, message: err.message || 'Download failed' });
+// Mint a ticket the browser can use for a normal (non-fetch) download navigation
+router.post(
+  '/admin/classroom-recordings/:id/download-ticket',
+  ...adminRecordingAuthChain,
+  async (req, res) => {
+    try {
+      const doc = await ClassroomRecording.findById(req.params.id).select('_id').lean();
+      if (!doc) return res.status(404).json({ success: false, message: 'Not found' });
+      res.json({
+        success: true,
+        ticket: issueDownloadTicket(doc._id),
+        expiresInMs: DOWNLOAD_TICKET_TTL_MS
+      });
+    } catch (err) {
+      console.error('admin download-ticket classroom-recording:', err);
+      res.status(400).json({ success: false, message: 'Could not prepare download' });
     }
   }
-});
+);
+
+/** A valid ticket stands in for the admin auth chain (it was issued to an authed admin). */
+const markValidDownloadTicket = (req, res, next) => {
+  if (downloadTicketValid(req.params.id, req.query.ticket)) {
+    req.recordingTicketOk = true;
+  }
+  next();
+};
+const skipWhenTicketed = (mw) => (req, res, next) =>
+  req.recordingTicketOk ? next() : mw(req, res, next);
+
+router.get(
+  '/admin/classroom-recordings/:id/download',
+  markValidDownloadTicket,
+  ...adminRecordingAuthChain.map(skipWhenTicketed),
+  async (req, res) => {
+    try {
+      const doc = await ClassroomRecording.findById(req.params.id);
+      if (!doc) return res.status(404).json({ success: false, message: 'Not found' });
+      const rel = String(doc.relativePath || '').replace(/\\/g, '/').replace(/^\//, '');
+      const abs = path.join(__dirname, '../uploads', rel);
+      let size = 0;
+      try {
+        size = (await fsp.stat(abs)).size;
+      } catch (statErr) {
+        return res.status(404).json({ success: false, message: 'File missing' });
+      }
+      if (!size) {
+        return res.status(409).json({ success: false, message: 'Recording file is empty.' });
+      }
+      const ext =
+        /mp4/i.test(String(doc.mimeType || '')) || /\.mp4$/i.test(doc.relativePath || '')
+          ? 'mp4'
+          : 'webm';
+      const safeName = `classroom-${doc.roomId}-${doc._id}.${ext}`.replace(/[^a-zA-Z0-9._-]/g, '_');
+      // res.download sets Content-Length + Accept-Ranges, so the browser can show progress
+      // and resume — a bare pipe was chunked and died on proxy hiccups mid-transfer.
+      res.setHeader('Content-Type', ext === 'mp4' ? 'video/mp4' : 'video/webm');
+      res.download(abs, safeName, (err) => {
+        if (!err) return;
+        const code = String(err.code || '');
+        // Client cancelled / navigated away — not a server fault
+        if (code === 'ECONNABORTED' || code === 'EPIPE' || code === 'ERR_STREAM_PREMATURE_CLOSE') {
+          return;
+        }
+        console.error('admin download classroom-recording stream:', err);
+        if (!res.headersSent) {
+          res.status(500).json({ success: false, message: 'Could not read recording file.' });
+        } else {
+          res.destroy(err);
+        }
+      });
+    } catch (err) {
+      console.error('admin download classroom-recording:', err);
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, message: err.message || 'Download failed' });
+      }
+    }
+  }
+);
 
 router.delete('/admin/classroom-recordings/:id', ...adminRecordingAuthChain, async (req, res) => {
   try {

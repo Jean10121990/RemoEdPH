@@ -739,6 +739,11 @@
                                     <input type="text" class="form-input" id="lastName" placeholder="Last Name" disabled>
                                 </div>
                                 <div class="form-group">
+                                    <label class="form-label">Nickname</label>
+                                    <input type="text" class="form-input" id="nickname" placeholder="e.g. Louie" maxlength="40" disabled>
+                                    <small style="display:block;margin-top:4px;color:#64748b;font-size:0.75rem;">Shown in the live classroom instead of your full name</small>
+                                </div>
+                                <div class="form-group">
                                     <label class="form-label">Gender</label>
                                     <select class="form-input" id="gender" disabled>
                                         <option value="">Select Gender</option>
@@ -1538,6 +1543,13 @@
             document.getElementById('firstName').value = profile.firstName || '';
             document.getElementById('middleName').value = profile.middleName || '';
             document.getElementById('lastName').value = profile.lastName || '';
+            const nicknameEl = document.getElementById('nickname');
+            if (nicknameEl) {
+                nicknameEl.value = profile.nickname || '';
+                nicknameEl.placeholder = profile.classroomDisplayName
+                    ? `Classroom name: ${profile.classroomDisplayName}`
+                    : 'e.g. Louie';
+            }
             document.getElementById('gender').value = profile.gender || '';
             
             // Handle birthday format (convert from Date object if needed)
@@ -1722,6 +1734,7 @@
                     firstName: document.getElementById('firstName').value,
                     middleName: document.getElementById('middleName').value,
                     lastName: document.getElementById('lastName').value,
+                    nickname: document.getElementById('nickname')?.value || '',
                     gender: document.getElementById('gender').value,
                     birthday: document.getElementById('birthday').value,
                     age: document.getElementById('age').value,

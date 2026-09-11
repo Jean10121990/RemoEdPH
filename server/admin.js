@@ -5584,14 +5584,19 @@ router.get('/issues-test', async (req, res) => {
 // GET all issues with filters
 router.get('/issues', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
-    const { status, validityStatus, issueType, date } = req.query;
-    
+    const { status, validityStatus, issueType, date, from, to } = req.query;
+
     // Build filter object
     const filter = {};
     if (status) filter.status = status;
     if (validityStatus) filter.validityStatus = validityStatus;
     if (issueType) filter.issueType = issueType;
-    if (date) {
+    // from/to are explicit UTC instants — lets the client ask for a local (e.g. Manila) day
+    const fromDate = from ? new Date(String(from)) : null;
+    const toDate = to ? new Date(String(to)) : null;
+    if (fromDate && !Number.isNaN(fromDate.getTime()) && toDate && !Number.isNaN(toDate.getTime())) {
+      filter.submittedAt = { $gte: fromDate, $lte: toDate };
+    } else if (date) {
       const startDate = new Date(date);
       const endDate = new Date(date);
       endDate.setDate(endDate.getDate() + 1);

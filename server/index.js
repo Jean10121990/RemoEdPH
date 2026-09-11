@@ -1656,6 +1656,27 @@ app.get('/api/student/booking/:bookingId', verifyToken, async (req, res) => {
 
     const bookingObj = booking.toObject ? booking.toObject() : { ...booking };
     bookingObj.scheduledStartTime = getScheduledStartTime(booking);
+    try {
+      const { findStudentByAnyId } = require('./services/studentBadgeService');
+      const { studentClassroomLabel } = require('./utils/studentDisplayName');
+      const student = await findStudentByAnyId(booking.studentId);
+      bookingObj.studentNickname = (student && student.nickname) || '';
+      bookingObj.studentDisplayName = studentClassroomLabel(student, booking.studentId);
+    } catch (labelErr) {
+      console.warn('⚠️ [STUDENT BOOKING] Could not resolve student display name:', labelErr.message);
+    }
+    if (!bookingObj.teacherName) {
+      try {
+        const { publicTeacherLabel } = require('./utils/publicTeacherLabel');
+        const Teacher = require('./models/Teacher');
+        const teacher = await Teacher.findOne({ teacherId: booking.teacherId })
+          .select('teacherId username email firstName lastName fullname nickname')
+          .lean();
+        bookingObj.teacherName = publicTeacherLabel(teacher, 'Teacher');
+      } catch (teacherErr) {
+        console.warn('⚠️ [STUDENT BOOKING] Could not resolve teacher label:', teacherErr.message);
+      }
+    }
     if (!bookingObj.lessonId) {
       const { resolveLessonIdFromBooking } = require('./lessonResolveFromBooking');
       const rid = await resolveLessonIdFromBooking(booking);
@@ -2910,6 +2931,40 @@ io.on('connection', socket => {
             console.log(`📄 [SERVER] PDF navigation forwarded from teacher to students in room ${room}`, { scrollTop, scrollLeft, page, materialId });
         } catch (err) {
             console.error('❌ [SERVER] Error handling pdf-navigation:', err);
+        }
+    });
+
+    // Lesson video follow-mode (teacher play/pause/seek → students)
+    socket.on('lesson-video-sync', (data = {}) => {
+        try {
+            const room = data.room;
+            if (!room) {
+                console.warn('⚠️ [SERVER] lesson-video-sync: missing room');
+                return;
+            }
+            const senderInfo = userSessions.get(socket.id);
+            const senderType = (senderInfo && senderInfo.userType) || socket.userType || '';
+            if (senderType !== 'teacher') {
+                console.warn('⚠️ [SERVER] lesson-video-sync: only teachers can sync video playback');
+                return;
+            }
+            const currentTime = Number(data.currentTime);
+            if (!Number.isFinite(currentTime)) {
+                console.warn('⚠️ [SERVER] lesson-video-sync: invalid currentTime');
+                return;
+            }
+            const payload = {
+                room,
+                videoId: data.videoId || '',
+                src: typeof data.src === 'string' ? data.src : '',
+                playing: !!data.playing,
+                currentTime,
+                rate: Number.isFinite(Number(data.rate)) ? Number(data.rate) : 1,
+                updatedAt: data.updatedAt || Date.now()
+            };
+            io.to(room).emit('lesson-video-sync', payload);
+        } catch (err) {
+            console.error('❌ [SERVER] Error handling lesson-video-sync:', err);
         }
     });
 

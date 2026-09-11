@@ -102,13 +102,9 @@ const { encryptPiiString, decryptPiiString } = require('./utils/piiCrypto');
 const {
   processImage,
   extractImageBufferFromDataUrl,
-  getUploadsRoot,
   safeUnlinkPublicUpload,
 } = require('./utils/imageOptimizer');
-
-async function ensureDir(dirPath) {
-  await fsp.mkdir(dirPath, { recursive: true });
-}
+const { saveUpload, normalizeUploadReference } = require('./services/uploadStore');
 
 // Helper function to create notifications (teachers / admin username bucket)
 async function createNotification(teacherId, type, message, extra = {}) {
@@ -1971,6 +1967,8 @@ router.get('/booking/:bookingId', verifyToken, requireTeacher, async (req, res) 
         student.username ||
         String(booking.studentId || 'Student')
       : String(booking.studentId || 'Student');
+    const { studentClassroomLabel } = require('./utils/studentDisplayName');
+    const studentDisplayName = studentClassroomLabel(student, booking.studentId);
     
     // Get teacher information
     const teacher = await Teacher.findOne({ teacherId: booking.teacherId });
@@ -2007,6 +2005,8 @@ router.get('/booking/:bookingId', verifyToken, requireTeacher, async (req, res) 
         studentId: booking.studentId,
         studentLevel: booking.studentLevel,
         studentName: studentName,
+        studentNickname: (student && student.nickname) || '',
+        studentDisplayName,
         studentProfilePicture,
         teacherName: teacherName,
         status: booking.status,
@@ -2331,6 +2331,8 @@ router.get('/booking/by-classroom/:classroomId', async (req, res) => {
         student.username ||
         String(booking.studentId || 'Student')
       : String(booking.studentId && booking.studentId !== 'undefined' ? booking.studentId : 'Student');
+    const { studentClassroomLabel } = require('./utils/studentDisplayName');
+    const studentDisplayName = studentClassroomLabel(student, booking.studentId);
     
     console.log('👤 API: Student found:', student ? 'YES' : 'NO');
 
@@ -2350,6 +2352,8 @@ router.get('/booking/by-classroom/:classroomId', async (req, res) => {
     const bookingData = {
       ...booking.toObject(),
       studentName: studentName,
+      studentNickname: (student && student.nickname) || '',
+      studentDisplayName,
       teacherName: teacherName,
       scheduledStartTime: getScheduledStartTime(booking),
       ...(resolvedLessonId ? { resolvedLessonId } : {}),
@@ -2545,12 +2549,11 @@ router.post('/profile', verifyToken, requireTeacher, async (req, res) => {
     );
     if (profilePicBuf) {
       const optimized = await processImage(profilePicBuf, 'avatar');
-      const dir = path.join(getUploadsRoot(), 'teacher-profiles');
-      await ensureDir(dir);
       const safeId = String(teacherId).replace(/[^a-zA-Z0-9_-]/g, '_');
       const filename = `${safeId}-${Date.now()}.webp`;
-      await fsp.writeFile(path.join(dir, filename), optimized);
-      resolvedProfilePicture = `/uploads/teacher-profiles/${filename}`;
+      resolvedProfilePicture = await saveUpload(`teacher-profiles/${filename}`, optimized, 'image/webp');
+    } else if (typeof resolvedProfilePicture === 'string') {
+      resolvedProfilePicture = normalizeUploadReference(resolvedProfilePicture);
     }
 
     let nextNbiStatus = existingForProfilePic?.nbiClearanceStatus || 'none';

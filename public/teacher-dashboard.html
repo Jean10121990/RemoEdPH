@@ -375,6 +375,33 @@
     <script src="script.js"></script>
   <script src="avatar-helper.js"></script>
   <script>
+        /** Teacher API token. Login stores it per role, so the legacy 'token' key is only a last resort. */
+        function teacherAuthToken() {
+            try {
+                if (window.RemoedAuthToken && RemoedAuthToken.getTeacherToken) {
+                    const viaAuth = RemoedAuthToken.getTeacherToken();
+                    if (viaAuth) return viaAuth;
+                }
+            } catch (e) {}
+            try {
+                if (window.RemoedTeacherSession && RemoedTeacherSession.getToken) {
+                    const viaSession = RemoedTeacherSession.getToken();
+                    if (viaSession) return viaSession;
+                }
+            } catch (e) {}
+            try {
+                return localStorage.getItem('remoed_teacher_token') ||
+                    sessionStorage.getItem('remoed_teacher_token') ||
+                    localStorage.getItem('remoed_teacher_auth') ||
+                    localStorage.getItem('remoed_user_token') ||
+                    localStorage.getItem('token') ||
+                    '';
+            } catch (e) {
+                return '';
+            }
+        }
+        window.teacherAuthToken = teacherAuthToken;
+
         /** Display name when API returns string studentId + studentName (not a populated object). */
         function bookingStudentDisplayName(booking, fallback) {
             if (!booking) return fallback || 'Student';
@@ -396,9 +423,7 @@
 
         async function loadTeacherReferralLinks() {
             try {
-                const token = (window.RemoedTeacherSession && RemoedTeacherSession.getToken()) ||
-                    (window.RemoedAuthToken && RemoedAuthToken.getTeacherToken()) ||
-                    localStorage.getItem('token');
+                const token = teacherAuthToken();
                 if (!token) return;
                 const res = await fetch('/api/teacher/referral-link', { headers: { Authorization: 'Bearer ' + token } });
                 const data = await res.json();
@@ -498,7 +523,7 @@
         async function loadAttendanceAnalysis() {
             try {
                 const teacherId = localStorage.getItem('teacherId');
-                const token = localStorage.getItem('token');
+                const token = teacherAuthToken();
                 if (!teacherId || !token) return;
                 
                 const response = await fetch(`/api/teacher/attendance-analysis?teacherId=${teacherId}&periodType=weekly`, {
@@ -643,7 +668,7 @@
                 // Load dashboard statistics
                 const response = await fetch(`/api/teacher/dashboard-stats?teacherId=${teacherId}`, {
                     headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        'Authorization': `Bearer ${teacherAuthToken()}`
                     }
                 });
                 
@@ -676,7 +701,7 @@
         // Load notifications for dropdown
                 async function loadNotificationsDropdown() {
           try {
-            const token = localStorage.getItem('token');
+            const token = teacherAuthToken();
             const dropdownContent = document.getElementById('notifications-dropdown-content');
             const badge = document.getElementById('notifications-badge');
             const dropdown = document.getElementById('notifications-dropdown');
@@ -688,7 +713,7 @@
             if (window.RemoedNotifications && window.RemoedNotifications.bindDropdownExtras) {
               window.RemoedNotifications.bindDropdownExtras(dropdown, {
                 role: 'teacher',
-                getToken: function () { return localStorage.getItem('token') || ''; },
+                getToken: function () { return teacherAuthToken() || ''; },
                 onRefresh: loadNotificationsDropdown,
               });
             }
@@ -730,7 +755,7 @@
             try {
                 console.log('🔔 Marking notification as read:', notificationId, 'index:', index);
                 
-                const token = localStorage.getItem('token');
+                const token = teacherAuthToken();
                 if (!token) {
                     console.error('❌ No token found');
                     return;
@@ -788,7 +813,7 @@
             try {
                 console.log('🔔 Marking all notifications as read...');
                 
-                const token = localStorage.getItem('token');
+                const token = teacherAuthToken();
                 const teacherId = localStorage.getItem('teacherId');
                 
                 if (!token || !teacherId) {
@@ -899,7 +924,7 @@
         // Load all notifications for the modal
         async function loadAllNotifications() {
             try {
-                const token = localStorage.getItem('token');
+                const token = teacherAuthToken();
                 if (!token) return;
                 const response = await fetch('/api/teacher/notifications', {
                     headers: { Authorization: 'Bearer ' + token },
@@ -1113,71 +1138,12 @@
         
     </script>
     <script>
-    // Test if JavaScript is loading
-    console.log('=== TEACHER DASHBOARD LOADING ===');
-    
-    // Add error handling to catch any JavaScript errors
     window.addEventListener('error', function(e) {
-      console.error('JavaScript Error:', e.error);
-      alert('JavaScript Error: ' + e.error.message);
+      console.error('JavaScript Error:', (e && e.error) || (e && e.message) || e);
     });
     
     window.addEventListener('unhandledrejection', function(e) {
-      console.error('Unhandled Promise Rejection:', e.reason);
-      alert('Unhandled Promise Rejection: ' + e.reason);
-    });
-    
-    // Test DOM elements
-    document.addEventListener('DOMContentLoaded', function() {
-      console.log('DOM Content Loaded!');
-      const timeInBtn = document.getElementById('time-in-btn');
-      console.log('Time In button found:', !!timeInBtn);
-      if (timeInBtn) {
-        console.log('Time In button text:', timeInBtn.textContent);
-        console.log('Time In button onclick:', timeInBtn.onclick);
-        console.log('Time In button disabled:', timeInBtn.disabled);
-        console.log('Time In button style pointer-events:', timeInBtn.style.pointerEvents);
-        console.log('Time In button computed style pointer-events:', window.getComputedStyle(timeInBtn).pointerEvents);
-        
-        // Test if button is clickable by programmatically clicking it
-        setTimeout(() => {
-          console.log('Testing programmatic click...');
-          timeInBtn.click();
-        }, 2000);
-        
-        // Test if the test button works
-        setTimeout(() => {
-          console.log('Testing test button click...');
-          const testBtn = document.getElementById('test-btn');
-          if (testBtn) {
-            testBtn.click();
-          }
-        }, 3000);
-        
-        // Check for overlapping elements
-        const buttonRect = timeInBtn.getBoundingClientRect();
-        console.log('Button position:', buttonRect);
-        
-        // Check what elements are at the button's position
-        const elementsAtPoint = document.elementsFromPoint(
-          buttonRect.left + buttonRect.width / 2,
-          buttonRect.top + buttonRect.height / 2
-        );
-        console.log('Elements at button center:', elementsAtPoint);
-        
-        // Check if any parent elements have pointer-events: none
-        let parent = timeInBtn.parentElement;
-        let level = 0;
-        while (parent && level < 5) {
-          const pointerEvents = window.getComputedStyle(parent).pointerEvents;
-          console.log(`Parent level ${level} pointer-events:`, pointerEvents);
-          if (pointerEvents === 'none') {
-            console.log(`WARNING: Parent level ${level} has pointer-events: none!`);
-          }
-          parent = parent.parentElement;
-          level++;
-        }
-      }
+      console.error('Unhandled Promise Rejection:', e && e.reason);
     });
     
     // Role-based access control
@@ -1410,29 +1376,8 @@
       }
     }
   
-  // Logout: handled by js/teacher-sidebar.js?v=logout-pin-2'/api/announcement')
-      .then(r => r.json())
-      .then(data => {
-        currentContent = data.content;
-        currentUpdated = data.updatedAt && window.TimezoneUtils && window.TimezoneUtils.formatDateTimePhilippines
-          ? window.TimezoneUtils.formatDateTimePhilippines(new Date(data.updatedAt))
-          : (data.updatedAt ? new Date(data.updatedAt).toLocaleString() : '');
-        announcementContent.textContent = currentContent;
-        updatedDiv.textContent = currentUpdated ? 'Last updated: ' + currentUpdated : '';
-        // Only show edit button if admin is logged in
-        const isAdmin =
-            (localStorage.getItem('remoed_admin_token') || localStorage.getItem('remoed_admin_auth') || localStorage.getItem('adminToken')) &&
-            localStorage.getItem('adminUsername');
-        if (isAdmin) {
-          editBtn.style.display = '';
-        } else {
-          editBtn.style.display = 'none';
-        }
-        announcementContent.style.display = '';
-        announcementEdit.style.display = 'none';
-        actionsDiv.style.display = 'none';
-      });
-  }
+  // Logout: handled by js/teacher-sidebar.js?v=logout-pin-2
+  // Announcements: see loadAnnouncements() above.
 
   // Load upcoming classes for the teacher
   async function loadUpcomingClasses() {
@@ -1569,7 +1514,7 @@
   // Send reminder to student for an upcoming class
   async function sendReminder(bookingId) {
     if (!bookingId) return;
-    const token = localStorage.getItem('token') || '';
+    const token = teacherAuthToken() || '';
     try {
       const response = await fetch('/api/teacher/booking/' + encodeURIComponent(bookingId) + '/send-reminder', {
         method: 'POST',
@@ -1603,7 +1548,7 @@
     }
     
     try {
-      const response = await fetch('/api/teacher/notifications', { headers: { Authorization: 'Bearer ' + (localStorage.getItem('token') || '') }, signal: AbortSignal.timeout(5000) });
+      const response = await fetch('/api/teacher/notifications', { headers: { Authorization: 'Bearer ' + (teacherAuthToken() || '') }, signal: AbortSignal.timeout(5000) });
       const __notifData = await response.json();
       const notifications = Array.isArray(__notifData) ? __notifData : (__notifData.notifications || []);
       console.log('🔔 Loaded notifications:', notifications);
@@ -1686,7 +1631,7 @@
       const teacherId = localStorage.getItem('teacherId');
       if (teacherId) {
         try {
-          const token = localStorage.getItem('token');
+          const token = teacherAuthToken();
           await fetch('/api/teacher/notifications/mark-read', {
             method: 'PATCH',
             headers: {
@@ -1808,7 +1753,7 @@
   // Load current time tracking status from database
   async function loadTimeTrackingStatus() {
     try {
-      const token = localStorage.getItem('token');
+      const token = teacherAuthToken();
       if (!token) {
         console.log('No token found for time tracking');
         return;
@@ -1908,7 +1853,7 @@
         return;
       }
 
-      const token = localStorage.getItem('token');
+      const token = teacherAuthToken();
       console.log('Token found:', !!token);
 
       console.log('Making clock-in request...');
@@ -1964,7 +1909,7 @@
         return;
       }
 
-      const token = localStorage.getItem('token');
+      const token = teacherAuthToken();
 
       const response = await fetch('/api/teacher/time-tracking/clock-out', {
         method: 'POST',
@@ -2158,7 +2103,7 @@
         return;
       }
 
-      const token = localStorage.getItem('token');
+      const token = teacherAuthToken();
       const username = localStorage.getItem('remoedUsername');
       
       if (!token) {
@@ -2215,7 +2160,7 @@
         return;
       }
 
-      const token = localStorage.getItem('token');
+      const token = teacherAuthToken();
       
       // Load edit request statuses first
       await loadEditRequestStatuses();
@@ -2417,7 +2362,7 @@
   // Load edit request statuses for time logs
   async function loadEditRequestStatuses() {
     try {
-      const token = localStorage.getItem('token');
+      const token = teacherAuthToken();
       if (!token) return;
 
       const response = await fetch('/api/teacher/time-edit-requests', {
@@ -2457,7 +2402,7 @@
 
   async function requestAdminEdit(logId, date) {
     try {
-      const token = localStorage.getItem('token');
+      const token = teacherAuthToken();
       if (!token) {
         alert('Please log in to request admin edit.');
         return;
@@ -2509,7 +2454,7 @@
   // Load profile picture and update sidebar from backend (uses setAvatar)
   async function loadProfilePicture(teacherId) {
     try {
-      const token = localStorage.getItem('token');
+      const token = teacherAuthToken();
       if (!token) {
         console.log('❌ No token found for profile picture');
         return;

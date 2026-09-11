@@ -21,18 +21,7 @@ const LessonProgress = require('./models/LessonProgress');
 const { verifyToken, requireStudent } = require('./authMiddleware');
 
 /** Public teacher label for students — prefers nickname over legal name. */
-function publicTeacherLabel(t, fallback = 'Unknown Teacher') {
-  if (!t) return fallback;
-  const nick = t.nickname && String(t.nickname).trim();
-  if (nick) return nick;
-  return (
-    (t.fullname && String(t.fullname).trim()) ||
-    [t.firstName, t.lastName].filter(Boolean).join(' ').trim() ||
-    t.username ||
-    t.email ||
-    fallback
-  );
-}
+const { publicTeacherLabel } = require('./utils/publicTeacherLabel');
 
 /** Shape teacher fields for student UIs that still concatenate firstName/lastName. */
 function studentFacingTeacherFields(teacher) {
@@ -78,9 +67,9 @@ const {
 const {
   processImage,
   extractImageBufferFromDataUrl,
-  getUploadsRoot,
   safeUnlinkPublicUpload,
 } = require('./utils/imageOptimizer');
+const { saveUpload, normalizeUploadReference } = require('./services/uploadStore');
 const studentController = require('./studentController');
 
 const router = express.Router();
@@ -209,12 +198,17 @@ router.get('/profile', verifyToken, requireStudent, async (req, res) => {
     const curriculumLevel =
       resolveStudentCurriculumLevel(student) || DEFAULT_CURRICULUM_LEVEL;
 
+    const { studentClassroomLabel } = require('./utils/studentDisplayName');
+
     const body = {
       profile: {
         username: student.username,
         firstName: student.firstName,
         middleName: student.middleName,
         lastName: student.lastName,
+        nickname: student.nickname || '',
+        /** What the live classroom shows: nickname, or a stable "Student####". */
+        classroomDisplayName: studentClassroomLabel(student),
         gender: student.gender,
         birthday: student.birthday,
         age: (() => {
@@ -294,6 +288,7 @@ router.post('/profile', verifyToken, requireStudent, async (req, res) => {
       firstName,
       middleName,
       lastName,
+      nickname,
       gender,
       birthday,
       age,
@@ -346,6 +341,11 @@ router.post('/profile', verifyToken, requireStudent, async (req, res) => {
       education: education || []
     };
 
+    // Only touch the class nickname when the caller actually sent it
+    if (Object.prototype.hasOwnProperty.call(req.body, 'nickname')) {
+      updateData.nickname = String(nickname || '').trim().slice(0, 40);
+    }
+
     console.log('Update data:', updateData);
 
     const student = await Student.findByIdAndUpdate(
@@ -393,14 +393,11 @@ router.post('/upload-document', verifyToken, requireStudent, async (req, res) =>
       profilePicBuf = extractImageBufferFromDataUrl(String(fileData));
       if (profilePicBuf) {
         const optimized = await processImage(profilePicBuf, 'avatar');
-        const dir = path.join(getUploadsRoot(), 'student-profiles');
-        await fsp.mkdir(dir, { recursive: true });
         const sid = String(req.user.studentId).replace(/[^a-zA-Z0-9_-]/g, '_');
         const filename = `${sid}-${Date.now()}.webp`;
-        await fsp.writeFile(path.join(dir, filename), optimized);
-        updateField.profilePicture = `/uploads/student-profiles/${filename}`;
+        updateField.profilePicture = await saveUpload(`student-profiles/${filename}`, optimized, 'image/webp');
       } else {
-        const t = String(fileData).trim();
+        const t = normalizeUploadReference(String(fileData).trim());
         if (t.startsWith('/uploads/') || /^https?:\/\//i.test(t)) {
           updateField.profilePicture = t;
         } else {

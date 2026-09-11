@@ -7,6 +7,7 @@ const path = require('path');
 const fs = require('fs');
 const jwt = require('jsonwebtoken');
 const { isTokenBlacklisted } = require('../services/jwtBlacklist');
+const { findUpload, openDownloadStream } = require('../services/uploadStore');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
 const UPLOADS_ROOT = path.resolve(path.join(__dirname, '../../uploads'));
@@ -187,7 +188,40 @@ function mimeFromPath(filePath) {
   return map[ext] || 'application/octet-stream';
 }
 
-function serveAuthenticatedUpload(req, res) {
+/**
+ * Serve a file kept in GridFS. Returns false when the path is not stored there, so the
+ * caller can fall through to its own 404.
+ */
+async function serveStoredUpload(req, res, rel) {
+  const doc = await findUpload(rel);
+  if (!doc) return false;
+
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Cache-Control', isPublicUploadRelative(rel) ? 'public, max-age=3600' : 'private, no-store');
+  res.setHeader('Content-Type', doc.contentType || mimeFromPath(rel));
+  if (Number.isFinite(Number(doc.length))) {
+    res.setHeader('Content-Length', String(doc.length));
+  }
+  if (doc.uploadDate) {
+    res.setHeader('Last-Modified', new Date(doc.uploadDate).toUTCString());
+  }
+
+  if (req.method === 'HEAD') {
+    res.end();
+    return true;
+  }
+
+  const stream = openDownloadStream(doc._id);
+  stream.on('error', (err) => {
+    console.error('uploads stream error:', (err && err.message) || err);
+    if (!res.headersSent) res.status(404).json({ error: 'File not found' });
+    else res.destroy();
+  });
+  stream.pipe(res);
+  return true;
+}
+
+async function serveAuthenticatedUpload(req, res) {
   try {
     const rel = req.uploadRelativePath || relativeUploadPathFromReq(req);
     let abs = resolveSafeUploadFile(rel);
@@ -195,6 +229,12 @@ function serveAuthenticatedUpload(req, res) {
       abs = resolveLegacyIssueScreenshot(rel);
     }
     if (!abs) {
+      // Files uploaded in production live in GridFS, not on the container filesystem.
+      const stored = await serveStoredUpload(req, res, rel).catch((err) => {
+        console.error('uploads store lookup failed:', (err && err.message) || err);
+        return false;
+      });
+      if (stored) return undefined;
       return res.status(404).json({ error: 'File not found' });
     }
 
@@ -228,6 +268,7 @@ module.exports = {
   resolveLegacyIssueScreenshot,
   requireUploadAccess,
   serveAuthenticatedUpload,
+  serveStoredUpload,
   uploadsAccessHandlers,
   jwtPayloadIsAdmin,
 };
