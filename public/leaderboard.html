@@ -5,8 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
   <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
-  <script src="js/security-guard.js?v=1"></script>
-  <script src="js/user-session.js"></script>
+  <script src="js/security-guard.js?v=lb-admin-3"></script>
+  <script src="js/user-session.js?v=lb-admin-3"></script>
+  <script src="js/admin-session.js?v=lb-admin-3"></script>
   <script>
     (function () {
       var role = 'student';
@@ -186,6 +187,14 @@
 
   function getToken() {
     try {
+      if ((window.__LB_ROLE__ || detectRole()) === 'admin') {
+        if (window.RemoedAdminSession && typeof RemoedAdminSession.getAuthToken === 'function') {
+          var adminTok = RemoedAdminSession.getAuthToken();
+          if (adminTok) return adminTok;
+        }
+      }
+    } catch (e0) {}
+    try {
       if (window.RemoedUserSession && RemoedUserSession.getUserToken) {
         var t = RemoedUserSession.getUserToken();
         if (t) return t;
@@ -362,7 +371,8 @@
 
   async function load() {
     var token = getToken();
-    if (!token) {
+    var isAdminRole = (window.__LB_ROLE__ || detectRole()) === 'admin';
+    if (!token && !isAdminRole) {
       setStatus('Please sign in to view the leaderboard.', true);
       return;
     }
@@ -377,12 +387,21 @@
         '&page=' + state.page + '&pageSize=' + state.pageSize;
 
     try {
+      var headers = {};
+      if (token) headers.Authorization = 'Bearer ' + token;
       var res = await fetch(url, {
-        headers: { Authorization: 'Bearer ' + token }
+        headers: headers,
+        credentials: 'include'
       });
-      var data = await res.json();
+      var rawText = await res.text();
+      var data = {};
+      try {
+        data = rawText ? JSON.parse(rawText) : {};
+      } catch (parseErr) {
+        throw new Error(res.ok ? 'Leaderboard returned an unexpected response.' : ('HTTP ' + res.status));
+      }
       if (!res.ok || !data.success) {
-        throw new Error((data && data.error) || ('HTTP ' + res.status));
+        throw new Error((data && (data.error || data.message)) || ('HTTP ' + res.status));
       }
       if (data.ageGroups && data.ageGroups.length) {
         var ageSel = document.getElementById('lb-age');

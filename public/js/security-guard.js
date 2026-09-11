@@ -81,9 +81,17 @@
       var typeParam = String(sp.get('type') || '').trim().toLowerCase();
       var teacherTok = getTokenForPortal('teacher');
       var studentTok = getTokenForPortal('student');
+      var adminTok = getTokenForPortal('admin');
       var teacherRole = roleFromJwt(decodeJwtPayload(teacherTok));
       var studentRole = roleFromJwt(decodeJwtPayload(studentTok));
+      var adminRole = roleFromJwt(decodeJwtPayload(adminTok));
 
+      if (typeParam === 'admin') {
+        if (adminTok && !isJwtExpired(adminTok) && adminRole === 'admin') {
+          healSessionRole('admin');
+          return 'admin';
+        }
+      }
       if (typeParam === 'teacher') {
         if (teacherTok && !isJwtExpired(teacherTok) && teacherRole === 'teacher') {
           healSessionRole('teacher');
@@ -103,6 +111,10 @@
       if (studentTok && !isJwtExpired(studentTok) && studentRole === 'student') {
         healSessionRole('student');
         return 'student';
+      }
+      if (adminTok && !isJwtExpired(adminTok) && adminRole === 'admin') {
+        healSessionRole('admin');
+        return 'admin';
       }
     } catch (_e) {}
     return '';

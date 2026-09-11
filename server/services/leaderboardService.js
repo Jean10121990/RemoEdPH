@@ -398,10 +398,28 @@ async function computeTeacherScoresForMonth(monthKey) {
     }
   }
 
+  const missingBookingIds = [];
+  for (const s of starRows) {
+    if (!normalizeTeacherKey(s.recipientId) && s.bookingId) missingBookingIds.push(s.bookingId);
+  }
+  for (const f of feedbacks) {
+    if (!normalizeTeacherKey(f.teacherId) && f.bookingId) missingBookingIds.push(f.bookingId);
+  }
+  const bookingTeacherById = new Map();
+  if (missingBookingIds.length) {
+    const uniqueIds = [...new Set(missingBookingIds.map((id) => String(id)))];
+    const found = await Booking.find({ _id: { $in: uniqueIds } })
+      .select('_id teacherId')
+      .lean();
+    for (const b of found) {
+      bookingTeacherById.set(String(b._id), b);
+    }
+  }
+
   for (const s of starRows) {
     let teacherKey = normalizeTeacherKey(s.recipientId);
     if (!teacherKey && s.bookingId) {
-      const booking = await Booking.findById(s.bookingId).select('teacherId').lean();
+      const booking = bookingTeacherById.get(String(s.bookingId));
       teacherKey = normalizeTeacherKey(booking && booking.teacherId);
     }
     if (!teacherKey) continue;
@@ -410,7 +428,7 @@ async function computeTeacherScoresForMonth(monthKey) {
   for (const f of feedbacks) {
     let teacherKey = normalizeTeacherKey(f.teacherId);
     if (!teacherKey && f.bookingId) {
-      const booking = await Booking.findById(f.bookingId).select('teacherId').lean();
+      const booking = bookingTeacherById.get(String(f.bookingId));
       teacherKey = normalizeTeacherKey(booking && booking.teacherId);
     }
     if (!teacherKey) continue;
@@ -449,7 +467,7 @@ async function computeTeacherScoresForMonth(monthKey) {
 async function persistStudentScores(monthKey, rows) {
   const ops = rows.map((r) => ({
     updateOne: {
-      filter: { month: monthKey, studentId: r.studentId },
+      filter: { month: monthKey, studentId: String(r.studentId) },
       update: {
         $set: {
           totalPoints: r.totalPoints,
@@ -460,7 +478,7 @@ async function persistStudentScores(monthKey, rows) {
           attendanceCount: r.attendanceCount,
           rank: r.rank,
           earliestAt: r.earliestAt,
-          ageGroup: r.ageGroup || 'ALL',
+          ageGroup: String(r.ageGroup || 'ALL'),
         },
       },
       upsert: true,
@@ -479,7 +497,7 @@ async function persistStudentScores(monthKey, rows) {
 async function persistTeacherScores(monthKey, rows) {
   const ops = rows.map((r) => ({
     updateOne: {
-      filter: { month: monthKey, teacherId: r.teacherId },
+      filter: { month: monthKey, teacherId: String(r.teacherId) },
       update: {
         $set: {
           totalPoints: r.totalPoints,
@@ -529,7 +547,12 @@ async function ensureMonthBuilt(monthKey, maxAgeMs = 60 * 1000) {
     newestT && newestT.updatedAt ? new Date(newestT.updatedAt).getTime() : 0
   );
   if (!ts || Date.now() - ts > maxAgeMs) {
-    await rebuildMonth(key);
+    try {
+      await rebuildMonth(key);
+    } catch (err) {
+      console.error('leaderboard rebuild failed for', key, err);
+      // Serve whatever snapshot already exists rather than failing the page.
+    }
   }
   return key;
 }

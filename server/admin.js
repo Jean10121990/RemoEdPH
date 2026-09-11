@@ -4920,40 +4920,85 @@ router.post('/migrate-user-statuses', async (req, res) => {
   }
 });
 
-// DELETE user
-router.delete('/user/:userId', async (req, res) => {
+/**
+ * Resolve a managed user without loading large embedded blobs (teacher diplomas, etc.).
+ * Accepts Mongo _id, teacherId, username, or email.
+ */
+async function findManagedUserForDelete(type, userId) {
+  const id = String(userId || '').trim();
+  if (!id) return null;
+  const Model = type === 'teacher' ? Teacher : type === 'student' ? Student : Admin;
+  const projection = '_id username email teacherId adminRole';
+  if (mongoose.isValidObjectId(id)) {
+    const byId = await Model.findById(id).select(projection);
+    if (byId) return byId;
+  }
+  const or = [{ username: id }, { email: id }];
+  if (type === 'teacher') or.push({ teacherId: id });
+  return Model.findOne({ $or: or }).select(projection);
+}
+
+async function deleteAdminManagedUser(req, res) {
   try {
     const { userId } = req.params;
-    const { type } = req.query;
-    
-    let result;
-    switch (type) {
-      case 'teacher':
-        result = await Teacher.findByIdAndDelete(userId);
-        break;
-      case 'student':
-        result = await Student.findByIdAndDelete(userId);
-        break;
-      case 'admin':
-        result = await Admin.findByIdAndDelete(userId);
-        break;
-      default:
-        return res.status(400).json({ error: 'Invalid user type' });
+    const type = String((req.query && req.query.type) || (req.body && req.body.type) || '')
+      .trim()
+      .toLowerCase();
+
+    if (!['teacher', 'student', 'admin'].includes(type)) {
+      return res.status(400).json({ error: 'Invalid user type' });
     }
-    
-    if (!result) {
+
+    const doc = await findManagedUserForDelete(type, userId);
+    if (!doc) {
       return res.status(404).json({ error: 'User not found' });
     }
-    
+
+    if (type === 'admin' && req.user) {
+      const actorId = req.user.adminId != null ? String(req.user.adminId) : '';
+      const actorName = String(req.user.username || '').trim().toLowerCase();
+      const sameId = actorId && String(doc._id) === actorId;
+      const sameName =
+        actorName && String(doc.username || '').trim().toLowerCase() === actorName;
+      if (sameId || sameName) {
+        return res.status(400).json({ error: 'You cannot delete your own admin account.' });
+      }
+      if (String(doc.adminRole || '') === 'super_admin') {
+        const remaining = await Admin.countDocuments({
+          _id: { $ne: doc._id },
+          adminRole: 'super_admin',
+          status: { $ne: 'suspended' },
+        });
+        if (remaining < 1) {
+          return res.status(400).json({ error: 'Cannot delete the last Super-Admin account.' });
+        }
+      }
+    }
+
+    const Model = type === 'teacher' ? Teacher : type === 'student' ? Student : Admin;
+    // deleteOne avoids loading multi-MB base64 document blobs that make findByIdAndDelete 500.
+    const result = await Model.deleteOne({ _id: doc._id });
+    if (!result || !result.deletedCount) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
     res.json({
       success: true,
-      message: `${type} deleted successfully`
+      message: `${type} deleted successfully`,
     });
   } catch (err) {
     console.error('Error deleting user:', err);
-    res.status(500).json({ error: 'Failed to delete user' });
+    const detail = err && err.message ? String(err.message) : '';
+    res.status(500).json({
+      error: 'Failed to delete user',
+      detail: detail || undefined,
+    });
   }
-});
+}
+
+router.delete('/user/:userId', deleteAdminManagedUser);
+// POST alias: some reverse proxies / tunnels block DELETE
+router.post('/user/:userId/delete', deleteAdminManagedUser);
 
 // ===== TIME LOG REQUESTS ENDPOINTS =====
 

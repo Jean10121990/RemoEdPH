@@ -414,6 +414,7 @@ router.put(
 
       await putUpload(partRelativePath(doc._id, seq), chunk, 'application/octet-stream');
       doc.sizeBytes = nextSize;
+      doc.lastChunkAt = new Date();
       await doc.save();
 
       res.json({ success: true, bytesReceived: chunk.length, totalBytes: doc.sizeBytes, seq });
@@ -506,7 +507,8 @@ router.get('/classroom-recording/config', (req, res) => {
     // On by default; set CLASSROOM_QA_RECORDING_ENABLED=false to hide QA recording UI
     enabled: String(process.env.CLASSROOM_QA_RECORDING_ENABLED || '').toLowerCase() !== 'false',
     maxDurationMinutes: Number(process.env.CLASSROOM_QA_RECORDING_MAX_MINUTES || 25),
-    retentionDays: RETENTION_DAYS
+    retentionDays: RETENTION_DAYS,
+    maxBytes: MAX_FILE_BYTES
   });
 });
 
@@ -543,11 +545,15 @@ router.get('/admin/classroom-recordings', ...adminRecordingAuthChain, async (req
         recordedByRole: r.recordedByRole,
         status: r.status,
         sizeBytes: r.sizeBytes,
+        chunkCount: r.chunkCount || 0,
+        lastChunkAt: r.lastChunkAt || null,
+        fileReady: r.status === 'complete',
         durationSec: r.durationSec,
         mimeType: r.mimeType,
         expiresAt: r.expiresAt,
         createdAt: r.createdAt,
-        relativePath: r.relativePath
+        relativePath: r.relativePath,
+        maxBytes: MAX_FILE_BYTES
       }))
     });
   } catch (err) {
@@ -562,8 +568,18 @@ router.post(
   ...adminRecordingAuthChain,
   async (req, res) => {
     try {
-      const doc = await ClassroomRecording.findById(req.params.id).select('_id').lean();
+      const doc = await ClassroomRecording.findById(req.params.id)
+        .select('_id status sizeBytes')
+        .lean();
       if (!doc) return res.status(404).json({ success: false, message: 'Not found' });
+      if (doc.status !== 'complete') {
+        return res.status(409).json({
+          success: false,
+          message: 'Still uploading. Wait until status is Ready, then download.',
+          status: doc.status,
+          sizeBytes: doc.sizeBytes || 0
+        });
+      }
       res.json({
         success: true,
         ticket: await issueDownloadTicket(doc._id),
@@ -596,6 +612,14 @@ router.get(
     try {
       const doc = await ClassroomRecording.findById(req.params.id);
       if (!doc) return res.status(404).json({ success: false, message: 'Not found' });
+      if (doc.status !== 'complete') {
+        return res.status(409).json({
+          success: false,
+          message: 'Still uploading. The file is assembled only after the classroom upload finishes.',
+          status: doc.status,
+          sizeBytes: doc.sizeBytes || 0
+        });
+      }
       const rel = String(doc.relativePath || '').replace(/\\/g, '/').replace(/^\//, '');
       const abs = path.join(__dirname, '../uploads', rel);
       const stored = await findUpload(rel);
@@ -650,6 +674,45 @@ router.get(
       if (!res.headersSent) {
         res.status(500).json({ success: false, message: err.message || 'Download failed' });
       }
+    }
+  }
+);
+
+router.post(
+  '/admin/classroom-recordings/:id/assemble',
+  ...adminRecordingAuthChain,
+  async (req, res) => {
+    try {
+      const doc = await ClassroomRecording.findById(req.params.id);
+      if (!doc) return res.status(404).json({ success: false, message: 'Not found' });
+      if (doc.status === 'complete') {
+        return res.json({ success: true, alreadyComplete: true, sizeBytes: doc.sizeBytes });
+      }
+      const parts = await listUploadsByPrefix(partsPrefix(doc._id));
+      const partRels = parts
+        .map((p) => p.filename)
+        .filter((n) => /\/part-\d+$/.test(n) || /part-\d+$/.test(n))
+        .sort();
+      if (!partRels.length) {
+        return res.status(400).json({
+          success: false,
+          message: 'No uploaded parts to assemble yet. Wait for the classroom to send more, or delete this row.',
+        });
+      }
+      await concatenateUploads(partRels, doc.relativePath, 'video/webm');
+      for (const rel of partRels) {
+        await deleteUpload(rel).catch(() => {});
+      }
+      const stored = await findUpload(doc.relativePath);
+      doc.status = 'complete';
+      doc.sizeBytes = stored && stored.length ? stored.length : doc.sizeBytes;
+      if (!doc.mimeType) doc.mimeType = 'video/webm';
+      await doc.save();
+      res.json({ success: true, recordingId: doc._id.toString(), sizeBytes: doc.sizeBytes });
+      scheduleRecordingPostProcess(doc._id.toString(), doc.mimeType);
+    } catch (err) {
+      console.error('admin assemble classroom-recording:', err);
+      res.status(500).json({ success: false, message: err.message || 'Assemble failed' });
     }
   }
 );

@@ -55,7 +55,7 @@
   </script>
     <link rel="stylesheet" href="style.css">
   <!-- After global styles so chat / layout rules are not overridden -->
-  <link rel="stylesheet" href="live-classroom.css?v=lc-video-close-1" />
+  <link rel="stylesheet" href="live-classroom.css?v=lc-qa-progress-1" />
   <link rel="stylesheet" href="css/live-classroom-redesign.css?v=mint-forest-3" />
   <link rel="stylesheet" href="css/student-badges.css?v=2" />
 </head>
@@ -382,7 +382,7 @@
     <script src="js/teacher-badge-award.js?v=1"></script>
     <script src="js/presentation-overlay.js?v=lc-draw-fix-2"></script>
     <script src="js/virtual-background.js"></script>
-    <script src="js/classroom-qa-recording.js?v=lc-polish-3" defer></script>
+    <script src="js/classroom-qa-recording.js?v=lc-qa-progress-1" defer></script>
     <script>
       // Collaborative annotation client
     (function(){
@@ -7507,7 +7507,7 @@
               try {
                 await Promise.race([
                   window.ClassroomQaRecording.stopAndFinalize(),
-                  new Promise((_, reject) => setTimeout(() => reject(new Error('QA finalize timeout')), 40000))
+                  new Promise((_, reject) => setTimeout(() => reject(new Error('QA finalize timeout')), 180000))
                 ]);
               } catch (qaErr) {
                 console.warn('QA recording finalize:', qaErr);

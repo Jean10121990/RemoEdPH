@@ -14,25 +14,60 @@ const {
 
 const router = express.Router();
 
+const ADMIN_ROLE_CLAIMS = new Set([
+  'admin',
+  'super_admin',
+  'admin_hr',
+  'admin_accounting',
+  'admin_qa',
+]);
+
+function attachAdminFromSession(req) {
+  if (req.session && req.session.adminAuth === true && req.session.adminUsername) {
+    req.user = {
+      username: req.session.adminUsername,
+      isAdmin: true,
+      role: 'admin',
+      adminId: req.session.adminId || null,
+      adminRole: req.session.adminRole || 'super_admin',
+      sessionVersion: req.session.adminSessionVersion,
+    };
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Admin portal uses an httpOnly session cookie; teacher/student use Bearer JWTs.
+ * Prefer a valid admin session so an expired admin JWT does not 401 the leaderboard.
+ */
+function verifyLeaderboardAuth(req, res, next) {
+  if (attachAdminFromSession(req)) return next();
+  return verifyToken(req, res, next);
+}
+
 function requireAuthenticatedUser(req, res, next) {
   if (!req.user) {
     return res.status(401).json({ success: false, error: 'Authentication required' });
   }
   const role = String(req.user.role || req.user.userRole || req.user.userType || '').toLowerCase();
+  const adminRole = String(req.user.adminRole || '').toLowerCase();
   const ok =
     role === 'teacher' ||
     role === 'student' ||
-    role === 'admin' ||
+    ADMIN_ROLE_CLAIMS.has(role) ||
+    ADMIN_ROLE_CLAIMS.has(adminRole) ||
     req.user.isAdmin === true ||
     !!req.user.teacherId ||
-    !!req.user.studentId;
+    !!req.user.studentId ||
+    !!req.user.adminId;
   if (!ok) {
     return res.status(403).json({ success: false, error: 'Access denied' });
   }
   return next();
 }
 
-router.get('/students', verifyToken, requireAuthenticatedUser, async (req, res) => {
+router.get('/students', verifyLeaderboardAuth, requireAuthenticatedUser, async (req, res) => {
   try {
     const month = normalizeMonth(req.query.month);
     const ageGroup = String(req.query.ageGroup || 'ALL').trim() || 'ALL';
@@ -46,7 +81,7 @@ router.get('/students', verifyToken, requireAuthenticatedUser, async (req, res) 
   }
 });
 
-router.get('/teachers', verifyToken, requireAuthenticatedUser, async (req, res) => {
+router.get('/teachers', verifyLeaderboardAuth, requireAuthenticatedUser, async (req, res) => {
   try {
     const month = normalizeMonth(req.query.month);
     const page = parseInt(req.query.page, 10) || 1;
@@ -59,7 +94,7 @@ router.get('/teachers', verifyToken, requireAuthenticatedUser, async (req, res) 
   }
 });
 
-router.get('/meta', verifyToken, requireAuthenticatedUser, async (req, res) => {
+router.get('/meta', verifyLeaderboardAuth, requireAuthenticatedUser, async (req, res) => {
   res.json({
     success: true,
     currentMonth: currentMonthKey(),
@@ -68,7 +103,7 @@ router.get('/meta', verifyToken, requireAuthenticatedUser, async (req, res) => {
 });
 
 /** Optional rebuild (authenticated) — refreshes monthly snapshots. */
-router.post('/rebuild', verifyToken, requireAuthenticatedUser, async (req, res) => {
+router.post('/rebuild', verifyLeaderboardAuth, requireAuthenticatedUser, async (req, res) => {
   try {
     const month = normalizeMonth(req.body && req.body.month);
     const result = await rebuildMonth(month);

@@ -1665,7 +1665,7 @@ router.post('/user-role', verifyAdminApiAuth, requireAdmin, async (req, res) => 
     }
 
     try {
-      await Source.findByIdAndDelete(userDoc._id);
+      await Source.deleteOne({ _id: userDoc._id });
     } catch (delErr) {
       // Roll back the newly created target so we never leave a half-migrated user.
       console.error('Role change: failed to delete source after create; rolling back target', delErr);

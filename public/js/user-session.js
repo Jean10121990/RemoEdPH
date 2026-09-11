@@ -32,6 +32,21 @@
           if (utCh === 'student') return 'student';
         } catch (_ec) {}
       }
+      if (p.indexOf('leaderboard') !== -1) {
+        try {
+          var utLb = (global.localStorage.getItem('userType') || global.localStorage.getItem('userRole') || '').toLowerCase();
+          if (utLb === 'admin') return 'admin';
+          if (utLb === 'teacher') return 'teacher';
+          if (utLb === 'student') return 'student';
+          if (
+            global.localStorage.getItem(LS_ADMIN) ||
+            global.sessionStorage.getItem(LS_ADMIN) ||
+            global.localStorage.getItem('remoed_admin_auth')
+          ) {
+            return 'admin';
+          }
+        } catch (_elb) {}
+      }
       if (p.indexOf('live-classroom') !== -1 || p.indexOf('video-room') !== -1 || p.indexOf('whiteboard') !== -1) {
         try {
           var typeParam = '';

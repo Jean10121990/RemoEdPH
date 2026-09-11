@@ -24,6 +24,8 @@ const classroomRecordingSchema = new mongoose.Schema(
     errorMessage: { type: String, default: '' },
     /** Number of GridFS chunk parts received while status=uploading */
     chunkCount: { type: Number, default: 0 },
+    /** Last time a chunk landed — used for live upload progress / stall detection */
+    lastChunkAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

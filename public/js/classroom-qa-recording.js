@@ -18,6 +18,11 @@
     startedAt: 0,
     chunkChain: Promise.resolve(),
     chunkIndex: 0,
+    bytesUploaded: 0,
+    maxBytes: 120 * 1024 * 1024,
+    progressEl: null,
+    progressBarEl: null,
+    progressLabelEl: null,
     autoStartTried: false,
     panel: null,
     statusEl: null,
@@ -89,6 +94,39 @@
 
   function liveUserType() {
     return (window.__liveClassroomUserType || localStorage.getItem('userType') || '').toLowerCase();
+  }
+
+  function formatBytes(n) {
+    n = Number(n) || 0;
+    if (n < 1024) return n + ' B';
+    if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+    return (n / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
+  function setUploadProgress(bytes, opts) {
+    opts = opts || {};
+    var done = !!opts.done;
+    var cap = Number(state.maxBytes) || 120 * 1024 * 1024;
+    state.bytesUploaded = Math.max(0, Number(bytes) || 0);
+    var pct = done ? 100 : Math.min(95, Math.round((state.bytesUploaded / Math.max(cap, 1)) * 100));
+    if (state.progressEl) state.progressEl.hidden = false;
+    if (state.progressBarEl) {
+      state.progressBarEl.style.width = pct + '%';
+      state.progressBarEl.classList.toggle('is-done', done);
+    }
+    if (state.progressLabelEl) {
+      state.progressLabelEl.textContent = done
+        ? 'Upload complete · ' + formatBytes(state.bytesUploaded)
+        : 'Uploading ' + formatBytes(state.bytesUploaded);
+    }
+  }
+
+  function hideUploadProgress() {
+    if (state.progressEl) state.progressEl.hidden = true;
+    if (state.progressBarEl) {
+      state.progressBarEl.style.width = '0%';
+      state.progressBarEl.classList.remove('is-done');
+    }
   }
 
   function setStatus(t) {
@@ -421,6 +459,8 @@
     if (!state.recordingId || !blob || blob.size === 0) return;
     var h = authHeaders();
     var seq = state.chunkIndex++;
+    state.bytesUploaded += blob.size;
+    setUploadProgress(state.bytesUploaded);
     state.chunkChain = state.chunkChain.then(function () {
       return fetch('/api/classroom-recording/session/' + state.recordingId + '/chunk', {
         method: 'PUT',
@@ -429,9 +469,13 @@
           'Content-Type': 'application/octet-stream',
           'X-Chunk-Index': String(seq)
         },
+        keepalive: true,
         body: blob
       }).then(function (r) {
         if (!r.ok) return r.text().then(function (t) { throw new Error(t || 'Chunk upload failed'); });
+        return r.json().catch(function () { return {}; });
+      }).then(function (j) {
+        if (j && j.totalBytes != null) setUploadProgress(j.totalBytes);
       });
     }).catch(function (err) {
       console.warn('QA chunk upload:', err);
@@ -452,6 +496,9 @@
         if (!r.ok || !j.success || !j.recordingId) {
           throw new Error((j && j.message) || 'Could not start recording session');
         }
+        if (j.maxBytes) state.maxBytes = Number(j.maxBytes) || state.maxBytes;
+        state.bytesUploaded = 0;
+        setUploadProgress(0);
         return j.recordingId;
       });
     });
@@ -464,6 +511,7 @@
     return fetch('/api/classroom-recording/session/' + rid + '/complete', {
       method: 'POST',
       headers: h,
+      keepalive: true,
       body: JSON.stringify({
         durationSec: durationSec != null ? durationSec : null,
         mimeType: mime
@@ -477,6 +525,7 @@
           } catch (e) {}
           throw new Error(msg || 'Complete failed');
         }
+        setUploadProgress(state.bytesUploaded, { done: true });
       });
     });
   }
@@ -541,6 +590,10 @@
     state.mediaRecorder = null;
     state.chunkChain = Promise.resolve();
     state.chunkIndex = 0;
+    state.bytesUploaded = 0;
+    setTimeout(function () {
+      hideUploadProgress();
+    }, 4000);
     if (state.screenStream) {
       try {
         state.screenStream.getTracks().forEach(function (t) { t.stop(); });
@@ -690,8 +743,10 @@
         mr.onstop = function () {
           cleanupTimers();
           var dur = (Date.now() - state.startedAt) / 1000;
+          setStatus('Uploading recording to QA Hub… ' + formatBytes(state.bytesUploaded));
           state.chunkChain
             .then(function () {
+              setStatus('Finishing file…');
               return completeSession(dur);
             })
             .then(function () {
@@ -737,7 +792,12 @@
         state.tickTimer = setInterval(function () {
           if (!state.startedAt) return;
           var elapsed = (Date.now() - state.startedAt) / 1000;
-          setStatus('Recording full classroom… ' + formatTime(elapsed));
+          setStatus(
+            'Recording full classroom… ' +
+              formatTime(elapsed) +
+              ' · uploaded ' +
+              formatBytes(state.bytesUploaded)
+          );
         }, 1000);
 
         state.stopTimer = setTimeout(function () {
@@ -781,9 +841,27 @@
   function stopAndFinalize() {
     var mr = state.mediaRecorder;
     if (!mr || mr.state !== 'recording') {
+      if (state.recordingId) {
+        setStatus('Uploading remaining recording… ' + formatBytes(state.bytesUploaded));
+        return state.chunkChain
+          .then(function () {
+            setStatus('Finishing file…');
+            return completeSession((Date.now() - state.startedAt) / 1000);
+          })
+          .then(function () {
+            setStatus('Saved. Admin → Lesson recordings.');
+          })
+          .catch(function (e) {
+            console.warn('QA finalize:', e);
+            setStatus('Finalize failed: ' + (e.message || e));
+          })
+          .then(function () {
+            resetAfterStopUi();
+          });
+      }
       return Promise.resolve();
     }
-    setStatus('Saving recording…');
+    setStatus('Saving recording… ' + formatBytes(state.bytesUploaded));
     return new Promise(function (resolve) {
       var settled = false;
       function safeResolve() {
@@ -794,8 +872,10 @@
       mr.onstop = function () {
         cleanupTimers();
         var dur = (Date.now() - state.startedAt) / 1000;
+        setStatus('Uploading recording to QA Hub… ' + formatBytes(state.bytesUploaded));
         state.chunkChain
           .then(function () {
+            setStatus('Finishing file…');
             return completeSession(dur);
           })
           .then(function () {
@@ -816,7 +896,7 @@
         console.warn('QA stop:', e);
         safeResolve();
       }
-      setTimeout(safeResolve, 45000);
+      setTimeout(safeResolve, 180000);
     });
   }
 
@@ -839,6 +919,10 @@
       '</button>' +
       '<div class="qa-recording-dock__body" id="qa-rec-body" hidden>' +
       '<div id="qa-rec-status" class="qa-recording-dock__status">…</div>' +
+      '<div id="qa-rec-progress" class="qa-recording-dock__progress" hidden>' +
+      '<div class="qa-recording-dock__track"><div id="qa-rec-progress-bar" class="qa-recording-dock__bar"></div></div>' +
+      '<div id="qa-rec-progress-label" class="qa-recording-dock__progress-label">Uploading 0 B</div>' +
+      '</div>' +
       '<div class="qa-recording-dock__actions">' +
       '<button type="button" id="qa-rec-start" class="qa-recording-dock__start">Start</button>' +
       '</div>' +
@@ -914,9 +998,13 @@
         getParam('room') || getParam('classroomId') || getParam('classroomid') || 'default-room';
       state.bookingId = getParam('bookingId') || getParam('bookingid') || '';
       state.maxMs = (Number(cfg.maxDurationMinutes) || 25) * 60 * 1000;
+      if (cfg.maxBytes) state.maxBytes = Number(cfg.maxBytes) || state.maxBytes;
 
       state.panel = buildPanel();
       state.statusEl = state.panel.querySelector('#qa-rec-status');
+      state.progressEl = state.panel.querySelector('#qa-rec-progress');
+      state.progressBarEl = state.panel.querySelector('#qa-rec-progress-bar');
+      state.progressLabelEl = state.panel.querySelector('#qa-rec-progress-label');
       state.btnStart = state.panel.querySelector('#qa-rec-start');
       state.btnStop = state.panel.querySelector('#qa-rec-stop');
       var hint = state.panel.querySelector('#qa-rec-hint');

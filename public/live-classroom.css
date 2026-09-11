@@ -445,6 +445,39 @@ body.page-live-classroom .main-container {
   margin: 8px 0;
 }
 
+.qa-recording-dock__progress {
+  margin: 0 0 8px;
+}
+
+.qa-recording-dock__progress[hidden] {
+  display: none !important;
+}
+
+.qa-recording-dock__track {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  overflow: hidden;
+}
+
+.qa-recording-dock__bar {
+  height: 100%;
+  width: 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #8df97c, #47bc3e);
+  transition: width 0.35s ease;
+}
+
+.qa-recording-dock__bar.is-done {
+  background: #47bc3e;
+}
+
+.qa-recording-dock__progress-label {
+  margin-top: 4px;
+  font-size: 0.68rem;
+  color: rgba(248, 250, 252, 0.8);
+}
+
 .qa-recording-dock__actions {
   display: flex;
   flex-wrap: wrap;
