@@ -36,6 +36,73 @@
     .fee-cancel-tooltip-wrap:focus-within .fee-cancel-tooltip-panel {
       visibility: visible; opacity: 1; pointer-events: auto;
     }
+    .fee-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      max-width: 1200px;
+      margin: 0 auto;
+      width: 100%;
+    }
+    .payment-summary-card,
+    .fee-issues-card {
+      grid-column: 1 / -1;
+    }
+    @media (min-width: 1100px) {
+      .fee-cards-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+      .fee-issues-card {
+        grid-column: auto;
+      }
+    }
+    @media (max-width: 700px) {
+      .fee-cards-grid {
+        grid-template-columns: 1fr;
+      }
+      .fee-issues-card {
+        grid-column: auto;
+      }
+    }
+    .payment-summary-body {
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) auto minmax(220px, 1fr);
+      gap: 12px;
+      align-items: stretch;
+    }
+    .payment-summary-body .service-summary,
+    .payment-summary-body .service-remark {
+      margin: 0;
+      text-align: left;
+      min-height: 56px;
+      box-sizing: border-box;
+    }
+    .payment-summary-print {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      min-width: 180px;
+    }
+    #payment-status-badge.is-pending {
+      color: #b45309 !important;
+      background: #fffbeb !important;
+      border: 1px solid #fcd34d !important;
+    }
+    #payment-status-badge.is-success {
+      color: #15803d !important;
+      background: #e8f5e8 !important;
+      border: 1px solid #c8e6c9 !important;
+    }
+    @media (max-width: 900px) {
+      .payment-summary-body {
+        grid-template-columns: 1fr;
+      }
+      .payment-summary-print {
+        min-width: 0;
+      }
+    }
   </style>
 </head>
 <body class="page-teacher-service-fee teacher-portal">
@@ -138,7 +205,7 @@
         </div>
 
         <!-- Main Content Grid -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; max-width: 1200px; margin: 0 auto;">
+        <div class="fee-cards-grid">
           
           <!-- Pay period fee (bi-monthly PH cut-offs) -->
           <div class="service-section" style="background: #fff; border: 1px solid #e0e6ed; border-radius: 8px; padding: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.05);">
@@ -252,7 +319,7 @@
           </div>
 
           <!-- Resolved Issue Payments Card -->
-          <div class="service-section" style="background: #fff; border: 1px solid #e0e6ed; border-radius: 8px; padding: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.05);">
+          <div class="service-section fee-issues-card" style="background: #fff; border: 1px solid #e0e6ed; border-radius: 8px; padding: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.05);">
             <div class="service-section-title" style="color: #333; font-size: 1rem; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="color: #9c27b0;">
                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
@@ -296,31 +363,33 @@
             </div>
           </div>
 
-          <!-- Net Payable Card -->
-          <div class="service-section" style="background: #fff; border: 1px solid #e0e6ed; border-radius: 8px; padding: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.05);">
+          <!-- Net Payable Card — spans full row so it does not leave an empty grid cell -->
+          <div class="service-section payment-summary-card" style="background: #fff; border: 1px solid #e0e6ed; border-radius: 8px; padding: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.05);">
             <div class="service-section-title" style="color: #333; font-size: 1rem; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="color: #27ae60;">
                 <path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/>
               </svg>
               Payment Summary
             </div>
-            
-            <div class="service-summary" style="background: #e8f5e8; padding: 12px; border-radius: 8px; margin-bottom: 10px; border: 2px solid #c8e6c9; text-align: center;">
-              <div class="label" style="color: #2e7d32; font-size: 0.85rem; margin-bottom: 6px;">Net Payable Amount:</div>
-              <div class="value" id="net-amount" style="color: #2e7d32; font-size: 1.5rem; font-weight: 700;">₱0.00</div>
-            </div>
 
-            <div style="text-align:center; margin-bottom: 10px;">
-              <button type="button" id="open-payslip-btn" onclick="openCurrentPayslip()"
-                style="background:#1e3a5f;color:#fff;border:none;border-radius:8px;padding:10px 16px;font-weight:600;cursor:pointer;font-size:0.9rem;">
-                Print Payslip
-              </button>
-              <div style="font-size:0.75rem;color:#64748b;margin-top:6px;">Official cut-off statement for bank / legal use (Save as PDF)</div>
-            </div>
-            
-            <div class="service-remark" style="background: #f8f9fa; padding: 10px; border-radius: 8px; text-align: center; border: 1px solid #e9ecef;">
-              <div class="label" style="color: #495057; font-size: 0.8rem; margin-bottom: 4px;">Payment Status:</div>
-              <div class="value" style="color: #27ae60; font-weight: 600; font-size: 0.95rem; background: #e8f5e8; padding: 4px 10px; border-radius: 4px; display: inline-block; border: 1px solid #c8e6c9;">Success</div>
+            <div class="payment-summary-body">
+              <div class="service-summary" style="background: #e8f5e8; padding: 12px 14px; border-radius: 8px; border: 2px solid #c8e6c9;">
+                <div class="label" style="color: #2e7d32; font-size: 0.85rem; margin-bottom: 0;">Net Payable Amount:</div>
+                <div class="value" id="net-amount" style="color: #2e7d32; font-size: 1.5rem; font-weight: 700;">₱0.00</div>
+              </div>
+
+              <div class="payment-summary-print">
+                <button type="button" id="open-payslip-btn" onclick="openCurrentPayslip()"
+                  style="background:#1e3a5f;color:#fff;border:none;border-radius:8px;padding:10px 16px;font-weight:600;cursor:pointer;font-size:0.9rem;">
+                  Print Payslip
+                </button>
+                <div style="font-size:0.75rem;color:#64748b;margin-top:6px;max-width:220px;">Official cut-off statement for bank / legal use (Save as PDF)</div>
+              </div>
+
+              <div class="service-remark" style="background: #f8f9fa; padding: 10px 14px; border-radius: 8px; border: 1px solid #e9ecef;">
+                <div class="label" style="color: #495057; font-size: 0.8rem; margin-bottom: 0;">Payment Status:</div>
+                <div class="value is-pending" id="payment-status-badge" style="font-weight: 600; font-size: 0.95rem; padding: 4px 10px; border-radius: 4px; display: inline-block;">Pending</div>
+              </div>
             </div>
           </div>
           
@@ -722,7 +791,7 @@
           updateTeachingFeePayoutSummary();
         }
         document.getElementById('base-sum').textContent = '0.00';
-        document.getElementById('net-amount').textContent = '0.00';
+        document.getElementById('net-amount').textContent = '₱0.00';
         
         // Show error message to user
         const errorMessage = error.message || 'Failed to load teacher data';
@@ -1066,9 +1135,9 @@
       const netAmount = baseSum + totalIssuePayment - totalDeductions;
       
       // Update display
-      document.getElementById('total-deductions').textContent = totalDeductions.toFixed(2);
+      document.getElementById('total-deductions').textContent = '₱' + totalDeductions.toFixed(2);
       const netAmountElement = document.getElementById('net-amount');
-      netAmountElement.textContent = netAmount.toFixed(2);
+      netAmountElement.textContent = '₱' + netAmount.toFixed(2);
       // Style negative amounts in red
       if (netAmount < 0) {
         netAmountElement.style.color = '#dc3545'; // Red for negative
@@ -1904,13 +1973,17 @@
             });
             
             // Update payment status display
-            const statusElement = document.querySelector('.service-remark .value');
+            const statusElement = document.getElementById('payment-status-badge')
+              || document.querySelector('.service-remark .value');
+            if (!statusElement) return;
             if (weekPayment) {
               statusElement.textContent = 'Success';
-              statusElement.style.color = '#27ae60';
+              statusElement.classList.remove('is-pending');
+              statusElement.classList.add('is-success');
             } else {
               statusElement.textContent = 'Pending';
-              statusElement.style.color = '#888';
+              statusElement.classList.remove('is-success');
+              statusElement.classList.add('is-pending');
             }
           }
         }
