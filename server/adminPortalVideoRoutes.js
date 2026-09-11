@@ -124,7 +124,7 @@ router.post('/portal-videos', portalVideoUploadMiddleware, async (req, res) => {
 });
 
 /** Remove file from disk and delete DB row (must be registered before /portal-videos/:id) */
-router.delete('/portal-videos/:id/permanent', async (req, res) => {
+async function deletePortalVideoPermanent(req, res) {
   try {
     const v = await PortalVideo.findById(req.params.id);
     if (!v) {
@@ -150,10 +150,9 @@ router.delete('/portal-videos/:id/permanent', async (req, res) => {
     console.error('admin portal-videos permanent delete:', err);
     res.status(500).json({ success: false, message: 'Failed to delete video' });
   }
-});
+}
 
-/** Soft-delete (hide from live classroom only) */
-router.delete('/portal-videos/:id', async (req, res) => {
+async function hidePortalVideo(req, res) {
   try {
     const v = await PortalVideo.findById(req.params.id);
     if (!v) {
@@ -166,6 +165,13 @@ router.delete('/portal-videos/:id', async (req, res) => {
     console.error('admin portal-videos hide:', err);
     res.status(500).json({ success: false, message: 'Failed to hide video' });
   }
-});
+}
+
+router.delete('/portal-videos/:id/permanent', deletePortalVideoPermanent);
+router.post('/portal-videos/:id/permanent/delete', deletePortalVideoPermanent);
+
+/** Soft-delete (hide from live classroom only) */
+router.delete('/portal-videos/:id', hidePortalVideo);
+router.post('/portal-videos/:id/hide', hidePortalVideo);
 
 module.exports = router;

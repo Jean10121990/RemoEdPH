@@ -564,8 +564,8 @@
             }
             
             try {
-                const response = await adminApiFetch(`/api/admin/payment/${paymentId}`, {
-                    method: 'DELETE'
+                const response = await adminApiFetch(`/api/admin/payment/${paymentId}/delete`, {
+                    method: 'POST'
                 });
                 
                 const data = await response.json();

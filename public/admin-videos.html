@@ -783,8 +783,8 @@
             async function hideVideo(id) {
                 if (!id || !confirm('Hide this video from the live classroom?')) return;
                 try {
-                    var r = await fetch('/api/admin/portal-videos/' + encodeURIComponent(id), {
-                        method: 'DELETE',
+                    var r = await fetch('/api/admin/portal-videos/' + encodeURIComponent(id) + '/hide', {
+                        method: 'POST',
                         headers: authHeaders(),
                         credentials: 'include',
                     });
@@ -803,8 +803,8 @@
                 if (!id) return;
                 if (!confirm('Permanently delete this video from the server? This cannot be undone.')) return;
                 try {
-                    var r = await fetch('/api/admin/portal-videos/' + encodeURIComponent(id) + '/permanent', {
-                        method: 'DELETE',
+                    var r = await fetch('/api/admin/portal-videos/' + encodeURIComponent(id) + '/permanent/delete', {
+                        method: 'POST',
                         headers: authHeaders(),
                         credentials: 'include',
                     });

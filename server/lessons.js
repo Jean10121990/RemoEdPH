@@ -85,6 +85,16 @@ function publicUrlForStoredPresentation(fileId, storedName) {
 }
 
 const authenticateToken = async (req, res, next) => {
+  if (req.session && req.session.adminAuth === true && req.session.adminUsername) {
+    req.user = {
+      username: req.session.adminUsername,
+      isAdmin: true,
+      role: 'admin',
+      adminId: req.session.adminId || null,
+      adminRole: req.session.adminRole || 'super_admin',
+    };
+    return next();
+  }
   // Accept token from Authorization header, query, or body for flexibility (devtunnels)
   const authHeader = req.headers['authorization'];
   const headerToken = authHeader && authHeader.split(' ')[1];
@@ -1325,7 +1335,7 @@ router.get('/presentation/:fileId/preview.pdf', authenticateToken, async (req, r
 });
 
 // Delete lesson file (teacher or admin) - remove from embedded files array
-router.delete('/lesson-file/:fileId', authenticateToken, requireTeacher, async (req, res) => {
+async function deleteLessonFileHandler(req, res) {
   try {
     const { fileId } = req.params;
     if (!isMongoObjectId(fileId)) {
@@ -1388,9 +1398,7 @@ router.delete('/lesson-file/:fileId', authenticateToken, requireTeacher, async (
       console.log(`⚠️ Deleting permanent file ${fileId} uploaded by ${file.uploadedBy}`);
     }
     
-    // Remove file from embedded array
-    lesson.files.pull(fileId);
-    await lesson.save();
+    await Lesson.updateOne({ _id: lesson._id }, { $pull: { files: { _id: fileId } } });
     
     console.log(`✅ File ${fileId} deleted successfully by ${isAdmin ? 'admin' : 'teacher'}`);
     res.json({ message: 'File deleted successfully' });
@@ -1398,7 +1406,10 @@ router.delete('/lesson-file/:fileId', authenticateToken, requireTeacher, async (
     console.error('Error deleting lesson file:', error);
     res.status(500).json({ error: 'Failed to delete file' });
   }
-});
+}
+
+router.delete('/lesson-file/:fileId', authenticateToken, requireTeacher, deleteLessonFileHandler);
+router.post('/lesson-file/:fileId/delete', authenticateToken, requireTeacher, deleteLessonFileHandler);
 
 // Get student's lesson progress
 router.get('/progress/:studentId', authenticateToken, async (req, res) => {

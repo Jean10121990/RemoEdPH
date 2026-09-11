@@ -1578,29 +1578,32 @@ router.post('/teacher-pipeline/applicants/:id/resend-invitation', verifyAdminApi
 
 async function deleteTeacherPipelineApplicant(req, res) {
   try {
-    const applicant = await Application.findById(req.params.id);
+    const id = String(req.params.id || '').trim();
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ success: false, error: 'Invalid applicant id' });
+    }
+    const applicant = await Application.findById(id).select('_id teacherActivationStatus currentStage email fullName');
     if (!applicant) {
       return res.status(404).json({ success: false, error: 'Applicant not found' });
     }
     if (isActivatedPipelineApplicant(applicant)) {
       return res.status(400).json({
         success: false,
-        error: 'This applicant already has a teacher account in User Management.',
-      });
-    }
-    const stage = String(applicant.currentStage || '').toLowerCase();
-    if (stage !== 'passed' && stage !== 'failed') {
-      return res.status(400).json({
-        success: false,
-        error: 'Only applicants in Passed or Failed stage can be deleted.'
+        error: 'This applicant already has a teacher account. Remove them from User Management instead.',
       });
     }
     await InvitationToken.deleteMany({ applicationId: applicant._id });
-    await Application.findByIdAndDelete(req.params.id);
+    const result = await Application.deleteOne({ _id: applicant._id });
+    if (!result || !result.deletedCount) {
+      return res.status(404).json({ success: false, error: 'Applicant not found' });
+    }
     res.json({ success: true, message: 'Applicant removed from pipeline' });
   } catch (error) {
     console.error('❌ Failed to delete applicant:', error);
-    res.status(500).json({ success: false, error: 'Failed to delete applicant' });
+    res.status(500).json({
+      success: false,
+      error: error && error.message ? String(error.message) : 'Failed to delete applicant',
+    });
   }
 }
 
@@ -5330,39 +5333,40 @@ router.put('/payment/:paymentId', async (req, res) => {
 });
 
 // DELETE payment record
-router.delete('/payment/:paymentId', async (req, res) => {
+async function deleteAdminPaymentRecord(req, res) {
   try {
     const { paymentId } = req.params;
-    
-    // Find the teacher with this payment
-    const teacher = await Teacher.findOne({ 'paymentHistory._id': paymentId });
-    
-    if (!teacher) {
+    if (!paymentId) {
+      return res.status(400).json({ success: false, message: 'Payment id is required' });
+    }
+
+    const result = await Teacher.updateOne(
+      { 'paymentHistory._id': mongoose.isValidObjectId(paymentId) ? paymentId : String(paymentId) },
+      { $pull: { paymentHistory: { _id: mongoose.isValidObjectId(paymentId) ? paymentId : String(paymentId) } } }
+    );
+
+    if (!result || !result.modifiedCount) {
       return res.status(404).json({
         success: false,
-        message: 'Payment record not found'
+        message: 'Payment record not found',
       });
     }
-    
-    // Remove the payment from the teacher's payment history
-    teacher.paymentHistory = teacher.paymentHistory.filter(
-      payment => payment._id.toString() !== paymentId
-    );
-    
-    await teacher.save();
-    
+
     res.json({
       success: true,
-      message: 'Payment record deleted successfully'
+      message: 'Payment record deleted successfully',
     });
   } catch (error) {
     console.error('Error deleting payment:', error);
     res.status(500).json({
       success: false,
-      message: 'Error deleting payment record'
+      message: error && error.message ? String(error.message) : 'Error deleting payment record',
     });
   }
-});
+}
+
+router.delete('/payment/:paymentId', deleteAdminPaymentRecord);
+router.post('/payment/:paymentId/delete', deleteAdminPaymentRecord);
 
 // GET export payment history as CSV
 router.get('/payment-history/export', async (req, res) => {

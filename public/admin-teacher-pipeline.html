@@ -89,6 +89,7 @@
         <button class="btn btn-fail" id="modal-fail">Fail</button>
         <button class="btn btn-pass" id="modal-pass">Pass</button>
         <button class="btn btn-resend" id="modal-resend">Resend email</button>
+        <button class="btn-delete" id="modal-delete">Delete</button>
       </div>
     </div>
   </div>
@@ -96,9 +97,13 @@
   <script src="js/admin-session.js"></script>
   <script src="js/admin-sidebar.js"></script>
   <script>
-    const token = (window.RemoedAdminSession && RemoedAdminSession.getAuthToken ? RemoedAdminSession.getAuthToken() : (localStorage.getItem('remoed_admin_token')||localStorage.getItem('remoed_admin_auth')||localStorage.getItem('adminToken')||'')) || localStorage.getItem('token');
+    function getAdminToken() {
+      return (window.RemoedAdminSession && RemoedAdminSession.getAuthToken
+        ? RemoedAdminSession.getAuthToken()
+        : (localStorage.getItem('remoed_admin_token') || localStorage.getItem('remoed_admin_auth') || localStorage.getItem('adminToken') || '')) || '';
+    }
     const userType = localStorage.getItem('userType');
-    if (!token || (userType && userType !== 'admin')) {
+    if (userType && userType !== 'admin') {
       window.location.href = (function(){ try { var p = localStorage.getItem('remoedAdminEntryPath'); if (p && p.charAt(0) === '/') return p; } catch(e){} return 'index.html'; })();
     }
 
@@ -114,6 +119,7 @@
     const passBtn = document.getElementById('modal-pass');
     const failBtn = document.getElementById('modal-fail');
     const resendBtn = document.getElementById('modal-resend');
+    const deleteBtn = document.getElementById('modal-delete');
 
     let selectedApplicantId = null;
 
@@ -130,39 +136,34 @@
       return s.charAt(0).toUpperCase() + s.slice(1);
     }
 
-    function canDeleteApplicant(stage) {
-      const s = (stage || '').toString().toLowerCase();
-      return s === 'passed' || s === 'failed';
-    }
-
     function canPassOrFail(stage) {
       const s = (stage || '').toString().toLowerCase();
       return s !== 'passed' && s !== 'failed';
     }
 
     async function api(path, options = {}) {
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        ...(options.headers || {})
-      };
-      if (options.body != null && !(options.body instanceof FormData)) {
+      const headers = Object.assign({}, options.headers || {});
+      const token = getAdminToken();
+      if (token) headers.Authorization = 'Bearer ' + token;
+      if (options.body != null && !(options.body instanceof FormData) && !headers['Content-Type']) {
         headers['Content-Type'] = 'application/json';
       }
-      const response = await fetch(path, { ...options, headers });
+      const response = await fetch(path, Object.assign({}, options, { headers, credentials: 'include' }));
       const json = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(json.error || `Request failed (${response.status})`);
+      if (!response.ok) throw new Error(json.error || json.message || ('Request failed (' + response.status + ')'));
       return json;
     }
 
     async function deleteApplicant(applicantId, displayName) {
       const label = displayName && displayName !== applicantId ? displayName : 'this applicant';
-      if (!confirm(`Permanently delete ${label} from the pipeline? This cannot be undone.`)) return;
+      if (!confirm(`Permanently delete ${label} from the pipeline? This cannot be undone.`)) return false;
       try {
-        // POST avoids DELETE being blocked by some proxies/ngrok configs; server also accepts DELETE
         await api(`/api/admin/teacher-pipeline/applicants/${applicantId}/delete`, { method: 'POST', body: '{}' });
         await loadApplicants();
+        return true;
       } catch (error) {
         alert(error.message);
+        return false;
       }
     }
 
@@ -177,9 +178,7 @@
         }
         bodyEl.innerHTML = rows.map((a) => {
           const st = a.currentStage || 'applied';
-          const del = canDeleteApplicant(st)
-            ? `<button type="button" class="btn-delete" data-delete="${a._id}">Delete</button>`
-            : '';
+          const del = `<button type="button" class="btn-delete" data-delete="${a._id}">Delete</button>`;
           const pf = canPassOrFail(st)
             ? `<button type="button" class="btn btn-pass" data-pass-row="${a._id}" title="Pass applicant">Pass</button>
                <button type="button" class="btn btn-fail" data-fail-row="${a._id}" title="Fail applicant">Fail</button>`
@@ -381,6 +380,20 @@
       }
     }
 
+    async function deleteApplicantFromModal() {
+      if (!selectedApplicantId) return;
+      if (deleteBtn) deleteBtn.disabled = true;
+      try {
+        const ok = await deleteApplicant(
+          selectedApplicantId,
+          modalName.textContent.replace(/^Review:\s*/, '')
+        );
+        if (ok) closeModal();
+      } finally {
+        if (deleteBtn) deleteBtn.disabled = false;
+      }
+    }
+
     function closeModal() {
       modal.style.display = 'none';
       selectedApplicantId = null;
@@ -397,6 +410,7 @@
     passBtn.addEventListener('click', passApplicant);
     failBtn.addEventListener('click', failApplicant);
     resendBtn.addEventListener('click', resendApplicant);
+    if (deleteBtn) deleteBtn.addEventListener('click', deleteApplicantFromModal);
 
     loadApplicants();
   </script>

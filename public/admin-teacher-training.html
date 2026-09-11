@@ -195,7 +195,7 @@
             document.getElementById('tt-del-course').onclick = async ()=>{
                 if(!confirm('Delete this course and all modules?')) return;
                 try {
-                    await api('/api/admin/training/courses/'+id,{ method:'DELETE' });
+                    await api('/api/admin/training/courses/'+id+'/delete',{ method:'POST' });
                     selectedId=null;
                     editor.innerHTML='<p class="muted">Select a course.</p>';
                     await loadCourses();
@@ -271,7 +271,7 @@
             row.querySelector('.m-del').onclick = async ()=>{
                 if(!confirm('Delete module?')) return;
                 try {
-                    await api('/api/admin/training/modules/'+mid,{ method:'DELETE' });
+                    await api('/api/admin/training/modules/'+mid+'/delete',{ method:'POST' });
                     await selectCourse(courseId);
                 } catch (err) {
                     alert(err.message || 'Failed to delete module');

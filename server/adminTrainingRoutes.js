@@ -106,15 +106,33 @@ router.put('/courses/:id', async (req, res) => {
   }
 });
 
-router.delete('/courses/:id', async (req, res) => {
+async function deleteTrainingCourse(req, res) {
   try {
     await TrainingModule.deleteMany({ courseId: req.params.id });
-    await TrainingCourse.findByIdAndDelete(req.params.id);
+    const result = await TrainingCourse.deleteOne({ _id: req.params.id });
+    if (!result || !result.deletedCount) {
+      return res.status(404).json({ success: false, message: 'Not found' });
+    }
     res.json({ success: true });
   } catch (e) {
     res.status(500).json({ success: false, message: e.message });
   }
-});
+}
+
+async function deleteTrainingModule(req, res) {
+  try {
+    const result = await TrainingModule.deleteOne({ _id: req.params.id });
+    if (!result || !result.deletedCount) {
+      return res.status(404).json({ success: false, message: 'Not found' });
+    }
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+}
+
+router.delete('/courses/:id', deleteTrainingCourse);
+router.post('/courses/:id/delete', deleteTrainingCourse);
 
 /** Create course with optional PPT/PPTX/PDF (multipart: title, category, description, published, presentation). */
 router.post('/courses/with-presentation', (req, res) => {
@@ -276,14 +294,8 @@ router.put('/modules/:id', async (req, res) => {
   }
 });
 
-router.delete('/modules/:id', async (req, res) => {
-  try {
-    await TrainingModule.findByIdAndDelete(req.params.id);
-    res.json({ success: true });
-  } catch (e) {
-    res.status(500).json({ success: false, message: e.message });
-  }
-});
+router.delete('/modules/:id', deleteTrainingModule);
+router.post('/modules/:id/delete', deleteTrainingModule);
 
 router.post('/modules/:id/upload-video', (req, res, next) => {
   req.uploadSubdir = 'training-videos';

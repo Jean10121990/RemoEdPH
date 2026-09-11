@@ -703,8 +703,8 @@
             try {
                 const delHdr = {};
                 if (token) delHdr['Authorization'] = 'Bearer ' + token;
-                const r = await fetch('/api/admin/classroom-recordings/' + encodeURIComponent(id), {
-                    method: 'DELETE',
+                const r = await fetch('/api/admin/classroom-recordings/' + encodeURIComponent(id) + '/delete', {
+                    method: 'POST',
                     credentials: 'include',
                     headers: delHdr
                 });

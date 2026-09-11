@@ -717,7 +717,7 @@ router.post(
   }
 );
 
-router.delete('/admin/classroom-recordings/:id', ...adminRecordingAuthChain, async (req, res) => {
+async function deleteAdminClassroomRecording(req, res) {
   try {
     const doc = await ClassroomRecording.findById(req.params.id);
     if (!doc) return res.status(404).json({ success: false, message: 'Not found' });
@@ -728,7 +728,10 @@ router.delete('/admin/classroom-recordings/:id', ...adminRecordingAuthChain, asy
     console.error('admin delete classroom-recording:', err);
     res.status(500).json({ success: false, message: err.message || 'Delete failed' });
   }
-});
+}
+
+router.delete('/admin/classroom-recordings/:id', ...adminRecordingAuthChain, deleteAdminClassroomRecording);
+router.post('/admin/classroom-recordings/:id/delete', ...adminRecordingAuthChain, deleteAdminClassroomRecording);
 
 router.post('/admin/classroom-recordings/purge-expired', ...adminRecordingAuthChain, async (req, res) => {
   try {
