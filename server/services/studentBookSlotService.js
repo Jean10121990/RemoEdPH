@@ -276,7 +276,7 @@ async function runBookSlot(req, res) {
       if (!resolvedPrefEarly) {
         return res.status(400).json({ error: 'Preferred teacher not found.' });
       }
-      const recheck = await findOpenTeacherSlotByUtcAndNormalizedTeacher(canonicalUtc, preferredRaw);
+      const recheck = await findOpenTeacherSlotByUtcAndNormalizedTeacher(canonicalUtc, resolvedPrefEarly);
       if (
         !recheck ||
         recheck.available !== true ||

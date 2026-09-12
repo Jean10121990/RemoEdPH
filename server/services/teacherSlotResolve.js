@@ -56,17 +56,14 @@ async function findOpenSlotsByUtcInstant(canonicalUtcIso) {
  * Uses $toLower on stored teacherId so legacy mixed-case rows still match.
  */
 async function findOpenTeacherSlotByUtcAndNormalizedTeacher(canonicalUtcIso, rawTeacherId) {
-  const norm = normalizeId(rawTeacherId);
-  if (!norm) return null;
-  const utcInstant = new Date(canonicalUtcIso);
-  if (isNaN(utcInstant.getTime())) return null;
-  const t0 = utcInstant.getTime();
-  const row = await TeacherSlot.findOne({
-    available: true,
-    dateTimeUtc: { $gte: new Date(t0 - 2000), $lte: new Date(t0 + 2000) },
-    $expr: { $eq: [{ $toLower: '$teacherId' }, norm] },
-  }).lean();
-  return row;
+  const want = await resolveToCanonicalTeacherId(rawTeacherId);
+  if (!want) return null;
+  const slots = await findOpenSlotsByUtcInstant(canonicalUtcIso);
+  for (const slot of slots) {
+    const tid = await resolveToCanonicalTeacherId(slot.teacherId);
+    if (tid && normalizeId(tid) === normalizeId(want)) return slot;
+  }
+  return null;
 }
 
 /** All teachers with an open slot at this UTC instant and no conflicting booking */
