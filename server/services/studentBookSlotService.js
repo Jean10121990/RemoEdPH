@@ -26,11 +26,6 @@ const {
 } = require('./teacherSlotResolve');
 const { normalizeId } = require('../utils/normalizeId');
 
-function preferredTeacherIdLooksLikeEmail(raw) {
-  const v = normalizeId(raw);
-  return v.includes('@') && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
-}
-
 /** Teacher-facing notification text — many students have empty first/last until profile is completed. */
 function studentDisplayNameForNotification(studentDoc, usernameFallback) {
   if (!studentDoc) return usernameFallback || 'A student';
@@ -280,12 +275,6 @@ async function runBookSlot(req, res) {
     if (wantsPreferred) {
       if (!resolvedPrefEarly) {
         return res.status(400).json({ error: 'Preferred teacher not found.' });
-      }
-      if (!preferredTeacherIdLooksLikeEmail(preferredRaw)) {
-        return res.status(400).json({
-          error: 'Preferred teacher must be the teacher account email (e.g. name@domain.com).',
-          code: 'PREFERRED_MUST_BE_EMAIL',
-        });
       }
       const recheck = await findOpenTeacherSlotByUtcAndNormalizedTeacher(canonicalUtc, preferredRaw);
       if (
