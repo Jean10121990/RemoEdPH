@@ -75,7 +75,6 @@ const {
   safeUnlinkPublicUpload,
 } = require('./utils/imageOptimizer');
 const { saveUpload, normalizeUploadReference } = require('./services/uploadStore');
-const studentController = require('./studentController');
 
 const router = express.Router();
 
