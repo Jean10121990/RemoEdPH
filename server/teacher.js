@@ -5647,11 +5647,20 @@ router.post('/report-issue', verifyToken, requireTeacher, issueScreenshotUpload.
         error: 'Booking not found' 
       });
     }
-    
-    if (booking.teacherId !== teacherId) {
-      return res.status(403).json({ 
-        success: false, 
-        error: 'Access denied. This booking does not belong to you.' 
+
+    const bookingTeacherCanon = await resolveToCanonicalTeacherId(booking.teacherId);
+    const bodyTeacherCanon = await resolveToCanonicalTeacherId(teacherId);
+    const jwtTeacherCanon = await resolveToCanonicalTeacherId(
+      req.user && (req.user.teacherId || req.user.username || req.user.email)
+    );
+    const owner = normalizeId(bookingTeacherCanon);
+    const callerOk =
+      (owner && normalizeId(jwtTeacherCanon) === owner) ||
+      (owner && normalizeId(bodyTeacherCanon) === owner);
+    if (!callerOk) {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied. This booking does not belong to you.',
       });
     }
     

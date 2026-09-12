@@ -1,0 +1,48 @@
+---
+description: RemoEdPH stable surfaces — do not rewrite booking, portal auth, teacher IDs, or live Mongo test when adding features
+alwaysApply: true
+---
+
+# RemoEdPH Stable Surfaces
+
+Before changing shared auth, booking, class schedule, or Mongo scripts, read [docs/STABLE_BASELINE.md](docs/STABLE_BASELINE.md). Prefer **new routes and thin wrappers** beside these paths; do not “simplify” them.
+
+## Live data / Mongo
+
+- Production DB is Atlas **`test`**. Keep `MONGODB_URI` ending in `/test`. Do not drop or rename `test` unless the user explicitly requests a launch wipe.
+- Do not delete GridFS `presentations/` or `portal-videos/` to free space. Classroom recordings under `classroom-recordings/` were intentionally purged.
+- Archive/purge scripts may only target legacy DB / recordings; never change `KEEP` counts for `students`, `teachers`, `admins`, `lessons`, `curriculums`:
+  - `scripts/archive-legacy-mongo-db.js`
+  - `scripts/purge-beta-recordings.js`
+- Atlas M0 storage meter staying high after deletes is expected (no `compact`).
+
+## Portal auth tokens
+
+- Client keys: `remoed_admin_token` / `remoed_teacher_token` / `remoed_student_token` (`public/js/user-session.js`, `public/js/remoed-auth-token.js`).
+- `server/authMiddleware.js` enforces portal separation (`WRONG_PORTAL_TOKEN`). Student JWT may call only the teacher-route allowlist (`/api/teacher/slots`, paths ending `/book-class`, `/available-teachers`, `/public/...`). **Extend** the allowlist for new student needs; do not remove the gate.
+- `GET /api/teacher/slots` and public profile routes are intentionally usable without Bearer. Do not lock them behind teacher auth without a student replacement.
+
+## Student booking
+
+- Preferred client: `POST /api/student/book-class` (`public/student-book.html`).
+- Handler chain: `server/student.js` → `server/studentController.js` → `server/services/studentBookSlotService.js`. Keep `POST /api/teacher/book-class` equivalent (same handler).
+- **Never** declare `require('./studentController')` twice in `server/student.js` (caused production 502).
+- Resolve teacher identity with `resolveToCanonicalTeacherId` / `findOpenTeacherSlotByUtcAndNormalizedTeacher` (`server/services/teacherSlotResolve.js`). UI may send email via `teacherBookingKey` (`server/teacher.js`) while slots store username — do not require email-only preferred IDs.
+- Persist `Booking.teacherId` as canonical `Teacher.teacherId`. `Booking.studentId` is student **username**, not Mongo `_id`. Prefer `/api/student/bookings*`.
+- Book body must include Mongo `slotId`. Schedule matching uses UTC `dateTimeUtc` (±2s).
+- Credits: available = `creditBalance` only (`server/services/studentCreditSummary.js`). Expiry via `server/services/creditExpiry.js`. Product codes `SUBSCRIPTION_REQUIRED_LESSON_2`, `CREDITS_EXPIRED`, `INSUFFICIENT_CREDITS`, `TRIAL_LESSON_1_ONLY` are expected gates, not route bugs. Do not reverse already-booked classes on expiry.
+
+## Teacher Class Schedule / Report Issue
+
+- `public/teacher-class-table.html`: keep **one** live `resolveTeacherPortalToken` in the main schedule `<script>` (and on `window`). Do not “fix” only the weaker head-script duplicate. Use that helper for Bearer calls — not bare `localStorage.getItem('token')`.
+- Issue modal needs `window.__reportIssueBooking` / `closeClassInfo({ keepBooking: true })`. Do not wrap the main script in an IIFE/`type="module"` without exporting `onclick` handlers.
+- `POST /api/teacher/report-issue` ownership must use canonical teacher IDs. If you touch it, also align `GET /check-class-issues` (must not stay on raw string equality alone).
+
+## Applicant documents
+
+- On teacher invite signup, `server/utils/applicantDocuments.js` copies application ID/NBI onto teacher profile. Keep that on create; do not strip URL-style `fileData` when saving teacher documents.
+
+## Before push
+
+- Run `node --check` on edited server entry files (`server/student.js`, `server/index.js`, etc.).
+- After production deploy, re-run the smoke checklist in `docs/STABLE_BASELINE.md`.

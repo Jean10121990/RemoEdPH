@@ -410,6 +410,31 @@
     const DateTimeLocal = luxon.DateTime;
     const IANAZoneLocal = luxon.IANAZone;
 
+    function resolveTeacherPortalToken() {
+      try {
+        if (window.RemoedAuthToken && typeof window.RemoedAuthToken.getTeacherToken === 'function') {
+          const t = window.RemoedAuthToken.getTeacherToken();
+          if (t) return t;
+        }
+      } catch (_e) {}
+      try {
+        if (window.RemoedTeacherSession && typeof window.RemoedTeacherSession.getToken === 'function') {
+          const t = window.RemoedTeacherSession.getToken();
+          if (t) return t;
+        }
+      } catch (_e2) {}
+      return (
+        localStorage.getItem('remoed_teacher_token') ||
+        sessionStorage.getItem('remoed_teacher_token') ||
+        localStorage.getItem('remoed_user_token') ||
+        sessionStorage.getItem('remoed_user_token') ||
+        localStorage.getItem('token') ||
+        sessionStorage.getItem('token') ||
+        ''
+      );
+    }
+    window.resolveTeacherPortalToken = resolveTeacherPortalToken;
+
     // Weekly grid variables — Luxon local week
     let slotsData = [];
     let bookingsData = [];
@@ -1510,7 +1535,7 @@
       
       // Fetch fresh booking data to keep modal in sync
       try {
-        const token = localStorage.getItem('token');
+        const token = resolveTeacherPortalToken();
         if (token && booking._id) {
           const freshBookingResp = await fetch(`/api/teacher/booking/${booking._id}`, {
             headers: {
@@ -1720,7 +1745,7 @@
           booking.resolvedLessonId ||
           '';
         if (!sid) return;
-        const token = localStorage.getItem('token');
+        const token = resolveTeacherPortalToken();
         if (!token) return;
         const resp = await fetch('/api/lessons/progress/' + encodeURIComponent(sid), {
           headers: { Authorization: 'Bearer ' + token },
@@ -1889,7 +1914,7 @@
       if (!currentBooking) return;
 
       try {
-        const token = localStorage.getItem('token');
+        const token = resolveTeacherPortalToken();
         if (!token) {
           alert('Authentication required for cancellation.');
           window.location.href = '/login/';
@@ -1927,9 +1952,7 @@
     // Realtime updates via Socket.IO
     (function initRealtime(){
       try {
-        const __skTok = (window.RemoedSecurityGuard && typeof window.RemoedSecurityGuard.getToken === 'function')
-          ? window.RemoedSecurityGuard.getToken()
-          : (localStorage.getItem('remoed_user_token') || localStorage.getItem('token') || '');
+        const __skTok = resolveTeacherPortalToken();
         const socket = io(window.location.origin, { auth: { token: __skTok } });
         socket.on('slotsUpdated', (payload) => {
           if (!payload || !payload.teacherId) return;
@@ -2128,7 +2151,7 @@
   // Load profile picture and update sidebar from backend (uses setAvatar)
   async function loadProfilePicture(teacherId) {
     try {
-      const token = localStorage.getItem('token');
+      const token = resolveTeacherPortalToken();
       if (!token) return;
 
       const controller = new AbortController();
@@ -2192,7 +2215,7 @@
         }
         
         try {
-            const token = localStorage.getItem('token');
+            const token = resolveTeacherPortalToken();
             if (!token) {
                 showNotification('Authentication required', 'error');
                 return;
@@ -2246,7 +2269,7 @@
         
         // Refresh booking data to get latest status
         try {
-            const token = localStorage.getItem('token');
+            const token = resolveTeacherPortalToken();
             if (token) {
                 const response = await fetch(`/api/teacher/booking/${currentBooking._id}`, {
                     headers: {
@@ -2277,7 +2300,7 @@
         
         // Check if feedback already exists for this booking
         try {
-            const token = localStorage.getItem('token');
+            const token = resolveTeacherPortalToken();
             if (token) {
                 const response = await fetch(`/api/feedback/check/${currentBooking._id}`, {
                     headers: {
@@ -2340,7 +2363,7 @@
         showNotification('Missing class reference', 'error');
         return;
       }
-      const token = localStorage.getItem('token');
+      const token = resolveTeacherPortalToken();
       if (!token) {
         showNotification('Please sign in again', 'error');
         return;
@@ -2389,7 +2412,7 @@
       }
       if (!id) return;
       pendingFeedbackQueryAttempted = true;
-      const token = localStorage.getItem('token');
+      const token = resolveTeacherPortalToken();
       if (!token) return;
       try {
         const r = await fetch('/api/teacher/booking/' + encodeURIComponent(id), {
@@ -2693,7 +2716,7 @@
         }
 
         try {
-            const token = localStorage.getItem('token');
+            const token = resolveTeacherPortalToken();
             if (!token) {
                 showNotification('Authentication required. Please log in again.', 'error');
                 setTimeout(() => {
@@ -2756,7 +2779,7 @@
     // Check if a class has a resolved issue
     async function checkClassIssueStatus(bookingId) {
         try {
-            const token = localStorage.getItem('token');
+            const token = resolveTeacherPortalToken();
             if (!token) {
                 console.log('No teacher token found for issue check');
                 return false;
@@ -2797,7 +2820,7 @@
     // Add visual indicators for resolved issues on page load
     async function addResolvedIssueIndicators() {
         try {
-            const token = localStorage.getItem('token');
+            const token = resolveTeacherPortalToken();
             if (!token) return;
             
             console.log('🔍 Adding resolved issue indicators...');
