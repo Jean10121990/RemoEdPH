@@ -23,6 +23,7 @@ const {
   parseBookingLessonRef,
 } = require('./lessonResolveFromBooking');
 const { verifyToken, requireStudent } = require('./authMiddleware');
+const studentController = require('./studentController');
 
 /** Public teacher label for students — prefers nickname over legal name. */
 const { publicTeacherLabel } = require('./utils/publicTeacherLabel');
@@ -138,6 +139,9 @@ async function createStudentNotification(studentId, type, message, extra = {}) {
 router.get('/test', (req, res) => {
   res.json({ message: 'Student routes are working!' });
 });
+
+// Book a class (student portal). Same handler as POST /api/teacher/book-class.
+router.post('/book-class', verifyToken, requireStudent, studentController.bookSlot);
 
 // Test route to verify cancel-booking route exists
 router.get('/test-cancel-route', (req, res) => {

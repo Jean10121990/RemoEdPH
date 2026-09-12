@@ -2278,18 +2278,26 @@
             return certificates;
         }
         
+        function isKeepableDocumentSrc(src) {
+            const s = String(src || '').trim();
+            if (!s || s.includes('data:image/svg+xml')) return false;
+            if (s.startsWith('data:') && s.length > 100) return true;
+            if (s.startsWith('/uploads/')) return true;
+            if (/^https?:\/\//i.test(s)) return true;
+            return false;
+        }
+
         function collectValidIdsData() {
             const validIds = [];
             document.querySelectorAll('[id^="valid-id-preview-"]').forEach(preview => {
                 const previewImg = preview.querySelector('img');
                 const fileInfo = preview.querySelector('.file-info');
                 if (!preview || !previewImg) return;
-                const hasImage = previewImg.src && previewImg.src.startsWith('data:') && 
-                    !previewImg.src.includes('data:image/svg+xml') && previewImg.src.length > 100;
-                if (hasImage) {
+                const src = previewImg.getAttribute('src') || previewImg.src || '';
+                if (isKeepableDocumentSrc(src)) {
                     const fileName = fileInfo && fileInfo.textContent && fileInfo.textContent !== 'No file selected' 
                         ? fileInfo.textContent : `Valid ID ${validIds.length + 1}`;
-                    validIds.push({ fileData: previewImg.src, fileName: fileName });
+                    validIds.push({ fileData: src, fileName: fileName });
                 }
             });
             return validIds;
@@ -2301,12 +2309,11 @@
                 const previewImg = preview.querySelector('img');
                 const fileInfo = preview.querySelector('.file-info');
                 if (!preview || !previewImg) return;
-                const hasImage = previewImg.src && previewImg.src.startsWith('data:') &&
-                    !previewImg.src.includes('data:image/svg+xml') && previewImg.src.length > 100;
-                if (hasImage) {
+                const src = previewImg.getAttribute('src') || previewImg.src || '';
+                if (isKeepableDocumentSrc(src)) {
                     const fileName = fileInfo && fileInfo.textContent && fileInfo.textContent !== 'No file selected'
                         ? fileInfo.textContent : `NBI Clearance ${nbiClearances.length + 1}`;
-                    nbiClearances.push({ fileData: previewImg.src, fileName: fileName });
+                    nbiClearances.push({ fileData: src, fileName: fileName });
                 }
             });
             return nbiClearances;

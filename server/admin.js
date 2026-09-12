@@ -3903,12 +3903,13 @@ function serializeTeacherDocEntry(entry, index, category) {
     };
   }
   if (!entry.fileData && !entry.fileName) return null;
+  const data = String(entry.fileData || '');
   return {
     id: `${category}-${index}`,
     category,
     fileName: entry.fileName || `${category}-${index + 1}`,
     source: 'file',
-    previewKind: 'base64',
+    previewKind: data.startsWith('data:') || data.startsWith('http') || data.startsWith('/') ? 'url-or-data' : 'base64',
     fileData: entry.fileData || null,
   };
 }

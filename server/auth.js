@@ -29,6 +29,7 @@ const crypto = require('crypto');
 const mongoose = require('mongoose');
 const { sendPasswordResetEmail } = require('./emailService');
 const { findActivePassedInvitation, inviteErrorMessage, applicantPayload } = require('./utils/teacherInvitation');
+const { applyApplicantDocumentsToTeacher } = require('./utils/applicantDocuments');
 const { recordAdminLoginActivity, getAdminSessionVersion } = require('./services/adminLoginActivity');
 const {
   ADMIN_2FA_ENROLLMENT_PURPOSE,
@@ -270,6 +271,7 @@ router.post('/teacher-signup/complete', authRegisterLimiter, async (req, res) =>
       address: address || undefined,
       hireDate: now,
     });
+    applyApplicantDocumentsToTeacher(teacher, application);
 
     try {
       await teacher.save();

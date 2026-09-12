@@ -177,9 +177,11 @@ const verifyToken = async (req, res, next) => {
     const method = String(req.method || 'GET').toUpperCase();
     /** Teacher router also hosts a few student-only handlers (see teacher.js + requireStudent). */
     const studentMayCallThisTeacherRoute =
-      (method === 'GET' && normPath === '/api/teacher/slots') ||
-      (method === 'POST' && normPath === '/api/teacher/book-class') ||
-      (method === 'GET' && normPath === '/api/teacher/student/bookings');
+      (method === 'GET' && /\/api\/teacher\/slots$/.test(normPath)) ||
+      (method === 'POST' && /\/book-class$/.test(normPath)) ||
+      (method === 'GET' && /\/api\/teacher\/student\/bookings$/.test(normPath)) ||
+      (method === 'GET' && /\/api\/teacher\/available-teachers$/.test(normPath)) ||
+      (method === 'GET' && /\/api\/teacher\/public\//.test(normPath));
     if (pathOnly.startsWith('/api/teacher') && !studentMayCallThisTeacherRoute) {
       if (studentish && !teacherish && !adminClaims) {
         return res.status(403).json({

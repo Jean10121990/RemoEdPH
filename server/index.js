@@ -631,6 +631,7 @@ const publicDir = path.join(__dirname, '..', 'public');
 const protectedHtmlFiles = new Set([
   'student-dashboard.html',
   'student-booking-history.html',
+  'student-book.html',
   'teacher-dashboard.html',
   'student-profile.html',
   'student-learning-journey.html',

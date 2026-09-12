@@ -87,8 +87,15 @@ async function findUpload(relativePath) {
   if (!rel) return null;
   const bucket = getBucket();
   if (!bucket) return null;
-  const docs = await bucket.find({ filename: rel }).sort({ uploadDate: -1 }).limit(1).toArray();
-  return docs && docs.length ? docs[0] : null;
+  const base = rel.split('/').pop();
+  const candidates = [rel];
+  if (base && base !== rel) candidates.push(base);
+  if (base && !rel.startsWith('files/')) candidates.push('files/' + base);
+  for (const name of candidates) {
+    const docs = await bucket.find({ filename: name }).sort({ uploadDate: -1 }).limit(1).toArray();
+    if (docs && docs.length) return docs[0];
+  }
+  return null;
 }
 
 function openDownloadStream(fileId) {

@@ -2512,8 +2512,8 @@ router.post('/profile', verifyToken, requireTeacher, async (req, res) => {
     // Prepare documents data - ensure arrays are properly formatted
     const diplomasArray = Array.isArray(profileData.documents?.diplomas) ? profileData.documents.diplomas : [];
     const certificatesArray = Array.isArray(profileData.documents?.certificates) ? profileData.documents.certificates : [];
-    const validIdsArray = Array.isArray(profileData.documents?.validIds) ? profileData.documents.validIds : [];
-    const nbiClearancesArray = Array.isArray(profileData.documents?.nbiClearances)
+    let validIdsArray = Array.isArray(profileData.documents?.validIds) ? profileData.documents.validIds : [];
+    let nbiClearancesArray = Array.isArray(profileData.documents?.nbiClearances)
       ? profileData.documents.nbiClearances.slice(0, 2)
       : [];
     
@@ -2531,8 +2531,14 @@ router.post('/profile', verifyToken, requireTeacher, async (req, res) => {
     }
 
     const existingForProfilePic = await Teacher.findOne({ teacherId })
-      .select('profilePicture nbiClearanceStatus')
+      .select('profilePicture nbiClearanceStatus documents.validIds documents.validId documents.nbiClearances')
       .lean();
+    if (!validIdsArray.length && Array.isArray(existingForProfilePic?.documents?.validIds) && existingForProfilePic.documents.validIds.length) {
+      validIdsArray = existingForProfilePic.documents.validIds;
+    }
+    if (!nbiClearancesArray.length && Array.isArray(existingForProfilePic?.documents?.nbiClearances) && existingForProfilePic.documents.nbiClearances.length) {
+      nbiClearancesArray = existingForProfilePic.documents.nbiClearances;
+    }
     let resolvedProfilePicture = profileData.profilePicture;
     const profilePicBuf = extractImageBufferFromDataUrl(
       typeof resolvedProfilePicture === 'string' ? resolvedProfilePicture : ''
