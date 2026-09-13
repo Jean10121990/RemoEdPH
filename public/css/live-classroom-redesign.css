@@ -214,8 +214,15 @@ body.page-live-classroom .video.is-vbg-open .video-controls {
   pointer-events: auto !important;
 }
 
+body.page-live-classroom .tabs.lc-toolbar-tabs {
+  position: relative;
+  z-index: 6;
+  overflow: visible !important;
+}
+
 .lc-class-settings {
   position: relative;
+  z-index: 7;
   margin-left: auto;
   display: flex;
   align-items: center;
@@ -241,6 +248,7 @@ body.page-live-classroom .tabs button.lc-class-settings-btn,
   font-weight: 700 !important;
   line-height: 1;
   cursor: pointer;
+  pointer-events: auto !important;
 }
 
 body.page-live-classroom .tabs button.lc-class-settings-btn:hover,
@@ -256,21 +264,53 @@ body.page-live-classroom .tabs button.lc-class-settings-btn:hover,
   color: #b45309 !important;
 }
 
+.lc-class-settings-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9600;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 72px 20px 20px;
+  background: rgba(15, 23, 42, 0.4);
+  box-sizing: border-box;
+}
+
+.lc-class-settings-overlay[hidden] {
+  display: none !important;
+}
+
 .lc-class-settings-panel {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  z-index: 40;
-  width: min(320px, calc(100vw - 24px));
-  padding: 14px;
+  position: relative;
+  top: auto;
+  right: auto;
+  width: min(360px, 100%);
+  padding: 16px;
   border: 1px solid #d1fae5;
   border-radius: 14px;
   background: #fff;
-  box-shadow: 0 16px 40px -20px rgba(15, 23, 42, 0.45);
+  box-shadow: 0 20px 48px -16px rgba(15, 23, 42, 0.5);
 }
 
-.lc-class-settings-panel[hidden] {
-  display: none !important;
+.lc-class-settings-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.lc-class-settings-close {
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+}
+
+.lc-class-settings-close:hover {
+  color: #0f172a;
 }
 
 .lc-class-settings-title {
@@ -807,15 +847,16 @@ body.page-live-classroom .lc-stage-video-toolbar {
   }
 
   body.page-live-classroom .lc-teacher-media-controls {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     gap: 6px;
     padding: 6px;
-    justify-content: center;
   }
 
   body.page-live-classroom .lc-media-lock-btn {
     min-height: 40px;
+    width: auto;
+    height: auto;
     font-size: 0.75rem;
     padding: 6px 10px;
   }
@@ -882,14 +923,43 @@ body.page-live-classroom .lc-stage-video-toolbar {
 }
 
 .lc-teacher-media-controls {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 6px;
-  padding: 6px 4px;
+  padding: 2px 2px 4px;
 }
 
 .lc-teacher-media-controls[hidden] {
   display: none !important;
+}
+
+.lc-media-lock-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 32px;
+  padding: 6px 8px;
+  border: 1px solid #99f6e4;
+  border-radius: 999px;
+  background: #ecfdf5;
+  color: #0f766e;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1.1;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.lc-media-lock-btn:hover {
+  background: #d1fae5;
+}
+
+.lc-media-lock-btn.is-active,
+.lc-media-lock-btn[aria-pressed="true"] {
+  border-color: #fcd34d;
+  background: #fffbeb;
+  color: #b45309;
 }
 
 .lc-media-toast {

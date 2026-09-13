@@ -8,7 +8,7 @@
   var PRESET_BACKGROUNDS = [
     { id: 'office', label: 'Office', url: '/images/virtual-bg/office.jpg' },
     { id: 'classroom', label: 'Classroom', url: '/images/virtual-bg/classroom.jpg' },
-    { id: 'nature', label: 'Nature', url: '/images/virtual-bg/nature.svg' }
+    { id: 'nature', label: 'Nature', url: '/images/virtual-bg/nature.jpg' }
   ];
 
   function waitForVideo(video, timeoutMs) {
@@ -389,6 +389,9 @@
   VirtualBackgroundController.prototype.applyMode = async function (mode, imageUrl) {
     this.mode = mode || 'off';
     this.imageUrl = imageUrl || '';
+    if (this.imageUrl.indexOf('/images/virtual-bg/') !== -1 && this.imageUrl.indexOf('.svg') !== -1) {
+      this.imageUrl = this.imageUrl.replace(/\.svg(\?.*)?$/i, '.jpg');
+    }
     this.presetId = '';
     if (/office\.(svg|jpe?g|webp|png)/i.test(this.imageUrl)) this.presetId = 'office';
     else if (/classroom\.(svg|jpe?g|webp|png)/i.test(this.imageUrl)) this.presetId = 'classroom';
