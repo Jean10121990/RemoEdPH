@@ -145,6 +145,18 @@ body.page-live-classroom .tabs button {
   background: transparent !important;
 }
 
+body.page-live-classroom .tabs button.lc-videos-tab-locked,
+body.page-live-classroom .tabs button#lc-videos-tab-btn[hidden],
+body.page-live-classroom .tabs button#lc-videos-tab-btn[aria-disabled="true"] {
+  display: none !important;
+}
+
+.lc-videos-allow.is-locked {
+  color: #b45309;
+  background: #fffbeb;
+  border-radius: 8px;
+}
+
 body.page-live-classroom .tabs button.active {
   color: var(--lc-green-deep) !important;
   border-bottom-color: var(--lc-green) !important;
@@ -319,6 +331,17 @@ body.page-live-classroom .video.is-vbg-open .video-controls {
   margin: 0 0 10px;
   font-size: 0.8rem;
   color: #b45309;
+}
+
+.lc-camera-settings__btn:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.lc-vbg-modal__done,
+.lc-vbg-modal__close {
+  position: relative;
+  z-index: 2;
 }
 
 .lc-camera-settings__modes {

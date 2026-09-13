@@ -3102,12 +3102,26 @@ io.on('connection', socket => {
     try {
       const room = data.room || socket.room;
       const sender = userSessions.get(socket.id);
-      if (!room || !sender || sender.userType !== 'teacher') return;
+      const role = (sender && sender.userType) || socket.userType;
+      if (!room || role !== 'teacher') {
+        console.warn('classroom-settings ignored (not teacher or missing room)', {
+          socketId: socket.id,
+          room,
+          role,
+          hasSession: !!sender,
+        });
+        return;
+      }
       const prev = classroomSettingsByRoom.get(room) || { videosAllowed: true };
       const next = Object.assign({}, prev);
       if (typeof data.videosAllowed === 'boolean') next.videosAllowed = data.videosAllowed;
       classroomSettingsByRoom.set(room, next);
+      // Ensure teacher socket is in the room so late state stays consistent
+      try {
+        socket.join(room);
+      } catch (_joinErr) {}
       io.to(room).emit('classroom-settings', Object.assign({ room }, next));
+      socket.emit('classroom-settings-ack', Object.assign({ room }, next));
     } catch (err) {
       console.error('Error handling classroom-settings:', err);
     }

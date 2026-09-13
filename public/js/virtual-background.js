@@ -13,14 +13,23 @@
 
   function loadScript(src) {
     return new Promise(function (resolve, reject) {
-      if (document.querySelector('script[src="' + src + '"]')) {
+      if (global.SelfieSegmentation) {
         resolve();
+        return;
+      }
+      var existing = document.querySelector('script[data-remoed-vbg-lib="1"]');
+      if (existing) {
+        existing.addEventListener('load', function () { resolve(); });
+        existing.addEventListener('error', function () {
+          reject(new Error('Failed to load ' + src));
+        });
         return;
       }
       var s = document.createElement('script');
       s.src = src;
       s.async = true;
-      s.onload = resolve;
+      s.setAttribute('data-remoed-vbg-lib', '1');
+      s.onload = function () { resolve(); };
       s.onerror = function () {
         reject(new Error('Failed to load ' + src));
       };
@@ -31,6 +40,9 @@
   async function loadBlurLibs() {
     if (global.SelfieSegmentation) return;
     await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js');
+    if (!global.SelfieSegmentation) {
+      throw new Error('SelfieSegmentation not available after script load');
+    }
   }
 
   function VirtualBackgroundController(options) {
@@ -111,7 +123,19 @@
         return;
       }
       var img = new Image();
-      img.crossOrigin = 'anonymous';
+      // crossOrigin breaks same-origin SVGs / static files without CORS headers
+      var absolute;
+      try {
+        absolute = new URL(url, global.location && global.location.href).href;
+      } catch (_e) {
+        absolute = url;
+      }
+      var origin = global.location && global.location.origin;
+      var isBlob = String(url).indexOf('blob:') === 0 || String(url).indexOf('data:') === 0;
+      var isSameOrigin = origin && absolute.indexOf(origin) === 0;
+      if (!isBlob && !isSameOrigin && /^https?:/i.test(absolute)) {
+        img.crossOrigin = 'anonymous';
+      }
       img.onload = function () {
         self.bgImage = img;
         resolve(img);
@@ -163,6 +187,11 @@
         }
         self.blurCtx.restore();
       });
+      if (typeof this.blurSegmentation.initialize === 'function') {
+        try {
+          await this.blurSegmentation.initialize();
+        } catch (_initErr) {}
+      }
       this.blurModelReady = true;
     }
 
@@ -230,6 +259,7 @@
         await this.loadBackgroundImage(this.imageUrl);
       } catch (e) {
         console.warn('Virtual background image failed', e);
+        return false;
       }
     }
 
@@ -243,6 +273,7 @@
       }
       return true;
     } catch (e1) {
+      console.warn('Virtual background pipeline failed', e1);
       if (this.mode === 'blur') {
         try {
           await videoTrack.applyConstraints({ advanced: [{ backgroundBlur: true }] });
@@ -254,9 +285,73 @@
             this.localVideoEl.style.filter = '';
           }
           return true;
-        } catch (_e2) {}
+        } catch (_e2) {
+          // Last-resort local preview so the control still feels responsive
+          this.stopPipeline();
+          if (this.localVideoEl) {
+            this.localVideoEl.srcObject = stream;
+            this.localVideoEl.style.filter = 'blur(6px)';
+          }
+          return true;
+        }
+      }
+      // Image mode without MediaPipe: still show background in local preview canvas
+      if (this.mode === 'image' && this.bgImage) {
+        try {
+          await this.ensureSimpleImagePreview(videoTrack, stream);
+          return true;
+        } catch (_e3) {}
       }
       return false;
+    }
+  };
+
+  /** Fallback when MediaPipe is unavailable: composite bg + live video for local + outbound. */
+  VirtualBackgroundController.prototype.ensureSimpleImagePreview = async function (videoTrack, stream) {
+    this.stopPipeline();
+    var self = this;
+    this.blurSourceVideo = document.createElement('video');
+    this.blurSourceVideo.muted = true;
+    this.blurSourceVideo.playsInline = true;
+    this.blurSourceVideo.autoplay = true;
+    this.blurSourceVideo.srcObject = new MediaStream([videoTrack]);
+    await this.blurSourceVideo.play().catch(function () {});
+
+    var vw = Math.max(320, this.blurSourceVideo.videoWidth || 640);
+    var vh = Math.max(180, this.blurSourceVideo.videoHeight || 360);
+    this.blurCanvas = document.createElement('canvas');
+    this.blurCanvas.width = vw;
+    this.blurCanvas.height = vh;
+    this.blurCtx = this.blurCanvas.getContext('2d', { alpha: false });
+    this.blurOutputStream = this.blurCanvas.captureStream(15);
+    this.blurOutputTrack = this.blurOutputStream.getVideoTracks()[0];
+
+    var run = function () {
+      if (self.mode !== 'image' || !self.blurCtx || !self.blurCanvas || !self.blurSourceVideo) return;
+      var w = self.blurCanvas.width;
+      var h = self.blurCanvas.height;
+      self.blurCtx.save();
+      self.blurCtx.clearRect(0, 0, w, h);
+      if (self.bgImage) {
+        var img = self.bgImage;
+        var scale = Math.max(w / img.width, h / img.height);
+        var iw = img.width * scale;
+        var ih = img.height * scale;
+        self.blurCtx.drawImage(img, (w - iw) / 2, (h - ih) / 2, iw, ih);
+      }
+      // Soft person stand-in without segmentation: center video slightly smaller
+      var pad = 0.12;
+      var dw = w * (1 - pad * 2);
+      var dh = h * (1 - pad * 2);
+      self.blurCtx.drawImage(self.blurSourceVideo, pad * w, pad * h, dw, dh);
+      self.blurCtx.restore();
+      self.blurAnimationFrame = requestAnimationFrame(run);
+    };
+    run();
+    await this.replaceOutgoingVideoTrack(this.blurOutputTrack);
+    if (this.localVideoEl && this.blurOutputStream) {
+      this.localVideoEl.srcObject = this.blurOutputStream;
+      this.localVideoEl.style.filter = '';
     }
   };
 
@@ -323,7 +418,13 @@
           (mode === 'image' && b.dataset.vbgMode === 'image' && b.dataset.vbgExtra === url) ||
           (mode === 'custom' && b.dataset.vbgMode === 'custom');
         b.classList.toggle('is-active', !!active);
-        b.style.opacity = active ? '1' : '0.65';
+        b.disabled = false;
+      });
+    }
+
+    function setBusy(busy) {
+      btnRow.querySelectorAll('button').forEach(function (b) {
+        b.disabled = !!busy;
       });
     }
 
@@ -342,41 +443,54 @@
       opts = opts || {};
       var stream = controller.getLocalStream && controller.getLocalStream();
       if (!stream || !stream.getVideoTracks().length) {
-        if (!opts.silent) setStatus('Turn on camera first');
-        persist(mode === 'custom' ? 'custom' : mode, url || '');
+        if (!opts.silent) setStatus('Turn on your camera first, then try again.');
         return false;
       }
+      if (!opts.silent) {
+        markActive(mode === 'custom' ? 'custom' : mode, url);
+        setStatus('Applying…');
+        setBusy(true);
+      }
       var ok = false;
+      var errMsg = '';
       try {
         if (mode === 'off') ok = !!(await controller.applyMode('off'));
         else if (mode === 'blur') ok = !!(await controller.applyMode('blur'));
         else if (mode === 'image' || mode === 'custom') ok = !!(await controller.applyMode('image', url));
-      } catch (_e) {
+      } catch (err) {
         ok = false;
+        errMsg = err && err.message ? String(err.message) : '';
       }
+      setBusy(false);
       if (ok) {
         markActive(mode === 'custom' ? 'custom' : mode, url);
         persist(mode === 'custom' ? 'custom' : mode, url || '');
-        setStatus('');
+        setStatus(mode === 'off' ? '' : 'Background applied');
+        if (!opts.silent && mode !== 'off') {
+          setTimeout(function () {
+            if (statusEl.textContent === 'Background applied') setStatus('');
+          }, 1600);
+        }
       } else if (!opts.silent) {
-        setStatus('Could not apply background');
+        setStatus(errMsg || 'Could not apply background. Check camera permission and try again.');
       }
       return ok;
     }
 
-    btnRow.addEventListener('click', function (e) {
-      var b = e.target.closest('button[data-vbg-mode]');
-      if (!b) return;
-      var mode = b.dataset.vbgMode;
+    function onModeClick(mode, url) {
       if (mode === 'custom') {
         fileInput.click();
         return;
       }
-      if (mode === 'image') {
-        apply('image', b.dataset.vbgExtra);
-        return;
-      }
-      apply(mode);
+      apply(mode, url || '');
+    }
+
+    btnRow.querySelectorAll('button[data-vbg-mode]').forEach(function (b) {
+      b.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        onModeClick(b.dataset.vbgMode, b.dataset.vbgExtra || '');
+      });
     });
 
     fileInput.addEventListener('change', function () {
@@ -391,8 +505,12 @@
         var saved = JSON.parse(sessionStorage.getItem(storageKey) || 'null');
         if (saved && saved.mode === 'blur') {
           await apply('blur', '', { silent: true });
-        } else if (saved && (saved.mode === 'image' || saved.mode === 'custom') && saved.url) {
-          await apply(saved.mode === 'custom' ? 'custom' : 'image', saved.url, { silent: true });
+        } else if (saved && saved.mode === 'image' && saved.url && String(saved.url).indexOf('blob:') !== 0) {
+          await apply('image', saved.url, { silent: true });
+        } else if (saved && saved.mode === 'custom' && saved.url && String(saved.url).indexOf('blob:') === 0) {
+          // blob URLs die on reload — reset
+          markActive('off');
+          persist('off', '');
         } else {
           markActive('off');
         }
@@ -406,17 +524,7 @@
     if (!deferRestore) {
       restoreSaved();
     } else {
-      try {
-        var peek = JSON.parse(sessionStorage.getItem(storageKey) || 'null');
-        if (peek && peek.mode && peek.mode !== 'off') {
-          markActive(peek.mode === 'custom' ? 'custom' : peek.mode, peek.url || '');
-          setStatus('Waiting for camera…');
-        } else {
-          markActive('off');
-        }
-      } catch (_e3) {
-        markActive('off');
-      }
+      markActive('off');
     }
   }
 

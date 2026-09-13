@@ -56,7 +56,7 @@
     <link rel="stylesheet" href="style.css">
   <!-- After global styles so chat / layout rules are not overridden -->
   <link rel="stylesheet" href="live-classroom.css?v=lc-qa-progress-1" />
-  <link rel="stylesheet" href="css/live-classroom-redesign.css?v=mint-forest-6" />
+  <link rel="stylesheet" href="css/live-classroom-redesign.css?v=mint-forest-8" />
   <link rel="stylesheet" href="css/student-badges.css?v=2" />
 </head>
 <body class="page-live-classroom">
@@ -112,7 +112,7 @@
         <button data-tab="videos" id="lc-videos-tab-btn">Videos</button>
         <label id="lc-videos-allow-wrap" class="lc-videos-allow" hidden>
           <input type="checkbox" id="lc-videos-allow" checked>
-          <span>Allow student Videos</span>
+          <span id="lc-videos-allow-label">Allow student Videos</span>
         </label>
       </div>
       
@@ -407,7 +407,7 @@
     <script src="js/student-badges.js?v=1"></script>
     <script src="js/teacher-badge-award.js?v=1"></script>
     <script src="js/presentation-overlay.js?v=lc-draw-fix-2"></script>
-    <script src="js/virtual-background.js?v=vbg-3"></script>
+    <script src="js/virtual-background.js?v=vbg-4"></script>
     <script src="js/classroom-qa-recording.js?v=lc-qa-progress-1" defer></script>
     <script>
       // Collaborative annotation client
@@ -731,6 +731,14 @@
           return false;
         }
         socket.emit('join', { room, userType, userId, username });
+        // Teacher: push current Videos lock after join so it is not dropped if toggled early
+        if (userType === 'teacher') {
+          setTimeout(function () {
+            if (typeof window.__lcEmitClassroomSettings === 'function') {
+              window.__lcEmitClassroomSettings();
+            }
+          }, 250);
+        }
         return true;
       }
 
@@ -821,6 +829,7 @@
       const videosTabBtn = document.getElementById('lc-videos-tab-btn');
       const videosAllowWrap = document.getElementById('lc-videos-allow-wrap');
       const videosAllowChk = document.getElementById('lc-videos-allow');
+      const videosAllowLabel = document.getElementById('lc-videos-allow-label');
       let portalVideosLoaded = false;
       let studentVideosAllowed = true;
 
@@ -828,31 +837,68 @@
         studentVideosAllowed = allowed !== false;
         if (videosTabBtn) {
           if (userType === 'student') {
-            videosTabBtn.hidden = !studentVideosAllowed;
-            videosTabBtn.disabled = !studentVideosAllowed;
-            videosTabBtn.setAttribute('aria-disabled', studentVideosAllowed ? 'false' : 'true');
-            if (!studentVideosAllowed && portalVideosPanel && portalVideosPanel.classList.contains('active')) {
-              setActiveTab('lesson-content', { silent: true });
+            const show = studentVideosAllowed;
+            videosTabBtn.hidden = !show;
+            videosTabBtn.disabled = !show;
+            videosTabBtn.classList.toggle('lc-videos-tab-locked', !show);
+            videosTabBtn.style.display = show ? '' : 'none';
+            videosTabBtn.setAttribute('aria-disabled', show ? 'false' : 'true');
+            if (!show) {
+              const onVideos =
+                (portalVideosPanel && portalVideosPanel.classList.contains('active')) ||
+                (videosTabBtn.classList.contains('active'));
+              if (onVideos && typeof setActiveTab === 'function') {
+                setActiveTab('lesson-content', { silent: true });
+              }
             }
           } else {
             videosTabBtn.hidden = false;
             videosTabBtn.disabled = false;
+            videosTabBtn.classList.remove('lc-videos-tab-locked');
+            videosTabBtn.style.display = '';
           }
         }
-        if (videosAllowChk && userType === 'teacher') {
-          videosAllowChk.checked = studentVideosAllowed;
+        if (userType === 'teacher') {
+          if (videosAllowChk) videosAllowChk.checked = studentVideosAllowed;
+          if (videosAllowLabel) {
+            videosAllowLabel.textContent = studentVideosAllowed
+              ? 'Allow student Videos'
+              : 'Student Videos locked';
+          }
+          if (videosAllowWrap) {
+            videosAllowWrap.classList.toggle('is-locked', !studentVideosAllowed);
+          }
         }
       }
 
+      function emitClassroomVideosSetting(allowed) {
+        studentVideosAllowed = allowed !== false;
+        if (userType === 'teacher') {
+          applyStudentVideosAccess(studentVideosAllowed);
+        }
+        if (!socket) return;
+        const payload = { room, videosAllowed: studentVideosAllowed };
+        if (socket.connected) {
+          socket.emit('classroom-settings', payload);
+        } else {
+          socket.once('connect', function () {
+            socket.emit('classroom-settings', payload);
+          });
+        }
+      }
+
+      window.__lcEmitClassroomSettings = function () {
+        if (userType !== 'teacher') return;
+        const allowed = videosAllowChk ? !!videosAllowChk.checked : studentVideosAllowed;
+        emitClassroomVideosSetting(allowed);
+      };
+
       if (userType === 'teacher' && videosAllowWrap) {
         videosAllowWrap.hidden = false;
+        videosAllowWrap.removeAttribute('hidden');
         if (videosAllowChk) {
           videosAllowChk.addEventListener('change', function () {
-            const allowed = !!videosAllowChk.checked;
-            studentVideosAllowed = allowed;
-            if (socket && socket.connected) {
-              socket.emit('classroom-settings', { room, videosAllowed: allowed });
-            }
+            emitClassroomVideosSetting(!!videosAllowChk.checked);
           });
         }
       }
@@ -860,6 +906,10 @@
       if (socket) {
         socket.on('classroom-settings', function (data) {
           if (!data) return;
+          applyStudentVideosAccess(data.videosAllowed !== false);
+        });
+        socket.on('classroom-settings-ack', function (data) {
+          if (userType !== 'teacher' || !data) return;
           applyStudentVideosAccess(data.videosAllowed !== false);
         });
       }
@@ -6070,6 +6120,11 @@
         if (typeof RemoedVirtualBackground === 'undefined') {
           cameraSettingsPanel.innerHTML = '<p class="lc-camera-settings__status">Background effects unavailable. Refresh the page.</p>';
           return false;
+        }
+        // Remount if panel was emptied or buttons never attached
+        if (vbgMounted && !cameraSettingsPanel.querySelector('button[data-vbg-mode]')) {
+          vbgMounted = false;
+          vbController = null;
         }
         if (vbgMounted) return true;
         const vb = ensureVbController();
