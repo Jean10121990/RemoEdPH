@@ -56,7 +56,7 @@
     <link rel="stylesheet" href="style.css">
   <!-- After global styles so chat / layout rules are not overridden -->
   <link rel="stylesheet" href="live-classroom.css?v=lc-qa-progress-1" />
-  <link rel="stylesheet" href="css/live-classroom-redesign.css?v=mint-forest-4" />
+  <link rel="stylesheet" href="css/live-classroom-redesign.css?v=mint-forest-5" />
   <link rel="stylesheet" href="css/student-badges.css?v=2" />
 </head>
 <body class="page-live-classroom">
@@ -109,7 +109,11 @@
       <div class="tabs lc-toolbar-tabs">
         <button class="active" data-tab="lesson-content">Lesson</button>
         <button data-tab="whiteboard">Board</button>
-        <button data-tab="videos">Videos</button>
+        <button data-tab="videos" id="lc-videos-tab-btn">Videos</button>
+        <label id="lc-videos-allow-wrap" class="lc-videos-allow" hidden>
+          <input type="checkbox" id="lc-videos-allow" checked>
+          <span>Allow student Videos</span>
+        </label>
       </div>
       
       <!-- Lesson Content Tab -->
@@ -390,7 +394,7 @@
     <script src="js/student-badges.js?v=1"></script>
     <script src="js/teacher-badge-award.js?v=1"></script>
     <script src="js/presentation-overlay.js?v=lc-draw-fix-2"></script>
-    <script src="js/virtual-background.js"></script>
+    <script src="js/virtual-background.js?v=vbg-2"></script>
     <script src="js/classroom-qa-recording.js?v=lc-qa-progress-1" defer></script>
     <script>
       // Collaborative annotation client
@@ -796,12 +800,56 @@
       }
 
       // Tab management
-      const tabs = document.querySelectorAll('.tabs button');
+      const tabs = document.querySelectorAll('.tabs button[data-tab]');
       const lessonContentPanel = document.getElementById('lesson-content-panel');
       const whiteboardPanel = document.getElementById('whiteboard-panel');
       const portalVideosPanel = document.getElementById('videos-panel');
       const portalVideosListEl = document.getElementById('portal-videos-list');
+      const videosTabBtn = document.getElementById('lc-videos-tab-btn');
+      const videosAllowWrap = document.getElementById('lc-videos-allow-wrap');
+      const videosAllowChk = document.getElementById('lc-videos-allow');
       let portalVideosLoaded = false;
+      let studentVideosAllowed = true;
+
+      function applyStudentVideosAccess(allowed) {
+        studentVideosAllowed = allowed !== false;
+        if (videosTabBtn) {
+          if (userType === 'student') {
+            videosTabBtn.hidden = !studentVideosAllowed;
+            videosTabBtn.disabled = !studentVideosAllowed;
+            videosTabBtn.setAttribute('aria-disabled', studentVideosAllowed ? 'false' : 'true');
+            if (!studentVideosAllowed && portalVideosPanel && portalVideosPanel.classList.contains('active')) {
+              setActiveTab('lesson-content', { silent: true });
+            }
+          } else {
+            videosTabBtn.hidden = false;
+            videosTabBtn.disabled = false;
+          }
+        }
+        if (videosAllowChk && userType === 'teacher') {
+          videosAllowChk.checked = studentVideosAllowed;
+        }
+      }
+
+      if (userType === 'teacher' && videosAllowWrap) {
+        videosAllowWrap.hidden = false;
+        if (videosAllowChk) {
+          videosAllowChk.addEventListener('change', function () {
+            const allowed = !!videosAllowChk.checked;
+            studentVideosAllowed = allowed;
+            if (socket && socket.connected) {
+              socket.emit('classroom-settings', { room, videosAllowed: allowed });
+            }
+          });
+        }
+      }
+
+      if (socket) {
+        socket.on('classroom-settings', function (data) {
+          if (!data) return;
+          applyStudentVideosAccess(data.videosAllowed !== false);
+        });
+      }
       // Lessons tab removed - moved to admin side
       // Lesson file select dropdown removed - lesson loads automatically from booking
       const lessonFileViewer = document.getElementById('lesson-file-viewer');
@@ -1010,6 +1058,12 @@
 
       function setActiveTab(tabName = 'lesson-content', opts = {}) {
         const silent = !!(opts && opts.silent);
+        if (tabName === 'videos' && userType === 'student' && !studentVideosAllowed) {
+          if (typeof showMediaToast === 'function') {
+            showMediaToast('Videos tab is locked by your teacher');
+          }
+          tabName = 'lesson-content';
+        }
         tabs.forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tabName));
         
         if (lessonContentPanel) {
@@ -5324,6 +5378,15 @@
               }
               
               console.log(`✅ Successfully recovered ${trackKind} track`);
+              if (trackKind === 'video') {
+                try {
+                  if (vbController && vbController.mode && vbController.mode !== 'off') {
+                    await vbController.applyMode(vbController.mode, vbController.imageUrl);
+                  } else if (typeof restoreVbgAfterStream === 'function') {
+                    await restoreVbgAfterStream();
+                  }
+                } catch (_vbRec) {}
+              }
             }
             
             // Stop tracks from new stream that we don't need
@@ -5791,8 +5854,13 @@
               localVideo.style.filter = '';
             }
 
-            // Background blur feature intentionally disabled for stability.
+            // Prefer RemoedVirtualBackground session restore over legacy blur flag.
             isBgBlurOn = false;
+            if (typeof restoreVbgAfterStream === 'function') {
+              restoreVbgAfterStream().catch(function () {});
+            } else {
+              pendingVbgRestore = true;
+            }
           } else {
             console.error('❌ Missing localVideo element or localStream:', { hasLocalVideo: !!localVideo, hasLocalStream: !!localStream });
           }
@@ -5958,10 +6026,13 @@
       let vbController = null;
       let vbgMounted = false;
       let vbgPresetIndex = -1;
+      let pendingVbgRestore = false;
       const cameraSettingsBtn = document.getElementById('toggle-camera-settings');
       const cameraSettingsPanel = document.getElementById('lc-camera-settings-panel');
+      const localVideoTile = document.getElementById('local-video-tile');
       function ensureVbController() {
-        if (vbController || typeof RemoedVirtualBackground === 'undefined') return vbController;
+        if (vbController) return vbController;
+        if (typeof RemoedVirtualBackground === 'undefined') return null;
         vbController = RemoedVirtualBackground.create({
           getLocalStream: function () { return localStream; },
           getPeerConnection: function () { return peerConnection; },
@@ -5969,22 +6040,69 @@
         });
         return vbController;
       }
+      function setVbgPanelOpen(open) {
+        if (cameraSettingsPanel) {
+          if (open) cameraSettingsPanel.removeAttribute('hidden');
+          else cameraSettingsPanel.setAttribute('hidden', '');
+        }
+        if (cameraSettingsBtn) {
+          cameraSettingsBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        }
+        if (localVideoTile) {
+          localVideoTile.classList.toggle('is-vbg-open', !!open);
+        }
+      }
       function mountCameraSettingsIfNeeded() {
-        if (vbgMounted || !cameraSettingsPanel) return;
+        if (!cameraSettingsPanel) return false;
+        if (typeof RemoedVirtualBackground === 'undefined') {
+          cameraSettingsPanel.innerHTML = '<div class="lc-camera-settings__title">Background effects unavailable</div><p style="margin:0;font-size:0.75rem;">Script failed to load. Refresh the page.</p>';
+          return false;
+        }
+        if (vbgMounted) return true;
         const vb = ensureVbController();
-        if (!vb || typeof RemoedVirtualBackground.mountSettingsUI !== 'function') return;
+        if (!vb || typeof RemoedVirtualBackground.mountSettingsUI !== 'function') {
+          cameraSettingsPanel.innerHTML = '<div class="lc-camera-settings__title">Background effects unavailable</div>';
+          return false;
+        }
         RemoedVirtualBackground.mountSettingsUI(cameraSettingsPanel, vb, {
-          storageKey: 'remoed_vbg_' + String(room || 'session')
+          storageKey: 'remoed_vbg_' + String(room || 'session'),
+          deferRestore: !localStream,
+          onStatus: function (msg) {
+            if (msg && typeof showMediaToast === 'function') showMediaToast(msg);
+          }
         });
         vbgMounted = true;
+        pendingVbgRestore = !localStream;
+        if (localStream && typeof cameraSettingsPanel._remoedRestoreVbg === 'function') {
+          cameraSettingsPanel._remoedRestoreVbg();
+        }
+        return true;
+      }
+      async function restoreVbgAfterStream() {
+        if (!cameraSettingsPanel) return;
+        if (!vbgMounted) {
+          mountCameraSettingsIfNeeded();
+        }
+        if (typeof cameraSettingsPanel._remoedRestoreVbg !== 'function') return;
+        pendingVbgRestore = false;
+        try {
+          await cameraSettingsPanel._remoedRestoreVbg();
+        } catch (_e) {}
       }
       if (cameraSettingsBtn && cameraSettingsPanel) {
         cameraSettingsBtn.addEventListener('click', function () {
-          mountCameraSettingsIfNeeded();
-          const open = cameraSettingsPanel.hasAttribute('hidden');
-          if (open) cameraSettingsPanel.removeAttribute('hidden');
-          else cameraSettingsPanel.setAttribute('hidden', '');
-          cameraSettingsBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+          const opening = cameraSettingsPanel.hasAttribute('hidden');
+          if (opening) {
+            const mounted = mountCameraSettingsIfNeeded();
+            if (!mounted && typeof RemoedVirtualBackground === 'undefined') {
+              setVbgPanelOpen(true);
+              return;
+            }
+            if (!localStream && typeof showMediaToast === 'function') {
+              showMediaToast('Turn on camera to use backgrounds');
+            }
+          }
+          setVbgPanelOpen(opening);
         });
       }
       // Legacy blur buttons (if present) — route through VB module, do not run duplicate pipeline
@@ -8291,7 +8409,9 @@
         }
       });
       socket.on('whiteboard-mode-stop', () => {
-        // Students may stay on board to finish annotating; do not force leave.
+        if (userType === 'student') {
+          setActiveTab('lesson-content', { silent: true });
+        }
       });
       socket.on('whiteboard-state-sync', (data = {}) => {
         try {

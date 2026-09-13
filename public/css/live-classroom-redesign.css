@@ -190,6 +190,46 @@ body.page-live-classroom .video {
   box-shadow: 0 8px 20px -14px rgba(15, 23, 42, 0.45);
 }
 
+body.page-live-classroom .video.is-vbg-open {
+  overflow: visible !important;
+  z-index: 40;
+}
+
+body.page-live-classroom .video.is-local .video-controls,
+body.page-live-classroom .video.student.is-local .video-controls {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+body.page-live-classroom .video.is-vbg-open .video-controls {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+.lc-videos-allow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #0f766e;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+
+.lc-videos-allow[hidden] {
+  display: none !important;
+}
+
+.lc-videos-allow input {
+  width: 16px;
+  height: 16px;
+  accent-color: #47bc3e;
+}
+
 body.page-live-classroom .video-header {
   margin: 0 !important;
   border-radius: 0 !important;
@@ -488,11 +528,10 @@ body.page-live-classroom .lc-stage-video-toolbar {
   body.page-live-classroom .lc-camera-settings-panel {
     max-height: 40vh;
     overflow: auto;
-    padding: 8px;
-    background: rgba(15, 23, 42, 0.92);
-    color: #f8fafc;
-    border-radius: 8px;
-    margin: 4px 0 8px;
+    bottom: 52px;
+    left: 6px;
+    right: 6px;
+    margin: 0;
   }
 
   body.page-live-classroom .lc-teacher-media-controls {
@@ -524,12 +563,20 @@ body.page-live-classroom .lc-stage-video-toolbar {
 }
 
 .lc-camera-settings-panel {
-  padding: 8px;
-  background: rgba(15, 23, 42, 0.88);
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 48px;
+  z-index: 30;
+  padding: 10px;
+  background: rgba(15, 23, 42, 0.96);
   color: #f8fafc;
-  border-radius: 8px;
-  margin-top: 6px;
+  border-radius: 10px;
+  margin: 0;
   font-size: 0.8rem;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+  max-height: min(220px, 50vh);
+  overflow: auto;
 }
 
 .lc-camera-settings-panel[hidden] {
@@ -543,6 +590,15 @@ body.page-live-classroom .lc-stage-video-toolbar {
 
 .lc-camera-settings__btn.is-active {
   outline: 2px solid #47bc3e;
+}
+
+#local-video-tile {
+  position: relative;
+}
+
+#local-video-tile.is-vbg-open {
+  overflow: visible !important;
+  z-index: 40;
 }
 
 .lc-teacher-media-controls {

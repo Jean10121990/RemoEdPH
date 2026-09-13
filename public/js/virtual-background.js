@@ -270,6 +270,8 @@
     if (!container || !controller) return;
     options = options || {};
     var storageKey = options.storageKey || 'remoed_vbg_choice';
+    var onStatus = typeof options.onStatus === 'function' ? options.onStatus : function () {};
+    var deferRestore = !!options.deferRestore;
     container.innerHTML = '';
     container.classList.add('lc-camera-settings');
 
@@ -277,6 +279,11 @@
     title.className = 'lc-camera-settings__title';
     title.textContent = 'Camera background';
     container.appendChild(title);
+
+    var statusEl = document.createElement('div');
+    statusEl.className = 'lc-camera-settings__status';
+    statusEl.style.cssText = 'font-size:0.72rem;opacity:0.9;min-height:1em;margin:2px 0 4px;';
+    container.appendChild(statusEl);
 
     var btnRow = document.createElement('div');
     btnRow.className = 'lc-camera-settings__modes';
@@ -299,7 +306,7 @@
     PRESET_BACKGROUNDS.forEach(function (p) {
       makeBtn(p.label, 'image', p.url);
     });
-    var customBtn = makeBtn('Custom', 'custom');
+    makeBtn('Custom', 'custom');
     container.appendChild(btnRow);
 
     var fileInput = document.createElement('input');
@@ -327,20 +334,35 @@
       } catch (_e) {}
     }
 
-    function apply(mode, url) {
-      if (mode === 'off') {
-        controller.applyMode('off');
-        markActive('off');
-        persist('off', '');
-      } else if (mode === 'blur') {
-        controller.applyMode('blur');
-        markActive('blur');
-        persist('blur', '');
-      } else if (mode === 'image' || mode === 'custom') {
-        controller.applyMode('image', url);
-        markActive(mode === 'custom' ? 'custom' : 'image', url);
-        persist(mode === 'custom' ? 'custom' : 'image', url);
+    function setStatus(msg) {
+      statusEl.textContent = msg || '';
+      if (msg) onStatus(msg);
+    }
+
+    async function apply(mode, url, opts) {
+      opts = opts || {};
+      var stream = controller.getLocalStream && controller.getLocalStream();
+      if (!stream || !stream.getVideoTracks().length) {
+        if (!opts.silent) setStatus('Turn on camera first');
+        persist(mode === 'custom' ? 'custom' : mode, url || '');
+        return false;
       }
+      var ok = false;
+      try {
+        if (mode === 'off') ok = !!(await controller.applyMode('off'));
+        else if (mode === 'blur') ok = !!(await controller.applyMode('blur'));
+        else if (mode === 'image' || mode === 'custom') ok = !!(await controller.applyMode('image', url));
+      } catch (_e) {
+        ok = false;
+      }
+      if (ok) {
+        markActive(mode === 'custom' ? 'custom' : mode, url);
+        persist(mode === 'custom' ? 'custom' : mode, url || '');
+        setStatus('');
+      } else if (!opts.silent) {
+        setStatus('Could not apply background');
+      }
+      return ok;
     }
 
     btnRow.addEventListener('click', function (e) {
@@ -365,17 +387,37 @@
       apply('custom', objectUrl);
     });
 
-    try {
-      var saved = JSON.parse(sessionStorage.getItem(storageKey) || 'null');
-      if (saved && saved.mode === 'blur') {
-        apply('blur');
-      } else if (saved && (saved.mode === 'image' || saved.mode === 'custom') && saved.url) {
-        apply(saved.mode === 'custom' ? 'custom' : 'image', saved.url);
-      } else {
+    async function restoreSaved() {
+      try {
+        var saved = JSON.parse(sessionStorage.getItem(storageKey) || 'null');
+        if (saved && saved.mode === 'blur') {
+          await apply('blur', '', { silent: true });
+        } else if (saved && (saved.mode === 'image' || saved.mode === 'custom') && saved.url) {
+          await apply(saved.mode === 'custom' ? 'custom' : 'image', saved.url, { silent: true });
+        } else {
+          markActive('off');
+        }
+      } catch (_e2) {
         markActive('off');
       }
-    } catch (_e2) {
-      markActive('off');
+    }
+
+    container._remoedRestoreVbg = restoreSaved;
+
+    if (!deferRestore) {
+      restoreSaved();
+    } else {
+      try {
+        var peek = JSON.parse(sessionStorage.getItem(storageKey) || 'null');
+        if (peek && peek.mode && peek.mode !== 'off') {
+          markActive(peek.mode === 'custom' ? 'custom' : peek.mode, peek.url || '');
+          setStatus('Waiting for camera…');
+        } else {
+          markActive('off');
+        }
+      } catch (_e3) {
+        markActive('off');
+      }
     }
   }
 

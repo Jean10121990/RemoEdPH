@@ -187,6 +187,7 @@ const chatHistory = new Map();
 // Store user information for attendance tracking
 const userSessions = new Map(); // socketId -> { room, userType, userId, username }
 const mediaControlStateByRoom = new Map(); // room -> { audio, video }
+const classroomSettingsByRoom = new Map(); // room -> { videosAllowed }
 const whiteboardStateByRoom = new Map(); // room -> { active, strokes }
 const WB_STROKE_CAP = 2000;
 function getWbState(room) {
@@ -2072,6 +2073,8 @@ io.on('connection', socket => {
             if (mediaSt && userType === 'student') {
                 socket.emit('media-control', Object.assign({ room, targetRole: 'student' }, mediaSt));
             }
+            const classSettings = classroomSettingsByRoom.get(room) || { videosAllowed: true };
+            socket.emit('classroom-settings', Object.assign({ room }, classSettings));
         } catch (_wbJoin) {}
 
         // Send any existing lesson materials to the new participant (from database)
@@ -2298,6 +2301,8 @@ io.on('connection', socket => {
             if (mediaSt && userType === 'student') {
                 socket.emit('media-control', Object.assign({ room, targetRole: 'student' }, mediaSt));
             }
+            const classSettings = classroomSettingsByRoom.get(room) || { videosAllowed: true };
+            socket.emit('classroom-settings', Object.assign({ room }, classSettings));
         } catch (_wbJoin) {}
         
         // Also send a signaling message to indicate teacher presence
@@ -2577,6 +2582,7 @@ io.on('connection', socket => {
             if (!roomSet || roomSet.size <= 1) {
               whiteboardStateByRoom.delete(leftRoom);
               mediaControlStateByRoom.delete(leftRoom);
+              classroomSettingsByRoom.delete(leftRoom);
             }
           }
         } catch (_cleanErr) {}
@@ -3088,6 +3094,22 @@ io.on('connection', socket => {
       socket.emit('media-control-state', next);
     } catch (err) {
       console.error('Error handling media-control:', err);
+    }
+  });
+
+  // Teacher classroom settings (e.g. student Videos tab access)
+  socket.on('classroom-settings', (data = {}) => {
+    try {
+      const room = data.room || socket.room;
+      const sender = userSessions.get(socket.id);
+      if (!room || !sender || sender.userType !== 'teacher') return;
+      const prev = classroomSettingsByRoom.get(room) || { videosAllowed: true };
+      const next = Object.assign({}, prev);
+      if (typeof data.videosAllowed === 'boolean') next.videosAllowed = data.videosAllowed;
+      classroomSettingsByRoom.set(room, next);
+      io.to(room).emit('classroom-settings', Object.assign({ room }, next));
+    } catch (err) {
+      console.error('Error handling classroom-settings:', err);
     }
   });
 
