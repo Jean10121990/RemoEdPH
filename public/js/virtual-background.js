@@ -1,6 +1,6 @@
 /**
- * Client-side virtual background (blur + static image) for WebRTC.
- * Uses MediaPipe SelfieSegmentation when available.
+ * Client-side virtual background (blur + image) for WebRTC.
+ * Canvas pipeline always applies a visible effect. MediaPipe is optional cutout.
  */
 (function (global) {
   'use strict';
@@ -11,6 +11,24 @@
     { id: 'nature', label: 'Nature', url: '/images/virtual-bg/nature.svg' }
   ];
 
+  function waitForVideo(video, timeoutMs) {
+    return new Promise(function (resolve) {
+      var done = false;
+      function finish() {
+        if (done) return;
+        done = true;
+        resolve(video);
+      }
+      if (video.videoWidth > 0 && video.readyState >= 2) {
+        finish();
+        return;
+      }
+      video.addEventListener('loadeddata', finish, { once: true });
+      video.addEventListener('playing', finish, { once: true });
+      setTimeout(finish, timeoutMs || 1500);
+    });
+  }
+
   function loadScript(src) {
     return new Promise(function (resolve, reject) {
       if (global.SelfieSegmentation) {
@@ -19,6 +37,10 @@
       }
       var existing = document.querySelector('script[data-remoed-vbg-lib="1"]');
       if (existing) {
+        if (global.SelfieSegmentation) {
+          resolve();
+          return;
+        }
         existing.addEventListener('load', function () { resolve(); });
         existing.addEventListener('error', function () {
           reject(new Error('Failed to load ' + src));
@@ -37,12 +59,68 @@
     });
   }
 
-  async function loadBlurLibs() {
-    if (global.SelfieSegmentation) return;
-    await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js');
-    if (!global.SelfieSegmentation) {
-      throw new Error('SelfieSegmentation not available after script load');
+  function drawCover(ctx, img, w, h) {
+    if (!img) return;
+    var iw = img.naturalWidth || img.videoWidth || img.width || w;
+    var ih = img.naturalHeight || img.videoHeight || img.height || h;
+    if (!iw || !ih) {
+      ctx.drawImage(img, 0, 0, w, h);
+      return;
     }
+    var scale = Math.max(w / iw, h / ih);
+    var dw = iw * scale;
+    var dh = ih * scale;
+    ctx.drawImage(img, (w - dw) / 2, (h - dh) / 2, dw, dh);
+  }
+
+  function paintPreset(ctx, id, w, h) {
+    if (id === 'classroom') {
+      var wall = ctx.createLinearGradient(0, 0, 0, h);
+      wall.addColorStop(0, '#f5efe3');
+      wall.addColorStop(1, '#e4d3b4');
+      ctx.fillStyle = wall;
+      ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = '#2f6b3a';
+      ctx.fillRect(w * 0.08, h * 0.12, w * 0.84, h * 0.58);
+      ctx.fillStyle = '#1f4d28';
+      ctx.fillRect(w * 0.08, h * 0.12, w * 0.84, 10);
+      ctx.fillStyle = '#c4a574';
+      ctx.fillRect(0, h * 0.78, w, h * 0.22);
+      return;
+    }
+    if (id === 'nature') {
+      var sky = ctx.createLinearGradient(0, 0, 0, h);
+      sky.addColorStop(0, '#7ec8e3');
+      sky.addColorStop(0.55, '#c5e8a8');
+      sky.addColorStop(1, '#4c8a3c');
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = '#3d7a32';
+      ctx.beginPath();
+      ctx.moveTo(0, h * 0.62);
+      ctx.quadraticCurveTo(w * 0.3, h * 0.48, w * 0.55, h * 0.64);
+      ctx.quadraticCurveTo(w * 0.78, h * 0.76, w, h * 0.58);
+      ctx.lineTo(w, h);
+      ctx.lineTo(0, h);
+      ctx.fill();
+      ctx.fillStyle = '#ffe08a';
+      ctx.beginPath();
+      ctx.arc(w * 0.82, h * 0.18, Math.min(w, h) * 0.08, 0, Math.PI * 2);
+      ctx.fill();
+      return;
+    }
+    var office = ctx.createLinearGradient(0, 0, w, h);
+    office.addColorStop(0, '#dbe3ec');
+    office.addColorStop(1, '#8ea0b5');
+    ctx.fillStyle = office;
+    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = 'rgba(100,116,139,0.35)';
+    ctx.fillRect(0, h * 0.58, w, 18);
+    ctx.fillStyle = '#64748b';
+    ctx.fillRect(0, h * 0.82, w, h * 0.18);
+    ctx.fillStyle = '#cbd5e1';
+    ctx.fillRect(w * 0.12, h * 0.18, w * 0.28, h * 0.28);
+    ctx.fillRect(w * 0.6, h * 0.18, w * 0.28, h * 0.28);
   }
 
   function VirtualBackgroundController(options) {
@@ -56,53 +134,57 @@
     this.localVideoEl = options.localVideoEl || null;
     this.mode = 'off';
     this.imageUrl = '';
+    this.presetId = '';
     this.bgImage = null;
-    this.blurModelReady = false;
-    this.blurSegmentation = null;
-    this.blurSourceVideo = null;
-    this.blurCanvas = null;
-    this.blurCtx = null;
-    this.blurOutputStream = null;
-    this.blurOutputTrack = null;
-    this.blurAnimationFrame = null;
-    this.blurProcessing = false;
-    this.nativeBlurLast = false;
+    this.hasMask = false;
+    this.maskCanvas = null;
+    this.segmentation = null;
+    this.segReady = false;
+    this.segLoading = false;
+    this.sourceVideo = null;
+    this.canvas = null;
+    this.ctx = null;
+    this.outputStream = null;
+    this.outputTrack = null;
+    this.raf = null;
+    this.processing = false;
+    this.personCanvas = null;
+    this.personCtx = null;
   }
 
+  VirtualBackgroundController.prototype.resolveLocalVideo = function () {
+    return this.localVideoEl || document.getElementById('local-video');
+  };
+
   VirtualBackgroundController.prototype.stopPipeline = function () {
-    if (this.blurAnimationFrame) {
-      cancelAnimationFrame(this.blurAnimationFrame);
-      this.blurAnimationFrame = null;
+    if (this.raf) {
+      cancelAnimationFrame(this.raf);
+      this.raf = null;
     }
-    if (this.blurOutputTrack) {
-      try {
-        this.blurOutputTrack.stop();
-      } catch (_e) {}
-      this.blurOutputTrack = null;
+    if (this.outputTrack) {
+      try { this.outputTrack.stop(); } catch (_e) {}
+      this.outputTrack = null;
     }
-    if (this.blurOutputStream) {
+    if (this.outputStream) {
       try {
-        this.blurOutputStream.getTracks().forEach(function (t) {
-          t.stop();
-        });
+        this.outputStream.getTracks().forEach(function (t) { t.stop(); });
       } catch (_e2) {}
-      this.blurOutputStream = null;
+      this.outputStream = null;
     }
-    if (this.blurSourceVideo) {
-      try {
-        this.blurSourceVideo.pause();
-      } catch (_e3) {}
-      this.blurSourceVideo.srcObject = null;
-      this.blurSourceVideo = null;
+    if (this.sourceVideo) {
+      try { this.sourceVideo.pause(); } catch (_e3) {}
+      try { this.sourceVideo.srcObject = null; } catch (_e4) {}
+      this.sourceVideo = null;
     }
-    this.blurCanvas = null;
-    this.blurCtx = null;
-    this.blurProcessing = false;
+    this.canvas = null;
+    this.ctx = null;
+    this.processing = false;
+    this.hasMask = false;
   };
 
   VirtualBackgroundController.prototype.replaceOutgoingVideoTrack = async function (nextTrack) {
     if (!nextTrack) return;
-    var pc = this.getPeerConnection();
+    var pc = this.getPeerConnection && this.getPeerConnection();
     if (!pc) return;
     var sender = pc.getSenders().find(function (s) {
       return s.track && s.track.kind === 'video';
@@ -116,130 +198,207 @@
 
   VirtualBackgroundController.prototype.loadBackgroundImage = function (url) {
     var self = this;
-    return new Promise(function (resolve, reject) {
+    return new Promise(function (resolve) {
       if (!url) {
         self.bgImage = null;
         resolve(null);
         return;
       }
       var img = new Image();
-      // crossOrigin breaks same-origin SVGs / static files without CORS headers
-      var absolute;
-      try {
-        absolute = new URL(url, global.location && global.location.href).href;
-      } catch (_e) {
-        absolute = url;
-      }
-      var origin = global.location && global.location.origin;
       var isBlob = String(url).indexOf('blob:') === 0 || String(url).indexOf('data:') === 0;
-      var isSameOrigin = origin && absolute.indexOf(origin) === 0;
-      if (!isBlob && !isSameOrigin && /^https?:/i.test(absolute)) {
-        img.crossOrigin = 'anonymous';
+      if (!isBlob) {
+        try {
+          var absolute = new URL(url, global.location && global.location.href).href;
+          var origin = global.location && global.location.origin;
+          if (origin && absolute.indexOf(origin) !== 0 && /^https?:/i.test(absolute)) {
+            img.crossOrigin = 'anonymous';
+          }
+        } catch (_e) {}
       }
       img.onload = function () {
         self.bgImage = img;
         resolve(img);
       };
       img.onerror = function () {
-        reject(new Error('Could not load background image'));
+        self.bgImage = null;
+        resolve(null);
       };
       img.src = url;
     });
   };
 
-  VirtualBackgroundController.prototype.ensurePipeline = async function () {
-    await loadBlurLibs();
+  VirtualBackgroundController.prototype.maybeStartSegmentation = function () {
+    var self = this;
+    if (self.segReady || self.segLoading) return;
+    self.segLoading = true;
+    loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js')
+      .then(function () {
+        if (!global.SelfieSegmentation) throw new Error('no SelfieSegmentation');
+        self.segmentation = new global.SelfieSegmentation({
+          locateFile: function (file) {
+            return 'https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/' + file;
+          }
+        });
+        self.segmentation.setOptions({ modelSelection: 1 });
+        self.segmentation.onResults(function (results) {
+          if (!results || !results.segmentationMask || !self.canvas) return;
+          if (!self.maskCanvas) {
+            self.maskCanvas = document.createElement('canvas');
+          }
+          self.maskCanvas.width = self.canvas.width;
+          self.maskCanvas.height = self.canvas.height;
+          var mctx = self.maskCanvas.getContext('2d');
+          mctx.clearRect(0, 0, self.maskCanvas.width, self.maskCanvas.height);
+          mctx.drawImage(results.segmentationMask, 0, 0, self.maskCanvas.width, self.maskCanvas.height);
+          self.hasMask = true;
+        });
+        var init = typeof self.segmentation.initialize === 'function'
+          ? self.segmentation.initialize()
+          : Promise.resolve();
+        return init.then(function () {
+          self.segReady = true;
+          self.segLoading = false;
+        });
+      })
+      .catch(function () {
+        self.segLoading = false;
+        self.segReady = false;
+      });
+  };
+
+  VirtualBackgroundController.prototype.ensurePersonLayer = function (w, h) {
+    if (!this.personCanvas) {
+      this.personCanvas = document.createElement('canvas');
+      this.personCtx = this.personCanvas.getContext('2d');
+    }
+    if (this.personCanvas.width !== w || this.personCanvas.height !== h) {
+      this.personCanvas.width = w;
+      this.personCanvas.height = h;
+    }
+    return this.personCtx;
+  };
+
+  VirtualBackgroundController.prototype.paintPersonCutout = function (video, w, h) {
+    var pctx = this.ensurePersonLayer(w, h);
+    pctx.globalCompositeOperation = 'source-over';
+    pctx.clearRect(0, 0, w, h);
+    pctx.drawImage(this.maskCanvas, 0, 0, w, h);
+    pctx.globalCompositeOperation = 'source-in';
+    pctx.drawImage(video, 0, 0, w, h);
+    pctx.globalCompositeOperation = 'source-over';
+    return this.personCanvas;
+  };
+
+  VirtualBackgroundController.prototype.paintFrame = function () {
+    var ctx = this.ctx;
+    var video = this.sourceVideo;
+    var canvas = this.canvas;
+    if (!ctx || !video || !canvas) return;
+    var w = canvas.width;
+    var h = canvas.height;
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.filter = 'none';
+    ctx.clearRect(0, 0, w, h);
+
+    if (this.mode === 'blur') {
+      ctx.filter = 'blur(18px)';
+      ctx.drawImage(video, 0, 0, w, h);
+      ctx.filter = 'none';
+      if (this.hasMask && this.maskCanvas) {
+        ctx.drawImage(this.paintPersonCutout(video, w, h), 0, 0);
+      }
+    } else if (this.mode === 'image') {
+      if (this.bgImage) {
+        drawCover(ctx, this.bgImage, w, h);
+      } else {
+        paintPreset(ctx, this.presetId || 'office', w, h);
+      }
+      if (this.hasMask && this.maskCanvas) {
+        ctx.drawImage(this.paintPersonCutout(video, w, h), 0, 0);
+      } else {
+        var padX = w * 0.18;
+        var padY = h * 0.16;
+        var dw = w - padX * 2;
+        var dh = h - padY * 1.15;
+        ctx.beginPath();
+        var r = Math.min(28, dw / 8);
+        ctx.moveTo(padX + r, padY);
+        ctx.arcTo(padX + dw, padY, padX + dw, padY + dh, r);
+        ctx.arcTo(padX + dw, padY + dh, padX, padY + dh, r);
+        ctx.arcTo(padX, padY + dh, padX, padY, r);
+        ctx.arcTo(padX, padY, padX + dw, padY, r);
+        ctx.closePath();
+        ctx.clip();
+        ctx.drawImage(video, padX, padY, dw, dh);
+      }
+    } else {
+      ctx.drawImage(video, 0, 0, w, h);
+    }
+    ctx.restore();
+  };
+
+  VirtualBackgroundController.prototype.startLoop = function () {
+    var self = this;
+    var run = function () {
+      if (self.mode === 'off' || !self.sourceVideo || !self.ctx) return;
+      self.paintFrame();
+      if (self.segReady && self.segmentation && self.sourceVideo && !self.processing) {
+        self.processing = true;
+        Promise.resolve(self.segmentation.send({ image: self.sourceVideo }))
+          .catch(function () {})
+          .then(function () { self.processing = false; });
+      }
+      self.raf = requestAnimationFrame(run);
+    };
+    run();
+  };
+
+  VirtualBackgroundController.prototype.ensureCanvasPipeline = async function () {
     var stream = this.getLocalStream();
     if (!stream) throw new Error('No local stream');
     var sourceTrack = stream.getVideoTracks()[0];
     if (!sourceTrack) throw new Error('No video track');
 
-    var self = this;
-    if (!this.blurModelReady) {
-      this.blurSegmentation = new global.SelfieSegmentation({
-        locateFile: function (file) {
-          return 'https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/' + file;
-        }
-      });
-      this.blurSegmentation.setOptions({ modelSelection: 1 });
-      this.blurSegmentation.onResults(function (results) {
-        if (!self.blurCtx || !self.blurCanvas || !self.blurSourceVideo) return;
-        var w = self.blurCanvas.width;
-        var h = self.blurCanvas.height;
-        var src = results && results.image ? results.image : self.blurSourceVideo;
-        self.blurCtx.save();
-        self.blurCtx.clearRect(0, 0, w, h);
-        self.blurCtx.drawImage(results.segmentationMask, 0, 0, w, h);
-        self.blurCtx.globalCompositeOperation = 'source-in';
-        self.blurCtx.filter = 'none';
-        self.blurCtx.drawImage(src, 0, 0, w, h);
-        self.blurCtx.globalCompositeOperation = 'destination-over';
-        if (self.mode === 'image' && self.bgImage) {
-          self.blurCtx.filter = 'none';
-          var img = self.bgImage;
-          var scale = Math.max(w / img.width, h / img.height);
-          var iw = img.width * scale;
-          var ih = img.height * scale;
-          self.blurCtx.drawImage(img, (w - iw) / 2, (h - ih) / 2, iw, ih);
-        } else {
-          self.blurCtx.filter = 'blur(16px)';
-          self.blurCtx.drawImage(src, 0, 0, w, h);
-        }
-        self.blurCtx.restore();
-      });
-      if (typeof this.blurSegmentation.initialize === 'function') {
-        try {
-          await this.blurSegmentation.initialize();
-        } catch (_initErr) {}
-      }
-      this.blurModelReady = true;
-    }
-
     this.stopPipeline();
-    this.blurSourceVideo = document.createElement('video');
-    this.blurSourceVideo.muted = true;
-    this.blurSourceVideo.playsInline = true;
-    this.blurSourceVideo.autoplay = true;
-    this.blurSourceVideo.srcObject = new MediaStream([sourceTrack]);
-    await this.blurSourceVideo.play().catch(function () {});
+    this.sourceVideo = document.createElement('video');
+    this.sourceVideo.setAttribute('playsinline', '');
+    this.sourceVideo.muted = true;
+    this.sourceVideo.playsInline = true;
+    this.sourceVideo.autoplay = true;
+    this.sourceVideo.srcObject = new MediaStream([sourceTrack]);
+    try {
+      await this.sourceVideo.play();
+    } catch (_e) {}
+    await waitForVideo(this.sourceVideo, 1800);
 
-    var vw = Math.max(320, this.blurSourceVideo.videoWidth || 640);
-    var vh = Math.max(180, this.blurSourceVideo.videoHeight || 360);
-    this.blurCanvas = document.createElement('canvas');
-    this.blurCanvas.width = vw;
-    this.blurCanvas.height = vh;
-    this.blurCtx = this.blurCanvas.getContext('2d', { alpha: false });
-    this.blurOutputStream = this.blurCanvas.captureStream(15);
-    this.blurOutputTrack = this.blurOutputStream.getVideoTracks()[0];
-
-    var run = async function () {
-      if (self.mode === 'off' || !self.blurSegmentation || !self.blurSourceVideo) return;
-      if (self.blurCtx && self.blurCanvas && self.blurSourceVideo.readyState >= 2) {
-        self.blurCtx.save();
-        self.blurCtx.globalCompositeOperation = 'source-over';
-        self.blurCtx.filter = 'none';
-        self.blurCtx.drawImage(self.blurSourceVideo, 0, 0, self.blurCanvas.width, self.blurCanvas.height);
-        self.blurCtx.restore();
-      }
-      if (!self.blurProcessing) {
-        self.blurProcessing = true;
-        try {
-          await self.blurSegmentation.send({ image: self.blurSourceVideo });
-        } catch (_e) {}
-        self.blurProcessing = false;
-      }
-      self.blurAnimationFrame = requestAnimationFrame(run);
-    };
-    run();
+    var vw = this.sourceVideo.videoWidth || 640;
+    var vh = this.sourceVideo.videoHeight || 360;
+    this.canvas = document.createElement('canvas');
+    this.canvas.width = Math.max(320, vw);
+    this.canvas.height = Math.max(180, vh);
+    this.ctx = this.canvas.getContext('2d', { alpha: false });
+    this.outputStream = this.canvas.captureStream(20);
+    this.outputTrack = this.outputStream.getVideoTracks()[0];
+    this.paintFrame();
+    this.startLoop();
+    this.maybeStartSegmentation();
   };
 
   VirtualBackgroundController.prototype.applyMode = async function (mode, imageUrl) {
     this.mode = mode || 'off';
-    if (imageUrl) this.imageUrl = imageUrl;
+    this.imageUrl = imageUrl || '';
+    this.presetId = '';
+    if (this.imageUrl.indexOf('office.svg') !== -1) this.presetId = 'office';
+    else if (this.imageUrl.indexOf('classroom.svg') !== -1) this.presetId = 'classroom';
+    else if (this.imageUrl.indexOf('nature.svg') !== -1) this.presetId = 'nature';
+
     var stream = this.getLocalStream();
     if (!stream) return false;
     var videoTrack = stream.getVideoTracks()[0];
     if (!videoTrack) return false;
+    this.localVideoEl = this.resolveLocalVideo();
 
     if (this.mode === 'off') {
       this.stopPipeline();
@@ -255,108 +414,23 @@
     }
 
     if (this.mode === 'image' && this.imageUrl) {
-      try {
-        await this.loadBackgroundImage(this.imageUrl);
-      } catch (e) {
-        console.warn('Virtual background image failed', e);
-        return false;
-      }
+      await this.loadBackgroundImage(this.imageUrl);
     }
 
-    try {
-      await this.ensurePipeline();
-      this.nativeBlurLast = false;
-      await this.replaceOutgoingVideoTrack(this.blurOutputTrack);
-      if (this.localVideoEl && this.blurOutputStream) {
-        this.localVideoEl.srcObject = this.blurOutputStream;
-        this.localVideoEl.style.filter = '';
-      }
-      return true;
-    } catch (e1) {
-      console.warn('Virtual background pipeline failed', e1);
-      if (this.mode === 'blur') {
-        try {
-          await videoTrack.applyConstraints({ advanced: [{ backgroundBlur: true }] });
-          this.nativeBlurLast = true;
-          this.stopPipeline();
-          await this.replaceOutgoingVideoTrack(videoTrack);
-          if (this.localVideoEl) {
-            this.localVideoEl.srcObject = stream;
-            this.localVideoEl.style.filter = '';
-          }
-          return true;
-        } catch (_e2) {
-          // Last-resort local preview so the control still feels responsive
-          this.stopPipeline();
-          if (this.localVideoEl) {
-            this.localVideoEl.srcObject = stream;
-            this.localVideoEl.style.filter = 'blur(6px)';
-          }
-          return true;
-        }
-      }
-      // Image mode without MediaPipe: still show background in local preview canvas
-      if (this.mode === 'image' && this.bgImage) {
-        try {
-          await this.ensureSimpleImagePreview(videoTrack, stream);
-          return true;
-        } catch (_e3) {}
-      }
-      return false;
-    }
-  };
-
-  /** Fallback when MediaPipe is unavailable: composite bg + live video for local + outbound. */
-  VirtualBackgroundController.prototype.ensureSimpleImagePreview = async function (videoTrack, stream) {
-    this.stopPipeline();
-    var self = this;
-    this.blurSourceVideo = document.createElement('video');
-    this.blurSourceVideo.muted = true;
-    this.blurSourceVideo.playsInline = true;
-    this.blurSourceVideo.autoplay = true;
-    this.blurSourceVideo.srcObject = new MediaStream([videoTrack]);
-    await this.blurSourceVideo.play().catch(function () {});
-
-    var vw = Math.max(320, this.blurSourceVideo.videoWidth || 640);
-    var vh = Math.max(180, this.blurSourceVideo.videoHeight || 360);
-    this.blurCanvas = document.createElement('canvas');
-    this.blurCanvas.width = vw;
-    this.blurCanvas.height = vh;
-    this.blurCtx = this.blurCanvas.getContext('2d', { alpha: false });
-    this.blurOutputStream = this.blurCanvas.captureStream(15);
-    this.blurOutputTrack = this.blurOutputStream.getVideoTracks()[0];
-
-    var run = function () {
-      if (self.mode !== 'image' || !self.blurCtx || !self.blurCanvas || !self.blurSourceVideo) return;
-      var w = self.blurCanvas.width;
-      var h = self.blurCanvas.height;
-      self.blurCtx.save();
-      self.blurCtx.clearRect(0, 0, w, h);
-      if (self.bgImage) {
-        var img = self.bgImage;
-        var scale = Math.max(w / img.width, h / img.height);
-        var iw = img.width * scale;
-        var ih = img.height * scale;
-        self.blurCtx.drawImage(img, (w - iw) / 2, (h - ih) / 2, iw, ih);
-      }
-      // Soft person stand-in without segmentation: center video slightly smaller
-      var pad = 0.12;
-      var dw = w * (1 - pad * 2);
-      var dh = h * (1 - pad * 2);
-      self.blurCtx.drawImage(self.blurSourceVideo, pad * w, pad * h, dw, dh);
-      self.blurCtx.restore();
-      self.blurAnimationFrame = requestAnimationFrame(run);
-    };
-    run();
-    await this.replaceOutgoingVideoTrack(this.blurOutputTrack);
-    if (this.localVideoEl && this.blurOutputStream) {
-      this.localVideoEl.srcObject = this.blurOutputStream;
+    await this.ensureCanvasPipeline();
+    await this.replaceOutgoingVideoTrack(this.outputTrack);
+    if (this.localVideoEl && this.outputStream) {
+      this.localVideoEl.srcObject = this.outputStream;
       this.localVideoEl.style.filter = '';
+      try {
+        await this.localVideoEl.play();
+      } catch (_p) {}
     }
+    return true;
   };
 
   VirtualBackgroundController.prototype.getActiveVideoTrack = function () {
-    if (this.mode !== 'off' && this.blurOutputTrack) return this.blurOutputTrack;
+    if (this.mode !== 'off' && this.outputTrack) return this.outputTrack;
     var stream = this.getLocalStream();
     return stream ? stream.getVideoTracks()[0] : null;
   };
@@ -369,7 +443,6 @@
     var deferRestore = !!options.deferRestore;
     container.innerHTML = '';
     container.classList.add('lc-camera-settings');
-    // Title lives on the modal header when used in classroom modal
     if (!options.hideTitle) {
       var title = document.createElement('div');
       title.className = 'lc-camera-settings__title';
@@ -456,7 +529,7 @@
       try {
         if (mode === 'off') ok = !!(await controller.applyMode('off'));
         else if (mode === 'blur') ok = !!(await controller.applyMode('blur'));
-        else if (mode === 'image' || mode === 'custom') ok = !!(await controller.applyMode('image', url));
+        else ok = !!(await controller.applyMode('image', url));
       } catch (err) {
         ok = false;
         errMsg = err && err.message ? String(err.message) : '';
@@ -465,10 +538,10 @@
       if (ok) {
         markActive(mode === 'custom' ? 'custom' : mode, url);
         persist(mode === 'custom' ? 'custom' : mode, url || '');
-        setStatus(mode === 'off' ? '' : 'Background applied');
-        if (!opts.silent && mode !== 'off') {
+        setStatus(mode === 'off' ? 'Background off' : 'Background applied');
+        if (!opts.silent) {
           setTimeout(function () {
-            if (statusEl.textContent === 'Background applied') setStatus('');
+            if (/Background/.test(statusEl.textContent)) setStatus('');
           }, 1600);
         }
       } else if (!opts.silent) {
@@ -477,27 +550,23 @@
       return ok;
     }
 
-    function onModeClick(mode, url) {
-      if (mode === 'custom') {
-        fileInput.click();
-        return;
-      }
-      apply(mode, url || '');
-    }
-
     btnRow.querySelectorAll('button[data-vbg-mode]').forEach(function (b) {
       b.addEventListener('click', function (e) {
         e.preventDefault();
         e.stopPropagation();
-        onModeClick(b.dataset.vbgMode, b.dataset.vbgExtra || '');
+        var mode = b.dataset.vbgMode;
+        if (mode === 'custom') {
+          fileInput.click();
+          return;
+        }
+        apply(mode, b.dataset.vbgExtra || '');
       });
     });
 
     fileInput.addEventListener('change', function () {
       var file = fileInput.files && fileInput.files[0];
       if (!file) return;
-      var objectUrl = URL.createObjectURL(file);
-      apply('custom', objectUrl);
+      apply('custom', URL.createObjectURL(file));
     });
 
     async function restoreSaved() {
@@ -508,7 +577,6 @@
         } else if (saved && saved.mode === 'image' && saved.url && String(saved.url).indexOf('blob:') !== 0) {
           await apply('image', saved.url, { silent: true });
         } else if (saved && saved.mode === 'custom' && saved.url && String(saved.url).indexOf('blob:') === 0) {
-          // blob URLs die on reload — reset
           markActive('off');
           persist('off', '');
         } else {
@@ -520,12 +588,8 @@
     }
 
     container._remoedRestoreVbg = restoreSaved;
-
-    if (!deferRestore) {
-      restoreSaved();
-    } else {
-      markActive('off');
-    }
+    if (!deferRestore) restoreSaved();
+    else markActive('off');
   }
 
   global.RemoedVirtualBackground = {

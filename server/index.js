@@ -188,6 +188,37 @@ const chatHistory = new Map();
 const userSessions = new Map(); // socketId -> { room, userType, userId, username }
 const mediaControlStateByRoom = new Map(); // room -> { audio, video }
 const classroomSettingsByRoom = new Map(); // room -> { videosAllowed }
+const pendingClassroomSettingsBySocket = new Map(); // socketId -> { videosAllowed }
+
+function applyClassroomSettings(room, partial, ioRef) {
+  const prev = classroomSettingsByRoom.get(room) || { videosAllowed: true };
+  const next = Object.assign({}, prev);
+  if (partial && typeof partial.videosAllowed === 'boolean') {
+    next.videosAllowed = partial.videosAllowed;
+  }
+  classroomSettingsByRoom.set(room, next);
+  const payload = Object.assign({ room }, next);
+  if (ioRef && room) {
+    ioRef.to(room).emit('classroom-settings', payload);
+  }
+  return payload;
+}
+
+function flushPendingClassroomSettings(socket, room, userType, joinData, ioRef) {
+  if (userType !== 'teacher' || !room) return;
+  const pending = pendingClassroomSettingsBySocket.get(socket.id);
+  pendingClassroomSettingsBySocket.delete(socket.id);
+  const fromJoin = joinData && typeof joinData.videosAllowed === 'boolean'
+    ? joinData.videosAllowed
+    : undefined;
+  if (pending || typeof fromJoin === 'boolean') {
+    applyClassroomSettings(room, {
+      videosAllowed: typeof fromJoin === 'boolean'
+        ? fromJoin
+        : pending.videosAllowed,
+    }, ioRef);
+  }
+}
 const whiteboardStateByRoom = new Map(); // room -> { active, strokes }
 const WB_STROKE_CAP = 2000;
 function getWbState(room) {
@@ -2073,6 +2104,7 @@ io.on('connection', socket => {
             if (mediaSt && userType === 'student') {
                 socket.emit('media-control', Object.assign({ room, targetRole: 'student' }, mediaSt));
             }
+            flushPendingClassroomSettings(socket, room, userType, data, io);
             const classSettings = classroomSettingsByRoom.get(room) || { videosAllowed: true };
             socket.emit('classroom-settings', Object.assign({ room }, classSettings));
         } catch (_wbJoin) {}
@@ -2301,6 +2333,7 @@ io.on('connection', socket => {
             if (mediaSt && userType === 'student') {
                 socket.emit('media-control', Object.assign({ room, targetRole: 'student' }, mediaSt));
             }
+            flushPendingClassroomSettings(socket, room, userType, data, io);
             const classSettings = classroomSettingsByRoom.get(room) || { videosAllowed: true };
             socket.emit('classroom-settings', Object.assign({ room }, classSettings));
         } catch (_wbJoin) {}
@@ -2582,10 +2615,11 @@ io.on('connection', socket => {
             if (!roomSet || roomSet.size <= 1) {
               whiteboardStateByRoom.delete(leftRoom);
               mediaControlStateByRoom.delete(leftRoom);
-              classroomSettingsByRoom.delete(leftRoom);
+              // Keep classroomSettingsByRoom so a teacher refresh does not unlock Videos
             }
           }
         } catch (_cleanErr) {}
+        pendingClassroomSettingsBySocket.delete(socket.id);
         userSessions.delete(socket.id);
     });
     
@@ -3103,27 +3137,41 @@ io.on('connection', socket => {
       const room = data.room || socket.room;
       const sender = userSessions.get(socket.id);
       const role = (sender && sender.userType) || socket.userType;
-      if (!room || role !== 'teacher') {
-        console.warn('classroom-settings ignored (not teacher or missing room)', {
+      if (typeof data.videosAllowed !== 'boolean') return;
+      if (sender && role !== 'teacher') {
+        console.warn('classroom-settings ignored (not teacher)', {
           socketId: socket.id,
           room,
           role,
-          hasSession: !!sender,
         });
         return;
       }
-      const prev = classroomSettingsByRoom.get(room) || { videosAllowed: true };
-      const next = Object.assign({}, prev);
-      if (typeof data.videosAllowed === 'boolean') next.videosAllowed = data.videosAllowed;
-      classroomSettingsByRoom.set(room, next);
-      // Ensure teacher socket is in the room so late state stays consistent
+      if (!sender || !room || role !== 'teacher') {
+        pendingClassroomSettingsBySocket.set(socket.id, {
+          videosAllowed: data.videosAllowed,
+          room: room || null,
+        });
+        console.log('classroom-settings queued until join', socket.id, data.videosAllowed);
+        return;
+      }
       try {
         socket.join(room);
       } catch (_joinErr) {}
-      io.to(room).emit('classroom-settings', Object.assign({ room }, next));
-      socket.emit('classroom-settings-ack', Object.assign({ room }, next));
+      const payload = applyClassroomSettings(room, { videosAllowed: data.videosAllowed }, io);
+      socket.emit('classroom-settings-ack', payload);
     } catch (err) {
       console.error('Error handling classroom-settings:', err);
+    }
+  });
+
+  socket.on('classroom-settings-request', (data = {}) => {
+    try {
+      const room = data.room || socket.room;
+      if (!room) return;
+      const settings = classroomSettingsByRoom.get(room) || { videosAllowed: true };
+      socket.emit('classroom-settings', Object.assign({ room }, settings));
+    } catch (err) {
+      console.error('Error handling classroom-settings-request:', err);
     }
   });
 

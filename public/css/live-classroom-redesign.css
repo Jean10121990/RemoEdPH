@@ -147,14 +147,10 @@ body.page-live-classroom .tabs button {
 
 body.page-live-classroom .tabs button.lc-videos-tab-locked,
 body.page-live-classroom .tabs button#lc-videos-tab-btn[hidden],
-body.page-live-classroom .tabs button#lc-videos-tab-btn[aria-disabled="true"] {
+body.page-live-classroom .tabs button#lc-videos-tab-btn[aria-disabled="true"],
+body.lc-student-videos-locked .tabs button#lc-videos-tab-btn,
+body.lc-student-videos-locked #videos-panel {
   display: none !important;
-}
-
-.lc-videos-allow.is-locked {
-  color: #b45309;
-  background: #fffbeb;
-  border-radius: 8px;
 }
 
 body.page-live-classroom .tabs button.active {
@@ -218,28 +214,32 @@ body.page-live-classroom .video.is-vbg-open .video-controls {
   pointer-events: auto !important;
 }
 
-.lc-videos-allow {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+.lc-videos-lock-btn {
   margin-left: auto;
-  padding: 6px 10px;
-  font-size: 0.75rem;
-  font-weight: 600;
+  padding: 6px 12px;
+  border: 1px solid #99f6e4;
+  border-radius: 999px;
+  background: #ecfdf5;
   color: #0f766e;
-  white-space: nowrap;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.2;
   cursor: pointer;
-  user-select: none;
+  white-space: nowrap;
 }
 
-.lc-videos-allow[hidden] {
+.lc-videos-lock-btn:hover {
+  background: #d1fae5;
+}
+
+.lc-videos-lock-btn.is-locked {
+  border-color: #fcd34d;
+  background: #fffbeb;
+  color: #b45309;
+}
+
+.lc-videos-lock-btn[hidden] {
   display: none !important;
-}
-
-.lc-videos-allow input {
-  width: 16px;
-  height: 16px;
-  accent-color: #47bc3e;
 }
 
 /* Camera background modal */

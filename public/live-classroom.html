@@ -56,7 +56,7 @@
     <link rel="stylesheet" href="style.css">
   <!-- After global styles so chat / layout rules are not overridden -->
   <link rel="stylesheet" href="live-classroom.css?v=lc-qa-progress-1" />
-  <link rel="stylesheet" href="css/live-classroom-redesign.css?v=mint-forest-8" />
+  <link rel="stylesheet" href="css/live-classroom-redesign.css?v=mint-forest-9" />
   <link rel="stylesheet" href="css/student-badges.css?v=2" />
 </head>
 <body class="page-live-classroom">
@@ -110,10 +110,9 @@
         <button class="active" data-tab="lesson-content">Lesson</button>
         <button data-tab="whiteboard">Board</button>
         <button data-tab="videos" id="lc-videos-tab-btn">Videos</button>
-        <label id="lc-videos-allow-wrap" class="lc-videos-allow" hidden>
-          <input type="checkbox" id="lc-videos-allow" checked>
-          <span id="lc-videos-allow-label">Allow student Videos</span>
-        </label>
+        <button type="button" id="lc-videos-lock-btn" class="lc-videos-lock-btn" hidden>
+          Lock student Videos
+        </button>
       </div>
       
       <!-- Lesson Content Tab -->
@@ -407,7 +406,7 @@
     <script src="js/student-badges.js?v=1"></script>
     <script src="js/teacher-badge-award.js?v=1"></script>
     <script src="js/presentation-overlay.js?v=lc-draw-fix-2"></script>
-    <script src="js/virtual-background.js?v=vbg-4"></script>
+    <script src="js/virtual-background.js?v=vbg-5"></script>
     <script src="js/classroom-qa-recording.js?v=lc-qa-progress-1" defer></script>
     <script>
       // Collaborative annotation client
@@ -724,21 +723,51 @@
         setInterval(tick, 1000);
       }
 
+      function videosLockStorageKey() {
+        return 'remoed_lc_videos_' + (room || 'default-room');
+      }
+
+      function readStoredVideosAllowed() {
+        try {
+          const v = sessionStorage.getItem(videosLockStorageKey());
+          if (v === '0') return false;
+          if (v === '1') return true;
+        } catch (_e) {}
+        return null;
+      }
+
+      function persistVideosAllowed(allowed) {
+        try {
+          sessionStorage.setItem(videosLockStorageKey(), allowed ? '1' : '0');
+        } catch (_e) {}
+      }
+
+      function requestClassroomSettings() {
+        if (!socket || !room) return;
+        socket.emit('classroom-settings-request', { room });
+      }
+
       async function emitSocketJoin() {
         const gate = await entryCheckPromise;
         if (!gate.allowed && (gate.code === 'TOO_EARLY' || gate.code === 'SESSION_ENDED')) {
           showClassroomEntryBlocked(gate);
           return false;
         }
-        socket.emit('join', { room, userType, userId, username });
-        // Teacher: push current Videos lock after join so it is not dropped if toggled early
+        const joinPayload = { room, userType, userId, username };
         if (userType === 'teacher') {
-          setTimeout(function () {
-            if (typeof window.__lcEmitClassroomSettings === 'function') {
-              window.__lcEmitClassroomSettings();
-            }
-          }, 250);
+          const storedLock = readStoredVideosAllowed();
+          if (storedLock === false) joinPayload.videosAllowed = false;
         }
+        socket.emit('join', joinPayload);
+        setTimeout(function () {
+          if (userType === 'teacher') {
+            const storedLock = readStoredVideosAllowed();
+            if (storedLock === false) {
+              emitClassroomVideosSetting(false);
+            }
+          }
+          requestClassroomSettings();
+        }, 400);
         return true;
       }
 
@@ -827,14 +856,17 @@
       const portalVideosPanel = document.getElementById('videos-panel');
       const portalVideosListEl = document.getElementById('portal-videos-list');
       const videosTabBtn = document.getElementById('lc-videos-tab-btn');
-      const videosAllowWrap = document.getElementById('lc-videos-allow-wrap');
-      const videosAllowChk = document.getElementById('lc-videos-allow');
-      const videosAllowLabel = document.getElementById('lc-videos-allow-label');
+      const videosLockBtn = document.getElementById('lc-videos-lock-btn');
       let portalVideosLoaded = false;
-      let studentVideosAllowed = true;
+      let studentVideosAllowed = readStoredVideosAllowed() !== false;
 
       function applyStudentVideosAccess(allowed) {
         studentVideosAllowed = allowed !== false;
+        if (userType === 'teacher') persistVideosAllowed(studentVideosAllowed);
+        document.body.classList.toggle(
+          'lc-student-videos-locked',
+          userType === 'student' && !studentVideosAllowed
+        );
         if (videosTabBtn) {
           if (userType === 'student') {
             const show = studentVideosAllowed;
@@ -844,9 +876,11 @@
             videosTabBtn.style.display = show ? '' : 'none';
             videosTabBtn.setAttribute('aria-disabled', show ? 'false' : 'true');
             if (!show) {
-              const onVideos =
-                (portalVideosPanel && portalVideosPanel.classList.contains('active')) ||
-                (videosTabBtn.classList.contains('active'));
+              if (portalVideosPanel) {
+                portalVideosPanel.style.display = 'none';
+                portalVideosPanel.classList.remove('active');
+              }
+              const onVideos = videosTabBtn.classList.contains('active');
               if (onVideos && typeof setActiveTab === 'function') {
                 setActiveTab('lesson-content', { silent: true });
               }
@@ -858,21 +892,20 @@
             videosTabBtn.style.display = '';
           }
         }
-        if (userType === 'teacher') {
-          if (videosAllowChk) videosAllowChk.checked = studentVideosAllowed;
-          if (videosAllowLabel) {
-            videosAllowLabel.textContent = studentVideosAllowed
-              ? 'Allow student Videos'
-              : 'Student Videos locked';
-          }
-          if (videosAllowWrap) {
-            videosAllowWrap.classList.toggle('is-locked', !studentVideosAllowed);
-          }
+        if (userType === 'teacher' && videosLockBtn) {
+          videosLockBtn.hidden = false;
+          videosLockBtn.removeAttribute('hidden');
+          videosLockBtn.classList.toggle('is-locked', !studentVideosAllowed);
+          videosLockBtn.setAttribute('aria-pressed', studentVideosAllowed ? 'false' : 'true');
+          videosLockBtn.textContent = studentVideosAllowed
+            ? 'Lock student Videos'
+            : 'Unlock student Videos';
         }
       }
 
       function emitClassroomVideosSetting(allowed) {
         studentVideosAllowed = allowed !== false;
+        persistVideosAllowed(studentVideosAllowed);
         if (userType === 'teacher') {
           applyStudentVideosAccess(studentVideosAllowed);
         }
@@ -889,18 +922,21 @@
 
       window.__lcEmitClassroomSettings = function () {
         if (userType !== 'teacher') return;
-        const allowed = videosAllowChk ? !!videosAllowChk.checked : studentVideosAllowed;
-        emitClassroomVideosSetting(allowed);
+        const stored = readStoredVideosAllowed();
+        if (stored === false) emitClassroomVideosSetting(false);
       };
 
-      if (userType === 'teacher' && videosAllowWrap) {
-        videosAllowWrap.hidden = false;
-        videosAllowWrap.removeAttribute('hidden');
-        if (videosAllowChk) {
-          videosAllowChk.addEventListener('change', function () {
-            emitClassroomVideosSetting(!!videosAllowChk.checked);
-          });
-        }
+      if (userType === 'teacher' && videosLockBtn) {
+        videosLockBtn.hidden = false;
+        videosLockBtn.removeAttribute('hidden');
+        applyStudentVideosAccess(studentVideosAllowed);
+        videosLockBtn.addEventListener('click', function () {
+          emitClassroomVideosSetting(!studentVideosAllowed);
+        });
+      }
+
+      if (userType === 'student' && readStoredVideosAllowed() === false) {
+        applyStudentVideosAccess(false);
       }
 
       if (socket) {
@@ -912,6 +948,10 @@
           if (userType !== 'teacher' || !data) return;
           applyStudentVideosAccess(data.videosAllowed !== false);
         });
+        socket.on('connect', function () {
+          requestClassroomSettings();
+        });
+        if (socket.connected) requestClassroomSettings();
       }
       // Lessons tab removed - moved to admin side
       // Lesson file select dropdown removed - lesson loads automatically from booking
@@ -5500,6 +5540,7 @@
       let isMicOn = true;
       let isMuted = true; // remote video starts muted in markup until user unmutes
       let isBgBlurOn = false;
+      let vbController = null;
       let blurModelReady = false;
       let blurRunner = null;
       let blurOutputStream = null;
@@ -5515,8 +5556,8 @@
 
       function applyTeacherCameraReadyLook() {
         if (!localVideo) return;
+        if (vbController && vbController.mode && vbController.mode !== 'off') return;
         // Stable, subtle enhancement (no segmentation/blur pipeline).
-        // Keeps teachers looking fresher while avoiding black-screen risk.
         localVideo.style.filter = 'brightness(1.08) contrast(1.06) saturate(1.08)';
       }
 
@@ -6086,7 +6127,6 @@
         });
       }
 
-      let vbController = null;
       let vbgMounted = false;
       let vbgPresetIndex = -1;
       let pendingVbgRestore = false;
