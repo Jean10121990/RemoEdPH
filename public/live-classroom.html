@@ -56,7 +56,7 @@
     <link rel="stylesheet" href="style.css">
   <!-- After global styles so chat / layout rules are not overridden -->
   <link rel="stylesheet" href="live-classroom.css?v=lc-qa-progress-1" />
-  <link rel="stylesheet" href="css/live-classroom-redesign.css?v=mint-forest-9" />
+  <link rel="stylesheet" href="css/live-classroom-redesign.css?v=mint-forest-10" />
   <link rel="stylesheet" href="css/student-badges.css?v=2" />
 </head>
 <body class="page-live-classroom">
@@ -110,9 +110,32 @@
         <button class="active" data-tab="lesson-content">Lesson</button>
         <button data-tab="whiteboard">Board</button>
         <button data-tab="videos" id="lc-videos-tab-btn">Videos</button>
-        <button type="button" id="lc-videos-lock-btn" class="lc-videos-lock-btn" hidden>
-          Lock student Videos
-        </button>
+        <div id="lc-class-settings" class="lc-class-settings" hidden>
+          <button type="button" id="lc-class-settings-btn" class="lc-class-settings-btn" title="Class settings" aria-haspopup="true" aria-expanded="false" aria-controls="lc-class-settings-panel">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+              <path fill="currentColor" d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.03 7.03 0 0 0-1.63-.94l-.36-2.54A.5.5 0 0 0 13.9 2h-3.8a.5.5 0 0 0-.49.42l-.36 2.54c-.59.24-1.13.56-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.8 8.48a.5.5 0 0 0 .12.64l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94L2.92 14.16a.5.5 0 0 0-.12.64l1.92 3.32c.14.24.43.34.69.22l2.39-.96c.5.38 1.04.7 1.63.94l.36 2.54c.05.24.25.42.49.42h3.8c.24 0 .44-.18.49-.42l.36-2.54c.59-.24 1.13-.56 1.63-.94l2.39.96c.26.12.55.02.69-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58zM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7z"/>
+            </svg>
+            <span class="lc-class-settings-btn__label">Settings</span>
+          </button>
+          <div id="lc-class-settings-panel" class="lc-class-settings-panel" hidden>
+            <p class="lc-class-settings-title">Student access</p>
+            <p class="lc-class-settings-hint">Turn a switch off to lock it for students. You can still use Videos and the pen.</p>
+            <label class="lc-class-settings-row">
+              <input type="checkbox" id="lc-setting-videos" checked>
+              <span>
+                <strong>Videos tab</strong>
+                <em>Students can open the Videos tab</em>
+              </span>
+            </label>
+            <label class="lc-class-settings-row">
+              <input type="checkbox" id="lc-setting-pen" checked>
+              <span>
+                <strong>Pen / annotate</strong>
+                <em>Students can draw on the lesson and board</em>
+              </span>
+            </label>
+          </div>
+        </div>
       </div>
       
       <!-- Lesson Content Tab -->
@@ -406,7 +429,7 @@
     <script src="js/student-badges.js?v=1"></script>
     <script src="js/teacher-badge-award.js?v=1"></script>
     <script src="js/presentation-overlay.js?v=lc-draw-fix-2"></script>
-    <script src="js/virtual-background.js?v=vbg-5"></script>
+    <script src="js/virtual-background.js?v=vbg-6"></script>
     <script src="js/classroom-qa-recording.js?v=lc-qa-progress-1" defer></script>
     <script>
       // Collaborative annotation client
@@ -727,19 +750,47 @@
         return 'remoed_lc_videos_' + (room || 'default-room');
       }
 
-      function readStoredVideosAllowed() {
+      function classSettingsStorageKey() {
+        return 'remoed_lc_settings_' + (room || 'default-room');
+      }
+
+      function readStoredClassSettings() {
         try {
+          const raw = sessionStorage.getItem(classSettingsStorageKey());
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            return {
+              videosAllowed: parsed.videosAllowed !== false,
+              penAllowed: parsed.penAllowed !== false,
+            };
+          }
           const v = sessionStorage.getItem(videosLockStorageKey());
-          if (v === '0') return false;
-          if (v === '1') return true;
+          if (v === '0') return { videosAllowed: false, penAllowed: true };
+          if (v === '1') return { videosAllowed: true, penAllowed: true };
         } catch (_e) {}
-        return null;
+        return { videosAllowed: true, penAllowed: true };
+      }
+
+      function persistClassSettings(settings) {
+        try {
+          const next = {
+            videosAllowed: !settings || settings.videosAllowed !== false,
+            penAllowed: !settings || settings.penAllowed !== false,
+          };
+          sessionStorage.setItem(classSettingsStorageKey(), JSON.stringify(next));
+          sessionStorage.setItem(videosLockStorageKey(), next.videosAllowed ? '1' : '0');
+        } catch (_e) {}
+      }
+
+      function readStoredVideosAllowed() {
+        const stored = readStoredClassSettings();
+        return stored.videosAllowed;
       }
 
       function persistVideosAllowed(allowed) {
-        try {
-          sessionStorage.setItem(videosLockStorageKey(), allowed ? '1' : '0');
-        } catch (_e) {}
+        const stored = readStoredClassSettings();
+        stored.videosAllowed = allowed !== false;
+        persistClassSettings(stored);
       }
 
       function requestClassroomSettings() {
@@ -755,15 +806,19 @@
         }
         const joinPayload = { room, userType, userId, username };
         if (userType === 'teacher') {
-          const storedLock = readStoredVideosAllowed();
-          if (storedLock === false) joinPayload.videosAllowed = false;
+          const stored = readStoredClassSettings();
+          if (stored.videosAllowed === false) joinPayload.videosAllowed = false;
+          if (stored.penAllowed === false) joinPayload.penAllowed = false;
         }
         socket.emit('join', joinPayload);
         setTimeout(function () {
           if (userType === 'teacher') {
-            const storedLock = readStoredVideosAllowed();
-            if (storedLock === false) {
-              emitClassroomVideosSetting(false);
+            const stored = readStoredClassSettings();
+            if (stored.videosAllowed === false || stored.penAllowed === false) {
+              emitClassroomClassSettings({
+                videosAllowed: stored.videosAllowed,
+                penAllowed: stored.penAllowed,
+              });
             }
           }
           requestClassroomSettings();
@@ -856,13 +911,32 @@
       const portalVideosPanel = document.getElementById('videos-panel');
       const portalVideosListEl = document.getElementById('portal-videos-list');
       const videosTabBtn = document.getElementById('lc-videos-tab-btn');
-      const videosLockBtn = document.getElementById('lc-videos-lock-btn');
+      const classSettingsWrap = document.getElementById('lc-class-settings');
+      const classSettingsBtn = document.getElementById('lc-class-settings-btn');
+      const classSettingsPanel = document.getElementById('lc-class-settings-panel');
+      const settingVideosChk = document.getElementById('lc-setting-videos');
+      const settingPenChk = document.getElementById('lc-setting-pen');
       let portalVideosLoaded = false;
-      let studentVideosAllowed = readStoredVideosAllowed() !== false;
+      const storedClassSettings = readStoredClassSettings();
+      let studentVideosAllowed = storedClassSettings.videosAllowed !== false;
+      let studentPenAllowed = storedClassSettings.penAllowed !== false;
+      window.__lcStudentPenAllowed = studentPenAllowed;
+
+      function syncClassSettingsControls() {
+        if (settingVideosChk) settingVideosChk.checked = studentVideosAllowed;
+        if (settingPenChk) settingPenChk.checked = studentPenAllowed;
+        if (classSettingsBtn) {
+          const locked = !studentVideosAllowed || !studentPenAllowed;
+          classSettingsBtn.classList.toggle('is-restricted', locked);
+        }
+      }
 
       function applyStudentVideosAccess(allowed) {
         studentVideosAllowed = allowed !== false;
-        if (userType === 'teacher') persistVideosAllowed(studentVideosAllowed);
+        if (userType === 'teacher') persistClassSettings({
+          videosAllowed: studentVideosAllowed,
+          penAllowed: studentPenAllowed,
+        });
         document.body.classList.toggle(
           'lc-student-videos-locked',
           userType === 'student' && !studentVideosAllowed
@@ -892,25 +966,60 @@
             videosTabBtn.style.display = '';
           }
         }
-        if (userType === 'teacher' && videosLockBtn) {
-          videosLockBtn.hidden = false;
-          videosLockBtn.removeAttribute('hidden');
-          videosLockBtn.classList.toggle('is-locked', !studentVideosAllowed);
-          videosLockBtn.setAttribute('aria-pressed', studentVideosAllowed ? 'false' : 'true');
-          videosLockBtn.textContent = studentVideosAllowed
-            ? 'Lock student Videos'
-            : 'Unlock student Videos';
+        syncClassSettingsControls();
+      }
+
+      function applyStudentPenAccess(allowed) {
+        const next = allowed !== false;
+        const changed = next !== studentPenAllowed;
+        studentPenAllowed = next;
+        window.__lcStudentPenAllowed = studentPenAllowed;
+        if (userType === 'teacher') persistClassSettings({
+          videosAllowed: studentVideosAllowed,
+          penAllowed: studentPenAllowed,
+        });
+        document.body.classList.toggle(
+          'lc-student-pen-locked',
+          userType === 'student' && !studentPenAllowed
+        );
+        if (typeof window.__lcApplyPdfPenLock === 'function') {
+          window.__lcApplyPdfPenLock(studentPenAllowed);
+        }
+        if (typeof window.__lcApplyWhiteboardPenLock === 'function') {
+          window.__lcApplyWhiteboardPenLock();
+        }
+        syncClassSettingsControls();
+        if (
+          userType === 'student' &&
+          changed &&
+          !studentPenAllowed &&
+          typeof showMediaToast === 'function'
+        ) {
+          showMediaToast('Pen is locked by your teacher');
         }
       }
 
-      function emitClassroomVideosSetting(allowed) {
-        studentVideosAllowed = allowed !== false;
-        persistVideosAllowed(studentVideosAllowed);
+      function emitClassroomClassSettings(partial) {
+        if (partial && typeof partial.videosAllowed === 'boolean') {
+          studentVideosAllowed = partial.videosAllowed;
+        }
+        if (partial && typeof partial.penAllowed === 'boolean') {
+          studentPenAllowed = partial.penAllowed;
+        }
+        persistClassSettings({
+          videosAllowed: studentVideosAllowed,
+          penAllowed: studentPenAllowed,
+        });
         if (userType === 'teacher') {
           applyStudentVideosAccess(studentVideosAllowed);
+          applyStudentPenAccess(studentPenAllowed);
         }
         if (!socket) return;
-        const payload = { room, videosAllowed: studentVideosAllowed };
+        const payload = {
+          room,
+          videosAllowed: studentVideosAllowed,
+          penAllowed: studentPenAllowed,
+        };
         if (socket.connected) {
           socket.emit('classroom-settings', payload);
         } else {
@@ -920,33 +1029,75 @@
         }
       }
 
-      window.__lcEmitClassroomSettings = function () {
-        if (userType !== 'teacher') return;
-        const stored = readStoredVideosAllowed();
-        if (stored === false) emitClassroomVideosSetting(false);
-      };
-
-      if (userType === 'teacher' && videosLockBtn) {
-        videosLockBtn.hidden = false;
-        videosLockBtn.removeAttribute('hidden');
-        applyStudentVideosAccess(studentVideosAllowed);
-        videosLockBtn.addEventListener('click', function () {
-          emitClassroomVideosSetting(!studentVideosAllowed);
-        });
+      function emitClassroomVideosSetting(allowed) {
+        emitClassroomClassSettings({ videosAllowed: allowed !== false });
       }
 
-      if (userType === 'student' && readStoredVideosAllowed() === false) {
-        applyStudentVideosAccess(false);
+      window.__lcEmitClassroomSettings = function () {
+        if (userType !== 'teacher') return;
+        const stored = readStoredClassSettings();
+        if (stored.videosAllowed === false || stored.penAllowed === false) {
+          emitClassroomClassSettings(stored);
+        }
+      };
+
+      function applyIncomingClassSettings(data) {
+        if (!data) return;
+        if (Object.prototype.hasOwnProperty.call(data, 'videosAllowed')) {
+          applyStudentVideosAccess(data.videosAllowed !== false);
+        }
+        if (Object.prototype.hasOwnProperty.call(data, 'penAllowed')) {
+          applyStudentPenAccess(data.penAllowed !== false);
+        }
+      }
+
+      if (userType === 'teacher' && classSettingsWrap) {
+        classSettingsWrap.hidden = false;
+        classSettingsWrap.removeAttribute('hidden');
+        applyStudentVideosAccess(studentVideosAllowed);
+        applyStudentPenAccess(studentPenAllowed);
+        if (classSettingsBtn && classSettingsPanel) {
+          classSettingsBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const open = classSettingsPanel.hidden;
+            classSettingsPanel.hidden = !open;
+            classSettingsBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+            classSettingsWrap.classList.toggle('is-open', open);
+          });
+          classSettingsPanel.addEventListener('click', function (e) {
+            e.stopPropagation();
+          });
+          document.addEventListener('click', function () {
+            classSettingsPanel.hidden = true;
+            classSettingsBtn.setAttribute('aria-expanded', 'false');
+            classSettingsWrap.classList.remove('is-open');
+          });
+        }
+        if (settingVideosChk) {
+          settingVideosChk.addEventListener('change', function () {
+            emitClassroomClassSettings({ videosAllowed: !!settingVideosChk.checked });
+          });
+        }
+        if (settingPenChk) {
+          settingPenChk.addEventListener('change', function () {
+            emitClassroomClassSettings({ penAllowed: !!settingPenChk.checked });
+          });
+        }
+      }
+
+      if (userType === 'student') {
+        applyStudentVideosAccess(studentVideosAllowed);
+        applyStudentPenAccess(studentPenAllowed);
       }
 
       if (socket) {
         socket.on('classroom-settings', function (data) {
-          if (!data) return;
-          applyStudentVideosAccess(data.videosAllowed !== false);
+          applyIncomingClassSettings(data);
         });
         socket.on('classroom-settings-ack', function (data) {
-          if (userType !== 'teacher' || !data) return;
-          applyStudentVideosAccess(data.videosAllowed !== false);
+          if (userType !== 'teacher') return;
+          applyIncomingClassSettings(data);
         });
         socket.on('connect', function () {
           requestClassroomSettings();
@@ -1179,9 +1330,10 @@
           if (tabName === 'whiteboard') {
             setTimeout(() => {
               initWhiteboardCanvas();
-              if (wbAnnotateToggle) wbAnnotateToggle.classList.add('active');
-              wbEnabled = true;
-              if (whiteboardCanvas) whiteboardCanvas.style.pointerEvents = 'auto';
+              const studentCanDraw = userType !== 'student' || studentPenAllowed;
+              if (wbAnnotateToggle) wbAnnotateToggle.classList.toggle('active', studentCanDraw);
+              wbEnabled = studentCanDraw;
+              if (whiteboardCanvas) whiteboardCanvas.style.pointerEvents = studentCanDraw ? 'auto' : 'none';
               // Restore whiteboard drawings when switching back to whiteboard tab
               restoreWhiteboard();
               if (socket && socket.connected) {
@@ -3678,9 +3830,11 @@
           // PDF annotation state (per page) - teacher draws, students follow
           const annotationState = new Map(); // pageNumber -> [strokes]
           const annotationLayers = new Map(); // pageNumber -> { canvas, ctx, viewport }
-          // Teacher opts into drawing; students can draw immediately
-          const allowStudentAnnotations = true;
-          let annotationEnabled = isStudent && allowStudentAnnotations;
+          // Teacher always can draw; students follow the class pen lock
+          function allowStudentAnnotations() {
+            return window.__lcStudentPenAllowed !== false;
+          }
+          let annotationEnabled = isStudent && allowStudentAnnotations();
           let annotationMode = 'pen';
           let annotationColor = annotationColorPicker.value || (isTeacher ? '#ff3b30' : '#2563eb');
           let annotationSize = parseInt(annotationSizeSelect.value, 10) || 4;
@@ -3689,8 +3843,11 @@
           function setAnnotationInteractivity() {
             annotationLayers.forEach(({ canvas }) => {
               if (!canvas) return;
-              canvas.style.pointerEvents = annotationEnabled && (isTeacher || allowStudentAnnotations) ? 'auto' : 'none';
+              canvas.style.pointerEvents = annotationEnabled && (isTeacher || allowStudentAnnotations()) ? 'auto' : 'none';
             });
+            if (drawMenu) {
+              drawMenu.style.display = isStudent && !allowStudentAnnotations() ? 'none' : '';
+            }
             if (annotateToggle) {
               annotateToggle.textContent = annotationEnabled ? 'Pen on' : 'Pen off';
               annotateToggle.classList.toggle('active', annotationEnabled);
@@ -3749,14 +3906,12 @@
             annotationCanvas.height = Math.floor(cssH * outputScale);
             annotationCanvas.style.width = cssW + 'px';
             annotationCanvas.style.height = cssH + 'px';
-            annotationCanvas.style.pointerEvents = annotationEnabled && (isTeacher || allowStudentAnnotations) ? 'auto' : 'none';
+            annotationCanvas.style.pointerEvents = annotationEnabled && (isTeacher || allowStudentAnnotations()) ? 'auto' : 'none';
             canvasDiv.appendChild(annotationCanvas);
             const ctx = annotationCanvas.getContext('2d');
             annotationLayers.set(pageNumber, { canvas: annotationCanvas, ctx, viewport, outputScale });
             redrawAnnotations(pageNumber);
-            if (isTeacher || allowStudentAnnotations) {
-              attachAnnotationListeners(annotationCanvas, pageNumber);
-            }
+            attachAnnotationListeners(annotationCanvas, pageNumber);
           }
           
           function getNormalizedPos(evt, canvas) {
@@ -3769,7 +3924,7 @@
           
           function attachAnnotationListeners(annotationCanvas, pageNumber) {
             annotationCanvas.addEventListener('pointerdown', (e) => {
-              if (!annotationEnabled || !(isTeacher || allowStudentAnnotations)) return;
+              if (!annotationEnabled || !(isTeacher || allowStudentAnnotations())) return;
               e.preventDefault();
               annotationMode = annotationMode || 'pen';
               activeStroke = {
@@ -3782,7 +3937,7 @@
             });
             
             annotationCanvas.addEventListener('pointermove', (e) => {
-              if (!activeStroke || !annotationEnabled || !(isTeacher || allowStudentAnnotations)) return;
+              if (!activeStroke || !annotationEnabled || !(isTeacher || allowStudentAnnotations())) return;
               e.preventDefault();
               const nextPoint = getNormalizedPos(e, annotationCanvas);
               activeStroke.points.push(nextPoint);
@@ -3807,7 +3962,7 @@
             });
             
             const finishStroke = () => {
-              if (!activeStroke || !annotationEnabled || !(isTeacher || allowStudentAnnotations)) return;
+              if (!activeStroke || !annotationEnabled || !(isTeacher || allowStudentAnnotations())) return;
               const strokes = annotationState.get(pageNumber) || [];
               strokes.push(activeStroke);
               annotationState.set(pageNumber, strokes);
@@ -3875,13 +4030,29 @@
           }
           
           if (isStudent) {
-            annotatorIndicator.textContent = allowStudentAnnotations
+            annotatorIndicator.textContent = allowStudentAnnotations()
               ? 'Ready to draw'
               : 'Following teacher annotations';
           } else {
             annotatorIndicator.textContent = 'Click Draw to start';
           }
           setAnnotationInteractivity();
+          window.__lcApplyPdfPenLock = function (allowed) {
+            if (!isStudent) return;
+            if (allowed === false) {
+              annotationEnabled = false;
+              activeStroke = null;
+            } else {
+              annotationEnabled = true;
+            }
+            if (isStudent) {
+              annotatorIndicator.textContent = allowed === false
+                ? 'Following teacher annotations'
+                : 'Ready to draw';
+            }
+            setAnnotationInteractivity();
+          };
+          window.__lcApplyPdfPenLock(window.__lcStudentPenAllowed !== false);
           
           function getCanvasContainerPadding() {
             const cs = window.getComputedStyle(canvasContainer);
@@ -4236,6 +4407,11 @@
             socket.on('annotation-enable', ({ materialId: incomingId } = {}) => {
               const targetId = window.currentPdfMaterialId || material.id;
               if (incomingId && targetId && incomingId !== targetId) return;
+              if (isStudent && !allowStudentAnnotations()) {
+                annotationEnabled = false;
+                setAnnotationInteractivity();
+                return;
+              }
               annotationEnabled = true;
               setAnnotationInteractivity();
             });
@@ -8326,6 +8502,23 @@
       let wbEnabled = true;
       let wbHistory = []; // Store all drawing segments for persistence
 
+      window.__lcApplyWhiteboardPenLock = function () {
+        const locked = userType === 'student' && !studentPenAllowed;
+        const bar = document.querySelector('.whiteboard-controls-bar');
+        if (bar) bar.classList.toggle('lc-pen-locked', locked);
+        if (locked) {
+          wbEnabled = false;
+          wbDrawing = false;
+          if (whiteboardCanvas) whiteboardCanvas.style.pointerEvents = 'none';
+          if (wbAnnotateToggle) wbAnnotateToggle.classList.remove('active');
+        } else if (userType === 'student') {
+          wbEnabled = true;
+          if (whiteboardCanvas) whiteboardCanvas.style.pointerEvents = 'auto';
+          if (wbAnnotateToggle) wbAnnotateToggle.classList.add('active');
+        }
+      };
+      window.__lcApplyWhiteboardPenLock();
+
       function initWhiteboardCanvas() {
         if (!whiteboardCanvas) return;
         wbCtx = whiteboardCanvas.getContext('2d');
@@ -8368,6 +8561,7 @@
           }
 
           whiteboardCanvas.addEventListener('pointerdown', (e) => {
+            if (userType === 'student' && !studentPenAllowed) return;
             if (!wbEnabled) return;
             e.preventDefault();
             wbDrawing = true;
@@ -8375,6 +8569,7 @@
           });
 
           whiteboardCanvas.addEventListener('pointermove', (e) => {
+            if (userType === 'student' && !studentPenAllowed) return;
             if (!wbDrawing || !wbCtx || !wbEnabled) return;
             e.preventDefault();
             const pos = getWbPos(e);
@@ -8421,6 +8616,12 @@
       // Whiteboard controls
       if (wbAnnotateToggle) {
         wbAnnotateToggle.addEventListener('click', () => {
+          if (userType === 'student' && !studentPenAllowed) {
+            if (typeof showMediaToast === 'function') {
+              showMediaToast('Pen is locked by your teacher');
+            }
+            return;
+          }
           wbEnabled = !wbEnabled;
           wbAnnotateToggle.classList.toggle('active', wbEnabled);
           if (whiteboardCanvas) {

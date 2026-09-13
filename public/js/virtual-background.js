@@ -6,8 +6,8 @@
   'use strict';
 
   var PRESET_BACKGROUNDS = [
-    { id: 'office', label: 'Office', url: '/images/virtual-bg/office.svg' },
-    { id: 'classroom', label: 'Classroom', url: '/images/virtual-bg/classroom.svg' },
+    { id: 'office', label: 'Office', url: '/images/virtual-bg/office.jpg' },
+    { id: 'classroom', label: 'Classroom', url: '/images/virtual-bg/classroom.jpg' },
     { id: 'nature', label: 'Nature', url: '/images/virtual-bg/nature.svg' }
   ];
 
@@ -390,9 +390,9 @@
     this.mode = mode || 'off';
     this.imageUrl = imageUrl || '';
     this.presetId = '';
-    if (this.imageUrl.indexOf('office.svg') !== -1) this.presetId = 'office';
-    else if (this.imageUrl.indexOf('classroom.svg') !== -1) this.presetId = 'classroom';
-    else if (this.imageUrl.indexOf('nature.svg') !== -1) this.presetId = 'nature';
+    if (/office\.(svg|jpe?g|webp|png)/i.test(this.imageUrl)) this.presetId = 'office';
+    else if (/classroom\.(svg|jpe?g|webp|png)/i.test(this.imageUrl)) this.presetId = 'classroom';
+    else if (/nature\.(svg|jpe?g|webp|png)/i.test(this.imageUrl)) this.presetId = 'nature';
 
     var stream = this.getLocalStream();
     if (!stream) return false;
@@ -465,6 +465,11 @@
       b.textContent = label;
       b.dataset.vbgMode = mode;
       if (extra) b.dataset.vbgExtra = extra;
+      if (mode === 'image' && extra) {
+        b.classList.add('lc-camera-settings__btn--photo');
+        b.style.backgroundImage =
+          'linear-gradient(180deg, rgba(15,23,42,0.08), rgba(15,23,42,0.62)), url("' + extra + '")';
+      }
       btnRow.appendChild(b);
       return b;
     }

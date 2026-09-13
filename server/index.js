@@ -187,14 +187,21 @@ const chatHistory = new Map();
 // Store user information for attendance tracking
 const userSessions = new Map(); // socketId -> { room, userType, userId, username }
 const mediaControlStateByRoom = new Map(); // room -> { audio, video }
-const classroomSettingsByRoom = new Map(); // room -> { videosAllowed }
-const pendingClassroomSettingsBySocket = new Map(); // socketId -> { videosAllowed }
+const classroomSettingsByRoom = new Map(); // room -> { videosAllowed, penAllowed }
+const pendingClassroomSettingsBySocket = new Map(); // socketId -> { videosAllowed, penAllowed }
+
+function defaultClassroomSettings() {
+  return { videosAllowed: true, penAllowed: true };
+}
 
 function applyClassroomSettings(room, partial, ioRef) {
-  const prev = classroomSettingsByRoom.get(room) || { videosAllowed: true };
-  const next = Object.assign({}, prev);
+  const prev = classroomSettingsByRoom.get(room) || defaultClassroomSettings();
+  const next = Object.assign(defaultClassroomSettings(), prev);
   if (partial && typeof partial.videosAllowed === 'boolean') {
     next.videosAllowed = partial.videosAllowed;
+  }
+  if (partial && typeof partial.penAllowed === 'boolean') {
+    next.penAllowed = partial.penAllowed;
   }
   classroomSettingsByRoom.set(room, next);
   const payload = Object.assign({ room }, next);
@@ -204,19 +211,28 @@ function applyClassroomSettings(room, partial, ioRef) {
   return payload;
 }
 
+function pickPendingClassroomPartial(joinData, pending) {
+  const partial = {};
+  if (joinData && typeof joinData.videosAllowed === 'boolean') {
+    partial.videosAllowed = joinData.videosAllowed;
+  } else if (pending && typeof pending.videosAllowed === 'boolean') {
+    partial.videosAllowed = pending.videosAllowed;
+  }
+  if (joinData && typeof joinData.penAllowed === 'boolean') {
+    partial.penAllowed = joinData.penAllowed;
+  } else if (pending && typeof pending.penAllowed === 'boolean') {
+    partial.penAllowed = pending.penAllowed;
+  }
+  return partial;
+}
+
 function flushPendingClassroomSettings(socket, room, userType, joinData, ioRef) {
   if (userType !== 'teacher' || !room) return;
   const pending = pendingClassroomSettingsBySocket.get(socket.id);
   pendingClassroomSettingsBySocket.delete(socket.id);
-  const fromJoin = joinData && typeof joinData.videosAllowed === 'boolean'
-    ? joinData.videosAllowed
-    : undefined;
-  if (pending || typeof fromJoin === 'boolean') {
-    applyClassroomSettings(room, {
-      videosAllowed: typeof fromJoin === 'boolean'
-        ? fromJoin
-        : pending.videosAllowed,
-    }, ioRef);
+  const partial = pickPendingClassroomPartial(joinData, pending);
+  if (Object.keys(partial).length) {
+    applyClassroomSettings(room, partial, ioRef);
   }
 }
 const whiteboardStateByRoom = new Map(); // room -> { active, strokes }
@@ -2105,7 +2121,7 @@ io.on('connection', socket => {
                 socket.emit('media-control', Object.assign({ room, targetRole: 'student' }, mediaSt));
             }
             flushPendingClassroomSettings(socket, room, userType, data, io);
-            const classSettings = classroomSettingsByRoom.get(room) || { videosAllowed: true };
+            const classSettings = classroomSettingsByRoom.get(room) || defaultClassroomSettings();
             socket.emit('classroom-settings', Object.assign({ room }, classSettings));
         } catch (_wbJoin) {}
 
@@ -2334,7 +2350,7 @@ io.on('connection', socket => {
                 socket.emit('media-control', Object.assign({ room, targetRole: 'student' }, mediaSt));
             }
             flushPendingClassroomSettings(socket, room, userType, data, io);
-            const classSettings = classroomSettingsByRoom.get(room) || { videosAllowed: true };
+            const classSettings = classroomSettingsByRoom.get(room) || defaultClassroomSettings();
             socket.emit('classroom-settings', Object.assign({ room }, classSettings));
         } catch (_wbJoin) {}
         
@@ -3137,7 +3153,12 @@ io.on('connection', socket => {
       const room = data.room || socket.room;
       const sender = userSessions.get(socket.id);
       const role = (sender && sender.userType) || socket.userType;
-      if (typeof data.videosAllowed !== 'boolean') return;
+      const hasVideos = typeof data.videosAllowed === 'boolean';
+      const hasPen = typeof data.penAllowed === 'boolean';
+      if (!hasVideos && !hasPen) return;
+      const partial = {};
+      if (hasVideos) partial.videosAllowed = data.videosAllowed;
+      if (hasPen) partial.penAllowed = data.penAllowed;
       if (sender && role !== 'teacher') {
         console.warn('classroom-settings ignored (not teacher)', {
           socketId: socket.id,
@@ -3147,17 +3168,16 @@ io.on('connection', socket => {
         return;
       }
       if (!sender || !room || role !== 'teacher') {
-        pendingClassroomSettingsBySocket.set(socket.id, {
-          videosAllowed: data.videosAllowed,
+        pendingClassroomSettingsBySocket.set(socket.id, Object.assign({
           room: room || null,
-        });
-        console.log('classroom-settings queued until join', socket.id, data.videosAllowed);
+        }, partial));
+        console.log('classroom-settings queued until join', socket.id, partial);
         return;
       }
       try {
         socket.join(room);
       } catch (_joinErr) {}
-      const payload = applyClassroomSettings(room, { videosAllowed: data.videosAllowed }, io);
+      const payload = applyClassroomSettings(room, partial, io);
       socket.emit('classroom-settings-ack', payload);
     } catch (err) {
       console.error('Error handling classroom-settings:', err);
@@ -3168,7 +3188,7 @@ io.on('connection', socket => {
     try {
       const room = data.room || socket.room;
       if (!room) return;
-      const settings = classroomSettingsByRoom.get(room) || { videosAllowed: true };
+      const settings = classroomSettingsByRoom.get(room) || defaultClassroomSettings();
       socket.emit('classroom-settings', Object.assign({ room }, settings));
     } catch (err) {
       console.error('Error handling classroom-settings-request:', err);
