@@ -56,7 +56,7 @@
     <link rel="stylesheet" href="style.css">
   <!-- After global styles so chat / layout rules are not overridden -->
   <link rel="stylesheet" href="live-classroom.css?v=lc-qa-progress-1" />
-  <link rel="stylesheet" href="css/live-classroom-redesign.css?v=mint-forest-12" />
+  <link rel="stylesheet" href="css/live-classroom-redesign.css?v=mint-forest-13" />
   <link rel="stylesheet" href="css/student-badges.css?v=2" />
 </head>
 <body class="page-live-classroom">
@@ -375,10 +375,11 @@
   <div id="lc-class-settings-overlay" class="lc-class-settings-overlay" hidden>
     <div id="lc-class-settings-panel" class="lc-class-settings-panel" role="dialog" aria-modal="true" aria-labelledby="lc-class-settings-title">
       <div class="lc-class-settings-panel__head">
-        <p id="lc-class-settings-title" class="lc-class-settings-title">Student access</p>
+        <p id="lc-class-settings-title" class="lc-class-settings-title">Class settings</p>
         <button type="button" id="lc-class-settings-close" class="lc-class-settings-close" aria-label="Close settings">&times;</button>
       </div>
-      <p class="lc-class-settings-hint">Turn a switch off to lock it for students. You can still use Videos and the pen.</p>
+      <p class="lc-class-settings-section">Student access</p>
+      <p class="lc-class-settings-hint">Turn a switch off to lock it for students. You can still use Videos, the pen, and your camera.</p>
       <label class="lc-class-settings-row">
         <input type="checkbox" id="lc-setting-videos" checked>
         <span>
@@ -393,6 +394,23 @@
           <em>Students can draw on the lesson and board</em>
         </span>
       </label>
+      <label class="lc-class-settings-row">
+        <input type="checkbox" id="lc-setting-student-mic" checked>
+        <span>
+          <strong>Student microphone</strong>
+          <em>Uncheck to mute the student</em>
+        </span>
+      </label>
+      <label class="lc-class-settings-row">
+        <input type="checkbox" id="lc-setting-student-cam" checked>
+        <span>
+          <strong>Student camera</strong>
+          <em>Uncheck to turn off the student camera</em>
+        </span>
+      </label>
+      <p class="lc-class-settings-section">Your camera background</p>
+      <p class="lc-class-settings-hint">Turn on your camera first, then pick a look.</p>
+      <div id="lc-settings-vbg-panel" class="lc-camera-settings-panel lc-settings-vbg-panel"></div>
     </div>
   </div>
 
@@ -924,6 +942,8 @@
       const classSettingsClose = document.getElementById('lc-class-settings-close');
       const settingVideosChk = document.getElementById('lc-setting-videos');
       const settingPenChk = document.getElementById('lc-setting-pen');
+      const settingStudentMicChk = document.getElementById('lc-setting-student-mic');
+      const settingStudentCamChk = document.getElementById('lc-setting-student-cam');
       let portalVideosLoaded = false;
       const storedClassSettings = readStoredClassSettings();
       let studentVideosAllowed = storedClassSettings.videosAllowed !== false;
@@ -1073,6 +1093,9 @@
           classSettingsWrap.classList.toggle('is-open', show);
         }
         document.body.classList.toggle('lc-class-settings-open', show);
+        if (show && typeof window.__lcMountSettingsVbg === 'function') {
+          window.__lcMountSettingsVbg();
+        }
       }
 
       if (userType === 'teacher' && classSettingsWrap) {
@@ -1119,6 +1142,20 @@
         if (settingPenChk) {
           settingPenChk.addEventListener('change', function () {
             emitClassroomClassSettings({ penAllowed: !!settingPenChk.checked });
+          });
+        }
+        if (settingStudentMicChk) {
+          settingStudentMicChk.addEventListener('change', function () {
+            if (typeof window.__lcEmitStudentMedia === 'function') {
+              window.__lcEmitStudentMedia({ audio: !!settingStudentMicChk.checked });
+            }
+          });
+        }
+        if (settingStudentCamChk) {
+          settingStudentCamChk.addEventListener('change', function () {
+            if (typeof window.__lcEmitStudentMedia === 'function') {
+              window.__lcEmitStudentMedia({ video: !!settingStudentCamChk.checked });
+            }
           });
         }
       }
@@ -6368,24 +6405,19 @@
         }
         document.body.classList.toggle('lc-vbg-modal-open', !!open);
       }
-      function mountCameraSettingsIfNeeded() {
-        if (!cameraSettingsPanel) return false;
+      function mountVbgInto(panel) {
+        if (!panel) return false;
         if (typeof RemoedVirtualBackground === 'undefined') {
-          cameraSettingsPanel.innerHTML = '<p class="lc-camera-settings__status">Background effects unavailable. Refresh the page.</p>';
+          panel.innerHTML = '<p class="lc-camera-settings__status">Background effects unavailable. Refresh the page.</p>';
           return false;
         }
-        // Remount if panel was emptied or buttons never attached
-        if (vbgMounted && !cameraSettingsPanel.querySelector('button[data-vbg-mode]')) {
-          vbgMounted = false;
-          vbController = null;
-        }
-        if (vbgMounted) return true;
+        if (panel.querySelector('button[data-vbg-mode]')) return true;
         const vb = ensureVbController();
         if (!vb || typeof RemoedVirtualBackground.mountSettingsUI !== 'function') {
-          cameraSettingsPanel.innerHTML = '<p class="lc-camera-settings__status">Background effects unavailable.</p>';
+          panel.innerHTML = '<p class="lc-camera-settings__status">Background effects unavailable.</p>';
           return false;
         }
-        RemoedVirtualBackground.mountSettingsUI(cameraSettingsPanel, vb, {
+        RemoedVirtualBackground.mountSettingsUI(panel, vb, {
           storageKey: 'remoed_vbg_' + String(room || 'session'),
           deferRestore: !localStream,
           hideTitle: true,
@@ -6393,13 +6425,26 @@
             if (msg && typeof showMediaToast === 'function') showMediaToast(msg);
           }
         });
-        vbgMounted = true;
-        pendingVbgRestore = !localStream;
-        if (localStream && typeof cameraSettingsPanel._remoedRestoreVbg === 'function') {
-          cameraSettingsPanel._remoedRestoreVbg();
+        if (localStream && typeof panel._remoedRestoreVbg === 'function') {
+          panel._remoedRestoreVbg();
         }
         return true;
       }
+      function mountCameraSettingsIfNeeded() {
+        if (vbgMounted && cameraSettingsPanel && !cameraSettingsPanel.querySelector('button[data-vbg-mode]')) {
+          vbgMounted = false;
+          vbController = null;
+        }
+        const ok = mountVbgInto(cameraSettingsPanel);
+        if (ok) {
+          vbgMounted = true;
+          pendingVbgRestore = !localStream;
+        }
+        return ok;
+      }
+      window.__lcMountSettingsVbg = function () {
+        mountVbgInto(document.getElementById('lc-settings-vbg-panel'));
+      };
       async function restoreVbgAfterStream() {
         if (!cameraSettingsPanel) return;
         if (!vbgMounted) {
@@ -6413,6 +6458,13 @@
       }
       if (cameraSettingsBtn) {
         cameraSettingsBtn.addEventListener('click', function () {
+          if (userType === 'teacher' && typeof setClassSettingsOpen === 'function') {
+            setClassSettingsOpen(true);
+            if (!localStream && typeof showMediaToast === 'function') {
+              showMediaToast('Turn on camera to use backgrounds');
+            }
+            return;
+          }
           const opening = !vbgModalOverlay || vbgModalOverlay.hasAttribute('hidden');
           if (opening) {
             mountCameraSettingsIfNeeded();
@@ -6513,16 +6565,48 @@
           targetRole: 'student'
         }, partial));
       }
+      let teacherMediaState = { audio: true, video: true };
+      const muteMicBtn = document.getElementById('force-mute-student-mic');
+      const allowMicBtn = document.getElementById('force-unlock-student-mic');
+      const camOffBtn = document.getElementById('force-off-student-cam');
+      const camOnBtn = document.getElementById('force-unlock-student-cam');
+
+      function syncTeacherMediaUi() {
+        if (muteMicBtn) {
+          muteMicBtn.classList.toggle('is-active', teacherMediaState.audio === false);
+          muteMicBtn.setAttribute('aria-pressed', teacherMediaState.audio === false ? 'true' : 'false');
+        }
+        if (allowMicBtn) {
+          allowMicBtn.classList.toggle('is-active', teacherMediaState.audio === true);
+          allowMicBtn.setAttribute('aria-pressed', teacherMediaState.audio === true ? 'true' : 'false');
+        }
+        if (camOffBtn) {
+          camOffBtn.classList.toggle('is-active', teacherMediaState.video === false);
+          camOffBtn.setAttribute('aria-pressed', teacherMediaState.video === false ? 'true' : 'false');
+        }
+        if (camOnBtn) {
+          camOnBtn.classList.toggle('is-active', teacherMediaState.video === true);
+          camOnBtn.setAttribute('aria-pressed', teacherMediaState.video === true ? 'true' : 'false');
+        }
+        if (settingStudentMicChk) settingStudentMicChk.checked = teacherMediaState.audio !== false;
+        if (settingStudentCamChk) settingStudentCamChk.checked = teacherMediaState.video !== false;
+      }
+
+      function setTeacherMedia(partial) {
+        if (partial && typeof partial.audio === 'boolean') teacherMediaState.audio = partial.audio;
+        if (partial && typeof partial.video === 'boolean') teacherMediaState.video = partial.video;
+        emitMediaControl(partial || {});
+        syncTeacherMediaUi();
+      }
+      window.__lcEmitStudentMedia = setTeacherMedia;
+
       if (userType === 'teacher' && teacherMediaControls) {
         teacherMediaControls.removeAttribute('hidden');
-        const muteMic = document.getElementById('force-mute-student-mic');
-        const allowMic = document.getElementById('force-unlock-student-mic');
-        const camOff = document.getElementById('force-off-student-cam');
-        const camOn = document.getElementById('force-unlock-student-cam');
-        if (muteMic) muteMic.addEventListener('click', function () { emitMediaControl({ audio: false }); });
-        if (allowMic) allowMic.addEventListener('click', function () { emitMediaControl({ audio: true }); });
-        if (camOff) camOff.addEventListener('click', function () { emitMediaControl({ video: false }); });
-        if (camOn) camOn.addEventListener('click', function () { emitMediaControl({ video: true }); });
+        syncTeacherMediaUi();
+        if (muteMicBtn) muteMicBtn.addEventListener('click', function () { setTeacherMedia({ audio: false }); });
+        if (allowMicBtn) allowMicBtn.addEventListener('click', function () { setTeacherMedia({ audio: true }); });
+        if (camOffBtn) camOffBtn.addEventListener('click', function () { setTeacherMedia({ video: false }); });
+        if (camOnBtn) camOnBtn.addEventListener('click', function () { setTeacherMedia({ video: true }); });
       }
       if (socket) {
         socket.on('media-control', function (payload) {
@@ -6564,10 +6648,9 @@
         });
         socket.on('media-control-state', function (state) {
           if (userType !== 'teacher' || !state) return;
-          const muteMic = document.getElementById('force-mute-student-mic');
-          const camOff = document.getElementById('force-off-student-cam');
-          if (muteMic) muteMic.classList.toggle('is-active', state.audio === false);
-          if (camOff) camOff.classList.toggle('is-active', state.video === false);
+          if (typeof state.audio === 'boolean') teacherMediaState.audio = state.audio;
+          if (typeof state.video === 'boolean') teacherMediaState.video = state.video;
+          syncTeacherMediaUi();
         });
       }
 
