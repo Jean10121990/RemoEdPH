@@ -15,6 +15,7 @@
     <script src="js/user-session.js"></script>
     <script src="js/teacher-session-gate.js?v=2"></script>
     <script src="js/age-from-birthday.js?v=1"></script>
+    <script src="js/ph-mobile.js?v=1"></script>
 </head>
 <body class="page-teacher-profile teacher-portal">
     <div class="remoed-main">
@@ -194,8 +195,12 @@
                                 <textarea class="form-textarea" id="address" name="address" rows="1" disabled></textarea>
                             </div>
                             <div class="form-group">
-                                <label class="form-label">Contact Number</label>
-                                <input type="tel" class="form-input" id="contact" name="contact" disabled>
+                                <label class="form-label">Contact Number *</label>
+                                <div class="phone-input-row" style="display:flex;align-items:stretch;gap:0;">
+                                    <span class="phone-prefix" style="display:inline-flex;align-items:center;padding:0 10px;background:#e8f0ee;border:1px solid #cbd5e1;border-right:0;border-radius:6px 0 0 6px;font-weight:600;color:#0f766e;white-space:nowrap;">+63</span>
+                                    <input type="tel" class="form-input" id="contact" name="contact" inputmode="numeric" pattern="[0-9]*" autocomplete="tel-national" placeholder="9XXXXXXXXX" disabled style="border-radius:0 6px 6px 0;flex:1;">
+                                </div>
+                                <small class="form-help">Philippine mobile only. Digits after +63 (e.g. 9171234567).</small>
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Email *</label>
@@ -208,7 +213,10 @@
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Emergency Contact</label>
-                                <input type="tel" class="form-input" id="emergency-contact" name="emergency-contact" disabled>
+                                <div class="phone-input-row" style="display:flex;align-items:stretch;gap:0;">
+                                    <span class="phone-prefix" style="display:inline-flex;align-items:center;padding:0 10px;background:#e8f0ee;border:1px solid #cbd5e1;border-right:0;border-radius:6px 0 0 6px;font-weight:600;color:#0f766e;white-space:nowrap;">+63</span>
+                                    <input type="tel" class="form-input" id="emergency-contact" name="emergency-contact" inputmode="numeric" pattern="[0-9]*" autocomplete="tel-national" placeholder="Optional" disabled style="border-radius:0 6px 6px 0;flex:1;">
+                                </div>
                             </div>
                         </div>
                         
@@ -887,10 +895,14 @@
                     document.getElementById('language').value = profile.language || '';
                     document.getElementById('hobbies').value = profile.hobbies || '';
                     document.getElementById('address').value = profile.address || '';
-                    document.getElementById('contact').value = profile.contact || '';
+                    document.getElementById('contact').value = (window.RemoedPhMobile && RemoedPhMobile.phNationalFromStored)
+                        ? RemoedPhMobile.phNationalFromStored(profile.contact || '')
+                        : (profile.contact || '');
                     document.getElementById('email').value = profile.email || '';
                     document.getElementById('username').value = profile.username || '';
-                    document.getElementById('emergency-contact').value = profile.emergencyContact || '';
+                    document.getElementById('emergency-contact').value = (window.RemoedPhMobile && RemoedPhMobile.phNationalFromStored)
+                        ? RemoedPhMobile.phNationalFromStored(profile.emergencyContact || '')
+                        : (profile.emergencyContact || '');
                     document.getElementById('introduction').value = profile.introduction || '';
                     document.getElementById('experience').value = profile.experience || '';
                     document.getElementById('qual-english-degree').checked = !!profile.hasEnglishDegree4Year;
@@ -1721,10 +1733,27 @@
                 language: document.getElementById('language').value,
                 hobbies: document.getElementById('hobbies').value,
                 address: document.getElementById('address').value,
-                contact: document.getElementById('contact').value,
+                contact: (function () {
+                    const national = document.getElementById('contact').value;
+                    if (window.RemoedPhMobile && RemoedPhMobile.normalizePhMobile) {
+                        const n = RemoedPhMobile.normalizePhMobile(national);
+                        if (!n.ok) throw new Error(n.error);
+                        return n.e164;
+                    }
+                    return national;
+                })(),
                 email: document.getElementById('email').value,
                 username: document.getElementById('username').value,
-                emergencyContact: document.getElementById('emergency-contact').value,
+                emergencyContact: (function () {
+                    const raw = document.getElementById('emergency-contact').value;
+                    if (!String(raw || '').trim()) return '';
+                    if (window.RemoedPhMobile && RemoedPhMobile.normalizePhMobile) {
+                        const n = RemoedPhMobile.normalizePhMobile(raw);
+                        if (!n.ok) throw new Error('Emergency contact: ' + n.error);
+                        return n.e164;
+                    }
+                    return raw;
+                })(),
                 introduction: document.getElementById('introduction').value,
                 experience: document.getElementById('experience').value,
                 education: collectEducationData(),
@@ -2954,7 +2983,10 @@
             const address = profile.address || '-';
             
             document.getElementById('sidebar-email-display').textContent = email;
-            document.getElementById('sidebar-contact-display').textContent = contact !== '-' ? contact : '-';
+            const contactDisplay = contact !== '-'
+                ? (String(contact).startsWith('+') ? contact : ('+63' + String(contact).replace(/\D/g, '').replace(/^63/, '').replace(/^0/, '')))
+                : '-';
+            document.getElementById('sidebar-contact-display').textContent = contactDisplay;
             
             if (birthday !== '-') {
                 try {
@@ -3004,6 +3036,7 @@
                 'nickname': 'Teacher Nickname',
                 'email': 'Email',
                 'username': 'Username',
+                'contact': 'Contact Number',
                 'introduction': 'Introduction',
                 'profilePicture': 'Profile Picture'
             };
@@ -3011,7 +3044,6 @@
             const optionalFields = {
                 'birthday': 'Birthday',
                 'gender': 'Gender',
-                'contact': 'Contact Number',
                 'address': 'Address',
                 'hobbies': 'Hobbies',
                 'experience': 'Experience',

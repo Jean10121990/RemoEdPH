@@ -64,6 +64,7 @@ const { logEmergencyCreditRetained } = require('./services/bookingCreditLedger')
 const crypto = require('crypto');
 const { body, validationResult } = require('express-validator');
 const { encryptPiiString } = require('./utils/piiCrypto');
+const { normalizeIntlMobile } = require('./utils/intlMobile');
 const { getBookingStartAsDate } = require('./utils/bookingScheduledStart');
 const {
   getClassroomEntryGate,
@@ -318,50 +319,107 @@ router.post('/profile', verifyToken, requireStudent, async (req, res) => {
       birthday,
       age,
       contact,
+      contactCountry,
+      contactNational,
       email,
       address,
       language,
       hobbies,
       parentName,
       parentContact,
+      parentContactCountry,
+      parentContactNational,
       parentEmail,
       emergencyContact,
       emergencyContactPerson,
       emergencyContactNumber,
+      emergencyContactCountry,
+      emergencyContactNational,
       aboutMe,
       education
     } = req.body;
 
+    const first = String(firstName || '').trim();
+    const last = String(lastName || '').trim();
+    const emailVal = String(email || '').trim();
+    if (!first) {
+      return res.status(400).json({ success: false, error: 'First name is required.' });
+    }
+    if (!last) {
+      return res.status(400).json({ success: false, error: 'Last name is required.' });
+    }
+    if (!emailVal) {
+      return res.status(400).json({ success: false, error: 'Email is required.' });
+    }
+
+    const contactIso = String(contactCountry || '').trim();
+    const contactNat = contactNational != null ? contactNational : contact;
+    const contactNorm = normalizeIntlMobile(contactIso, contactNat);
+    if (!contactNorm.ok) {
+      return res.status(400).json({ success: false, error: contactNorm.error });
+    }
+
+    let parentE164 = '';
+    let parentIso = '';
+    const parentNatRaw = parentContactNational != null ? parentContactNational : parentContact;
+    if (String(parentNatRaw || '').trim() || String(parentContactCountry || '').trim()) {
+      const pNorm = normalizeIntlMobile(parentContactCountry, parentNatRaw);
+      if (!pNorm.ok) {
+        return res.status(400).json({
+          success: false,
+          error: 'Parent contact: ' + pNorm.error,
+        });
+      }
+      parentE164 = pNorm.e164;
+      parentIso = pNorm.iso;
+    }
+
     const person = String(emergencyContactPerson || '').trim();
-    const number = String(emergencyContactNumber || '').trim();
+    let emergE164 = '';
+    let emergIso = '';
+    const emergNatRaw = emergencyContactNational != null ? emergencyContactNational : emergencyContactNumber;
+    if (String(emergNatRaw || '').trim() || String(emergencyContactCountry || '').trim()) {
+      const eNorm = normalizeIntlMobile(emergencyContactCountry, emergNatRaw);
+      if (!eNorm.ok) {
+        return res.status(400).json({
+          success: false,
+          error: 'Emergency contact number: ' + eNorm.error,
+        });
+      }
+      emergE164 = eNorm.e164;
+      emergIso = eNorm.iso;
+    }
     const legacyEmergency = String(emergencyContact || '').trim();
     const combinedEmergency =
-      person || number
-        ? [person, number].filter(Boolean).join(' · ')
+      person || emergE164
+        ? [person, emergE164].filter(Boolean).join(' · ')
         : legacyEmergency;
 
     const { ageFromBirthday } = require('./utils/ageFromBirthday');
     const computedAge = ageFromBirthday(birthday);
 
     const updateData = {
-      firstName: firstName || '',
+      firstName: first,
       middleName: middleName || '',
-      lastName: lastName || '',
+      lastName: last,
       gender: gender || '',
       birthday: birthday || null,
       age: computedAge != null ? computedAge : (age != null && age !== '' ? Number(age) : null),
       // Raw updates skip Mongoose setters — encrypt here when PII_ENCRYPTION_KEY is set
-      contact: encryptPiiString(contact || ''),
-      email: email || req.user.username, // Use username as fallback for email
+      contact: encryptPiiString(contactNorm.e164),
+      contactCountry: contactNorm.iso,
+      email: emailVal,
       address: address || '',
       language: language || '',
       hobbies: hobbies || '',
       parentName: parentName || '',
-      parentContact: encryptPiiString(parentContact || ''),
+      parentContact: encryptPiiString(parentE164),
+      parentContactCountry: parentIso,
       parentEmail: String(parentEmail || '').trim(),
       emergencyContact: encryptPiiString(combinedEmergency || ''),
       emergencyContactPerson: person,
-      emergencyContactNumber: encryptPiiString(number),
+      emergencyContactNumber: encryptPiiString(emergE164),
+      emergencyContactCountry: emergIso,
       aboutMe: aboutMe || '',
       education: education || []
     };

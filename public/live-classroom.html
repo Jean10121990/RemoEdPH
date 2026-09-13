@@ -56,7 +56,7 @@
     <link rel="stylesheet" href="style.css">
   <!-- After global styles so chat / layout rules are not overridden -->
   <link rel="stylesheet" href="live-classroom.css?v=lc-qa-progress-1" />
-  <link rel="stylesheet" href="css/live-classroom-redesign.css?v=mint-forest-3" />
+  <link rel="stylesheet" href="css/live-classroom-redesign.css?v=mint-forest-4" />
   <link rel="stylesheet" href="css/student-badges.css?v=2" />
 </head>
 <body class="page-live-classroom">
@@ -170,6 +170,12 @@
           </div>
           <video id="remote-video" autoplay playsinline muted></video>
           <div class="video-empty-hint" id="peer-video-empty">Waiting for peer…</div>
+          <div id="lc-teacher-media-controls" class="lc-teacher-media-controls" hidden>
+            <button type="button" id="force-mute-student-mic" class="video-control-btn lc-media-lock-btn" title="Mute student microphone">Mute mic</button>
+            <button type="button" id="force-unlock-student-mic" class="video-control-btn lc-media-lock-btn" title="Allow student microphone">Allow mic</button>
+            <button type="button" id="force-off-student-cam" class="video-control-btn lc-media-lock-btn" title="Turn off student camera">Cam off</button>
+            <button type="button" id="force-unlock-student-cam" class="video-control-btn lc-media-lock-btn" title="Allow student camera">Allow cam</button>
+          </div>
         </div>
         <div class="video student is-local" id="local-video-tile">
           <div class="video-header">
@@ -184,7 +190,10 @@
             <button id="toggle-camera" class="video-control-btn" type="button" title="Toggle camera" aria-label="Toggle camera">C</button>
             <button id="toggle-mic" class="video-control-btn" type="button" title="Toggle microphone" aria-label="Toggle microphone">M</button>
             <button id="toggle-mute" class="video-control-btn is-off" type="button" title="Unmute peer audio" aria-label="Unmute peer audio">A</button>
+            <button id="toggle-camera-settings" class="video-control-btn" type="button" title="Camera background" aria-label="Camera background" aria-expanded="false">BG</button>
           </div>
+          <div id="lc-camera-settings-panel" class="lc-camera-settings-panel" hidden></div>
+          <div id="lc-media-toast" class="lc-media-toast" hidden role="status" aria-live="polite"></div>
         </div>
       </div>
       
@@ -999,7 +1008,8 @@
           });
       }
 
-      function setActiveTab(tabName = 'lesson-content') {
+      function setActiveTab(tabName = 'lesson-content', opts = {}) {
+        const silent = !!(opts && opts.silent);
         tabs.forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tabName));
         
         if (lessonContentPanel) {
@@ -1013,9 +1023,19 @@
             setTimeout(() => {
               initWhiteboardCanvas();
               if (wbAnnotateToggle) wbAnnotateToggle.classList.add('active');
+              wbEnabled = true;
+              if (whiteboardCanvas) whiteboardCanvas.style.pointerEvents = 'auto';
               // Restore whiteboard drawings when switching back to whiteboard tab
               restoreWhiteboard();
+              if (socket && socket.connected) {
+                socket.emit('whiteboard-state-request', { room });
+              }
             }, 100);
+            if (!silent && userType === 'teacher' && socket && socket.connected) {
+              socket.emit('whiteboard-mode-start', { room });
+            }
+          } else if (!silent && userType === 'teacher' && socket && socket.connected) {
+            socket.emit('whiteboard-mode-stop', { room });
           }
         }
         if (portalVideosPanel) {
@@ -5513,6 +5533,18 @@
       }
 
       async function applyBackgroundBlur(enable) {
+        // Prefer RemoedVirtualBackground — avoid a second MediaPipe pipeline.
+        if (typeof RemoedVirtualBackground !== 'undefined') {
+          try {
+            if (typeof ensureVbController === 'function') {
+              const vb = ensureVbController();
+              if (vb) {
+                await vb.applyMode(enable ? 'blur' : 'off');
+                return false;
+              }
+            }
+          } catch (_vbGate) {}
+        }
         if (!localStream) return false;
         const videoTrack = localStream.getVideoTracks()[0];
         if (!videoTrack) return false;
@@ -5923,10 +5955,11 @@
         });
       }
 
-      // Virtual background (blur + image presets)
       let vbController = null;
+      let vbgMounted = false;
       let vbgPresetIndex = -1;
-      const toggleVbgImageBtn = document.getElementById('toggle-vbg-image');
+      const cameraSettingsBtn = document.getElementById('toggle-camera-settings');
+      const cameraSettingsPanel = document.getElementById('lc-camera-settings-panel');
       function ensureVbController() {
         if (vbController || typeof RemoedVirtualBackground === 'undefined') return vbController;
         vbController = RemoedVirtualBackground.create({
@@ -5936,23 +5969,37 @@
         });
         return vbController;
       }
+      function mountCameraSettingsIfNeeded() {
+        if (vbgMounted || !cameraSettingsPanel) return;
+        const vb = ensureVbController();
+        if (!vb || typeof RemoedVirtualBackground.mountSettingsUI !== 'function') return;
+        RemoedVirtualBackground.mountSettingsUI(cameraSettingsPanel, vb, {
+          storageKey: 'remoed_vbg_' + String(room || 'session')
+        });
+        vbgMounted = true;
+      }
+      if (cameraSettingsBtn && cameraSettingsPanel) {
+        cameraSettingsBtn.addEventListener('click', function () {
+          mountCameraSettingsIfNeeded();
+          const open = cameraSettingsPanel.hasAttribute('hidden');
+          if (open) cameraSettingsPanel.removeAttribute('hidden');
+          else cameraSettingsPanel.setAttribute('hidden', '');
+          cameraSettingsBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        });
+      }
+      // Legacy blur buttons (if present) — route through VB module, do not run duplicate pipeline
+      const toggleVbgImageBtn = document.getElementById('toggle-vbg-image');
       if (toggleBgBlurBtn) {
-        toggleBgBlurBtn.style.display = userType === 'teacher' ? '' : 'none';
         toggleBgBlurBtn.addEventListener('click', async function () {
           const vb = ensureVbController();
           if (!vb) return;
           isBgBlurOn = !isBgBlurOn;
-          if (isBgBlurOn) {
-            vbgPresetIndex = -1;
-            await vb.applyMode('blur');
-          } else {
-            await vb.applyMode('off');
-          }
+          if (isBgBlurOn) await vb.applyMode('blur');
+          else await vb.applyMode('off');
           syncBgBlurButton(false);
         });
       }
       if (toggleVbgImageBtn) {
-        toggleVbgImageBtn.style.display = userType === 'teacher' ? '' : 'none';
         toggleVbgImageBtn.addEventListener('click', async function () {
           const vb = ensureVbController();
           if (!vb || !RemoedVirtualBackground.PRESET_BACKGROUNDS.length) return;
@@ -5960,15 +6007,135 @@
           vbgPresetIndex = (vbgPresetIndex + 1) % (RemoedVirtualBackground.PRESET_BACKGROUNDS.length + 1);
           if (vbgPresetIndex >= RemoedVirtualBackground.PRESET_BACKGROUNDS.length) {
             await vb.applyMode('off');
-            toggleVbgImageBtn.style.opacity = '0.7';
           } else {
             const preset = RemoedVirtualBackground.PRESET_BACKGROUNDS[vbgPresetIndex];
             await vb.applyMode('image', preset.url);
-            toggleVbgImageBtn.style.opacity = '1';
-            toggleVbgImageBtn.title = 'Virtual Background: ' + preset.label;
           }
           syncBgBlurButton(false);
         });
+      }
+
+      // Teacher → student mic/camera lock
+      let mediaLocked = { audio: false, video: false };
+      const teacherMediaControls = document.getElementById('lc-teacher-media-controls');
+      const mediaToastEl = document.getElementById('lc-media-toast');
+      function showMediaToast(msg) {
+        if (!mediaToastEl) return;
+        mediaToastEl.textContent = msg;
+        mediaToastEl.removeAttribute('hidden');
+        clearTimeout(showMediaToast._t);
+        showMediaToast._t = setTimeout(function () {
+          mediaToastEl.setAttribute('hidden', '');
+        }, 3200);
+      }
+      function applyLocalMediaLock() {
+        if (!localStream) return;
+        const audioTrack = localStream.getAudioTracks()[0];
+        const videoTrack = localStream.getVideoTracks()[0];
+        if (mediaLocked.audio && audioTrack) {
+          audioTrack.enabled = false;
+          isMicOn = false;
+          if (toggleMicBtn) {
+            toggleMicBtn.classList.add('is-off');
+            toggleMicBtn.style.opacity = '0.55';
+            toggleMicBtn.disabled = true;
+          }
+        } else if (toggleMicBtn) {
+          toggleMicBtn.disabled = false;
+        }
+        if (mediaLocked.video && videoTrack) {
+          videoTrack.enabled = false;
+          isCameraOn = false;
+          if (toggleCameraBtn) {
+            toggleCameraBtn.classList.add('is-off');
+            toggleCameraBtn.style.opacity = '0.55';
+            toggleCameraBtn.disabled = true;
+          }
+        } else if (toggleCameraBtn) {
+          toggleCameraBtn.disabled = false;
+        }
+      }
+      function emitMediaControl(partial) {
+        if (!socket || !socket.connected || userType !== 'teacher') return;
+        socket.emit('media-control', Object.assign({
+          room: room,
+          targetRole: 'student'
+        }, partial));
+      }
+      if (userType === 'teacher' && teacherMediaControls) {
+        teacherMediaControls.removeAttribute('hidden');
+        const muteMic = document.getElementById('force-mute-student-mic');
+        const allowMic = document.getElementById('force-unlock-student-mic');
+        const camOff = document.getElementById('force-off-student-cam');
+        const camOn = document.getElementById('force-unlock-student-cam');
+        if (muteMic) muteMic.addEventListener('click', function () { emitMediaControl({ audio: false }); });
+        if (allowMic) allowMic.addEventListener('click', function () { emitMediaControl({ audio: true }); });
+        if (camOff) camOff.addEventListener('click', function () { emitMediaControl({ video: false }); });
+        if (camOn) camOn.addEventListener('click', function () { emitMediaControl({ video: true }); });
+      }
+      if (socket) {
+        socket.on('media-control', function (payload) {
+          if (userType !== 'student') return;
+          if (!payload || payload.targetRole !== 'student') return;
+          if (typeof payload.audio === 'boolean') {
+            mediaLocked.audio = !payload.audio;
+            if (payload.audio === false) showMediaToast('Teacher muted your microphone');
+            else showMediaToast('Teacher allowed your microphone');
+          }
+          if (typeof payload.video === 'boolean') {
+            mediaLocked.video = !payload.video;
+            if (payload.video === false) showMediaToast('Teacher turned off your camera');
+            else showMediaToast('Teacher allowed your camera');
+          }
+          applyLocalMediaLock();
+          if (typeof payload.audio === 'boolean' && payload.audio && localStream) {
+            const at = localStream.getAudioTracks()[0];
+            if (at) {
+              at.enabled = true;
+              isMicOn = true;
+              if (toggleMicBtn) {
+                toggleMicBtn.classList.remove('is-off');
+                toggleMicBtn.style.opacity = '1';
+              }
+            }
+          }
+          if (typeof payload.video === 'boolean' && payload.video && localStream) {
+            const vt = localStream.getVideoTracks()[0];
+            if (vt) {
+              vt.enabled = true;
+              isCameraOn = true;
+              if (toggleCameraBtn) {
+                toggleCameraBtn.classList.remove('is-off');
+                toggleCameraBtn.style.opacity = '1';
+              }
+            }
+          }
+        });
+        socket.on('media-control-state', function (state) {
+          if (userType !== 'teacher' || !state) return;
+          const muteMic = document.getElementById('force-mute-student-mic');
+          const camOff = document.getElementById('force-off-student-cam');
+          if (muteMic) muteMic.classList.toggle('is-active', state.audio === false);
+          if (camOff) camOff.classList.toggle('is-active', state.video === false);
+        });
+      }
+
+      // Gate local mic/cam toggles while teacher-locked
+      if (toggleCameraBtn) {
+        toggleCameraBtn.addEventListener('click', function (e) {
+          if (userType === 'student' && mediaLocked.video) {
+            e.stopImmediatePropagation();
+            showMediaToast('Camera locked by teacher');
+          }
+        }, true);
+      }
+      if (toggleMicBtn) {
+        toggleMicBtn.addEventListener('click', function (e) {
+          if (userType === 'student' && mediaLocked.audio) {
+            e.stopImmediatePropagation();
+            showMediaToast('Microphone locked by teacher');
+          }
+        }, true);
       }
 
       // Reconnection logic
@@ -8115,6 +8282,31 @@
           }
         } catch (err) {
           console.error('Error applying remote whiteboard clear:', err);
+        }
+      });
+
+      socket.on('whiteboard-mode-start', () => {
+        if (userType === 'student') {
+          setActiveTab('whiteboard', { silent: true });
+        }
+      });
+      socket.on('whiteboard-mode-stop', () => {
+        // Students may stay on board to finish annotating; do not force leave.
+      });
+      socket.on('whiteboard-state-sync', (data = {}) => {
+        try {
+          if (data.active && userType === 'student') {
+            setActiveTab('whiteboard', { silent: true });
+          }
+          const strokes = Array.isArray(data.strokes) ? data.strokes : [];
+          if (!strokes.length) return;
+          wbHistory = strokes.slice();
+          if (!whiteboardCanvas || !wbCtx) {
+            initWhiteboardCanvas();
+          }
+          setTimeout(() => restoreWhiteboard(), 120);
+        } catch (err) {
+          console.error('Error applying whiteboard-state-sync:', err);
         }
       });
 

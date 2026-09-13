@@ -186,6 +186,16 @@ const chatHistory = new Map();
 
 // Store user information for attendance tracking
 const userSessions = new Map(); // socketId -> { room, userType, userId, username }
+const mediaControlStateByRoom = new Map(); // room -> { audio, video }
+const whiteboardStateByRoom = new Map(); // room -> { active, strokes }
+const WB_STROKE_CAP = 2000;
+function getWbState(room) {
+  if (!whiteboardStateByRoom.has(room)) {
+    whiteboardStateByRoom.set(room, { active: false, strokes: [] });
+  }
+  return whiteboardStateByRoom.get(room);
+}
+
 
 // Store REST API signaling messages
 const signalingMessages = new Map(); // room -> [messages]
@@ -2049,6 +2059,21 @@ io.on('connection', socket => {
             console.log('📜 No chat history for room:', room);
         }
 
+        try {
+            const wbSt = getWbState(room);
+            if (wbSt.active || (wbSt.strokes && wbSt.strokes.length)) {
+                socket.emit('whiteboard-state-sync', {
+                    room,
+                    strokes: wbSt.strokes.slice(),
+                    active: wbSt.active,
+                });
+            }
+            const mediaSt = mediaControlStateByRoom.get(room);
+            if (mediaSt && userType === 'student') {
+                socket.emit('media-control', Object.assign({ room, targetRole: 'student' }, mediaSt));
+            }
+        } catch (_wbJoin) {}
+
         // Send any existing lesson materials to the new participant (from database)
         loadLessonMaterialsFromDB(room).then(materials => {
             if (materials && materials.length > 0) {
@@ -2259,6 +2284,21 @@ io.on('connection', socket => {
         } else {
             console.log('📜 No chat history for room:', room);
         }
+
+        try {
+            const wbSt = getWbState(room);
+            if (wbSt.active || (wbSt.strokes && wbSt.strokes.length)) {
+                socket.emit('whiteboard-state-sync', {
+                    room,
+                    strokes: wbSt.strokes.slice(),
+                    active: wbSt.active,
+                });
+            }
+            const mediaSt = mediaControlStateByRoom.get(room);
+            if (mediaSt && userType === 'student') {
+                socket.emit('media-control', Object.assign({ room, targetRole: 'student' }, mediaSt));
+            }
+        } catch (_wbJoin) {}
         
         // Also send a signaling message to indicate teacher presence
         if (userType === 'teacher') {
@@ -2530,6 +2570,16 @@ io.on('connection', socket => {
         }
         
         // Clean up user session
+        try {
+          const leftRoom = (userSessions.get(socket.id) || {}).room || socket.room;
+          if (leftRoom) {
+            const roomSet = io.sockets.adapter.rooms.get(leftRoom);
+            if (!roomSet || roomSet.size <= 1) {
+              whiteboardStateByRoom.delete(leftRoom);
+              mediaControlStateByRoom.delete(leftRoom);
+            }
+          }
+        } catch (_cleanErr) {}
         userSessions.delete(socket.id);
     });
     
@@ -3012,6 +3062,70 @@ io.on('connection', socket => {
             console.error('❌ [SERVER] Error handling lesson-video-sync:', err);
         }
     });
+
+
+  // Teacher media control (mic/camera lock for students)
+  socket.on('media-control', (data = {}) => {
+    try {
+      const room = data.room || socket.room;
+      const sender = userSessions.get(socket.id);
+      if (!room || !sender || sender.userType !== 'teacher') return;
+      const clients = io.sockets.adapter.rooms.get(room);
+      if (!clients) return;
+      const prev = mediaControlStateByRoom.get(room) || {};
+      const next = Object.assign({}, prev);
+      if (typeof data.audio === 'boolean') next.audio = data.audio;
+      if (typeof data.video === 'boolean') next.video = data.video;
+      mediaControlStateByRoom.set(room, next);
+      const payload = Object.assign({ room, targetRole: 'student' }, next);
+      clients.forEach((clientId) => {
+        if (clientId === socket.id) return;
+        const info = userSessions.get(clientId);
+        if (info && info.userType === 'student') {
+          io.to(clientId).emit('media-control', payload);
+        }
+      });
+      socket.emit('media-control-state', next);
+    } catch (err) {
+      console.error('Error handling media-control:', err);
+    }
+  });
+
+  socket.on('whiteboard-mode-start', (data = {}) => {
+    try {
+      const room = data.room || socket.room;
+      const sender = userSessions.get(socket.id);
+      if (!room || !sender || sender.userType !== 'teacher') return;
+      const st = getWbState(room);
+      st.active = true;
+      socket.to(room).emit('whiteboard-mode-start', { room });
+      socket.to(room).emit('whiteboard-state-sync', { room, strokes: st.strokes.slice(), active: true });
+    } catch (err) {
+      console.error('Error whiteboard-mode-start:', err);
+    }
+  });
+  socket.on('whiteboard-mode-stop', (data = {}) => {
+    try {
+      const room = data.room || socket.room;
+      const sender = userSessions.get(socket.id);
+      if (!room || !sender || sender.userType !== 'teacher') return;
+      const st = getWbState(room);
+      st.active = false;
+      socket.to(room).emit('whiteboard-mode-stop', { room });
+    } catch (err) {
+      console.error('Error whiteboard-mode-stop:', err);
+    }
+  });
+  socket.on('whiteboard-state-request', (data = {}) => {
+    try {
+      const room = data.room || socket.room;
+      if (!room) return;
+      const st = getWbState(room);
+      socket.emit('whiteboard-state-sync', { room, strokes: st.strokes.slice(), active: st.active });
+    } catch (err) {
+      console.error('Error whiteboard-state-request:', err);
+    }
+  });
 
   // Whiteboard / Annotation forwarding
   socket.on('whiteboard-draw', (data) => {

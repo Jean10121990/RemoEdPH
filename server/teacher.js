@@ -99,6 +99,7 @@ const realtime = require('./realtime');
 const { withRedis } = require('./utils/redisClient');
 const { teacherPeerSearchLimiter } = require('./middleware/apiRateLimits');
 const { encryptPiiString, decryptPiiString } = require('./utils/piiCrypto');
+const { normalizePhMobile } = require('./utils/phMobile');
 const {
   processImage,
   extractImageBufferFromDataUrl,
@@ -2508,6 +2509,21 @@ router.post('/profile', verifyToken, requireTeacher, async (req, res) => {
         });
       }
     }
+
+    const contactNorm = normalizePhMobile(profileData.contact);
+    if (!contactNorm.ok) {
+      return res.status(400).json({ error: contactNorm.error });
+    }
+    let emergencyE164 = '';
+    if (String(profileData.emergencyContact || '').trim()) {
+      const emergNorm = normalizePhMobile(profileData.emergencyContact);
+      if (!emergNorm.ok) {
+        return res.status(400).json({
+          error: 'Emergency contact: ' + emergNorm.error.replace('Contact number is required.', 'enter a valid PH mobile or leave blank.'),
+        });
+      }
+      emergencyE164 = emergNorm.e164;
+    }
     
     // Prepare documents data - ensure arrays are properly formatted
     const diplomasArray = Array.isArray(profileData.documents?.diplomas) ? profileData.documents.diplomas : [];
@@ -2570,10 +2586,10 @@ router.post('/profile', verifyToken, requireTeacher, async (req, res) => {
         language: profileData.language,
         hobbies: profileData.hobbies,
         address: profileData.address,
-        contact: encryptPiiString(profileData.contact || ''),
+        contact: encryptPiiString(contactNorm.e164),
         email: profileData.email,
         username: profileData.username,
-        emergencyContact: encryptPiiString(profileData.emergencyContact || ''),
+        emergencyContact: encryptPiiString(emergencyE164),
         introduction: profileData.introduction,
         experience: profileData.experience,
         profilePicture: resolvedProfilePicture,

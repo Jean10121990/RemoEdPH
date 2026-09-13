@@ -16,6 +16,11 @@ const studentSchema = new mongoose.Schema({
   birthday: { type: Date },
   age: { type: Number },
   contact: piiContactString(''),
+  /** ISO 3166-1 alpha-2 for contact dialing UI (plain, not encrypted). */
+  contactCountry: { type: String, default: '' },
+  /** ISO for optional parent / emergency phone fields. */
+  parentContactCountry: { type: String, default: '' },
+  emergencyContactCountry: { type: String, default: '' },
   address: { type: String },
   language: { type: String },
   hobbies: { type: String },

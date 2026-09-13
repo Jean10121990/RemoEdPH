@@ -29,6 +29,19 @@
             box-sizing: border-box;
             overflow-x: hidden;
         }
+        @media (max-width: 768px) {
+            .remoed-content {
+                margin-left: 0 !important;
+                max-width: 100vw !important;
+                padding: 12px 14px 80px;
+            }
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            .phone-input-row {
+                width: 100%;
+            }
+        }
         
         .profile-container {
             max-width: 1200px;
@@ -646,7 +659,7 @@
     </style>
     <link rel="stylesheet" href="css/teacher-sidebar.css">
     <link rel="stylesheet" href="css/portal-chrome-compact.css">
-    <link rel="stylesheet" href="css/student-portal-layout.css?v=notif-red-1">
+    <link rel="stylesheet" href="css/student-portal-layout.css?v=phase-a-1">
     <link rel="stylesheet" href="css/student-sidebar.css?v=logout-pin-2">
     <link rel="stylesheet" href="css/student-badges.css?v=1">
 </head>
@@ -769,12 +782,19 @@
                             <h4 class="info-section-title">Contact Information</h4>
                             <div class="form-grid">
                                 <div class="form-group full-width">
-                                    <label class="form-label">Email</label>
-                                    <input type="email" class="form-input" id="email" placeholder="Email" disabled>
+                                    <label class="form-label">Email *</label>
+                                    <input type="email" class="form-input" id="email" placeholder="Email" required disabled>
                                 </div>
                                 <div class="form-group">
-                                    <label class="form-label">Contact Number</label>
-                                    <input type="tel" class="form-input" id="contact" placeholder="Contact Number" disabled>
+                                    <label class="form-label">Country *</label>
+                                    <select class="form-input" id="contactCountry" disabled></select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Contact Number *</label>
+                                    <div class="phone-input-row" style="display:flex;align-items:stretch;gap:0;">
+                                        <span class="phone-prefix" id="contactDialCode" style="display:inline-flex;align-items:center;padding:0 10px;background:#e8f0ee;border:1px solid #cbd5e1;border-right:0;border-radius:6px 0 0 6px;font-weight:600;color:#0f766e;white-space:nowrap;">+</span>
+                                        <input type="tel" class="form-input" id="contact" placeholder="National number" inputmode="numeric" pattern="[0-9]*" autocomplete="tel-national" disabled style="border-radius:0 6px 6px 0;flex:1;">
+                                    </div>
                                 </div>
                                 <div class="form-group full-width">
                                     <label class="form-label">Address</label>
@@ -815,8 +835,17 @@
                                     <input type="text" class="form-input" id="parentName" placeholder="Parent/Guardian Name" disabled>
                                 </div>
                                 <div class="form-group">
+                                    <label class="form-label">Parent/Guardian Country</label>
+                                    <select class="form-input" id="parentContactCountry" disabled>
+                                        <option value="">Select country</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
                                     <label class="form-label">Parent/Guardian Contact</label>
-                                    <input type="tel" class="form-input" id="parentContact" placeholder="Parent/Guardian Contact" disabled>
+                                    <div class="phone-input-row" style="display:flex;align-items:stretch;gap:0;">
+                                        <span class="phone-prefix" id="parentContactDialCode" style="display:inline-flex;align-items:center;padding:0 10px;background:#e8f0ee;border:1px solid #cbd5e1;border-right:0;border-radius:6px 0 0 6px;font-weight:600;color:#0f766e;white-space:nowrap;min-width:3.5rem;">+</span>
+                                        <input type="tel" class="form-input" id="parentContact" placeholder="National number" inputmode="numeric" pattern="[0-9]*" disabled style="border-radius:0 6px 6px 0;flex:1;">
+                                    </div>
                                 </div>
                                 <div class="form-group full-width">
                                     <label class="form-label">Parent/Guardian Email</label>
@@ -827,8 +856,17 @@
                                     <input type="text" class="form-input" id="emergencyContactPerson" placeholder="Emergency contact person" disabled>
                                 </div>
                                 <div class="form-group">
+                                    <label class="form-label">Emergency Country</label>
+                                    <select class="form-input" id="emergencyContactCountry" disabled>
+                                        <option value="">Select country</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
                                     <label class="form-label">Emergency Contact Number</label>
-                                    <input type="tel" class="form-input" id="emergencyContactNumber" placeholder="Emergency contact number" disabled>
+                                    <div class="phone-input-row" style="display:flex;align-items:stretch;gap:0;">
+                                        <span class="phone-prefix" id="emergencyContactDialCode" style="display:inline-flex;align-items:center;padding:0 10px;background:#e8f0ee;border:1px solid #cbd5e1;border-right:0;border-radius:6px 0 0 6px;font-weight:600;color:#0f766e;white-space:nowrap;min-width:3.5rem;">+</span>
+                                        <input type="tel" class="form-input" id="emergencyContactNumber" placeholder="National number" inputmode="numeric" pattern="[0-9]*" disabled style="border-radius:0 6px 6px 0;flex:1;">
+                                    </div>
                                 </div>
                                 <div class="form-group full-width" id="emergency-contact-legacy-wrap" style="display: none;">
                                     <label class="form-label">Emergency Contact (previous notes)</label>
@@ -931,6 +969,7 @@
 
     <script src="avatar-helper.js"></script>
     <script src="js/age-from-birthday.js?v=1"></script>
+    <script src="js/intl-mobile.js?v=1"></script>
     <script src="js/student-badges.js?v=1"></script>
     <script>
         /** Bearer for /api/student/* — aligns with remoed_student_auth / remoed_student_token from login. */
@@ -986,6 +1025,7 @@
             };
             
             updateProfileDisplay();
+            initStudentPhoneFields();
             loadProfile();
             loadSettingsData();
             setupProfilePictureUpload();
@@ -995,7 +1035,52 @@
                 birthdayInput.addEventListener('input', syncAgeFromBirthday);
             }
         });
-        
+
+        function syncDialCode(countrySelectId, dialSpanId) {
+            const sel = document.getElementById(countrySelectId);
+            const span = document.getElementById(dialSpanId);
+            if (!span) return;
+            const iso = sel ? sel.value : '';
+            span.textContent = (window.RemoedIntlMobile && RemoedIntlMobile.dialLabelForIso)
+                ? RemoedIntlMobile.dialLabelForIso(iso)
+                : '+';
+        }
+
+        function wireCountryDial(countrySelectId, dialSpanId) {
+            const sel = document.getElementById(countrySelectId);
+            if (!sel || sel._remoedDialWired) return;
+            sel._remoedDialWired = true;
+            sel.addEventListener('change', function () {
+                syncDialCode(countrySelectId, dialSpanId);
+            });
+        }
+
+        function initStudentPhoneFields() {
+            if (!window.RemoedIntlMobile) return;
+            RemoedIntlMobile.fillCountrySelect(document.getElementById('contactCountry'), '');
+            RemoedIntlMobile.fillCountrySelect(document.getElementById('parentContactCountry'), '');
+            RemoedIntlMobile.fillCountrySelect(document.getElementById('emergencyContactCountry'), '');
+            wireCountryDial('contactCountry', 'contactDialCode');
+            wireCountryDial('parentContactCountry', 'parentContactDialCode');
+            wireCountryDial('emergencyContactCountry', 'emergencyContactDialCode');
+            syncDialCode('contactCountry', 'contactDialCode');
+            syncDialCode('parentContactCountry', 'parentContactDialCode');
+            syncDialCode('emergencyContactCountry', 'emergencyContactDialCode');
+        }
+
+        function applyPhoneField(countrySelectId, nationalInputId, dialSpanId, storedE164, storedIso) {
+            if (!window.RemoedIntlMobile) {
+                const nat = document.getElementById(nationalInputId);
+                if (nat) nat.value = storedE164 || '';
+                return;
+            }
+            let iso = String(storedIso || '').trim().toUpperCase();
+            if (!iso && storedE164) iso = RemoedIntlMobile.guessIsoFromE164(storedE164) || '';
+            RemoedIntlMobile.fillCountrySelect(document.getElementById(countrySelectId), iso);
+            const nat = document.getElementById(nationalInputId);
+            if (nat) nat.value = RemoedIntlMobile.nationalFromE164(storedE164 || '', iso);
+            syncDialCode(countrySelectId, dialSpanId);
+        }        
     // Load profile picture from backend (uses shared setAvatar)
     async function loadProfilePicture(studentId) {
         try {
@@ -1560,7 +1645,13 @@
             }
             document.getElementById('birthday').value = birthdayValue;
             syncAgeFromBirthday();
-            document.getElementById('contact').value = profile.contact || '';
+            applyPhoneField(
+                'contactCountry',
+                'contact',
+                'contactDialCode',
+                profile.contact || '',
+                profile.contactCountry || ''
+            );
             
             // Use profile email if available, otherwise use login email from localStorage
             const loginEmail = localStorage.getItem('remoedUsername') || '';
@@ -1570,12 +1661,24 @@
             document.getElementById('language').value = profile.language || '';
             document.getElementById('hobbies').value = profile.hobbies || '';
             document.getElementById('parentName').value = profile.parentName || '';
-            document.getElementById('parentContact').value = profile.parentContact || '';
+            applyPhoneField(
+                'parentContactCountry',
+                'parentContact',
+                'parentContactDialCode',
+                profile.parentContact || '',
+                profile.parentContactCountry || ''
+            );
             document.getElementById('parentEmail').value = profile.parentEmail || profile.email || '';
             const emergencyPerson = profile.emergencyContactPerson || '';
             const emergencyNumber = profile.emergencyContactNumber || '';
             document.getElementById('emergencyContactPerson').value = emergencyPerson;
-            document.getElementById('emergencyContactNumber').value = emergencyNumber;
+            applyPhoneField(
+                'emergencyContactCountry',
+                'emergencyContactNumber',
+                'emergencyContactDialCode',
+                emergencyNumber,
+                profile.emergencyContactCountry || ''
+            );
             const legacyEmergency = profile.emergencyContact || '';
             const legacyWrap = document.getElementById('emergency-contact-legacy-wrap');
             const legacyInput = document.getElementById('emergencyContact');
@@ -1730,24 +1833,65 @@
                 }
 
                 // Collect form data
+                const firstName = String(document.getElementById('firstName').value || '').trim();
+                const lastName = String(document.getElementById('lastName').value || '').trim();
+                const emailVal = String(document.getElementById('email').value || '').trim();
+                if (!firstName) throw new Error('First name is required.');
+                if (!lastName) throw new Error('Last name is required.');
+                if (!emailVal) throw new Error('Email is required.');
+
+                const contactCountry = document.getElementById('contactCountry')?.value || '';
+                const contactNational = document.getElementById('contact').value;
+                if (!window.RemoedIntlMobile) throw new Error('Phone helper failed to load. Refresh and try again.');
+                const contactNorm = RemoedIntlMobile.normalizeIntlMobile(contactCountry, contactNational);
+                if (!contactNorm.ok) throw new Error(contactNorm.error);
+
+                const parentCountry = document.getElementById('parentContactCountry')?.value || '';
+                const parentNational = document.getElementById('parentContact').value;
+                let parentContact = '';
+                let parentContactCountry = '';
+                if (String(parentNational || '').trim() || parentCountry) {
+                    const pNorm = RemoedIntlMobile.normalizeIntlMobile(parentCountry, parentNational);
+                    if (!pNorm.ok) throw new Error('Parent contact: ' + pNorm.error);
+                    parentContact = pNorm.e164;
+                    parentContactCountry = pNorm.iso;
+                }
+
+                const emergCountry = document.getElementById('emergencyContactCountry')?.value || '';
+                const emergNational = document.getElementById('emergencyContactNumber').value;
+                let emergencyContactNumber = '';
+                let emergencyContactCountry = '';
+                if (String(emergNational || '').trim() || emergCountry) {
+                    const eNorm = RemoedIntlMobile.normalizeIntlMobile(emergCountry, emergNational);
+                    if (!eNorm.ok) throw new Error('Emergency contact number: ' + eNorm.error);
+                    emergencyContactNumber = eNorm.e164;
+                    emergencyContactCountry = eNorm.iso;
+                }
+
                 const profileData = {
-                    firstName: document.getElementById('firstName').value,
+                    firstName: firstName,
                     middleName: document.getElementById('middleName').value,
-                    lastName: document.getElementById('lastName').value,
+                    lastName: lastName,
                     nickname: document.getElementById('nickname')?.value || '',
                     gender: document.getElementById('gender').value,
                     birthday: document.getElementById('birthday').value,
                     age: document.getElementById('age').value,
-                    contact: document.getElementById('contact').value,
-                    email: document.getElementById('email').value || localStorage.getItem('remoedUsername') || '',
+                    contact: contactNorm.e164,
+                    contactCountry: contactNorm.iso,
+                    contactNational: contactNational,
+                    email: emailVal,
                     address: document.getElementById('address').value,
                     language: document.getElementById('language').value,
                     hobbies: document.getElementById('hobbies').value,
                     parentName: document.getElementById('parentName').value,
-                    parentContact: document.getElementById('parentContact').value,
+                    parentContact: parentContact,
+                    parentContactCountry: parentContactCountry,
+                    parentContactNational: parentNational,
                     parentEmail: document.getElementById('parentEmail').value,
                     emergencyContactPerson: document.getElementById('emergencyContactPerson').value,
-                    emergencyContactNumber: document.getElementById('emergencyContactNumber').value,
+                    emergencyContactNumber: emergencyContactNumber,
+                    emergencyContactCountry: emergencyContactCountry,
+                    emergencyContactNational: emergNational,
                     emergencyContact: document.getElementById('emergencyContact')?.value || '',
                     aboutMe: document.getElementById('aboutMe').value
                 };
@@ -1763,20 +1907,6 @@
                         yearEnded: inputs[3].value
                     };
                 });
-
-                // Validate required fields - make them optional for initial setup
-                if (!profileData.email || profileData.email.trim() === '') {
-                    // Use username as email if not provided
-                    profileData.email = localStorage.getItem('remoedUsername') || '';
-                }
-                
-                if (!profileData.firstName || profileData.firstName.trim() === '') {
-                    profileData.firstName = 'Student'; // Default first name
-                }
-                
-                if (!profileData.lastName || profileData.lastName.trim() === '') {
-                    profileData.lastName = 'User'; // Default last name
-                }
 
                 console.log('Saving profile data:', profileData);
                 console.log('Using token:', token ? 'Token exists' : 'No token');

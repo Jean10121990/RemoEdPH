@@ -123,6 +123,18 @@ body.student-portal.student-sidebar-collapsed .remoed-content {
   max-width: calc(100vw - 72px) !important;
 }
 
+@media (max-width: 768px) {
+  body.student-portal .remoed-content,
+  body.student-portal.student-sidebar-collapsed .remoed-content,
+  body.student-portal.page-student-profile .remoed-content {
+    margin-left: 0 !important;
+    max-width: 100vw !important;
+    width: 100% !important;
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+}
+
 /* Long labels (e.g. My Learning Journey): allow wrap; teacher defaults use single-line ellipsis. */
 body.student-portal .remoed-sidebar .remoed-menu li {
   white-space: normal;

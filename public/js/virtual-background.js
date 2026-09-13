@@ -266,50 +266,117 @@
     return stream ? stream.getVideoTracks()[0] : null;
   };
 
-  function mountSettingsUI(container, controller) {
+  function mountSettingsUI(container, controller, options) {
     if (!container || !controller) return;
+    options = options || {};
+    var storageKey = options.storageKey || 'remoed_vbg_choice';
     container.innerHTML = '';
-    var blurRow = document.createElement('label');
-    blurRow.style.cssText = 'display:flex;align-items:center;gap:8px;width:100%;margin:8px 0;font-size:0.95rem;';
-    var blurChk = document.createElement('input');
-    blurChk.type = 'checkbox';
-    blurChk.id = 'vb-blur-toggle';
-    blurRow.appendChild(blurChk);
-    blurRow.appendChild(document.createTextNode('Background blur'));
-    container.appendChild(blurRow);
+    container.classList.add('lc-camera-settings');
 
-    var imgRow = document.createElement('div');
-    imgRow.style.cssText = 'width:100%;margin:8px 0;';
-    var imgLabel = document.createElement('label');
-    imgLabel.textContent = 'Virtual background';
-    imgLabel.style.cssText = 'display:block;font-size:0.95rem;margin-bottom:6px;';
-    var sel = document.createElement('select');
-    sel.id = 'vb-image-select';
-    sel.style.cssText = 'width:100%;padding:6px;border-radius:6px;border:1px solid #cbd5e1;';
-    sel.innerHTML = '<option value="">None</option>' +
-      PRESET_BACKGROUNDS.map(function (p) {
-        return '<option value="' + p.url + '">' + p.label + '</option>';
-      }).join('');
-    imgRow.appendChild(imgLabel);
-    imgRow.appendChild(sel);
-    container.appendChild(imgRow);
+    var title = document.createElement('div');
+    title.className = 'lc-camera-settings__title';
+    title.textContent = 'Camera background';
+    container.appendChild(title);
 
-    blurChk.addEventListener('change', function () {
-      if (blurChk.checked) {
-        sel.value = '';
+    var btnRow = document.createElement('div');
+    btnRow.className = 'lc-camera-settings__modes';
+    btnRow.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin:6px 0;';
+
+    function makeBtn(label, mode, extra) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'lc-camera-settings__btn video-control-btn';
+      b.textContent = label;
+      b.dataset.vbgMode = mode;
+      if (extra) b.dataset.vbgExtra = extra;
+      b.style.cssText = 'font-size:0.7rem;padding:4px 8px;min-width:0;';
+      btnRow.appendChild(b);
+      return b;
+    }
+
+    makeBtn('Off', 'off');
+    makeBtn('Blur', 'blur');
+    PRESET_BACKGROUNDS.forEach(function (p) {
+      makeBtn(p.label, 'image', p.url);
+    });
+    var customBtn = makeBtn('Custom', 'custom');
+    container.appendChild(btnRow);
+
+    var fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*';
+    fileInput.style.display = 'none';
+    fileInput.id = 'vb-custom-file';
+    container.appendChild(fileInput);
+
+    function markActive(mode, url) {
+      btnRow.querySelectorAll('button').forEach(function (b) {
+        var active =
+          (mode === 'off' && b.dataset.vbgMode === 'off') ||
+          (mode === 'blur' && b.dataset.vbgMode === 'blur') ||
+          (mode === 'image' && b.dataset.vbgMode === 'image' && b.dataset.vbgExtra === url) ||
+          (mode === 'custom' && b.dataset.vbgMode === 'custom');
+        b.classList.toggle('is-active', !!active);
+        b.style.opacity = active ? '1' : '0.65';
+      });
+    }
+
+    function persist(mode, url) {
+      try {
+        sessionStorage.setItem(storageKey, JSON.stringify({ mode: mode, url: url || '' }));
+      } catch (_e) {}
+    }
+
+    function apply(mode, url) {
+      if (mode === 'off') {
+        controller.applyMode('off');
+        markActive('off');
+        persist('off', '');
+      } else if (mode === 'blur') {
         controller.applyMode('blur');
-      } else if (!sel.value) {
-        controller.applyMode('off');
+        markActive('blur');
+        persist('blur', '');
+      } else if (mode === 'image' || mode === 'custom') {
+        controller.applyMode('image', url);
+        markActive(mode === 'custom' ? 'custom' : 'image', url);
+        persist(mode === 'custom' ? 'custom' : 'image', url);
       }
-    });
-    sel.addEventListener('change', function () {
-      if (sel.value) {
-        blurChk.checked = false;
-        controller.applyMode('image', sel.value);
-      } else if (!blurChk.checked) {
-        controller.applyMode('off');
+    }
+
+    btnRow.addEventListener('click', function (e) {
+      var b = e.target.closest('button[data-vbg-mode]');
+      if (!b) return;
+      var mode = b.dataset.vbgMode;
+      if (mode === 'custom') {
+        fileInput.click();
+        return;
       }
+      if (mode === 'image') {
+        apply('image', b.dataset.vbgExtra);
+        return;
+      }
+      apply(mode);
     });
+
+    fileInput.addEventListener('change', function () {
+      var file = fileInput.files && fileInput.files[0];
+      if (!file) return;
+      var objectUrl = URL.createObjectURL(file);
+      apply('custom', objectUrl);
+    });
+
+    try {
+      var saved = JSON.parse(sessionStorage.getItem(storageKey) || 'null');
+      if (saved && saved.mode === 'blur') {
+        apply('blur');
+      } else if (saved && (saved.mode === 'image' || saved.mode === 'custom') && saved.url) {
+        apply(saved.mode === 'custom' ? 'custom' : 'image', saved.url);
+      } else {
+        markActive('off');
+      }
+    } catch (_e2) {
+      markActive('off');
+    }
   }
 
   global.RemoedVirtualBackground = {

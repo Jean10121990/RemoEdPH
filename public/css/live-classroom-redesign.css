@@ -465,4 +465,115 @@ body.page-live-classroom .lc-stage-video-toolbar {
     width: 100% !important;
     box-shadow: none;
   }
+
+  body.page-live-classroom .video-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  body.page-live-classroom .video-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+  }
+
+  body.page-live-classroom .video-control-btn {
+    min-width: 44px;
+    min-height: 44px;
+    font-size: 0.95rem;
+  }
+
+  body.page-live-classroom .lc-camera-settings-panel {
+    max-height: 40vh;
+    overflow: auto;
+    padding: 8px;
+    background: rgba(15, 23, 42, 0.92);
+    color: #f8fafc;
+    border-radius: 8px;
+    margin: 4px 0 8px;
+  }
+
+  body.page-live-classroom .lc-teacher-media-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 6px;
+    justify-content: center;
+  }
+
+  body.page-live-classroom .lc-media-lock-btn {
+    min-height: 40px;
+    font-size: 0.75rem;
+    padding: 6px 10px;
+  }
+
+  body.page-live-classroom .tabs,
+  body.page-live-classroom .whiteboard-controls-bar {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+  }
+
+  body.page-live-classroom .tabs button,
+  body.page-live-classroom .whiteboard-controls-bar button {
+    min-height: 40px;
+    flex-shrink: 0;
+  }
+}
+
+.lc-camera-settings-panel {
+  padding: 8px;
+  background: rgba(15, 23, 42, 0.88);
+  color: #f8fafc;
+  border-radius: 8px;
+  margin-top: 6px;
+  font-size: 0.8rem;
+}
+
+.lc-camera-settings-panel[hidden] {
+  display: none !important;
+}
+
+.lc-camera-settings__title {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.lc-camera-settings__btn.is-active {
+  outline: 2px solid #47bc3e;
+}
+
+.lc-teacher-media-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px 4px;
+}
+
+.lc-teacher-media-controls[hidden] {
+  display: none !important;
+}
+
+.lc-media-toast {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  z-index: 5;
+  background: rgba(15, 23, 42, 0.92);
+  color: #fff;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.lc-media-toast[hidden] {
+  display: none !important;
+}
+
+#local-video-tile {
+  position: relative;
 }
