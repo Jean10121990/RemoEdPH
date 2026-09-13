@@ -3,6 +3,8 @@
  * Load AFTER live-classroom.css.
  */
 
+@import url('remoed-layers.css');
+
 body.page-live-classroom {
   --lc-green: #47BC3E;
   --lc-green-deep: #2E9A28;
@@ -267,7 +269,7 @@ body.page-live-classroom .tabs button.lc-class-settings-btn:hover,
 .lc-class-settings-overlay {
   position: fixed;
   inset: 0;
-  z-index: 9600;
+  z-index: var(--z-modal);
   display: flex;
   align-items: flex-start;
   justify-content: flex-end;
@@ -416,7 +418,7 @@ body.lc-student-pen-locked .pdf-annotation-layer {
 .lc-vbg-modal-overlay {
   position: fixed;
   inset: 0;
-  z-index: 9200;
+  z-index: var(--z-modal);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -679,7 +681,7 @@ body.page-live-classroom .remoed-ppt-toolbar {
   display: none;
   align-items: center;
   justify-content: center;
-  z-index: 9000;
+  z-index: var(--z-modal);
   padding: 16px;
 }
 
@@ -897,7 +899,8 @@ body.page-live-classroom .lc-stage-video-toolbar {
   }
 
   body.page-live-classroom .tabs button.lc-class-settings-btn {
-    min-height: 36px;
+    min-height: 44px;
+    min-width: 44px;
   }
 }
 
@@ -991,12 +994,26 @@ body.page-live-classroom .lc-stage-video-toolbar {
   color: #b45309;
 }
 
+.lc-blocking-overlay,
+.lc-modal-overlay {
+  position: fixed;
+  inset: 0;
+}
+
+.lc-blocking-overlay {
+  z-index: var(--z-blocking);
+}
+
+.lc-modal-overlay {
+  z-index: var(--z-modal);
+}
+
 .lc-media-toast {
   position: absolute;
   left: 8px;
   right: 8px;
   bottom: 8px;
-  z-index: 5;
+  z-index: var(--z-toast);
   background: rgba(15, 23, 42, 0.92);
   color: #fff;
   padding: 8px 10px;

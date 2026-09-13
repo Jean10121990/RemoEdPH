@@ -25,8 +25,6 @@
             background: #f8fafc;
             min-height: 100vh;
             box-sizing: border-box;
-            margin-left: 260px;
-            max-width: calc(100vw - 260px);
             display: flex;
             flex-direction: column;
         }
@@ -307,7 +305,7 @@
         .booking-modal {
             display: none;
             position: fixed;
-            z-index: 1000;
+            z-index: var(--z-modal);
             left: 0;
             top: 0;
             width: 100%;
@@ -884,7 +882,7 @@
         .teacher-glass-overlay {
             position: fixed;
             inset: 0;
-            z-index: 2000;
+            z-index: var(--z-modal);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -1040,8 +1038,9 @@
     </style>
     <link rel="stylesheet" href="css/teacher-sidebar.css">
     <link rel="stylesheet" href="css/portal-chrome-compact.css">
-    <link rel="stylesheet" href="css/student-portal-layout.css?v=notif-red-1">
+    <link rel="stylesheet" href="css/student-portal-layout.css?v=layers-1">
     <link rel="stylesheet" href="css/student-sidebar.css?v=logout-pin-2">
+    <link rel="stylesheet" href="css/remoed-layers.css?v=page-pass-2">
 </head>
 <body class="student-portal page-student-book">
     <div class="remoed-main">
@@ -3226,6 +3225,7 @@
             const notification = document.createElement('div');
             notification.setAttribute('role', 'status');
             notification.setAttribute('aria-live', 'polite');
+            notification.className = 'remoed-toast';
             notification.style.cssText = `
                 position: fixed;
                 top: 20px;
@@ -3237,7 +3237,6 @@
                 font-weight: 700;
                 font-size: 0.98rem;
                 line-height: 1.4;
-                z-index: 10000;
                 background: ${type === 'success' ? '#16a34a' : type === 'info' ? '#0ea5e9' : '#dc2626'};
                 box-shadow: 0 8px 24px rgba(15,23,42,0.18);
             `;

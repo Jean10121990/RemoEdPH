@@ -604,7 +604,7 @@ body[class*="page-admin-"] .nav-header .nav-dropdown-content {
   min-width: min(360px, 86vw);
   max-height: 420px;
   overflow-y: auto;
-  z-index: 1300;
+  z-index: var(--z-dropdown);
   display: none;
   pointer-events: auto;
 }

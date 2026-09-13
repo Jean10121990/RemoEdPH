@@ -42,6 +42,22 @@ Before changing shared auth, booking, class schedule, or Mongo scripts, read [do
 
 - On teacher invite signup, `server/utils/applicantDocuments.js` copies application ID/NBI onto teacher profile. Keep that on create; do not strip URL-style `fileData` when saving teacher documents.
 
+## Live classroom (Settings, locks, VBG)
+
+Do not rewrite `public/live-classroom.html` socket/settings/VBG unless the user asks. Details: [docs/STABLE_BASELINE.md](docs/STABLE_BASELINE.md) § Live classroom.
+
+- Teacher Settings is `#lc-class-settings-overlay` (body-level). Do not move the panel back into `.tabs` / `.center-panel`.
+- Room settings: `classroomSettingsByRoom` `{ videosAllowed, penAllowed }`. Queue early `classroom-settings` on `pendingClassroomSettingsBySocket`; flush on `join` / `join-room`. Students use `classroom-settings-request`. **Do not** delete room settings when the last socket leaves. **Do not** re-broadcast default `true` after teacher join (unlocks students).
+- Videos lock hides student `#lc-videos-tab-btn`. Pen lock is `window.__lcStudentPenAllowed` (lesson + board). `whiteboard-mode-stop` still sends students to Lesson.
+- Student mic/cam: `media-control` (`true` = allowed). Rail pills `#lc-teacher-media-controls` are text chips, **not** `.video-control-btn`. Highlight **both** sides of each pair (`syncTeacherMediaUi`).
+- VBG: `public/js/virtual-background.js` canvas-first; presets `public/images/virtual-bg/{office,classroom,nature}.jpg`. Do not switch presets back to `.svg`. Do not let `applyTeacherCameraReadyLook()` overwrite an active VBG.
+
+## Responsive / overlays
+
+- Tokens: [public/css/remoed-layers.css](public/css/remoed-layers.css). Breakpoints 768 / 1024 only for new portal CSS. Phone `.remoed-content` margin is 0 — do not reintroduce `margin-left: 260px` without a `max-width: 768` override.
+- One drawer: `remoed-drawer-open` at ≤768 (`mobile-first.css`). Do not add a second teacher drawer at 992 (`z-index: 9999`).
+- Modals use `--z-modal` / `--z-toast` / `--z-blocking` on `document.body`. Do not raise raw z-index or put popovers inside `overflow: hidden` / `backdrop-filter` parents.
+
 ## Before push
 
 - Run `node --check` on edited server entry files (`server/student.js`, `server/index.js`, etc.).

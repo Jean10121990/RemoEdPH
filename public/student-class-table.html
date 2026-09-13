@@ -28,8 +28,6 @@
       background: #f8fafc;
       min-height: 100vh;
       box-sizing: border-box;
-      margin-left: 260px;
-      max-width: calc(100vw - 260px);
       overflow-x: auto;
     }
     
@@ -405,7 +403,6 @@
       justify-content: center;
     }
     .main-content {
-      margin-left: 260px;
       padding: 24px 32px;
       min-height: 100vh;
       display: flex;
@@ -689,7 +686,7 @@
     .modal {
       display: none; /* Shown via JS */
       position: fixed;
-      z-index: 2000;
+      z-index: var(--z-modal);
       left: 0;
       top: 0;
       width: 100%;
@@ -1006,9 +1003,10 @@
   </style>
   <link rel="stylesheet" href="css/teacher-sidebar.css">
     <link rel="stylesheet" href="css/portal-chrome-compact.css">
-  <link rel="stylesheet" href="css/student-portal-layout.css?v=notif-red-1">
+  <link rel="stylesheet" href="css/student-portal-layout.css?v=layers-1">
   <link rel="stylesheet" href="css/student-sidebar.css?v=logout-pin-2">
-  <link rel="stylesheet" href="css/class-info-modal.css?v=cim-1">
+  <link rel="stylesheet" href="css/class-info-modal.css?v=modal-stack-2">
+  <link rel="stylesheet" href="css/remoed-layers.css?v=page-pass-2">
 </head>
 <body class="student-portal page-student-class-table">
   <div class="remoed-main">
@@ -1071,7 +1069,7 @@
     </div>
   </div>
   <!-- Booking Details Modal -->
-  <div id="booking-modal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.25); z-index:2000; align-items:center; justify-content:center;">
+  <div id="booking-modal" class="remoed-modal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.25); align-items:center; justify-content:center;">
     <div style="background:#fff; border-radius:12px; max-width:350px; width:90vw; margin:auto; box-shadow:0 4px 24px rgba(28,167,231,0.13); padding:28px 22px 18px 22px; position:relative;">
       <button id="close-booking-modal" style="position:absolute; top:10px; right:14px; background:none; border:none; font-size:1.3rem; color:#888; cursor:pointer;">&times;</button>
       <div style="font-size:1.2rem; font-weight:700; color:#00aeef; margin-bottom:10px;">Class Details</div>

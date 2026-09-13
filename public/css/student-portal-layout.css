@@ -4,6 +4,7 @@
  */
 
 @import url('portal-chrome-compact.css');
+@import url('remoed-layers.css');
 
 /* Fallback when this file is loaded without teacher-sidebar.css (e.g. credits page) */
 :root {
@@ -110,8 +111,8 @@ body.student-portal nav.remoed-sidebar.remoed-sidebar.sidebar-collapsed {
 }
 
 body.student-portal .remoed-content {
-  margin-left: 260px !important;
-  max-width: calc(100vw - 260px) !important;
+  margin-left: var(--sidebar-width) !important;
+  max-width: calc(100vw - var(--sidebar-width)) !important;
   box-sizing: border-box;
   transition:
     margin-left 0.28s cubic-bezier(0.4, 0, 0.2, 1),
@@ -119,8 +120,8 @@ body.student-portal .remoed-content {
 }
 
 body.student-portal.student-sidebar-collapsed .remoed-content {
-  margin-left: 72px !important;
-  max-width: calc(100vw - 72px) !important;
+  margin-left: var(--sidebar-collapsed) !important;
+  max-width: calc(100vw - var(--sidebar-collapsed)) !important;
 }
 
 @media (max-width: 768px) {
@@ -213,20 +214,20 @@ body.student-portal nav.remoed-sidebar .remoed-username {
 @media (min-width: 769px) and (max-width: 1024px) {
   body.student-portal nav.remoed-sidebar.remoed-sidebar:not(.sidebar-collapsed),
   html body.student-portal .remoed-main > [id$="-sidebar-root"] > nav.remoed-sidebar:not(.sidebar-collapsed) {
-    width: 260px !important;
-    min-width: 260px !important;
-    max-width: 260px !important;
+    width: var(--sidebar-width) !important;
+    min-width: var(--sidebar-width) !important;
+    max-width: var(--sidebar-width) !important;
     overflow-x: hidden;
   }
 
   body.student-portal .remoed-content {
-    margin-left: 260px !important;
-    max-width: calc(100vw - 260px) !important;
+    margin-left: var(--sidebar-width) !important;
+    max-width: calc(100vw - var(--sidebar-width)) !important;
   }
 
   body.student-portal.student-sidebar-collapsed .remoed-content {
-    margin-left: 72px !important;
-    max-width: calc(100vw - 72px) !important;
+    margin-left: var(--sidebar-collapsed) !important;
+    max-width: calc(100vw - var(--sidebar-collapsed)) !important;
   }
 
   body.student-portal .remoed-sidebar:not(.sidebar-collapsed) .sidebar-header-inner {
@@ -1068,7 +1069,7 @@ body.student-portal .nav-header .nav-dropdown {
   min-width: min(360px, 86vw);
   max-height: 420px;
   overflow-y: auto;
-  z-index: 1200;
+  z-index: var(--z-dropdown);
   display: none;
 }
 

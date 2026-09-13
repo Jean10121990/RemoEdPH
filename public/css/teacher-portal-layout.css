@@ -323,10 +323,10 @@ body[class*="page-teacher-"] .remoed-menu li.active .remoed-schedule-count-badge
 /* —— Sidebar width + content offset (beats page style.css) —— */
 body.teacher-portal nav.remoed-sidebar.remoed-sidebar,
 body[class*="page-teacher-"] nav.remoed-sidebar.remoed-sidebar {
-  width: 260px !important;
-  min-width: 260px !important;
-  max-width: 260px !important;
-  z-index: 500 !important;
+  width: var(--sidebar-width) !important;
+  min-width: var(--sidebar-width) !important;
+  max-width: var(--sidebar-width) !important;
+  z-index: var(--z-drawer) !important;
   transition:
     width 0.28s cubic-bezier(0.4, 0, 0.2, 1),
     min-width 0.28s cubic-bezier(0.4, 0, 0.2, 1),
@@ -337,15 +337,15 @@ body[class*="page-teacher-"] nav.remoed-sidebar.remoed-sidebar {
 
 body.teacher-portal nav.remoed-sidebar.sidebar-collapsed,
 body[class*="page-teacher-"] nav.remoed-sidebar.sidebar-collapsed {
-  width: 72px !important;
-  min-width: 72px !important;
-  max-width: 72px !important;
+  width: var(--sidebar-collapsed) !important;
+  min-width: var(--sidebar-collapsed) !important;
+  max-width: var(--sidebar-collapsed) !important;
 }
 
 body.teacher-portal .remoed-content,
 body[class*="page-teacher-"] .remoed-content {
-  margin-left: 260px !important;
-  max-width: calc(100vw - 260px) !important;
+  margin-left: var(--sidebar-width) !important;
+  max-width: calc(100vw - var(--sidebar-width)) !important;
   box-sizing: border-box;
   transition:
     margin-left 0.28s cubic-bezier(0.4, 0, 0.2, 1),
@@ -354,8 +354,8 @@ body[class*="page-teacher-"] .remoed-content {
 
 body.teacher-portal.teacher-sidebar-collapsed .remoed-content,
 body[class*="page-teacher-"].teacher-sidebar-collapsed .remoed-content {
-  margin-left: 72px !important;
-  max-width: calc(100vw - 72px) !important;
+  margin-left: var(--sidebar-collapsed) !important;
+  max-width: calc(100vw - var(--sidebar-collapsed)) !important;
 }
 
 /* Collapsed mini-rail — single centered column */

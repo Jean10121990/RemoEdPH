@@ -74,7 +74,8 @@
 <link rel="stylesheet" href="css/global-portal.css">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="css/portal-chrome-compact.css?v=mint-forest-1">
-    <link rel="stylesheet" href="css/class-info-modal.css?v=modal-stack-1">
+    <link rel="stylesheet" href="css/class-info-modal.css?v=modal-stack-2">
+    <link rel="stylesheet" href="css/remoed-layers.css?v=page-pass-2">
     <link rel="stylesheet" href="css/student-badges.css?v=1">
 </head>
 <body class="page-teacher-class-table teacher-portal">
@@ -323,7 +324,7 @@
     </div>
   </div>
 
-  <!-- Class Issue Modal (above Class Information z-index 2200) -->
+  <!-- Class Issue Modal (stacked above Class Information via --z-modal) -->
   <div id="class-issue-modal" class="remoed-modal remoed-modal--stacked">
     <div class="remoed-modal-content">
       <div class="remoed-modal-header">
@@ -2125,6 +2126,7 @@
     // Show notification to user
     function showNotification(message, type) {
         const notification = document.createElement('div');
+        notification.className = 'remoed-toast';
         notification.style.cssText = `
             position: fixed;
             top: 20px;
@@ -2133,7 +2135,6 @@
             border-radius: 8px;
             color: white;
             font-weight: 600;
-            z-index: 10000;
             background: ${type === 'success' ? '#47BC3E' : '#dc3545'};
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         `;

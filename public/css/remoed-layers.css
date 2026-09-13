@@ -1,0 +1,148 @@
+/**
+ * RemoEdPH layout tokens — single source for breakpoints, sidebar offset, z-index.
+ * Import from portal / classroom sheets. Do not invent new raw z-index in features.
+ *
+ * Phone:  max-width 768px
+ * Tablet: 769–1024px
+ * Desktop: min-width 1025px
+ * Classroom may still stack columns at 1100px; overlays must use these tokens.
+ */
+
+:root {
+  --sidebar-width: 260px;
+  --sidebar-collapsed: 72px;
+  --z-base: 1;
+  --z-sticky: 100;
+  --z-drawer-backdrop: 200;
+  --z-drawer: 210;
+  --z-dropdown: 400;
+  --z-classroom-chrome: 6000; /* dock, notes rail — always below --z-modal */
+  --z-modal: 9000;
+  --z-toast: 9500;
+  --z-blocking: 100000;
+}
+
+/* ---- Portal content offset (desktop / tablet) ---- */
+@media (min-width: 769px) {
+  body.student-portal .remoed-content,
+  body.teacher-portal .remoed-content,
+  body[class*="page-teacher-"] .remoed-content {
+    margin-left: var(--sidebar-width);
+    max-width: calc(100vw - var(--sidebar-width));
+    box-sizing: border-box;
+  }
+
+  body.student-portal.student-sidebar-collapsed .remoed-content,
+  body.teacher-portal.teacher-sidebar-collapsed .remoed-content,
+  body[class*="page-teacher-"].teacher-sidebar-collapsed .remoed-content {
+    margin-left: var(--sidebar-collapsed);
+    max-width: calc(100vw - var(--sidebar-collapsed));
+  }
+}
+
+/* Phone: never reserve the 260px rail. Beats leftover !important copies. */
+@media (max-width: 768px) {
+  body.student-portal .remoed-content,
+  body.student-portal.student-sidebar-collapsed .remoed-content,
+  body.student-portal.page-student-profile .remoed-content,
+  body.teacher-portal .remoed-content,
+  body.teacher-portal.teacher-sidebar-collapsed .remoed-content,
+  body[class*="page-teacher-"] .remoed-content,
+  body[class*="page-teacher-"].teacher-sidebar-collapsed .remoed-content,
+  body.teacher-sidebar-collapsed .remoed-content,
+  body.student-sidebar-collapsed .remoed-content,
+  .remoed-content {
+    margin-left: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  body.remoed-drawer-open #tour-button,
+  body.remoed-drawer-open #chatbot-toggle {
+    display: none !important;
+  }
+}
+
+/* Overlay contract: body-level dialogs use --z-modal / --z-toast / --z-blocking.
+   Never host popovers inside overflow:hidden, transform, filter, or backdrop-filter. */
+
+body.student-portal .remoed-modal,
+body.teacher-portal .remoed-modal,
+body[class*="page-teacher-"] .remoed-modal {
+  z-index: var(--z-modal);
+}
+
+body.student-portal .remoed-modal.remoed-modal--stacked,
+body.teacher-portal .remoed-modal.remoed-modal--stacked,
+body[class*="page-teacher-"] .remoed-modal.remoed-modal--stacked {
+  z-index: calc(var(--z-modal) + 50);
+}
+
+.teacher-glass-overlay,
+.booking-modal,
+body.page-student-book .teacher-glass-overlay,
+body.page-student-book .booking-modal {
+  z-index: var(--z-modal);
+}
+
+.remoed-toast {
+  position: fixed;
+  z-index: var(--z-toast);
+}
+
+/* Tables scroll inside the page — do not shrink cells unreadably or expand the document. */
+body.page-teacher-class-table .remoed-schedule-container,
+body.page-student-class-table .weekly-grid,
+body.page-student-book .weekly-grid {
+  overflow-x: auto !important;
+  max-width: 100%;
+  -webkit-overflow-scrolling: touch;
+}
+
+body.page-student-book .schedule-table,
+body.page-student-class-table .schedule-table {
+  min-width: 720px;
+}
+
+body.student-portal .nav-header .nav-dropdown,
+body.teacher-portal .nav-header .nav-dropdown,
+.nav-header .nav-dropdown,
+.student-page-nav-header .nav-dropdown,
+.teacher-page-nav-header .nav-dropdown {
+  z-index: var(--z-dropdown);
+}
+
+@media (max-width: 768px) {
+  html:has(body.student-portal),
+  html:has(body.teacher-portal),
+  html:has(body[class*="page-teacher-"]) {
+    overflow-x: hidden;
+  }
+
+  body.student-portal,
+  body.teacher-portal,
+  body[class*="page-teacher-"] {
+    overflow-x: hidden;
+  }
+
+  body.page-student-book .remoed-content,
+  body.page-student-class-table .remoed-content,
+  body.page-teacher-class-table .remoed-content {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+
+  body.page-student-class-table .main-content {
+    margin-left: 0 !important;
+    max-width: 100% !important;
+  }
+
+  body.page-teacher-class-table .remoed-nav-btn,
+  body.page-teacher-class-table .remoed-action-btn,
+  body.page-student-book .nav-btn,
+  body.page-student-book .back-btn,
+  body.page-student-class-table .nav-btn,
+  body.page-student-class-table .book-btn {
+    min-height: 44px;
+  }
+}

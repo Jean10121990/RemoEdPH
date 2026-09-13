@@ -4,6 +4,8 @@
  * Breakpoints: mobile ≤768px, tablet 769–1024px, desktop ≥1025px.
  */
 
+@import url('remoed-layers.css');
+
 /* --- Fluid typography --- */
 html {
   font-size: clamp(15px, 0.35vw + 14px, 17px);
@@ -127,7 +129,7 @@ canvas {
     display: none;
     position: fixed;
     inset: 0;
-    z-index: 150;
+    z-index: var(--z-drawer-backdrop);
     background: rgba(15, 23, 42, 0.42);
     backdrop-filter: blur(2px);
     -webkit-backdrop-filter: blur(2px);
@@ -152,7 +154,7 @@ canvas {
     flex-shrink: 0;
     position: sticky;
     top: 0;
-    z-index: 180;
+    z-index: var(--z-sticky);
     min-height: 52px;
     padding: 6px 16px;
     padding-left: max(16px, env(safe-area-inset-left));
@@ -175,20 +177,20 @@ canvas {
 
   /* Drawer open: sidebar stack above in-main backdrop + dimmed content */
   body.remoed-drawer-open .remoed-main > [id$="-sidebar-root"] {
-    z-index: 220;
+    z-index: var(--z-drawer);
   }
 
   /* Flex items can use z-index without position:relative — avoids breaking layout/sticky inside .remoed-content */
   body.remoed-drawer-open .remoed-main > .remoed-content {
-    z-index: 10;
+    z-index: var(--z-base);
   }
 
   body.remoed-drawer-open .remoed-main > .nav-header {
-    z-index: 210;
+    z-index: var(--z-drawer);
   }
 
   body.remoed-drawer-open .remoed-mobile-topbar {
-    z-index: 230;
+    z-index: calc(var(--z-drawer) + 20);
   }
 
   html body .remoed-main > [id$="-sidebar-root"] > nav.remoed-sidebar {
@@ -202,7 +204,7 @@ canvas {
     max-width: none !important;
     transform: translate3d(-105%, 0, 0);
     transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
-    z-index: 200 !important;
+    z-index: var(--z-drawer) !important;
     box-shadow: 8px 0 32px rgba(15, 23, 42, 0.12);
     border-radius: 0 !important;
     margin: 0 !important;

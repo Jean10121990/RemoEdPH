@@ -2,6 +2,8 @@
  * Class Information modal — shared professional chrome.
  * Teacher: green accent. Student: blue accent.
  */
+
+@import url('remoed-layers.css');
 .cim-shell.remoed-modal {
   --cim-accent: #47BC3E;
   --cim-accent-deep: #2E9A28;
@@ -11,7 +13,7 @@
   --cim-muted: #64748b;
   --cim-line: #e2e8f0;
   --cim-surface: #f8fafc;
-  z-index: 2200;
+  z-index: var(--z-modal);
   background: rgba(15, 23, 42, 0.42);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
@@ -20,7 +22,7 @@
 /* Report Issue / Feedback must sit above Class Information */
 .page-teacher-class-table .remoed-modal.remoed-modal--stacked,
 .remoed-modal.remoed-modal--stacked {
-  z-index: 2300;
+  z-index: calc(var(--z-modal) + 50);
 }
 
 body.student-portal .cim-shell.remoed-modal,
@@ -395,7 +397,7 @@ body.student-portal .cim-shell.remoed-modal,
   background: var(--cim-surface) !important;
 }
 
-@media (max-width: 480px) {
+@media (max-width: 768px) {
   .cim-shell .cim-meta {
     grid-template-columns: 1fr;
   }
