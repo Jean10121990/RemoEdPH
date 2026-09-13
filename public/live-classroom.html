@@ -56,7 +56,7 @@
     <link rel="stylesheet" href="style.css">
   <!-- After global styles so chat / layout rules are not overridden -->
   <link rel="stylesheet" href="live-classroom.css?v=lc-qa-progress-1" />
-  <link rel="stylesheet" href="css/live-classroom-redesign.css?v=mint-forest-5" />
+  <link rel="stylesheet" href="css/live-classroom-redesign.css?v=mint-forest-6" />
   <link rel="stylesheet" href="css/student-badges.css?v=2" />
 </head>
 <body class="page-live-classroom">
@@ -196,7 +196,6 @@
             <button id="toggle-mute" class="video-control-btn is-off" type="button" title="Unmute peer audio" aria-label="Unmute peer audio">A</button>
             <button id="toggle-camera-settings" class="video-control-btn" type="button" title="Camera background" aria-label="Camera background" aria-expanded="false">BG</button>
           </div>
-          <div id="lc-camera-settings-panel" class="lc-camera-settings-panel" hidden></div>
           <div id="lc-media-toast" class="lc-media-toast" hidden role="status" aria-live="polite"></div>
         </div>
       </div>
@@ -369,6 +368,20 @@
     </div>
   </div>
 
+  <!-- Camera background settings modal -->
+  <div id="lc-vbg-modal-overlay" class="lc-vbg-modal-overlay" hidden>
+    <div class="lc-vbg-modal" role="dialog" aria-modal="true" aria-labelledby="lc-vbg-modal-title">
+      <div class="lc-vbg-modal__header">
+        <h2 id="lc-vbg-modal-title" class="lc-vbg-modal__title">Camera background</h2>
+        <button type="button" id="lc-vbg-modal-close" class="lc-vbg-modal__close" aria-label="Close">&times;</button>
+      </div>
+      <div id="lc-camera-settings-panel" class="lc-camera-settings-panel"></div>
+      <div class="lc-vbg-modal__footer">
+        <button type="button" id="lc-vbg-modal-done" class="lc-vbg-modal__done">Done</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Upload Lesson Files Modal -->
   <div id="upload-files-modal-overlay" style="position:fixed; inset:0; background:rgba(15,23,42,0.45); display:none; align-items:center; justify-content:center; z-index:9000;">
     <div style="background:#ffffff; border-radius:12px; padding:20px 24px; width:90%; max-width:500px; box-shadow:0 24px 55px rgba(15,23,42,0.35); max-height:90vh; overflow-y:auto;">
@@ -394,7 +407,7 @@
     <script src="js/student-badges.js?v=1"></script>
     <script src="js/teacher-badge-award.js?v=1"></script>
     <script src="js/presentation-overlay.js?v=lc-draw-fix-2"></script>
-    <script src="js/virtual-background.js?v=vbg-2"></script>
+    <script src="js/virtual-background.js?v=vbg-3"></script>
     <script src="js/classroom-qa-recording.js?v=lc-qa-progress-1" defer></script>
     <script>
       // Collaborative annotation client
@@ -6029,7 +6042,9 @@
       let pendingVbgRestore = false;
       const cameraSettingsBtn = document.getElementById('toggle-camera-settings');
       const cameraSettingsPanel = document.getElementById('lc-camera-settings-panel');
-      const localVideoTile = document.getElementById('local-video-tile');
+      const vbgModalOverlay = document.getElementById('lc-vbg-modal-overlay');
+      const vbgModalClose = document.getElementById('lc-vbg-modal-close');
+      const vbgModalDone = document.getElementById('lc-vbg-modal-done');
       function ensureVbController() {
         if (vbController) return vbController;
         if (typeof RemoedVirtualBackground === 'undefined') return null;
@@ -6041,32 +6056,31 @@
         return vbController;
       }
       function setVbgPanelOpen(open) {
-        if (cameraSettingsPanel) {
-          if (open) cameraSettingsPanel.removeAttribute('hidden');
-          else cameraSettingsPanel.setAttribute('hidden', '');
+        if (vbgModalOverlay) {
+          if (open) vbgModalOverlay.removeAttribute('hidden');
+          else vbgModalOverlay.setAttribute('hidden', '');
         }
         if (cameraSettingsBtn) {
           cameraSettingsBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
         }
-        if (localVideoTile) {
-          localVideoTile.classList.toggle('is-vbg-open', !!open);
-        }
+        document.body.classList.toggle('lc-vbg-modal-open', !!open);
       }
       function mountCameraSettingsIfNeeded() {
         if (!cameraSettingsPanel) return false;
         if (typeof RemoedVirtualBackground === 'undefined') {
-          cameraSettingsPanel.innerHTML = '<div class="lc-camera-settings__title">Background effects unavailable</div><p style="margin:0;font-size:0.75rem;">Script failed to load. Refresh the page.</p>';
+          cameraSettingsPanel.innerHTML = '<p class="lc-camera-settings__status">Background effects unavailable. Refresh the page.</p>';
           return false;
         }
         if (vbgMounted) return true;
         const vb = ensureVbController();
         if (!vb || typeof RemoedVirtualBackground.mountSettingsUI !== 'function') {
-          cameraSettingsPanel.innerHTML = '<div class="lc-camera-settings__title">Background effects unavailable</div>';
+          cameraSettingsPanel.innerHTML = '<p class="lc-camera-settings__status">Background effects unavailable.</p>';
           return false;
         }
         RemoedVirtualBackground.mountSettingsUI(cameraSettingsPanel, vb, {
           storageKey: 'remoed_vbg_' + String(room || 'session'),
           deferRestore: !localStream,
+          hideTitle: true,
           onStatus: function (msg) {
             if (msg && typeof showMediaToast === 'function') showMediaToast(msg);
           }
@@ -6089,15 +6103,11 @@
           await cameraSettingsPanel._remoedRestoreVbg();
         } catch (_e) {}
       }
-      if (cameraSettingsBtn && cameraSettingsPanel) {
+      if (cameraSettingsBtn) {
         cameraSettingsBtn.addEventListener('click', function () {
-          const opening = cameraSettingsPanel.hasAttribute('hidden');
+          const opening = !vbgModalOverlay || vbgModalOverlay.hasAttribute('hidden');
           if (opening) {
-            const mounted = mountCameraSettingsIfNeeded();
-            if (!mounted && typeof RemoedVirtualBackground === 'undefined') {
-              setVbgPanelOpen(true);
-              return;
-            }
+            mountCameraSettingsIfNeeded();
             if (!localStream && typeof showMediaToast === 'function') {
               showMediaToast('Turn on camera to use backgrounds');
             }
@@ -6105,6 +6115,21 @@
           setVbgPanelOpen(opening);
         });
       }
+      function closeVbgModal() {
+        setVbgPanelOpen(false);
+      }
+      if (vbgModalClose) vbgModalClose.addEventListener('click', closeVbgModal);
+      if (vbgModalDone) vbgModalDone.addEventListener('click', closeVbgModal);
+      if (vbgModalOverlay) {
+        vbgModalOverlay.addEventListener('click', function (e) {
+          if (e.target === vbgModalOverlay) closeVbgModal();
+        });
+      }
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && vbgModalOverlay && !vbgModalOverlay.hasAttribute('hidden')) {
+          closeVbgModal();
+        }
+      });
       // Legacy blur buttons (if present) — route through VB module, do not run duplicate pipeline
       const toggleVbgImageBtn = document.getElementById('toggle-vbg-image');
       if (toggleBgBlurBtn) {

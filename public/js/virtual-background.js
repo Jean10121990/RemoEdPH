@@ -274,29 +274,29 @@
     var deferRestore = !!options.deferRestore;
     container.innerHTML = '';
     container.classList.add('lc-camera-settings');
-
-    var title = document.createElement('div');
-    title.className = 'lc-camera-settings__title';
-    title.textContent = 'Camera background';
-    container.appendChild(title);
+    // Title lives on the modal header when used in classroom modal
+    if (!options.hideTitle) {
+      var title = document.createElement('div');
+      title.className = 'lc-camera-settings__title';
+      title.textContent = 'Camera background';
+      container.appendChild(title);
+    }
 
     var statusEl = document.createElement('div');
     statusEl.className = 'lc-camera-settings__status';
-    statusEl.style.cssText = 'font-size:0.72rem;opacity:0.9;min-height:1em;margin:2px 0 4px;';
     container.appendChild(statusEl);
 
     var btnRow = document.createElement('div');
     btnRow.className = 'lc-camera-settings__modes';
-    btnRow.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin:6px 0;';
+    container.appendChild(btnRow);
 
     function makeBtn(label, mode, extra) {
       var b = document.createElement('button');
       b.type = 'button';
-      b.className = 'lc-camera-settings__btn video-control-btn';
+      b.className = 'lc-camera-settings__btn';
       b.textContent = label;
       b.dataset.vbgMode = mode;
       if (extra) b.dataset.vbgExtra = extra;
-      b.style.cssText = 'font-size:0.7rem;padding:4px 8px;min-width:0;';
       btnRow.appendChild(b);
       return b;
     }
@@ -307,7 +307,6 @@
       makeBtn(p.label, 'image', p.url);
     });
     makeBtn('Custom', 'custom');
-    container.appendChild(btnRow);
 
     var fileInput = document.createElement('input');
     fileInput.type = 'file';
