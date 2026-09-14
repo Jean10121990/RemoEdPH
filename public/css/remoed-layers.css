@@ -58,7 +58,9 @@
   }
 
   body.remoed-drawer-open #tour-button,
-  body.remoed-drawer-open #chatbot-toggle {
+  body.remoed-drawer-open #chatbot-toggle,
+  body.remoed-more-open #tour-button,
+  body.remoed-more-open #chatbot-toggle {
     display: none !important;
   }
 }

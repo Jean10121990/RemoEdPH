@@ -61,9 +61,9 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 
 ### Portal / classroom responsive
 
-- [ ] Phone (375px): student and teacher `.remoed-content` has **no** 260px left gutter; hamburger drawer uses `remoed-drawer-open` (768), not a second 992px drawer.
-- [ ] Desktop (1440px): content is offset by `--sidebar-width` (260px).
-- [ ] Classroom Settings / VBG / class-info stay body-level and use `--z-modal` / `--z-toast` / `--z-blocking` from `public/css/remoed-layers.css`.
+- [ ] Phone (375px): student/teacher/admin `.remoed-content` has **no** 260px left gutter; **no sidebar drawer**. App chrome is a titled top bar + 4 tabs + More sheet (`#remoed-more-sheet` on `document.body`).
+- [ ] Desktop (1440px): content is offset by `--sidebar-width` (260px); tablet 769–1024 keeps the icon rail.
+- [ ] Classroom Settings / VBG / class-info stay body-level and use `--z-modal` / `--z-toast` / `--z-blocking` from `public/css/remoed-layers.css`. Classroom phone dock stays Lesson / Camera / Chat (no portal tabs).
 
 ### Deploy hygiene
 
@@ -106,7 +106,7 @@ These were easy to regress. Extend them; do not flatten to a checkbox in the tab
 Do not “fix” overlaps by inventing a higher raw `z-index`. Use [public/css/remoed-layers.css](../public/css/remoed-layers.css).
 
 - Breakpoints: phone `≤768`, tablet `769–1024`, desktop `≥1025`. Classroom column stack may stay at 1100px. **Do not add 560 / 720 / 992** for new portal rules.
-- Sidebar offset: `--sidebar-width` (260) / `--sidebar-collapsed` (72). On phone, `.remoed-content` margin is 0 (token sheet). Teacher/student share **one** drawer at 768 (`remoed-drawer-open` in `mobile-first.css`). Do not restore `global-portal.css` `max-width: 992px` teacher drawer (`z-index: 9999`).
+- Sidebar offset: `--sidebar-width` (260) / `--sidebar-collapsed` (72). On phone, `.remoed-content` margin is 0 (token sheet). Phone has **no sidebar drawer** — overflow is the More sheet (`#remoed-more-sheet`, `--z-modal`). Tablet keeps the 76px icon rail; desktop keeps 260px. Do not restore `global-portal.css` `max-width: 992px` teacher drawer (`z-index: 9999`).
 - Layers: `--z-base` 1, `--z-sticky` 100, `--z-drawer-backdrop` 200, `--z-drawer` 210, `--z-dropdown` 400, `--z-classroom-chrome` 6000, `--z-modal` 9000, `--z-toast` 9500, `--z-blocking` 100000.
 - Dialogs (Settings, VBG, class-info, issue, toasts) are `position: fixed` on `document.body`. A parent with `overflow: hidden`, `transform`, `filter`, or `backdrop-filter` cannot host a popover.
 - Phone tap targets ≥ 44px. Do not put `.video-control-btn` (30px circles) on labeled classroom actions.

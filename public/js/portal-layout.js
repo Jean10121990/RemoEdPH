@@ -1,129 +1,123 @@
 /**
- * Mobile nav: hamburger + drawer + bottom quick links for portals using .remoed-main.
- * Bottom bar: 5 links chosen per role (students always prioritize Book Class when shown).
+ * Phone app chrome for portals using .remoed-main.
+ * ≤768: hide the sidebar; titled top bar; 4 tabs + More sheet on document.body.
  * Tablet: narrow icon rail is CSS-only (769–1024px) in mobile-first.css.
+ * Live classroom is skipped (owns its Lesson/Camera/Chat dock).
  */
 (function (global) {
   'use strict';
 
   var MQ_MOBILE = '(max-width: 768px)';
-  var BOTTOM_NAV_COUNT = 5;
+  var TAB_COUNT = 4;
 
-  /** Order = priority for the 5 slots; remaining visible menu items fill in DOM order after. */
-  var BOTTOM_NAV_PRIORITY = {
-    student: [
-      'dashboard',
-      'leaderboard',
-      'book',
-      'schedule',
-      'classes',
-      'messages',
-      'videos',
-      'games',
-      'profile',
-      'level',
-      'credits',
-      'journey'
-    ],
-    teacher: [
-      'dashboard',
-      'leaderboard',
-      'class-schedule',
-      'class-configuration',
-      'messages',
-      'profile',
-      'lessons-library',
-      'teaching-fee',
-      'device-check',
-      'referral-rewards',
-      'performance-indicator',
-      'professional-development'
-    ],
-    admin: [
-      'dashboard',
-      'hr-hub',
-      'qa-hub',
-      'accounting-hub',
-      'messages',
-      'announcements',
-      'reports',
-      'videos',
-      'profile-settings',
-      'settings',
-      'super-monitor'
-    ]
+  /** Exact 4 bottom-tab destinations per role. Overflow goes in the More sheet. */
+  var BOTTOM_TABS = {
+    student: ['dashboard', 'book', 'schedule', 'messages'],
+    teacher: ['dashboard', 'class-schedule', 'class-configuration', 'messages'],
+    admin: ['dashboard', 'messages', 'reports', 'settings']
   };
+
+  var MORE_SVG =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">' +
+    '<circle cx="6" cy="6" r="1.6"/><circle cx="12" cy="6" r="1.6"/><circle cx="18" cy="6" r="1.6"/>' +
+    '<circle cx="6" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18" cy="12" r="1.6"/>' +
+    '<circle cx="6" cy="18" r="1.6"/><circle cx="12" cy="18" r="1.6"/><circle cx="18" cy="18" r="1.6"/>' +
+    '</svg>';
+
+  var BACK_SVG =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">' +
+    '<path d="M15 18l-6-6 6-6"/>' +
+    '</svg>';
 
   function isMobile() {
     return global.matchMedia && global.matchMedia(MQ_MOBILE).matches;
   }
 
-  function closeDrawer() {
-    document.body.classList.remove('remoed-drawer-open');
-    var btn = document.getElementById('remoed-nav-toggle');
-    if (btn) btn.setAttribute('aria-expanded', 'false');
-    var branded = document.getElementById('sidebarToggle');
-    if (branded) branded.setAttribute('aria-expanded', 'false');
+  function closeMore() {
+    document.body.classList.remove('remoed-more-open', 'remoed-drawer-open');
+    var moreBtn = document.getElementById('remoed-more-btn');
+    if (moreBtn) moreBtn.setAttribute('aria-expanded', 'false');
+    var sheet = document.getElementById('remoed-more-sheet');
+    if (sheet) sheet.setAttribute('hidden', '');
     document.body.style.overflow = '';
   }
 
-  function openDrawer() {
-    document.body.classList.add('remoed-drawer-open');
-    var btn = document.getElementById('remoed-nav-toggle');
-    if (btn) btn.setAttribute('aria-expanded', 'true');
-    var branded = document.getElementById('sidebarToggle');
-    if (branded) branded.setAttribute('aria-expanded', 'true');
+  function openMore() {
+    ensureMoreSheet();
+    document.body.classList.add('remoed-more-open');
+    var moreBtn = document.getElementById('remoed-more-btn');
+    if (moreBtn) moreBtn.setAttribute('aria-expanded', 'true');
+    var sheet = document.getElementById('remoed-more-sheet');
+    if (sheet) sheet.removeAttribute('hidden');
     document.body.style.overflow = 'hidden';
   }
 
-  function toggleDrawer() {
-    if (document.body.classList.contains('remoed-drawer-open')) {
-      closeDrawer();
+  function toggleMore() {
+    if (document.body.classList.contains('remoed-more-open')) {
+      closeMore();
     } else {
-      openDrawer();
+      openMore();
     }
   }
 
+  /** Back-compat for portal-sidebar-chrome.js — More sheet, not a sidebar drawer. */
+  function closeDrawer() {
+    closeMore();
+  }
+
+  function openDrawer() {
+    openMore();
+  }
+
+  function toggleDrawer() {
+    toggleMore();
+  }
+
   function hrefFromMenuLi(li) {
+    if (!li) return null;
     var oc = li.getAttribute('onclick') || '';
     var m = oc.match(/location\.href\s*=\s*['"]([^'"]+)['"]/);
     if (m) return m[1];
     m = oc.match(/href\s*=\s*['"]([^'"]+)['"]/);
     if (m) return m[1];
+    var a = li.querySelector('a[href]');
+    if (a && a.getAttribute('href')) return a.getAttribute('href');
     return null;
   }
 
-  function labelFromMenuLi(li) {
+  function fullLabelFromMenuLi(li) {
     var lab =
       li.querySelector &&
       (li.querySelector('.remoed-menu-label') || li.querySelector('.menu-label'));
     if (lab && lab.textContent) {
-      var t = lab.textContent.replace(/\s+/g, ' ').trim();
-      if (t.length > 14) return t.slice(0, 13) + '\u2026';
-      return t;
+      return lab.textContent.replace(/\s+/g, ' ').trim();
     }
     var text = '';
     li.childNodes.forEach(function (n) {
       if (n.nodeType === 3) text += n.textContent;
     });
     text = text.replace(/\s+/g, ' ').trim();
-    if (!text) text = li.textContent.replace(/\s+/g, ' ').trim();
-    if (text.length > 14) return text.slice(0, 13) + '\u2026';
+    if (!text) text = (li.textContent || '').replace(/\s+/g, ' ').trim();
     return text;
   }
 
-  function ensureMenuItemTitles() {
-    document.querySelectorAll('.remoed-menu li').forEach(function (li) {
-      if (li.getAttribute('title')) return;
-      var t = li.textContent.replace(/\s+/g, ' ').trim();
-      if (t) li.setAttribute('title', t);
-    });
+  function shortLabel(text) {
+    text = (text || '').replace(/\s+/g, ' ').trim();
+    if (text.length > 12) return text.slice(0, 11) + '\u2026';
+    return text;
   }
 
   function currentPageBasename() {
     var p = (global.location.pathname || '').replace(/\\/g, '/');
     var seg = p.split('/').pop() || '';
     if (seg.indexOf('?') !== -1) seg = seg.split('?')[0];
+    return seg.toLowerCase();
+  }
+
+  function hrefBasename(href) {
+    if (!href) return '';
+    var path = href.split('#')[0].split('?')[0];
+    var seg = path.replace(/\\/g, '/').split('/').pop() || '';
     return seg.toLowerCase();
   }
 
@@ -138,162 +132,400 @@
     if (rid.indexOf('teacher') === 0) return 'teacher';
     try {
       if (document.body && document.body.classList.contains('student-portal')) return 'student';
+      if (document.body && document.body.classList.contains('admin-portal')) return 'admin';
     } catch (e0) { /* ignore */ }
     return 'teacher';
   }
 
-  function pickBottomNavLis(menu, role) {
-    var all = Array.prototype.slice.call(menu.querySelectorAll('li[data-nav]')).filter(function (li) {
-      return !li.getAttribute('data-logout');
-    });
-    if (all.length === 0) return [];
-
-    var byId = {};
-    all.forEach(function (li) {
-      var id = li.getAttribute('data-nav');
-      if (id) byId[id] = li;
-    });
-
-    var priority = BOTTOM_NAV_PRIORITY[role] || BOTTOM_NAV_PRIORITY.teacher;
-    var picked = [];
-    var used = {};
-
-    priority.forEach(function (id) {
-      if (picked.length >= BOTTOM_NAV_COUNT) return;
-      var li = byId[id];
-      if (!li || used[id]) return;
-      var href = hrefFromMenuLi(li);
-      if (!href) return;
-      picked.push(li);
-      used[id] = true;
-    });
-
-    all.forEach(function (li) {
-      if (picked.length >= BOTTOM_NAV_COUNT) return;
-      var id = li.getAttribute('data-nav');
-      if (!id || used[id]) return;
-      var href = hrefFromMenuLi(li);
-      if (!href) return;
-      picked.push(li);
-      used[id] = true;
-    });
-
-    return picked.slice(0, BOTTOM_NAV_COUNT);
+  function collectNavEls(menu) {
+    var map = lisByNavId(menu);
+    var nav = menu.closest && menu.closest('nav.remoed-sidebar');
+    var logout =
+      (nav && (nav.querySelector('#logout-nav') || nav.querySelector('[data-nav="logout"]'))) ||
+      document.getElementById('logout-nav');
+    if (logout && !map.byId.logout) {
+      map.all.push(logout);
+      map.byId.logout = logout;
+    }
+    return map;
   }
 
-  function buildBottomNav(main, sideNav) {
+  function lisByNavId(menu) {
+    var all = Array.prototype.slice.call(menu.querySelectorAll('li[data-nav], button[data-nav]'));
+    var byId = {};
+    all.forEach(function (el) {
+      var id = el.getAttribute('data-nav');
+      if (id) byId[id] = el;
+    });
+    return { all: all, byId: byId };
+  }
+
+  function pickTabLis(menu, role) {
+    var map = lisByNavId(menu);
+    var ids = BOTTOM_TABS[role] || BOTTOM_TABS.teacher;
+    var picked = [];
+    ids.forEach(function (id) {
+      var el = map.byId[id];
+      if (!el) return;
+      if (el.getAttribute('data-logout')) return;
+      var href = hrefFromMenuLi(el);
+      if (!href) return;
+      picked.push(el);
+    });
+    return picked.slice(0, TAB_COUNT);
+  }
+
+  function isLogoutEl(el) {
+    return !!(
+      el &&
+      (el.getAttribute('data-logout') === '1' ||
+        el.getAttribute('data-nav') === 'logout' ||
+        el.id === 'logout-nav')
+    );
+  }
+
+  function triggerLogout() {
+    closeMore();
+    var el =
+      document.getElementById('logout-nav') ||
+      document.querySelector('[data-nav="logout"]');
+    if (el) {
+      el.click();
+      return;
+    }
+    try {
+      if (global.RemoedUserSession && typeof global.RemoedUserSession.logoutToUnifiedLogin === 'function') {
+        global.RemoedUserSession.logoutToUnifiedLogin();
+        return;
+      }
+    } catch (e) { /* ignore */ }
+    global.location.replace('/login/');
+  }
+
+  function fillLinkFromMenuEl(a, el, opts) {
+    opts = opts || {};
+    var href = hrefFromMenuLi(el);
+    var label = fullLabelFromMenuLi(el);
+    var short = opts.short ? shortLabel(label) : label;
+    if (href && !isLogoutEl(el)) {
+      a.href = href;
+    } else {
+      a.href = '#';
+      a.setAttribute('role', 'button');
+    }
+    var svg = el.querySelector('svg');
+    if (svg) a.appendChild(svg.cloneNode(true));
+    var span = document.createElement('span');
+    span.className = opts.labelClass || 'remoed-bottom-nav__label';
+    span.textContent = short;
+    a.appendChild(span);
+    return { href: href, label: label };
+  }
+
+  function pageMatchesHref(here, href) {
+    var base = hrefBasename(href);
+    if (!base || !here) return false;
+    if (here === base) return true;
+    if (here.replace(/^\/+/, '') === base) return true;
+    return false;
+  }
+
+  function isTabPage(tabLis, here) {
+    return tabLis.some(function (el) {
+      return pageMatchesHref(here, hrefFromMenuLi(el));
+    });
+  }
+
+  function buildBottomNav(sideNav) {
     if (document.getElementById('remoed-bottom-nav')) return;
-    var menu = sideNav.querySelector('.remoed-menu');
+    var menu = sideNav && sideNav.querySelector('.remoed-menu');
     if (!menu) return;
 
     var role = portalRoleFromNav(sideNav);
-    var items = pickBottomNavLis(menu, role);
-    if (items.length === 0) return;
+    var tabLis = pickTabLis(menu, role);
+    var here = currentPageBasename();
+    var onTab = isTabPage(tabLis, here);
 
     var bar = document.createElement('nav');
     bar.id = 'remoed-bottom-nav';
     bar.className = 'remoed-bottom-nav';
     bar.setAttribute('aria-label', 'Primary pages');
 
-    var here = currentPageBasename();
-
-    items.forEach(function (li) {
-      var href = hrefFromMenuLi(li);
-      if (!href) return;
+    tabLis.forEach(function (el) {
       var a = document.createElement('a');
       a.className = 'remoed-bottom-nav__link';
-      a.href = href;
-      var base = href.split('/').pop().split('?')[0].toLowerCase();
-      if (base && here === base) {
+      var meta = fillLinkFromMenuEl(a, el, { short: true });
+      if (pageMatchesHref(here, meta.href)) {
         a.setAttribute('aria-current', 'page');
         a.classList.add('is-active');
       }
-      var svg = li.querySelector('svg');
-      if (svg) {
-        a.appendChild(svg.cloneNode(true));
-      }
-      var span = document.createElement('span');
-      span.className = 'remoed-bottom-nav__label';
-      span.textContent = labelFromMenuLi(li);
-      a.appendChild(span);
       a.addEventListener('click', function () {
-        if (isMobile()) closeDrawer();
+        closeMore();
       });
       bar.appendChild(a);
     });
 
-    if (!bar.firstChild) return;
+    var moreBtn = document.createElement('button');
+    moreBtn.type = 'button';
+    moreBtn.id = 'remoed-more-btn';
+    moreBtn.className = 'remoed-bottom-nav__link remoed-bottom-nav__more';
+    moreBtn.setAttribute('aria-expanded', 'false');
+    moreBtn.setAttribute('aria-controls', 'remoed-more-sheet');
+    moreBtn.innerHTML = MORE_SVG + '<span class="remoed-bottom-nav__label">More</span>';
+    if (!onTab) {
+      moreBtn.classList.add('is-active');
+      moreBtn.setAttribute('aria-current', 'page');
+    }
+    moreBtn.addEventListener('click', function (ev) {
+      ev.preventDefault();
+      toggleMore();
+    });
+    bar.appendChild(moreBtn);
 
     document.body.appendChild(bar);
-    document.body.classList.add('remoed-has-bottom-nav');
+    document.body.classList.add('remoed-has-bottom-nav', 'remoed-has-app-shell');
+    bar._tabLis = tabLis;
+    bar._menu = menu;
+    bar._role = role;
   }
 
-  function wireMenuClose(main) {
-    var menu = main.querySelector('.remoed-menu');
-    if (!menu || menu.getAttribute('data-remoed-drawer-close') === '1') return;
-    menu.setAttribute('data-remoed-drawer-close', '1');
-    menu.addEventListener('click', function (ev) {
-      var li = ev.target.closest('li');
-      if (!li || !menu.contains(li)) return;
-      if (isMobile()) closeDrawer();
+  function ensureMoreSheet() {
+    var existing = document.getElementById('remoed-more-sheet');
+    if (existing) {
+      populateMoreSheet(existing);
+      return existing;
+    }
+
+    var sheet = document.createElement('div');
+    sheet.id = 'remoed-more-sheet';
+    sheet.className = 'remoed-more-sheet';
+    sheet.setAttribute('hidden', '');
+    sheet.innerHTML =
+      '<div class="remoed-more-sheet__backdrop" data-remoed-more-dismiss="1"></div>' +
+      '<div class="remoed-more-sheet__panel" role="dialog" aria-modal="true" aria-labelledby="remoed-more-title">' +
+      '  <div class="remoed-more-sheet__grab" aria-hidden="true"></div>' +
+      '  <h2 id="remoed-more-title" class="remoed-more-sheet__title">More</h2>' +
+      '  <nav class="remoed-more-sheet__list" aria-label="More pages"></nav>' +
+      '</div>';
+    document.body.appendChild(sheet);
+    sheet.addEventListener('click', function (ev) {
+      if (ev.target && ev.target.getAttribute && ev.target.getAttribute('data-remoed-more-dismiss')) {
+        closeMore();
+      }
     });
+    populateMoreSheet(sheet);
+    return sheet;
+  }
+
+  function populateMoreSheet(sheet) {
+    var list = sheet.querySelector('.remoed-more-sheet__list');
+    if (!list) return;
+    var bar = document.getElementById('remoed-bottom-nav');
+    var menu = (bar && bar._menu) || document.querySelector('nav.remoed-sidebar .remoed-menu');
+    if (!menu) return;
+    var role = (bar && bar._role) || portalRoleFromNav(document.querySelector('nav.remoed-sidebar'));
+    var tabIds = {};
+    (BOTTOM_TABS[role] || []).forEach(function (id) {
+      tabIds[id] = true;
+    });
+    var map = collectNavEls(menu);
+    var here = currentPageBasename();
+    list.innerHTML = '';
+
+    map.all.forEach(function (el) {
+      var id = el.getAttribute('data-nav') || '';
+      if (tabIds[id] && !isLogoutEl(el)) return;
+      var a = document.createElement('a');
+      a.className = 'remoed-more-sheet__item';
+      if (isLogoutEl(el)) {
+        a.classList.add('remoed-more-sheet__item--logout');
+        fillLinkFromMenuEl(a, el, { short: false, labelClass: 'remoed-more-sheet__label' });
+        a.addEventListener('click', function (ev) {
+          ev.preventDefault();
+          triggerLogout();
+        });
+      } else {
+        var meta = fillLinkFromMenuEl(a, el, { short: false, labelClass: 'remoed-more-sheet__label' });
+        if (pageMatchesHref(here, meta.href)) {
+          a.classList.add('is-active');
+          a.setAttribute('aria-current', 'page');
+        }
+        a.addEventListener('click', function () {
+          closeMore();
+        });
+      }
+      list.appendChild(a);
+    });
+  }
+
+  function pageTitleFromChrome(tabLis, here) {
+    var headerText = '';
+    var titleSpan = document.querySelector(
+      '.remoed-main > .nav-header .nav-title-text, .student-page-nav-header .nav-title-text, .teacher-page-nav-header .nav-title-text'
+    );
+    if (titleSpan && titleSpan.textContent) {
+      headerText = titleSpan.textContent.replace(/\s+/g, ' ').trim();
+    }
+    if (headerText) return headerText;
+
+    var match = null;
+    (tabLis || []).forEach(function (el) {
+      if (pageMatchesHref(here, hrefFromMenuLi(el))) match = el;
+    });
+    if (!match) {
+      var menu = document.querySelector('nav.remoed-sidebar .remoed-menu');
+      if (menu) {
+        Array.prototype.slice.call(menu.querySelectorAll('[data-nav]')).some(function (el) {
+          if (pageMatchesHref(here, hrefFromMenuLi(el))) {
+            match = el;
+            return true;
+          }
+          return false;
+        });
+      }
+    }
+    if (match) return fullLabelFromMenuLi(match);
+
+    var doc = (document.title || '').replace(/\s*[—\-]\s*RemoEdPH.*$/i, '').trim();
+    return doc || 'RemoEdPH';
+  }
+
+  function goBack(tabLis) {
+    try {
+      if (global.history && global.history.length > 1) {
+        global.history.back();
+        return;
+      }
+    } catch (e) { /* ignore */ }
+    var first = tabLis && tabLis[0];
+    var href = hrefFromMenuLi(first);
+    global.location.href = href || 'student-dashboard.html';
+  }
+
+  function buildAppTopbar(main, tabLis) {
+    var shell = document.getElementById('remoed-mobile-shell');
+    if (shell) return shell;
+
+    var here = currentPageBasename();
+    var onTab = isTabPage(tabLis, here);
+    shell = document.createElement('div');
+    shell.id = 'remoed-mobile-shell';
+    shell.className = 'remoed-mobile-topbar remoed-app-topbar';
+
+    var back = document.createElement('button');
+    back.type = 'button';
+    back.id = 'remoed-app-back';
+    back.className = 'remoed-app-back';
+    back.setAttribute('aria-label', 'Back');
+    back.innerHTML = BACK_SVG;
+    if (onTab) back.hidden = true;
+    back.addEventListener('click', function () {
+      goBack(tabLis);
+    });
+
+    var title = document.createElement('h1');
+    title.id = 'remoed-app-title';
+    title.className = 'remoed-app-title';
+    title.textContent = pageTitleFromChrome(tabLis, here);
+
+    var actions = document.createElement('div');
+    actions.id = 'remoed-app-actions';
+    actions.className = 'remoed-app-actions';
+
+    shell.appendChild(back);
+    shell.appendChild(title);
+    shell.appendChild(actions);
+    main.insertBefore(shell, main.firstChild);
+    adoptHeaderActions();
+    return shell;
+  }
+
+  function adoptHeaderActions() {
+    var slot = document.getElementById('remoed-app-actions');
+    var titleEl = document.getElementById('remoed-app-title');
+    if (!slot) return;
+    var header = document.querySelector(
+      '.remoed-main > .nav-header, .remoed-main > .student-page-nav-header, .remoed-main > .teacher-page-nav-header'
+    );
+    if (!header) return;
+    var right = header.querySelector('.nav-right');
+    if (right && right.parentElement !== slot) {
+      slot.appendChild(right);
+    }
+    if (titleEl && !titleEl.getAttribute('data-locked')) {
+      var h1 = header.querySelector('.nav-title-text');
+      var text = h1 ? h1.textContent.replace(/\s+/g, ' ').trim() : '';
+      if (text) titleEl.textContent = text;
+    }
+    header.classList.add('remoed-nav-header--adopted');
+  }
+
+  function watchHeaderAdopt(main) {
+    if (!main || main.getAttribute('data-remoed-app-observe') === '1') return;
+    main.setAttribute('data-remoed-app-observe', '1');
+    var tries = 0;
+    var obs = new MutationObserver(function () {
+      adoptHeaderActions();
+      tries += 1;
+      if (document.getElementById('remoed-app-actions') && document.getElementById('remoed-app-actions').childNodes.length) {
+        obs.disconnect();
+      }
+      if (tries > 20) obs.disconnect();
+    });
+    obs.observe(main, { childList: true, subtree: true });
+    setTimeout(function () {
+      adoptHeaderActions();
+    }, 0);
+    setTimeout(function () {
+      adoptHeaderActions();
+    }, 400);
   }
 
   function mount() {
     if (!document.body) return;
     if (document.body.classList.contains('page-live-classroom')) return;
     var main = document.querySelector('.remoed-main');
-    if (!main || document.getElementById('remoed-mobile-shell')) return;
-
-    var shell = document.createElement('div');
-    shell.id = 'remoed-mobile-shell';
-    shell.className = 'remoed-mobile-topbar';
-    shell.innerHTML =
-      '<button type="button" class="remoed-nav-toggle" id="remoed-nav-toggle" aria-expanded="false" aria-controls="remoed-drawer-nav">' +
-      '<span class="remoed-nav-toggle-bars" aria-hidden="true"></span>' +
-      '<span class="remoed-sr-only">Open menu</span></button>';
-
-    main.insertBefore(shell, main.firstChild);
-
-    var backdrop = document.createElement('div');
-    backdrop.className = 'remoed-nav-backdrop';
-    backdrop.id = 'remoed-nav-backdrop';
-    backdrop.setAttribute('aria-hidden', 'true');
-    // Keep backdrop inside .remoed-main (before sidebar) so z-index stacks with the drawer, not above the whole main.
-    var sidebarRoot = main.querySelector('[id$="-sidebar-root"]');
-    if (sidebarRoot) {
-      main.insertBefore(backdrop, sidebarRoot);
-    } else {
-      main.appendChild(backdrop);
-    }
+    if (!main) return;
 
     var nav =
       main.querySelector('nav.remoed-sidebar') ||
       main.querySelector('[id$="-sidebar-root"] nav.remoed-sidebar');
-    if (nav && !nav.id) nav.id = 'remoed-drawer-nav';
 
-    document.getElementById('remoed-nav-toggle').addEventListener('click', toggleDrawer);
-    backdrop.addEventListener('click', closeDrawer);
-
-    if (global.matchMedia) {
-      global.matchMedia(MQ_MOBILE).addEventListener('change', function (ev) {
-        if (!ev.matches) closeDrawer();
-      });
+    if (!document.getElementById('remoed-bottom-nav') && nav) {
+      buildBottomNav(nav);
     }
 
-    document.addEventListener('keydown', function (ev) {
-      if (ev.key === 'Escape') closeDrawer();
-    });
+    var bar = document.getElementById('remoed-bottom-nav');
+    var tabLis = (bar && bar._tabLis) || (nav ? pickTabLis(nav.querySelector('.remoed-menu'), portalRoleFromNav(nav)) : []);
 
-    wireMenuClose(main);
-    ensureMenuItemTitles();
-    buildBottomNav(main, nav);
+    if (!document.getElementById('remoed-mobile-shell')) {
+      buildAppTopbar(main, tabLis);
+    } else {
+      adoptHeaderActions();
+    }
+
+    watchHeaderAdopt(main);
+
+    if (!document.body.getAttribute('data-remoed-app-keys')) {
+      document.body.setAttribute('data-remoed-app-keys', '1');
+      document.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Escape') closeMore();
+      });
+      if (global.matchMedia) {
+        global.matchMedia(MQ_MOBILE).addEventListener('change', function (ev) {
+          if (!ev.matches) closeMore();
+        });
+      }
+    }
   }
 
   global.RemoedPortalLayout = {
     mount: mount,
     closeDrawer: closeDrawer,
     openDrawer: openDrawer,
-    toggleDrawer: toggleDrawer
+    toggleDrawer: toggleDrawer,
+    closeMore: closeMore,
+    openMore: openMore,
+    toggleMore: toggleMore
   };
 })(typeof window !== 'undefined' ? window : this);

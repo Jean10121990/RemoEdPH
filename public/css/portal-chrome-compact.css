@@ -711,13 +711,13 @@ body.student-portal.has-student-page-header .remoed-content {
     left: 0;
   }
 
-  body.student-portal.has-student-page-header .remoed-main:has(#remoed-mobile-shell) .nav-header,
-  body.student-portal.has-student-page-header .remoed-main:has(#remoed-mobile-shell) .student-page-nav-header {
-    top: 52px;
+  body.student-portal.has-student-page-header .nav-header.remoed-nav-header--adopted,
+  body.student-portal.has-student-page-header .student-page-nav-header.remoed-nav-header--adopted {
+    display: none !important;
   }
 
-  body.student-portal.has-student-page-header .remoed-main:has(#remoed-mobile-shell) .remoed-content {
-    margin-top: calc(52px + 48px) !important;
+  body.student-portal.has-student-page-header.remoed-has-app-shell .remoed-content {
+    margin-top: 0 !important;
   }
 }
 
@@ -749,6 +749,15 @@ body[class*="page-teacher-"].has-teacher-page-header .remoed-content {
   body[class*="page-teacher-"].has-teacher-page-header .nav-header,
   body[class*="page-teacher-"].has-teacher-page-header .teacher-page-nav-header {
     left: 0;
+  }
+
+  body[class*="page-teacher-"].has-teacher-page-header .nav-header.remoed-nav-header--adopted,
+  body[class*="page-teacher-"].has-teacher-page-header .teacher-page-nav-header.remoed-nav-header--adopted {
+    display: none !important;
+  }
+
+  body.remoed-has-app-shell[class*="page-teacher-"].has-teacher-page-header .remoed-content {
+    margin-top: 0 !important;
   }
 }
 
@@ -790,6 +799,14 @@ body.page-admin-profile-settings.has-admin-page-header .nav-header .nav-right {
 @media (max-width: 768px) {
   body[class*="page-admin-"].has-admin-page-header .nav-header {
     left: 0;
+  }
+
+  body[class*="page-admin-"].has-admin-page-header .nav-header.remoed-nav-header--adopted {
+    display: none !important;
+  }
+
+  body.remoed-has-app-shell[class*="page-admin-"].has-admin-page-header .remoed-content {
+    margin-top: 0 !important;
   }
 }
 

@@ -251,7 +251,7 @@
             if (legacy) legacy.remove();
             var legacyClose = document.getElementById('sidebarClose');
             if (legacyClose) legacyClose.remove();
-            document.querySelectorAll('.mobile-hamburger, .mobile-sidebar-overlay, .remoed-mobile-topbar').forEach(function (el) {
+            document.querySelectorAll('.mobile-hamburger, .mobile-sidebar-overlay').forEach(function (el) {
                 try { el.remove(); } catch (_e) {}
             });
             document.body.classList.remove('remoed-portal-sidebar-mounted', 'remoed-desktop-sidebar-collapsed');
@@ -392,7 +392,7 @@
             return;
         }
         var s = document.createElement('script');
-        s.src = 'js/portal-layout.js?v=lb-nav-3';
+        s.src = 'js/portal-layout.js?v=app-shell-1';
         s.async = true;
         s.setAttribute('data-remoed-portal-layout', '1');
         s.onload = function () {
@@ -410,7 +410,7 @@
         if (document.getElementById('student-no-motion-style')) return;
         var style = document.createElement('style');
         style.id = 'student-no-motion-style';
-        /* Do not target nav.remoed-sidebar itself — mobile drawer uses transform transition (mobile-first.css). */
+        /* Do not target nav.remoed-sidebar itself — tablet/desktop rail still uses it. */
         style.textContent = [
             '.student-portal .remoed-sidebar .sidebar-header,',
             '.student-portal .remoed-sidebar .sidebar-header *,',

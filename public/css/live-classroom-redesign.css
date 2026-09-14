@@ -828,7 +828,17 @@ body.page-live-classroom .lc-stage-video-toolbar {
 
 @media (max-width: 768px) {
   body.page-live-classroom .top-bar {
-    padding-left: 14px !important;
+    min-height: 52px;
+    padding-top: max(8px, env(safe-area-inset-top)) !important;
+    padding-left: max(12px, env(safe-area-inset-left)) !important;
+    padding-right: max(12px, env(safe-area-inset-right)) !important;
+  }
+
+  body.page-live-classroom .top-bar__ghost,
+  body.page-live-classroom .top-bar__action,
+  body.page-live-classroom .leave-btn {
+    min-height: 44px;
+    min-width: 44px;
   }
 
   body.page-live-classroom .right-panel {

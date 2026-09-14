@@ -2302,7 +2302,8 @@ body.page-live-classroom .chat-messages .message-bubble .message-text {
 
   .lc-mobile-dock__btn {
     flex: 1;
-    min-height: 48px;
+    min-height: 44px;
+    min-width: 44px;
     border-radius: 12px;
     border: 1px solid #e2e8f0;
     background: #f8fafc;

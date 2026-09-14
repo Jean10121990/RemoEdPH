@@ -183,7 +183,7 @@
             if (legacy) legacy.remove();
             var closeBtn = document.getElementById('sidebarClose');
             if (closeBtn) closeBtn.remove();
-            // Keep portal-layout.js chrome (.remoed-mobile-topbar, #remoed-nav-toggle, bottom nav).
+            // Keep portal-layout.js chrome (app top bar + bottom tabs + More).
             document.querySelectorAll(
                 '.mobile-hamburger, .mobile-sidebar-overlay, .portal-sidebar-toggle'
             ).forEach(function (el) {
@@ -209,7 +209,7 @@
             return;
         }
         var s = document.createElement('script');
-        s.src = 'js/portal-layout.js?v=lb-nav-3';
+        s.src = 'js/portal-layout.js?v=app-shell-1';
         s.async = true;
         s.setAttribute('data-remoed-portal-layout', '1');
         s.onload = function () {
@@ -333,7 +333,7 @@
 
         applyGreetingFromStorage();
         loadProfileIntoSidebar();
-        // Mini-sidebar collapse is local; mobile hamburger/drawer via portal-layout.js.
+        // Mini-sidebar collapse is local; phone app chrome via portal-layout.js.
         removeLegacyFloatingChrome();
         queuePortalLayoutMount();
 
