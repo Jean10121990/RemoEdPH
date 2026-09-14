@@ -120,12 +120,14 @@ body.teacher-portal .nav-header .nav-dropdown,
      html and body makes each a vertical scroller (visible-y computes to auto)
      and iOS snaps back to the bottom. Dashboard also sets overflow-x:hidden
      on .remoed-main. Keep body/main/content overflow:visible so they grow. */
+  /* Do not set overflow-x on html/body — clip/hidden computes overflow-y to
+     auto and creates a second scroller. The viewport is the only scrollport. */
   html:has(body.student-portal),
   html:has(body.teacher-portal),
   html:has(body[class*="page-teacher-"]) {
-    overflow-x: clip;
-    overflow-y: auto;
-    overflow-anchor: none;
+    overflow: visible !important;
+    overflow-anchor: none !important;
+    overscroll-behavior-y: none;
   }
 
   body.student-portal,
@@ -157,6 +159,7 @@ body.teacher-portal .nav-header .nav-dropdown,
     min-height: 0 !important;
     max-height: none !important;
     height: auto !important;
+    flex: 0 0 auto !important;
   }
 
   body.page-student-book .remoed-content,

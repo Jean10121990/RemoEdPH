@@ -75,6 +75,51 @@
     return global.matchMedia && global.matchMedia(MQ_MOBILE).matches;
   }
 
+  function appendPreservingScroll(parent, node) {
+    var x = global.scrollX || 0;
+    var y = global.scrollY || 0;
+    parent.appendChild(node);
+    if ((global.scrollY || 0) !== y || (global.scrollX || 0) !== x) {
+      global.scrollTo(x, y);
+    }
+  }
+
+  function installScrollSnapGuard() {
+    if (!document.body || document.body.getAttribute('data-remoed-scroll-guard') === '1') return;
+    document.body.setAttribute('data-remoed-scroll-guard', '1');
+    try {
+      document.documentElement.style.overflowAnchor = 'none';
+      document.body.style.overflowAnchor = 'none';
+    } catch (e0) { /* ignore */ }
+
+    var lastY = global.scrollY || 0;
+    var restoring = false;
+    global.addEventListener(
+      'scroll',
+      function () {
+        if (!isMobile() || restoring) {
+          lastY = global.scrollY || 0;
+          return;
+        }
+        var y = global.scrollY || document.documentElement.scrollTop || 0;
+        var max = Math.max(
+          0,
+          (document.documentElement.scrollHeight || 0) - (global.innerHeight || 0)
+        );
+        var jumpedToEnd =
+          max > 120 && y >= max - 4 && lastY < max - 60 && y - lastY > 50;
+        if (jumpedToEnd) {
+          restoring = true;
+          global.scrollTo(0, lastY);
+          restoring = false;
+          return;
+        }
+        lastY = y;
+      },
+      { passive: true }
+    );
+  }
+
   function closeMore() {
     document.body.classList.remove('remoed-more-open', 'remoed-drawer-open');
     var moreBtn = document.getElementById('remoed-more-btn');
@@ -324,7 +369,7 @@
     });
     bar.appendChild(moreBtn);
 
-    document.body.appendChild(bar);
+    appendPreservingScroll(document.body, bar);
     document.body.classList.add('remoed-has-bottom-nav', 'remoed-has-app-shell');
     bar._tabLis = tabLis;
     bar._menu = menu;
@@ -349,7 +394,7 @@
       '  <h2 id="remoed-more-title" class="remoed-more-sheet__title">More</h2>' +
       '  <nav class="remoed-more-sheet__list" aria-label="More pages"></nav>' +
       '</div>';
-    document.body.appendChild(sheet);
+    appendPreservingScroll(document.body, sheet);
     sheet.addEventListener('click', function (ev) {
       if (ev.target && ev.target.getAttribute && ev.target.getAttribute('data-remoed-more-dismiss')) {
         closeMore();
@@ -548,6 +593,7 @@
     }
 
     watchHeaderAdopt(main);
+    installScrollSnapGuard();
 
     if (!document.body.getAttribute('data-remoed-app-keys')) {
       document.body.setAttribute('data-remoed-app-keys', '1');

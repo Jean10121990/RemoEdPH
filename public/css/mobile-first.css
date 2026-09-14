@@ -4,7 +4,7 @@
  * Breakpoints: mobile ≤768px, tablet 769–1024px, desktop ≥1025px.
  */
 
-@import url('remoed-layers.css?v=app-shell-7');
+@import url('remoed-layers.css?v=app-shell-8');
 
 /* --- Fluid typography --- */
 html {
@@ -151,8 +151,10 @@ canvas {
     align-items: center;
     gap: 8px;
     flex-shrink: 0;
-    position: sticky;
+    position: fixed;
     top: 0;
+    left: 0;
+    right: 0;
     z-index: var(--z-sticky);
     min-height: 52px;
     padding: 6px 12px;
@@ -163,6 +165,11 @@ canvas {
     border-bottom: 1px solid #e8edf3;
     box-sizing: border-box;
     overflow: visible;
+    overflow-anchor: none;
+  }
+
+  body.remoed-has-app-shell .remoed-main {
+    padding-top: calc(52px + env(safe-area-inset-top, 0px));
   }
 
   .remoed-app-title {
@@ -402,6 +409,7 @@ canvas {
     left: 0;
     right: 0;
     bottom: 0;
+    overflow-anchor: none;
     z-index: var(--z-sticky);
     gap: 2px;
     padding: 4px 6px calc(4px + env(safe-area-inset-bottom, 0px));
