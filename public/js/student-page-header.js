@@ -10,7 +10,7 @@
         try {
             if (!document.querySelector('script[src*="remoed-notifications.js"]')) {
                 var s = document.createElement('script');
-                s.src = '/js/remoed-notifications.js';
+                s.src = '/js/remoed-notifications.js?v=header-actions-2';
                 document.head.appendChild(s);
             }
             if (!global.io && !document.querySelector('script[src*="socket.io"]')) {
@@ -108,7 +108,7 @@
         var l = document.createElement('link');
         l.id = 'remoed-header-actions-css';
         l.rel = 'stylesheet';
-        l.href = 'css/portal-header-actions.css?v=header-actions-1';
+        l.href = 'css/portal-header-actions.css?v=header-actions-2';
         document.head.appendChild(l);
     }
 
@@ -245,7 +245,12 @@
         icon.addEventListener('click', function (e) {
             e.preventDefault();
             e.stopPropagation();
-            var open = dropdown.classList.toggle('show');
+            var open = !dropdown.classList.contains('show');
+            if (global.remoedSetNavDropdownOpen) {
+                global.remoedSetNavDropdownOpen(dropdown, open);
+            } else {
+                dropdown.classList.toggle('show', open);
+            }
             if (open) refresh();
         });
         dropdown.addEventListener('click', function (e) {
@@ -265,7 +270,11 @@
         });
         document.addEventListener('click', function (e) {
             if (icon.contains(e.target) || dropdown.contains(e.target)) return;
-            dropdown.classList.remove('show');
+            if (global.remoedSetNavDropdownOpen) {
+                global.remoedSetNavDropdownOpen(dropdown, false);
+            } else {
+                dropdown.classList.remove('show');
+            }
         });
         refresh();
         setInterval(refresh, 60 * 1000);

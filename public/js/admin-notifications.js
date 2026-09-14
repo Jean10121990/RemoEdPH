@@ -128,8 +128,13 @@
 
         icon.addEventListener('click', function (event) {
             event.stopPropagation();
-            dropdown.classList.toggle('show');
-            if (dropdown.classList.contains('show')) {
+            var open = !dropdown.classList.contains('show');
+            if (window.remoedSetNavDropdownOpen) {
+                window.remoedSetNavDropdownOpen(dropdown, open);
+            } else {
+                dropdown.classList.toggle('show', open);
+            }
+            if (open) {
                 loadAdminNotifications();
             }
         });
@@ -139,7 +144,11 @@
         });
 
         document.addEventListener('click', function () {
-            dropdown.classList.remove('show');
+            if (window.remoedSetNavDropdownOpen) {
+                window.remoedSetNavDropdownOpen(dropdown, false);
+            } else {
+                dropdown.classList.remove('show');
+            }
         });
 
         var markAllBtn = document.getElementById('admin-notifications-mark-read');

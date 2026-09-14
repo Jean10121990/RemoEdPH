@@ -83,8 +83,8 @@
         </div>
         
         <div id="teacher-sidebar-root"></div>
-        <script src="js/teacher-sidebar.js?v=app-shell-3"></script>
-        <script src="js/teacher-page-header.js?v=header-actions-1"></script>
+        <script src="js/teacher-sidebar.js?v=app-shell-4"></script>
+        <script src="js/teacher-page-header.js?v=header-actions-2"></script>
         <script>
             TeacherSidebar.render('teacher-sidebar-root', 'dashboard');
             TeacherPageHeader.polishExisting('dashboard');
@@ -463,10 +463,15 @@
             
             notificationsIcon.addEventListener('click', function(e) {
                 e.stopPropagation();
-                notificationsDropdown.classList.toggle('show');
-                // Hide other dropdowns
-                document.getElementById('upcoming-classes-dropdown').classList.remove('show');
-                if (notificationsDropdown.classList.contains('show')) {
+                var open = !notificationsDropdown.classList.contains('show');
+                if (window.remoedSetNavDropdownOpen) {
+                    window.remoedSetNavDropdownOpen(document.getElementById('upcoming-classes-dropdown'), false);
+                    window.remoedSetNavDropdownOpen(notificationsDropdown, open);
+                } else {
+                    notificationsDropdown.classList.toggle('show', open);
+                    document.getElementById('upcoming-classes-dropdown').classList.remove('show');
+                }
+                if (open) {
                     loadNotificationsDropdown();
                 }
             });
@@ -478,17 +483,27 @@
             
             upcomingClassesIcon.addEventListener('click', function(e) {
                 e.stopPropagation();
-                upcomingClassesDropdown.classList.toggle('show');
-                // Hide other dropdowns
-                document.getElementById('notifications-dropdown').classList.remove('show');
+                var openUp = !upcomingClassesDropdown.classList.contains('show');
+                if (window.remoedSetNavDropdownOpen) {
+                    window.remoedSetNavDropdownOpen(notificationsDropdown, false);
+                    window.remoedSetNavDropdownOpen(upcomingClassesDropdown, openUp);
+                } else {
+                    upcomingClassesDropdown.classList.toggle('show', openUp);
+                    notificationsDropdown.classList.remove('show');
+                }
             });
             
             // Close dropdowns when clicking outside
             document.addEventListener('click', function(e) {
                 if (notificationsIcon.contains(e.target) || notificationsDropdown.contains(e.target)) return;
                 if (upcomingClassesIcon.contains(e.target) || upcomingClassesDropdown.contains(e.target)) return;
-                notificationsDropdown.classList.remove('show');
-                upcomingClassesDropdown.classList.remove('show');
+                if (window.remoedSetNavDropdownOpen) {
+                    window.remoedSetNavDropdownOpen(notificationsDropdown, false);
+                    window.remoedSetNavDropdownOpen(upcomingClassesDropdown, false);
+                } else {
+                    notificationsDropdown.classList.remove('show');
+                    upcomingClassesDropdown.classList.remove('show');
+                }
             });
             
             // Prevent dropdown from closing when clicking inside
@@ -1384,7 +1399,7 @@
       }
     }
   
-  // Logout: handled by js/teacher-sidebar.js?v=app-shell-3
+  // Logout: handled by js/teacher-sidebar.js?v=app-shell-4
   // Announcements: see loadAnnouncements() above.
 
   // Load upcoming classes for the teacher

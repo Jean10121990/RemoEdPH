@@ -81,6 +81,7 @@ body[class*="page-admin-"] .nav-right .nav-icon > svg {
 
 .nav-right .nav-dropdown,
 #remoed-app-actions .nav-dropdown,
+body > .nav-dropdown,
 #notifications-dropdown,
 #admin-notifications-dropdown,
 #upcoming-classes-dropdown {
@@ -88,9 +89,9 @@ body[class*="page-admin-"] .nav-right .nav-icon > svg {
   top: calc(100% + 8px);
   right: 0;
   left: auto;
-  width: 360px;
-  max-width: min(360px, calc(100vw - 24px));
-  min-width: 0;
+  width: min(360px, calc(100vw - 24px)) !important;
+  min-width: min(280px, calc(100vw - 24px)) !important;
+  max-width: min(420px, calc(100vw - 24px)) !important;
   max-height: 420px;
   overflow-x: hidden;
   overflow-y: auto;
@@ -106,6 +107,7 @@ body[class*="page-admin-"] .nav-right .nav-icon > svg {
 
 .nav-right .nav-dropdown.show,
 #remoed-app-actions .nav-dropdown.show,
+body > .nav-dropdown.show,
 #notifications-dropdown.show,
 #admin-notifications-dropdown.show,
 #upcoming-classes-dropdown.show {
@@ -207,16 +209,17 @@ body[class*="page-admin-"] .nav-right .nav-icon > svg {
   .nav-right .nav-dropdown,
   #remoed-app-actions .nav-dropdown,
   .remoed-mobile-topbar .nav-dropdown,
+  body > .nav-dropdown,
   #notifications-dropdown,
   #admin-notifications-dropdown,
   #upcoming-classes-dropdown {
     position: fixed !important;
     top: calc(52px + env(safe-area-inset-top, 0px)) !important;
-    left: max(12px, env(safe-area-inset-left, 0px)) !important;
     right: max(12px, env(safe-area-inset-right, 0px)) !important;
-    width: auto !important;
-    min-width: 0 !important;
-    max-width: none !important;
+    left: max(12px, env(safe-area-inset-left, 0px)) !important;
+    width: calc(100vw - 24px) !important;
+    min-width: calc(100vw - 24px) !important;
+    max-width: calc(100vw - 24px) !important;
     max-height: min(70vh, calc(100dvh - 120px - env(safe-area-inset-bottom, 0px))) !important;
     display: none;
     background: #fff !important;
@@ -229,9 +232,17 @@ body[class*="page-admin-"] .nav-right .nav-icon > svg {
   .nav-right .nav-dropdown.show,
   #remoed-app-actions .nav-dropdown.show,
   .remoed-mobile-topbar .nav-dropdown.show,
+  body > .nav-dropdown.show,
   #notifications-dropdown.show,
   #admin-notifications-dropdown.show,
   #upcoming-classes-dropdown.show {
     display: block !important;
+  }
+
+  .nav-dropdown-item,
+  body > .nav-dropdown .nav-dropdown-item {
+    white-space: normal !important;
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
 }

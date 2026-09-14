@@ -184,7 +184,7 @@
         if (global.__ADMIN_EMBED__) return null;
 
         ensureStylesheet('css/portal-chrome-compact.css');
-        ensureStylesheet('css/portal-header-actions.css?v=header-actions-1');
+        ensureStylesheet('css/portal-header-actions.css?v=header-actions-2');
 
         var main = document.querySelector('.remoed-main');
         if (!main) return null;

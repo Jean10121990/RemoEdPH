@@ -332,6 +332,41 @@
       .catch(function () {});
   }
 
+  function setNavDropdownOpen(dropdown, open) {
+    if (typeof global.remoedSetNavDropdownOpen === 'function' && global.remoedSetNavDropdownOpen !== setNavDropdownOpen) {
+      return global.remoedSetNavDropdownOpen(dropdown, open);
+    }
+    if (!dropdown) return false;
+    if (!dropdown.__remoedHome) {
+      dropdown.__remoedHome = {
+        parent: dropdown.parentNode,
+        next: dropdown.nextSibling
+      };
+    }
+    if (open) {
+      var openEls = document.querySelectorAll('.nav-dropdown.show');
+      for (var i = 0; i < openEls.length; i++) {
+        if (openEls[i] !== dropdown) setNavDropdownOpen(openEls[i], false);
+      }
+      if (dropdown.parentNode !== document.body) {
+        document.body.appendChild(dropdown);
+      }
+      dropdown.classList.add('show');
+    } else {
+      dropdown.classList.remove('show');
+      var home = dropdown.__remoedHome;
+      if (home && home.parent && dropdown.parentNode !== home.parent) {
+        if (home.next && home.next.parentNode === home.parent) {
+          home.parent.insertBefore(dropdown, home.next);
+        } else {
+          home.parent.appendChild(dropdown);
+        }
+      }
+    }
+    return !!open;
+  }
+  global.remoedSetNavDropdownOpen = setNavDropdownOpen;
+
   function bindDropdownExtras(dropdown, opts) {
     if (!dropdown || dropdown.getAttribute('data-remoed-notif-extras') === '1') return;
     dropdown.setAttribute('data-remoed-notif-extras', '1');
@@ -399,6 +434,7 @@
     setBadge: setBadge,
     badgeCountFromPayload: badgeCountFromPayload,
     bindDropdownExtras: bindDropdownExtras,
+    setNavDropdownOpen: setNavDropdownOpen,
     getFilter: getFilter,
     setFilter: setFilter,
     isActionable: isActionable,

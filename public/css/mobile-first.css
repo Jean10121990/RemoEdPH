@@ -231,14 +231,15 @@ canvas {
   }
 
   .remoed-app-actions .nav-dropdown,
-  .remoed-mobile-topbar .nav-dropdown {
+  .remoed-mobile-topbar .nav-dropdown,
+  body > .nav-dropdown {
     position: fixed !important;
     top: calc(52px + env(safe-area-inset-top, 0px)) !important;
     left: max(12px, env(safe-area-inset-left)) !important;
     right: max(12px, env(safe-area-inset-right)) !important;
-    width: auto !important;
-    min-width: 0 !important;
-    max-width: none !important;
+    width: calc(100vw - 24px) !important;
+    min-width: calc(100vw - 24px) !important;
+    max-width: calc(100vw - 24px) !important;
     max-height: min(70vh, calc(100dvh - 120px - env(safe-area-inset-bottom, 0px))) !important;
     z-index: var(--z-dropdown) !important;
     display: none;

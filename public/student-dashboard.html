@@ -775,8 +775,8 @@
         
         <div id="student-sidebar-root"></div>
         <script src="js/student-lesson-progress-api.js?v=journey-sync-1"></script>
-        <script src="js/student-sidebar.js?v=app-shell-3"></script>
-        <script src="js/student-page-header.js?v=header-actions-1"></script>
+        <script src="js/student-sidebar.js?v=app-shell-4"></script>
+        <script src="js/student-page-header.js?v=header-actions-2"></script>
         <script>
             StudentSidebar.render('student-sidebar-root', 'dashboard');
             StudentPageHeader.polishExisting('dashboard');
@@ -1240,9 +1240,15 @@
       
       notificationsIcon.addEventListener('click', function(e) {
         e.stopPropagation();
-        notificationsDropdown.classList.toggle('show');
-        upcomingClassesDropdown.classList.remove('show');
-        if (notificationsDropdown.classList.contains('show')) {
+        var open = !notificationsDropdown.classList.contains('show');
+        if (window.remoedSetNavDropdownOpen) {
+          window.remoedSetNavDropdownOpen(upcomingClassesDropdown, false);
+          window.remoedSetNavDropdownOpen(notificationsDropdown, open);
+        } else {
+          notificationsDropdown.classList.toggle('show', open);
+          upcomingClassesDropdown.classList.remove('show');
+        }
+        if (open) {
           loadNotificationsDropdown();
         }
       });
@@ -1250,15 +1256,26 @@
       
       upcomingClassesIcon.addEventListener('click', function(e) {
         e.stopPropagation();
-        upcomingClassesDropdown.classList.toggle('show');
-        notificationsDropdown.classList.remove('show');
+        var openUp = !upcomingClassesDropdown.classList.contains('show');
+        if (window.remoedSetNavDropdownOpen) {
+          window.remoedSetNavDropdownOpen(notificationsDropdown, false);
+          window.remoedSetNavDropdownOpen(upcomingClassesDropdown, openUp);
+        } else {
+          upcomingClassesDropdown.classList.toggle('show', openUp);
+          notificationsDropdown.classList.remove('show');
+        }
       });
       
       document.addEventListener('click', function(e) {
         if (notificationsIcon.contains(e.target) || notificationsDropdown.contains(e.target)) return;
         if (upcomingClassesIcon.contains(e.target) || upcomingClassesDropdown.contains(e.target)) return;
-        notificationsDropdown.classList.remove('show');
-        upcomingClassesDropdown.classList.remove('show');
+        if (window.remoedSetNavDropdownOpen) {
+          window.remoedSetNavDropdownOpen(notificationsDropdown, false);
+          window.remoedSetNavDropdownOpen(upcomingClassesDropdown, false);
+        } else {
+          notificationsDropdown.classList.remove('show');
+          upcomingClassesDropdown.classList.remove('show');
+        }
       });
       
       notificationsDropdown.addEventListener('click', function(e) {

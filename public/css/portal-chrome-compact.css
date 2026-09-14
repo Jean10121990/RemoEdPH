@@ -702,7 +702,6 @@ body[class*="page-admin-"] .nav-header .nav-dropdown-content {
 .teacher-page-nav-header .nav-icon:hover,
 .remoed-app-actions .nav-icon:hover {
   background: rgba(0, 174, 239, 0.12) !important;
-  transform: translateY(-1px);
 }
 
 .nav-header .nav-icon svg,

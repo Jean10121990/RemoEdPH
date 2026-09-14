@@ -34,9 +34,42 @@
     var l = document.createElement('link');
     l.id = 'remoed-header-actions-css';
     l.rel = 'stylesheet';
-    l.href = 'css/portal-header-actions.css?v=header-actions-1';
+    l.href = 'css/portal-header-actions.css?v=header-actions-2';
     document.head.appendChild(l);
   }
+
+  /** Move the panel onto document.body so a 40px bell chip cannot shrink it. */
+  function setNavDropdownOpen(dropdown, open) {
+    if (!dropdown) return false;
+    if (!dropdown.__remoedHome) {
+      dropdown.__remoedHome = {
+        parent: dropdown.parentNode,
+        next: dropdown.nextSibling
+      };
+    }
+    if (open) {
+      var openEls = document.querySelectorAll('.nav-dropdown.show');
+      for (var i = 0; i < openEls.length; i++) {
+        if (openEls[i] !== dropdown) setNavDropdownOpen(openEls[i], false);
+      }
+      if (dropdown.parentNode !== document.body) {
+        document.body.appendChild(dropdown);
+      }
+      dropdown.classList.add('show');
+    } else {
+      dropdown.classList.remove('show');
+      var home = dropdown.__remoedHome;
+      if (home && home.parent && dropdown.parentNode !== home.parent) {
+        if (home.next && home.next.parentNode === home.parent) {
+          home.parent.insertBefore(dropdown, home.next);
+        } else {
+          home.parent.appendChild(dropdown);
+        }
+      }
+    }
+    return !!open;
+  }
+  global.remoedSetNavDropdownOpen = setNavDropdownOpen;
 
   function isMobile() {
     return global.matchMedia && global.matchMedia(MQ_MOBILE).matches;
@@ -536,6 +569,7 @@
     toggleDrawer: toggleDrawer,
     closeMore: closeMore,
     openMore: openMore,
-    toggleMore: toggleMore
+    toggleMore: toggleMore,
+    setNavDropdownOpen: setNavDropdownOpen
   };
 })(typeof window !== 'undefined' ? window : this);
