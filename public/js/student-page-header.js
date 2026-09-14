@@ -103,12 +103,22 @@
             .replace(/"/g, '&quot;');
     }
 
+    function ensureHeaderActionStyles() {
+        if (document.getElementById('remoed-header-actions-css')) return;
+        var l = document.createElement('link');
+        l.id = 'remoed-header-actions-css';
+        l.rel = 'stylesheet';
+        l.href = 'css/portal-header-actions.css?v=header-actions-1';
+        document.head.appendChild(l);
+    }
+
     /**
      * @param {string} pageId
      * @param {{ title?: string, icon?: string, skipActions?: boolean }=} opts
      */
     function render(pageId, opts) {
         opts = opts || {};
+        ensureHeaderActionStyles();
         var meta = PAGES[pageId] || { title: opts.title || 'RemoEdPH', icon: opts.icon || 'gamepad' };
         var title = opts.title || meta.title;
         var iconKey = opts.icon || meta.icon;
@@ -174,6 +184,7 @@
     /** Restyle an existing dashboard-style header title (keep dropdowns). */
     function polishExisting(pageId, opts) {
         opts = opts || {};
+        ensureHeaderActionStyles();
         var meta = PAGES[pageId] || { title: 'RemoEdPH', icon: 'gamepad' };
         var title = opts.title || meta.title;
         var iconHtml = SVG[opts.icon || meta.icon] || SVG.gamepad;
@@ -216,10 +227,10 @@
 
     function bindNotificationBell(header) {
         if (!header) return;
-        var icon = header.querySelector('#notifications-icon');
-        var dropdown = header.querySelector('#notifications-dropdown');
-        var content = header.querySelector('#notifications-dropdown-content');
-        var badge = header.querySelector('#notifications-badge');
+        var icon = document.getElementById('notifications-icon') || header.querySelector('#notifications-icon');
+        var dropdown = document.getElementById('notifications-dropdown') || header.querySelector('#notifications-dropdown');
+        var content = document.getElementById('notifications-dropdown-content') || header.querySelector('#notifications-dropdown-content');
+        var badge = document.getElementById('notifications-badge') || header.querySelector('#notifications-badge');
         if (!icon || !dropdown) return;
         if (icon.getAttribute('data-notif-click') === '1' || header.getAttribute('data-notif-bound') === '1') {
             return;

@@ -509,7 +509,9 @@ body.teacher-portal .nav-header .nav-icon:hover {
 }
 
 body.teacher-portal .nav-header .nav-icon svg,
-body.teacher-portal .nav-header .nav-icon.primary svg {
+body.teacher-portal .nav-header .nav-icon.primary svg,
+body.teacher-portal .remoed-app-actions .nav-icon svg,
+body.teacher-portal .remoed-app-actions .nav-icon.primary svg {
   color: var(--remoed-brand-green-deep) !important;
 }
 

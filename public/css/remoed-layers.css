@@ -110,7 +110,8 @@ body.student-portal .nav-header .nav-dropdown,
 body.teacher-portal .nav-header .nav-dropdown,
 .nav-header .nav-dropdown,
 .student-page-nav-header .nav-dropdown,
-.teacher-page-nav-header .nav-dropdown {
+.teacher-page-nav-header .nav-dropdown,
+.remoed-app-actions .nav-dropdown {
   z-index: var(--z-dropdown);
 }
 

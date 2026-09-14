@@ -61,6 +61,9 @@
             var l = document.createElement('link');
             l.rel = 'stylesheet';
             l.href = href;
+            if (href.indexOf('portal-header-actions.css') !== -1) {
+                l.id = 'remoed-header-actions-css';
+            }
             document.head.appendChild(l);
         } catch (_e) {}
     }
@@ -181,6 +184,7 @@
         if (global.__ADMIN_EMBED__) return null;
 
         ensureStylesheet('css/portal-chrome-compact.css');
+        ensureStylesheet('css/portal-header-actions.css?v=header-actions-1');
 
         var main = document.querySelector('.remoed-main');
         if (!main) return null;

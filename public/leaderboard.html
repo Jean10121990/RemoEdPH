@@ -56,9 +56,9 @@
   </script>
   <title>Leaderboard - RemoEdPH</title>
   <link rel="stylesheet" href="modern-styles.css" id="modern-styles-css" />
-  <link rel="stylesheet" href="css/teacher-sidebar.css?v=app-shell-1" />
-  <link rel="stylesheet" href="css/portal-chrome-compact.css?v=logout-pin-2" />
-  <link rel="stylesheet" href="css/student-portal-layout.css?v=notif-red-1" id="student-layout-css" />
+  <link rel="stylesheet" href="css/teacher-sidebar.css?v=app-shell-3" />
+  <link rel="stylesheet" href="css/portal-chrome-compact.css?v=app-shell-3" />
+  <link rel="stylesheet" href="css/student-portal-layout.css?v=app-shell-3" id="student-layout-css" />
   <link rel="stylesheet" href="css/student-sidebar.css?v=app-shell-1" id="student-sidebar-css" />
   <link rel="stylesheet" href="css/teacher-brand-overrides.css?v=mint-forest-1" id="teacher-brand-css" />
   <link rel="stylesheet" href="css/leaderboard.css?v=lb-admin-2" />
@@ -434,7 +434,7 @@
       body.classList.remove('student-portal', 'teacher-portal');
       root.id = 'admin-sidebar-root';
       var as = document.createElement('script');
-      as.src = 'js/admin-sidebar.js?v=app-shell-1';
+      as.src = 'js/admin-sidebar.js?v=app-shell-3';
       as.onload = function () {
         AdminSidebar.render('admin-sidebar-root', 'leaderboard');
         var h = document.createElement('script');
@@ -450,11 +450,11 @@
       body.classList.remove('student-portal', 'admin-portal');
       root.id = 'teacher-sidebar-root';
       var ts = document.createElement('script');
-      ts.src = 'js/teacher-sidebar.js?v=app-shell-1';
+      ts.src = 'js/teacher-sidebar.js?v=app-shell-3';
       ts.onload = function () {
         TeacherSidebar.render('teacher-sidebar-root', 'leaderboard');
         var h = document.createElement('script');
-        h.src = 'js/teacher-page-header.js?v=logout-pin-2';
+        h.src = 'js/teacher-page-header.js?v=header-actions-1';
         h.onload = function () {
           if (window.TeacherPageHeader) TeacherPageHeader.render('leaderboard');
         };
@@ -466,11 +466,11 @@
       body.classList.remove('teacher-portal', 'admin-portal');
       root.id = 'student-sidebar-root';
       var ss = document.createElement('script');
-      ss.src = 'js/student-sidebar.js?v=app-shell-1';
+      ss.src = 'js/student-sidebar.js?v=app-shell-3';
       ss.onload = function () {
         StudentSidebar.render('student-sidebar-root', 'leaderboard');
         var h = document.createElement('script');
-        h.src = 'js/student-page-header.js?v=logout-pin-2';
+        h.src = 'js/student-page-header.js?v=header-actions-1';
         h.onload = function () {
           if (window.StudentPageHeader) StudentPageHeader.render('leaderboard');
         };

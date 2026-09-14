@@ -5,6 +5,7 @@
 
 @import url('portal-chrome-compact.css');
 @import url('remoed-layers.css');
+@import url('portal-header-actions.css');
 
 /* Fallback when this file is loaded without teacher-sidebar.css (e.g. credits page) */
 :root {
@@ -1051,27 +1052,38 @@ html body.page-student-credits ::-webkit-scrollbar-track {
   background: #e2e8f0;
 }
 
-body.student-portal .nav-header .nav-icon {
+body.student-portal .nav-header .nav-icon,
+body.student-portal .remoed-app-actions .nav-icon {
   position: relative;
 }
 
-body.student-portal .nav-header .nav-dropdown {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.16);
-  min-width: min(360px, 86vw);
-  max-height: 420px;
-  overflow-y: auto;
-  z-index: var(--z-dropdown);
-  display: none;
+@media (min-width: 769px) {
+  body.student-portal .nav-header .nav-dropdown,
+  body.student-portal .remoed-app-actions .nav-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.16);
+    min-width: min(360px, 86vw);
+    max-height: 420px;
+    overflow-y: auto;
+    z-index: var(--z-dropdown);
+    display: none;
+  }
 }
 
-body.student-portal .nav-header .nav-dropdown.show {
+body.student-portal .nav-header .nav-dropdown.show,
+body.student-portal .remoed-app-actions .nav-dropdown.show {
   display: block;
+}
+
+body.student-portal .nav-header .nav-icon svg,
+body.student-portal .student-page-nav-header .nav-icon svg,
+body.student-portal .remoed-app-actions .nav-icon svg {
+  color: var(--remoed-brand-blue-deep) !important;
 }
 
 body.student-portal .nav-header .nav-dropdown-header {
@@ -1109,7 +1121,9 @@ body.student-portal .student-page-nav-header .nav-title-icon {
   color: var(--remoed-brand-blue) !important;
 }
 
-body.student-portal .nav-header .nav-icon svg {
+body.student-portal .nav-header .nav-icon svg,
+body.student-portal .student-page-nav-header .nav-icon svg,
+body.student-portal .remoed-app-actions .nav-icon svg {
   color: var(--remoed-brand-blue-deep) !important;
 }
 

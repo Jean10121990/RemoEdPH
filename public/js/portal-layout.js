@@ -29,6 +29,15 @@
     '<path d="M15 18l-6-6 6-6"/>' +
     '</svg>';
 
+  function ensureHeaderActionStyles() {
+    if (document.getElementById('remoed-header-actions-css')) return;
+    var l = document.createElement('link');
+    l.id = 'remoed-header-actions-css';
+    l.rel = 'stylesheet';
+    l.href = 'css/portal-header-actions.css?v=header-actions-1';
+    document.head.appendChild(l);
+  }
+
   function isMobile() {
     return global.matchMedia && global.matchMedia(MQ_MOBILE).matches;
   }
@@ -484,6 +493,7 @@
   function mount() {
     if (!document.body) return;
     if (document.body.classList.contains('page-live-classroom')) return;
+    ensureHeaderActionStyles();
     var main = document.querySelector('.remoed-main');
     if (!main) return;
 

@@ -1,0 +1,237 @@
+/**
+ * Portal header actions (profile / bell / calendar) — same chips and
+ * notification panel on every page, not only dashboards.
+ * Loaded last from portal-layout.js and *page-header.js so it wins
+ * after .nav-right is adopted into #remoed-app-actions on phone.
+ */
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.nav-right .nav-icon,
+#remoed-app-actions .nav-icon {
+  position: relative !important;
+  width: 40px !important;
+  height: 40px !important;
+  min-width: 40px !important;
+  min-height: 40px !important;
+  max-width: 40px !important;
+  max-height: 40px !important;
+  border-radius: 50% !important;
+  background: #f8f9fa !important;
+  border: 1px solid #e9ecef !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: visible !important;
+  flex: 0 0 40px !important;
+  box-sizing: border-box !important;
+  cursor: pointer;
+  box-shadow: none !important;
+}
+
+.nav-right .nav-icon > svg,
+#remoed-app-actions .nav-icon > svg {
+  width: 20px !important;
+  height: 20px !important;
+  max-width: 20px !important;
+  max-height: 20px !important;
+  flex-shrink: 0 !important;
+  display: block !important;
+  color: #008fc4 !important;
+  fill: currentColor !important;
+  pointer-events: none;
+}
+
+.nav-right .nav-icon.primary > svg,
+#remoed-app-actions .nav-icon.primary > svg {
+  color: #00aeef !important;
+}
+
+body.teacher-portal .nav-right .nav-icon,
+body.teacher-portal #remoed-app-actions .nav-icon,
+body[class*="page-teacher-"] .nav-right .nav-icon {
+  background: #eefceb !important;
+  border-color: #d8f3d4 !important;
+}
+
+body.teacher-portal .nav-right .nav-icon > svg,
+body.teacher-portal .nav-right .nav-icon.primary > svg,
+body.teacher-portal #remoed-app-actions .nav-icon > svg,
+body.teacher-portal #remoed-app-actions .nav-icon.primary > svg,
+body[class*="page-teacher-"] .nav-right .nav-icon > svg {
+  color: #2e9a28 !important;
+}
+
+body.admin-portal .nav-right .nav-icon,
+body.admin-portal #remoed-app-actions .nav-icon,
+body[class*="page-admin-"] .nav-right .nav-icon {
+  background: #eef2ff !important;
+  border-color: #e0e7ff !important;
+}
+
+body.admin-portal .nav-right .nav-icon > svg,
+body.admin-portal #remoed-app-actions .nav-icon > svg,
+body[class*="page-admin-"] .nav-right .nav-icon > svg {
+  color: #2563eb !important;
+}
+
+.nav-right .nav-dropdown,
+#remoed-app-actions .nav-dropdown,
+#notifications-dropdown,
+#admin-notifications-dropdown,
+#upcoming-classes-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  left: auto;
+  width: 360px;
+  max-width: min(360px, calc(100vw - 24px));
+  min-width: 0;
+  max-height: 420px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.16);
+  z-index: var(--z-dropdown, 400);
+  display: none;
+  pointer-events: auto;
+  box-sizing: border-box;
+}
+
+.nav-right .nav-dropdown.show,
+#remoed-app-actions .nav-dropdown.show,
+#notifications-dropdown.show,
+#admin-notifications-dropdown.show,
+#upcoming-classes-dropdown.show {
+  display: block;
+}
+
+.nav-right .nav-dropdown-header,
+#remoed-app-actions .nav-dropdown-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  font-weight: 700;
+  color: #1a202c;
+}
+
+.nav-right .nav-dropdown-content,
+#remoed-app-actions .nav-dropdown-content {
+  padding: 0;
+}
+
+.nav-right .nav-dropdown-item,
+#remoed-app-actions .nav-dropdown-item {
+  padding: 10px 16px;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 0.88rem;
+  box-sizing: border-box;
+}
+
+.nav-right .nav-badge,
+#remoed-app-actions .nav-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.remoed-notif-toolbar {
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #e2e8f0;
+  box-sizing: border-box;
+}
+
+.remoed-notif-filter {
+  flex: 0 0 auto;
+  min-height: 32px;
+  padding: 4px 10px;
+  font-size: 11px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  cursor: pointer;
+}
+
+@media (max-width: 768px) {
+  #remoed-app-actions,
+  .remoed-app-actions,
+  .remoed-mobile-topbar,
+  .remoed-app-topbar {
+    overflow: visible !important;
+  }
+
+  .nav-right .nav-icon,
+  #remoed-app-actions .nav-icon {
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    min-height: 40px !important;
+    max-width: 40px !important;
+    max-height: 40px !important;
+  }
+
+  .nav-right .nav-icon > svg,
+  #remoed-app-actions .nav-icon > svg {
+    width: 20px !important;
+    height: 20px !important;
+    max-width: 20px !important;
+    max-height: 20px !important;
+  }
+
+  .nav-right .nav-dropdown,
+  #remoed-app-actions .nav-dropdown,
+  .remoed-mobile-topbar .nav-dropdown,
+  #notifications-dropdown,
+  #admin-notifications-dropdown,
+  #upcoming-classes-dropdown {
+    position: fixed !important;
+    top: calc(52px + env(safe-area-inset-top, 0px)) !important;
+    left: max(12px, env(safe-area-inset-left, 0px)) !important;
+    right: max(12px, env(safe-area-inset-right, 0px)) !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    max-height: min(70vh, calc(100dvh - 120px - env(safe-area-inset-bottom, 0px))) !important;
+    display: none;
+    background: #fff !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 12px !important;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18) !important;
+    z-index: var(--z-dropdown, 400) !important;
+  }
+
+  .nav-right .nav-dropdown.show,
+  #remoed-app-actions .nav-dropdown.show,
+  .remoed-mobile-topbar .nav-dropdown.show,
+  #notifications-dropdown.show,
+  #admin-notifications-dropdown.show,
+  #upcoming-classes-dropdown.show {
+    display: block !important;
+  }
+}

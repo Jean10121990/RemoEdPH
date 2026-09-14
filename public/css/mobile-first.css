@@ -159,6 +159,7 @@ canvas {
     background: rgba(248, 250, 252, 0.96);
     border-bottom: 1px solid #e8edf3;
     box-sizing: border-box;
+    overflow: visible;
   }
 
   .remoed-app-title {
@@ -204,20 +205,72 @@ canvas {
     gap: 4px;
     flex-shrink: 0;
     margin-left: auto;
+    overflow: visible;
   }
 
   .remoed-app-actions .nav-right {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     position: static;
   }
 
   .remoed-app-actions .nav-icon {
-    width: 44px;
-    height: 44px;
+    position: relative;
+    width: 44px !important;
+    height: 44px !important;
     min-width: 44px;
     min-height: 44px;
+    border-radius: 50% !important;
+    overflow: visible !important;
+  }
+
+  .remoed-app-actions .nav-icon svg {
+    width: 22px !important;
+    height: 22px !important;
+  }
+
+  .remoed-app-actions .nav-dropdown,
+  .remoed-mobile-topbar .nav-dropdown {
+    position: fixed !important;
+    top: calc(52px + env(safe-area-inset-top, 0px)) !important;
+    left: max(12px, env(safe-area-inset-left)) !important;
+    right: max(12px, env(safe-area-inset-right)) !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    max-height: min(70vh, calc(100dvh - 120px - env(safe-area-inset-bottom, 0px))) !important;
+    z-index: var(--z-dropdown) !important;
+    display: none;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .remoed-app-actions .nav-dropdown.show,
+  .remoed-mobile-topbar .nav-dropdown.show {
+    display: block !important;
+  }
+
+  .remoed-app-actions .nav-dropdown-header,
+  .remoed-mobile-topbar .nav-dropdown-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .remoed-notif-toolbar {
+    display: flex !important;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px 12px;
+  }
+
+  .remoed-notif-filter {
+    min-height: 32px;
+    padding: 4px 10px;
   }
 
   body.remoed-has-app-shell .nav-header.remoed-nav-header--adopted {
