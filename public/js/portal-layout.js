@@ -76,56 +76,15 @@
   }
 
   function appendPreservingScroll(parent, node) {
+    var main = document.querySelector('.remoed-main');
     var x = global.scrollX || 0;
     var y = global.scrollY || 0;
+    var my = main ? main.scrollTop : 0;
     parent.appendChild(node);
     if ((global.scrollY || 0) !== y || (global.scrollX || 0) !== x) {
       global.scrollTo(x, y);
     }
-  }
-
-  function installScrollSnapGuard() {
-    if (!document.body || document.body.getAttribute('data-remoed-scroll-guard') === '1') return;
-    document.body.setAttribute('data-remoed-scroll-guard', '1');
-    try {
-      document.documentElement.style.overflowAnchor = 'none';
-      document.body.style.overflowAnchor = 'none';
-    } catch (e0) { /* ignore */ }
-
-    function pinWindow() {
-      if (!isMobile()) return;
-      if (global.scrollY || global.scrollX) global.scrollTo(0, 0);
-    }
-    global.addEventListener('scroll', pinWindow, { passive: true });
-
-    var root = null;
-    var lastY = 0;
-    var restoring = false;
-    function onRootScroll() {
-      if (!isMobile() || restoring || !root) return;
-      var y = root.scrollTop || 0;
-      var max = Math.max(0, (root.scrollHeight || 0) - (root.clientHeight || 0));
-      var jumpedToEnd = max > 120 && y >= max - 4 && lastY < max - 60 && y - lastY > 50;
-      if (jumpedToEnd) {
-        restoring = true;
-        root.scrollTop = lastY;
-        restoring = false;
-        return;
-      }
-      lastY = y;
-    }
-    function bindRoot() {
-      var next = document.querySelector('.remoed-main');
-      if (!next || next === root) return;
-      if (root) root.removeEventListener('scroll', onRootScroll);
-      root = next;
-      lastY = root.scrollTop || 0;
-      root.style.overflowAnchor = 'none';
-      root.addEventListener('scroll', onRootScroll, { passive: true });
-    }
-    bindRoot();
-    setTimeout(bindRoot, 0);
-    setTimeout(bindRoot, 400);
+    if (main && main.scrollTop !== my) main.scrollTop = my;
   }
 
   function closeMore() {
@@ -644,7 +603,6 @@
     }
 
     watchHeaderAdopt(main);
-    installScrollSnapGuard();
 
     if (!document.body.getAttribute('data-remoed-app-keys')) {
       document.body.setAttribute('data-remoed-app-keys', '1');

@@ -70,18 +70,18 @@
   </script>
 <!-- Remo AI Chatbot Styles -->
   <title>Class Schedule - RemoEdPH</title>
-<link rel="stylesheet" href="css/teacher-sidebar.css?v=app-shell-10">
+<link rel="stylesheet" href="css/teacher-sidebar.css?v=app-shell-11">
 <link rel="stylesheet" href="css/global-portal.css">
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="css/portal-chrome-compact.css?v=app-shell-10">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css?v=app-shell-11">
     <link rel="stylesheet" href="css/class-info-modal.css?v=modal-stack-2">
-    <link rel="stylesheet" href="css/remoed-layers.css?v=app-shell-10">
+    <link rel="stylesheet" href="css/remoed-layers.css?v=app-shell-11">
     <link rel="stylesheet" href="css/student-badges.css?v=1">
 </head>
 <body class="page-teacher-class-table teacher-portal">
   <div class="remoed-main">
     <div id="teacher-sidebar-root"></div>
-    <script src="js/teacher-sidebar.js?v=app-shell-10"></script>
+    <script src="js/teacher-sidebar.js?v=app-shell-11"></script>
     <script src="js/teacher-page-header.js?v=header-actions-2"></script>
         <script>
             TeacherSidebar.render('teacher-sidebar-root', 'class-schedule');
@@ -2900,7 +2900,7 @@
 
     
   </script>
-  <script src="mobile-utils.js"></script>
+  <script src="mobile-utils.js?v=app-shell-11"></script>
   <script>
     // Initialize mobile features for class table
     document.addEventListener('DOMContentLoaded', function() {
@@ -2919,14 +2919,6 @@
             });
           }
         }, 2000);
-        
-        // Pull to refresh
-        const content = document.querySelector('.remoed-content');
-        if (content) {
-          new PullToRefresh(content, () => {
-            location.reload();
-          });
-        }
       }
     });
   </script>

@@ -144,18 +144,21 @@ body.teacher-portal .nav-header .nav-dropdown,
   html body.teacher-portal:not(.page-teacher-messages) .remoed-main,
   html body[class*="page-teacher-"]:not(.page-teacher-messages) .remoed-main {
     position: absolute !important;
-    inset: 0 !important;
+    top: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
     width: 100% !important;
     max-width: 100% !important;
-    height: auto !important;
-    max-height: none !important;
+    height: 100% !important;
+    max-height: 100% !important;
     min-height: 0 !important;
+    box-sizing: border-box !important;
     overflow-x: hidden !important;
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-y: contain;
     overflow-anchor: none !important;
-    touch-action: pan-y;
   }
 
   html body.student-portal:not(.page-student-messages) .remoed-content,

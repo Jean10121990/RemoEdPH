@@ -43,7 +43,13 @@ class SwipeHandler {
     }
     
     handleTouchMove(e) {
-        if (this.options.preventDefault) {
+        if (!this.options.preventDefault) return;
+        const touch = e.touches[0];
+        const deltaX = touch.clientX - this.touchStartX;
+        const deltaY = touch.clientY - this.touchStartY;
+        // Only steal the gesture for a clear sideways swipe. Vertical
+        // preventDefault is what made the page look like it scrolled, then snap.
+        if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10) {
             e.preventDefault();
         }
     }
@@ -425,7 +431,9 @@ class QuickActions {
     }
 }
 
-// Pull to Refresh
+// Pull to Refresh — only when the *real* scroller is at the top.
+// Binding this to .remoed-content (overflow: visible) made every swipe
+// look like a scroll, then snap back on touchend.
 class PullToRefresh {
     constructor(container, callback) {
         this.container = container;
@@ -433,54 +441,85 @@ class PullToRefresh {
         this.startY = 0;
         this.currentY = 0;
         this.isPulling = false;
+        this.armed = false;
         this.threshold = 80;
-        
+        this._root = null;
+
+        this.onStart = this.handleTouchStart.bind(this);
+        this.onMove = this.handleTouchMove.bind(this);
+        this.onEnd = this.handleTouchEnd.bind(this);
         this.init();
     }
-    
-    init() {
-        this.container.addEventListener('touchstart', this.handleTouchStart.bind(this));
-        this.container.addEventListener('touchmove', this.handleTouchMove.bind(this));
-        this.container.addEventListener('touchend', this.handleTouchEnd.bind(this));
-    }
-    
-    handleTouchStart(e) {
-        if (this.container.scrollTop === 0) {
-            this.startY = e.touches[0].clientY;
-            this.isPulling = true;
+
+    scrollRoot() {
+        var main = document.querySelector('.remoed-main');
+        if (main) {
+            var mainOverflow = window.getComputedStyle(main).overflowY;
+            if (mainOverflow === 'auto' || mainOverflow === 'scroll' || mainOverflow === 'overlay') {
+                return main;
+            }
         }
-    }
-    
-    handleTouchMove(e) {
-        if (!this.isPulling) return;
-        
-        this.currentY = e.touches[0].clientY;
-        const pullDistance = this.currentY - this.startY;
-        
-        if (pullDistance > 0 && this.container.scrollTop === 0) {
-            e.preventDefault();
-            const pullRatio = Math.min(pullDistance / this.threshold, 1);
-            this.container.style.transform = `translateY(${pullDistance}px)`;
-            this.container.style.opacity = 1 - pullRatio * 0.3;
+        var p = this.container;
+        while (p && p !== document.documentElement) {
+            var st = window.getComputedStyle(p);
+            var oy = st.overflowY;
+            if ((oy === 'auto' || oy === 'scroll' || oy === 'overlay') && p.scrollHeight > p.clientHeight + 1) {
+                return p;
+            }
+            p = p.parentElement;
         }
+        return document.scrollingElement || document.documentElement;
     }
-    
-    handleTouchEnd(e) {
-        if (!this.isPulling) return;
-        
-        const pullDistance = this.currentY - this.startY;
-        
-        if (pullDistance > this.threshold) {
-            // Trigger refresh
-            this.callback && this.callback();
-        }
-        
-        // Reset
+
+    resetVisual() {
         this.container.style.transform = '';
         this.container.style.opacity = '';
+    }
+
+    handleTouchStart(e) {
+        this._root = this.scrollRoot();
+        this.startY = e.touches[0].clientY;
+        this.currentY = this.startY;
+        this.armed = (this._root.scrollTop || 0) <= 1;
         this.isPulling = false;
+    }
+
+    handleTouchMove(e) {
+        if (!this.armed) return;
+        this.currentY = e.touches[0].clientY;
+        var pullDistance = this.currentY - this.startY;
+        if ((this._root.scrollTop || 0) > 1) {
+            this.armed = false;
+            this.isPulling = false;
+            this.resetVisual();
+            return;
+        }
+        if (pullDistance > 12) {
+            this.isPulling = true;
+            e.preventDefault();
+            var pullRatio = Math.min(pullDistance / this.threshold, 1);
+            this.container.style.transform = 'translateY(' + pullDistance + 'px)';
+            this.container.style.opacity = String(1 - pullRatio * 0.3);
+        }
+    }
+
+    handleTouchEnd() {
+        var pullDistance = this.currentY - this.startY;
+        if (this.isPulling && pullDistance > this.threshold) {
+            this.callback && this.callback();
+        }
+        this.resetVisual();
+        this.isPulling = false;
+        this.armed = false;
         this.startY = 0;
         this.currentY = 0;
+    }
+
+    init() {
+        this.container.addEventListener('touchstart', this.onStart, { passive: true });
+        this.container.addEventListener('touchmove', this.onMove, { passive: false });
+        this.container.addEventListener('touchend', this.onEnd, { passive: true });
+        this.container.addEventListener('touchcancel', this.onEnd, { passive: true });
     }
 }
 
