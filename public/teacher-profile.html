@@ -169,11 +169,10 @@
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Gender</label>
-                                <select class="form-input" id="gender" name="gender" disabled>
+                                    <select class="form-input" id="gender" name="gender" disabled>
                                     <option value="">Select Gender</option>
                                     <option value="Male">Male</option>
                                     <option value="Female">Female</option>
-                                    <option value="Other">Other</option>
                                 </select>
                             </div>
                             <div class="form-group">
@@ -892,7 +891,11 @@
                     document.getElementById('birthday').value = profile.birthday ? profile.birthday.split('T')[0] : '';
                     syncTeacherAgeFromBirthday();
                     document.getElementById('hire-date-input').value = profile.hireDate ? profile.hireDate.split('T')[0] : '';
-                    document.getElementById('gender').value = profile.gender || '';
+                    (function () {
+                        var gEl = document.getElementById('gender');
+                        var g = String(profile.gender || '').trim().toLowerCase();
+                        gEl.value = g === 'male' ? 'Male' : g === 'female' ? 'Female' : '';
+                    })();
                     document.getElementById('language').value = profile.language || '';
                     document.getElementById('hobbies').value = profile.hobbies || '';
                     document.getElementById('address').value = profile.address || '';

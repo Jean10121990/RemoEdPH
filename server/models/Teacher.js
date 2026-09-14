@@ -18,7 +18,7 @@ const teacherSchema = new mongoose.Schema({
    // Personal Information
    fullname: { type: String, default: '' },
   birthday: { type: Date },
-  gender: { type: String, enum: ['Male', 'Female', 'Other', ''], default: '' },
+  gender: { type: String, enum: ['Male', 'Female', ''], default: '' },
   language: { type: String, enum: ['English', 'Filipino', 'Spanish', 'Chinese', 'Japanese', ''], default: '' },
   hobbies: { type: String, default: '' },
   address: { type: String, default: '' },

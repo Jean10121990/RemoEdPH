@@ -398,11 +398,14 @@ router.post('/profile', verifyToken, requireStudent, async (req, res) => {
     const { ageFromBirthday } = require('./utils/ageFromBirthday');
     const computedAge = ageFromBirthday(birthday);
 
+    const genderRaw = String(gender || '').trim().toLowerCase();
+    const genderNorm = genderRaw === 'male' || genderRaw === 'female' ? genderRaw : '';
+
     const updateData = {
       firstName: first,
       middleName: middleName || '',
       lastName: last,
-      gender: gender || '',
+      gender: genderNorm,
       birthday: birthday || null,
       age: computedAge != null ? computedAge : (age != null && age !== '' ? Number(age) : null),
       // Raw updates skip Mongoose setters — encrypt here when PII_ENCRYPTION_KEY is set

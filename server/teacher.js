@@ -2582,7 +2582,12 @@ router.post('/profile', verifyToken, requireTeacher, async (req, res) => {
         lastName: profileData.lastName,
         nickname: typeof profileData.nickname === 'string' ? profileData.nickname.trim() : profileData.nickname,
         birthday: profileData.birthday,
-        gender: profileData.gender,
+        gender: (() => {
+          const g = String(profileData.gender || '').trim();
+          if (/^male$/i.test(g)) return 'Male';
+          if (/^female$/i.test(g)) return 'Female';
+          return '';
+        })(),
         language: profileData.language,
         hobbies: profileData.hobbies,
         address: profileData.address,
