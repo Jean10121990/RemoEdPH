@@ -1391,10 +1391,14 @@ body.page-teacher-referrals .grid-stats .stat-card {
 /* Phone: teacher pages must scroll the document, not snap to the bottom.
    Messages is a single-column app panel between the top bar and tab bar. */
 @media (max-width: 768px) {
-  body.teacher-portal .remoed-main,
-  body[class*="page-teacher-"] .remoed-main {
+  body.teacher-portal:not(.page-teacher-messages) .remoed-main,
+  body[class*="page-teacher-"]:not(.page-teacher-messages) .remoed-main,
+  body.student-portal:not(.page-student-messages) .remoed-main {
+    overflow: visible !important;
     overflow-anchor: none;
-    min-height: 100dvh;
+    min-height: 0;
+    height: auto;
+    max-height: none;
   }
 
   body[class*="page-teacher-"].has-teacher-page-header .remoed-content {
@@ -1536,7 +1540,7 @@ body.page-teacher-referrals .grid-stats .stat-card {
 
   html body.page-teacher-class-table .remoed-content,
   html body.page-student-class-table .remoed-content {
-    overflow-x: clip !important;
+    overflow: visible !important;
     min-height: 0 !important;
     margin-left: 0 !important;
     max-width: 100% !important;

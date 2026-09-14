@@ -4,7 +4,7 @@
  * Breakpoints: mobile ≤768px, tablet 769–1024px, desktop ≥1025px.
  */
 
-@import url('remoed-layers.css?v=app-shell-6');
+@import url('remoed-layers.css?v=app-shell-7');
 
 /* --- Fluid typography --- */
 html {
@@ -139,7 +139,9 @@ canvas {
   .remoed-main {
     flex-direction: column;
     align-items: stretch;
-    min-height: 100dvh;
+    min-height: 0;
+    height: auto;
+    overflow: visible;
     overflow-anchor: none;
   }
 

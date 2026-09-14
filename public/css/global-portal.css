@@ -6,7 +6,7 @@
  * Teacher/student phone drawer lives in mobile-first.css (≤768, remoed-drawer-open).
  */
 
-@import url('remoed-layers.css?v=app-shell-6');
+@import url('remoed-layers.css?v=app-shell-7');
 @import url('portal-chrome-compact.css');
 
 /* ---- Sidebar: menu label visibility + icon alignment ---- */

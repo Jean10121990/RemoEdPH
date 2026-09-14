@@ -116,19 +116,47 @@ body.teacher-portal .nav-header .nav-dropdown,
 }
 
 @media (max-width: 768px) {
-  /* clip does not force overflow-y:auto (hidden + visible-y does, which
-     traps phone scroll and snaps back to the bottom). */
+  /* One scrollport only: the document (html). overflow-x:clip/hidden on BOTH
+     html and body makes each a vertical scroller (visible-y computes to auto)
+     and iOS snaps back to the bottom. Dashboard also sets overflow-x:hidden
+     on .remoed-main. Keep body/main/content overflow:visible so they grow. */
   html:has(body.student-portal),
   html:has(body.teacher-portal),
   html:has(body[class*="page-teacher-"]) {
     overflow-x: clip;
+    overflow-y: auto;
+    overflow-anchor: none;
   }
 
   body.student-portal,
   body.teacher-portal,
   body[class*="page-teacher-"] {
-    overflow-x: clip;
-    overflow-anchor: none;
+    overflow: visible !important;
+    overflow-anchor: none !important;
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0 !important;
+  }
+
+  html body.student-portal:not(.page-student-messages) .remoed-main,
+  html body.teacher-portal:not(.page-teacher-messages) .remoed-main,
+  html body[class*="page-teacher-"]:not(.page-teacher-messages) .remoed-main {
+    overflow: visible !important;
+    overflow-anchor: none !important;
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    max-width: 100% !important;
+  }
+
+  html body.student-portal:not(.page-student-messages) .remoed-content,
+  html body.teacher-portal:not(.page-teacher-messages) .remoed-content,
+  html body[class*="page-teacher-"]:not(.page-teacher-messages) .remoed-content {
+    overflow: visible !important;
+    overflow-anchor: none !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    height: auto !important;
   }
 
   body.page-student-book .remoed-content,
@@ -138,15 +166,9 @@ body.teacher-portal .nav-header .nav-dropdown,
     padding-right: 12px !important;
     margin-left: 0 !important;
     max-width: 100% !important;
-    min-height: 0 !important;
-    max-height: none !important;
-    overflow-x: clip !important;
-    overflow-y: visible !important;
-    overflow-anchor: none;
   }
 
-  /* style.css locks the weekly grid to 60vh + overflow:auto on ≤900px, which
-     becomes a second scrollport and snaps the page back to the bottom. */
+  /* style.css locks the weekly grid to 60vh + overflow:auto on ≤900px. */
   body.page-teacher-class-table .remoed-schedule-container,
   body.page-student-class-table .weekly-grid,
   body.page-student-class-table .class-table-scroll,
@@ -179,5 +201,21 @@ body.teacher-portal .nav-header .nav-dropdown,
   body.page-student-class-table .nav-btn,
   body.page-student-class-table .book-btn {
     min-height: 44px;
+  }
+
+  /* Teacher/student/admin guide + Remo AI: sit above the 4-tab bar. */
+  html body #tour-button {
+    bottom: calc(76px + env(safe-area-inset-bottom, 0px)) !important;
+    right: 12px !important;
+    z-index: 90 !important;
+    overflow-anchor: none;
+  }
+
+  html body #chatbot-toggle,
+  html body .chatbot-toggle {
+    bottom: calc(132px + env(safe-area-inset-bottom, 0px)) !important;
+    right: 12px !important;
+    z-index: 90 !important;
+    overflow-anchor: none;
   }
 }
