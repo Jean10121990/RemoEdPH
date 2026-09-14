@@ -116,16 +116,19 @@ body.teacher-portal .nav-header .nav-dropdown,
 }
 
 @media (max-width: 768px) {
+  /* clip does not force overflow-y:auto (hidden + visible-y does, which
+     traps phone scroll and snaps back to the bottom). */
   html:has(body.student-portal),
   html:has(body.teacher-portal),
   html:has(body[class*="page-teacher-"]) {
-    overflow-x: hidden;
+    overflow-x: clip;
   }
 
   body.student-portal,
   body.teacher-portal,
   body[class*="page-teacher-"] {
-    overflow-x: hidden;
+    overflow-x: clip;
+    overflow-anchor: none;
   }
 
   body.page-student-book .remoed-content,
