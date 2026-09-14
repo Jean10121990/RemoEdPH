@@ -1394,11 +1394,11 @@ body.page-teacher-referrals .grid-stats .stat-card {
   body.teacher-portal:not(.page-teacher-messages) .remoed-main,
   body[class*="page-teacher-"]:not(.page-teacher-messages) .remoed-main,
   body.student-portal:not(.page-student-messages) .remoed-main {
-    overflow: visible !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
     overflow-anchor: none;
-    min-height: 0;
-    height: auto;
-    max-height: none;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
   }
 
   body[class*="page-teacher-"].has-teacher-page-header .remoed-content {

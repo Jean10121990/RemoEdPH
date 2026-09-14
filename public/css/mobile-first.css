@@ -4,7 +4,7 @@
  * Breakpoints: mobile ≤768px, tablet 769–1024px, desktop ≥1025px.
  */
 
-@import url('remoed-layers.css?v=app-shell-8');
+@import url('remoed-layers.css?v=app-shell-10');
 
 /* --- Fluid typography --- */
 html {
@@ -77,6 +77,22 @@ canvas {
   display: none;
 }
 
+@media (min-width: 769px) {
+  #remoed-mobile-shell,
+  .remoed-mobile-topbar,
+  .remoed-app-topbar,
+  .remoed-bottom-nav,
+  .remoed-more-sheet {
+    display: none !important;
+  }
+
+  .nav-header.remoed-nav-header--adopted,
+  .student-page-nav-header.remoed-nav-header--adopted,
+  .teacher-page-nav-header.remoed-nav-header--adopted {
+    display: flex !important;
+  }
+}
+
 /* Injected by portal-layout.js — hidden except on small viewports (see @media below). */
 .remoed-bottom-nav {
   display: none;
@@ -140,8 +156,6 @@ canvas {
     flex-direction: column;
     align-items: stretch;
     min-height: 0;
-    height: auto;
-    overflow: visible;
     overflow-anchor: none;
   }
 
@@ -908,6 +922,9 @@ canvas {
 
 /* Tablet: narrow icon rail (769–1024px) */
 @media (min-width: 769px) and (max-width: 1024px) {
+  #remoed-mobile-shell,
+  .remoed-mobile-topbar,
+  .remoed-app-topbar,
   .remoed-bottom-nav,
   .remoed-more-sheet {
     display: none !important;
@@ -915,6 +932,7 @@ canvas {
 
   body.remoed-has-bottom-nav .remoed-main {
     padding-bottom: 0;
+    padding-top: 0;
   }
 
   .remoed-content {

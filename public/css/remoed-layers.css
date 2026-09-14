@@ -116,39 +116,46 @@ body.teacher-portal .nav-header .nav-dropdown,
 }
 
 @media (max-width: 768px) {
-  /* One scrollport only: the document (html). overflow-x:clip/hidden on BOTH
-     html and body makes each a vertical scroller (visible-y computes to auto)
-     and iOS snaps back to the bottom. Dashboard also sets overflow-x:hidden
-     on .remoed-main. Keep body/main/content overflow:visible so they grow. */
-  /* Do not set overflow-x on html/body — clip/hidden computes overflow-y to
-     auto and creates a second scroller. The viewport is the only scrollport. */
+  /* Phone app scroll: lock the document and scroll ONLY .remoed-main.
+     Dual html/body/content scrollers are what yanked the page to the bottom. */
   html:has(body.student-portal),
   html:has(body.teacher-portal),
   html:has(body[class*="page-teacher-"]) {
-    overflow: visible !important;
-    overflow-anchor: none !important;
-    overscroll-behavior-y: none;
+    height: 100% !important;
+    max-height: 100% !important;
+    overflow: hidden !important;
+    overscroll-behavior: none;
   }
 
   body.student-portal,
   body.teacher-portal,
   body[class*="page-teacher-"] {
-    overflow: visible !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    overflow: hidden !important;
+    overscroll-behavior: none;
     overflow-anchor: none !important;
-    height: auto !important;
-    max-height: none !important;
-    min-height: 0 !important;
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100% !important;
   }
 
   html body.student-portal:not(.page-student-messages) .remoed-main,
   html body.teacher-portal:not(.page-teacher-messages) .remoed-main,
   html body[class*="page-teacher-"]:not(.page-teacher-messages) .remoed-main {
-    overflow: visible !important;
-    overflow-anchor: none !important;
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
     height: auto !important;
     max-height: none !important;
     min-height: 0 !important;
-    max-width: 100% !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+    overflow-anchor: none !important;
+    touch-action: pan-y;
   }
 
   html body.student-portal:not(.page-student-messages) .remoed-content,
