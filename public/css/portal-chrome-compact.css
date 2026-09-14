@@ -1522,5 +1522,63 @@ body.page-teacher-referrals .grid-stats .stat-card {
     flex-shrink: 0;
     white-space: nowrap;
   }
+
+  /* Class schedule: document scrolls; do not trap the week grid in 60vh. */
+  html body.page-teacher-class-table .remoed-schedule-container,
+  html body.page-student-class-table .weekly-grid {
+    max-height: none !important;
+    min-height: 0 !important;
+    height: auto !important;
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    overflow-anchor: none;
+  }
+
+  html body.page-teacher-class-table .remoed-content,
+  html body.page-student-class-table .remoed-content {
+    overflow-x: clip !important;
+    min-height: 0 !important;
+    margin-left: 0 !important;
+    max-width: 100% !important;
+  }
+
+  html body.page-teacher-class-table .remoed-action-buttons {
+    position: static !important;
+    bottom: auto !important;
+  }
+
+  /* Profile: stack Quick Info + main card. style.css two-column never
+     collapses because `.page-teacher-profile @media` is invalid CSS. */
+  html body.page-teacher-profile .profile-content-grid,
+  html body.page-student-profile .profile-content-grid {
+    display: flex !important;
+    flex-direction: column !important;
+    grid-template-columns: 1fr !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  html body.page-teacher-profile .profile-sidebar-card,
+  html body.page-student-profile .profile-sidebar-card,
+  html body.page-teacher-profile .profile-main-card,
+  html body.page-student-profile .profile-main-card {
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  html body.page-teacher-profile .form-grid,
+  html body.page-student-profile .form-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  html body.page-teacher-profile .profile-header,
+  html body.page-student-profile .profile-header {
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center !important;
+  }
 }
 

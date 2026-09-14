@@ -4,7 +4,7 @@
  * Breakpoints: mobile ≤768px, tablet 769–1024px, desktop ≥1025px.
  */
 
-@import url('remoed-layers.css?v=app-shell-5');
+@import url('remoed-layers.css?v=app-shell-6');
 
 /* --- Fluid typography --- */
 html {
@@ -570,8 +570,15 @@ canvas {
   body.remoed-has-app-shell .remoed-grid,
   body.remoed-has-app-shell .metrics-row,
   body.remoed-has-app-shell .content-row,
-  body.remoed-has-app-shell .dashboard-top-row {
+  body.remoed-has-app-shell .dashboard-top-row,
+  body.remoed-has-app-shell .profile-content-grid,
+  body.remoed-has-app-shell .form-grid {
     grid-template-columns: 1fr !important;
+  }
+
+  body.remoed-has-app-shell .profile-content-grid {
+    display: flex !important;
+    flex-direction: column !important;
   }
 
   body.remoed-has-app-shell .remoed-week-navigation,

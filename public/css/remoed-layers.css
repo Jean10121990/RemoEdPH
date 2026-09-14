@@ -136,11 +136,40 @@ body.teacher-portal .nav-header .nav-dropdown,
   body.page-teacher-class-table .remoed-content {
     padding-left: 12px !important;
     padding-right: 12px !important;
+    margin-left: 0 !important;
+    max-width: 100% !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow-x: clip !important;
+    overflow-y: visible !important;
+    overflow-anchor: none;
+  }
+
+  /* style.css locks the weekly grid to 60vh + overflow:auto on ≤900px, which
+     becomes a second scrollport and snaps the page back to the bottom. */
+  body.page-teacher-class-table .remoed-schedule-container,
+  body.page-student-class-table .weekly-grid,
+  body.page-student-class-table .class-table-scroll,
+  body.page-student-book .weekly-grid {
+    max-height: none !important;
+    min-height: 0 !important;
+    height: auto !important;
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    overflow-anchor: none;
+  }
+
+  body.page-teacher-class-table .remoed-action-buttons {
+    position: static !important;
+    bottom: auto !important;
+    background: none !important;
   }
 
   body.page-student-class-table .main-content {
     margin-left: 0 !important;
     max-width: 100% !important;
+    min-height: 0 !important;
+    height: auto !important;
   }
 
   body.page-teacher-class-table .remoed-nav-btn,
