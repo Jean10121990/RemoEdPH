@@ -1762,3 +1762,301 @@ body.page-site-doc .site-faq-answer {
   font-size: 0.94rem;
   background: #ffffff;
 }
+
+/* ---- RemoEd culture / about blocks (index) ---- */
+body.page-index .remo-culture {
+  max-width: 100%;
+  padding: 72px 24px;
+  box-sizing: border-box;
+}
+
+body.page-index .remo-culture__inner {
+  max-width: 1120px;
+  margin: 0 auto;
+}
+
+body.page-index .remo-culture__eyebrow {
+  margin: 0 0 10px;
+  font-family: Quicksand, Fredoka, system-ui, sans-serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--remo-logo-blue-deep);
+}
+
+body.page-index .remo-culture__lead {
+  max-width: 46rem;
+  margin: 18px auto 0;
+  text-align: center;
+  font-size: 1.12rem;
+  line-height: 1.65;
+  color: var(--remo-ink-muted);
+  font-weight: 500;
+}
+
+body.page-index .remo-culture__lead--narrow {
+  max-width: 40rem;
+  margin-bottom: 28px;
+}
+
+body.page-index .remo-culture--who {
+  background: linear-gradient(
+    160deg,
+    var(--remo-tint-blue) 0%,
+    #ffffff 48%,
+    var(--remo-tint-green) 100%
+  );
+  text-align: center;
+}
+
+body.page-index .remo-culture--principles {
+  background: #ffffff;
+  text-align: center;
+}
+
+body.page-index .remo-principles-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 8px;
+}
+
+body.page-index .remo-principle-card {
+  margin: 0;
+  padding: 22px 18px 20px;
+  border-radius: 20px;
+  border: 1px solid rgba(0, 174, 239, 0.14);
+  background: linear-gradient(180deg, #ffffff 0%, var(--remo-tint-blue) 100%);
+  box-shadow: 0 10px 28px rgba(26, 58, 74, 0.06);
+  text-align: center;
+}
+
+body.page-index .remo-principle-card h3 {
+  margin: 0 0 8px;
+  font-family: Fredoka, Quicksand, system-ui, sans-serif;
+  font-size: 1.15rem;
+  color: var(--remo-ink);
+}
+
+body.page-index .remo-principle-card p {
+  margin: 0;
+  color: var(--remo-ink-muted);
+  line-height: 1.5;
+  font-size: 0.98rem;
+}
+
+body.page-index .remo-principle-card__icon {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 14px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 1.25rem;
+}
+
+body.page-index .remo-principle-card__icon--blue {
+  background: var(--remo-tint-blue);
+  color: var(--remo-logo-blue-deep);
+}
+
+body.page-index .remo-principle-card__icon--green {
+  background: var(--remo-tint-green);
+  color: var(--remo-logo-green-deep);
+}
+
+body.page-index .remo-principle-card__icon--yellow {
+  background: var(--remo-tint-yellow);
+  color: #c9a000;
+}
+
+body.page-index .remo-culture--pillars {
+  background: linear-gradient(180deg, #ffffff 0%, var(--remo-tint-yellow) 100%);
+  text-align: center;
+}
+
+body.page-index .remo-pillars-grid,
+body.page-index .remo-heart-grid {
+  display: grid;
+  gap: 18px;
+  margin-top: 28px;
+}
+
+body.page-index .remo-pillars-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+body.page-index .remo-pillar-card,
+body.page-index .remo-heart-card {
+  margin: 0;
+  padding: 22px 18px 20px;
+  border-radius: 20px;
+  border: 1px solid rgba(0, 174, 239, 0.14);
+  background: linear-gradient(180deg, #ffffff 0%, var(--remo-tint-blue) 100%);
+  box-shadow: 0 10px 28px rgba(26, 58, 74, 0.06);
+  text-align: center;
+}
+
+body.page-index .remo-culture-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 14px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 1.45rem;
+}
+
+body.page-index .remo-culture-icon--blue {
+  background: var(--remo-tint-blue);
+  color: var(--remo-logo-blue-deep);
+}
+
+body.page-index .remo-culture-icon--green {
+  background: var(--remo-tint-green);
+  color: var(--remo-logo-green-deep);
+}
+
+body.page-index .remo-culture-icon--yellow {
+  background: var(--remo-tint-yellow);
+  color: #c9a000;
+}
+
+body.page-index .remo-pillar-card h3,
+body.page-index .remo-heart-card h3 {
+  margin: 0 0 8px;
+  font-family: Fredoka, Quicksand, system-ui, sans-serif;
+  font-size: 1.15rem;
+  color: var(--remo-ink);
+}
+
+body.page-index .remo-pillar-card p,
+body.page-index .remo-heart-card p {
+  margin: 0 auto;
+  max-width: 22rem;
+  color: var(--remo-ink-muted);
+  line-height: 1.5;
+  font-size: 0.98rem;
+}
+
+body.page-index .remo-culture--heart {
+  background: linear-gradient(
+    160deg,
+    var(--remo-tint-blue) 0%,
+    #ffffff 40%,
+    var(--remo-tint-green) 100%
+  );
+  text-align: center;
+}
+
+body.page-index .remo-heart-grid {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+body.page-index .remo-heart-card:nth-child(1) { grid-column: 1 / span 2; }
+body.page-index .remo-heart-card:nth-child(2) { grid-column: 3 / span 2; }
+body.page-index .remo-heart-card:nth-child(3) { grid-column: 5 / span 2; }
+body.page-index .remo-heart-card:nth-child(4) { grid-column: 2 / span 2; }
+body.page-index .remo-heart-card:nth-child(5) { grid-column: 4 / span 2; }
+
+body.page-index .remo-heart-card__letter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.55rem;
+  height: 1.55rem;
+  margin-right: 4px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, var(--remo-logo-green), var(--remo-logo-blue));
+  vertical-align: 2px;
+}
+
+body.page-index .remo-culture--vision-mission {
+  background: #ffffff;
+  padding-top: 56px;
+  padding-bottom: 72px;
+}
+
+body.page-index .remo-vm-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+body.page-index .remo-vm-card {
+  margin: 0;
+  padding: 28px 24px;
+  border-radius: 22px;
+  border: 1px solid rgba(0, 174, 239, 0.16);
+  box-shadow: 0 12px 30px rgba(26, 58, 74, 0.07);
+}
+
+body.page-index .remo-vm-card--vision {
+  background: linear-gradient(160deg, var(--remo-tint-green) 0%, #ffffff 70%);
+}
+
+body.page-index .remo-vm-card--mission {
+  background: linear-gradient(160deg, var(--remo-tint-blue) 0%, #ffffff 70%);
+}
+
+body.page-index .remo-vm-card .remo-culture__eyebrow {
+  margin-bottom: 12px;
+}
+
+body.page-index .remo-vm-card__statement {
+  margin: 0;
+  font-family: Fredoka, Quicksand, system-ui, sans-serif;
+  font-size: 1.18rem;
+  font-weight: 500;
+  line-height: 1.55;
+  color: var(--remo-ink);
+}
+
+@media (max-width: 900px) {
+  body.page-index .remo-principles-grid,
+  body.page-index .remo-pillars-grid,
+  body.page-index .remo-vm-grid {
+    grid-template-columns: 1fr;
+  }
+
+  body.page-index .remo-heart-grid {
+    grid-template-columns: 1fr;
+  }
+
+  body.page-index .remo-heart-card:nth-child(n) {
+    grid-column: auto;
+  }
+}
+
+@media (min-width: 901px) and (max-width: 1024px) {
+  body.page-index .remo-heart-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  body.page-index .remo-heart-card:nth-child(n) {
+    grid-column: auto;
+  }
+
+  body.page-index .remo-heart-card:last-child {
+    grid-column: 1 / -1;
+    max-width: 420px;
+    margin-left: auto;
+    margin-right: auto;
+    width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  body.page-index .remo-culture {
+    padding: 52px 16px;
+  }
+
+  body.page-index .remo-culture__lead,
+  body.page-index .remo-vm-card__statement {
+    font-size: 1.05rem;
+  }
+}

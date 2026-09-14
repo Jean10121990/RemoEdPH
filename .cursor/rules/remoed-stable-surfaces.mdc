@@ -54,8 +54,12 @@ Do not rewrite `public/live-classroom.html` socket/settings/VBG unless the user 
 
 ## Responsive / overlays
 
+Details: [docs/STABLE_BASELINE.md](docs/STABLE_BASELINE.md) § Phone app shell.
+
 - Tokens: [public/css/remoed-layers.css](public/css/remoed-layers.css). Breakpoints 768 / 1024 only for new portal CSS. Phone `.remoed-content` margin is 0 — do not reintroduce `margin-left: 260px` without a `max-width: 768` override.
 - Phone app chrome: hide `nav.remoed-sidebar`; titled top bar + 4 tabs + More sheet on `document.body` (`public/js/portal-layout.js`). Do not add a hamburger drawer or a second teacher drawer at 992 (`z-index: 9999`). Classroom keeps `#lc-mobile-dock` (Lesson / Camera / Chat).
+- **Adopt `.nav-right` only at ≤768.** On ≥769, `releaseHeaderActions()` so Time In / bell / calendar stay in `.nav-header` (the mobile shell is `display: none` on desktop).
+- Phone scroll: lock `html`/`body`; **`.remoed-main` is the only scroller** (`height: 100%`, `box-sizing: border-box`, `overflow-y: auto`). Do not set `.remoed-main { height: auto }`. Do not add `window.scrollTo(0,0)` on scroll, lastY snap guards, or `PullToRefresh` on `.remoed-content`.
 - Modals use `--z-modal` / `--z-toast` / `--z-blocking` on `document.body`. Do not raise raw z-index or put popovers inside `overflow: hidden` / `backdrop-filter` parents.
 
 ## Before push
