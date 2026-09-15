@@ -76,6 +76,12 @@ Details: [docs/STABLE_BASELINE.md](docs/STABLE_BASELINE.md) § Admin Marketing h
 - Sidebar **Marketing** sits **below Accounting Hub** and owns Unique Link Commissions. Do not put commissions back as an Accounting Hub tab.
 - `admin-unique-link-commission.html` standalone → `admin-marketing-hub.html`.
 
+## Teaching Fee bonus / incentive
+
+Details: [docs/STABLE_BASELINE.md](docs/STABLE_BASELINE.md) § Teaching Fee — Bonus / Incentive.
+
+- Keep **Bonus / Incentive** under Period fee on Teaching Fee (read-only for teachers). Accounting edits it on Payroll per cut-off; include in net pay / dispense / payslip. Do not make it a fixed monthly entitlement.
+
 ## Before push
 
 - Run `node --check` on edited server entry files (`server/student.js`, `server/index.js`, etc.).

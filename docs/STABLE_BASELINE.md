@@ -22,6 +22,7 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 | Gender (profiles) | `public/teacher-profile.html`, `public/student-profile.html`, `server/models/Teacher.js`, profile save in `server/teacher.js` / `server/student.js` |
 | Admin Marketing hub | `public/admin-marketing-hub.html`, `public/admin-unique-link-commission.html`, `public/js/admin-sidebar.js`, `public/js/admin-hub-guard.js`, `public/js/admin-standalone-redirect.js` |
 | Admin Accounting hub | `public/admin-accounting-hub.html` (Payroll + Student Subscriptions only) |
+| Teaching Fee bonus / incentive | `public/teacher-service-fee.html`, `public/admin-payroll.html`, `Teacher.periodIncentives`, `PUT /api/admin/teacher-period-incentive`, `GET /api/teacher/period-incentive` |
 | Mongo safety scripts | `scripts/archive-legacy-mongo-db.js`, `scripts/purge-beta-recordings.js` |
 
 ## Feature-add rule of thumb
@@ -88,6 +89,7 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 - [ ] Sidebar order includes **Accounting Hub** then **Marketing** (Marketing directly below Accounting).
 - [ ] **Marketing** opens Unique Link Commissions (filters, ₱ totals, enrollee table). Accounting Hub tabs are only **Payroll Management** and **Student Subscriptions**.
 - [ ] Opening `admin-unique-link-commission.html` standalone redirects to `admin-marketing-hub.html` (not Accounting `#commissions`). Old `#commissions` on Accounting Hub redirects to Marketing.
+- [ ] Accounting Hub → Payroll: **Bonus / Incentive** column can Save an amount for the selected cut-off; Teaching Fee shows the same amount under Period fee and includes it in Net Payable.
 
 ### Deploy hygiene
 
@@ -218,6 +220,17 @@ Unique Link Commissions are **not** an Accounting Hub tab. They live under sideb
 - Standalone redirect: `admin-standalone-redirect.js` sends `admin-unique-link-commission.html` → `admin-marketing-hub.html`.
 - Accounting Hub keeps **Payroll** + **Student Subscriptions** only. `#commissions` on Accounting Hub must redirect to Marketing — do not restore the commissions tab inside Accounting.
 - Teacher copy: `teacher-referrals.html` points admins to **Marketing → Unique Link Commissions**.
+
+## Teaching Fee — Bonus / Incentive (Accounting)
+
+Below **Period fee (rate × completed classes)** on Teaching Fee (`teacher-service-fee.html`). Not automatic monthly pay.
+
+- **Who enters it:** Accounting (and Super-Admin) on **Accounting Hub → Payroll Management** for the selected bi-monthly cut-off (`periodKey` `YYYY-MM-1` or `YYYY-MM-2`). Teachers see the amount read-only.
+- **What it is:** Founder's discretion — e.g. successful student plan purchase referral bonus, internet aid, or other one-off incentives. Amount can be ₱0.
+- **Storage:** `Teacher.periodIncentives[]` `{ periodKey, amount, note, updatedAt, updatedBy }`.
+- **APIs:** `PUT /api/admin/teacher-period-incentive`; teacher `GET /api/teacher/period-incentive?startDate=YYYY-MM-DD`.
+- **Net payable:** period fee + bonus/incentive + issue payments − deductions. Included in salary dispense `breakdown.bonusIncentive` and payslip line when &gt; 0.
+- Do not turn this into a fixed monthly entitlement or auto-compute from referrals without an explicit product change.
 
 ## Known product gates (not bugs)
 

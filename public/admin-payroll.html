@@ -291,6 +291,7 @@
                             <th>Student Absent</th>
                             <th>Rate per Class</th>
                             <th>Base Fee</th>
+                            <th>Bonus / Incentive</th>
                             <th>Student Absent Fee</th>
                             <th>Deductions</th>
                             <th>Net Payable</th>
@@ -302,26 +303,87 @@
                             const statusText = teacher.paymentStatus === 'Paid' ? '✓ Paid' : 'Pending';
                             const statusColor = teacher.paymentStatus === 'Paid' ? '#27ae60' : '#888';
                             const totalDeductions = (teacher.lateDeductions || 0) + (teacher.teacherAbsentDeductions || 0);
+                            const bonus = Number(teacher.bonusIncentive) || 0;
+                            const tid = teacher.teacherCode || teacher.email || '';
+                            const mongoId = teacher.teacherId || '';
+                            const locked = teacher.paymentStatus === 'Paid';
                             
                             return `
-                                <tr>
+                                <tr data-teacher-code="${tid}" data-mongo-id="${mongoId}">
                                     <td>${teacher.email}</td>
                                     <td>${teacher.completedClasses}</td>
                                     <td>${teacher.studentAbsentClasses || 0}</td>
                                     <td>₱${teacher.rate.toFixed(2)}</td>
                                     <td>₱${teacher.baseWeeklyFee.toFixed(2)}</td>
+                                    <td>
+                                      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                                        <input type="number" min="0" step="0.01" class="bonus-incentive-input"
+                                          value="${bonus.toFixed(2)}"
+                                          data-teacher-code="${tid}"
+                                          data-mongo-id="${mongoId}"
+                                          ${locked ? 'readonly disabled' : ''}
+                                          style="width:96px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:6px;"
+                                          title="Referral bonus, internet aid, or other Founder-approved incentive for this cut-off only" />
+                                        ${locked ? '' : `<button type="button" class="btn btn-primary bonus-incentive-save" style="padding:4px 8px;font-size:12px;" data-teacher-code="${tid}" data-mongo-id="${mongoId}">Save</button>`}
+                                      </div>
+                                    </td>
                                     <td>₱${teacher.studentAbsentPayment.toFixed(2)}</td>
                                     <td style="color: #e74c3c;">-₱${totalDeductions.toFixed(2)}</td>
-                                    <td style="font-weight: 600; color: #27ae60;">₱${teacher.weeklySalary.toFixed(2)}</td>
+                                    <td style="font-weight: 600; color: #27ae60;" class="net-payable-cell">₱${teacher.weeklySalary.toFixed(2)}</td>
                                     <td style="color: ${statusColor}; font-weight: 600;">${statusText}</td>
                                 </tr>
                             `;
                         }).join('')}
                     </tbody>
                 </table>
+                <p style="margin:10px 0 0;color:#64748b;font-size:0.82rem;">
+                  <strong>Bonus / Incentive</strong> is not monthly pay. Enter referral or other Founder-approved amounts for this cut-off only, then Save. Included in Net Payable and Teaching Fee / payslip.
+                </p>
             `;
             
             container.innerHTML = tableHTML;
+            container.querySelectorAll('.bonus-incentive-save').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    saveTeacherBonusIncentive(btn);
+                });
+            });
+        }
+
+        async function saveTeacherBonusIncentive(btn) {
+            const row = btn.closest('tr');
+            const input = row && row.querySelector('.bonus-incentive-input');
+            if (!input || !selectedPeriodKey) return;
+            const amount = Math.max(0, Number(input.value) || 0);
+            const teacherCode = btn.getAttribute('data-teacher-code') || '';
+            const mongoId = btn.getAttribute('data-mongo-id') || '';
+            const prev = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = 'Saving…';
+            try {
+                const response = await adminApiFetch('/api/admin/teacher-period-incentive', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        periodKey: selectedPeriodKey,
+                        amount: amount,
+                        teacherCode: teacherCode,
+                        mongoId: mongoId,
+                        note: ''
+                    })
+                });
+                const data = await response.json().catch(function () { return {}; });
+                if (!response.ok || !data.success) {
+                    throw new Error(apiErrorMessage(data, 'Could not save bonus/incentive'));
+                }
+                document.getElementById('disbursement-status').textContent = 'Bonus/Incentive saved for ' + (teacherCode || 'teacher');
+                document.getElementById('disbursement-status').style.color = '#27ae60';
+                await loadTeachersSalaries();
+            } catch (err) {
+                alert(err.message || 'Save failed');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = prev;
+            }
         }
 
         async function dispenseAllSalaries() {

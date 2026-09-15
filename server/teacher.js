@@ -3626,6 +3626,33 @@ router.get('/completed-classes', verifyToken, requireTeacher, async (req, res) =
   }
 });
 
+/** Bonus/Incentive for the bi-monthly cut-off containing startDate (Accounting-entered). */
+router.get('/period-incentive', verifyToken, requireTeacher, async (req, res) => {
+  try {
+    const teacherId = req.user.teacherId;
+    const startDate = String(req.query.startDate || '').trim();
+    const m = startDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) {
+      return res.status(400).json({ success: false, error: 'startDate (YYYY-MM-DD) is required' });
+    }
+    const day = Number(m[3]);
+    const periodKey = `${m[1]}-${m[2]}-${day <= 15 ? '1' : '2'}`;
+    const teacher = await Teacher.findOne({ teacherId }).select('periodIncentives').lean();
+    const list = (teacher && teacher.periodIncentives) || [];
+    const row = list.find((p) => p && String(p.periodKey) === periodKey);
+    const amount = row && Number.isFinite(Number(row.amount)) ? Math.max(0, Number(row.amount)) : 0;
+    res.json({
+      success: true,
+      periodKey,
+      amount,
+      note: (row && row.note) || '',
+    });
+  } catch (err) {
+    console.error('Error getting period incentive:', err);
+    res.status(500).json({ success: false, error: 'Failed to get period incentive' });
+  }
+});
+
 /** Bookings waiting for teacher wrap-up feedback (salary / credit finalization blocked until submitted). */
 router.get('/pending-feedback-bookings', verifyToken, requireTeacher, async (req, res) => {
   try {
@@ -4501,7 +4528,21 @@ async function computeTeacherPeriodFeeSummary(teacherId, startDate, endDate) {
   const studentAbsentPayment = 0;
   const weeklyFee = completedClasses * ratePerClass;
   const totalDeductions = lateDeductions + cancellationDeductions + absentDeductions;
-  const netAmount = weeklyFee + studentAbsentPayment - totalDeductions;
+
+  const day = Number(String(startDate).slice(8, 10));
+  const periodKey = `${String(startDate).slice(0, 7)}-${day <= 15 ? '1' : '2'}`;
+  const teacherIncentiveDoc = await Teacher.findOne({ teacherId })
+    .select('periodIncentives')
+    .lean();
+  let bonusIncentive = 0;
+  const incList = (teacherIncentiveDoc && teacherIncentiveDoc.periodIncentives) || [];
+  const incRow = incList.find((p) => p && String(p.periodKey) === periodKey);
+  if (incRow) {
+    const n = Number(incRow.amount);
+    if (Number.isFinite(n) && n > 0) bonusIncentive = n;
+  }
+
+  const netAmount = weeklyFee + studentAbsentPayment + bonusIncentive - totalDeductions;
   const status = netAmount > 0 ? 'success' : 'pending';
   const salaryDateRange = `${new Date(startDate).toLocaleDateString()} - ${new Date(endDate).toLocaleDateString()}`;
 
@@ -4515,6 +4556,7 @@ async function computeTeacherPeriodFeeSummary(teacherId, startDate, endDate) {
     absentClasses,
     studentAbsentClasses,
     studentAbsentPayment,
+    bonusIncentive,
     lateDeductions,
     cancellationDeductions,
     absentDeductions,
@@ -4522,6 +4564,7 @@ async function computeTeacherPeriodFeeSummary(teacherId, startDate, endDate) {
     ratePerClass,
     startDate,
     endDate,
+    periodKey,
     minutesTaught: completedClasses * 25,
   };
 }
@@ -4535,7 +4578,7 @@ router.get('/payslip', verifyToken, requireTeacher, async (req, res) => {
 
     const teacher = await Teacher.findOne({ teacherId })
       .select(
-        'teacherId username email firstName middleName lastName fullname nickname hireDate hourlyRate paymentHistory'
+        'teacherId username email firstName middleName lastName fullname nickname hireDate hourlyRate paymentHistory periodIncentives'
       )
       .lean();
     if (!teacher) {
@@ -4585,6 +4628,9 @@ router.get('/payslip', verifyToken, requireTeacher, async (req, res) => {
     const absentDeductions = snap ? Number(snap.absentDeductions) : live.absentDeductions;
     const completedClasses = snap ? Number(snap.completedClasses) : live.completedClasses;
     const ratePerClass = snap ? Number(snap.ratePerClass) : live.ratePerClass;
+    const bonusIncentive = snap
+      ? Number(snap.bonusIncentive || 0)
+      : Number(live.bonusIncentive || 0);
     const netFromLedger =
       paymentRecord && paymentRecord.amount != null ? Number(paymentRecord.amount) : null;
     const netAmount = netFromLedger != null ? netFromLedger : live.netAmount;
@@ -4651,12 +4697,14 @@ router.get('/payslip', verifyToken, requireTeacher, async (req, res) => {
           lateDeductions,
           cancellationDeductions,
           absentDeductions,
+          bonusIncentive,
           totalDeductions,
           netAmount,
           currency: 'PHP',
         },
         notes: [
           'This statement reflects RemoEd bi-monthly cut-off earnings (1st–15th and 16th–end of month, Asia/Manila).',
+          'Bonus/Incentive is Accounting-entered at the Founder’s discretion (e.g. successful referral plan purchase, internet aid) and is not a fixed monthly entitlement.',
           'Rate is per completed 25-minute class session.',
           isPaid
             ? 'Status Paid means this cut-off was dispensed by RemoEd administration.'

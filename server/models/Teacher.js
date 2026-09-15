@@ -252,6 +252,19 @@ const teacherSchema = new mongoose.Schema({
 
   // Referral link code (used for teacher commission tracking)
   referralCode: { type: String, default: null, unique: true, sparse: true },
+
+  /**
+   * Per bi-monthly cut-off bonus/incentive (Accounting-entered).
+   * Not automatic monthly pay — Founder's discretion (referral success, internet aid, etc.).
+   * periodKey: YYYY-MM-1 (1st–15th) or YYYY-MM-2 (16th–end).
+   */
+  periodIncentives: [{
+    periodKey: { type: String, required: true },
+    amount: { type: Number, default: 0, min: 0 },
+    note: { type: String, default: '' },
+    updatedAt: { type: Date, default: Date.now },
+    updatedBy: { type: String, default: '' },
+  }],
   
   // Payment History
   paymentHistory: [{

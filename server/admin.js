@@ -2715,6 +2715,20 @@ function getCurrentPayPeriodKey(date = new Date()) {
   return `${y}-${m}-${half}`;
 }
 
+function periodKeyFromYmd(ymd) {
+  const m = String(ymd || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return null;
+  const day = Number(m[3]);
+  return `${m[1]}-${m[2]}-${day <= 15 ? '1' : '2'}`;
+}
+
+function getPeriodIncentiveAmount(teacher, periodKey) {
+  const list = (teacher && teacher.periodIncentives) || [];
+  const row = list.find((p) => p && String(p.periodKey) === String(periodKey));
+  const n = row ? Number(row.amount) : 0;
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
 function isPayableCompletedClass(booking) {
   return (
     String(booking.status || '').toLowerCase() === 'completed' &&
@@ -2723,7 +2737,7 @@ function isPayableCompletedClass(booking) {
   );
 }
 
-function computeSalaryRowFromBookings(weekClasses, teacher, globalRate, startDate, endDate) {
+function computeSalaryRowFromBookings(weekClasses, teacher, globalRate, startDate, endDate, bonusIncentive) {
   const completedClasses = weekClasses.filter(isPayableCompletedClass).length;
   const studentAbsentClasses = weekClasses.filter(
     (booking) =>
@@ -2746,9 +2760,10 @@ function computeSalaryRowFromBookings(weekClasses, teacher, globalRate, startDat
   const teacherAbsentDeductions = teacherAbsentClasses * (teacher.hourlyRate || globalRate);
   const baseWeeklyFee = completedClasses * (teacher.hourlyRate || globalRate);
   const studentAbsentPayment = 0;
+  const bonus = Math.max(0, Number(bonusIncentive) || 0);
   const netPayableAmount = Math.max(
     0,
-    baseWeeklyFee + studentAbsentPayment - lateDeductions - teacherAbsentDeductions
+    baseWeeklyFee + studentAbsentPayment + bonus - lateDeductions - teacherAbsentDeductions
   );
   let paymentStatus = 'Pending';
   if (teacher.paymentHistory && teacher.paymentHistory.length > 0) {
@@ -2759,6 +2774,7 @@ function computeSalaryRowFromBookings(weekClasses, teacher, globalRate, startDat
   }
   return {
     teacherId: teacher._id,
+    teacherCode: teacher.teacherId,
     email: teacher.username,
     completedClasses,
     studentAbsentClasses,
@@ -2767,6 +2783,7 @@ function computeSalaryRowFromBookings(weekClasses, teacher, globalRate, startDat
     rate: teacher.hourlyRate || globalRate,
     baseWeeklyFee,
     studentAbsentPayment,
+    bonusIncentive: bonus,
     lateDeductions,
     teacherAbsentDeductions,
     weeklySalary: netPayableAmount,
@@ -2789,7 +2806,7 @@ router.get('/teachers-weekly-salaries', async (req, res) => {
     const globalRate = settings ? settings.globalRate : 100;
 
     const teachers = await Teacher.find({})
-      .select('teacherId username hourlyRate paymentHistory')
+      .select('teacherId username hourlyRate paymentHistory periodIncentives')
       .lean();
 
     const bookingsInPeriod = await Booking.find({
@@ -2808,7 +2825,8 @@ router.get('/teachers-weekly-salaries', async (req, res) => {
 
     const teachersWithSalaries = teachers.map((teacher) => {
       const weekClasses = byTeacherId.get(String(teacher.teacherId)) || [];
-      return computeSalaryRowFromBookings(weekClasses, teacher, globalRate, startDate, endDate);
+      const bonus = getPeriodIncentiveAmount(teacher, periodKey);
+      return computeSalaryRowFromBookings(weekClasses, teacher, globalRate, startDate, endDate, bonus);
     });
 
     res.json({
@@ -2840,7 +2858,7 @@ router.post('/dispense-salaries', async (req, res) => {
     const settings = await GlobalSettings.findOne({}).select('globalRate').lean();
     const globalRate = settings ? settings.globalRate : 100;
 
-    const teachers = await Teacher.find({}).select('_id teacherId username hourlyRate paymentHistory').lean();
+    const teachers = await Teacher.find({}).select('_id teacherId username hourlyRate paymentHistory periodIncentives').lean();
     const bookingsInPeriod = await Booking.find({
       date: { $gte: startDate, $lte: endDate },
     })
@@ -2859,7 +2877,8 @@ router.post('/dispense-salaries', async (req, res) => {
 
     for (const teacher of teachers) {
       const weekClasses = byTeacherId.get(String(teacher.teacherId)) || [];
-      const row = computeSalaryRowFromBookings(weekClasses, teacher, globalRate, startDate, endDate);
+      const bonus = getPeriodIncentiveAmount(teacher, periodKey);
+      const row = computeSalaryRowFromBookings(weekClasses, teacher, globalRate, startDate, endDate, bonus);
       const weeklySalary = row.weeklySalary;
 
       if (weeklySalary > 0) {
@@ -2883,6 +2902,7 @@ router.post('/dispense-salaries', async (req, res) => {
                 ratePerClass: row.rate,
                 baseFee: row.baseWeeklyFee,
                 studentAbsentPayment: row.studentAbsentPayment,
+                bonusIncentive: row.bonusIncentive,
                 lateDeductions: row.lateDeductions,
                 cancellationDeductions: 0,
                 absentDeductions: row.teacherAbsentDeductions,
@@ -2925,6 +2945,69 @@ router.post('/dispense-salaries', async (req, res) => {
       success: false,
       message: 'Error dispensing salaries'
     });
+  }
+});
+
+/**
+ * PUT /api/admin/teacher-period-incentive
+ * Accounting sets Bonus/Incentive for a teacher + bi-monthly cut-off (Founder's discretion).
+ * Body: { teacherId | teacherCode, periodKey (YYYY-MM-1|2), amount, note? }
+ */
+router.put('/teacher-period-incentive', async (req, res) => {
+  try {
+    const periodKey = String(req.body.periodKey || '').trim();
+    if (!/^(\d{4})-(\d{2})-(1|2)$/.test(periodKey)) {
+      return res.status(400).json({
+        success: false,
+        message: 'periodKey must be YYYY-MM-1 (1st–15th) or YYYY-MM-2 (16th–end).',
+      });
+    }
+    const amount = Math.max(0, Number(req.body.amount) || 0);
+    const note = String(req.body.note || '').trim().slice(0, 200);
+    const teacherCode = String(req.body.teacherCode || req.body.teacherId || '').trim();
+    const mongoId = req.body.mongoId || req.body._id || '';
+
+    let teacher = null;
+    if (mongoId && mongoose.Types.ObjectId.isValid(String(mongoId))) {
+      teacher = await Teacher.findById(mongoId);
+    }
+    if (!teacher && teacherCode) {
+      const or = [{ teacherId: teacherCode }, { username: teacherCode }];
+      if (mongoose.Types.ObjectId.isValid(teacherCode)) {
+        or.push({ _id: teacherCode });
+      }
+      teacher = await Teacher.findOne({ $or: or });
+    }
+    if (!teacher) {
+      return res.status(404).json({ success: false, message: 'Teacher not found.' });
+    }
+
+    const updatedBy = String(
+      (req.user && (req.user.username || req.user.adminId || req.user.email)) || 'admin'
+    ).trim();
+    const list = Array.isArray(teacher.periodIncentives) ? teacher.periodIncentives : [];
+    const idx = list.findIndex((p) => p && String(p.periodKey) === periodKey);
+    const entry = { periodKey, amount, note, updatedAt: new Date(), updatedBy };
+    if (idx >= 0) {
+      list[idx] = Object.assign({}, list[idx].toObject ? list[idx].toObject() : list[idx], entry);
+    } else {
+      list.push(entry);
+    }
+    teacher.periodIncentives = list;
+    teacher.markModified('periodIncentives');
+    await teacher.save();
+
+    res.json({
+      success: true,
+      teacherId: teacher.teacherId,
+      periodKey,
+      amount,
+      note,
+      message: 'Bonus/Incentive saved for this pay period.',
+    });
+  } catch (error) {
+    console.error('Error saving teacher period incentive:', error);
+    res.status(500).json({ success: false, message: 'Error saving bonus/incentive.' });
   }
 });
 

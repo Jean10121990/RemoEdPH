@@ -392,6 +392,9 @@
         if ((e.studentAbsentPayment || 0) !== 0) {
           lines.push(lineRow('Student-absent payment', String(e.studentAbsentClasses || 0) + ' class(es)', e.studentAbsentPayment));
         }
+        if ((e.bonusIncentive || 0) > 0) {
+          lines.push(lineRow('Bonus / Incentive', 'Accounting · Founder discretion', e.bonusIncentive));
+        }
         if ((e.lateDeductions || 0) > 0) {
           lines.push(lineRow('Late arrival deductions', '—', -Math.abs(e.lateDeductions)));
         }

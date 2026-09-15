@@ -271,6 +271,16 @@
               <div class="service-label" style="color: #1976d2; font-weight: 600; font-size: 0.78rem;">Period fee (rate × completed classes)</div>
               <div class="service-sum" id="base-sum" style="color: #1976d2; font-size: 0.98rem; font-weight: 700;">₱0.00</div>
             </div>
+
+            <div class="service-row" style="background: #ecfdf5; padding: 8px 10px; border-radius: 6px; margin-bottom: 6px; border: 1px solid #a7f3d0;">
+              <div class="service-label" style="color: #065f46; font-weight: 600; font-size: 0.78rem;">
+                Bonus / Incentive
+                <div style="font-size: 0.68rem; color: #047857; font-weight: 500; margin-top: 2px; line-height: 1.35;">
+                  Accounting-entered · Founder’s discretion (referral plan purchase, internet aid, etc.) — not a fixed monthly amount
+                </div>
+              </div>
+              <div class="service-sum" id="bonus-incentive-sum" style="color: #065f46; font-size: 0.98rem; font-weight: 700;">₱0.00</div>
+            </div>
             
             <div class="service-row" style="background: #f8f9fa; padding: 8px; border-radius: 6px; margin-bottom: 8px; border: 1px solid #e9ecef; display:none;">
               <div class="service-label" style="color: #495057; font-size: 0.85rem;">Student absent classes (temporarily not paid)</div>
@@ -755,6 +765,9 @@
           
           // Calculate fee with teacher absent classes for deductions
           calculateFee(completedClasses, teacherAbsentClasses, studentAbsentClasses, startDate, endDate);
+
+          // Accounting-entered Bonus/Incentive for this cut-off
+          await loadPeriodIncentive(startDate);
           
           // Load resolved issue payments
           await loadResolvedIssuePayments(startDate, endDate);
@@ -1120,9 +1133,31 @@
       }
     }
 
+    async function loadPeriodIncentive(startDate) {
+      const el = document.getElementById('bonus-incentive-sum');
+      if (!el) return 0;
+      try {
+        const token = teacherAuthToken();
+        const res = await fetch(
+          '/api/teacher/period-incentive?startDate=' + encodeURIComponent(startDate),
+          { headers: { Authorization: 'Bearer ' + token } }
+        );
+        const data = await res.json().catch(function () { return {}; });
+        const amount = res.ok && data.success ? Math.max(0, Number(data.amount) || 0) : 0;
+        el.textContent = '₱' + amount.toFixed(2);
+        if (typeof calculateNetAmount === 'function') calculateNetAmount();
+        return amount;
+      } catch (e) {
+        console.error('Error loading period incentive:', e);
+        el.textContent = '₱0.00';
+        return 0;
+      }
+    }
+
     // Calculate net amount based on current deduction values
     function calculateNetAmount() {
       const baseSum = parseFloat(document.getElementById('base-sum').textContent) || 0;
+      const bonusIncentive = parseFloat(document.getElementById('bonus-incentive-sum').textContent.replace(/[^\d.-]/g, '')) || 0;
       const studentAbsentPayment = 0; // Startup policy: no additional payment for student absences
       const systemIssuePayment = parseFloat(document.getElementById('system-issue-sum').textContent) || 0;
       const studentIssuePayment = parseFloat(document.getElementById('student-issue-sum').textContent) || 0;
@@ -1132,7 +1167,7 @@
       const cancelledDeductions = parseFloat(document.getElementById('cancelled-deductions').value) || 0;
       
       const totalDeductions = lateDeductions + absentDeductions + cancelledDeductions;
-      const netAmount = baseSum + totalIssuePayment - totalDeductions;
+      const netAmount = baseSum + bonusIncentive + totalIssuePayment - totalDeductions;
       
       // Update display
       document.getElementById('total-deductions').textContent = '₱' + totalDeductions.toFixed(2);
@@ -1161,6 +1196,7 @@
       // Log the calculation for debugging
       console.log(`💰 NET AMOUNT CALCULATION:`);
       console.log(`   Base sum (completed classes): ₱${baseSum.toFixed(2)}`);
+      console.log(`   Bonus / Incentive: ₱${bonusIncentive.toFixed(2)}`);
       console.log(`   Student absent payment (0% - disabled): ₱${studentAbsentPayment.toFixed(2)}`);
       console.log(`   System issue payment (100%): ₱${systemIssuePayment.toFixed(2)}`);
       console.log(`   Student issue payment (100%): ₱${studentIssuePayment.toFixed(2)}`);
