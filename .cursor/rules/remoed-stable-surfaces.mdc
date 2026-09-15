@@ -69,11 +69,11 @@ Details: [docs/STABLE_BASELINE.md](docs/STABLE_BASELINE.md) § Landing culture /
 - Homepage culture blocks after hero stay in order Who we are → Principles → Pillars → HEART → Vision/Mission. Pillars/HEART use **icons**, not cropped culture photos.
 - Profile gender selects: **Male / Female only**. Do not restore Other. Teacher enum and profile saves must reject/clear Other.
 
-## Admin Marketing hub
+## Admin Marketing Hub
 
-Details: [docs/STABLE_BASELINE.md](docs/STABLE_BASELINE.md) § Admin Marketing hub.
+Details: [docs/STABLE_BASELINE.md](docs/STABLE_BASELINE.md) § Admin Marketing Hub.
 
-- Sidebar **Marketing** sits **below Accounting Hub** and owns Unique Link Commissions. Do not put commissions back as an Accounting Hub tab.
+- Sidebar **Marketing Hub** sits **below Accounting Hub** and owns Unique Link Commissions. Do not put commissions back as an Accounting Hub tab.
 - `admin-unique-link-commission.html` standalone → `admin-marketing-hub.html`.
 
 ## Teaching Fee bonus / incentive

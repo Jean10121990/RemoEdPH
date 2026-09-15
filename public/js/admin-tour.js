@@ -38,12 +38,12 @@
         element: '[data-nav="accounting-hub"]',
         title: 'Accounting Hub',
         content:
-          'Payroll and Student Subscriptions — use tabs for pay and every student plan. Unique link commissions moved to Marketing.',
+          'Payroll and Student Subscriptions — use tabs for pay and every student plan. Unique link commissions moved to Marketing Hub.',
         position: 'right',
       },
       {
         element: '[data-nav="marketing"]',
-        title: 'Marketing',
+        title: 'Marketing Hub',
         content:
           'Unique Link Commissions and teacher referral tracking — successful enrollees, plan value, and ₱1,000 commission per conversion.',
         position: 'right',
@@ -93,7 +93,7 @@
     }
     var welcome =
       'Welcome to the RemoEdPH Admin Portal.\n\n' +
-      'This tour maps each sidebar section — HR Hub, QA Hub, Accounting Hub, Marketing, reports, and more — so you can navigate with confidence.\n\n' +
+      'This tour maps each sidebar section — HR Hub, QA Hub, Accounting Hub, Marketing Hub, reports, and more — so you can navigate with confidence.\n\n' +
       'Reopen the guide anytime from the bottom-right button.\n\n' +
       'Start the tour now?';
 

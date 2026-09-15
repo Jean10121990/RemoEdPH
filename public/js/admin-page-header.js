@@ -22,7 +22,7 @@
         'hr-hub': 'HR Hub',
         'qa-hub': 'QA Hub',
         'accounting-hub': 'Accounting Hub',
-        marketing: 'Marketing',
+        marketing: 'Marketing Hub',
         leaderboard: 'Leaderboard',
         announcements: 'Announcements',
         videos: 'Videos',

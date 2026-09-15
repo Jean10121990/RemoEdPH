@@ -86,9 +86,9 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 
 ### Admin hubs
 
-- [ ] Sidebar order includes **Accounting Hub** then **Marketing** (Marketing directly below Accounting).
-- [ ] **Marketing** opens Unique Link Commissions (filters, ₱ totals, enrollee table). Accounting Hub tabs are only **Payroll Management** and **Student Subscriptions**.
-- [ ] Opening `admin-unique-link-commission.html` standalone redirects to `admin-marketing-hub.html` (not Accounting `#commissions`). Old `#commissions` on Accounting Hub redirects to Marketing.
+- [ ] Sidebar order includes **Accounting Hub** then **Marketing Hub** (Marketing Hub directly below Accounting).
+- [ ] **Marketing Hub** opens Unique Link Commissions (filters, ₱ totals, enrollee table). Accounting Hub tabs are only **Payroll Management** and **Student Subscriptions**.
+- [ ] Opening `admin-unique-link-commission.html` standalone redirects to `admin-marketing-hub.html` (not Accounting `#commissions`). Old `#commissions` on Accounting Hub redirects to Marketing Hub.
 - [ ] Accounting Hub → Payroll: **Bonus / Incentive** column can Save an amount for the selected cut-off; Teaching Fee shows the same amount under Period fee and includes it in Net Payable.
 
 ### Deploy hygiene
@@ -210,16 +210,16 @@ RemoEd upholds the biblical distinction of gender (male and female). Profile UIs
 - Saves normalize unknowns to empty: teacher profile update in `server/teacher.js`; student `POST /profile` in `server/student.js`. Client load maps only male/female into the select; legacy Other shows as blank until the user picks Male or Female.
 - Issue-type **Other** on Class Schedule / QA hub is unrelated — leave those alone.
 
-## Admin Marketing hub — Unique Link Commissions
+## Admin Marketing Hub — Unique Link Commissions
 
-Unique Link Commissions are **not** an Accounting Hub tab. They live under sidebar **Marketing**, placed **directly below Accounting Hub**.
+Unique Link Commissions are **not** an Accounting Hub tab. They live under sidebar **Marketing Hub**, placed **directly below Accounting Hub**.
 
 - Hub page: `public/admin-marketing-hub.html` embeds `admin-unique-link-commission.html?adminEmbed=1`.
-- Sidebar: `public/js/admin-sidebar.js` item `marketing` after `accounting-hub`. Path highlight maps `admin-marketing-hub` and `admin-unique-link-commission` → `marketing`.
+- Sidebar: `public/js/admin-sidebar.js` item `marketing` (label **Marketing Hub**) after `accounting-hub`. Path highlight maps `admin-marketing-hub` and `admin-unique-link-commission` → `marketing`.
 - Visibility: same as Accounting — `super_admin` and `admin_accounting` (HR/QA redirected by `admin-hub-guard.js` `data-hub="marketing"`).
 - Standalone redirect: `admin-standalone-redirect.js` sends `admin-unique-link-commission.html` → `admin-marketing-hub.html`.
-- Accounting Hub keeps **Payroll** + **Student Subscriptions** only. `#commissions` on Accounting Hub must redirect to Marketing — do not restore the commissions tab inside Accounting.
-- Teacher copy: `teacher-referrals.html` points admins to **Marketing → Unique Link Commissions**.
+- Accounting Hub keeps **Payroll** + **Student Subscriptions** only. `#commissions` on Accounting Hub must redirect to Marketing Hub — do not restore the commissions tab inside Accounting.
+- Teacher copy: `teacher-referrals.html` points admins to **Marketing Hub → Unique Link Commissions**.
 
 ## Teaching Fee — Bonus / Incentive (Accounting)
 
