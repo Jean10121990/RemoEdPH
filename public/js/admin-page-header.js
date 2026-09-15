@@ -22,6 +22,7 @@
         'hr-hub': 'HR Hub',
         'qa-hub': 'QA Hub',
         'accounting-hub': 'Accounting Hub',
+        marketing: 'Marketing',
         leaderboard: 'Leaderboard',
         announcements: 'Announcements',
         videos: 'Videos',
@@ -157,6 +158,7 @@
         if (path.indexOf('admin-hr-hub') !== -1) return 'hr-hub';
         if (path.indexOf('admin-qa-hub') !== -1) return 'qa-hub';
         if (path.indexOf('admin-accounting-hub') !== -1) return 'accounting-hub';
+        if (path.indexOf('admin-marketing-hub') !== -1) return 'marketing';
         if (path.indexOf('admin-announcements') !== -1) return 'announcements';
         if (path.indexOf('admin-videos') !== -1) return 'videos';
         if (path.indexOf('admin-reports') !== -1) return 'reports';
@@ -170,7 +172,7 @@
         if (path.indexOf('admin-teacher-training') !== -1) return 'teacher-training';
         if (path.indexOf('admin-teacher-schedule') !== -1) return 'teacher-schedule';
         if (path.indexOf('admin-payroll') !== -1) return 'payroll';
-        if (path.indexOf('admin-unique-link-commission') !== -1) return 'unique-link-commission';
+        if (path.indexOf('admin-unique-link-commission') !== -1) return 'marketing';
         if (path.indexOf('admin-student-subscriptions') !== -1) return 'student-subscriptions';
         if (path.indexOf('admin-issue-management') !== -1) return 'issue-management';
         if (path.indexOf('admin-classroom-recordings') !== -1) return 'classroom-recordings';

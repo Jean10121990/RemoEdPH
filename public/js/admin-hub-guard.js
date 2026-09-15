@@ -1,5 +1,5 @@
 /**
- * Restrict HR / QA / Accounting hub pages by adminRole (JWT → localStorage.adminRole).
+ * Restrict HR / QA / Accounting / Marketing hub pages by adminRole (JWT → localStorage.adminRole).
  * super_admin: no redirect. Legacy tokens without role: allow.
  */
 (function () {
@@ -24,6 +24,8 @@
     } else if (hub === 'qa') {
         blocked = role === 'admin_hr' || role === 'admin_accounting';
     } else if (hub === 'accounting') {
+        blocked = role === 'admin_hr' || role === 'admin_qa';
+    } else if (hub === 'marketing') {
         blocked = role === 'admin_hr' || role === 'admin_qa';
     }
 

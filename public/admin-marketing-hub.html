@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="js/security-guard.js?v=2"></script>
+    <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
+    <link rel="apple-touch-icon" href="/images/remoed-favicon.png" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Marketing - RemoEdPH Admin</title>
+    <link rel="stylesheet" href="modern-styles.css">
+    <link rel="stylesheet" href="css/teacher-sidebar.css?v=app-shell-3">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css?v=app-shell-3">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/admin-hub-shell.css">
+</head>
+<body class="admin-hub-page page-admin-marketing-hub">
+    <div class="remoed-main">
+        <div id="admin-sidebar-root"></div>
+        <script src="js/admin-session.js"></script>
+        <script src="js/admin-page-header.js"></script>
+        <script src="js/admin-sidebar.js?v=app-shell-12"></script>
+        <script src="js/admin-hub-guard.js" data-hub="marketing"></script>
+        <script>AdminSidebar.render('admin-sidebar-root', 'marketing');</script>
+        <div class="remoed-content">
+            <div class="remoed-section">
+                <div class="remoed-section-title">Marketing</div>
+                <p class="muted" style="margin-top:0;margin-bottom:16px;">Unique link commissions and teacher referral tracking.</p>
+
+                <div class="hub-tabs" role="tablist" aria-label="Marketing sections">
+                    <button type="button" class="hub-tab hub-tab--active" role="tab" id="mkt-tab-commissions" aria-selected="true" aria-controls="mkt-panel-commissions">Unique Link Commissions</button>
+                </div>
+
+                <div id="mkt-panel-commissions" class="hub-panel" role="tabpanel" aria-labelledby="mkt-tab-commissions">
+                    <iframe id="iframe-mkt-commissions" class="hub-iframe" title="Unique Link Commissions"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        (function () {
+            var SRC = '/admin/admin-unique-link-commission.html?adminEmbed=1&embedVer=3';
+
+            function checkAuth() {
+                var token = (window.RemoedAdminSession && RemoedAdminSession.getAuthToken ? RemoedAdminSession.getAuthToken() : (localStorage.getItem('remoed_admin_token')||localStorage.getItem('remoed_admin_auth')||localStorage.getItem('adminToken')||''));
+                if (!token) {
+                    window.location.href = (function () {
+                        try {
+                            var p = localStorage.getItem('remoedAdminEntryPath');
+                            if (p && p.charAt(0) === '/') return p;
+                        } catch (e) {}
+                        return 'index.html';
+                    })();
+                    return false;
+                }
+                if (window.AdminSidebar && typeof AdminSidebar.applyGreetingFromStorage === 'function') {
+                    AdminSidebar.applyGreetingFromStorage();
+                }
+                return true;
+            }
+
+            document.addEventListener('DOMContentLoaded', function () {
+                if (!checkAuth()) return;
+                var el = document.getElementById('iframe-mkt-commissions');
+                if (el && !el.getAttribute('data-loaded')) {
+                    el.src = SRC;
+                    el.setAttribute('data-loaded', '1');
+                }
+            });
+        })();
+    </script>
+</body>
+</html>

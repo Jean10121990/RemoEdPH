@@ -62,6 +62,20 @@ Details: [docs/STABLE_BASELINE.md](docs/STABLE_BASELINE.md) § Phone app shell.
 - Phone scroll: lock `html`/`body`; **`.remoed-main` is the only scroller** (`height: 100%`, `box-sizing: border-box`, `overflow-y: auto`). Do not set `.remoed-main { height: auto }`. Do not add `window.scrollTo(0,0)` on scroll, lastY snap guards, or `PullToRefresh` on `.remoed-content`.
 - Modals use `--z-modal` / `--z-toast` / `--z-blocking` on `document.body`. Do not raise raw z-index or put popovers inside `overflow: hidden` / `backdrop-filter` parents.
 
+## Landing culture / gender
+
+Details: [docs/STABLE_BASELINE.md](docs/STABLE_BASELINE.md) § Landing culture / about and § Gender.
+
+- Homepage culture blocks after hero stay in order Who we are → Principles → Pillars → HEART → Vision/Mission. Pillars/HEART use **icons**, not cropped culture photos.
+- Profile gender selects: **Male / Female only**. Do not restore Other. Teacher enum and profile saves must reject/clear Other.
+
+## Admin Marketing hub
+
+Details: [docs/STABLE_BASELINE.md](docs/STABLE_BASELINE.md) § Admin Marketing hub.
+
+- Sidebar **Marketing** sits **below Accounting Hub** and owns Unique Link Commissions. Do not put commissions back as an Accounting Hub tab.
+- `admin-unique-link-commission.html` standalone → `admin-marketing-hub.html`.
+
 ## Before push
 
 - Run `node --check` on edited server entry files (`server/student.js`, `server/index.js`, etc.).

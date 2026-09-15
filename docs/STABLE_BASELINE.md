@@ -18,6 +18,10 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 | Live classroom (AV / locks) | `public/live-classroom.html`, `public/css/live-classroom-redesign.css`, `public/js/virtual-background.js`, `public/images/virtual-bg/`, socket maps in `server/index.js` |
 | Phone app chrome / scroll | `public/js/portal-layout.js`, `public/css/remoed-layers.css`, `public/css/mobile-first.css`, `public/css/portal-chrome-compact.css`, `public/mobile-utils.js` |
 | Portal header chips | `public/css/portal-header-actions.css` (bell / calendar dropdowns) |
+| Landing culture / about | `public/index.html` (`#who-we-are` … `#vision-mission`), `public/landing-brand.css` (`.remo-culture*`) |
+| Gender (profiles) | `public/teacher-profile.html`, `public/student-profile.html`, `server/models/Teacher.js`, profile save in `server/teacher.js` / `server/student.js` |
+| Admin Marketing hub | `public/admin-marketing-hub.html`, `public/admin-unique-link-commission.html`, `public/js/admin-sidebar.js`, `public/js/admin-hub-guard.js`, `public/js/admin-standalone-redirect.js` |
+| Admin Accounting hub | `public/admin-accounting-hub.html` (Payroll + Student Subscriptions only) |
 | Mongo safety scripts | `scripts/archive-legacy-mongo-db.js`, `scripts/purge-beta-recordings.js` |
 
 ## Feature-add rule of thumb
@@ -68,6 +72,22 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 - [ ] Teacher Profile / Student Profile on phone is a **single column** (Quick Info stacked above the form). Desktop ≥1025 stays two-column.
 - [ ] `#tour-button` / `#chatbot-toggle` sit above the 64px tab bar, not on top of it.
 - [ ] Classroom Settings / VBG / class-info stay body-level and use `--z-modal` / `--z-toast` / `--z-blocking` from `public/css/remoed-layers.css`. Classroom phone dock stays Lesson / Camera / Chat (no portal tabs).
+
+### Landing / culture
+
+- [ ] Homepage after hero shows, in order: **Who we are?** → Foundational Principles → Core Cultural Pillars → H.E.A.R.T. Framework → Vision & Mission, then existing Why Learn / Teachers / Assessment / Plans.
+- [ ] Pillars and HEART use **Font Awesome icon circles** (`.remo-culture-icon`), not cropped stock photos under `public/images/culture/`.
+- [ ] Nav **About** and footer **About RemoEd** jump to `#who-we-are`.
+
+### Profile gender
+
+- [ ] Teacher and student Gender selects offer only **Male** and **Female** (plus empty “Select Gender”). No Other / Others / non-binary options.
+
+### Admin hubs
+
+- [ ] Sidebar order includes **Accounting Hub** then **Marketing** (Marketing directly below Accounting).
+- [ ] **Marketing** opens Unique Link Commissions (filters, ₱ totals, enrollee table). Accounting Hub tabs are only **Payroll Management** and **Student Subscriptions**.
+- [ ] Opening `admin-unique-link-commission.html` standalone redirects to `admin-marketing-hub.html` (not Accounting `#commissions`). Old `#commissions` on Accounting Hub redirects to Marketing.
 
 ### Deploy hygiene
 
@@ -157,6 +177,47 @@ These “fixes” **are** the snap bugs:
 ### `style.css`
 
 Huge generated sheet. Override later with `remoed-layers.css` / `portal-chrome-compact.css` / `mobile-first.css`. Do not rewrite `style.css` to “simplify” portal layout.
+
+## Landing culture / about — do not “simplify”
+
+Product copy and layout on `public/index.html` after the hero. Style in `public/landing-brand.css` (`.remo-culture*`). Match logo tints (blue / green / yellow), Fredoka/Quicksand, and existing benefit-card patterns.
+
+### Section order (after hero)
+
+1. **Who we are?** (`#who-we-are`) — Filipino ESL start-up, God-centered online education for kids across Asia.
+2. **Foundational Principles of RemoEd Culture** (`#foundational-principles`) — Christian worldview, honoring each person, biblical distinction of gender in all conduct.
+3. **Core Cultural Pillars** (`#core-cultural-pillars`) — Joyful Learning; Respect & Care; Integrity & Accountability.
+4. **H.E.A.R.T. Framework** (`#heart-framework`) — Hospitality, Excellence, Affection, Respect, Togetherness.
+5. **Our Vision / Our Mission** (`#vision-mission`, `#our-vision`, `#our-mission`).
+6. Then existing `#benefits`, `#our-teachers`, `#assessment`, `#plans`.
+
+### Icons, not cropped comps
+
+Pillars and HEART use brand icon circles (same family as Foundational Principles / Why Learn cards). **Do not** reintroduce cropped mockup PNGs or a `public/images/culture/` photo set — those looked soft and blurry on the live page. Do not paste the full design-comp images as section backgrounds (duplicates titles and breaks a11y).
+
+### Nav / footer
+
+Keep **About** → `#who-we-are` in the landing navbar and **About RemoEd** in the footer Learn column. Cache-bust `landing-brand.css?v=` when culture CSS changes.
+
+## Gender — Male / Female only
+
+RemoEd upholds the biblical distinction of gender (male and female). Profile UIs and saves must stay aligned until product explicitly changes this.
+
+- Selects: `public/teacher-profile.html` (`Male` / `Female`) and `public/student-profile.html` (`male` / `female`). **Do not** add Other, Others, Prefer not to say, or non-binary options.
+- Teacher model: `server/models/Teacher.js` enum is `['Male', 'Female', '']` only — no `'Other'`.
+- Saves normalize unknowns to empty: teacher profile update in `server/teacher.js`; student `POST /profile` in `server/student.js`. Client load maps only male/female into the select; legacy Other shows as blank until the user picks Male or Female.
+- Issue-type **Other** on Class Schedule / QA hub is unrelated — leave those alone.
+
+## Admin Marketing hub — Unique Link Commissions
+
+Unique Link Commissions are **not** an Accounting Hub tab. They live under sidebar **Marketing**, placed **directly below Accounting Hub**.
+
+- Hub page: `public/admin-marketing-hub.html` embeds `admin-unique-link-commission.html?adminEmbed=1`.
+- Sidebar: `public/js/admin-sidebar.js` item `marketing` after `accounting-hub`. Path highlight maps `admin-marketing-hub` and `admin-unique-link-commission` → `marketing`.
+- Visibility: same as Accounting — `super_admin` and `admin_accounting` (HR/QA redirected by `admin-hub-guard.js` `data-hub="marketing"`).
+- Standalone redirect: `admin-standalone-redirect.js` sends `admin-unique-link-commission.html` → `admin-marketing-hub.html`.
+- Accounting Hub keeps **Payroll** + **Student Subscriptions** only. `#commissions` on Accounting Hub must redirect to Marketing — do not restore the commissions tab inside Accounting.
+- Teacher copy: `teacher-referrals.html` points admins to **Marketing → Unique Link Commissions**.
 
 ## Known product gates (not bugs)
 
