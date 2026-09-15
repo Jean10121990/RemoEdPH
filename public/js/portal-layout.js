@@ -216,12 +216,19 @@
 
   function pickTabLis(menu, role) {
     var map = lisByNavId(menu);
-    var ids = BOTTOM_TABS[role] || BOTTOM_TABS.teacher;
+    var ids = (BOTTOM_TABS[role] || BOTTOM_TABS.teacher).slice();
     var picked = [];
     ids.forEach(function (id) {
       var el = map.byId[id];
+      if (!el && id === 'settings') el = map.byId['profile-settings'];
       if (!el) return;
       if (el.getAttribute('data-logout')) return;
+      try {
+        if (el.style && el.style.display === 'none') {
+          if (id === 'settings' && map.byId['profile-settings']) el = map.byId['profile-settings'];
+          else return;
+        }
+      } catch (e) {}
       var href = hrefFromMenuLi(el);
       if (!href) return;
       picked.push(el);

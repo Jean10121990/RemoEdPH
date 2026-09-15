@@ -134,12 +134,29 @@
             .catch(function () {});
     }
 
+    /**
+     * Marketing admin: Dashboard + Marketing Hub + shared ops only.
+     * Settings / System monitor stay Super-Admin (same as HR/QA/Accounting).
+     */
+    var MARKETING_NAV_IDS = {
+        dashboard: true,
+        marketing: true,
+        leaderboard: true,
+        announcements: true,
+        videos: true,
+        reports: true,
+        messages: true,
+        'profile-settings': true,
+        logout: true
+    };
+
     /** HR / QA / Accounting / Marketing hub entries — visibility by adminRole. */
     function shouldShowNavItem(itemId) {
         var role = '';
         try {
             role = String(localStorage.getItem('adminRole') || '').trim();
         } catch (e) {}
+        if (role === 'admin_marketing') return !!MARKETING_NAV_IDS[itemId];
         if (itemId === 'settings') return role === 'super_admin';
         if (itemId === 'super-monitor') return role === 'super_admin';
         if (!role || role === 'super_admin') return true;

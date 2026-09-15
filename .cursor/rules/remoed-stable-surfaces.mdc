@@ -75,6 +75,7 @@ Details: [docs/STABLE_BASELINE.md](docs/STABLE_BASELINE.md) § Admin Marketing H
 
 - Sidebar **Marketing Hub** sits **below Accounting Hub** and owns Unique Link Commissions. Do not put commissions back as an Accounting Hub tab.
 - `admin-unique-link-commission.html` standalone → `admin-marketing-hub.html`.
+- Role **`admin_marketing`**: sidebar whitelist only (Dashboard, Marketing Hub, Leaderboard, Announcements, Videos, Reports, Messages, Profile settings, Logout). Do not grant Settings / System monitor. Keep hub-guard + `adminRoleGate` in sync when extending.
 
 ## Teaching Fee bonus / incentive
 

@@ -333,7 +333,7 @@
                             rows.push(['Training courses completed', String(trainingDone)]);
                             rows.push(['Joined', u.createdAt ? new Date(u.createdAt).toLocaleString() : '—']);
                         } else {
-                            var roleMap = { super_admin: 'Super-Admin', admin_hr: 'HR', admin_accounting: 'Accounting', admin_qa: 'QA' };
+                            var roleMap = { super_admin: 'Super-Admin', admin_hr: 'HR', admin_accounting: 'Accounting', admin_qa: 'QA', admin_marketing: 'Marketing' };
                             rows.push(['Username', u.username || '—']);
                             rows.push(['Email', u.email || '—']);
                             rows.push(['Role', roleMap[u.adminRole] || u.adminRole || '—']);

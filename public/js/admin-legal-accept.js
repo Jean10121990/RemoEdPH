@@ -51,6 +51,7 @@
       admin_hr: 'Admin — HR',
       admin_accounting: 'Admin — Accounting',
       admin_qa: 'Admin — QA',
+      admin_marketing: 'Admin — Marketing',
     };
     return m[r] || r || '';
   }

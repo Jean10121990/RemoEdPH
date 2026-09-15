@@ -20,6 +20,7 @@ const ADMIN_ROLE_CLAIMS = new Set([
   'admin_hr',
   'admin_accounting',
   'admin_qa',
+  'admin_marketing',
 ]);
 
 function attachAdminFromSession(req) {

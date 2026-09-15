@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const ADMIN_ROLES = ['super_admin', 'admin_hr', 'admin_accounting', 'admin_qa'];
+const ADMIN_ROLES = ['super_admin', 'admin_hr', 'admin_accounting', 'admin_qa', 'admin_marketing'];
 
 /** Staff admin account (portal “admin user”). Includes TOTP 2FA fields for RBAC sign-in. */
 const adminSchema = new mongoose.Schema({

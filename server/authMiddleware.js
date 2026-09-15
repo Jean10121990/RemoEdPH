@@ -291,6 +291,16 @@ const adminRoleGate = (req, res, next) => {
       return res.status(403).json({ error: 'Your admin role (HR) cannot access this resource.' });
     }
   }
+  if (role === 'admin_marketing') {
+    if (
+      /\/payment|\/dispense|teachers-weekly-salaries|\/issues|issue-reports|teacher-pipeline|teachers-list|students-list|admins-list|^\/admins$|classroom-recordings|global-rate|save-global-rate|update-global-rate/.test(
+        p
+      ) ||
+      userMgmtRe.test(p)
+    ) {
+      return res.status(403).json({ error: 'Your admin role (Marketing) cannot access this resource.' });
+    }
+  }
   return next();
 };
 

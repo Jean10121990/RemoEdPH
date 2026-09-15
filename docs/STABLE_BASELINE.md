@@ -216,7 +216,8 @@ Unique Link Commissions are **not** an Accounting Hub tab. They live under sideb
 
 - Hub page: `public/admin-marketing-hub.html` embeds `admin-unique-link-commission.html?adminEmbed=1`.
 - Sidebar: `public/js/admin-sidebar.js` item `marketing` (label **Marketing Hub**) after `accounting-hub`. Path highlight maps `admin-marketing-hub` and `admin-unique-link-commission` → `marketing`.
-- Visibility: same as Accounting — `super_admin` and `admin_accounting` (HR/QA redirected by `admin-hub-guard.js` `data-hub="marketing"`).
+- Visibility: `super_admin`, `admin_accounting`, and **`admin_marketing`** (HR/QA redirected by `admin-hub-guard.js` `data-hub="marketing"`).
+- **`admin_marketing` sidebar whitelist:** Dashboard, Marketing Hub, Leaderboard, Announcements, Videos, Reports, Messages, Profile settings, Logout. Settings / System monitor remain Super-Admin-only. Assign via Super-Admin → Users → role **Admin — Marketing** (e.g. `adminmktg@remoedph.com`).
 - Standalone redirect: `admin-standalone-redirect.js` sends `admin-unique-link-commission.html` → `admin-marketing-hub.html`.
 - Accounting Hub keeps **Payroll** + **Student Subscriptions** only. `#commissions` on Accounting Hub must redirect to Marketing Hub — do not restore the commissions tab inside Accounting.
 - Teacher copy: `teacher-referrals.html` points admins to **Marketing Hub → Unique Link Commissions**.

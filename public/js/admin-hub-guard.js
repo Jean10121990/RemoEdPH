@@ -20,11 +20,11 @@
 
     var blocked = false;
     if (hub === 'hr') {
-        blocked = role === 'admin_qa' || role === 'admin_accounting';
+        blocked = role === 'admin_qa' || role === 'admin_accounting' || role === 'admin_marketing';
     } else if (hub === 'qa') {
-        blocked = role === 'admin_hr' || role === 'admin_accounting';
+        blocked = role === 'admin_hr' || role === 'admin_accounting' || role === 'admin_marketing';
     } else if (hub === 'accounting') {
-        blocked = role === 'admin_hr' || role === 'admin_qa';
+        blocked = role === 'admin_hr' || role === 'admin_qa' || role === 'admin_marketing';
     } else if (hub === 'marketing') {
         blocked = role === 'admin_hr' || role === 'admin_qa';
     }

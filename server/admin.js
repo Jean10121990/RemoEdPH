@@ -4587,7 +4587,7 @@ router.post('/user', async (req, res) => {
         if (!creator || (creator.adminRole || 'super_admin') !== 'super_admin') {
           return res.status(403).json({ error: 'Only Super-Admin can create admin accounts.' });
         }
-        const allowedRoles = ['super_admin', 'admin_hr', 'admin_accounting', 'admin_qa'];
+        const allowedRoles = ['super_admin', 'admin_hr', 'admin_accounting', 'admin_qa', 'admin_marketing'];
         const roleNorm = String(requestedAdminRole || '')
           .trim()
           .toLowerCase();
@@ -4866,7 +4866,7 @@ router.put('/user/:userId', async (req, res) => {
       if (studentFirstName) user.firstName = studentFirstName;
       if (studentLastName) user.lastName = studentLastName;
     } else if (userType === 'admin' && bodyAdminRolePut) {
-      const allowedRoles = ['super_admin', 'admin_hr', 'admin_accounting', 'admin_qa'];
+      const allowedRoles = ['super_admin', 'admin_hr', 'admin_accounting', 'admin_qa', 'admin_marketing'];
       if (allowedRoles.includes(String(bodyAdminRolePut))) {
         user.adminRole = String(bodyAdminRolePut);
       }
