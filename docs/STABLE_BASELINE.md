@@ -21,6 +21,10 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 | Landing culture / about | `public/index.html` (`#who-we-are` … `#vision-mission`), `public/landing-brand.css` (`.remo-culture*`) |
 | Gender (profiles) | `public/teacher-profile.html`, `public/student-profile.html`, `server/models/Teacher.js`, profile save in `server/teacher.js` / `server/student.js` |
 | Admin Marketing hub | `public/admin-marketing-hub.html`, `public/admin-unique-link-commission.html`, `public/js/admin-sidebar.js`, `public/js/admin-hub-guard.js`, `public/js/admin-standalone-redirect.js` |
+| Admin login / first-setup | `server/utils/adminRouteConfig.js`, `ADMIN_LOGIN_PATH` in `.env`, `public/admin-login.html` (served only at obfuscated path), `public/admin-first-setup.html`, `public/js/admin-session.js`, `GET /api/auth/admin-login-path` + `POST /api/auth/admin-first-setup` in `server/auth.js` |
+| Admin HR staff documents | `public/admin-hr-documents.html`, `GET/PATCH /api/admin/hr-documents*` in `server/admin.js`; teacher NBI: `Teacher.nbiClearanceStatus` + `documents.nbiClearances` |
+| Student family / emergency (admin view) | `public/student-profile.html`, `public/admin-view-user-profile.html`, `Student.parentEmail` / `emergencyContactPerson` / `emergencyContactNumber` |
+| Student My Level / CEFR guides | `public/student-assessment.html`, `public/images/cefr/remoed-kids-cefr-guide.jpg`, `public/images/cefr/remoed-teens-cefr-guide.jpg` |
 | Admin Accounting hub | `public/admin-accounting-hub.html` (Payroll + Student Subscriptions only) |
 | Teaching Fee bonus / incentive | `public/teacher-service-fee.html`, `public/admin-payroll.html`, `Teacher.periodIncentives`, `PUT /api/admin/teacher-period-incentive`, `GET /api/teacher/period-incentive` |
 | Mongo safety scripts | `scripts/archive-legacy-mongo-db.js`, `scripts/purge-beta-recordings.js` |
@@ -90,6 +94,12 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 - [ ] **Marketing Hub** opens Unique Link Commissions (filters, ₱ totals, enrollee table). Accounting Hub tabs are only **Payroll Management** and **Student Subscriptions**.
 - [ ] Opening `admin-unique-link-commission.html` standalone redirects to `admin-marketing-hub.html` (not Accounting `#commissions`). Old `#commissions` on Accounting Hub redirects to Marketing Hub.
 - [ ] Accounting Hub → Payroll: **Bonus / Incentive** column can Save an amount for the selected cut-off; Teaching Fee shows the same amount under Period fee and includes it in Net Payable.
+
+### Admin login / first-time password
+
+- [ ] Root `/admin-login` and `/admin-login.html` return **404 Not found** (intentional). Login works only at `/${ADMIN_LOGIN_PATH}` (or the default segment from `adminRouteConfig.js`).
+- [ ] After **First-time password setup** succeeds, the browser redirects to that obfuscated login path — **not** to `/admin-login.html`.
+- [ ] “Admin login” on `admin-first-setup.html` and idle/logout via `RemoedAdminSession.redirectToAdminLogin()` also land on the obfuscated path (`GET /api/auth/admin-login-path` when `remoedAdminEntryPath` is missing).
 
 ### Deploy hygiene
 
@@ -221,6 +231,35 @@ Unique Link Commissions are **not** an Accounting Hub tab. They live under sideb
 - Standalone redirect: `admin-standalone-redirect.js` sends `admin-unique-link-commission.html` → `admin-marketing-hub.html`.
 - Accounting Hub keeps **Payroll** + **Student Subscriptions** only. `#commissions` on Accounting Hub must redirect to Marketing Hub — do not restore the commissions tab inside Accounting.
 - Teacher copy: `teacher-referrals.html` points admins to **Marketing Hub → Unique Link Commissions**.
+
+## Admin login path (obfuscated) + first-time setup
+
+Legacy `/admin-login.html` is **blocked on purpose** (404 HTML). The real login page is `public/admin-login.html` served only at `GET /${ADMIN_LOGIN_PATH}`.
+
+- Path source: `getAdminLoginPathSegment()` in `server/utils/adminRouteConfig.js`. Set `ADMIN_LOGIN_PATH` in production `.env` (8–128 chars: `a-zA-Z0-9_-`). If unset, the coded default segment is used (same value the server logs at startup as `Admin login page path`).
+- Register the route in `server/index.js` **before** static: root `/admin-login` + `/admin-login.html` → 404; `/${segment}` → `sendFile(admin-login.html)`.
+- Client must **never** hardcode redirects to `/admin-login.html` or `/admin/admin-login.html` for sign-in. Use:
+  - `localStorage.remoedAdminEntryPath` (set when visiting the obfuscated login URL via `RemoedAdminSession.rememberCurrentPathAsAdminEntry()`), or
+  - `GET /api/auth/admin-login-path` → `{ path: "/…" }`, or
+  - `loginPath` on successful `POST /api/auth/admin-first-setup`.
+- First-time setup UI: `public/admin-first-setup.html` (public). After save, redirect with `loginPath` / API path and remember it in `remoedAdminEntryPath`.
+- Idle logout / session expiry: `public/js/admin-session.js` → `redirectToAdminLogin()` (API fallback; do not restore the `/admin/admin-login.html` fallback).
+- `admin-login.html` sets `window.__REMOED_ADMIN_LOGIN_HTML__ = true` before `security-guard.js` so the obfuscated path is not treated as a protected `/admin-*` portal page.
+
+## Admin HR Staff Documents + teacher NBI
+
+- Page: `public/admin-hr-documents.html` (HR Hub Documents; Super-Admin / HR).
+- Teachers table includes **Gov ID**, **NBI**, **NBI status** (same idea as Admins). Detail modal can **Save status** via `PATCH /api/admin/hr-documents/:personType/:personId/nbi-status`.
+- Teachers upload NBI under Profile → Documents → **NBI** (`documents.nbiClearances`, `nbiClearanceStatus`). Upload auto-sets status to `submitted` when previously `none`/`pending`.
+
+## Student family / emergency (admin View Profile)
+
+- Student profile: Parent/Guardian name, contact, **email**; Emergency contact **person** + **number** (`parentEmail`, `emergencyContactPerson`, `emergencyContactNumber`; legacy `emergencyContact` still synced as combined text).
+- Admin **View Profile** (`admin-view-user-profile.html?type=student`) shows birthday, parent fields, and emergency person/number. Do not strip these from `GET /api/admin/user/:id?type=student`.
+
+## Student My Level — CEFR alignment images
+
+- `public/student-assessment.html` intro + results show RemoEd Kids / RemoEd Teens guides (`public/images/cefr/*-cefr-guide.jpg`) with tab switch + lightbox. Keep both images; do not remove the guides section when editing assessment copy.
 
 ## Teaching Fee — Bonus / Incentive (Accounting)
 
