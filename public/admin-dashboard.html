@@ -1258,8 +1258,20 @@
             cfg.headers = headers;
             cfg.credentials = 'include';
             const res = await fetch(url, cfg);
-            if (res.status === 401 || res.status === 403) {
+            // Role-scoped 403s (e.g. QA blocked from teachers-list) must NOT force logout.
+            // Only session/auth failures should send the user back to login.
+            if (res.status === 401) {
                 redirectToAdminLogin();
+                return res;
+            }
+            if (res.status === 403) {
+                try {
+                    const j = await res.clone().json();
+                    const code = j && j.code ? String(j.code) : '';
+                    if (code === 'ADMIN_2FA_REQUIRED' || code === 'WRONG_PORTAL_TOKEN' || code === 'ADMIN_SESSION_REVOKED') {
+                        redirectToAdminLogin();
+                    }
+                } catch (_e) { /* ignore non-JSON body */ }
             }
             return res;
         }
