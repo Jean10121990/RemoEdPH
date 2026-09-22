@@ -1,0 +1,20 @@
+Act as the RemoEdPH Content & Admin Automation Engineer.
+
+Please execute the following tasks:
+1. GENERATE LESSON CONTENT:
+   - Curriculum: RemoEd Level 2 (Sprouts)
+   - Lesson Number: 7
+   - Lesson Title: In the Garden
+   - Create the full structured lesson file and save it locally at: ./lessons/L2_Lesson_7_In_The_Garden.json (or .pdf / .pptx)
+
+2. AUTOMATE QA HUB UPLOAD:
+   - Run the Playwright script `upload_lesson.js` via the terminal to upload the file to our QA Hub Admin Portal following the exact steps:
+     * Curriculum: RemoEd Level 2 (Sprouts)
+     * Lesson Number: 7
+     * Formatted Title: Lesson 7: In the Garden
+     * File: ./lessons/L2_Lesson_7_In_The_Garden.json
+
+Use these credentials for the script:
+- Admin URL: https://remoedph.com/admin-portal_remoed_8k92-f3x7-z1p0
+- Email: admin@remoedph.com
+- Password: RemoEd-Admin-Setup-2025!

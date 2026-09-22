@@ -1,0 +1,91 @@
+--- SLIDE 1 pics=2 shapes=12 ---
+  TEXT: Lesson 6 – I am Happy!
+  TEXT: 1 / 15
+  TEXT: SPROUTS! MONTH 1
+  TEXT: Lesson 6 – I am Happy!
+  TEXT: Hello!
+  SHAPES: Picture:Picture 1, Shape:Rounded Rectangle 2, Shape:TextBox 3, Shape:Rounded Rectangle 4, Shape:TextBox 5, Shape:Rounded Rectangle 6, Shape:TextBox 7, Picture:Picture 8, Shape:Rounded Rectangle 9, Shape:TextBox 10, Shape:Rounded Rectangle 11, Shape:TextBox 12
+--- SLIDE 2 pics=2 shapes=10 ---
+  TEXT: Lesson 6 – I am Happy!
+  TEXT: 2 / 15
+  TEXT: SPROUTS! MONTH 1
+  TEXT: Happy
+  SHAPES: Picture:Picture 1, Shape:Rounded Rectangle 2, Shape:TextBox 3, Shape:Rounded Rectangle 4, Shape:TextBox 5, Shape:Rounded Rectangle 6, Shape:TextBox 7, Picture:Picture 8, Shape:Rounded Rectangle 9, Shape:TextBox 10
+--- SLIDE 3 pics=2 shapes=10 ---
+  TEXT: Lesson 6 – I am Happy!
+  TEXT: 3 / 15
+  TEXT: SPROUTS! MONTH 1
+  TEXT: Smile
+  SHAPES: Picture:Picture 1, Shape:Rounded Rectangle 2, Shape:TextBox 3, Shape:Rounded Rectangle 4, Shape:TextBox 5, Shape:Rounded Rectangle 6, Shape:TextBox 7, Picture:Picture 8, Shape:Rounded Rectangle 9, Shape:TextBox 10
+--- SLIDE 4 pics=2 shapes=10 ---
+  TEXT: Lesson 6 – I am Happy!
+  TEXT: 4 / 15
+  TEXT: SPROUTS! MONTH 1
+  TEXT: I am happy.
+  SHAPES: Picture:Picture 1, Shape:Rounded Rectangle 2, Shape:TextBox 3, Shape:Rounded Rectangle 4, Shape:TextBox 5, Shape:Rounded Rectangle 6, Shape:TextBox 7, Picture:Picture 8, Shape:Rounded Rectangle 9, Shape:TextBox 10
+--- SLIDE 5 pics=2 shapes=10 ---
+  TEXT: Lesson 6 – I am Happy!
+  TEXT: 5 / 15
+  TEXT: SPROUTS! MONTH 1
+  TEXT: Make a smile!
+  SHAPES: Picture:Picture 1, Shape:Rounded Rectangle 2, Shape:TextBox 3, Shape:Rounded Rectangle 4, Shape:TextBox 5, Shape:Rounded Rectangle 6, Shape:TextBox 7, Picture:Picture 8, Shape:Rounded Rectangle 9, Shape:TextBox 10
+--- SLIDE 6 pics=2 shapes=10 ---
+  TEXT: Lesson 6 – I am Happy!
+  TEXT: 6 / 15
+  TEXT: SPROUTS! MONTH 1
+  TEXT: Happy heart.
+  SHAPES: Picture:Picture 1, Shape:Rounded Rectangle 2, Shape:TextBox 3, Shape:Rounded Rectangle 4, Shape:TextBox 5, Shape:Rounded Rectangle 6, Shape:TextBox 7, Picture:Picture 8, Shape:Rounded Rectangle 9, Shape:TextBox 10
+--- SLIDE 7 pics=2 shapes=10 ---
+  TEXT: Lesson 6 – I am Happy!
+  TEXT: 7 / 15
+  TEXT: SPROUTS! MONTH 1
+  TEXT: Share the joy.
+  SHAPES: Picture:Picture 1, Shape:Rounded Rectangle 2, Shape:TextBox 3, Shape:Rounded Rectangle 4, Shape:TextBox 5, Shape:Rounded Rectangle 6, Shape:TextBox 7, Picture:Picture 8, Shape:Rounded Rectangle 9, Shape:TextBox 10
+--- SLIDE 8 pics=2 shapes=10 ---
+  TEXT: Lesson 6 – I am Happy!
+  TEXT: 8 / 15
+  TEXT: SPROUTS! MONTH 1
+  TEXT: Smile at friends.
+  SHAPES: Picture:Picture 1, Shape:Rounded Rectangle 2, Shape:TextBox 3, Shape:Rounded Rectangle 4, Shape:TextBox 5, Shape:Rounded Rectangle 6, Shape:TextBox 7, Picture:Picture 8, Shape:Rounded Rectangle 9, Shape:TextBox 10
+--- SLIDE 9 pics=2 shapes=10 ---
+  TEXT: Lesson 6 – I am Happy!
+  TEXT: 9 / 15
+  TEXT: SPROUTS! MONTH 1
+  TEXT: Thank you, God.
+  SHAPES: Picture:Picture 1, Shape:Rounded Rectangle 2, Shape:TextBox 3, Shape:Rounded Rectangle 4, Shape:TextBox 5, Shape:Rounded Rectangle 6, Shape:TextBox 7, Picture:Picture 8, Shape:Rounded Rectangle 9, Shape:TextBox 10
+--- SLIDE 10 pics=2 shapes=10 ---
+  TEXT: Lesson 6 – I am Happy!
+  TEXT: 10 / 15
+  TEXT: SPROUTS! MONTH 1
+  TEXT: Touch the happy face!
+  SHAPES: Picture:Picture 1, Shape:Rounded Rectangle 2, Shape:TextBox 3, Shape:Rounded Rectangle 4, Shape:TextBox 5, Shape:Rounded Rectangle 6, Shape:TextBox 7, Picture:Picture 8, Shape:Rounded Rectangle 9, Shape:TextBox 10
+--- SLIDE 11 pics=2 shapes=10 ---
+  TEXT: Lesson 6 – I am Happy!
+  TEXT: 11 / 15
+  TEXT: SPROUTS! MONTH 1
+  TEXT: Touch the happy one!
+  SHAPES: Picture:Picture 1, Shape:Rounded Rectangle 2, Shape:TextBox 3, Shape:Rounded Rectangle 4, Shape:TextBox 5, Shape:Rounded Rectangle 6, Shape:TextBox 7, Picture:Picture 8, Shape:Rounded Rectangle 9, Shape:TextBox 10
+--- SLIDE 12 pics=2 shapes=10 ---
+  TEXT: Lesson 6 – I am Happy!
+  TEXT: 12 / 15
+  TEXT: SPROUTS! MONTH 1
+  TEXT: Your turn!
+  SHAPES: Picture:Picture 1, Shape:Rounded Rectangle 2, Shape:TextBox 3, Shape:Rounded Rectangle 4, Shape:TextBox 5, Shape:Rounded Rectangle 6, Shape:TextBox 7, Picture:Picture 8, Shape:Rounded Rectangle 9, Shape:TextBox 10
+--- SLIDE 13 pics=2 shapes=10 ---
+  TEXT: Lesson 6 – I am Happy!
+  TEXT: 13 / 15
+  TEXT: SPROUTS! MONTH 1
+  TEXT: I am happy.
+  SHAPES: Picture:Picture 1, Shape:Rounded Rectangle 2, Shape:TextBox 3, Shape:Rounded Rectangle 4, Shape:TextBox 5, Shape:Rounded Rectangle 6, Shape:TextBox 7, Picture:Picture 8, Shape:Rounded Rectangle 9, Shape:TextBox 10
+--- SLIDE 14 pics=2 shapes=10 ---
+  TEXT: Lesson 6 – I am Happy!
+  TEXT: 14 / 15
+  TEXT: SPROUTS! MONTH 1
+  TEXT: Happy. Smile.
+  SHAPES: Picture:Picture 1, Shape:Rounded Rectangle 2, Shape:TextBox 3, Shape:Rounded Rectangle 4, Shape:TextBox 5, Shape:Rounded Rectangle 6, Shape:TextBox 7, Picture:Picture 8, Shape:Rounded Rectangle 9, Shape:TextBox 10
+--- SLIDE 15 pics=2 shapes=10 ---
+  TEXT: Lesson 6 – I am Happy!
+  TEXT: 15 / 15
+  TEXT: SPROUTS! MONTH 1
+  TEXT: Goodbye!
+  SHAPES: Picture:Picture 1, Shape:Rounded Rectangle 2, Shape:TextBox 3, Shape:Rounded Rectangle 4, Shape:TextBox 5, Shape:Rounded Rectangle 6, Shape:TextBox 7, Picture:Picture 8, Shape:Rounded Rectangle 9, Shape:TextBox 10
