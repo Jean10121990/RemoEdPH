@@ -25,8 +25,9 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 | Admin HR staff documents | `public/admin-hr-documents.html`, `GET/PATCH /api/admin/hr-documents*` in `server/admin.js`; teacher NBI: `Teacher.nbiClearanceStatus` + `documents.nbiClearances` |
 | Student family / emergency (admin view) | `public/student-profile.html`, `public/admin-view-user-profile.html`, `Student.parentEmail` / `emergencyContactPerson` / `emergencyContactNumber` |
 | Student My Level / CEFR guides | `public/student-assessment.html`, `public/images/cefr/remoed-kids-cefr-guide.jpg`, `public/images/cefr/remoed-teens-cefr-guide.jpg` |
-| Admin Accounting hub | `public/admin-accounting-hub.html` (Payroll + Student Subscriptions only) |
+| Admin Accounting hub | `public/admin-accounting-hub.html` (Payroll + **Admin Payroll** + Student Subscriptions) |
 | Admin Fee & Attendance | `public/admin-fee.html`, `server/adminFeeRoutes.js`, `AdminAttendance` / `AdminPayout`; sidebar **Admin Fee** under Accounting Hub |
+| Admin Roles (dynamic RBAC) | `public/admin-settings.html` (Admin Roles and Access), `server/services/adminRbac.js`, `server/adminRbacRoutes.js`, `AdminRole` / `AdminPermission`, `public/js/admin-access-guard.js`, `public/admin-403.html` |
 | Teaching Fee bonus / incentive | `public/teacher-service-fee.html`, `public/admin-payroll.html`, `Teacher.periodIncentives`, `PUT /api/admin/teacher-period-incentive`, `GET /api/teacher/period-incentive` |
 | Mongo safety scripts | `scripts/archive-legacy-mongo-db.js`, `scripts/purge-beta-recordings.js` |
 
@@ -91,8 +92,11 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 
 ### Admin hubs
 
-- [ ] Sidebar order includes **Accounting Hub** then **Marketing Hub** (Marketing Hub directly below Accounting).
-- [ ] **Marketing Hub** opens Unique Link Commissions (filters, ₱ totals, enrollee table). Accounting Hub tabs are only **Payroll Management** and **Student Subscriptions**.
+- [ ] Sidebar order includes **Accounting Hub** → **Admin Fee** → **Marketing Hub**.
+- [ ] Super-Admin **Settings → Admin Roles and Access** loads roles/catalog and can Save Permissions for a non–Super-Admin role.
+- [ ] **Accounting Hub** tabs: Payroll Management, **Admin Payroll**, Student Subscriptions. Admin Payroll can Load Admins and Dispense fees for the cutoff.
+- [ ] Admin header **notification bell** opens the dropdown when clicked (badge count loads; Mark all read works).
+- [ ] **Marketing Hub** opens Unique Link Commissions (filters, ₱ totals, enrollee table).
 - [ ] Opening `admin-unique-link-commission.html` standalone redirects to `admin-marketing-hub.html` (not Accounting `#commissions`). Old `#commissions` on Accounting Hub redirects to Marketing Hub.
 - [ ] Accounting Hub → Payroll: **Bonus / Incentive** column can Save an amount for the selected cut-off; Teaching Fee shows the same amount under Period fee and includes it in Net Payable.
 
@@ -227,18 +231,42 @@ Unique Link Commissions are **not** an Accounting Hub tab. They live under sideb
 
 - Hub page: `public/admin-marketing-hub.html` embeds `admin-unique-link-commission.html?adminEmbed=1`.
 - Sidebar: `public/js/admin-sidebar.js` order is Accounting Hub → **Admin Fee** → Marketing Hub. Path highlight maps `admin-marketing-hub` and `admin-unique-link-commission` → `marketing`; `admin-fee.html` → `admin-fee`.
-- Visibility: `super_admin`, `admin_accounting`, and **`admin_marketing`** (HR/QA redirected by `admin-hub-guard.js` `data-hub="marketing"`).
-- **`admin_marketing` sidebar whitelist:** Dashboard, Marketing Hub, Admin Fee, Leaderboard, Announcements, Videos, Reports, Messages, Profile settings, Logout. Settings / System monitor remain Super-Admin-only. Assign via Super-Admin → Users → role **Admin — Marketing** (e.g. `adminmktg@remoedph.com`).
+- Default seed for **`admin_marketing`** (editable in Settings → Admin Roles and Access): Dashboard, Marketing Hub, Admin Fee, Leaderboard, Announcements, Videos, Reports, Messages, Profile settings. Settings / System monitor remain Super-Admin (`nav:settings` / `nav:super_monitor`).
+- Visibility is driven by **dynamic RBAC** (`GET /api/admin/me/permissions`); legacy hub-guard still falls back to role slug checks if permissions fail to load.
 - Standalone redirect: `admin-standalone-redirect.js` sends `admin-unique-link-commission.html` → `admin-marketing-hub.html`.
-- Accounting Hub keeps **Payroll** + **Student Subscriptions** only. `#commissions` on Accounting Hub must redirect to Marketing Hub — do not restore the commissions tab inside Accounting.
+- Accounting Hub tabs: **Payroll Management**, **Admin Payroll** (admin fee dispense), **Student Subscriptions**. `#commissions` on Accounting Hub must redirect to Marketing Hub — do not restore the commissions tab inside Accounting.
 - Teacher copy: `teacher-referrals.html` points admins to **Marketing Hub → Unique Link Commissions**.
 
 ## Admin Fee & Attendance
 
 - Page: `public/admin-fee.html` — Time In/Out (reuses `/api/admin/time-tracking/*`), bi-monthly 1% of subscription `creditHistory` purchases, printable payslip.
 - Models: `AdminAttendance` (`admin_attendance`), `AdminPayout` (`admin_payouts`); punches also sync from `TimeLog`.
-- APIs: `/api/admin/admin-fee/summary`, `/attendance`, `/payslip`, `/record-payout` in `server/adminFeeRoutes.js`.
+- APIs: `/api/admin/admin-fee/summary`, `/attendance`, `/payslip`, `/record-payout`, **`/payroll`**, **`/dispense`** in `server/adminFeeRoutes.js`.
 - Eligibility: at least one completed **8-hour** shift in the cutoff; each eligible admin receives **1%** of that period’s gross subscription sales.
+- **Accounting Hub → Admin Payroll** (`public/admin-admin-payroll.html`, hash `#admin-payroll`): lists all admins for the cutoff and **Dispense All Admin Fees** (marks `AdminPayout` `paid`, notifies each admin). Same bi-monthly period keys as teacher payroll.
+- Header notification bell: `public/js/admin-notifications.js` (delegated click + dropdown CSS); wire via `admin-page-header.js`.
+
+## Admin Roles and Access (dynamic RBAC)
+
+Super-Admin configures page/feature permissions per role instead of hardcoded deny-lists only.
+
+| Piece | Location |
+|-------|----------|
+| Settings UI | [public/admin-settings.html](public/admin-settings.html) card **Admin Roles and Access** (Super-Admin only) |
+| Models | `AdminRole` collection `roles`, `AdminPermission` collection `permissions` |
+| Service / seeds | [server/services/adminRbac.js](server/services/adminRbac.js) — catalog + five system role seeds matching legacy access |
+| APIs | [server/adminRbacRoutes.js](server/adminRbacRoutes.js): `GET /me/permissions`, `GET /roles`, `POST /roles`, `PUT /roles/:id/permissions`, `GET /permissions/catalog`, `GET /roles/options` |
+| Sidebar | [public/js/admin-sidebar.js](public/js/admin-sidebar.js) filters by `nav` from `/me/permissions` (sessionStorage cache); legacy role branches if fetch fails |
+| Page guard | [public/js/admin-access-guard.js](public/js/admin-access-guard.js) → [public/admin-403.html](public/admin-403.html); [public/js/admin-hub-guard.js](public/js/admin-hub-guard.js) delegates here |
+| API gate | [server/authMiddleware.js](server/authMiddleware.js) `adminRoleGate` + `requirePermission(key)`; Super-Admin always bypasses |
+| Assign role | HR User Management loads options from `GET /roles/options`; `Admin.adminRole` is a free slug validated against `AdminRole` |
+
+**Rules:**
+
+- Do **not** remove Super-Admin full bypass. Super-Admin matrix is read-only full access.
+- System roles (`super_admin`, `admin_hr`, `admin_qa`, `admin_accounting`, `admin_marketing`) are seeded once; their permissions are editable (except Super-Admin). Custom roles can be created from Settings.
+- Prefer extending the permission catalog + seeds when adding new admin pages — do not reintroduce hard-only role checks without also adding a permission key.
+- JWT still carries `adminRole` slug; permissions are resolved from DB on each request (not frozen in the token).
 
 ## Admin login path (obfuscated) + first-time setup
 

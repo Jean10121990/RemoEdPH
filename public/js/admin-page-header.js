@@ -138,7 +138,8 @@
     }
 
     function wireNotifications(header) {
-        ensureScript('js/admin-notifications.js', function () {
+        ensureStylesheet('css/portal-header-actions.css?v=header-actions-3');
+        ensureScript('js/admin-notifications.js?v=notif-2', function () {
             if (global.AdminNotifications && typeof global.AdminNotifications.init === 'function') {
                 global.AdminNotifications.init();
             }

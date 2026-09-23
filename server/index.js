@@ -521,6 +521,7 @@ app.use('/api', noStoreProtectedResponse, classroomRecordingRouter);
 const adminApiCombined = express.Router();
 adminApiCombined.use('/training', adminTrainingRoutes);
 adminApiCombined.use('/admin-fee', require('./adminFeeRoutes'));
+adminApiCombined.use(require('./adminRbacRoutes'));
 adminApiCombined.use(adminRoutes);
 adminApiCombined.use(adminPortalVideoRoutes);
 app.use('/api/admin', noStoreProtectedResponse, adminRouterLimiter, adminApiCombined);

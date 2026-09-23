@@ -4600,11 +4600,24 @@ router.post('/user', async (req, res) => {
         if (!creator || (creator.adminRole || 'super_admin') !== 'super_admin') {
           return res.status(403).json({ error: 'Only Super-Admin can create admin accounts.' });
         }
-        const allowedRoles = ['super_admin', 'admin_hr', 'admin_accounting', 'admin_qa', 'admin_marketing'];
         const roleNorm = String(requestedAdminRole || '')
           .trim()
           .toLowerCase();
-        const assignedRole = allowedRoles.includes(roleNorm) ? roleNorm : 'admin_hr';
+        let assignedRole = 'admin_hr';
+        try {
+          const { seedAdminRbac } = require('./services/adminRbac');
+          const AdminRole = require('./models/AdminRole');
+          await seedAdminRbac().catch(() => {});
+          const roleDoc = await AdminRole.findOne({ slug: roleNorm }).lean();
+          if (roleDoc) assignedRole = roleDoc.slug;
+          else if (['super_admin', 'admin_hr', 'admin_accounting', 'admin_qa', 'admin_marketing'].includes(roleNorm)) {
+            assignedRole = roleNorm;
+          }
+        } catch (roleErr) {
+          if (['super_admin', 'admin_hr', 'admin_accounting', 'admin_qa', 'admin_marketing'].includes(roleNorm)) {
+            assignedRole = roleNorm;
+          }
+        }
 
         const hasPassword = password && String(password).trim().length > 0;
         if (hasPassword) {
@@ -4879,9 +4892,21 @@ router.put('/user/:userId', async (req, res) => {
       if (studentFirstName) user.firstName = studentFirstName;
       if (studentLastName) user.lastName = studentLastName;
     } else if (userType === 'admin' && bodyAdminRolePut) {
-      const allowedRoles = ['super_admin', 'admin_hr', 'admin_accounting', 'admin_qa', 'admin_marketing'];
-      if (allowedRoles.includes(String(bodyAdminRolePut))) {
-        user.adminRole = String(bodyAdminRolePut);
+      const roleNorm = String(bodyAdminRolePut).trim().toLowerCase();
+      try {
+        const { seedAdminRbac } = require('./services/adminRbac');
+        const AdminRole = require('./models/AdminRole');
+        await seedAdminRbac().catch(() => {});
+        const roleDoc = await AdminRole.findOne({ slug: roleNorm }).lean();
+        if (roleDoc) {
+          user.adminRole = roleDoc.slug;
+        } else if (['super_admin', 'admin_hr', 'admin_accounting', 'admin_qa', 'admin_marketing'].includes(roleNorm)) {
+          user.adminRole = roleNorm;
+        }
+      } catch (e) {
+        if (['super_admin', 'admin_hr', 'admin_accounting', 'admin_qa', 'admin_marketing'].includes(roleNorm)) {
+          user.adminRole = roleNorm;
+        }
       }
     }
 

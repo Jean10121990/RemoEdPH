@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="js/security-guard.js?v=2"></script>
+    <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Access Denied - RemoEdPH Admin</title>
+    <link rel="stylesheet" href="modern-styles.css">
+    <link rel="stylesheet" href="css/teacher-sidebar.css?v=app-shell-3">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css?v=app-shell-3">
+    <style>
+        body.page-admin-403 { background: #f6fbff; margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .deny-wrap { max-width: 520px; margin: 64px auto; padding: 0 20px; }
+        .deny-card {
+            background: #fff; border: 1px solid #e5e7eb; border-radius: 12px;
+            padding: 28px 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); text-align: center;
+        }
+        .deny-card h1 { margin: 0 0 8px; font-size: 1.5rem; color: #0f172a; }
+        .deny-card p { color: #64748b; margin: 0 0 18px; line-height: 1.5; }
+        .deny-card .code { font-size: 0.8rem; color: #94a3b8; margin-bottom: 18px; }
+        .deny-card a {
+            display: inline-block; background: #1ca7e7; color: #fff; text-decoration: none;
+            padding: 10px 16px; border-radius: 8px; font-weight: 600;
+        }
+        .deny-card a:hover { background: #0284c7; }
+    </style>
+</head>
+<body class="page-admin-403">
+    <div class="deny-wrap">
+        <div class="deny-card">
+            <h1>403 — Access denied</h1>
+            <p>Your admin role does not include permission to open this page. Ask a Super-Admin to update <strong>Settings → Admin Roles and Access</strong> if you need it.</p>
+            <p class="code" id="deny-need"></p>
+            <a href="admin-dashboard.html">Back to Dashboard</a>
+        </div>
+    </div>
+    <script>
+        (function () {
+            try {
+                var q = new URLSearchParams(window.location.search || '');
+                var need = q.get('need');
+                if (need) {
+                    document.getElementById('deny-need').textContent = 'Required: ' + need;
+                }
+            } catch (e) {}
+        })();
+    </script>
+</body>
+</html>

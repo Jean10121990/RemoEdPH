@@ -137,8 +137,8 @@
     }
 
     /**
-     * Marketing admin: Dashboard + Marketing Hub + shared ops only.
-     * Settings / System monitor stay Super-Admin (same as HR/QA/Accounting).
+     * Dynamic RBAC: when /me/permissions loaded, filter by nav permissions.
+     * Fallback: legacy hardcoded role branches (safe degrade).
      */
     var MARKETING_NAV_IDS = {
         dashboard: true,
@@ -153,8 +153,81 @@
         logout: true
     };
 
-    /** HR / QA / Accounting / Marketing hub entries — visibility by adminRole. */
+    var _permNavCache = null;
+    var _permNavFetchedAt = 0;
+    var PERM_CACHE_MS = 60 * 1000;
+
+    function getCachedPermNav() {
+        try {
+            if (_permNavCache && Date.now() - _permNavFetchedAt < PERM_CACHE_MS) return _permNavCache;
+            var raw = sessionStorage.getItem('remoed_admin_perm_nav');
+            if (raw) {
+                var parsed = JSON.parse(raw);
+                if (parsed && parsed.nav && Date.now() - (parsed.at || 0) < PERM_CACHE_MS * 5) {
+                    _permNavCache = parsed.nav;
+                    _permNavFetchedAt = parsed.at || Date.now();
+                    return _permNavCache;
+                }
+            }
+        } catch (e) {}
+        return null;
+    }
+
+    function setCachedPermNav(nav) {
+        _permNavCache = nav || null;
+        _permNavFetchedAt = Date.now();
+        try {
+            sessionStorage.setItem(
+                'remoed_admin_perm_nav',
+                JSON.stringify({ nav: nav, at: _permNavFetchedAt })
+            );
+        } catch (e2) {}
+    }
+
+    function fetchPermissionsIntoCache() {
+        var token = getAdminAuthToken();
+        if (!token) return;
+        if (global.__ADMIN_PERM_FETCHING__) return;
+        global.__ADMIN_PERM_FETCHING__ = true;
+        fetch('/api/admin/me/permissions', {
+            headers: { Authorization: 'Bearer ' + token },
+            credentials: 'include'
+        })
+            .then(function (r) {
+                return r.ok ? r.json() : null;
+            })
+            .then(function (data) {
+                global.__ADMIN_PERM_FETCHING__ = false;
+                if (!data || !data.nav) return;
+                var prev = JSON.stringify(getCachedPermNav() || {});
+                setCachedPermNav(data.nav);
+                if (prev === JSON.stringify(data.nav)) return;
+                try {
+                    var root = document.getElementById('admin-sidebar-root');
+                    if (root && root.querySelector('nav.remoed-sidebar') && !global.__ADMIN_PERM_RERENDER__) {
+                        global.__ADMIN_PERM_RERENDER__ = true;
+                        var activeLi = root.querySelector('li.active');
+                        var active =
+                            (activeLi && activeLi.getAttribute('data-nav')) || getActiveFromPath();
+                        render(root, active);
+                        global.__ADMIN_PERM_RERENDER__ = false;
+                    }
+                } catch (e3) {
+                    global.__ADMIN_PERM_RERENDER__ = false;
+                }
+            })
+            .catch(function () {
+                global.__ADMIN_PERM_FETCHING__ = false;
+            });
+    }
+
+    /** HR / QA / Accounting / Marketing hub entries — visibility by adminRole or RBAC nav map. */
     function shouldShowNavItem(itemId) {
+        if (itemId === 'logout') return true;
+        var permNav = getCachedPermNav();
+        if (permNav && Object.prototype.hasOwnProperty.call(permNav, itemId)) {
+            return !!permNav[itemId];
+        }
         var role = '';
         try {
             role = String(localStorage.getItem('adminRole') || '').trim();
@@ -356,6 +429,7 @@
 
         applyGreetingFromStorage();
         loadProfileIntoSidebar();
+        fetchPermissionsIntoCache();
         // Mini-sidebar collapse is local; phone app chrome via portal-layout.js.
         removeLegacyFloatingChrome();
         queuePortalLayoutMount();

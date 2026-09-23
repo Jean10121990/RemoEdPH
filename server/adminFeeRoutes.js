@@ -380,6 +380,194 @@ router.post('/record-payout', async (req, res) => {
   }
 });
 
+/**
+ * Accounting Hub — list every admin's fee for a cutoff (like teachers-weekly-salaries).
+ */
+router.get('/payroll', async (req, res) => {
+  try {
+    const periodKey = String(req.query.period || getCurrentPayPeriodKey()).trim();
+    const bounds = getPayPeriodBoundsFromKey(periodKey);
+    if (!bounds) {
+      return res.status(400).json({ success: false, message: 'Invalid period key' });
+    }
+    const startYmd = ymd(bounds.start);
+    const endYmd = ymd(bounds.end);
+    const { grossSales, purchaseCount } = await sumSubscriptionGross(bounds.start, bounds.end);
+    const commissionPool = Math.round(grossSales * (COMMISSION_RATE / 100) * 100) / 100;
+
+    const admins = await Admin.find({ status: { $ne: 'suspended' } })
+      .select('_id username email firstName lastName adminRole status')
+      .lean();
+
+    const existing = await AdminPayout.find({ periodKey }).lean();
+    const byUser = {};
+    existing.forEach((p) => {
+      byUser[String(p.adminUsername || '').toLowerCase()] = p;
+    });
+
+    const rows = [];
+    for (const a of admins) {
+      await ensureAttendanceFromTimeLogs(a.username, startYmd, endYmd);
+      const attendance = await AdminAttendance.find({
+        adminUsername: new RegExp('^' + String(a.username).replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i'),
+        date: { $gte: startYmd, $lte: endYmd },
+      }).lean();
+      const stats = summarizeAttendanceRows(attendance);
+      const amount = stats.eligible ? commissionPool : 0;
+      const prev = byUser[String(a.username).toLowerCase()];
+      const paymentStatus = prev && prev.status === 'paid' ? 'Paid' : amount > 0 ? 'Pending' : 'Ineligible';
+      rows.push({
+        adminId: String(a._id),
+        username: a.username,
+        name: adminDisplayName(a),
+        email: a.email || '',
+        role: roleLabel(a.adminRole),
+        adminRole: a.adminRole,
+        totalHours: stats.totalHours,
+        totalShifts: stats.totalShifts,
+        completedShifts: stats.completedShifts,
+        eligible: stats.eligible,
+        grossSales,
+        commissionRate: COMMISSION_RATE,
+        feeAmount: amount,
+        paymentStatus,
+        payoutId: prev ? String(prev._id) : null,
+        paidAt: prev && prev.paidAt ? prev.paidAt : null,
+      });
+    }
+
+    rows.sort((x, y) => String(x.name).localeCompare(String(y.name)));
+
+    res.json({
+      success: true,
+      periodKey,
+      periodStart: bounds.start,
+      periodEnd: bounds.end,
+      weekPeriod: `${startYmd} to ${endYmd}`,
+      grossSales,
+      purchaseCount,
+      commissionPool,
+      requiredShiftHours: REQUIRED_SHIFT_HOURS,
+      admins: rows,
+    });
+  } catch (e) {
+    console.error('GET /admin-fee/payroll', e);
+    res.status(500).json({ success: false, message: e.message || 'Failed to load admin payroll' });
+  }
+});
+
+/**
+ * Dispense admin fees for the period — marks eligible rows paid (like teacher dispense).
+ */
+router.post('/dispense', async (req, res) => {
+  try {
+    const periodKey = String(req.body.period || req.body.periodKey || getCurrentPayPeriodKey()).trim();
+    const bounds = getPayPeriodBoundsFromKey(periodKey);
+    if (!bounds) {
+      return res.status(400).json({ success: false, message: 'Invalid period key' });
+    }
+    const startYmd = ymd(bounds.start);
+    const endYmd = ymd(bounds.end);
+    const { grossSales } = await sumSubscriptionGross(bounds.start, bounds.end);
+    const commissionPool = Math.round(grossSales * (COMMISSION_RATE / 100) * 100) / 100;
+    const paidBy = String(req.user.username || '');
+
+    const admins = await Admin.find({ status: { $ne: 'suspended' } })
+      .select('_id username email firstName lastName adminRole')
+      .lean();
+
+    const dispensed = [];
+    const skipped = [];
+    let notifyTeacher = null;
+    try {
+      notifyTeacher = require('./services/notifyService').notifyTeacher;
+    } catch (_e) {}
+
+    for (const a of admins) {
+      await ensureAttendanceFromTimeLogs(a.username, startYmd, endYmd);
+      const attendance = await AdminAttendance.find({
+        adminUsername: new RegExp('^' + String(a.username).replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i'),
+        date: { $gte: startYmd, $lte: endYmd },
+      }).lean();
+      const stats = summarizeAttendanceRows(attendance);
+      const amount = stats.eligible ? commissionPool : 0;
+
+      const existing = await AdminPayout.findOne({
+        adminUsername: a.username,
+        periodKey,
+      });
+
+      if (existing && existing.status === 'paid') {
+        skipped.push({ username: a.username, reason: 'already_paid', amount: existing.totalAmount });
+        continue;
+      }
+      if (amount <= 0) {
+        skipped.push({ username: a.username, reason: 'ineligible', amount: 0 });
+        continue;
+      }
+
+      const doc = await AdminPayout.findOneAndUpdate(
+        { adminUsername: a.username, periodKey },
+        {
+          $set: {
+            adminId: a._id,
+            adminUsername: a.username,
+            periodKey,
+            periodStart: bounds.start,
+            periodEnd: bounds.end,
+            grossSales,
+            commissionRate: COMMISSION_RATE,
+            totalAmount: amount,
+            totalHours: stats.totalHours,
+            totalShifts: stats.totalShifts,
+            completedShifts: stats.completedShifts,
+            eligible: true,
+            status: 'paid',
+            generatedAt: existing && existing.generatedAt ? existing.generatedAt : new Date(),
+            paidAt: new Date(),
+            paidBy,
+            notes: `Dispensed by ${paidBy}`,
+          },
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+
+      if (typeof notifyTeacher === 'function') {
+        try {
+          await notifyTeacher(
+            a.username,
+            'salary',
+            `Your admin fee of ₱${amount.toFixed(2)} for ${startYmd} – ${endYmd} has been dispensed.`
+          );
+        } catch (nErr) {
+          console.warn('Admin fee notify failed:', a.username, nErr && nErr.message);
+        }
+      }
+
+      dispensed.push({
+        username: a.username,
+        name: adminDisplayName(a),
+        amount,
+        payoutId: String(doc._id),
+      });
+    }
+
+    res.json({
+      success: true,
+      periodKey,
+      weekPeriod: `${startYmd} to ${endYmd}`,
+      grossSales,
+      commissionPool,
+      dispensedAdmins: dispensed,
+      skipped,
+      message: `Dispensed to ${dispensed.length} admin(s).`,
+    });
+  } catch (e) {
+    console.error('POST /admin-fee/dispense', e);
+    res.status(500).json({ success: false, message: e.message || 'Failed to dispense admin fees' });
+  }
+});
+
 module.exports = router;
 module.exports.getCurrentPayPeriodKey = getCurrentPayPeriodKey;
 module.exports.parsePayPeriodKey = parsePayPeriodKey;

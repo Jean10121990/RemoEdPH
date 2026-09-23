@@ -16,7 +16,8 @@
     <div class="remoed-main">
         <div id="admin-sidebar-root"></div>
         <script src="js/admin-session.js"></script>
-        <script src="js/admin-sidebar.js?v=app-shell-4"></script>
+        <script src="js/admin-page-header.js"></script>
+        <script src="js/admin-sidebar.js?v=app-shell-14"></script>
         <script>AdminSidebar.render('admin-sidebar-root', 'settings');</script>
         <div class="remoed-content">
             <div class="remoed-section">
@@ -25,6 +26,33 @@
                     <div class="setting-title">👤 Profile settings</div>
                     <div class="setting-description">Profile photo, password, personal and professional details, ID upload, and NBI clearance status.</div>
                     <a class="btn btn-primary" href="admin-profile-settings.html" style="display:inline-block;text-decoration:none;">Open profile settings</a>
+                </div>
+
+                <div class="setting-card" id="rbac-roles-card">
+                    <div class="setting-title">Admin Roles and Access</div>
+                    <div class="setting-description">Configure which sidebar pages and features each admin role can use. Super-Admin only.</div>
+                    <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:12px 0;">
+                        <label for="rbac-role-select" style="font-weight:600;font-size:0.9rem;">Select role</label>
+                        <select id="rbac-role-select" style="min-width:220px;padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;"></select>
+                        <button type="button" class="btn btn-secondary" id="rbac-add-role-btn">Add New Role</button>
+                        <button type="button" class="btn btn-primary" id="rbac-save-btn">Save Permissions</button>
+                    </div>
+                    <p id="rbac-status" class="muted" style="font-size:0.85rem;margin:0 0 10px;"></p>
+                    <div id="rbac-matrix" style="max-height:420px;overflow:auto;border:1px solid #e2e8f0;border-radius:8px;padding:12px;background:#f8fafc;"></div>
+                </div>
+
+                <div id="rbac-add-modal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.45);z-index:10000;align-items:center;justify-content:center;padding:16px;">
+                    <div style="background:#fff;border-radius:12px;max-width:420px;width:100%;padding:20px;box-shadow:0 20px 40px rgba(0,0,0,0.2);">
+                        <h3 style="margin:0 0 12px;">Add New Role</h3>
+                        <label style="display:block;font-size:0.85rem;font-weight:600;margin-bottom:4px;">Role name</label>
+                        <input id="rbac-new-name" type="text" placeholder="e.g. Curriculum Specialist" style="width:100%;padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;box-sizing:border-box;margin-bottom:10px;">
+                        <label style="display:block;font-size:0.85rem;font-weight:600;margin-bottom:4px;">Description</label>
+                        <input id="rbac-new-desc" type="text" placeholder="Optional" style="width:100%;padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;box-sizing:border-box;margin-bottom:14px;">
+                        <div style="display:flex;gap:8px;justify-content:flex-end;">
+                            <button type="button" class="btn btn-secondary" id="rbac-add-cancel">Cancel</button>
+                            <button type="button" class="btn btn-primary" id="rbac-add-confirm">Create</button>
+                        </div>
+                    </div>
                 </div>
                 
                 <div class="setting-card">
@@ -671,7 +699,167 @@
                 }
             }
         }
+
+        /* ——— Admin Roles and Access (RBAC) ——— */
+        (function initRbacUi() {
+            var roles = [];
+            var groups = [];
+            var selectedId = '';
+
+            function setStatus(msg, isErr) {
+                var el = document.getElementById('rbac-status');
+                if (!el) return;
+                el.textContent = msg || '';
+                el.style.color = isErr ? '#b91c1c' : '#64748b';
+            }
+
+            function esc(s) {
+                return String(s == null ? '' : s)
+                    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+            }
+
+            function selectedRole() {
+                return roles.find(function (r) { return r.id === selectedId; }) || null;
+            }
+
+            function renderMatrix() {
+                var host = document.getElementById('rbac-matrix');
+                var role = selectedRole();
+                if (!host || !role) {
+                    if (host) host.innerHTML = '<p class="muted">Select a role.</p>';
+                    return;
+                }
+                var locked = role.slug === 'super_admin';
+                var set = {};
+                (role.permissions || []).forEach(function (k) { set[k] = true; });
+                if (locked) {
+                    groups.forEach(function (g) {
+                        (g.permissions || []).forEach(function (p) { set[p.key] = true; });
+                    });
+                }
+                var html = '';
+                if (locked) {
+                    html += '<p style="margin:0 0 10px;font-size:0.85rem;color:#166534;"><strong>Super-Admin</strong> always has full access (read-only).</p>';
+                }
+                groups.forEach(function (g) {
+                    html += '<div style="margin-bottom:14px;"><div style="font-weight:700;color:#0f172a;margin-bottom:6px;">' + esc(g.module) + '</div>';
+                    (g.permissions || []).forEach(function (p) {
+                        var checked = set[p.key] ? ' checked' : '';
+                        var dis = locked ? ' disabled' : '';
+                        html += '<label style="display:flex;align-items:flex-start;gap:8px;margin:4px 0;font-size:0.88rem;cursor:' + (locked ? 'default' : 'pointer') + ';">' +
+                            '<input type="checkbox" data-perm-key="' + esc(p.key) + '"' + checked + dis + ' style="margin-top:3px;">' +
+                            '<span><strong>' + esc(p.label) + '</strong><br><span style="color:#94a3b8;font-size:0.75rem;">' + esc(p.key) + '</span></span></label>';
+                    });
+                    html += '</div>';
+                });
+                host.innerHTML = html || '<p class="muted">No permissions in catalog.</p>';
+            }
+
+            function fillRoleSelect() {
+                var sel = document.getElementById('rbac-role-select');
+                if (!sel) return;
+                sel.innerHTML = roles.map(function (r) {
+                    return '<option value="' + esc(r.id) + '">' + esc(r.name) + (r.isSystem ? ' (system)' : '') + '</option>';
+                }).join('');
+                if (selectedId) sel.value = selectedId;
+                else if (roles[0]) selectedId = roles[0].id;
+                sel.value = selectedId;
+            }
+
+            async function loadAll() {
+                setStatus('Loading roles…');
+                try {
+                    var [rRoles, rCat] = await Promise.all([
+                        fetch('/api/admin/roles', { credentials: 'include', headers: adminAuthHeaders(false) }),
+                        fetch('/api/admin/permissions/catalog', { credentials: 'include', headers: adminAuthHeaders(false) })
+                    ]);
+                    var jRoles = await rRoles.json().catch(function () { return {}; });
+                    var jCat = await rCat.json().catch(function () { return {}; });
+                    if (!rRoles.ok) throw new Error(jRoles.message || jRoles.error || 'Failed to load roles');
+                    if (!rCat.ok) throw new Error(jCat.message || jCat.error || 'Failed to load catalog');
+                    roles = jRoles.roles || [];
+                    groups = jCat.groups || [];
+                    if (!selectedId && roles[0]) selectedId = roles[0].id;
+                    fillRoleSelect();
+                    renderMatrix();
+                    setStatus(roles.length + ' role(s) loaded.');
+                } catch (e) {
+                    setStatus(e.message || 'Failed to load RBAC', true);
+                }
+            }
+
+            document.getElementById('rbac-role-select').addEventListener('change', function () {
+                selectedId = this.value;
+                renderMatrix();
+            });
+
+            document.getElementById('rbac-save-btn').addEventListener('click', async function () {
+                var role = selectedRole();
+                if (!role) return;
+                if (role.slug === 'super_admin') {
+                    setStatus('Super-Admin permissions cannot be reduced.', true);
+                    return;
+                }
+                var keys = [];
+                document.querySelectorAll('#rbac-matrix input[data-perm-key]:checked').forEach(function (cb) {
+                    keys.push(cb.getAttribute('data-perm-key'));
+                });
+                setStatus('Saving…');
+                try {
+                    var r = await fetch('/api/admin/roles/' + encodeURIComponent(role.id) + '/permissions', {
+                        method: 'PUT',
+                        credentials: 'include',
+                        headers: adminAuthHeaders(true),
+                        body: JSON.stringify({ permissions: keys })
+                    });
+                    var j = await r.json().catch(function () { return {}; });
+                    if (!r.ok) throw new Error(j.message || j.error || 'Save failed');
+                    role.permissions = (j.role && j.role.permissions) || keys;
+                    try { sessionStorage.removeItem('remoed_admin_perm_nav'); } catch (e0) {}
+                    setStatus('Permissions saved for ' + role.name + '.');
+                    alert('Permissions saved for ' + role.name + '.');
+                } catch (e) {
+                    setStatus(e.message || 'Save failed', true);
+                }
+            });
+
+            var modal = document.getElementById('rbac-add-modal');
+            document.getElementById('rbac-add-role-btn').addEventListener('click', function () {
+                modal.style.display = 'flex';
+            });
+            document.getElementById('rbac-add-cancel').addEventListener('click', function () {
+                modal.style.display = 'none';
+            });
+            document.getElementById('rbac-add-confirm').addEventListener('click', async function () {
+                var name = (document.getElementById('rbac-new-name').value || '').trim();
+                var description = (document.getElementById('rbac-new-desc').value || '').trim();
+                if (name.length < 2) {
+                    alert('Enter a role name (min 2 characters).');
+                    return;
+                }
+                try {
+                    var r = await fetch('/api/admin/roles', {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: adminAuthHeaders(true),
+                        body: JSON.stringify({ name: name, description: description, permissions: [] })
+                    });
+                    var j = await r.json().catch(function () { return {}; });
+                    if (!r.ok) throw new Error(j.message || j.error || 'Create failed');
+                    modal.style.display = 'none';
+                    document.getElementById('rbac-new-name').value = '';
+                    document.getElementById('rbac-new-desc').value = '';
+                    selectedId = j.role && j.role.id;
+                    await loadAll();
+                    setStatus('Created role ' + name + '. Assign permissions and Save.');
+                } catch (e) {
+                    alert(e.message || 'Create failed');
+                }
+            });
+
+            loadAll();
+        })();
     </script>
 </body>
-</html> 
+</html>
 
