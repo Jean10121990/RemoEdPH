@@ -54,7 +54,7 @@ On **every** lesson page unless the user overrides. Match the Sample Lesson over
 - Font: **Arial Rounded MT Bold**
 - Top-left white pill `(0.25, 0.2)` 4.2"×0.45": `Lesson {N} – {Title}` · 14pt · `#1A5696`
 - Top-right indigo badge `(11.55, 0.2)` 1.5"×0.45" fill `#5A67D8`: `N / 15` · 14pt white
-- Bottom-right white pill `(9.3, 6.55)` 3.8"×0.75": `{LEVEL}! MONTH {M}` (e.g. `SPROUTS! MONTH 1`) · 12pt · `#228B22` **and** logo 0.7"×0.7" at `(11.85, 6.52)` (`docs/lesson-references/remoedph-logo.jpg`)
+- Bottom-right, on the art (no white card, border, or badge background): `{LEVEL}! MONTH {M}` (e.g. `SPROUTS! MONTH 1`) in `#FFFFFF` with a dark drop shadow (`0px 2px 4px rgba(0,0,0,0.7)`), then the RemoEd PH logo (`docs/lesson-references/remoedph-logo.jpg`, white plate removed) with `drop-shadow(0px 2px 4px rgba(0,0,0,0.6))`. Row-aligned, about 0.28" from the right edge and 0.22" from the bottom.
 - Title page: large white banner title ~**54–60pt** `#1A5696` plus a yellow chip `#FAD648` for the greeting/vocab (28pt `#1E3A5F`)
 - Body pages: one large on-screen learner phrase (same yellow/white chip style) — **no Teacher Scripts**
 - Always generate new lessons from scratch; do not reuse scene layouts from the sample or previous lessons
@@ -75,7 +75,7 @@ User source: `D:\Users\Window11\Desktop\JeanDesktop\RemoEdPH\A Lesson and Traini
 | Folder | `docs/lesson-references/lessons/Sample-Lesson/` |
 | Art stills | `docs/lesson-references/lessons/Sample-Lesson/extracted-images/slide-01-pic-1.jpg` … `slide-15-pic-1.jpg` |
 
-Use this file as the **look reference** for 3D Pixar classroom lighting, character likeness (Ed, Sofie, green Remo), overlay chrome, and on-screen-only learner text. **Do not copy these Happiness Corner layouts** when generating Lessons 7–9 — new scenes from scratch, same chrome system.
+Use this file as the **look reference** for 3D Pixar classroom lighting, character likeness (Ed, Sofie, green Remo), overlay chrome, and on-screen-only learner text. The in-repo Sample PPTX has been restyled to the current footer (white `SPROUTS! MONTH 1` + shadowed logo, **no** white card). Re-apply across Sample + L7–12 with `docs/lesson-references/restyle_all_lesson_footers.py`. **Do not copy these Happiness Corner layouts** when generating Lessons 7–9 — new scenes from scratch, same chrome system.
 
 ![Sample title art](docs/lesson-references/lessons/Sample-Lesson/preview-01-title.jpg)
 ![Sample vocab art](docs/lesson-references/lessons/Sample-Lesson/preview-02-happy.jpg)
@@ -129,6 +129,9 @@ Flattened Sprouts extract: `docs/lesson-references/L2M1-Sprouts-Month-1-flat.txt
 - Unique design per lesson (new layouts, not copied)
 - 264 lessons per level for a 1-year program
 - Match pedagogical structure in the attached PDFs + remoed-lesson-creation skill
+- **Publish destination (Level 2 Month 1):** [Google Drive – Level 2 Month 1](https://drive.google.com/drive/u/0/folders/14Fd0Miq10eEIVPCFVgXG36055a9ho3Xk) (`remoedph@gmail.com`). Upload manually when ready.
+- **Local save (canonical):** `docs/lesson-references/lessons/L2M1-Lesson-{N}/`
+- **Drive-ready filenames for later upload:** `docs/lesson-references/drive-upload-stage/RemoEd L2M1-Lesson-{N}-{Title}.pptx`
 
 ### Level 2 – Sprouts · Month 1 – Who Am I? (22 lessons)
 
@@ -140,12 +143,12 @@ Source: `docs/lesson-references/L2M1-Sprouts-Month-1.pdf`
 4. Straight Lines for A
 5. My Name Review
 6. I am Happy!
-7. **Letter B is for Brave**
-8. **Walking for Energy**
-9. **Good Morning, Sun!**
-10. The Brave Bird Review
-11. I am Kind
-12. Letter C is for Creative
+7. Letter B is for Brave
+8. Walking for Energy
+9. Good Morning, Sun!
+10. **The Brave Bird Review**
+11. **I am Kind**
+12. **Letter C is for Creative**
 13. Goodnight, Moon
 14. Tracing Curves for C
 15. The Creative Cat Review
@@ -161,7 +164,23 @@ Source: `docs/lesson-references/L2M1-Sprouts-Month-1.pdf`
 
 ---
 
-## Active lesson brief (Batch C — user confirmed)
+## Active lesson brief (Batch D — Lessons 10–12)
+
+| Field | Lesson 10 | Lesson 11 | Lesson 12 |
+|-------|-----------|-----------|-----------|
+| Level / footer | Level 2 – Sprouts · `SPROUTS! MONTH 1` | same | same |
+| Title | **Lesson 10 – The Brave Bird Review** | **Lesson 11 – I am Kind** | **Lesson 12 – Letter C is for Creative** |
+| Pages | 1–15 | 1–15 | 1–15 |
+| Mode | New from scratch · PowerPoint | same | same |
+| Vocab | B, Brave, Morning, Walk | Kind, Share, Friends | C, Creative, Craft · /k/ |
+| Sentence | “I am brave.” / “It is morning.” | “I am kind.” | “I am creative.” |
+| Design world | Brave Bird Quest | Kindness Circle | Paint Studio Garden |
+| Outline | `docs/lesson-references/lessons/L2M1-Lesson-10/L2M1-Lesson-10-outline.txt` | `docs/lesson-references/lessons/L2M1-Lesson-11/L2M1-Lesson-11-outline.txt` | `docs/lesson-references/lessons/L2M1-Lesson-12/L2M1-Lesson-12-outline.txt` |
+| Deliverable | `docs/lesson-references/lessons/L2M1-Lesson-10/L2M1-Lesson-10-The-Brave-Bird-Review.pptx` | `docs/lesson-references/lessons/L2M1-Lesson-11/L2M1-Lesson-11-I-am-Kind.pptx` | `docs/lesson-references/lessons/L2M1-Lesson-12/L2M1-Lesson-12-Letter-C-is-for-Creative.pptx` |
+
+Prior batch (done): Lessons 7–9. Do not copy those layouts.
+
+## Previous brief (Batch C — Lessons 7–9, completed)
 
 | Field | Lesson 7 | Lesson 8 | Lesson 9 |
 |-------|----------|----------|----------|

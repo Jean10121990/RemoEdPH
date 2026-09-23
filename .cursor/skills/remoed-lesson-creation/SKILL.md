@@ -47,7 +47,7 @@ Apply these elements to **all** selected pages:
 
 1. **Top-left corner:** Add text `Lesson {N} – {Title}` (same wording as the lesson title)
 2. **Top-right corner:** Add page number badge (e.g. `1 / 15`, `2 / 15`, …)
-3. **Bottom-right corner:** Add text `{LEVEL}! MONTH {M}` (e.g. `SPROUTS! MONTH 1`) **and** the RemoEd PH logo
+3. **Bottom-right corner:** Add text `{LEVEL}! MONTH {M}` (e.g. `SPROUTS! MONTH 1`) **and** the RemoEd PH logo **directly on the slide art**. No white rounded card, padding box, border, or shadow-card behind them. Text is `#FFFFFF`, with `text-shadow: 0px 2px 4px rgba(0, 0, 0, 0.7)`. Logo uses `filter: drop-shadow(0px 2px 4px rgba(0, 0, 0, 0.6))`. Keep a row aligned to the bottom-right with padding from the edges (label, then logo).
 4. **Keep all existing 3D background artwork and characters completely unchanged** when adding or adjusting these overlays
 
 ## Title page / first page
@@ -64,7 +64,7 @@ When the user specifies this lesson, use:
 - Title Page/First Page: Lesson 6 – I am Happy! (font size: 60)
 - Top-left: `Lesson 6 – I am Happy!`
 - Top-right: page badge `1 / 15` … `15 / 15`
-- Bottom-right: `SPROUTS! MONTH 1` + RemoEd PH logo
+- Bottom-right: `SPROUTS! MONTH 1` in white with a dark drop shadow, plus the RemoEd PH logo with a drop shadow — no white card behind them
 - Pages: 1 to 15
 - Keep all existing 3D background artwork and characters completely unchanged
 
@@ -81,7 +81,7 @@ Lesson Progress:
 - [ ] No Teacher Scripts
 - [ ] Title page: “Lesson No. – (Lesson Title)” ~font 60
 - [ ] Every page: top-left lesson label, top-right N / total badge
-- [ ] Every page: bottom-right “{LEVEL}! MONTH {M}” + RemoEd PH logo
+- [ ] Every page: bottom-right “{LEVEL}! MONTH {M}” (white, drop shadow) + RemoEd PH logo (drop shadow), no white card
 - [ ] Overlays only — do not alter existing 3D backgrounds/characters unless user asks to regenerate art
 ```
 
@@ -90,3 +90,7 @@ Lesson Progress:
 - Produce or restyle the requested page range only
 - Keep chrome text consistent across pages (same lesson label; badge increments)
 - If regenerating art, still follow character and style rules above
+
+# RemoEd PH Mission
+
+To provide kids across Asia with an accessible, God-centered online education that fosters English proficiency, moral integrity, and environmental stewardship—investing our grace-given success back into local communities to build a sustainable and hopeful future for all.

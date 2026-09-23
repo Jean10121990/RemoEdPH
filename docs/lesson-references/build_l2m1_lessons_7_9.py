@@ -4,7 +4,7 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 from pptx import Presentation
 from pptx.dml.color import RGBColor
 from pptx.enum.shapes import MSO_SHAPE
@@ -15,7 +15,8 @@ ROOT = Path(r"d:\Users\Window11\Documents\RemoEd-Jean\RemoEdPH")
 ASSETS = Path(r"C:\Users\Window11\.cursor\projects\d-Users-Window11-Documents-RemoEd-Jean-RemoEdPH\assets")
 LOGO = ROOT / "docs" / "lesson-references" / "remoedph-logo.jpg"
 OUT_ROOT = ROOT / "docs" / "lesson-references" / "lessons"
-DESKTOP_DIR = Path(r"D:\Users\Window11\Desktop\JeanDesktop\RemoEdPH\A Lesson and Training Materials")
+# Deliver decks to Google Drive (Slides / Level 2 Month 1), not a laptop copy.
+# https://drive.google.com/drive/folders/14Fd0Miq10eEIVPCFVgXG36055a9ho3Xk
 
 SLIDE_W = Inches(13.333)
 SLIDE_H = Inches(7.5)
@@ -142,13 +143,63 @@ def pill_for_text(draw, text, font, pad_x, pad_y, min_w=0):
     return max(min_w, tw + pad_x * 2), th + pad_y * 2, tw, th
 
 
+def knock_out_white(im: Image.Image) -> Image.Image:
+    """Drop the logo's white plate so it sits on the slide art."""
+    im = im.convert("RGBA")
+    px = im.load()
+    w, h = im.size
+    for y in range(h):
+        for x in range(w):
+            r, g, b, a = px[x, y]
+            if r > 246 and g > 246 and b > 246:
+                px[x, y] = (r, g, b, 0)
+            elif r > 228 and g > 228 and b > 228:
+                fade = int((min(r, g, b) - 228) / 18 * 255)
+                px[x, y] = (r, g, b, max(0, a - fade))
+    return im
+
+
+def draw_footer(img: Image.Image, ix, iy) -> Image.Image:
+    """Month label + logo, no card. White text and a soft shadow for contrast."""
+    canvas = img.convert("RGBA")
+    footer = "SPROUTS! MONTH 1"
+    font = load_font(34)
+    probe = ImageDraw.Draw(canvas)
+    tw, th = text_size(probe, footer, font)
+
+    logo_w, logo_h = ix(0.78), iy(0.78)
+    pad_r, pad_b, gap = ix(0.28), iy(0.22), ix(0.14)
+    logo_x = PX_W - pad_r - logo_w
+    logo_y = PX_H - pad_b - logo_h
+    text_x = logo_x - gap - tw
+    text_y = logo_y + (logo_h - th) // 2 - 2
+
+    shadow = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
+    ImageDraw.Draw(shadow).text((text_x, text_y + 2), footer, font=font, fill=(0, 0, 0, 190))
+    shadow = shadow.filter(ImageFilter.GaussianBlur(radius=4))
+    sharp = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
+    ImageDraw.Draw(sharp).text((text_x, text_y), footer, font=font, fill=(255, 255, 255, 255))
+    canvas = Image.alpha_composite(canvas, shadow)
+    canvas = Image.alpha_composite(canvas, sharp)
+
+    logo = knock_out_white(Image.open(LOGO)).resize((logo_w, logo_h), Image.Resampling.LANCZOS)
+    alpha = logo.split()[-1]
+    logo_shadow = Image.new("RGBA", logo.size, (0, 0, 0, 0))
+    logo_shadow.putalpha(alpha.point(lambda a: int(a * 0.7)))
+    logo_shadow = logo_shadow.filter(ImageFilter.GaussianBlur(radius=3))
+    shadow_pad = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
+    shadow_pad.paste(logo_shadow, (logo_x, logo_y + 3), logo_shadow)
+    canvas = Image.alpha_composite(canvas, shadow_pad)
+    canvas.paste(logo, (logo_x, logo_y), logo)
+    return canvas.convert("RGB")
+
+
 def compose_slide(src: Path, dest: Path, lesson_title: str, page: int, total: int, phrase: str, is_title: bool):
     img = Image.open(src).convert("RGB")
     img = img.resize((PX_W, PX_H), Image.Resampling.LANCZOS)
     draw = ImageDraw.Draw(img)
 
     font14 = load_font(36)  # ~14pt at 144 dpi-ish on 1920
-    font12 = load_font(30)
     font28 = load_font(64)
     title_pt = 92 if len(lesson_title) < 28 else 72
     font54 = load_font(title_pt)
@@ -174,17 +225,8 @@ def compose_slide(src: Path, dest: Path, lesson_title: str, page: int, total: in
     tw, th = text_size(draw, badge, font14)
     draw.text((bx + (bw - tw) // 2, by + (bh - th) // 2 - 2), badge, font=font14, fill=(255, 255, 255))
 
-    # bottom-right footer pill + logo
-    footer = "SPROUTS! MONTH 1"
-    fw, fh = ix(3.8), iy(0.75)
-    fx, fy = ix(9.3), iy(6.55)
-    round_rect(draw, (fx, fy, fx + fw, fy + fh), 24, (255, 255, 255))
-    tw, th = text_size(draw, footer, font12)
-    draw.text((fx + 16, fy + 10), footer, font=font12, fill=(34, 139, 34))
-
-    logo = Image.open(LOGO).convert("RGBA")
-    logo = logo.resize((ix(0.7), iy(0.7)), Image.Resampling.LANCZOS)
-    img.paste(logo, (ix(11.85), iy(6.52)), logo)
+    img = draw_footer(img, ix, iy)
+    draw = ImageDraw.Draw(img)
 
     if is_title:
         banner_w, banner_h = ix(10.3), iy(1.6)
@@ -249,8 +291,6 @@ def build_lesson(lesson: dict):
     prs.save(str(out))
     also = ROOT / "docs" / "lesson-references" / lesson["pptx"]
     shutil.copy2(out, also)
-    if DESKTOP_DIR.exists():
-        shutil.copy2(out, DESKTOP_DIR / lesson["pptx"])
     print("wrote", out)
     return out
 
