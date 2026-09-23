@@ -22,6 +22,7 @@
         'hr-hub': 'HR Hub',
         'qa-hub': 'QA Hub',
         'accounting-hub': 'Accounting Hub',
+        'admin-fee': 'Admin Fee',
         marketing: 'Marketing Hub',
         leaderboard: 'Leaderboard',
         announcements: 'Announcements',

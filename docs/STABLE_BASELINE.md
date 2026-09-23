@@ -26,6 +26,7 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 | Student family / emergency (admin view) | `public/student-profile.html`, `public/admin-view-user-profile.html`, `Student.parentEmail` / `emergencyContactPerson` / `emergencyContactNumber` |
 | Student My Level / CEFR guides | `public/student-assessment.html`, `public/images/cefr/remoed-kids-cefr-guide.jpg`, `public/images/cefr/remoed-teens-cefr-guide.jpg` |
 | Admin Accounting hub | `public/admin-accounting-hub.html` (Payroll + Student Subscriptions only) |
+| Admin Fee & Attendance | `public/admin-fee.html`, `server/adminFeeRoutes.js`, `AdminAttendance` / `AdminPayout`; sidebar **Admin Fee** under Accounting Hub |
 | Teaching Fee bonus / incentive | `public/teacher-service-fee.html`, `public/admin-payroll.html`, `Teacher.periodIncentives`, `PUT /api/admin/teacher-period-incentive`, `GET /api/teacher/period-incentive` |
 | Mongo safety scripts | `scripts/archive-legacy-mongo-db.js`, `scripts/purge-beta-recordings.js` |
 
@@ -222,15 +223,22 @@ RemoEd upholds the biblical distinction of gender (male and female). Profile UIs
 
 ## Admin Marketing Hub — Unique Link Commissions
 
-Unique Link Commissions are **not** an Accounting Hub tab. They live under sidebar **Marketing Hub**, placed **directly below Accounting Hub**.
+Unique Link Commissions are **not** an Accounting Hub tab. They live under sidebar **Marketing Hub**, placed **below Admin Fee** (Admin Fee sits directly under Accounting Hub).
 
 - Hub page: `public/admin-marketing-hub.html` embeds `admin-unique-link-commission.html?adminEmbed=1`.
-- Sidebar: `public/js/admin-sidebar.js` item `marketing` (label **Marketing Hub**) after `accounting-hub`. Path highlight maps `admin-marketing-hub` and `admin-unique-link-commission` → `marketing`.
+- Sidebar: `public/js/admin-sidebar.js` order is Accounting Hub → **Admin Fee** → Marketing Hub. Path highlight maps `admin-marketing-hub` and `admin-unique-link-commission` → `marketing`; `admin-fee.html` → `admin-fee`.
 - Visibility: `super_admin`, `admin_accounting`, and **`admin_marketing`** (HR/QA redirected by `admin-hub-guard.js` `data-hub="marketing"`).
-- **`admin_marketing` sidebar whitelist:** Dashboard, Marketing Hub, Leaderboard, Announcements, Videos, Reports, Messages, Profile settings, Logout. Settings / System monitor remain Super-Admin-only. Assign via Super-Admin → Users → role **Admin — Marketing** (e.g. `adminmktg@remoedph.com`).
+- **`admin_marketing` sidebar whitelist:** Dashboard, Marketing Hub, Admin Fee, Leaderboard, Announcements, Videos, Reports, Messages, Profile settings, Logout. Settings / System monitor remain Super-Admin-only. Assign via Super-Admin → Users → role **Admin — Marketing** (e.g. `adminmktg@remoedph.com`).
 - Standalone redirect: `admin-standalone-redirect.js` sends `admin-unique-link-commission.html` → `admin-marketing-hub.html`.
 - Accounting Hub keeps **Payroll** + **Student Subscriptions** only. `#commissions` on Accounting Hub must redirect to Marketing Hub — do not restore the commissions tab inside Accounting.
 - Teacher copy: `teacher-referrals.html` points admins to **Marketing Hub → Unique Link Commissions**.
+
+## Admin Fee & Attendance
+
+- Page: `public/admin-fee.html` — Time In/Out (reuses `/api/admin/time-tracking/*`), bi-monthly 1% of subscription `creditHistory` purchases, printable payslip.
+- Models: `AdminAttendance` (`admin_attendance`), `AdminPayout` (`admin_payouts`); punches also sync from `TimeLog`.
+- APIs: `/api/admin/admin-fee/summary`, `/attendance`, `/payslip`, `/record-payout` in `server/adminFeeRoutes.js`.
+- Eligibility: at least one completed **8-hour** shift in the cutoff; each eligible admin receives **1%** of that period’s gross subscription sales.
 
 ## Admin login path (obfuscated) + first-time setup
 

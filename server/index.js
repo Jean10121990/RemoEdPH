@@ -520,6 +520,7 @@ app.use('/api', noStoreProtectedResponse, classroomRecordingRouter);
 // admin.js RBAC fallthrough (which can break PUT/POST under some tunnel setups).
 const adminApiCombined = express.Router();
 adminApiCombined.use('/training', adminTrainingRoutes);
+adminApiCombined.use('/admin-fee', require('./adminFeeRoutes'));
 adminApiCombined.use(adminRoutes);
 adminApiCombined.use(adminPortalVideoRoutes);
 app.use('/api/admin', noStoreProtectedResponse, adminRouterLimiter, adminApiCombined);

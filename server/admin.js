@@ -13,6 +13,7 @@ const Notification = require('./models/Notification');
 const PeerMessage = require('./models/PeerMessage');
 const IssueReport = require('./models/IssueReport');
 const TimeLog = require('./models/TimeLog');
+const { syncAdminAttendanceFromTimeLog } = require('./services/adminAttendanceSync');
 const Referral = require('./models/Referral');
 const AdminAuditLog = require('./models/AdminAuditLog');
 const { decryptPiiString } = require('./utils/piiCrypto');
@@ -1129,6 +1130,12 @@ router.post('/time-tracking/clock-in', verifyAdminApiAuth, requireAdmin, async (
       status: 'clocked-in'
     });
 
+    try {
+      await syncAdminAttendanceFromTimeLog(timeLog, req.user.username);
+    } catch (syncErr) {
+      console.warn('Admin attendance sync (clock-in):', syncErr && syncErr.message);
+    }
+
     await createNotification(req.user.username, 'time-tracking', `Admin clocked in at ${currentTime}`);
 
     res.json({ success: true, message: 'Successfully clocked in', timeLog });
@@ -1161,6 +1168,12 @@ router.post('/time-tracking/clock-out', verifyAdminApiAuth, requireAdmin, async 
     timeLog.totalHours = Math.round(totalHours * 100) / 100;
     timeLog.status = 'clocked-out';
     await timeLog.save();
+
+    try {
+      await syncAdminAttendanceFromTimeLog(timeLog, req.user.username);
+    } catch (syncErr) {
+      console.warn('Admin attendance sync (clock-out):', syncErr && syncErr.message);
+    }
 
     await createNotification(req.user.username, 'time-tracking', `Admin clocked out at ${currentTime} (${timeLog.totalHours} hours)`);
 

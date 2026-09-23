@@ -42,6 +42,13 @@
         position: 'right',
       },
       {
+        element: '[data-nav="admin-fee"]',
+        title: 'Admin Fee',
+        content:
+          'Track 8-hour shifts (Time In/Out), view 1% of subscription sales per cutoff, and print your admin fee payslip.',
+        position: 'right',
+      },
+      {
         element: '[data-nav="marketing"]',
         title: 'Marketing Hub',
         content:

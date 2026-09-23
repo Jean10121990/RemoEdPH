@@ -23,6 +23,7 @@
         { id: 'hr-hub', label: 'HR Hub', href: 'admin-hr-hub.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>' },
         { id: 'qa-hub', label: 'QA Hub', href: 'admin-qa-hub.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>' },
         { id: 'accounting-hub', label: 'Accounting Hub', href: 'admin-accounting-hub.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>' },
+        { id: 'admin-fee', label: 'Admin Fee', href: 'admin-fee.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M21 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 100 4h4v-4h-4z"/></svg>' },
         { id: 'marketing', label: 'Marketing Hub', href: 'admin-marketing-hub.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>' },
         { id: 'leaderboard', label: 'Leaderboard', href: '/admin/leaderboard.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 01-10 0V4z"/><path d="M5 8H3a2 2 0 000 4h2M19 8h2a2 2 0 010 4h-2"/></svg>' },
         { id: 'announcements', label: 'Announcements', href: 'admin-announcements.html', icon: '<svg fill="none" stroke="currentColor" ' + SVG_STROKE + ' viewBox="0 0 24 24"><path d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg>' },
@@ -45,6 +46,7 @@
         if (path.indexOf('admin-assessment-answer-key') !== -1) return 'hr-hub';
         if (path.indexOf('admin-teacher-pipeline') !== -1) return 'hr-hub';
         if (path.indexOf('admin-accounting-hub') !== -1) return 'accounting-hub';
+        if (path.indexOf('admin-fee') !== -1) return 'admin-fee';
         if (path.indexOf('admin-marketing-hub') !== -1) return 'marketing';
         if (path.indexOf('leaderboard') !== -1) return 'leaderboard';
         if (path.indexOf('admin-unique-link-commission') !== -1) return 'marketing';
@@ -141,6 +143,7 @@
     var MARKETING_NAV_IDS = {
         dashboard: true,
         marketing: true,
+        'admin-fee': true,
         leaderboard: true,
         announcements: true,
         videos: true,
