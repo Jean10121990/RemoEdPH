@@ -21,9 +21,12 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 | Landing culture / about | `public/index.html` (`#who-we-are` … `#vision-mission`), `public/landing-brand.css` (`.remo-culture*`) |
 | Gender (profiles) | `public/teacher-profile.html`, `public/student-profile.html`, `server/models/Teacher.js`, profile save in `server/teacher.js` / `server/student.js` |
 | Admin Marketing hub | `public/admin-marketing-hub.html`, `public/admin-unique-link-commission.html`, `public/js/admin-sidebar.js`, `public/js/admin-hub-guard.js`, `public/js/admin-standalone-redirect.js` |
+| Admin Marketing role (`admin_marketing`) | `server/models/Admin.js` (`ADMIN_ROLES`), `server/admin.js` create/update `allowedRoles`, `server/authMiddleware.js` `adminRoleGate`, `public/admin-users.html` role select, `public/js/admin-sidebar.js` `MARKETING_NAV_IDS`, hub-guard, `public/js/portal-layout.js` bottom-tab fallback |
+| Admin first-time password setup | `public/admin-first-setup.html`, `POST /api/auth/admin-first-setup`, create-admin blank password → one-time `setupToken` (7 days) |
 | Admin Accounting hub | `public/admin-accounting-hub.html` (Payroll + Student Subscriptions only) |
 | Teaching Fee bonus / incentive | `public/teacher-service-fee.html`, `public/admin-payroll.html`, `Teacher.periodIncentives`, `PUT /api/admin/teacher-period-incentive`, `GET /api/teacher/period-incentive` |
 | Mongo safety scripts | `scripts/archive-legacy-mongo-db.js`, `scripts/purge-beta-recordings.js` |
+| Ensure marketing admin (ops) | `scripts/ensure-admin-marketing.js` (create/update `adminmktg@remoedph.com` → `admin_marketing` + fresh setup token) |
 
 ## Feature-add rule of thumb
 
@@ -84,17 +87,21 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 
 - [ ] Teacher and student Gender selects offer only **Male** and **Female** (plus empty “Select Gender”). No Other / Others / non-binary options.
 
-### Admin hubs
+### Admin hubs / Marketing role
 
 - [ ] Sidebar order includes **Accounting Hub** then **Marketing Hub** (Marketing Hub directly below Accounting).
 - [ ] **Marketing Hub** opens Unique Link Commissions (filters, ₱ totals, enrollee table). Accounting Hub tabs are only **Payroll Management** and **Student Subscriptions**.
 - [ ] Opening `admin-unique-link-commission.html` standalone redirects to `admin-marketing-hub.html` (not Accounting `#commissions`). Old `#commissions` on Accounting Hub redirects to Marketing Hub.
 - [ ] Accounting Hub → Payroll: **Bonus / Incentive** column can Save an amount for the selected cut-off; Teaching Fee shows the same amount under Period fee and includes it in Net Payable.
+- [ ] Super-Admin → Admins role dropdown includes **Admin — Marketing** (`admin_marketing`). Creating with blank password shows a one-time setup token; first-time setup page is `admin-first-setup.html`.
+- [ ] `admin_marketing` login sidebar shows only: Dashboard, Marketing Hub, Leaderboard, Announcements, Videos, Reports, Messages, Profile settings, Logout (no HR / QA / Accounting hubs; no Settings / System monitor).
+- [ ] `admin_marketing` opening HR / QA / Accounting hub URLs redirects to Dashboard; Unique Link APIs work; payroll / user-mgmt / pipeline / issues / recordings APIs return 403.
 
 ### Deploy hygiene
 
 - [ ] No second `const studentController = require(...)` in `server/student.js`.
 - [ ] Hard-refresh portals after deploy (`Ctrl+F5`) so cached HTML/JS is not stale.
+- [ ] After Admins UI / sidebar RBAC changes, bump HR Hub users iframe `embedVer=` and `admin-sidebar.js?v=` so Super-Admin sees the new role option without a stale iframe.
 
 ## Live classroom — do not “simplify”
 
@@ -216,11 +223,41 @@ Unique Link Commissions are **not** an Accounting Hub tab. They live under sideb
 
 - Hub page: `public/admin-marketing-hub.html` embeds `admin-unique-link-commission.html?adminEmbed=1`.
 - Sidebar: `public/js/admin-sidebar.js` item `marketing` (label **Marketing Hub**) after `accounting-hub`. Path highlight maps `admin-marketing-hub` and `admin-unique-link-commission` → `marketing`.
-- Visibility: `super_admin`, `admin_accounting`, and **`admin_marketing`** (HR/QA redirected by `admin-hub-guard.js` `data-hub="marketing"`).
-- **`admin_marketing` sidebar whitelist:** Dashboard, Marketing Hub, Leaderboard, Announcements, Videos, Reports, Messages, Profile settings, Logout. Settings / System monitor remain Super-Admin-only. Assign via Super-Admin → Users → role **Admin — Marketing** (e.g. `adminmktg@remoedph.com`).
+- Visibility: `super_admin`, `admin_accounting`, and **`admin_marketing`**. HR/QA (and marketing on non-marketing hubs) redirected by `admin-hub-guard.js` (`data-hub="marketing"|"hr"|"qa"|"accounting"`).
 - Standalone redirect: `admin-standalone-redirect.js` sends `admin-unique-link-commission.html` → `admin-marketing-hub.html`.
 - Accounting Hub keeps **Payroll** + **Student Subscriptions** only. `#commissions` on Accounting Hub must redirect to Marketing Hub — do not restore the commissions tab inside Accounting.
 - Teacher copy: `teacher-referrals.html` points admins to **Marketing Hub → Unique Link Commissions**.
+
+### Role `admin_marketing` (do not widen casually)
+
+Specialty admin for Unique Link / Marketing Hub work. Keep sidebar whitelist, hub-guard, and `adminRoleGate` in sync when extending.
+
+**Assign / create**
+
+- Enum: `server/models/Admin.js` `ADMIN_ROLES` includes `admin_marketing`.
+- Super-Admin create/update: `server/admin.js` `allowedRoles` arrays must include `admin_marketing`.
+- UI: `public/admin-users.html` select option **Admin — Marketing** (`value="admin_marketing"`). Role labels also in `admin-legal-accept.js`, profile/settings/view-user/hr-documents maps, leaderboard `ADMIN_ROLE_CLAIMS`.
+- Example account: `adminmktg@remoedph.com`. Ops helper: `scripts/ensure-admin-marketing.js` (sets role + fresh setup token).
+- HR Hub embeds Admins via `admin-users.html?adminEmbed=1&embedVer=…` — bump `embedVer` when the role dropdown changes so Super-Admin does not see a cached iframe without Marketing.
+
+**Sidebar whitelist** (`MARKETING_NAV_IDS` in `admin-sidebar.js`)
+
+- Shown: Dashboard, Marketing Hub, Leaderboard, Announcements, Videos, Reports, Messages, Profile settings, Logout.
+- Hidden: HR Hub, QA Hub, Accounting Hub, Settings, System monitor (same Super-Admin-only rule as other specialty roles).
+- Phone bottom tabs: `portal-layout.js` `pickTabLis` falls back to **Profile settings** when Settings is hidden for this role.
+
+**API gate** (`adminRoleGate` in `authMiddleware.js`)
+
+- Marketing may use Unique Link / referral commission APIs (not blocked like HR).
+- Marketing is blocked from: payroll/dispense/salaries, issues, teacher pipeline, teachers/students/admins lists, user CRUD (`/^\/user/`), classroom recordings, global-rate maintenance, system settings/cleanup (shared Super-Admin block).
+
+**Login / JWT**
+
+- Login returns `adminRole`; client stores `localStorage.adminRole`. After role change, the user must **sign out and sign in again** so sidebar/JWT match.
+
+### Admin first-time password setup (blank password on create)
+
+When Super-Admin creates an admin with **password left blank**, the API returns a one-time **`setupToken`** (valid 7 days, shown once in the create alert). The new admin opens **Admin login → First-time password setup** (`admin-first-setup.html`), enters username + token + new password (`POST /api/auth/admin-first-setup`), then signs in normally. If a password is set in the create/edit form, there is no setup token. Lost tokens: set a password via Edit, or re-issue via ops script / a new create flow — the hash is not recoverable from the DB.
 
 ## Teaching Fee — Bonus / Incentive (Accounting)
 
@@ -247,3 +284,16 @@ Below **Period fee (rate × completed classes)** on Teaching Fee (`teacher-servi
 
 - Atlas M0 storage % may stay high after deletes; Flex upgrade / MongoDB for Startups credits are billing ops.
 - Launch wipe of beta users is a separate explicit task — do not drop `test` casually.
+
+## Baseline updates — 2026-09-15
+
+Surfaces locked in on this date (extend around; do not rewrite). Details above.
+
+| Area | What shipped |
+|------|----------------|
+| Phone app shell / scroll | `.remoed-main` sole scroller ≤768; no `window.scrollTo` / lastY snap / PTR on `.remoed-content`; adopt `.nav-right` only on phone; desktop Time In / bell / calendar stay in `.nav-header`. |
+| Landing culture | After hero: Who we are → Principles → Pillars → HEART → Vision/Mission; icon circles not culture photos; About → `#who-we-are`. |
+| Gender | Profile selects Male / Female only; Teacher enum rejects Other. |
+| Marketing Hub | Unique Link Commissions under sidebar **Marketing Hub** (below Accounting); Accounting Hub = Payroll + Subscriptions only. |
+| `admin_marketing` | Restricted sidebar + hub-guard + `adminRoleGate`; role in Admins dropdown; first-time setup token for blank-password creates. |
+| Teaching Fee Bonus / Incentive | Period-scoped amount on Payroll; read-only on Teaching Fee; in net pay / dispense / payslip. |
