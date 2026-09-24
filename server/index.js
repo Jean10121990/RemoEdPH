@@ -2009,6 +2009,23 @@ io.on('connection', socket => {
         }
     });
 
+    socket.on('join-admin-messages', (data = {}) => {
+        try {
+            const username = String(data.username || data.userId || '')
+                .trim()
+                .toLowerCase()
+                .replace(/^admin:/, '');
+            if (!username) return;
+            const roomName = `admin-msg:${username}`;
+            socket.join(roomName);
+            socket.userType = 'admin';
+            socket.presenceKey = `admin:${username}`;
+            console.log(`💬 Socket ${socket.id} joined admin message room: ${roomName}`);
+        } catch (e) {
+            console.warn('join-admin-messages error:', e.message);
+        }
+    });
+
     socket.on('join-student-messages', (data = {}) => {
         try {
             const username = String(data.username || '').trim();

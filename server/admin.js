@@ -83,11 +83,38 @@ function currentMonthDateBounds() {
   return { startStr, endStr, year: y, month: m + 1 };
 }
 
-/** All PeerMessage id variants for a teacher or student (admin thread + read receipts). */
+/** All PeerMessage id variants for a teacher, student, or admin (admin thread + read receipts). */
 async function peerMessageLookupKeysForUser(raw) {
   const s = String(raw || '').trim();
   const keys = new Set();
   if (s) keys.add(s);
+
+  if (s.toLowerCase().startsWith('admin:')) {
+    const uname = s.slice(6).trim();
+    if (uname) {
+      keys.add('admin:' + uname);
+      keys.add('admin:' + uname.toLowerCase());
+      const adminByUser = await Admin.findOne({
+        $or: [
+          { username: uname },
+          { username: new RegExp(`^${escapeRegexForSearch(uname)}$`, 'i') },
+          { email: new RegExp(`^${escapeRegexForSearch(uname)}$`, 'i') },
+        ],
+      })
+        .select('username email')
+        .lean();
+      if (adminByUser) {
+        if (adminByUser.username) {
+          keys.add('admin:' + String(adminByUser.username));
+          keys.add('admin:' + String(adminByUser.username).toLowerCase());
+        }
+        if (adminByUser.email) {
+          keys.add('admin:' + String(adminByUser.email).trim().toLowerCase());
+        }
+      }
+    }
+    return Array.from(keys).filter(Boolean);
+  }
 
   const t = await Teacher.findOne({
     $or: [
@@ -117,12 +144,43 @@ async function peerMessageLookupKeysForUser(raw) {
     if (st.email) keys.add(String(st.email).trim().toLowerCase());
   }
 
+  const admin = await Admin.findOne({
+    $or: [
+      { username: s },
+      { email: new RegExp(`^${escapeRegexForSearch(s)}$`, 'i') },
+      { username: new RegExp(`^${escapeRegexForSearch(s)}$`, 'i') },
+    ],
+  })
+    .select('username email')
+    .lean();
+  if (admin && admin.username) {
+    keys.add('admin:' + String(admin.username));
+    keys.add('admin:' + String(admin.username).toLowerCase());
+    if (admin.email) keys.add('admin:' + String(admin.email).trim().toLowerCase());
+  }
+
   return Array.from(keys).filter(Boolean);
 }
 
-/** Canonical id stored in PeerMessage (teacherId for teachers, username for students). */
+/** Canonical id stored in PeerMessage (teacherId for teachers, username for students, admin:username for admins). */
 async function canonicalPeerRecipientId(raw) {
   const s = String(raw || '').trim();
+  if (!s) return s;
+  if (s.toLowerCase().startsWith('admin:')) {
+    return 'admin:' + s.slice(6).trim().toLowerCase();
+  }
+  const admin = await Admin.findOne({
+    $or: [
+      { username: s },
+      { email: new RegExp(`^${escapeRegexForSearch(s)}$`, 'i') },
+      { username: new RegExp(`^${escapeRegexForSearch(s)}$`, 'i') },
+    ],
+  })
+    .select('username')
+    .lean();
+  if (admin && admin.username) {
+    return 'admin:' + String(admin.username).trim().toLowerCase();
+  }
   const t = await Teacher.findOne({
     $or: [
       { teacherId: s },
@@ -3478,7 +3536,7 @@ router.get('/admins-list', async (req, res) => {
   }
 });
 
-// Admin messages directory — search only (min 2 chars); no full user list scan
+// Admin messages directory — search teachers, students, and other admins (min 2 chars)
 router.get('/messages/users', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {
     const q = String((req.query && req.query.q) || '').trim();
@@ -3491,8 +3549,9 @@ router.get('/messages/users', verifyAdminApiAuth, requireAdmin, async (req, res)
     }
 
     const rx = new RegExp(escapeRegexForSearch(q), 'i');
+    const meAdminId = getAdminMessengerId(req);
 
-    const [teachers, students] = await Promise.all([
+    const [teachers, students, admins] = await Promise.all([
       Teacher.find({
         $or: [
           { username: rx },
@@ -3510,6 +3569,18 @@ router.get('/messages/users', verifyAdminApiAuth, requireAdmin, async (req, res)
         $or: [{ username: rx }, { email: rx }, { firstName: rx }, { lastName: rx }],
       })
         .select('username firstName lastName email profilePicture')
+        .limit(40)
+        .lean(),
+      Admin.find({
+        status: { $ne: 'suspended' },
+        $or: [
+          { username: rx },
+          { email: rx },
+          { firstName: rx },
+          { lastName: rx },
+        ],
+      })
+        .select('username email firstName lastName adminRole profilePicturePath')
         .limit(40)
         .lean(),
     ]);
@@ -3547,7 +3618,32 @@ router.get('/messages/users', verifyAdminApiAuth, requireAdmin, async (req, res)
       };
     });
 
-    const rows = teacherRows.concat(studentRows);
+    const adminRows = admins
+      .map((a) => {
+        const uname = String(a.username || '').trim();
+        if (!uname) return null;
+        const userId = 'admin:' + uname.toLowerCase();
+        if (userId === meAdminId) return null;
+        const displayName = (
+          `${a.firstName || ''} ${a.lastName || ''}`.trim() ||
+          uname ||
+          'Admin'
+        ).trim();
+        const roleLabel = String(a.adminRole || 'admin').replace(/_/g, ' ');
+        const displayHandle = [uname, a.email, roleLabel].filter(Boolean).join(' • ');
+        return {
+          userType: 'admin',
+          userId,
+          username: uname,
+          name: displayName,
+          email: String(a.email || ''),
+          displayHandle,
+          profilePicture: a.profilePicturePath || null,
+        };
+      })
+      .filter(Boolean);
+
+    const rows = teacherRows.concat(studentRows).concat(adminRows);
     const userKeys = rows.map((u) => u.userId).filter(Boolean);
     const keySet = new Set(userKeys);
 
@@ -3683,7 +3779,14 @@ router.post(
       try {
         const io = getIo();
         if (io) {
-          io.to(`teacher-msg:${recipientId}`).emit('peer-message:new', messageRecord);
+          if (recipientId.startsWith('admin:')) {
+            io.to(`admin-msg:${recipientId.slice(6)}`).emit('peer-message:new', messageRecord);
+          } else if (String(req.body?.userType || '').toLowerCase() === 'student') {
+            io.to(`student-msg:${recipientId}`).emit('peer-message:new', messageRecord);
+          } else {
+            io.to(`teacher-msg:${recipientId}`).emit('peer-message:new', messageRecord);
+            io.to(`student-msg:${recipientId}`).emit('peer-message:new', messageRecord);
+          }
           if (adminId.startsWith('admin:')) {
             io.to(`admin-msg:${adminId.slice(6)}`).emit('peer-message:new', messageRecord);
           }

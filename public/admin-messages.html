@@ -21,7 +21,7 @@
         <div class="remoed-content">
             <div class="messenger" id="messenger">
                 <aside class="chat-list">
-                    <div class="chat-search"><input id="msg-search" type="search" placeholder="Search by name, username, or email…" autocomplete="off" /></div>
+                    <div class="chat-search"><input id="msg-search" type="search" placeholder="Search teachers, students, or admins…" autocomplete="off" /></div>
                     <div id="msg-status" style="padding:8px 16px;color:#64748b;font-size:0.82rem;">Type at least 2 characters to find a user.</div>
                     <div class="chat-items" id="chat-items">
                         <div style="padding:16px;color:#64748b;">No search yet. Enter a name or email above.</div>
@@ -212,12 +212,15 @@
                 var headers = { Authorization: 'Bearer ' + token };
                 var responses = await Promise.all([
                     fetch('/api/admin/teachers-list', { headers: headers }),
-                    fetch('/api/admin/students-list', { headers: headers })
+                    fetch('/api/admin/students-list', { headers: headers }),
+                    fetch('/api/admin/admins-list', { headers: headers })
                 ]);
                 var tRes = responses[0];
                 var sRes = responses[1];
+                var aRes = responses[2];
                 var teachers = tRes.ok ? await tRes.json().catch(function () { return []; }) : [];
                 var students = sRes.ok ? await sRes.json().catch(function () { return []; }) : [];
+                var admins = aRes.ok ? await aRes.json().catch(function () { return []; }) : [];
 
                 var rows = [];
                 (Array.isArray(teachers) ? teachers : []).forEach(function (t) {
@@ -242,6 +245,23 @@
                         name: name,
                         email: s.email || '',
                         displayHandle: [s.username, s.email].filter(Boolean).join(' • '),
+                        lastMessage: '',
+                        lastMessageAt: null
+                    });
+                });
+                (Array.isArray(admins) ? admins : []).forEach(function (a) {
+                    var uname = String(a.username || '').trim();
+                    if (!uname) return;
+                    var userId = 'admin:' + uname.toLowerCase();
+                    if (userId === me) return;
+                    var name = uname;
+                    rows.push({
+                        userType: 'admin',
+                        userId: userId,
+                        username: uname,
+                        name: name,
+                        email: a.email || '',
+                        displayHandle: [uname, a.email].filter(Boolean).join(' • '),
                         lastMessage: '',
                         lastMessageAt: null
                     });
