@@ -95,7 +95,7 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 - [ ] Sidebar order includes **Accounting Hub** → **Admin Fee** → **Marketing Hub**.
 - [ ] Super-Admin **Settings → Admin Roles and Access** loads roles/catalog and can Save Permissions for a non–Super-Admin role.
 - [ ] **Accounting Hub** tabs: Payroll Management, **Admin Payroll**, Student Subscriptions. Admin Payroll can Load Admins and Dispense fees for the cutoff.
-- [ ] Admin header **notification bell** opens the dropdown when clicked (badge count loads; Mark all read works).
+- [ ] Admin header **notification bell** opens the dropdown **directly under the bell** (not at the bottom of the viewport); badge count loads; Mark all read works.
 - [ ] **Marketing Hub** opens Unique Link Commissions (filters, ₱ totals, enrollee table).
 - [ ] Opening `admin-unique-link-commission.html` standalone redirects to `admin-marketing-hub.html` (not Accounting `#commissions`). Old `#commissions` on Accounting Hub redirects to Marketing Hub.
 - [ ] Accounting Hub → Payroll: **Bonus / Incentive** column can Save an amount for the selected cut-off; Teaching Fee shows the same amount under Period fee and includes it in Net Payable.
@@ -160,7 +160,7 @@ Working phone layout after the snap/scroll regressions. Extend around it; do not
 
 - Phone (`max-width: 768`): hide `nav.remoed-sidebar`. Chrome is a titled top bar (`#remoed-mobile-shell`) + 4 tabs (`#remoed-bottom-nav`) + More sheet (`#remoed-more-sheet` on `document.body`). Classroom keeps `#lc-mobile-dock` (Lesson / Camera / Chat) — skip `page-live-classroom`.
 - **Adopt header actions only when `isMobile()`.** `adoptHeaderActions()` moves `.nav-right` into `#remoed-app-actions`. On ≥769 the shell is `display: none`, so adopting on desktop **hides Time In, the bell, and the calendar**. `releaseHeaderActions()` must run on the `matchMedia('(max-width: 768px)')` change to desktop/tablet.
-- `remoedSetNavDropdownOpen` hoists `.nav-dropdown` onto `document.body` so a 40px chip cannot clip the panel. Keep `public/css/portal-header-actions.css`.
+- `remoedSetNavDropdownOpen` hoists `.nav-dropdown` onto `document.body` so a 40px chip cannot clip the panel. After hoist, **`remoedPositionNavDropdown` / `positionNavDropdown` must set `position: fixed` from the trigger’s `getBoundingClientRect`** (under the bell/calendar). Do **not** rely on `top: 100%` while the panel is on `body` — that anchors to the bottom of the page. Keep `public/css/portal-header-actions.css` (`body > .nav-dropdown` is fixed; in-icon panels stay absolute). Mirror the same open/position helpers in `public/js/remoed-notifications.js` when portal-layout is absent.
 - Do not wrap `portal-layout.js` in a way that drops `onclick` handlers on host pages. Do not add a hamburger drawer or a second teacher drawer at 992 (`z-index: 9999`).
 - Cache-bust **both** `js/portal-layout.js?v=` **and** the sidebar loader (`teacher-sidebar.js` / `student-sidebar.js` / `admin-sidebar.js` `?v=`) in the HTML that loads them. Bumping only the inner script leaves browsers on the old loader.
 
@@ -244,7 +244,7 @@ Unique Link Commissions are **not** an Accounting Hub tab. They live under sideb
 - APIs: `/api/admin/admin-fee/summary`, `/attendance`, `/payslip`, `/record-payout`, **`/payroll`**, **`/dispense`** in `server/adminFeeRoutes.js`.
 - Eligibility: at least one completed **8-hour** shift in the cutoff; each eligible admin receives **1%** of that period’s gross subscription sales.
 - **Accounting Hub → Admin Payroll** (`public/admin-admin-payroll.html`, hash `#admin-payroll`): lists all admins for the cutoff and **Dispense All Admin Fees** (marks `AdminPayout` `paid`, notifies each admin). Same bi-monthly period keys as teacher payroll.
-- Header notification bell: `public/js/admin-notifications.js` (delegated click + dropdown CSS); wire via `admin-page-header.js`.
+- Header notification bell: `public/js/admin-notifications.js` (delegated click; opens via `remoedSetNavDropdownOpen`). Panel is body-mounted and **fixed under `#admin-notifications-icon`** — do not re-append the dropdown into the 40px chip or inject `position:absolute; top:calc(100% + 8px)` for the open state. Wire via `admin-page-header.js`.
 
 ## Admin Roles and Access (dynamic RBAC)
 
