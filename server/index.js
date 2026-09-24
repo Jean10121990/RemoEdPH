@@ -695,6 +695,7 @@ const protectedHtmlFiles = new Set([
   'teacher-dashboard.html',
   'student-profile.html',
   'student-learning-journey.html',
+  'student-virtual-garden.html',
   'teacher-profile.html',
   'teacher-view-profile.html',
 ]);

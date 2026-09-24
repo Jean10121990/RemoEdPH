@@ -1,0 +1,333 @@
+/* Virtual Garden — child-friendly RemoEd blues/greens */
+.page-student-virtual-garden .vg-page {
+  --vg-ink: #0f172a;
+  --vg-sky: #e0f2fe;
+  --vg-grass: #86efac;
+  --vg-soil: #92400e;
+  --vg-done: #00a82d;
+  --vg-blue: #00aeef;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 8px 4px 48px;
+}
+
+.vg-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: linear-gradient(120deg, #ecfdf5, #e0f2fe);
+  border: 1px solid #a7f3d0;
+  border-radius: 16px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+.vg-banner p {
+  margin: 0;
+  color: #065f46;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.vg-banner a {
+  display: inline-block;
+  background: var(--vg-blue);
+  color: #fff;
+  text-decoration: none;
+  font-weight: 700;
+  padding: 8px 14px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.vg-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.vg-stat {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 14px 12px;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+}
+
+.vg-stat h3 {
+  margin: 0 0 6px;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+  font-weight: 700;
+}
+
+.vg-stat .vg-val {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--vg-ink);
+}
+
+.vg-stat .vg-val--drops {
+  color: #0284c7;
+}
+
+.vg-layout {
+  display: grid;
+  grid-template-columns: 1fr minmax(240px, 280px);
+  gap: 16px;
+  align-items: start;
+}
+
+.vg-canvas-wrap {
+  background: linear-gradient(180deg, #bae6fd 0%, #bbf7d0 55%, #4ade80 100%);
+  border-radius: 20px;
+  border: 2px solid #86efac;
+  padding: 16px;
+  min-height: 340px;
+  position: relative;
+  overflow: hidden;
+}
+
+.vg-canvas-wrap::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 38%;
+  background: linear-gradient(180deg, transparent, rgba(120, 53, 15, 0.35));
+  pointer-events: none;
+}
+
+.vg-canvas-title {
+  position: relative;
+  z-index: 1;
+  margin: 0 0 12px;
+  font-size: 1rem;
+  color: #0f172a;
+  font-weight: 800;
+}
+
+.vg-plots {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.vg-plot {
+  aspect-ratio: 1;
+  background: rgba(120, 53, 15, 0.55);
+  border: 3px dashed rgba(254, 243, 199, 0.55);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 8px 4px;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+}
+
+.vg-plot:hover,
+.vg-plot.selected {
+  transform: translateY(-3px);
+  border-color: #fde68a;
+  box-shadow: 0 8px 16px rgba(15, 23, 42, 0.15);
+}
+
+.vg-plot.selected {
+  outline: 3px solid #00aeef;
+}
+
+.vg-plant {
+  font-size: 1.85rem;
+  line-height: 1;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.2));
+  transition: transform 0.35s ease;
+}
+
+.vg-plot.vg-anim-plant .vg-plant {
+  animation: vgPlantIn 0.55s ease;
+}
+
+.vg-plot.vg-anim-water .vg-plant {
+  animation: vgWaterBounce 0.65s ease;
+}
+
+@keyframes vgPlantIn {
+  from {
+    transform: scale(0.2) translateY(12px);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes vgWaterBounce {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.25) rotate(-6deg);
+  }
+  70% {
+    transform: scale(1.1) rotate(4deg);
+  }
+}
+
+.vg-plot-label {
+  font-size: 0.65rem;
+  color: #fef3c7;
+  font-weight: 700;
+  margin-top: 4px;
+  text-align: center;
+}
+
+.vg-shop {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 14px;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+}
+
+.vg-shop h2 {
+  margin: 0 0 10px;
+  font-size: 1.05rem;
+  color: var(--vg-ink);
+}
+
+.vg-shop-hint {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin: 0 0 12px;
+}
+
+.vg-shop-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.vg-shop-btn:hover:not(:disabled) {
+  background: #ecfdf5;
+  border-color: #34d399;
+}
+
+.vg-shop-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.vg-shop-btn strong {
+  display: block;
+  color: #0f172a;
+  font-size: 0.95rem;
+}
+
+.vg-shop-btn span {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.vg-milestones {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.vg-milestones h3 {
+  margin: 0 0 8px;
+  font-size: 0.85rem;
+  color: #334155;
+}
+
+.vg-milestone {
+  font-size: 0.8rem;
+  padding: 6px 8px;
+  border-radius: 8px;
+  margin-bottom: 4px;
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.vg-milestone.unlocked {
+  background: #ecfdf5;
+  color: #065f46;
+  font-weight: 600;
+}
+
+.vg-msg {
+  margin-top: 10px;
+  font-size: 0.85rem;
+  color: #b91c1c;
+  min-height: 1.2em;
+}
+
+.vg-msg.ok {
+  color: #047857;
+}
+
+@media (max-width: 768px) {
+  .vg-layout {
+    grid-template-columns: 1fr;
+  }
+  .vg-stats {
+    grid-template-columns: 1fr;
+  }
+  .vg-plots {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Sidebar Eco-Drop badge */
+.remoed-menu .menu-eco-badge,
+#student-eco-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.4rem;
+  height: 1.25rem;
+  padding: 0 6px;
+  margin-left: 6px;
+  border-radius: 999px;
+  background: #0284c7;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+#student-eco-chip {
+  margin-left: 0;
+  margin-right: 4px;
+  height: 28px;
+  min-width: 40px;
+  padding: 0 10px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  border: none;
+  gap: 4px;
+}
+
+body.student-portal .nav-right #student-eco-chip {
+  background: linear-gradient(135deg, #38bdf8, #22c55e);
+}

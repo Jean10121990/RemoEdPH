@@ -181,6 +181,13 @@ const studentSchema = new mongoose.Schema({
     quietHoursStart: { type: Number, default: 22 },
     quietHoursEnd: { type: Number, default: 7 },
   },
+  /** Virtual Garden Eco-Drop wallet (separate from lesson credits). */
+  ecoDropsBalance: { type: Number, default: 0 },
+  totalEcoDropsEarned: { type: Number, default: 0 },
+  /** Drops to celebrate on next portal visit (toast/modal). */
+  pendingEcoDropCelebration: { type: Number, default: 0 },
+  /** Milestone codes e.g. drops_5, drops_11, drops_22 */
+  gardenUnlockedMilestones: { type: [String], default: [] },
   createdAt: { type: Date, default: Date.now }
 }, {
   timestamps: true,

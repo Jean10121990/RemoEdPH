@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="icon" href="/images/remoed-favicon.png" type="image/png" sizes="any" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="js/security-guard.js?v=1"></script>
+    <title>Virtual Garden - RemoEdPH</title>
+    <link rel="stylesheet" href="css/teacher-sidebar.css?v=app-shell-3">
+    <link rel="stylesheet" href="css/portal-chrome-compact.css?v=app-shell-3">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/student-portal-layout.css?v=app-shell-3">
+    <link rel="stylesheet" href="css/student-sidebar.css?v=app-shell-1">
+    <link rel="stylesheet" href="css/student-virtual-garden.css?v=garden-1">
+    <link rel="stylesheet" href="css/portal-header-actions.css?v=header-actions-2" id="remoed-header-actions-css">
+    <script src="js/user-session.js"></script>
+</head>
+<body class="student-portal page-student-virtual-garden">
+    <div class="remoed-main">
+        <div id="student-sidebar-root"></div>
+        <script src="js/student-eco-drops.js?v=garden-1"></script>
+        <script src="js/student-sidebar.js?v=garden-1"></script>
+        <script src="js/student-page-header.js?v=garden-1"></script>
+        <script>
+            StudentSidebar.render('student-sidebar-root', 'garden');
+            StudentPageHeader.render('garden');
+        </script>
+        <div class="remoed-content">
+            <div class="vg-page">
+                <div class="vg-banner">
+                    <p>Complete your next lesson to earn 1 Eco-Drop!</p>
+                    <a href="student-learning-journey.html">Open Learning Journey</a>
+                </div>
+
+                <div class="vg-stats" aria-live="polite">
+                    <div class="vg-stat">
+                        <h3>Available Eco-Drops</h3>
+                        <div class="vg-val vg-val--drops" id="vg-available">—</div>
+                    </div>
+                    <div class="vg-stat">
+                        <h3>Total Eco-Drops Earned</h3>
+                        <div class="vg-val" id="vg-total-earned">—</div>
+                    </div>
+                    <div class="vg-stat">
+                        <h3>Plants &amp; Trees Grown</h3>
+                        <div class="vg-val" id="vg-plants-grown">—</div>
+                    </div>
+                </div>
+
+                <div class="vg-layout">
+                    <div class="vg-canvas-wrap">
+                        <h2 class="vg-canvas-title">Your garden plot</h2>
+                        <div class="vg-plots" id="vg-plots" aria-label="Garden plots"></div>
+                    </div>
+                    <aside class="vg-shop" aria-label="Garden shop">
+                        <h2>Garden Shop</h2>
+                        <p class="vg-shop-hint">Tap an empty plot, then buy seeds or a blooming tree. Tap a plant to water it.</p>
+                        <button type="button" class="vg-shop-btn" id="vg-buy-seed">
+                            <strong>Buy Seeds</strong>
+                            <span>Costs 5 Eco-Drops · plant a new seed</span>
+                        </button>
+                        <button type="button" class="vg-shop-btn" id="vg-water">
+                            <strong>Water Plant</strong>
+                            <span>Costs 5 Eco-Drops · grow one stage</span>
+                        </button>
+                        <button type="button" class="vg-shop-btn" id="vg-buy-tree">
+                            <strong>Buy Flowers &amp; Trees</strong>
+                            <span>Costs 22 Eco-Drops · fully grown!</span>
+                        </button>
+                        <div class="vg-milestones">
+                            <h3>Milestone unlocks</h3>
+                            <div id="vg-milestones-list"></div>
+                        </div>
+                        <p class="vg-msg" id="vg-msg" role="status"></p>
+                    </aside>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="js/student-virtual-garden.js?v=garden-1"></script>
+</body>
+</html>

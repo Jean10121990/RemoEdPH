@@ -19,11 +19,13 @@
     <div class="remoed-main">
         <div id="student-sidebar-root"></div>
         <script src="js/student-lesson-progress-api.js?v=journey-sync-1"></script>
-        <script src="js/student-sidebar.js?v=app-shell-9"></script>
-        <script src="js/student-page-header.js?v=header-actions-2"></script>
+        <script src="js/student-eco-drops.js?v=garden-1"></script>
+        <script src="js/student-sidebar.js?v=garden-1"></script>
+        <script src="js/student-page-header.js?v=garden-1"></script>
         <script>
             StudentSidebar.render('student-sidebar-root', 'journey');
             StudentPageHeader.render('journey');
+            if (window.RemoEdEcoDrops) RemoEdEcoDrops.checkAndCelebrate();
         </script>
         <div class="remoed-content">
             <div class="lj-page">
