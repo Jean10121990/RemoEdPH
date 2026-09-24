@@ -147,7 +147,7 @@
     }
 
     function ensureTimeTracking() {
-        ensureScript('js/admin-time-tracking.js?v=tt-3', function () {
+        ensureScript('js/admin-time-tracking.js?v=tt-4', function () {
             if (typeof global.initAdminTimeTracking === 'function') {
                 global.initAdminTimeTracking();
             }

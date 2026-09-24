@@ -1186,13 +1186,22 @@
                     <option value="month">This month</option>
                     <option value="all">All (recent 50)</option>
                 </select>
+                <span id="admin-log-manage-filters" style="display:none;align-items:center;gap:12px;flex-wrap:wrap;">
+                    <label style="font-weight:600;color:#374151;">Admin:</label>
+                    <select id="admin-log-username-filter" style="padding:8px 12px;border:1px solid #e2e8f0;border-radius:6px;min-width:160px;">
+                        <option value="">All admins</option>
+                    </select>
+                </span>
                 <button type="button" id="admin-apply-filter" style="padding:8px 16px;background:#667eea;color:#fff;border:none;border-radius:6px;font-weight:600;cursor:pointer;">Apply</button>
             </div>
+            <p id="admin-log-super-hint" style="display:none;margin:0 0 12px;font-size:0.82rem;color:#64748b;">
+                Super-Admin: use <strong>Reopen shift</strong> after an accidental Time Out so the admin can continue today. Use <strong>Edit times</strong> to correct In/Out (Philippine time).
+            </p>
             <div id="admin-time-log-content"></div>
         </div>
     </div>
 
-    <script src="js/admin-time-tracking.js?v=tt-3"></script>
+    <script src="js/admin-time-tracking.js?v=tt-4"></script>
     <script>
         // Role-based access control
         const userType = localStorage.getItem('userType');

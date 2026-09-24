@@ -1321,6 +1321,192 @@ router.get('/time-tracking/history', verifyAdminApiAuth, requireAdmin, async (re
   }
 });
 
+function adminUsernameFromWorkerId(teacherId) {
+  const s = String(teacherId || '');
+  if (s.toLowerCase().startsWith('admin:')) return s.slice(6);
+  return s;
+}
+
+/** Build a Date for Asia/Manila from YYYY-MM-DD + HH:MM[:SS] (24h). */
+function phDateTimeFromYmdAndHm(ymd, hm) {
+  const parts = String(hm || '').trim().split(':').map((x) => Number(x));
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(ymd || '')) || parts.length < 2 || parts.some((n) => Number.isNaN(n))) {
+    return null;
+  }
+  const h = Math.min(23, Math.max(0, parts[0]));
+  const m = Math.min(59, Math.max(0, parts[1]));
+  const sec = parts.length >= 3 ? Math.min(59, Math.max(0, parts[2] || 0)) : 0;
+  return new Date(
+    `${ymd}T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}+08:00`
+  );
+}
+
+function formatPhTime12FromDate(date) {
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Manila',
+    hour12: true,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  }).format(date);
+}
+
+/**
+ * Super-Admin: list any admin's time logs (accidental Time Out corrections, audits).
+ * Query: username (optional), startDate, endDate
+ */
+router.get('/time-tracking/manage', verifyAdminApiAuth, requireAdmin, requireSuperAdminDb, async (req, res) => {
+  try {
+    const { startDate, endDate, username } = req.query;
+    const query = { logOwnerType: 'admin' };
+    if (username && String(username).trim()) {
+      query.teacherId = adminTimeWorkerId(String(username).trim());
+    }
+    if (startDate && endDate) {
+      query.date = { $gte: String(startDate), $lte: String(endDate) };
+    }
+    const timeLogs = await TimeLog.find(query)
+      .sort({ date: -1, 'clockIn.timestamp': -1 })
+      .limit(100)
+      .lean();
+    const rows = timeLogs.map((log) => ({
+      ...log,
+      adminUsername: adminUsernameFromWorkerId(log.teacherId),
+    }));
+    res.json({ success: true, timeLogs: rows });
+  } catch (err) {
+    console.error('Admin time manage list error:', err);
+    res.status(500).json({ error: 'Failed to fetch admin time logs' });
+  }
+});
+
+/**
+ * Super-Admin: correct an admin TimeLog after accidental Time Out (or wrong times).
+ * Body: { action: 'reopen' | 'edit', clockIn?: 'HH:MM', clockOut?: 'HH:MM'|null, note?: string }
+ * - reopen: clears clock-out so the admin can continue / Time Out again today
+ * - edit: set In/Out times on the log's business date (omit clockOut or null to leave open)
+ */
+router.patch('/time-tracking/logs/:id', verifyAdminApiAuth, requireAdmin, requireSuperAdminDb, async (req, res) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, error: 'Invalid log id' });
+    }
+    const timeLog = await TimeLog.findById(id);
+    if (!timeLog || timeLog.logOwnerType !== 'admin') {
+      return res.status(404).json({ success: false, error: 'Admin time log not found' });
+    }
+
+    const action = String(req.body.action || 'edit').trim().toLowerCase();
+    const note = String(req.body.note || '').trim();
+    const targetUsername = adminUsernameFromWorkerId(timeLog.teacherId);
+    const ymd = timeLog.date;
+
+    if (action === 'reopen') {
+      const reopenNote = `Reopened by Super-Admin ${req.user.username} at ${getPhilippineTimeStringAdmin()}` +
+        (note ? ` — ${note}` : '');
+      const notes = [timeLog.notes, reopenNote].filter(Boolean).join('\n').slice(0, 2000);
+      await TimeLog.updateOne(
+        { _id: timeLog._id },
+        {
+          $unset: { clockOut: 1 },
+          $set: { totalHours: 0, status: 'clocked-in', notes },
+        }
+      );
+      const fresh = await TimeLog.findById(timeLog._id);
+      try {
+        await syncAdminAttendanceFromTimeLog(fresh, targetUsername);
+      } catch (syncErr) {
+        console.warn('Admin attendance sync (reopen):', syncErr && syncErr.message);
+      }
+      return res.json({
+        success: true,
+        message: `Shift reopened for ${targetUsername}. They can Time Out when finished.`,
+        timeLog: fresh,
+      });
+    }
+
+    // edit
+    let clockInTs = timeLog.clockIn && timeLog.clockIn.timestamp
+      ? new Date(timeLog.clockIn.timestamp)
+      : null;
+    if (req.body.clockIn != null && String(req.body.clockIn).trim() !== '') {
+      clockInTs = phDateTimeFromYmdAndHm(ymd, req.body.clockIn);
+      if (!clockInTs || Number.isNaN(clockInTs.getTime())) {
+        return res.status(400).json({ success: false, error: 'Invalid clockIn time (use HH:MM)' });
+      }
+      timeLog.clockIn = { time: formatPhTime12FromDate(clockInTs), timestamp: clockInTs };
+    }
+
+    const clearOut =
+      req.body.clockOut === null ||
+      req.body.clockOut === '' ||
+      String(req.body.clockOut || '').toLowerCase() === 'null';
+
+    const editNote = `Edited by Super-Admin ${req.user.username} at ${getPhilippineTimeStringAdmin()}` +
+      (note ? ` — ${note}` : '');
+    const notes = [timeLog.notes, editNote].filter(Boolean).join('\n').slice(0, 2000);
+
+    if (clearOut) {
+      await TimeLog.updateOne(
+        { _id: timeLog._id },
+        {
+          $unset: { clockOut: 1 },
+          $set: {
+            clockIn: timeLog.clockIn,
+            totalHours: 0,
+            status: 'clocked-in',
+            notes,
+          },
+        }
+      );
+      const freshOpen = await TimeLog.findById(timeLog._id);
+      try {
+        await syncAdminAttendanceFromTimeLog(freshOpen, targetUsername);
+      } catch (syncErr) {
+        console.warn('Admin attendance sync (edit open):', syncErr && syncErr.message);
+      }
+      return res.json({
+        success: true,
+        message: `Time log updated for ${targetUsername}`,
+        timeLog: freshOpen,
+      });
+    }
+
+    if (req.body.clockOut != null && String(req.body.clockOut).trim() !== '') {
+      const clockOutTs = phDateTimeFromYmdAndHm(ymd, req.body.clockOut);
+      if (!clockOutTs || Number.isNaN(clockOutTs.getTime())) {
+        return res.status(400).json({ success: false, error: 'Invalid clockOut time (use HH:MM)' });
+      }
+      if (clockInTs && clockOutTs < clockInTs) {
+        return res.status(400).json({ success: false, error: 'Clock out must be after clock in' });
+      }
+      const hours = clockInTs ? (clockOutTs - clockInTs) / (1000 * 60 * 60) : 0;
+      timeLog.clockOut = { time: formatPhTime12FromDate(clockOutTs), timestamp: clockOutTs };
+      timeLog.totalHours = Math.round(hours * 100) / 100;
+      timeLog.status = 'clocked-out';
+    }
+
+    timeLog.notes = notes;
+    await timeLog.save();
+
+    try {
+      await syncAdminAttendanceFromTimeLog(timeLog, targetUsername);
+    } catch (syncErr) {
+      console.warn('Admin attendance sync (edit):', syncErr && syncErr.message);
+    }
+
+    res.json({
+      success: true,
+      message: `Time log updated for ${targetUsername}`,
+      timeLog,
+    });
+  } catch (err) {
+    console.error('Admin time log patch error:', err);
+    res.status(500).json({ success: false, error: 'Failed to update time log', details: err.message });
+  }
+});
+
 // ——— Admin notifications (same Notification collection; teacherId = admin username) ———
 router.get('/notifications', verifyAdminApiAuth, requireAdmin, async (req, res) => {
   try {

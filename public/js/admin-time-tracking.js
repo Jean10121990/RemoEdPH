@@ -233,6 +233,9 @@
             showAdminTimeMessage('Please log in again.', 'error');
             return;
         }
+        if (!confirm('Clock out now? This ends your shift for today (until 7 AM Philippine time). Only continue if your shift is finished.')) {
+            return;
+        }
         try {
             var res = await fetch('/api/admin/time-tracking/clock-out', {
                 method: 'POST',
@@ -262,16 +265,121 @@
         }
     };
 
-    function renderAdminTimeLogRows(timeLogs) {
+    function isSuperAdminClient() {
+        try {
+            return String(localStorage.getItem('adminRole') || '').trim().toLowerCase() === 'super_admin';
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function toTimeInputValue(labelOrTs) {
+        if (!labelOrTs) return '';
+        if (labelOrTs instanceof Date || (typeof labelOrTs === 'string' && labelOrTs.indexOf('T') >= 0)) {
+            var d = new Date(labelOrTs);
+            if (Number.isNaN(d.getTime())) return '';
+            var parts = new Intl.DateTimeFormat('en-GB', {
+                timeZone: 'Asia/Manila',
+                hour12: false,
+                hour: '2-digit',
+                minute: '2-digit'
+            }).formatToParts(d);
+            var hh = '00';
+            var mm = '00';
+            parts.forEach(function (p) {
+                if (p.type === 'hour') hh = p.value;
+                if (p.type === 'minute') mm = p.value;
+            });
+            return hh + ':' + mm;
+        }
+        var s = String(labelOrTs).trim();
+        var m = s.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?$/i);
+        if (!m) return '';
+        var h = Number(m[1]);
+        var min = m[2];
+        var ap = (m[3] || '').toUpperCase();
+        if (ap === 'PM' && h < 12) h += 12;
+        if (ap === 'AM' && h === 12) h = 0;
+        return String(h).padStart(2, '0') + ':' + min;
+    }
+
+    function renderAdminTimeLogRows(timeLogs, manageMode) {
         if (!timeLogs || !timeLogs.length) {
             return '<div style="text-align:center;color:#888;padding:32px;">No entries for this period.</div>';
         }
-        var html = '<table style="width:100%;border-collapse:collapse;font-size:0.9rem;"><thead><tr style="background:#f8f9fa;"><th style="padding:8px;text-align:left;">Date</th><th style="padding:8px;">In</th><th style="padding:8px;">Out</th><th style="padding:8px;">Hours</th></tr></thead><tbody>';
+        var html = '<table style="width:100%;border-collapse:collapse;font-size:0.9rem;"><thead><tr style="background:#f8f9fa;">';
+        if (manageMode) html += '<th style="padding:8px;text-align:left;">Admin</th>';
+        html += '<th style="padding:8px;text-align:left;">Date</th><th style="padding:8px;">In</th><th style="padding:8px;">Out</th><th style="padding:8px;">Hours</th><th style="padding:8px;">Status</th>';
+        if (manageMode) html += '<th style="padding:8px;">Actions</th>';
+        html += '</tr></thead><tbody>';
         timeLogs.forEach(function (log) {
-            html += '<tr style="border-bottom:1px solid #eee;"><td style="padding:8px;">' + (log.date || '') + '</td><td style="padding:8px;">' + (log.clockIn && log.clockIn.time) + '</td><td style="padding:8px;">' + (log.clockOut ? log.clockOut.time : '—') + '</td><td style="padding:8px;">' + (log.totalHours != null ? log.totalHours : '—') + '</td></tr>';
+            var outLabel = log.clockOut && log.clockOut.time ? log.clockOut.time : '—';
+            var status = log.status === 'clocked-in' ? 'Open' : 'Completed';
+            var statusColor = log.status === 'clocked-in' ? '#27ae60' : '#64748b';
+            html += '<tr style="border-bottom:1px solid #eee;">';
+            if (manageMode) {
+                html += '<td style="padding:8px;">' + (log.adminUsername || '') + '</td>';
+            }
+            html +=
+                '<td style="padding:8px;">' + (log.date || '') + '</td>' +
+                '<td style="padding:8px;">' + (log.clockIn && log.clockIn.time ? log.clockIn.time : '—') + '</td>' +
+                '<td style="padding:8px;">' + outLabel + '</td>' +
+                '<td style="padding:8px;">' + (log.totalHours != null ? log.totalHours : '—') + '</td>' +
+                '<td style="padding:8px;color:' + statusColor + ';font-weight:600;">' + status + '</td>';
+            if (manageMode) {
+                html +=
+                    '<td style="padding:8px;white-space:nowrap;">' +
+                    (log.status === 'clocked-out'
+                        ? '<button type="button" class="admin-tt-reopen" data-id="' + log._id + '" style="padding:4px 8px;margin:2px;border:none;border-radius:6px;background:#f59e0b;color:#fff;font-weight:600;cursor:pointer;font-size:0.78rem;">Reopen shift</button>'
+                        : '') +
+                    '<button type="button" class="admin-tt-edit" data-id="' + log._id + '" data-in="' + toTimeInputValue((log.clockIn && log.clockIn.timestamp) || (log.clockIn && log.clockIn.time)) + '" data-out="' + toTimeInputValue((log.clockOut && log.clockOut.timestamp) || (log.clockOut && log.clockOut.time)) + '" style="padding:4px 8px;margin:2px;border:none;border-radius:6px;background:#1ca7e7;color:#fff;font-weight:600;cursor:pointer;font-size:0.78rem;">Edit times</button>' +
+                    '</td>';
+            }
+            html += '</tr>';
         });
         html += '</tbody></table>';
         return html;
+    }
+
+    async function loadAdminFilterOptionsForLogs() {
+        var sel = document.getElementById('admin-log-username-filter');
+        if (!sel || sel.getAttribute('data-loaded') === '1') return;
+        var token = getToken();
+        if (!token) return;
+        try {
+            var res = await fetch('/api/admin/admin-fee/admins-filter-list', {
+                headers: { Authorization: 'Bearer ' + token },
+                credentials: 'include'
+            });
+            var data = await res.json().catch(function () { return {}; });
+            if (!res.ok || !data.success) return;
+            sel.innerHTML = '<option value="">All admins</option>';
+            (data.admins || []).forEach(function (a) {
+                var opt = document.createElement('option');
+                opt.value = a.username;
+                opt.textContent = a.username + (a.role ? ' (' + a.role + ')' : '');
+                sel.appendChild(opt);
+            });
+            sel.setAttribute('data-loaded', '1');
+        } catch (e) {
+            console.warn('Admin log filter load failed', e);
+        }
+    }
+
+    async function patchAdminTimeLog(id, body) {
+        var token = getToken();
+        if (!token) throw new Error('Please log in again.');
+        var res = await fetch('/api/admin/time-tracking/logs/' + encodeURIComponent(id), {
+            method: 'PATCH',
+            headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(body || {})
+        });
+        var data = await res.json().catch(function () { return {}; });
+        if (!res.ok || !data.success) {
+            throw new Error((data && (data.error || data.message)) || 'Update failed');
+        }
+        return data;
     }
 
     async function loadAdminTimeLogsWithFilter() {
@@ -281,6 +389,7 @@
         var filterType = filterTypeEl.value;
         var token = getToken();
         if (!token) return;
+        var manageMode = isSuperAdminClient();
 
         var startDate, endDate;
         var now = new Date();
@@ -302,13 +411,24 @@
         }
 
         content.innerHTML = '<div style="text-align:center;padding:24px;color:#888;">Loading…</div>';
-        var url = '/api/admin/time-tracking/history';
-        if (startDate && endDate) url += '?startDate=' + startDate + '&endDate=' + endDate;
+        var url;
+        var params = new URLSearchParams();
+        if (startDate && endDate) {
+            params.set('startDate', startDate);
+            params.set('endDate', endDate);
+        }
+        if (manageMode) {
+            var un = document.getElementById('admin-log-username-filter');
+            if (un && un.value) params.set('username', un.value);
+            url = '/api/admin/time-tracking/manage' + (params.toString() ? '?' + params.toString() : '');
+        } else {
+            url = '/api/admin/time-tracking/history' + (params.toString() ? '?' + params.toString() : '');
+        }
         try {
             var res = await fetch(url, { headers: { Authorization: 'Bearer ' + token }, credentials: 'include' });
             var data = await res.json();
             if (res.ok && data.timeLogs) {
-                content.innerHTML = renderAdminTimeLogRows(data.timeLogs);
+                content.innerHTML = renderAdminTimeLogRows(data.timeLogs, manageMode);
             } else {
                 content.innerHTML = '<div style="color:#c00;padding:16px;">Could not load logs.</div>';
             }
@@ -331,6 +451,16 @@
         modal.style.display = 'flex';
         var ft = document.getElementById('admin-filter-type');
         if (ft) ft.value = 'week';
+        var manageWrap = document.getElementById('admin-log-manage-filters');
+        var hint = document.getElementById('admin-log-super-hint');
+        if (isSuperAdminClient()) {
+            if (manageWrap) manageWrap.style.display = 'inline-flex';
+            if (hint) hint.style.display = 'block';
+            loadAdminFilterOptionsForLogs();
+        } else {
+            if (manageWrap) manageWrap.style.display = 'none';
+            if (hint) hint.style.display = 'none';
+        }
         loadAdminTimeLogsWithFilter();
     };
 
@@ -422,7 +552,75 @@
             var panel = document.getElementById('admin-time-log-modal-panel');
             if (panel) {
                 panel.addEventListener('click', function (e) {
+                    if (e.target === panel) return;
                     e.stopPropagation();
+                });
+            }
+
+            var contentEl = document.getElementById('admin-time-log-content');
+            if (contentEl) {
+                contentEl.addEventListener('click', function (e) {
+                    var t = e.target;
+                    if (!t || !t.closest) return;
+                    var reopenBtn = t.closest('.admin-tt-reopen');
+                    if (reopenBtn) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        var rid = reopenBtn.getAttribute('data-id');
+                        if (!rid) return;
+                        if (!confirm('Reopen this shift? The admin will be clocked in again and can Time Out when finished.')) return;
+                        reopenBtn.disabled = true;
+                        patchAdminTimeLog(rid, { action: 'reopen', note: 'Accidental Time Out correction' })
+                            .then(function (data) {
+                                showAdminTimeMessage(data.message || 'Shift reopened', 'success');
+                                loadAdminTimeLogsWithFilter();
+                                loadAdminTimeTrackingStatus();
+                            })
+                            .catch(function (err) {
+                                showAdminTimeMessage(err.message || 'Reopen failed', 'error');
+                                reopenBtn.disabled = false;
+                            });
+                        return;
+                    }
+                    var editBtn = t.closest('.admin-tt-edit');
+                    if (editBtn) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        var eid = editBtn.getAttribute('data-id');
+                        if (!eid) return;
+                        var defIn = editBtn.getAttribute('data-in') || '09:00';
+                        var defOut = editBtn.getAttribute('data-out') || '';
+                        var newIn = window.prompt('Clock In (HH:MM, Philippine time):', defIn);
+                        if (newIn == null) return;
+                        newIn = String(newIn).trim();
+                        if (!/^\d{1,2}:\d{2}$/.test(newIn)) {
+                            showAdminTimeMessage('Use HH:MM for clock in (e.g. 09:00)', 'warning');
+                            return;
+                        }
+                        var newOut = window.prompt(
+                            'Clock Out (HH:MM), or leave blank to keep the shift open (reopened):',
+                            defOut
+                        );
+                        if (newOut == null) return;
+                        newOut = String(newOut).trim();
+                        var body = { action: 'edit', clockIn: newIn, note: 'Manual time correction' };
+                        if (!newOut) body.clockOut = null;
+                        else if (!/^\d{1,2}:\d{2}$/.test(newOut)) {
+                            showAdminTimeMessage('Use HH:MM for clock out (e.g. 17:00)', 'warning');
+                            return;
+                        } else body.clockOut = newOut;
+                        editBtn.disabled = true;
+                        patchAdminTimeLog(eid, body)
+                            .then(function (data) {
+                                showAdminTimeMessage(data.message || 'Log updated', 'success');
+                                loadAdminTimeLogsWithFilter();
+                                loadAdminTimeTrackingStatus();
+                            })
+                            .catch(function (err) {
+                                showAdminTimeMessage(err.message || 'Edit failed', 'error');
+                                editBtn.disabled = false;
+                            });
+                    }
                 });
             }
         }
