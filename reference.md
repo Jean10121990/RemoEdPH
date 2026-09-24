@@ -131,6 +131,7 @@ Flattened Sprouts extract: `docs/lesson-references/L2M1-Sprouts-Month-1-flat.txt
 - Match pedagogical structure in the attached PDFs + remoed-lesson-creation skill
 - **Publish destination (Level 2 Month 1):** [Google Drive – Level 2 Month 1](https://drive.google.com/drive/u/0/folders/14Fd0Miq10eEIVPCFVgXG36055a9ho3Xk) (`remoedph@gmail.com`). Upload manually when ready.
 - **Local save (canonical):** `docs/lesson-references/lessons/L2M1-Lesson-{N}/`
+- **Laptop download (required after every generation):** `D:\Users\Window11\Desktop\JeanDesktop\RemoEdPH\A Lesson and Training Materials\Level {1|2|3|4}\` — filename `RemoEd L2M1-Lesson-{N}-{Title}.pptx` (Level 2 Sprouts). Build scripts copy here automatically via `build_l2m1_lessons_7_9.build_lesson`.
 - **Drive-ready filenames for later upload:** `docs/lesson-references/drive-upload-stage/RemoEd L2M1-Lesson-{N}-{Title}.pptx`
 
 ### Level 2 – Sprouts · Month 1 – Who Am I? (22 lessons)

@@ -83,6 +83,7 @@ Lesson Progress:
 - [ ] Every page: top-left lesson label, top-right N / total badge
 - [ ] Every page: bottom-right “{LEVEL}! MONTH {M}” (white, drop shadow) + RemoEd PH logo (drop shadow), no white card
 - [ ] Overlays only — do not alter existing 3D backgrounds/characters unless user asks to regenerate art
+- [ ] Copy finished PPTX to laptop: `D:\Users\Window11\Desktop\JeanDesktop\RemoEdPH\A Lesson and Training Materials\Level {N}\` as `RemoEd …pptx` (Level 1–4 folders)
 ```
 
 ## Output
@@ -90,6 +91,7 @@ Lesson Progress:
 - Produce or restyle the requested page range only
 - Keep chrome text consistent across pages (same lesson label; badge increments)
 - If regenerating art, still follow character and style rules above
+- **After generation:** save/copy each deck into the matching **Level 1 / Level 2 / Level 3 / Level 4** folder under `D:\Users\Window11\Desktop\JeanDesktop\RemoEdPH\A Lesson and Training Materials\` (build scripts do this for L2M1 via `build_l2m1_lessons_7_9.build_lesson`)
 
 # RemoEd PH Mission
 

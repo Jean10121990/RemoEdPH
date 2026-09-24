@@ -15,8 +15,11 @@ ROOT = Path(r"d:\Users\Window11\Documents\RemoEd-Jean\RemoEdPH")
 ASSETS = Path(r"C:\Users\Window11\.cursor\projects\d-Users-Window11-Documents-RemoEd-Jean-RemoEdPH\assets")
 LOGO = ROOT / "docs" / "lesson-references" / "remoedph-logo.jpg"
 OUT_ROOT = ROOT / "docs" / "lesson-references" / "lessons"
-# Deliver decks to Google Drive (Slides / Level 2 Month 1), not a laptop copy.
-# https://drive.google.com/drive/folders/14Fd0Miq10eEIVPCFVgXG36055a9ho3Xk
+# Laptop copies by curriculum level (Jean Desktop lesson materials).
+LAPTOP_LESSONS_ROOT = Path(
+    r"D:\Users\Window11\Desktop\JeanDesktop\RemoEdPH\A Lesson and Training Materials"
+)
+# Optional Google Drive folder (manual upload): https://drive.google.com/drive/folders/14Fd0Miq10eEIVPCFVgXG36055a9ho3Xk
 
 SLIDE_W = Inches(13.333)
 SLIDE_H = Inches(7.5)
@@ -291,7 +294,22 @@ def build_lesson(lesson: dict):
     prs.save(str(out))
     also = ROOT / "docs" / "lesson-references" / lesson["pptx"]
     shutil.copy2(out, also)
-    print("wrote", out)
+
+    # Laptop download copy: …/A Lesson and Training Materials/Level {N}/RemoEd {pptx}
+    level_num = int(lesson.get("level", 2))
+    level_dir = LAPTOP_LESSONS_ROOT / f"Level {level_num}"
+    try:
+        level_dir.mkdir(parents=True, exist_ok=True)
+        laptop_name = lesson.get("laptop_name") or f"RemoEd {lesson['pptx']}"
+        if not str(laptop_name).startswith("RemoEd "):
+            laptop_name = f"RemoEd {laptop_name}"
+        laptop_dest = level_dir / laptop_name
+        shutil.copy2(out, laptop_dest)
+        print("wrote", out)
+        print("laptop", laptop_dest)
+    except OSError as e:
+        print("wrote", out)
+        print("WARN laptop copy failed:", e)
     return out
 
 
