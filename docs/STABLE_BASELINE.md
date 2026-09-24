@@ -26,7 +26,7 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 | Student family / emergency (admin view) | `public/student-profile.html`, `public/admin-view-user-profile.html`, `Student.parentEmail` / `emergencyContactPerson` / `emergencyContactNumber` |
 | Student My Level / CEFR guides | `public/student-assessment.html`, `public/images/cefr/remoed-kids-cefr-guide.jpg`, `public/images/cefr/remoed-teens-cefr-guide.jpg` |
 | Admin Accounting hub | `public/admin-accounting-hub.html` (Payroll + **Admin Payroll** + Student Subscriptions); Admin Payroll UI: `public/admin-admin-payroll.html` |
-| Admin Fee & Attendance | `public/admin-fee.html` (no Time In/Out), `server/adminFeeRoutes.js`, `AdminAttendance` / `AdminPayout`; clock via header / Dashboard `admin-time-tracking.js` |
+| Admin Fee & Attendance | `public/admin-fee.html` (no Time In/Out), `server/adminFeeRoutes.js`, `AdminAttendance` / `AdminPayout`; clock via Dashboard / header `public/js/admin-time-tracking.js` + `/api/admin/time-tracking/*` in `server/admin.js` |
 | Admin Roles (dynamic RBAC) | `public/admin-settings.html` (Admin Roles and Access), `server/services/adminRbac.js`, `server/adminRbacRoutes.js` (RBAC paths only — skip enrollment), `AdminRole` / `AdminPermission`, `public/js/admin-access-guard.js`, `public/admin-403.html` |
 | Admin Messages | `public/admin-messages.html`, `GET/POST /api/admin/messages/*` — teachers, students, **and admins**; desktop viewport-fit messenger |
 | System monitor (Super-Admin) | `public/super-monitor.html`, `GET /api/admin/system-stats` — live unique students / teachers / admins via Socket.IO `userType` + `presenceKey` |
@@ -105,7 +105,7 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 - [ ] **Marketing Hub** opens Unique Link Commissions (filters, ₱ totals, enrollee table).
 - [ ] Opening `admin-unique-link-commission.html` standalone redirects to `admin-marketing-hub.html` (not Accounting `#commissions`). Old `#commissions` on Accounting Hub redirects to Marketing Hub.
 - [ ] Accounting Hub → Payroll: **Bonus / Incentive** column can Save an amount for the selected cut-off; Teaching Fee shows the same amount under Period fee and includes it in Net Payable.
-- [ ] **Admin Fee** has **no** Time In/Out buttons (status/eligibility/attendance/payslip only). Clock from **header** or **Dashboard** card; both Dashboard header mini and middle card Time In/Out/View Logs work; login does **not** auto clock-in. Super-Admin **View Logs** can **Reopen shift** / **Edit times** after accidental Time Out.
+- [ ] **Admin Fee** has **no** Time In/Out buttons (status/eligibility/attendance/payslip only). Clock from **header** or **Dashboard** card; both Dashboard header mini and middle card Time In/Out/View Logs work; login does **not** auto clock-in. Time Out shows a confirm. Super-Admin **View Logs** lists any admin and can **Reopen shift** (clear accidental Time Out) or **Edit times** (HH:MM PHT); other roles only see their own history.
 - [ ] **Messages:** search finds other admins (e.g. `adminmktg@…`); can open thread and send. Desktop: conversation + composer visible without scrolling the page.
 
 ### Admin login / first-time password
@@ -259,10 +259,15 @@ Product spec: [`SKILLS.md`](../SKILLS.md) § Gamification. Lesson **credits** st
 ## Admin Fee & Attendance
 
 - Page: `public/admin-fee.html` — bi-monthly 1% of subscription `creditHistory` purchases, eligibility, attendance history, printable payslip. **No Time In/Out UI on Admin Fee** (clock only from top header or Admin Dashboard via `/api/admin/time-tracking/*`). Login must **never** auto clock-in.
-- Admin dashboard Time In (header mini **and** middle card): `public/js/admin-time-tracking.js` (singleton + document capture + inline `onclick` on card buttons). Status poll is read-only — it does not POST clock-in. **Time Out asks for confirm** (accidental outs lock the day until 7 AM PHT).
-- **Super-Admin time-log correction** (Dashboard → **View Logs**): `GET /api/admin/time-tracking/manage`, `PATCH /api/admin/time-tracking/logs/:id` (`action: reopen` clears clock-out so the admin can continue; `action: edit` sets In/Out HH:MM Philippine time). Syncs `AdminAttendance`. Non–Super-Admin still only see their own history.
-- Models: `AdminAttendance` (`admin_attendance`), `AdminPayout` (`admin_payouts`); punches also sync from `TimeLog`.
-- APIs: `/api/admin/admin-fee/summary`, `/attendance`, `/payslip`, `/record-payout`, **`/payroll`**, **`/dispense`**, **`/payment-history`**, **`/admins-filter-list`** in `server/adminFeeRoutes.js`.
+- Admin dashboard Time In (header mini **and** middle card): `public/js/admin-time-tracking.js` (`?v=tt-4+`; also loaded from `admin-page-header.js`). Singleton + document capture + inline `onclick` on card buttons. Status poll is read-only — it does not POST clock-in.
+- **One punch per business day** (7 AM PHT cutoff): after Time Out, status is **Daily Time Log Completed** until the next business day. **Time Out must confirm** before POST (accidental outs lock the day).
+- **Super-Admin time-log correction** (Dashboard → **View Logs** only; gated by `requireSuperAdminDb`):
+  - `GET /api/admin/time-tracking/manage?username=&startDate=&endDate=` — all `logOwnerType: 'admin'` logs (filter by admin).
+  - `PATCH /api/admin/time-tracking/logs/:id` — `{ action: 'reopen' }` clears `clockOut` / sets `clocked-in` so the admin can continue; `{ action: 'edit', clockIn, clockOut }` sets HH:MM Philippine time (`clockOut: null` = leave open). Always re-sync `AdminAttendance` via `syncAdminAttendanceFromTimeLog`.
+  - UI: admin filter + **Reopen shift** / **Edit times**. Non–Super-Admin still use `GET /api/admin/time-tracking/history` (own logs only) with no edit actions.
+  - Do **not** remove Super-Admin-only guards or expose PATCH to other roles.
+- Models: `TimeLog` (`teacherId` = `admin:<username>`, `logOwnerType: 'admin'`), `AdminAttendance` (`admin_attendance`), `AdminPayout` (`admin_payouts`); punches sync from TimeLog.
+- APIs (Admin Fee): `/api/admin/admin-fee/summary`, `/attendance`, `/payslip`, `/record-payout`, **`/payroll`**, **`/dispense`**, **`/payment-history`**, **`/admins-filter-list`** in `server/adminFeeRoutes.js`.
 - Eligibility: at least one completed **8-hour** shift in the cutoff; each eligible admin receives **1%** of that period’s gross subscription sales. Ineligible rows stay listed at ₱0; dispense skips them server-side.
 - **Accounting Hub → Admin Payroll** (`public/admin-admin-payroll.html`, hash `#admin-payroll`, iframe `embedVer` bump on UI changes): mirror teacher **Payroll Management** (`public/admin-payroll.html` / `page-admin-payroll`):
   - Soft rounded buttons (`.btn` `border-radius: 6px`, primary/success/danger colors) — do not leave square/edgy browser defaults.

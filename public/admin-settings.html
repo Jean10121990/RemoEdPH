@@ -11,6 +11,43 @@
     <link rel="stylesheet" href="css/teacher-sidebar.css?v=app-shell-3">
     <link rel="stylesheet" href="css/portal-chrome-compact.css?v=app-shell-3">
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* Admin Roles matrix: use horizontal space (2 columns on desktop). */
+        #rbac-matrix .rbac-modules {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px 24px;
+            align-items: start;
+        }
+        #rbac-matrix .rbac-module {
+            margin: 0;
+            padding: 10px 12px;
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            break-inside: avoid;
+        }
+        #rbac-matrix .rbac-module-title {
+            font-weight: 700;
+            color: #0f172a;
+            margin: 0 0 8px;
+            font-size: 0.9rem;
+            padding-bottom: 6px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        #rbac-matrix .rbac-perm {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            margin: 4px 0;
+            font-size: 0.88rem;
+        }
+        @media (max-width: 768px) {
+            #rbac-matrix .rbac-modules {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </head>
 <body class="page-admin-settings">
     <div class="remoed-main">
@@ -39,7 +76,7 @@
                         <button type="button" class="btn btn-primary" id="rbac-save-btn">Save Permissions</button>
                     </div>
                     <p id="rbac-status" class="muted" style="font-size:0.85rem;margin:0 0 10px;"></p>
-                    <div id="rbac-matrix" style="max-height:420px;overflow:auto;border:1px solid #e2e8f0;border-radius:8px;padding:12px;background:#f8fafc;"></div>
+                    <div id="rbac-matrix" class="rbac-matrix" style="max-height:min(70vh,560px);overflow:auto;border:1px solid #e2e8f0;border-radius:8px;padding:12px;background:#f8fafc;"></div>
                 </div>
 
                 <div id="rbac-add-modal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.45);z-index:10000;align-items:center;justify-content:center;padding:16px;">
@@ -754,21 +791,23 @@
                 } else {
                     html += '<p style="margin:0 0 10px;font-size:0.85rem;color:#64748b;">System Settings, Admin Roles and Access, and System Monitor stay Super-Admin only (not assignable).</p>';
                 }
+                html += '<div class="rbac-modules">';
                 groups.forEach(function (g) {
                     var perms = (g.permissions || []).filter(function (p) {
                         return locked || !SUPER_ADMIN_ONLY[p.key];
                     });
                     if (!perms.length) return;
-                    html += '<div style="margin-bottom:14px;"><div style="font-weight:700;color:#0f172a;margin-bottom:6px;">' + esc(g.module) + '</div>';
+                    html += '<div class="rbac-module"><div class="rbac-module-title">' + esc(g.module) + '</div>';
                     perms.forEach(function (p) {
                         var checked = set[p.key] ? ' checked' : '';
                         var dis = locked ? ' disabled' : '';
-                        html += '<label style="display:flex;align-items:flex-start;gap:8px;margin:4px 0;font-size:0.88rem;cursor:' + (locked ? 'default' : 'pointer') + ';">' +
-                            '<input type="checkbox" data-perm-key="' + esc(p.key) + '"' + checked + dis + ' style="margin-top:3px;">' +
+                        html += '<label class="rbac-perm" style="cursor:' + (locked ? 'default' : 'pointer') + ';">' +
+                            '<input type="checkbox" data-perm-key="' + esc(p.key) + '"' + checked + dis + ' style="margin-top:3px;flex-shrink:0;">' +
                             '<span><strong>' + esc(p.label) + '</strong><br><span style="color:#94a3b8;font-size:0.75rem;">' + esc(p.key) + '</span></span></label>';
                     });
                     html += '</div>';
                 });
+                html += '</div>';
                 host.innerHTML = html || '<p class="muted">No permissions in catalog.</p>';
             }
 
