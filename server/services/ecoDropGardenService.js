@@ -36,9 +36,11 @@ function stageToItemType(stage, preferFlower) {
 async function findStudentDoc(studentId) {
   const sid = String(studentId || '').trim();
   if (!sid) return null;
-  return Student.findOne({
-    $or: [{ username: sid }, { studentCode: sid }],
-  });
+  const orConditions = [{ username: sid }, { studentCode: sid }, { email: sid }];
+  if (isMongoObjectId(sid)) {
+    orConditions.push({ _id: sid });
+  }
+  return Student.findOne({ $or: orConditions });
 }
 
 function serializeState(student, items, celebration) {

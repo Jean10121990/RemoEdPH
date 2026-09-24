@@ -2717,9 +2717,14 @@ const studentBadgeService = require('./services/studentBadgeService');
 const ProgressReport = require('./models/ProgressReport');
 const ecoDropGardenService = require('./services/ecoDropGardenService');
 
+function gardenStudentKey(req) {
+  if (req.student && req.student.username) return String(req.student.username);
+  return req.user.username || req.user.studentId || '';
+}
+
 router.get('/eco-drops', verifyToken, requireStudent, async (req, res) => {
   try {
-    const studentId = req.user.studentId || req.user.username;
+    const studentId = gardenStudentKey(req);
     const bal = await ecoDropGardenService.getEcoDropBalance(studentId);
     res.json({ success: true, ...bal });
   } catch (error) {
@@ -2730,7 +2735,7 @@ router.get('/eco-drops', verifyToken, requireStudent, async (req, res) => {
 
 router.get('/garden', verifyToken, requireStudent, async (req, res) => {
   try {
-    const studentId = req.user.studentId || req.user.username;
+    const studentId = gardenStudentKey(req);
     const ack =
       req.query.ackCelebration === '1' ||
       req.query.ackCelebration === 'true' ||
@@ -2751,7 +2756,7 @@ router.get('/garden', verifyToken, requireStudent, async (req, res) => {
 
 router.post('/garden/action', verifyToken, requireStudent, async (req, res) => {
   try {
-    const studentId = req.user.studentId || req.user.username;
+    const studentId = gardenStudentKey(req);
     const result = await ecoDropGardenService.gardenAction(studentId, req.body || {});
     res.json(result);
   } catch (error) {
@@ -2768,7 +2773,7 @@ router.post('/garden/action', verifyToken, requireStudent, async (req, res) => {
 /** Backfill Eco-Drop if lesson already completed — does not force-complete. */
 router.post('/lessons/complete', verifyToken, requireStudent, async (req, res) => {
   try {
-    const studentId = req.user.studentId || req.user.username;
+    const studentId = gardenStudentKey(req);
     const lessonId = req.body && (req.body.lessonId || req.body.lesson_id);
     const bookingId = req.body && (req.body.bookingId || req.body.booking_id);
     if (!lessonId) {
