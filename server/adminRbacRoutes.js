@@ -15,6 +15,7 @@ const {
   slugifyRoleName,
   ALL_KEYS,
   SYSTEM_SLUGS,
+  stripSuperAdminOnlyKeys,
 } = require('./services/adminRbac');
 
 const router = express.Router();
@@ -102,7 +103,7 @@ router.post('/roles', requireSuperAdminDb, async (req, res) => {
       return res.status(409).json({ success: false, message: 'A role with this slug already exists.' });
     }
     const permissions = Array.isArray(req.body.permissions)
-      ? req.body.permissions.filter((k) => ALL_KEYS.includes(k))
+      ? stripSuperAdminOnlyKeys(req.body.permissions.filter((k) => ALL_KEYS.includes(k)))
       : [];
     const doc = await AdminRole.create({
       slug,
@@ -148,7 +149,9 @@ router.put('/roles/:roleId/permissions', requireSuperAdminDb, async (req, res) =
       });
     }
     const incoming = Array.isArray(req.body.permissions) ? req.body.permissions : [];
-    const next = [...new Set(incoming.map((k) => String(k)).filter((k) => ALL_KEYS.includes(k)))];
+    const next = stripSuperAdminOnlyKeys([
+      ...new Set(incoming.map((k) => String(k)).filter((k) => ALL_KEYS.includes(k))),
+    ]);
     role.permissions = next;
     if (req.body.name != null && String(req.body.name).trim()) {
       role.name = String(req.body.name).trim();

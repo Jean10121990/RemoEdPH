@@ -133,6 +133,14 @@ const ROLE_META = {
   admin_marketing: { name: 'Admin — Marketing', description: 'Marketing Hub and shared ops pages' },
 };
 
+/** Never grantable to non–Super-Admin (System Settings + Admin Roles UI + Monitor). */
+const SUPER_ADMIN_ONLY_KEYS = ['nav:settings', 'nav:super_monitor', 'system:settings'];
+
+function stripSuperAdminOnlyKeys(keys) {
+  const deny = new Set(SUPER_ADMIN_ONLY_KEYS);
+  return (Array.isArray(keys) ? keys : []).filter((k) => !deny.has(String(k)));
+}
+
 /** Sidebar item id → permission key */
 const NAV_ID_TO_PERM = {
   dashboard: 'nav:dashboard',
@@ -244,10 +252,10 @@ async function getPermissionsForRole(slug) {
   if (role === 'super_admin') return ALL_KEYS.slice();
   await seedAdminRbac().catch(() => {});
   const doc = await AdminRole.findOne({ slug: role }).lean();
-  if (doc && Array.isArray(doc.permissions)) return doc.permissions.slice();
-  // Unknown / legacy: fall back to seed if known, else empty (deny)
-  if (ROLE_SEED_PERMISSIONS[role]) return ROLE_SEED_PERMISSIONS[role].slice();
-  return [];
+  let perms = [];
+  if (doc && Array.isArray(doc.permissions)) perms = doc.permissions.slice();
+  else if (ROLE_SEED_PERMISSIONS[role]) perms = ROLE_SEED_PERMISSIONS[role].slice();
+  return stripSuperAdminOnlyKeys(perms);
 }
 
 async function roleHas(slug, permissionKey) {
@@ -307,6 +315,8 @@ function catalogGrouped() {
 
 module.exports = {
   SYSTEM_SLUGS,
+  SUPER_ADMIN_ONLY_KEYS,
+  stripSuperAdminOnlyKeys,
   PERMISSION_CATALOG,
   ALL_KEYS,
   ROLE_SEED_PERMISSIONS,

@@ -2,9 +2,14 @@
  * Admin page access guard — redirects to admin-403.html when the path
  * requires a permission the current role lacks.
  * Prefer loading after admin-session.js. Uses /api/admin/me/permissions.
+ *
+ * System Settings (admin-settings) and Super Monitor are Super-Admin only —
+ * never granted via RBAC `nav:settings`.
  */
 (function () {
     'use strict';
+
+    var SUPER_ADMIN_ONLY_RE = /admin-settings|super-monitor/;
 
     var PATH_RULES = [
         { re: /admin-settings/, key: 'nav:settings' },
@@ -36,6 +41,16 @@
         return null;
     }
 
+    function deny(need) {
+        try {
+            window.location.replace(
+                'admin-403.html' + (need ? '?need=' + encodeURIComponent(need) : '')
+            );
+        } catch (e) {
+            window.location.href = 'admin-dashboard.html';
+        }
+    }
+
     // Legacy hub-guard compatibility (data-hub attribute)
     var hub = '';
     try {
@@ -44,19 +59,51 @@
     } catch (e0) {}
     hub = String(hub || '').toLowerCase();
 
+    var pagePath = String(window.location.pathname || '') + String(window.location.href || '');
     var needed = requiredKeyForPath();
     if (hub === 'hr') needed = needed || 'nav:hr_hub';
     if (hub === 'qa') needed = needed || 'nav:qa_hub';
     if (hub === 'accounting') needed = needed || 'nav:accounting_hub';
     if (hub === 'marketing') needed = needed || 'nav:marketing';
 
-    if (!needed) return;
-
     var role = '';
     try {
         role = String(localStorage.getItem('adminRole') || '').trim().toLowerCase();
     } catch (e1) {}
-    if (role === 'super_admin' || !role) return;
+
+    // System Settings / Admin Roles and Access / Monitor — Super-Admin only
+    if (SUPER_ADMIN_ONLY_RE.test(pagePath)) {
+        if (role === 'super_admin') return;
+        if (role && role !== 'super_admin') {
+            deny('nav:settings');
+            return;
+        }
+        // Role missing in localStorage — confirm via API (do not allow by default)
+        var tokSa = token();
+        if (!tokSa) {
+            deny('nav:settings');
+            return;
+        }
+        fetch('/api/admin/me/permissions', {
+            headers: { Authorization: 'Bearer ' + tokSa },
+            credentials: 'include',
+        })
+            .then(function (r) {
+                return r.ok ? r.json() : null;
+            })
+            .then(function (data) {
+                if (data && data.isSuperAdmin) return;
+                deny('nav:settings');
+            })
+            .catch(function () {
+                deny('nav:settings');
+            });
+        return;
+    }
+
+    if (!needed) return;
+
+    if (role === 'super_admin') return;
 
     var tok = token();
     if (!tok) return;
@@ -70,7 +117,6 @@
         })
         .then(function (data) {
             if (!data) {
-                // Fall back to legacy hub rules
                 legacyHubBlock(hub, role);
                 return;
             }
@@ -83,9 +129,7 @@
             var perms = data.permissions || [];
             if (data.isSuperAdmin) return;
             if (perms.indexOf(needed) === -1) {
-                window.location.replace(
-                    'admin-403.html?need=' + encodeURIComponent(needed)
-                );
+                deny(needed);
             }
         })
         .catch(function () {
@@ -99,12 +143,6 @@
         else if (h === 'qa') blocked = r === 'admin_hr' || r === 'admin_accounting' || r === 'admin_marketing';
         else if (h === 'accounting') blocked = r === 'admin_hr' || r === 'admin_qa' || r === 'admin_marketing';
         else if (h === 'marketing') blocked = r === 'admin_hr' || r === 'admin_qa';
-        if (blocked) {
-            try {
-                window.location.replace('admin-403.html');
-            } catch (e3) {
-                window.location.href = 'admin-dashboard.html';
-            }
-        }
+        if (blocked) deny();
     }
 })();

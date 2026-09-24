@@ -224,17 +224,19 @@
     /** HR / QA / Accounting / Marketing hub entries — visibility by adminRole or RBAC nav map. */
     function shouldShowNavItem(itemId) {
         if (itemId === 'logout') return true;
-        var permNav = getCachedPermNav();
-        if (permNav && Object.prototype.hasOwnProperty.call(permNav, itemId)) {
-            return !!permNav[itemId];
-        }
         var role = '';
         try {
             role = String(localStorage.getItem('adminRole') || '').trim();
         } catch (e) {}
+        // System Settings + Monitor + Admin Roles UI — never from RBAC grants
+        if (itemId === 'settings' || itemId === 'super-monitor') {
+            return role === 'super_admin';
+        }
+        var permNav = getCachedPermNav();
+        if (permNav && Object.prototype.hasOwnProperty.call(permNav, itemId)) {
+            return !!permNav[itemId];
+        }
         if (role === 'admin_marketing') return !!MARKETING_NAV_IDS[itemId];
-        if (itemId === 'settings') return role === 'super_admin';
-        if (itemId === 'super-monitor') return role === 'super_admin';
         if (!role || role === 'super_admin') return true;
         if (itemId === 'hr-hub') return role === 'admin_hr';
         if (itemId === 'qa-hub') return role === 'admin_qa';

@@ -93,7 +93,7 @@ Treat **repo `main` after a successful production deploy** as the source of trut
 ### Admin hubs
 
 - [ ] Sidebar order includes **Accounting Hub** → **Admin Fee** → **Marketing Hub**.
-- [ ] Super-Admin **Settings → Admin Roles and Access** loads roles/catalog and can Save Permissions for a non–Super-Admin role.
+- [ ] Super-Admin **Settings → Admin Roles and Access** is visible and can Save Permissions for a non–Super-Admin role. Non–Super-Admin accounts do **not** see that card (or System Settings / System Monitor in the sidebar).
 - [ ] **Accounting Hub** tabs: Payroll Management, **Admin Payroll**, Student Subscriptions. Admin Payroll can Load Admins and Dispense fees for the cutoff.
 - [ ] Admin header **notification bell** opens the dropdown **directly under the bell** (not at the bottom of the viewport); badge count loads; Mark all read works.
 - [ ] **Marketing Hub** opens Unique Link Commissions (filters, ₱ totals, enrollee table).
@@ -264,6 +264,7 @@ Super-Admin configures page/feature permissions per role instead of hardcoded de
 **Rules:**
 
 - Do **not** remove Super-Admin full bypass. Super-Admin matrix is read-only full access.
+- **Admin Roles and Access** (`#rbac-roles-card` on `admin-settings.html`) is **Super-Admin only** — hide the card for everyone else; sidebar **Settings** / **System monitor** ignore RBAC grants (`nav:settings` / `nav:super_monitor` are stripped for non–Super-Admin on save and at `getPermissionsForRole`).
 - System roles (`super_admin`, `admin_hr`, `admin_qa`, `admin_accounting`, `admin_marketing`) are seeded once; their permissions are editable (except Super-Admin). Custom roles can be created from Settings.
 - Prefer extending the permission catalog + seeds when adding new admin pages — do not reintroduce hard-only role checks without also adding a permission key.
 - JWT still carries `adminRole` slug; permissions are resolved from DB on each request (not frozen in the token).
