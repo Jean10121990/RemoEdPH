@@ -13,7 +13,23 @@
     <link rel="stylesheet" href="css/portal-chrome-compact.css?v=app-shell-3">
     <link rel="stylesheet" href="style.css">
     <style>
-        /* Match teacher Payroll Management table look (page-admin-payroll .payroll-table). */
+        /* Match teacher Payroll Management (page-admin-payroll) soft buttons + table. */
+        body.page-admin-admin-payroll .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+            margin-right: 8px;
+        }
+        body.page-admin-admin-payroll .btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.85;
+        }
+        body.page-admin-admin-payroll .btn-primary { background: #1ca7e7; color: #fff; }
+        body.page-admin-admin-payroll .btn-success { background: #27ae60; color: #fff; }
+        body.page-admin-admin-payroll .btn-danger { background: #e74c3c; color: #fff; }
         body.page-admin-admin-payroll .payroll-table {
             width: 100%;
             border-collapse: collapse;
@@ -276,16 +292,13 @@
             document.getElementById('ap-table-wrap').style.display = 'block';
             listLoaded = true;
 
+            // Same dispense UX as teacher Payroll Management: red button stays available
+            // until at least one row is Paid (ineligible admins are skipped server-side).
             dispenseBtn.style.display = 'inline-block';
-            var pending = (data.admins || []).filter(function (a) { return a.paymentStatus === 'Pending'; });
             var paid = (data.admins || []).filter(function (a) { return a.paymentStatus === 'Paid'; });
-            if (pending.length === 0 && paid.length > 0) {
+            if (paid.length > 0) {
                 dispenseBtn.disabled = true;
                 dispenseBtn.textContent = 'Fees Dispensed';
-                dispenseBtn.style.background = '#95a5a6';
-            } else if (pending.length === 0) {
-                dispenseBtn.disabled = true;
-                dispenseBtn.textContent = 'No Pending Fees';
                 dispenseBtn.style.background = '#95a5a6';
             } else {
                 dispenseBtn.disabled = false;
